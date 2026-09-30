@@ -344,6 +344,8 @@ describe('Home', () => {
           { path: 'web-applications/list/:id', children: [] },
           { path: 'permissions/users/:id', children: [] },
           { path: 'security/auditing', children: [] },
+          // DW-1852: the Security tile's target for a holder of only the authorization-server tab.
+          { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -584,6 +586,57 @@ describe('Home', () => {
     await fixture.whenStable();
     expect(router.url).toBe('/');
     expect(shell.visibleArea()).toBe('');
+  });
+
+  it('AD-8 as amended for DW-1768: the map a holder of the %Operator role is served opens OS management on Locks and gates Permissions naming its pair', async () => {
+    // The instance opens an area when any screen it lists is allowed, and each screen keeps its own
+    // gate: OS management is allowed while Processes is refused, and Permissions, none of whose
+    // screens that holder can open, is refused on the first pair of its set.
+    //
+    // Mutation (Rule 19): gate a tile whenever any screen its area lists is refused -- the
+    // all-pairs rule, on the client -- and this goes red.
+    await router.navigateByUrl('/');
+    navigation.screens.set('os-management', [PROCESSES, LOCKS]);
+    navigation.screenVerdicts.set(PROCESSES.route, { allowed: false, failedPair: '%Admin_Manage:USE' });
+    navigation.areaVerdicts.set('permissions', { allowed: false, failedPair: '%Admin_Secure:USE' });
+    navigation.notify();
+    fixture.detectChanges();
+
+    const permissions = tiles()[3];
+    expect(permissions.getAttribute('aria-disabled')).toBe('true');
+    expect(
+      fixture.nativeElement.querySelector(`#${permissions.getAttribute('aria-describedby')}`)?.textContent?.trim()
+    ).toBe('Requires %Admin_Secure:USE');
+
+    const osManagement = tiles()[1];
+    expect(osManagement.getAttribute('aria-disabled')).toBeNull();
+    osManagement.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/os-management/locks');
+  });
+
+  it('AD-8 as amended for DW-1852: a holder of only the authorization-server tab opens the Security tile on that tab', async () => {
+    // The OAuth 2.0 entry is a tab group whose listed tab that holder cannot open; the entry, and so
+    // the tile, opens on the first tab of the group the map allows, and every other tab keeps its
+    // own verdict.
+    //
+    // Mutation (Rule 19): make `openableEntry` answer `null` whenever the listed tab's own verdict
+    // refuses it -- the listed tab alone counts -- and the tile is gated, so this goes red.
+    await router.navigateByUrl('/');
+    const listed = ['security/ssl', 'security/oauth'].map((route) => screenForRoute(route) as ScreenDeclaration);
+    navigation.screens.set('security', listed);
+    for (const route of ['security/ssl', 'security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server-clients']) {
+      navigation.screenVerdicts.set(route, { allowed: false, failedPair: '%Admin_Secure:USE' });
+    }
+    navigation.notify();
+    fixture.detectChanges();
+
+    const security = tiles()[5];
+    expect(tileNames()[5]).toBe(STRINGS.navAreaSecurity);
+    expect(security.getAttribute('aria-disabled')).toBeNull();
+    security.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server');
   });
 
   it('an area with no built screen still opens its list, and navigates nowhere', async () => {

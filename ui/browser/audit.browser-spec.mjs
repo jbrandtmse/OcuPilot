@@ -335,9 +335,10 @@ async function typeCriterion(page, selector, value) {
 }
 
 /**
- * Press Search and wait until the read it issued has answered and rendered -- as rows or as the
- * empty state. The screen already shows its opening read's rows, so the wait is for this Search's
- * own response first, never for rows alone.
+ * Press Search and wait until the table shows this Search's own answer: the answer's row count,
+ * with every rendered row one of the answered rows by Source, Type and Description -- or the empty
+ * state when it answered none. The opening read's rows stay on screen until the answer is applied,
+ * so neither the response arriving nor rows being present says the rows on screen are the answer's.
  */
 async function search(page, reads) {
   const before = reads.length;
@@ -346,12 +347,29 @@ async function search(page, reads) {
     { timeout: config.navigationTimeoutMs }
   );
   await page.click(SEARCH_BUTTON);
-  await answered;
-  await page.waitForFunction(
-    () => document.querySelector('[role="grid"] .ocu-data-table-body [role="row"]') !== null
-      || document.querySelector('.ocu-data-table-empty') !== null,
-    { timeout: config.navigationTimeoutMs }
-  );
+  const response = await answered;
+  const body = await response.json();
+  assert.ok(response.ok() && Array.isArray(body.rows), `the Search read answered rows: ${JSON.stringify(body).slice(0, 300)}`);
+  const keys = body.rows.map((row) => JSON.stringify([row.EventSource, row.EventType, row.Description].map((value) => String(value ?? '').trim())));
+  try {
+    await page.waitForFunction(
+      (answer) => {
+        if (answer.length === 0) return document.querySelector('.ocu-data-table-empty') !== null;
+        const grid = document.querySelector('[role="grid"]');
+        if (grid === null || Number(grid.getAttribute('aria-rowcount')) - 1 !== answer.length) return false;
+        const held = new Set(answer);
+        const rows = [...grid.querySelectorAll('.ocu-data-table-body [role="row"]')];
+        return rows.length > 0 && rows.every((row) => {
+          const cells = row.querySelectorAll('[role="gridcell"]');
+          return held.has(JSON.stringify([1, 2, 7].map((index) => cells[index]?.textContent.trim() ?? '')));
+        });
+      },
+      { timeout: config.navigationTimeoutMs },
+      keys
+    );
+  } catch {
+    throw new Error(`the table never showed this Search's ${keys.length}-row answer; the view held ${await viewCount(page)} row(s)`);
+  }
   assert.ok(reads.length > before, 'the Search press issued a read');
 }
 

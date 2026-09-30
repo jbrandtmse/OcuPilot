@@ -6,14 +6,17 @@
  * once for that collection, with the locator bar leading back to the Wallet list (AC3); and a
  * principal holding the Security pairs without `%Admin_Wallet:USE` offered the Security area with
  * Wallet and OAuth 2.0 alone unavailable (Story 16.3, DW-1018), gated on the wallet pair in the
- * command box and two deep links, while X.509 still reads (AC5).
+ * command box and two deep links, while X.509 still reads (AC5); and a principal holding the wallet
+ * pairs alone, whose rail click opens the Security area on its Wallet list with every other entry
+ * unavailable naming its pair (AD-8 as amended for DW-1768).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25): `OcuPilotDemoCert` and the
  * `OcuPilotDemo` wallet collection with its one secret are the rows AC2 and AC3 are asserted on.
  *
- * **It creates a security principal, so it refuses the live container.** `before` creates a role and
- * an account holding read on the install namespace's code database plus `%Admin_Secure:USE` and
- * `%DB_IRISSYS:READ`; `after` deletes both whether or not a test failed.
+ * **It creates two security principals, so it refuses the live container.** `before` creates, for
+ * each, a role and an account holding read on the install namespace's code database plus
+ * `%DB_IRISSYS:READ` and either `%Admin_Secure:USE` or `%Admin_Wallet:USE`; `after` deletes all four
+ * whether or not a test failed.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -39,6 +42,8 @@ const config = browserConfig();
 const READ_PREFIX = '/api/ocupilot/screens/';
 const SECURE_USER = 'OcuPilotSecurityNoWallet';
 const SECURE_ROLE = 'OcuPilotSecurityNoWalletRole';
+const WALLET_USER = 'OcuPilotSecurityWalletOnly';
+const WALLET_ROLE = 'OcuPilotSecurityWalletOnlyRole';
 const PASSWORD = 'OcuPilotSecurity1';
 const WALLET_PAIR = '%Admin_Wallet:USE';
 const DEMO_CERT = 'OcuPilotDemoCert';
@@ -105,6 +110,8 @@ const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression}
 const deleteLines = [
   `If ##class(Security.Users).Exists("${SECURE_USER}") Do ##class(Security.Users).Delete("${SECURE_USER}")`,
   `If ##class(Security.Roles).Exists("${SECURE_ROLE}") Do ##class(Security.Roles).Delete("${SECURE_ROLE}")`,
+  `If ##class(Security.Users).Exists("${WALLET_USER}") Do ##class(Security.Users).Delete("${WALLET_USER}")`,
+  `If ##class(Security.Roles).Exists("${WALLET_ROLE}") Do ##class(Security.Roles).Delete("${WALLET_ROLE}")`,
 ];
 
 before(async () => {
@@ -119,17 +126,21 @@ before(async () => {
       'Set tRes=##class(SYS.Database).%OpenId(##class(Config.Databases).Open(##class(Config.Namespaces).Open(tNS).Routines).Directory).ResourceName',
       `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot security browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R","")`,
       `Set tSC2=##class(Security.Users).Create("${SECURE_USER}","${SECURE_ROLE}","${PASSWORD}","OcuPilot security browser spec probe (throwaway)","","","",0,1,"")`,
-      mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)'),
+      `Set tSC3=##class(Security.Roles).Create("${WALLET_ROLE}","OcuPilot security browser spec probe (throwaway)",tRes_":R,%Admin_Wallet:U,%DB_IRISSYS:R","")`,
+      `Set tSC4=##class(Security.Users).Create("${WALLET_USER}","${WALLET_ROLE}","${PASSWORD}","OcuPilot security browser spec probe (throwaway)","","","",0,1,"")`,
+      mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)&&$System.Status.IsOK(tSC3)&&$System.Status.IsOK(tSC4)'),
       mark('SECURE', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_Secure","USE")`),
       mark('SYSREAD', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%DB_IRISSYS","READ")`),
       mark('WALLET', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_Wallet","USE")`),
+      mark('WALLETONLY', `$SYSTEM.Security.CheckUserPermission("${WALLET_USER}","%Admin_Wallet","USE")_$SYSTEM.Security.CheckUserPermission("${WALLET_USER}","%DB_IRISSYS","READ")_$SYSTEM.Security.CheckUserPermission("${WALLET_USER}","%Admin_Secure","USE")`),
     ],
-    ['CREATED', 'SECURE', 'SYSREAD', 'WALLET']
+    ['CREATED', 'SECURE', 'SYSREAD', 'WALLET', 'WALLETONLY']
   );
-  assert.equal(values.CREATED, '1', `the role and principal were created:\n${output}`);
+  assert.equal(values.CREATED, '1', `the roles and principals were created:\n${output}`);
   assert.equal(values.SECURE, '1', 'the probe holds %Admin_Secure:USE');
   assert.equal(values.SYSREAD, '1', 'and %DB_IRISSYS:READ');
   assert.equal(values.WALLET, '0', 'and not %Admin_Wallet:USE');
+  assert.equal(values.WALLETONLY, '110', 'the wallet probe holds %Admin_Wallet:USE and %DB_IRISSYS:READ, and not %Admin_Secure:USE');
   browser = await puppeteer.launch(launchOptions(config));
 });
 
@@ -137,10 +148,16 @@ after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
   const { values, output } = irisSession(
-    [...deleteLines, mark('CLEAN', `('##class(Security.Users).Exists("${SECURE_USER}"))&&('##class(Security.Roles).Exists("${SECURE_ROLE}"))`)],
+    [
+      ...deleteLines,
+      mark(
+        'CLEAN',
+        `('##class(Security.Users).Exists("${SECURE_USER}"))&&('##class(Security.Roles).Exists("${SECURE_ROLE}"))&&('##class(Security.Users).Exists("${WALLET_USER}"))&&('##class(Security.Roles).Exists("${WALLET_ROLE}"))`
+      ),
+    ],
     ['CLEAN']
   );
-  assert.equal(values.CLEAN, '1', `the principal and its role are gone:\n${output}`);
+  assert.equal(values.CLEAN, '1', `the principals and their roles are gone:\n${output}`);
 });
 
 /**
@@ -353,8 +370,6 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
     await waitForRows(x509.page, config.navigationTimeoutMs);
     assert.deepEqual(x509.reads.map((read) => read.path), [LISTS.x509.read], 'the X.509 deep link reads');
 
-    // Mutation (Rule 19): put %Admin_Wallet:USE back on the security area in OcuPilot.Screen.Area,
-    // reload the throwaway -> the rail assertion goes red.
     const rail = await x509.page.evaluate((label) => {
       const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
       return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
@@ -414,5 +429,55 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
     } finally {
       await context.close();
     }
+  }
+});
+
+test('AD-8 as amended for DW-1768: a rail click opens the Security area for a wallet-only holder, whose side bar offers Wallet alone and names every other entry\'s pair, and Wallet reads', async () => {
+  // Mutation (Rule 19): make OcuPilot.Screen.Gate.EvaluateArea answer EvaluatePairs over the area's
+  // declared set -- the all-pairs rule -- and recompile on the throwaway -> the rail assertion goes red.
+  const requires = (pair) => formatRequires(STRINGS.privilegeRequiresResource, pair);
+  const { context, page, reads } = await signedInAt('/ocupilot/?ns=HSCUSTOM', WALLET_USER, PASSWORD);
+  try {
+    const rail = await page.evaluate((label) => {
+      const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
+      return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
+    }, STRINGS.navAreaSecurity);
+    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens for the wallet pairs alone');
+
+    await openSideBar(page, STRINGS.navAreaSecurity);
+    await page.waitForSelector('app-side-bar .ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
+    const entries = await page.$$eval('app-side-bar .ocu-side-bar-item', (items) =>
+      items.map((item) => ({
+        label: item.querySelector('.ocu-side-bar-label')?.textContent.trim() ?? '',
+        disabled: item.getAttribute('aria-disabled'),
+        reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
+      }))
+    );
+    assert.deepEqual(
+      entries,
+      [
+        { label: STRINGS.sslListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.x509ListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.ldapListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.walletListLabel, disabled: null, reason: '' },
+        { label: STRINGS.oauthLabel, disabled: 'true', reason: requires('%Admin_OAuth2_Client:USE') },
+        { label: STRINGS.auditingConfigurationLink, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
+      ],
+      'every Security entry is listed, and Wallet alone is open'
+    );
+
+    const readsBefore = reads.length;
+    await page.evaluate((label) => {
+      const entry = [...document.querySelectorAll('app-side-bar .ocu-side-bar-item')].find(
+        (candidate) => candidate.querySelector('.ocu-side-bar-label')?.textContent?.trim() === label
+      );
+      entry.click();
+    }, STRINGS.walletListLabel);
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/security/wallet', { timeout: config.navigationTimeoutMs });
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.deepEqual(reads.slice(readsBefore).map((read) => read.path), [LISTS.wallet.read], 'and the Wallet list reads');
+  } finally {
+    await context.close();
   }
 });

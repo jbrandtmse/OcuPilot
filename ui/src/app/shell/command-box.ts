@@ -16,6 +16,7 @@ import {
   areaByKey,
   formatRequires,
   isListedScreen,
+  openableEntry,
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -72,6 +73,11 @@ interface CommandRow {
   readonly reason: string;
   readonly gated: boolean;
   readonly route: string;
+  /**
+   * The route choosing a screen row opens: its own, or a tab of the group it heads (`openableEntry`,
+   * AD-8 as amended for DW-1852). `''` for an action row.
+   */
+  readonly target: string;
   /** A screen row's area key, whose side bar choosing the row opens. `''` for an action row. */
   readonly area: string;
   /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
@@ -401,7 +407,7 @@ export class CommandBox {
       this.close();
       const area = areaByKey(row.area);
       if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
-      void this.router.navigateByUrl(withQuery(row.route, this.router.url));
+      void this.router.navigateByUrl(withQuery(row.target, this.router.url));
       return;
     }
     this.close();
@@ -447,18 +453,20 @@ export class CommandBox {
       if (!matchesScreen(screen, label, needle)) continue;
       const area = areaByKey(screen.area);
       const verdict = this.navigation.screenVerdict(screen.route);
+      const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
       rows.push({
         id: `ocu-command-box-screen-${screen.route.replace(/\//g, '-') || 'root'}`,
         kind: 'screen',
         label,
         detail: area === null ? '' : stringFor(area.labelKey),
         reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
-        gated: !verdict.allowed,
+        gated: opens === null,
         route: screen.route,
+        target: opens?.route ?? screen.route,
         area: screen.area,
         descriptor: '',
         actionId: '',
-        ariaDisabled: verdict.allowed ? null : 'true',
+        ariaDisabled: opens !== null ? null : 'true',
       });
     }
     // Story 15.2: favorited screens first, everything else after, each half in the order it was
@@ -546,6 +554,7 @@ export class CommandBox {
         reason: action.reason ?? '',
         gated: (action.reason ?? '') !== '',
         route: '',
+        target: '',
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
@@ -569,6 +578,7 @@ export class CommandBox {
         reason: '',
         gated: false,
         route: '',
+        target: '',
         area: '',
         descriptor: '',
         actionId: '',

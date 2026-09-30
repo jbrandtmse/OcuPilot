@@ -313,8 +313,9 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the Activity lo
   }
 });
 
-// AC5. Mutation (Rule 19): move the own pair into OS management's area pairs, then rebuild and
-// redeploy -> the area reads refused for this principal and the entry wait goes red.
+// AC5. Mutation (Rule 19): drop the own pair from LanguageServerList's `privileges` and
+// `ownPrivileges` and recompile on the throwaway -> External language servers reads open and the
+// refused-entry assertion goes red.
 test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers alone unavailable', async () => {
   const { context, page } = await signedInAt(browser, { ...config, username: PRINCIPAL, password: PRINCIPAL_PASSWORD }, '/ocupilot/os-management/processes?ns=HSCUSTOM', VIEWPORTS.wide);
   try {

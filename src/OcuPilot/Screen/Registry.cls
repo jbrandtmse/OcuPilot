@@ -254,9 +254,9 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tOwnProblem
                 Quit
             }
-            ; AD-8: OcuPilot.Screen.Gate evaluates an area's set and a screen's set separately and
-            ; never unions them, so an area declaring less than one of its screens requires shows
-            ; the rail item allowed and refuses everything inside it.
+            ; AD-8: a gated area names a pair from its declared set, and holding that set opens
+            ; every screen of the area that declares no own pair -- true only while the set
+            ; covers each such screen's pairs.
             Set tCoverageProblem = ..AreaCoverageProblem(tArea, $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs"))
             If tCoverageProblem '= "" {
                 Set pProblem = tClass _ ": " _ tCoverageProblem
@@ -780,24 +780,22 @@ ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject) As %String
 /// check. <method>OwnPrivilegesProblem</method> holds each of them to the screen's privileges.</p>
 /// <p><var>pPairs</var> is one screen's pair set in the form
 /// <method>OcuPilot.Screen.Descriptor.Base.PrivilegePairs</method> answers. An area that declares
-/// more than a screen requires is sound; one that declares less is not, because
-/// <class>OcuPilot.Screen.Gate</class> evaluates the area's set and the screen's set separately and
-/// never unions them -- so the rail item reads allowed while every screen inside it is refused.
-/// Checked per descriptor, which is the same statement as "the area covers the union of its
-/// screens' sets" and additionally reports which class the missing pair belongs to.</p>
+/// more than a screen requires is sound; one that declares less is not. An area opens when any
+/// screen its side bar lists opens (<method>OcuPilot.Screen.Gate.EvaluateArea</method>), and when
+/// none does it names the first pair of its declared set the caller lacks, so that set has to be
+/// one whose holder every screen without an own pair admits. Checked per descriptor, which is the
+/// same statement as "the area covers the union of its screens' sets" and additionally reports
+/// which class the missing pair belongs to.</p>
 /// <p><b>The declared set is all this can check.</b>
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> also unions the classic page's
-/// operator-assigned custom resource, which is runtime state no roster check reads, so a screen
-/// gated by such a resource can still be refused inside an area that reads allowed.</p>
+/// operator-assigned custom resource, which is runtime state no roster check reads, so a holder of
+/// the area's set can still be refused a screen gated by such a resource.</p>
 /// <p><b>An area that declares <i>no</i> pairs is a never-gating area, and its screens gate
 /// independently.</b> An empty set is not "a set that covers nothing": it is EXPERIENCE.md's
 /// "the rail-item itself never gates" ("Agent co-pilot &#8250; Definitions and Switches"), the
-/// shape <class>OcuPilot.Screen.Area</class> records for Home and Agent co-pilot. The false
-/// admission this rule exists to prevent -- an area that reads allowed while every screen inside
-/// it refuses -- is the intended behaviour there: the rail item carries an attention dot rather
-/// than a gate, and the side-bar entries name the resource. So an empty area set is sound
-/// whatever its screens require; a non-empty one that does not cover a screen's is still
-/// refused, because that is an area that meant to gate and gated too little.</p>
+/// shape <class>OcuPilot.Screen.Area</class> records for Home and Agent co-pilot. So an empty area
+/// set is sound whatever its screens require; a non-empty one that does not cover a screen's is
+/// still refused.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is: a covered
 /// and an uncovered set are exercised as values rather than as one fixture descriptor per case.</p>
 ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List, pOwnPairs As %List = "") As %String
@@ -818,7 +816,7 @@ ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List, pOwnPairs 
                 If ($List(tOwnPair, 1) = $List(tPair, 1)) && ($List(tOwnPair, 2) = $List(tPair, 2)) Set tCovered = 1
             }
             If tCovered Continue
-            Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so the area would read allowed while the screen is refused (AD-8)"
+            Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so a holder of the area's set would still be refused it (AD-8)"
             Quit
         }
     } Catch ex {
@@ -3304,6 +3302,69 @@ ClassMethod ScreensForArea(pAreaKey As %String, pBuiltOnly As %Boolean = 1, Outp
             If $ClassMethod(tClass, "AreaKey") '= pAreaKey Continue
             If pBuiltOnly && '$ClassMethod(tClass, "IsBuilt") Continue
             Set tOrdered(+$ClassMethod(tClass, "SideBarPosition"), tClass) = ""
+        }
+        Set tPosition = ""
+        For {
+            Set tPosition = $Order(tOrdered(tPosition))
+            If tPosition = "" Quit
+            Set tClass = ""
+            For {
+                Set tClass = $Order(tOrdered(tPosition, tClass))
+                If tClass = "" Quit
+                Set pList = pList _ $ListBuild(tClass)
+            }
+        }
+    } Catch ex {
+        Set pList = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The descriptor classes <var>pAreaKey</var>'s side bar lists: its built screens at a
+/// <code>sideBarPosition</code> above 0, in <method>ScreensForArea</method>'s order. An area's
+/// verdict is read over these and the tabs of a tab group one of them heads
+/// (<method>OcuPilot.Screen.Gate.EvaluateArea</method>, AD-8).</p>
+ClassMethod ListedScreensForArea(pAreaKey As %String, Output pList As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pList = ""
+    Try {
+        Set tSC = ..ScreensForArea(pAreaKey, 1, .tBuilt)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tBuilt) {
+            Set tClass = $List(tBuilt, tI)
+            If +$ClassMethod(tClass, "SideBarPosition") > 0 Set pList = pList _ $ListBuild(tClass)
+        }
+    } Catch ex {
+        Set pList = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The other built tabs of the tab group <var>pDescriptor</var> heads, in strip order (AD-5): the
+/// built screens of its area whose declared <code>tab.group</code> is its route, less itself. Empty
+/// for a screen that heads no group -- one that declares no <code>tab</code>, or a tab under another
+/// screen's group. <method>TabGroupProblem</method> keeps a group's members in its head's area.</p>
+ClassMethod TabMembersFor(pDescriptor As %String, Output pList As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pList = ""
+    Try {
+        Set tTab = $ClassMethod(pDescriptor, "Field", "tab")
+        If '$IsObject(tTab) Quit
+        Set tGroup = tTab.%Get("group")
+        If (tGroup = "") || (tGroup '= $ClassMethod(pDescriptor, "Route")) Quit
+        Set tSC = ..ScreensForArea($ClassMethod(pDescriptor, "AreaKey"), 1, .tBuilt)
+        If $$$ISERR(tSC) Quit
+        Kill tOrdered
+        For tI = 1:1:$ListLength(tBuilt) {
+            Set tClass = $List(tBuilt, tI)
+            If tClass = pDescriptor Continue
+            Set tMemberTab = $ClassMethod(tClass, "Field", "tab")
+            If '$IsObject(tMemberTab) || (tMemberTab.%Get("group") '= tGroup) Continue
+            Set tOrdered(+tMemberTab.%Get("position"), tClass) = ""
         }
         Set tPosition = ""
         For {

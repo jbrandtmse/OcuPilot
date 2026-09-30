@@ -18,10 +18,11 @@ import { HelpLinks } from '../core/help';
 import {
   NavigationService,
   areaByKey,
-  firstAllowedScreen,
+  firstOpenableEntry,
   formatRequires,
   isListedScreen,
   listForDocumentScreen,
+  openableEntry,
   parentListFor,
   tabGroupFor,
   withQuery,
@@ -310,7 +311,7 @@ export class LocatorBar {
       // **DW-161**, the same amendment Home's tile carries: the segment opens the area's first
       // built screen *whose own verdict allows*, and is gated in place when none of them does.
       // The two surfaces point at the same place, so they resolve it the same way.
-      const openable = firstAllowedScreen(screens, (route) =>
+      const openable = firstOpenableEntry(screens, (route) =>
         this.navigation.screenVerdict(route)
       );
       const gated = !verdict.allowed || (screens.length > 0 && openable === null);
@@ -336,6 +337,9 @@ export class LocatorBar {
       });
     }
     const hasEntity = entity !== '';
+    const group = tabGroupFor(screen);
+    const groupRoute =
+      group === null ? undefined : (openableEntry(group, (route) => this.navigation.screenVerdict(route)) ?? group).route;
     segments.push({
       key: 'screen',
       label: screenLabel,
@@ -343,11 +347,11 @@ export class LocatorBar {
       // A link back to the list once the entity segment follows it (DW-142); otherwise the
       // current segment, so it is not a link. A document viewer's list is the one it is paired
       // with, because its own route with no id reads no document, and a sub-resource list's is
-      // its parent, for the same reason. A tab's is its group's first tab, the screen the side bar
-      // lists (AD-5).
+      // its parent, for the same reason. A tab's is the tab its group's side-bar entry opens: the
+      // first tab the caller may open (AD-5, AD-8 as amended for DW-1852).
       navigates: hasEntity,
       route:
-        parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? tabGroupFor(screen)?.route ?? screen.route,
+        parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? groupRoute ?? screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
       ...UNGATED_SEGMENT,

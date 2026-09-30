@@ -58,6 +58,8 @@ const {
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
+  firstOpenableEntry,
+  openableEntry,
   screenForChange,
   screenForEntityType,
   screenForToolName,
@@ -1086,6 +1088,30 @@ test("firstAllowedScreen over the shipped mirror: Home's own area opens Home", (
   const home = builtScreensForArea('home');
   assert.equal(firstAllowedScreen(home, () => UNGATED)?.route, home[0]?.route);
   assert.equal(firstAllowedScreen(home, () => ({ allowed: false, failedPair: 'R:USE' })), null);
+});
+
+// --- DW-1852: a tab group's one entry opens when any of its tabs does ---------------------------
+//
+// Mutation (Rule 19): make `openableEntry` answer `null` whenever the screen's own verdict refuses
+// it -- the listed tab alone counts -> the authorization-server, registration, strip-order and
+// Security-landing rows go red.
+
+test('openableEntry opens the OAuth 2.0 entry on the first tab the caller may open, and firstOpenableEntry lands there', () => {
+  const head = screenForRoute('security/oauth');
+  const allow = (allowed) => (route) => ({ allowed: allowed.includes(route), failedPair: allowed.includes(route) ? '' : 'R:USE' });
+  assert.equal(openableEntry(head, allow(['security/oauth', 'security/oauth/server']))?.route, 'security/oauth', 'the listed tab opens itself when it may');
+  assert.equal(openableEntry(head, allow(['security/oauth/server']))?.route, 'security/oauth/server', 'an authorization-server holder lands on its tab');
+  assert.equal(openableEntry(head, allow(['security/oauth/server-clients']))?.route, 'security/oauth/server-clients', 'and a registration holder on theirs');
+  assert.equal(openableEntry(head, allow(['security/oauth/server-clients', 'security/oauth/server']))?.route, 'security/oauth/server', 'strip order decides, never verdict order');
+  assert.equal(openableEntry(head, allow([])), null, 'a holder of no tab opens nothing');
+  // Only the group's head speaks for the group: a tab under it, and a screen that is no tab, answer for themselves.
+  assert.equal(openableEntry(screenForRoute('security/oauth/clients'), allow(['security/oauth/server'])), null);
+  assert.equal(openableEntry(screenForRoute('security/ssl'), allow(['security/oauth/server'])), null);
+  // Home's tile and the locator's area segment land where the side-bar entry does, while
+  // firstAllowedScreen still answers only a member of the roster it was given.
+  assert.equal(firstOpenableEntry(listedScreensForArea('security'), allow(['security/oauth/server']))?.route, 'security/oauth/server');
+  assert.equal(firstOpenableEntry(listedScreensForArea('security'), allow([])), null);
+  assert.equal(firstAllowedScreen(listedScreensForArea('security'), allow(['security/oauth/server'])), null);
 });
 
 // AD-13, AD-14: the one predicate `RefreshService` and the toast store both call. Two inline

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService, type Verdict } from '../core/navigation';
+import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
@@ -144,6 +144,8 @@ describe('the command box', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'logs/messages', children: [] },
+          // DW-1852: where the OAuth 2.0 row lands for a holder of only the authorization server tab.
+          { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: OverlayStack, useValue: overlays },
@@ -247,6 +249,26 @@ describe('the command box', () => {
     await fixture.whenStable();
     expect(router.url).toBe('/');
     expect(field().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('AD-8 as amended for DW-1852: a tab group\'s row opens when any of its tabs does, on the first tab the caller may open', async () => {
+    // Mutation (Rule 19): gate a screen row on its own verdict again (`!verdict.allowed`) and
+    // navigate to its own route -- the row reads unavailable and the click opens nothing.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    navigation.roster = [screenForRoute('security/oauth') as ScreenDeclaration];
+    for (const route of ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server-clients']) {
+      navigation.verdicts.set(route, { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+    }
+    navigation.notify();
+    chord();
+
+    const row = options()[0];
+    expect(row.textContent).toContain(STRINGS.oauthLabel);
+    expect(row.getAttribute('aria-disabled')).toBeNull();
+    row.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server');
   });
 
   it('arrow keys move the active descendant and Enter opens the highlighted screen', async () => {

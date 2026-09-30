@@ -7866,6 +7866,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 - 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
 - 2026-09-29T21:50:33Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner 2026-09-29: yes to option B - a rail item, Home tile and side bar open when ANY of the area's screens is allowed; each screen keeps its own gate (no read widens); amend AD-8's area rule at origin; Epic 16 after DW-1838/1836/1837, before 16.25, aiming at 1.0.4
+- 2026-09-29T23:51:43Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=option B: area verdict is the OR of its listed screens (Gate.EvaluateArea); own gates unchanged; AD-8 amended; follow-up DW-1852
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
@@ -7878,6 +7879,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: audit.browser-spec.mjs:478 rows Source [%System,OcuPilot] vs [OcuPilotSeed] (shard 3); refused-tool.browser-spec.mjs:140 30s wait (shard 1); next run 36415467999 green; both green locally on ocupilot-ci
 - 2026-09-28T11:46:03Z status=routed owner=range-end-cleanup by=harvest note=likely a race between the default read and the Search answer (audit) and a slow first turn (refused-tool); make each wait on the answer it asserts
 - 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
+- 2026-09-30T00:38:19Z occurrence=16-25-the-external-language-server-editor
+- 2026-09-30T00:38:19Z note=refused-tool AC2 waited 30s for the refusal card on run 36647650086 (browser shard 1/3, head 7c721b34) after DW-1314's requireFreeSlot fix; green locally on ocupilot-ci; failed job re-run
+- 2026-09-30T01:49:57Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=refused-tool frees the principal's own slot and asserts the turn's 202; proposal-privilege's after() waits its hung turn out; audit search() waits for this Search's rows; reproduced red, fixed green x5+
 ### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
@@ -8254,16 +8258,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
 - evidence: demo: REST API explorer > /api/mgmnt OpenAPI > GET /v2/ > Try it > Send answered 0; the demo Caddy redirects every path but /api/ocupilot (by design)
 - 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fail gracefully; a status-0, network or redirect outcome gets a plain sentence that the request did not reach the application because something between the browser and the instance stopped it, and says nothing was sent to the instance where true; refusal rules unchanged; do not open other APIs on the demo or touch the droplet; browser spec by intercepting and failing the request; first after the 1.0.3 cut, in the next release
+- 2026-09-29T21:42:32Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=status-0 outcomes answer unsent/failed/redirected sentences, never a bare 0; openapi-try-it browser leg intercepts; follow-up DW-1845
 
 ### DW-1837: On the user editor's Effective privileges tab, a role name under Roles (e.g. OcuPilotDemoOperator for user operator) renders in a serif browser-default font instead of the app's type
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: low | fix-risk: low | footprint: the Effective privileges tab component and its styles (Story 16.3)
 - evidence: demo RC /ocupilot/permissions/users/edit/operator, Effective privileges tab; screenshot scratchpad 24e5d414.../readme-images/14-effective-privileges.png; the rest of the tab uses the app type
 - 2026-09-29T19:31:06Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner: fix for the next release; a browser check that the role name computes the app font family; the Planner retakes the README image after it ships
+- 2026-09-29T21:55:00Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=.ocu-form-role-name takes the body type; permissions-effective AC1/AC4 compare computed font families
 
 ### DW-1838: Explain this entry sends the agent only the chosen row as the whole screen (view rows=[that row], rowsAvailable 1, no selection marker), so the agent reports it as the only row on the screen
 - source: owner, 2026-09-29 ~12:45 PDT, relayed by the Planner (demo RC, messages.log) | severity: medium | fix-risk: medium | footprint: ui/src/app/core/screen-context.ts (assembleEntryContext, ScreenContextView), ui/src/app/shell/panel.ts onExplainEntry, the server framing of screen_context, the log viewers, log hub, audit and error-log pages
 - evidence: demo: messages.log > Explain this entry answered 'This is the only row on the Messages log screen'; assembleEntryContext returns rows [the narrowed row], rowsAvailable 1, sort/direction/filter empty; ScreenContextView has no selection field; Fix it (16.21) uses another path
 - 2026-09-29T19:40:50Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner design: send the page's normal context (same rows, cap, filter, sort as assembleScreenContext) plus an explicit marker for the chosen entry (a selected index into rows, or a separate focus row when outside the cap); the server framing says what the marker means; the sent sentence references the selection; amend AD-11/AD-24 at origin; tests pin the entry identified and the other rows present; next release
+- 2026-09-29T21:55:00Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=ae14af90 (run 36631527264 green): screen context plus selected/focus marker on every Explain path; AD-11/AD-24 amended
 
 ### DW-1839: A stored governance policy override makes 5 ObjectScript test classes fail (DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch) on any instance that holds one, as DW-1759's agent definitions do
 - source: 1.0.3 upgrade check (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
@@ -8335,3 +8342,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: IRISSYS's NewVolumeDirectory is the manager directory with threshold 0 (measured, rework 1); a threshold above 0 lets a grow or defragment add volume files there (measured on a probe); 18.4's refusal covers only its own grow, defragment and Add a volume.
 - 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=owner call on the rule's scope: refuse a non-zero threshold for a database whose new volume directory is the manager directory
+### DW-1845: Try-it's redirect sentence says the request did not reach the application, which is false when the application itself answers a 3xx (e.g. a POST answered 303 after creating something); a resend would then duplicate the write
+- source: DW-1836 review | severity: med | fix-risk: low | footprint: in-epic
+- evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
+- 2026-09-29T21:42:32Z status=decision-pending owner=burndown by=cr note=owner: keep the wording, or hedge it for writes only (e.g. '...or the application redirected after acting on it')
+- 2026-09-29T22:05:50Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=by=merge_gate hedge applied: a non-safe verb's opaque redirect reads outcome unknown, may have acted, check before resending; unit/component/browser pinned
+
+### DW-1852: Under DW-1768's any-screen rule only an area's listed tab counts, so a holder of only the OAuth 2.0 authorization-server or registration resource reads their own tab but still finds Security and secrets gated
+- source: DW-1768 implement | severity: med | fix-risk: low | footprint: in-epic
+- evidence: OAuth 2.0 is a tab group whose listed tab is the client configurations (needs %Admin_OAuth2_Client); measured on ocupilot-ci 2026-09-29
+- 2026-09-29T23:51:42Z status=decision-pending owner=burndown by=cr note=owner: should a tab group open its area when any of its tabs does?
+- 2026-09-30T00:38:19Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=a listed tab group opens its area through any of its tabs (Gate.EvaluateEntry, client openableEntry); AD-8 amended; Navigation/WireOAuthRead/oauth browser pinned
+
+### DW-1853: A listed screen with an empty or publicly granted pair set opens its area for every caller past the admin floor; the analytics log (%DeepSee_Portal:USE, public on a stock instance) opens Logs this way
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
+- 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
+
+### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
+- source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: AD-8 names the first unheld pair of the declared set (review, 2026-09-29)
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=the owner wants the shortest missing set named
+
+### DW-1855: DW-1768 test hygiene: LIVE_PAYLOAD screen-level entries stale since 6.13, canned-map client specs overlap older tests, full side-bar rosters pinned in WireAreaAnyScreen and the wallet-only leg, client arms reachable only on mirror drift
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: listed by the DW-1768 review, 2026-09-29
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an Epic 18 merge adds a listed OS management or Security screen, or screen-mirror --check fails in CI
+
+### DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses)
+- source: spec-16-25-the-external-language-server-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: orchestrator decision 2026-09-29: option A for 16.25 (shown, never set, SSL/TLS precedent); the PathPort-backed follow-up is routed here
+- 2026-09-29T23:53:28Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator: 16.25 option A; follow-up for the four single-location fields

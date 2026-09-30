@@ -338,6 +338,8 @@ Anchors are as of `0fa21806`.
 
 ## Spec Change Log
 
+- 2026-09-29, spec gate (lead): the path-field decision is option A (orchestrator, owner's recommended option): `LogFile`, `ClassPath`, `JavaHome`, `PythonPath` and `FilePath` are shown, never set, with the caption pointing at the classic page; the PathPort-backed setting of the four single-location fields is DW-1856, routed to range-end cleanup. The lead wrote the spine changes (a)-(e) at this gate (AD-3, AD-4, AD-8, AD-21 in option A's form, AD-44). Since planning, Story 16.10 merged with External language servers at OS management position 9 and Local databases (Story 18.3) at 10, and DW-1768 (option B) made an area open when any listed screen is allowed: locate code by symbol and bump rosters from what the tree holds.
+
 ## Review Triage Log
 
 ## Design Notes

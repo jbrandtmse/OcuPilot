@@ -21,13 +21,13 @@ import { dirname, join } from 'node:path';
 // was touched; captured by driving OcuPilot.Test.Wire's own EnsurePrincipal/AbsoluteRequest
 // sequence through an ObjectScript command runner, not by hand-authoring a JSON literal).
 // OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal asserts the identical
-// nine facts (two allowed, six denied with a named pair, one classic exception) against the
+// nine facts (three allowed, five denied with a named pair, one classic exception) against the
 // real $System.Security.Check for this same principal, so the two are pinned against one known
 // state rather than against each other -- a field either side mis-reads breaks one of them. The
 // counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
-// first of those is what takes it out of the allowed set for this principal. They moved again with
-// Story 2.10: logs gained %Admin_Secure:USE and %DB_IRISSYS:READ, so no gated area now opens on
-// %Admin_Operate alone. Story 6.11 added the four Databases screens to the os-management roster,
+// first of those is what takes it out of the allowed set for this principal. The logs area verdict
+// was edited by hand for DW-1768, under which an area is allowed when any screen it lists is: this
+// principal opens the messages.log viewer. Story 6.11 added the four Databases screens to the os-management roster,
 // each with its own failedPair for this principal; the identical roster is carried a second time by
 // ui/src/app/shell/rail-wire.spec.ts, and neither copy reddens when only the other is updated, so
 // both move together.
@@ -55,8 +55,7 @@ const LIVE_PAYLOAD = {
       railPosition: 2,
       navigates: false,
       pinBottom: false,
-      allowed: false,
-      failedPair: '%Admin_Secure:USE',
+      allowed: true,
       screens: [
         {
           route: 'logs/alerts',
@@ -533,11 +532,9 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // asserts against the real $System.Security.Check for this exact principal.
   assert.equal(service.areaVerdict('home').allowed, true, 'Home never gates');
   assert.equal(service.areaVerdict('agent').allowed, true, 'and neither does the agent rail item');
-  // Since Story 2.10 no gated area opens on `%Admin_Operate` alone. Logs was the last one, and its
-  // first screen -- the audit database viewer -- declares `%Admin_Secure:USE` for the endpoint's own
-  // gate and `%DB_IRISSYS:READ` because the read runs in `%SYS`, so AD-8's area coverage puts both
-  // on the area. The gate names the first pair this principal does not hold.
-  assert.deepEqual(service.areaVerdict('logs'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  // AD-8 as amended for DW-1768: an area is allowed when any screen it lists is. The messages.log
+  // viewer declares `%Admin_Operate:USE` alone, so Logs opens for this principal and names no pair.
+  assert.deepEqual(service.areaVerdict('logs'), { allowed: true, failedPair: '' });
   // os-management is denied on a different resource again: since Story 2.9 it declares
   // `%Admin_Manage:USE`, which the query behind its first screen checks for itself, and
   // `%DB_IRISSYS:READ`, because that read runs in `%SYS` too.

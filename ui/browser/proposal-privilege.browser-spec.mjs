@@ -27,7 +27,7 @@ import { signedInAt } from './panel-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import {
-  abandonTurns,
+  SLOT_FREE_TIMEOUT_MS,
   armProbeDefinition,
   disarmProbeDefinition,
   escapeOs,
@@ -60,6 +60,14 @@ const TOOL_GRANTS_REVOKED = ',%DB_IRISSYS:R';
 
 /** How long the panel has to show the revoked line once the role changes. */
 const REVOKE_WINDOW_MS = 5000;
+
+/**
+ * How long (b)'s second provider call hangs, keeping the panel polling while the role changes. No
+ * longer than `requireFreeSlot` waits, so this file's `after` can wait the principal's turn out: an
+ * abandon is honoured only at a step boundary, which a hanging call has not reached, and a slot
+ * still held when this file ends refuses the next Send as this account 409 TURN.BUSY.
+ */
+const PRINCIPAL_HANG_SECONDS = SLOT_FREE_TIMEOUT_MS / 1000;
 
 const password = `OcuPilotPrivLine${randomBytes(12).toString('hex')}Aa9`;
 let browser = null;
@@ -107,7 +115,9 @@ after(async () => {
   if (config.container === LIVE_CONTAINER) return;
   await requireFreeSlot(config).catch(() => {});
   if (user !== '') {
-    await abandonTurns({ ...config, username: user, password }).catch(() => {});
+    // Waits (b)'s hanging turn out (`PRINCIPAL_HANG_SECONDS`), so the next file that signs in as
+    // this account finds its slot free.
+    await requireFreeSlot({ ...config, username: user, password }).catch(() => {});
     dropProposals(user);
   }
   dropProposals(config.username);
@@ -246,7 +256,7 @@ test('(b) a principal who loses a pair sees the warning within one poll, Confirm
   setRole(baseResources + TOOL_GRANTS);
   // The principal's own single turn slot (AD-41): an earlier run's hanging turn may still hold it.
   await requireFreeSlot({ ...config, username: user, password });
-  const tag = armProposal(30);
+  const tag = armProposal(PRINCIPAL_HANG_SECONDS);
   await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
