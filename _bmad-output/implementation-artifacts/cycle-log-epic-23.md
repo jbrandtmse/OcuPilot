@@ -66,3 +66,9 @@
 2026-09-26T17:37:23Z	Epic 23	ledger_burndown_complete	partial=true(stopped_at_batch_boundary) open_before=178 resolved=75 terminal=121 chartered=0 chartered_size=0 overflow=21(left_owned_by_range-end-cleanup_for_re-charter) reowned=30(5_to_14/16,25_burndown_per_AC1) to_decision_sheet=7(6_escalated+DW-1621_preexisting) open_after=22(21_slice+DW-1706) cap=8 story_max=12 filed_this_epic=15 closed_this_epic=135 drain_ratio=9.00
 2026-09-26T17:37:59Z	Epic 23	throwaway_down	container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci by=lead(ran_its_up_at_09:22Z)
 2026-09-26T17:37:59Z	Epic 23	epic_runner_complete	stories_completed=0 ready_for_merge=true reason=batch_boundary_after_release_window batches=L,B1,B2+B3,B4+B8,B6 remaining=B5,B7
+2026-09-30T08:01:37Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed dispatch=23.2
+2026-09-30T08:01:37Z	Epic 23	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-30T08:01:37Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-09-30T08:01:37Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@27eb5ec4 merge=fast-forward(0296c098..27eb5ec4) conflicts=none code_changes=feature_tree verify=LoadDir_ocupilot-b-ci_OK_errors=0 slot_verified=mcp_profile_ocupilot-slot-b_baseUrl_52775,throwaway_ocupilot-b-ci_healthy_52777
+2026-09-30T08:05:42Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(23.2_charter,spine) model=claude-opus-5-5 agent=ace9b3ce8a5923e5e bytes=5901
+2026-09-30T08:05:42Z	Story 23.2	stage_spawned	stage=plan spawn_at=2026-09-30T08:05:42Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-plan-1 cycle_iteration=1
