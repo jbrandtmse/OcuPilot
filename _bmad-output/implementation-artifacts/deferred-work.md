@@ -8513,6 +8513,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
 - 2026-09-30T12:44:42Z status=routed owner=burndown by=cr note=override ConfirmProblem in TaskCreate/TaskUpdate with the Permitted half only, not all of Validate
+- 2026-09-30T13:32:27Z status=routed owner=16-11-start-suspend-and-resume-the-task-manager by=merge_gate note=orchestrator 2026-09-30: fix now before 16.12 implement; ConfirmProblem in TaskCreate/TaskUpdate, Permitted half only
 
 ### DW-1862: Task schedule's gated banner action (aria-disabled, Requires <pair> tooltip) is never rendered in a browser: every browser leg runs as the %All account
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
