@@ -261,6 +261,32 @@ deferred: []
   - Files: `scripts/container-start.sh` (comment at :163), `scripts/ci-throwaway.sh`, `docker-compose.yml:39-43` (comment), `.github/workflows/ci.yml`, `ui/tools/compose.test.mjs`, `ui/tools/ci.test.mjs`. ADs: AD-17 (amended below), AD-18, AD-38, AD-45, AD-25.
   - AC: Given the repository's compose start, when install completes, then no `OcuPilot.Test.*` class is compiled, while every throwaway and the CI instance and browser legs still load them.
 
+### Review Findings (batch a)
+
+- [x] [Review][Patch] The linger leg did not pin the fixture's flush: without it each answer arrives only at its close, the next case never connects during a linger, and the close-and-reopen mutation loses its red. Added a first-case assertion [src/OcuPilot/Test/OAuthServerDiscover.cls:190]
+- [x] [Review][Patch] The pause-request assertion had only been seen red together with a refused confirm; its own mutation is now recorded under Verification [src/OcuPilot/Test/BackgroundTasksLive.cls:327]
+- [x] [Review][Patch] Dead midnight-wrap line on a `$ZHorolog` difference (seconds since startup, never wraps) [src/OcuPilot/Test/OAuthServerDiscover.cls:184]
+- [x] [Review][Patch] The not-OK assertion named the cause, so `/not-json` and `/bad-json` read alike; it names the URL [src/OcuPilot/Test/OAuthServerDiscover.cls:216]
+- [x] [Review][Patch] `Hold`'s doc said a pause from the holding process "still acts on it" (a held compact reads Running after one) and labeled its inference at length; it now says the lock does not hold such a request up, and that one from another process fails at the lock timeout [src/OcuPilot/Test/BackgroundSeed.cls:222]
+- [x] [Review][Patch] The class header said every method refuses unarmed (`Directory`, `State`, `Settled`, `Tasks` and `RequestOf` do not) and that only `Remove` releases a hold (so does the holder's exit) [src/OcuPilot/Test/BackgroundSeed.cls:6]
+
+Rejected:
+
+- low, by-design: `End()` gives up about 10 s after the work ends, leaving about 9 s for mint and confirm after the 3 s wait. The spec deletes the retries; the bound is in `Hold`'s doc and the Auto Run Result, and the lead names it in the DW-1829 trailer.
+- low, by-design: the fixed 3 s wait reproduces the race only where a resumed compact finishes within it, and nothing asserts it. The spec fixes the wait, and an elapsed floor after a literal `Hang` can only fail on an edit to the test itself.
+- low, wontfix-theoretical: `Remove` releases holds inside its main `Try`. No call there raises on a measured path, an exception fails the teardown assertion, and the lock ends with the process.
+- low, wontfix-theoretical: `Remove` discards `Cancel()`'s status (pre-existing). A task left running is reported by its still-runs check, and teardown after a pause was clean in runs 99, 111 and 115.
+- false: `Hold("")` raises `<SUBSCRIPT>`. The one caller passes an id `PausedCompact` refuses to leave empty.
+- low, wontfix-theoretical: `Stop`'s timeout kills the stop flag and orphans the responder (pre-existing). The loop sees stop within about 1.3 s in the suite; it becomes real with a linger of 4 s or more, or a silent client.
+- low, rejected: the serve loop swallows errors, and an open failure's reason is killed before `Start` reads it (both pre-existing). `Start` and the legs still fail loudly, and the fix adds an error channel.
+- low, wontfix-theoretical: `Fork` answering 0 leaves a client unanswered. That needs device exhaustion.
+- low, by-design: the flush goes through `%IO.DeviceStream`, which the write checker does not see, and its status is discarded. The spec names that flush, and AD-12 binds the response device of a handler, not a JOBbed TCP fixture.
+- false: the ungated resume "fails with a message that never mentions the resume". Its own `AssertStatusOK` records that failure first.
+- low, rejected: the method name says "pauses" where the leg pins the request, and `Remove`'s doc omits that the vendor's cancel terminates. The docs state what is pinned; a rename would churn the spec's Code Map.
+- low, by-design: the screen and admin-API legs keep the resume-then-pause window. This is the spec residual the lead names in the trailer.
+- low, rejected (lead-owned): frontmatter `status: done` while batches remain, the Fix line's "`Linger` setting" where the code takes an argument, and the cycle-log `dev_complete` line counts (`git diff --numstat 1a409d00 840ab37f -- src` reads +246/-142).
+- false: two lingers do not tell a lingering issuer from a slow host. Unlingered, the four cases took 0.011 s (run 109) against the 0.6 s floor.
+
 ## Spec Change Log
 
 - 2026-09-30 spec gate (lead): the six proposed amendments are applied to the spine by the lead with the batch that ships each (AD-39, AD-33, AD-21 with b; AD-34, AD-53 with e; AD-17 with d), so the spine on the feature branch never describes behavior that has not merged.
@@ -281,6 +307,14 @@ deferred: []
   - `[false]` `[reject]` `TestEachCauseIsRefusedByName` was refactored and its message now names the URL (intent-alignment) — the shared helpers serve the new leg, and the URL tells `/not-json` from `/bad-json`, which the shared cause "content" could not.
   - `[low]` `[reject]` A connected client that stays silent holds the fixture 5 s, which can outlast `Stop`'s 5 s wait (intent-alignment) — no caller in the suite connects without sending a request line, and a closed connection ends the read; the fix adds a branch.
   - `[false]` `[reject]` Frontmatter and `## Auto Run Result` disagree, and the checkboxes are ticked before CI (intent-alignment) — the result is written at finalize, and the Execution section has the lead write `resolved-by` once CI is green.
+
+### 2026-09-30 — Code review (batch a)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 33 raw rows grouped into 23 entries: high 0, medium 1, low 19, false 3. 6 patched, 0 deferred, 17 rejected; see `### Review Findings (batch a)`.
+- `[medium]` `[patch]` The linger leg did not pin the fixture's flush (verification-gap). A first-case assertion was added: 0.001 s in run 113, and 0.311 s red alone in run 112 without the flush.
+- `[low]` `[patch]` The pause-request clause's own mutation is recorded (verification-gap): runs 114 and 115.
+- `[low]` `[patch]` ×4, mechanical (blind-hunter): a dead wrap line, a message twin, and the `Hold` and class-header docs.
+- Rules: no AD mismatch (Conventions › Tests, AD-27, and AD-12 for the fixture). Rule 3 exempt: test-only flake fixes, run under their reproducing conditions on `ocupilot-b-ci`. No NFR touched.
 
 ## Design Notes
 
@@ -384,6 +418,8 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` drop the `Hold` call → the agent leg goes red (the compact is Done at about 1.9 s and the confirm is refused). Observed: run 98 red on `TestTheAgentsConfirmPausesACompact` alone (the mint read Done, the confirm answered 409 `TASK.BACKGROUND.STATE`, no pause request recorded); reverted, run 99 7/7.
 - `mutation:` restore close-and-reopen per connection → the linger leg goes red (two cases answer "unreachable"). Observed: run 89 red on `TestTheDocumentCasesHoldAgainstALingeringIssuer` alone (`/not-json` and `/wrong-issuer` answered 422 `OAUTH.DISCOVERY.UNREACHABLE`); reverted, run 90 6/6.
 - `mutation:` drop the linger `Start` passes to `Serve` → the linger leg's elapsed-time assertion goes red alone. Observed: run 109 red (the four cases took 0.011 s, against 0.919 s in run 108); reverted byte-identical, run 110 6/6.
+- `mutation:` drop the flush in `Converse` → the linger leg's first-case assertion goes red alone. Observed: run 112 red (the first case took 0.311 s, against 0.001 s in run 113); reverted byte-identical, run 113 6/6.
+- `mutation:` have `PortalControl` answer OK in place of the vendor's `Pause()` → the agent leg's pause-request assertion goes red while its confirm applies (the screen leg's Paused re-read also goes red). Observed: run 114; reverted byte-identical, run 115 7/7.
 - Observed: all eight classes green on the reverted tree (runs 90-97, 99), and the four specs pass on a rebuilt and redeployed bundle.
 
 **Batch b (loop):**

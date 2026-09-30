@@ -3,11 +3,12 @@
 /// has work to do, and a Management Portal compact of it paused at once.
 /// <class>OcuPilot.Test.BackgroundTasksLive</class> and
 /// <file>ui/browser/background-tasks.browser-spec.mjs</file> both use it, so the recipes live once.</p>
-/// <p><b>It creates a database, its resource and a running job</b>, so every method refuses unless
-/// <parameter>ARMINGVARIABLE</parameter> reads 1, which only <file>scripts/ci-throwaway.sh</file>
-/// sets. The jobs it started are kept in <code>^IRIS.Temp.OcuPilotBackgroundSeed</code>, so the
-/// removal may run in another process than the seed. A task <method>Hold</method> holds is released
-/// only by a <method>Remove</method> in the process that holds it.</p>
+/// <p><b>It creates a database, its resource and a running job</b>, so every method that makes, holds
+/// or removes something refuses unless <parameter>ARMINGVARIABLE</parameter> reads 1, which only
+/// <file>scripts/ci-throwaway.sh</file> sets. The jobs it started are kept in
+/// <code>^IRIS.Temp.OcuPilotBackgroundSeed</code>, so the removal may run in another process than the
+/// seed. A task <method>Hold</method> holds is released by a <method>Remove</method> in the process
+/// that holds it, or when that process ends.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.BackgroundSeed Extends %RegisteredObject
 {
@@ -216,11 +217,11 @@ ClassMethod Read(pTaskId As %String, pName As %String) As %String [ Private ]
 /// <p>Hold background task <var>pTaskId</var>'s lock in this process, so the task cannot record its
 /// end: once its work is done its job waits in the vendor's <code>End()</code>, and the task reads
 /// Running. That wait lasts the instance's lock timeout (<code>$zu(115,4)</code>, 10 s on this
-/// build); past it <code>End()</code> gives up and the job exits unrecorded (inference from the
-/// vendor source), so a caller finishes with the task within that time of its work ending. A pause,
-/// resume or cancel sent from this process still acts on it, because the lock is
-/// this process's own; one sent from any other process waits for the lock. <method>Remove</method>,
-/// called in this process, cancels a held task before it releases it.</p>
+/// build); past it <code>End()</code> gives up and the job exits unrecorded (inference), so a caller
+/// finishes with the task within that time of its work ending. A pause, resume or cancel sent from
+/// this process is not held up by the lock, because the lock is this process's own; one sent from
+/// any other process waits for the lock and fails once the lock timeout passes (inference).
+/// <method>Remove</method>, called in this process, cancels a held task before it releases it.</p>
 ClassMethod Hold(pTaskId As %String) As %Status
 {
     Set tSC = ..Armed()

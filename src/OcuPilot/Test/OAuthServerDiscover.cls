@@ -166,22 +166,28 @@ Method TestEachCauseIsRefusedByName()
 /// <p>The four document cases, run back to back against an issuer that waits
 /// <parameter>LINGERSECONDS</parameter> after each answer before it ends the connection, are each
 /// still refused 422 by name: a discovery that connects while the previous answer's connection is
-/// still open is answered, never reset. The issuer answers one connection at a time, so each later
-/// case waits out the previous connection's linger and the four take at least three lingers; the leg
-/// asserts two, which shows the linger was in effect.</p>
+/// still open is answered, never reset. The first case returns before its connection's linger ends,
+/// so the second connects while that connection is still open. The issuer answers one connection at
+/// a time, so each later case waits out the previous connection's linger and the four take at least
+/// three lingers; the leg asserts two, which shows the linger was in effect.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Test.OAuthIssuerFixture.Serve</method> close its
 /// listening port after each answer and open it again -- two cases answer unreachable and this goes
 /// red; drop the linger <method>OcuPilot.Test.OAuthIssuerFixture.Start</method> passes to
-/// <method>OcuPilot.Test.OAuthIssuerFixture.Serve</method> -- the elapsed-time assertion goes red.</p>
+/// <method>OcuPilot.Test.OAuthIssuerFixture.Serve</method> -- the elapsed-time assertion goes red;
+/// drop the flush in <method>OcuPilot.Test.OAuthIssuerFixture.Converse</method> -- the first-case
+/// assertion goes red.</p>
 Method TestTheDocumentCasesHoldAgainstALingeringIssuer()
 {
     Set tSC = $ClassMethod(..#FIXTURE, "Start", , .tIssuer, ..#LINGERSECONDS)
     Do $$$AssertStatusOK(tSC, "the issuer listens, lingering " _ ..#LINGERSECONDS _ " s after each answer")
     If $$$ISERR(tSC) Quit
+    Set tCases = ..DocumentCases(tIssuer)
     Set tStart = $ZHorolog
-    Do ..AssertCauses(..DocumentCases(tIssuer))
+    Do ..AssertCauses($List(tCases, 1, 1))
+    Set tFirst = $ZHorolog - tStart
+    Do ..AssertCauses($List(tCases, 2, *))
     Set tElapsed = $ZHorolog - tStart
-    If tElapsed < 0 Set tElapsed = tElapsed + 86400
+    Do $$$AssertTrue(tFirst < ..#LINGERSECONDS, "the first case returned before its connection's linger ended, in " _ $FNumber(tFirst, "", 3) _ " s")
     Do $$$AssertTrue(tElapsed >= (2 * ..#LINGERSECONDS), "and the issuer lingered: the four cases took " _ $FNumber(tElapsed, "", 3) _ " s")
 }
 
@@ -207,7 +213,7 @@ Method AssertCauses(pCases As %List)
         Kill tFault
         Set tHttp = ""
         Set tSC = $ClassMethod(..#PORT, "Discover", $List(tCase, 1), tSSL, .tMetadata, .tHttp, .tFault)
-        Do $$$AssertStatusNotOK(tSC, $List(tCase, 3) _ ": refused")
+        Do $$$AssertStatusNotOK(tSC, $List(tCase, 1) _ ": refused")
         Set tAnswer = ""
         If $IsObject($Get(tFault)) Set tAnswer = tHttp _ "|" _ tFault.%Get("code") _ "|" _ tFault.%Get("detail").%Get("cause") _ "|" _ tFault.%Get("reason")
         Do $$$AssertEquals(tAnswer, "422|" _ $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), $List(tCase, 1) _ ": at 422, by name")
