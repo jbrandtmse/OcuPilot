@@ -8538,3 +8538,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
 - 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager
+
+### DW-1869: A service's ClientSystems role grant is judged by the role's name alone, so adding %Manager or any role whose closure holds an %Admin_ resource to an allowed address is not minted destructive
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.AddressGrantsPrivilege (Prohibited.cls:4021) still calls name-only IsPrivilegedRole; batch c (68f76262) replaced it with RoleGrantsAdministrativePrivilege for customization roles only
+- 2026-09-30T16:42:53Z status=routed owner=burndown by=harvest note=Same defect as DW-1663 in the service arm; reuse RoleGrantsAdministrativePrivilege. Prohibited.cls contended with Epic 16
