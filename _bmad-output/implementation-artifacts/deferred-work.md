@@ -8597,6 +8597,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Run 36741141564 attempt 1 shard 2/3 messages.log: WIJ expansions during seed fills, updates suspended 16:12:17 to 16:12:47; cause is (inference)
 - 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=a CI shard's messages.log shows updates suspended for low WIJ space again, or a class fails during it
+- 2026-09-30T19:30:49Z occurrence=23-2-the-range-end-cleanup-part-2
 
 ### DW-1877: Whether BackgroundSeed's 60 s teardown wait (ENDSECONDS) covers every write stall a CI runner produces is unverified: the committed stand-in is a stopped job, not a write suspension
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: in-story

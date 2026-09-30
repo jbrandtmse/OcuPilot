@@ -265,6 +265,7 @@ deferred:
 
 ### Batch e: the rest
 
+- [ ] [Review] DW-1829 follow-up Fix Pack (comments only; land with batch e): `Test/BackgroundTasksLive.cls:345-347` the mutation note should say the removal answered #9501 and left the task over the seed; `:35-37` `STALLSECONDS` doc: the ten-second wait is the one the old teardown allowed; `Test/BackgroundSeed.cls:269-271`, `BackgroundTasksLive.cls:6` and `:341`: label the write-stall claim `(inference)`, and in `Stall`'s doc say the stop follows at once, well inside `pSeconds`, so the job runs again; `BackgroundSeed.cls:39-40` `ENDSECONDS` doc: the last read and the delete that follows can each wait out the 10 s lock timeout past the bound.
 - [ ] **DW-1497** — `ScreenAction.Run` reads, gates and writes with no lock. The confirm holds `^OcuPilotProposalTarget(key)` only across its claim; its re-read and its port write (`ApplyAt`) happen outside the lock. So a row action that lands between them is silently reverted by the confirm's complete body.
   - **Fix:**
     - `Propose` gains `GuardedTargetHold` and `GuardedTargetRelease` (AD-13 canonical key, `TargetLockKey`, through `Base`'s lock), outliving the escalated frame as `GuardedTurnSlotLock` does. `Operation` exposes them as `Hold` and `Release`.
@@ -449,6 +450,35 @@ Rejected:
 - low: a `*.sh` in merge conflict is listed once per stage and fails the key-equality assertion; mid-merge only, and loud.
 - maybe-false: the test has run on macOS only; the three `gates` legs (ubuntu-24.04, one per Node band) settle it on the push, resolved under Rule 28.
 
+### Review Findings (DW-1829 follow-up)
+
+- [x] [Review][Patch] low: the loop block called the stall test the reproducing condition, while its red is #9501 with a task left, not CI's #5001 still-runs refusal; it is now named a stand-in, with the difference stated [spec `## Verification` › DW-1829 follow-up]
+- [x] [Review][Patch] low: the Auto Run Result's residual called the red runs' leftover task "stopped" at the still-runs check, unverified, and read as a gap in the refusal; corrected to the labeled inference that the job had exited [spec `## Auto Run Result`]
+- [ ] [Review][Patch] low (Fix Pack): the Rule 19 note says both mutations make the removal answer "a task still runs"; runs 253 and 254 answered #9501 and left the task [src/OcuPilot/Test/BackgroundTasksLive.cls:345]
+- [ ] [Review][Patch] low (Fix Pack): `STALLSECONDS`'s doc names "a ten-second wait for its end" without saying it is the teardown's old wait [src/OcuPilot/Test/BackgroundTasksLive.cls:35]
+- [ ] [Review][Patch] low (Fix Pack): the stand-in is stated as fact in code ("as a host whose writes stall stops a compact"), while the spec labels it an inference [src/OcuPilot/Test/BackgroundSeed.cls:269, src/OcuPilot/Test/BackgroundTasksLive.cls:6,341]
+- [ ] [Review][Patch] low (Fix Pack): `Stall`'s "so it always runs again" rests on the ordering alone; what holds is that the stop follows the shell's start at once, well inside `pSeconds` [src/OcuPilot/Test/BackgroundSeed.cls:271]
+- [ ] [Review][Patch] low (Fix Pack): `ENDSECONDS`'s worst case leaves out the delete's own lock wait (`%OnDelete` opens at concurrency 4, up to 10 s) [src/OcuPilot/Test/BackgroundSeed.cls:39]
+- [x] [Review][Defer] low: the new test adds a fifth 1.2 GB seed fill to the class, the load DW-1876 names [src/OcuPilot/Test/BackgroundTasksLive.cls:350] — deferred: DW-1876 (wontfix-accepted), occurrence appended, not re-filed
+
+Rejected:
+
+- false: `Remove` removes the database under a live compact once its wait expires; a task whose job and memory exist computes `Running` or `Paused` (`GetExternalState`, `JobIsRunning`, `irissys/%SYS/BackgroundTask.cls:547-556,737-744`), so `DatabaseList` lists it and the unchanged still-runs refusal fires. The same holds for `Remove`'s doc claim and the batch-a rejection at :331.
+- false: `STALLSECONDS` 35 does not clear the `ENDSECONDS = 10` mutation's overrun, so its red is fragile; the first read waits out the whole 10 s lock timeout, so it always ends past a 10 s deadline.
+- false: the teardown's `Remove` refuses too if the job stays stopped; the continuing shell runs whatever the test does, so the job runs again after `STALLSECONDS`.
+- false: the test goes on to `Stall` after a failed resume or pause; the held job is alive either way, the stop ends by itself, and the test is already red.
+- false: the iteration cap `ENDSECONDS * 50` duplicates the deadline; each pass takes at least 20 ms, so the cap is a backstop that never fires first.
+- low, wontfix-accepted: on a host still mid-work 3 s after the resume the stop lands on a paused compact, the lock stays free, and the unopened-row arm goes unexercised, so dropping that arm would stay green there. Red was observed on `ocupilot-b-ci`, the agent leg's `Hold` mutation shares the same window, and an assertion on the path would add a flake. reopen_if: a CI shard's `messages.log` shows `gfilecomp caught error 55 ... Canceled` during this test.
+- low: `Tasks()` fails open, so the final assertion would read a failed query as no task; `Remove`'s status is the primary pin and went red under both mutations, a failed vendor query on a healthy throwaway is unlikely, and `Tasks()` is unchanged.
+- low: `Stall` takes any pid and does not re-check the job; its one caller passes the held job about 3 s after the resume, inside `End()`'s 10 s wait, and an exited job fails loudly at the stop.
+- low: a continuing shell killed from outside leaves the job stopped; only a container stop does that, and it ends the job too (wontfix-theoretical).
+- low: an open that fails for a reason other than the lock spins the full bound; no such failure is known on an existing row (wontfix-theoretical).
+- low: the leg belongs in its own class, and the class is now 575 lines; the header names it, the guideline is approximate, and the class was 542 lines before.
+- low: `ui/tools/ci-timings.json` still records 44.1 s for the class; about 40 s on a roughly seven-minute shard, taken up at the next routine refresh.
+- low: the arming roster's reason in `scripts/ci-throwaway.sh` does not mention the stop; it is prose outside the footprint, and arming works the same.
+- spec edit: the Design Notes lack `Stall`, and `lint-docs.sh` was not recorded; the spec is oversized, and this pass ran `lint-docs.sh`.
+- out of scope: the frontmatter reads `done` while batches e and d are open; the lead's to set.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -618,6 +648,13 @@ Rejected:
   - `[low]` `[patch]` `ENDSECONDS` bounds new reads, not total time: the cancel blocks about 18 s before it and the last read can wait the lock timeout past it (intent-alignment) — its doc now says both.
   - `[false]` `[reject]` The stall's cause is deferred rather than removed (intent-alignment) — the auditor itself reads this as the task's Fix ("teardown waits, with a bound").
   - `[false]` `[reject]` The pause-just-before-cancel race was not reproduced on its own (intent-alignment) — a paused or held compact ends within 0.25 s of a cancel (measured), so that order alone does not leave a task running; the committed test pauses just before its stall.
+
+### 2026-09-30 — Code review (DW-1829 follow-up)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 43 raw rows grouped into 23 entries: high 0, medium 0, low 16, false 5, spec-edit or out of scope 2. 2 patched in the spec, 5 in the Fix Pack (code comments, for the next batch), 1 deferred (DW-1876, occurrence), 15 closed; see `### Review Findings (DW-1829 follow-up)`. No `.cls` changed in this pass.
+- `[low]` `[patch]` The stall test's red (#9501, a task left) is not CI's still-runs refusal (verification-gap, acceptance-auditor, which rated it medium): the pin went red on the baseline and under both mutations, and the fixed wait's path is the one CI needs (the job still stopped when the old wait ended), so only the spec's "reproducing" wording was wrong. Corrected there. DW-1877 stays the owner of CI fidelity.
+- Focus: the wait and the stop cannot strand anything. The continuing shell starts before the stop and runs by itself. An exited job fails the stop loudly. A live job keeps the still-runs refusal armed (vendor source), and the fixed path's margin is 78 s against a 35 s stop. `ocupilot-b-ci` read back no stopped process and no seed directory. `$ZF(-100)` is test-only: no class outside `Test/` names `BackgroundSeed`, `Stall` refuses unarmed, and `ProcessBroadcastLive` and the X.509 classes already run `$ZF(-100)` in CI. The agent leg, `Hold`, and both still-runs refusals are unchanged.
+- Rules: AD-27's Story 16.5 case matches: the leg resumes and pauses through `BackgroundTaskPort`, and cancel stays in the fixture. The Tests convention holds: the leg seeds and removes its own compact. Rule 3 is exempt (test code only). No NFR touched. Rule 19: the recorded `mutation:` lines are current; none were added. `check-objectscript.py` 0 problems; both classes ASCII only.
 
 ## Design Notes
 
@@ -789,7 +826,7 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 - CI evidence (run 36741141564 attempt 1, shard 2/3, the instance's `messages.log`): updates were suspended for low WIJ free space from 16:12:17 to 16:12:47. The agent leg's compact started at 16:12:40.0 and logged `gfilecomp caught error 55 ... Canceled` only at 16:12:58.6, 35 ms before the next test's teardown dismounted the seed. The cause is that the stalled compact acted on the cancel after `Remove` had stopped waiting (inference).
 - Vendor, measured on `ocupilot-b-ci`: a held compact whose work is done waits in `End()` (`LOCKW`, `LOCKSW` after the pause); a mid-work pause leaves it `SUSP`; a cancel ends either within 0.25 s. On a stopped job, `$zu(4)` (the vendor's cancel) blocks 17 to 18 s and answers -1, which `Request` accepts, and the job acts on it once it runs again. After `%UnlockId`, a job waiting in `End()` takes the task's lock, and `%OpenId` fails after 10.01 s with #5804 while `%ExistsId` reads 1. A write-daemon freeze (`ExternalFreeze`, `WDSuspendLimit` 30) did not slow the compact here (done in 1.9 s), so it was not used.
-- Reproducing condition, committed as `BackgroundTasksLive.TestTheTeardownOutlastsAStalledCompact`: the agent leg's order (seed, `Hold`, resume through the port, 3 s, pause through the port, the pause request read 1), then the compact's job stopped for `STALLSECONDS` (35) by `BackgroundSeed.Stall` (`$ZF(-100)`: an asynchronous `sleep; kill -CONT` first, then `kill -STOP`), then `Remove` must answer OK with no task left over the seed. The stop stands in for CI's stall (inference). A temporary probe (a 45 s stop, deleted) found it first; its mid-work variant (pause 0.3 s after the resume) was green on the fix in 46.3 s and logged CI's `gfilecomp caught error 55 ... Canceled`.
+- Stand-in condition, committed as `BackgroundTasksLive.TestTheTeardownOutlastsAStalledCompact`: the agent leg's order (seed, `Hold`, resume through the port, 3 s, pause through the port, the pause request read 1), then the compact's job stopped for `STALLSECONDS` (35) by `BackgroundSeed.Stall` (`$ZF(-100)`: an asynchronous `sleep; kill -CONT` first, then `kill -STOP`), then `Remove` must answer OK with no task left over the seed. The stop stands in for CI's stall (inference). Its red is a delete that comes too early (#9501, a task left), not CI's still-runs refusal (#5001, the next seed refused), because the job resumes during the removal's delete (inference). A temporary probe (a 45 s stop, deleted) found it first; its mid-work variant (pause 0.3 s after the resume) was green on the fix in 46.3 s and logged CI's `gfilecomp caught error 55 ... Canceled`.
 - Red before the fix: with `Remove`'s wait restored to the baseline's (500 reads 20 ms apart, a failed open counted as ended), run 252 red on the new test alone: `Remove` answered #9501 "Memory assigned to this background task is still in use" and a task was left over the seed.
 - `mutation:` count a failed open as ended again (the `%ExistsId` arm dropped, `ENDSECONDS` 60) → run 253 red on `TestTheTeardownOutlastsAStalledCompact` alone (#9501, a task left); reverted byte-identical and reloaded.
 - `mutation:` `ENDSECONDS = 10` → run 254 red on `TestTheTeardownOutlastsAStalledCompact` alone (#9501, a task left); reverted byte-identical (`shasum`, `git status --short`, `git diff --stat` unchanged) and reloaded.
@@ -827,7 +864,7 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - **Review:** 14 findings (medium 3, low 7, false 3, maybe-false 1). Patched: medium 1 entry (no committed pin, three rows: the new test), low 6 (the mutation lines re-run on the final tree, three `Remove` and `ENDSECONDS` doc corrections, the evidence surface, the deferred entry's count). Deferred 1: whether 60 s covers every CI stall (medium, unverified). Rejected 3, all false: the bound covering every task, the stall's cause deferred, the pause-before-cancel race.
 - **Follow-up review:** not recommended (patched high 0, medium 1, low 6).
 - **Verification:** under `DW-1829 follow-up (loop)`: red on the baseline wait (run 252) and under each mutation (253, 254), each reverted byte-identical and reloaded; green in runs 251 and 255-257, 8/8 each. `check-objectscript.py` 0 problems; no non-ASCII byte in either class. The throwaway kept no seed task, database, resource, directory, probe class or stopped process.
-- **Residual risks:** `BackgroundTasksLive` takes about 40 s longer. The stopped job stands in for CI's write stall (inference, deferred). In the red runs `Remove`'s `Tasks(1)` listed no running task while the canceled, stopped task's row remained, so the still-runs refusal did not fire and the removal went on to the database; with the fix this path needs a task that outlasts the bound.
+- **Residual risks:** `BackgroundTasksLive` takes about 40 s longer. The stopped job stands in for CI's write stall (inference, deferred). In the red runs `Tasks(1)` listed no running task while the canceled task's row remained, so the removal went on to the database; by then the job had most likely exited, which the vendor reads as ended, while a live job keeps its task listed (inference from `GetExternalState`).
 
 Status: done
 Blocking condition: none
