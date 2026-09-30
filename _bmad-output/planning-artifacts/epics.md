@@ -7375,6 +7375,7 @@ So that the namespace configuration the contest deferred includes the step the c
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
 - DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
 - DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
+- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
 
 ### Story 18.16: Remote databases
 
