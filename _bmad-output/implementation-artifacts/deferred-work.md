@@ -8045,6 +8045,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+- 2026-09-30T03:35:00Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings by=adjudication note=restores the 2026-09-29T04:42:42Z adjudication (PathPort.Resolve refuses a file under the served directory, PATH.SERVED); that trailer and the 23:19:46Z routing sit under DW-1818, misplaced by a union merge
 
 ### DW-1812: A broadcast whose every checked pid has ended is refused as not found (the RECIPIENTS read's 404), not with AC3's published PROCESS.BROADCAST.RECIPIENT sentence
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8074,6 +8075,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person meets the generic sentence from a screen dialog, or a second free-text screen value reaches ScreenAction.Refuse
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
 - 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses an existing file under PathPort.ServedDirectory() to an overwriting consumer; PathPortInstance pins it with a recorded mutation; AD-21 sixth case amended
+- 2026-09-30T03:35:00Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=restores the 04:47:44Z disposition; the two 18-14 trailers below it are DW-1798's, misplaced by a union merge; reopen_if=a person meets the generic sentence from a screen route
 
 ### DW-1799: A global mapping's Collation cannot be cleared from the edit form
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
