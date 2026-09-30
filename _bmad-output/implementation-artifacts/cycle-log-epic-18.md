@@ -312,3 +312,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-30T05:48:27Z	Epic 18	ci_resolved	item=DW-1860 run=36672297442 head=a5b53179 result=success resolved_at=boundary
 2026-09-30T05:48:27Z	Epic 18	ledger_adjudicated	item=DW-1860 resolved=1(DW-1860,resolved-by:epic-18)
 2026-09-30T05:48:27Z	Epic 18	boundary_reported	item=DW-1860 to=main code_head=a5b53179 ci=success run=36672297442
+2026-09-30T06:25:46Z	Epic 18	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=fe7e771f kind=merge merge_sha=0551b905 conflicts=0 content=Epic_16_DW-1857(ui/browser/audit.browser-spec.mjs,test_only)+parallel_bookkeeping code_diff_vs_feature=DW-1859+DW-1860_only ledger_tail_check=ok sprint_status=valid test:tools=1719/1719 pushed_alone=true
+2026-09-30T06:25:46Z	Epic 18	ci_resolved	item=integrate_forward run=36675208188 head=0551b905 result=success resolved_at=completion
+2026-09-30T06:25:46Z	Epic 18	ledger_dispatch_summary	open_before=110(after_first_integrate_forward;120_before_it,the_owner_sheet_on_feature_closed_10) resolved=2(DW-1859,DW-1860) terminal=0 chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=0 open_after=108 filed_this_dispatch=0 closed_this_dispatch=2 drain_ratio=n/a(nothing_filed) note=burndown_gate_not_run(epic_continues:18.15,18.16)
+2026-09-30T06:25:46Z	Epic 18	epic_runner_complete	items=DW-1859(37e44a55,run_36669852603),DW-1860(a5b53179,run_36672297442) head_code=0551b905 ci=success run=36675208188 dispatch=3 next=pause_for_1.0.4_and_23.2,then_18.15
