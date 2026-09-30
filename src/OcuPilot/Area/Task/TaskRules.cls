@@ -999,7 +999,8 @@ ClassMethod TypeSettings(pClass As %String, pNamespace As %String, Output pSetti
 /// <p><b>Caller contract:</b> the task row tools call it from <code>ArgumentProblem</code> for the
 /// agent's mint, from <code>ConfirmProblem</code> at the agent's confirm and from
 /// <code>ScreenActionDelta</code> for the screen route, each after its fresh read and before anything
-/// is sent. A task the read cannot find (404) answers no problem: it went after that fresh read, and
+/// is sent; the edit calls it from <code>ConfirmProblem</code> too. A task the read cannot find (404)
+/// answers no problem: it went after that fresh read, and
 /// the write then meets the vendor's own 404. Any other fault, and an answer that is not an object,
 /// is an error status.</p>
 ClassMethod TargetProblem(pId As %String, Output pProblem As %String) As %Status
@@ -1019,6 +1020,28 @@ ClassMethod TargetProblem(pId As %String, Output pProblem As %String) As %Status
             Quit
         }
         If '..Permitted(..Text(tTask, "TaskClass"), ..Text(tTask, "NameSpace")) Set pProblem = ##class(OcuPilot.Api.Error).#REASONTASKTASKCLASSPERMISSION
+    } Catch ex {
+        Set pProblem = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Why the caller may not create a task of the type the create arguments <var>pArgs</var> name, or
+/// <code>""</code> in <var>pProblem</var>: <parameter>OcuPilot.Api.Error.REASONTASKTASKCLASSPERMISSION</parameter>
+/// when that type declares a privilege the caller does not hold (<method>Permitted</method>). The type
+/// is <code>TaskClass</code>, read in the namespace <method>Validate</method> resolves for it: the
+/// supplied <code>NameSpace</code>, or a new task's own when it is omitted.</p>
+/// <p><b>Caller contract:</b> the create's <code>ConfirmProblem</code> calls it at the agent's confirm
+/// with the stored arguments. It judges the privilege alone; the create's other rules were judged
+/// over the same arguments at the mint.</p>
+ClassMethod TypeProblem(pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set tSC = $$$OK
+    Try {
+        Set tNamespace = ..Effective(pArgs, ..Defaults(), "NameSpace")
+        If '..Permitted(..Text(pArgs, "TaskClass"), tNamespace) Set pProblem = ##class(OcuPilot.Api.Error).#REASONTASKTASKCLASSPERMISSION
     } Catch ex {
         Set pProblem = ""
         Set tSC = ex.AsStatus()
