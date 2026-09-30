@@ -8616,3 +8616,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AuditingUpdate.cls:505 and Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()); 16.12 bumped only the second and CI run 36745076438 went red
 - 2026-09-30T17:35:12Z status=wontfix-accepted owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=harvest note=reopen_if=a later story's CI reddens on AuditingUpdate's code count again
+
+### DW-1882: A screen's per-entity Save (AD-55's 21 handlers) takes no per-target hold, so a Save and a concurrent confirm or row action on the same target are still ordered only by the vendor endpoint
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Batch e (3b3dbc14) holds the target in Confirm.Transition and ScreenAction.Run only; 16 of the 21 Save handlers call their port directly (plan measurement); Epic 16 edits two of them
+- 2026-09-30T22:37:41Z status=routed owner=burndown by=harvest note=DW-1497's residual for the Save route: take Operation.Hold/Release around each Save's read-to-write (23.3 candidate)
