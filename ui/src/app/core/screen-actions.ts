@@ -195,6 +195,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.DatabaseList': { integrity: STRINGS.databaseIntegrityLabel },
   // Story 18.4: the editor's Add a volume, which also titles its warning dialog.
   'OcuPilot.Screen.Descriptor.LocalDatabaseList': { expand: STRINGS.databaseExpandAction },
+  // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
+  'OcuPilot.Screen.Descriptor.LockList': { remove: STRINGS.lockRemoveAction },
 };
 
 export class ScreenActions {

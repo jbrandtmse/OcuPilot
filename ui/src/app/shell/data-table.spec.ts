@@ -234,6 +234,27 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toBe('/agent/definitions/edit/0?ns=HSCUSTOM');
   });
 
+  it("Story 16.12 (DW-1074): a rowTarget's unless withholds the link on a row where that field is true, and keeps it elsewhere", async () => {
+    // `rows()` reads `Enabled` true on even rows, the stand-in for a lock a remote client owns: its
+    // name cell is text, with no anchor, no href and nothing for Enter to open.
+    //
+    // Mutation (Rule 19): ignore `rowTarget.unless` in `data-table.ts`'s `url` -> the first row keeps
+    // its link and this goes red.
+    const wired = await wire(
+      tableDeclaration({ rowTarget: { route: 'agent/definitions/edit', field: 'Count', unless: 'Enabled' } }),
+      ok(rows(2))
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const withheld = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
+    expect(withheld.querySelector('a')).toBeNull();
+    expect(withheld.textContent?.trim()).toBe('/csp/app00');
+    const kept = wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(kept).not.toBeNull();
+    expect(kept.getAttribute('href')).toBe('/agent/definitions/edit/1000?ns=HSCUSTOM');
+  });
+
   it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the Secrets list links each at the wallet secret form', async () => {
     // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
     // route out of the generated mirror, so the Wallet list's own route is what is needed here.

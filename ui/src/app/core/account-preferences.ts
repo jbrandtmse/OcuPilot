@@ -66,6 +66,16 @@ export const THEME_LIGHT = 'light';
 /** The `SHELL_THEME` value for the dark theme. */
 export const THEME_DARK = 'dark';
 
+/**
+ * The `shell` member recording that the first-login gate has opened the Definition form for this
+ * user (FR-28). Written once, as `FIRST_SIGN_IN_RECORDED`, when the gate opens the form; a user
+ * holding it is not moved there again.
+ */
+export const SHELL_FIRST_SIGN_IN = 'firstSignIn';
+
+/** The value `SHELL_FIRST_SIGN_IN` is written with. Any stored value reads as recorded. */
+export const FIRST_SIGN_IN_RECORDED = '1';
+
 /** The two membership lists, as the wire names them. */
 export const PREFERENCE_MEMBERSHIP_KINDS = [FAVORITE_KIND, RECENT_KIND] as const;
 
@@ -308,6 +318,19 @@ export class AccountPreferences {
   /** The remembered pieces of shell chrome, keyed by shell member. */
   shell(): ReadonlyMap<string, string> {
     return this.shellValue;
+  }
+
+  /**
+   * Whether the instance holds this user's first-sign-in record, so the first-login gate has already
+   * opened the Definition form for them once (FR-28). Meaningful only once `loaded()` is true.
+   */
+  firstSignInRecorded(): boolean {
+    return this.shellValue.has(SHELL_FIRST_SIGN_IN);
+  }
+
+  /** Record on the instance that the first-login gate has opened the Definition form for this user. */
+  recordFirstSignIn(): Promise<void> {
+    return this.setValue(SHELL_KIND, SHELL_FIRST_SIGN_IN, FIRST_SIGN_IN_RECORDED);
   }
 
   /** The instance's own sentence for the last refused write, `''` for none (DW-1326). */

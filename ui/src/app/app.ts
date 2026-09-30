@@ -385,9 +385,11 @@ export class App {
     // A read that settles after the fresh-sign-in flag was left unspent gives the gate its next pass.
     const stopStatus = this.agentStatus.subscribe(() => this.retryFirstLoginGate());
     const stopNavigation = this.navigation.subscribe(() => this.retryFirstLoginGate());
+    const stopPreferences = this.accountPreferences.subscribe(() => this.retryFirstLoginGate());
     const stopRouter = this.router.events.subscribe((event) => {
       if (event instanceof NavigationStart) {
         this.spendSignInOnNavigation();
+        this.dropUntakenGateArrival();
         // The arrival announcement is for the one screen the agent's own navigation opened
         // (Story 4.7); it must not survive into whatever navigation comes next, agent-initiated
         // or not. `AgentNavigator` sets a fresh one only after its own `navigateByUrl` promise
@@ -401,6 +403,7 @@ export class App {
       stopPanel();
       stopStatus();
       stopNavigation();
+      stopPreferences();
       stopRouter.unsubscribe();
     });
     this.measureViewport();
@@ -723,13 +726,13 @@ export class App {
     // The sixth: the remembered lists the locator toggle, Home's two blocks and the command box's
     // ranking all read. Issued on every signed-in pass for the same reason the status read is --
     // a reloaded tab reaches `signed-in` without an authentication, and Home may be the first
-    // screen it paints.
-    void this.accountPreferences.load();
-    void this.runFirstLoginGate(map, status);
+    // screen it paints. The first-login gate reads the account's first-sign-in record from it too.
+    const preferences = this.accountPreferences.load();
+    void this.runFirstLoginGate(map, status, preferences);
   }
 
   /**
-   * The first-login gate (FR-28): an administrator who signs in while no definition is enabled
+   * The first-login gate (FR-28): an administrator's first sign-in while no definition is enabled
    * lands on the Definition form, under its landing banner.
    *
    * **It keys off an authentication, never off `signed-in`.** `Session` raises its fresh-sign-in
@@ -737,22 +740,28 @@ export class App {
    * probe and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
    * `start()` without it, so a reload is not a login and the requested URL survives.
    *
-   * **The flag is spent only once both reads have answered.** A pass that finds the map unloaded
-   * or the definitions unanswered returns with the flag still raised, and the next read to settle
-   * gives the gate another pass (`retryFirstLoginGate`), until the user's own first navigation
-   * spends it (`spendSignInOnNavigation`). The flag is claimed with
+   * **The flag is spent only once all three reads have answered.** A pass that finds the map
+   * unloaded, the definitions unanswered or the preferences unread returns with the flag still
+   * raised, and the next read to settle gives the gate another pass (`retryFirstLoginGate`), until
+   * the user's own first navigation spends it (`spendSignInOnNavigation`). The flag is claimed with
    * `consumeFreshSignIn()` after the awaits and before anything else, so of several passes awaiting
    * the same reads exactly one acts.
    *
-   * **Nothing about the gate is stored.** What decides whether it fires is the instance's own
-   * definition rows and the map's verdict, both re-read on every signed-in pass above; this waits
-   * on those two reads rather than issuing its own, so "never afterwards" is a consequence of the
-   * condition clearing and the gate costs no extra request.
+   * **Once per user, recorded on the instance** (AD-50). Opening the form writes the account's
+   * first-sign-in record through `AccountPreferences`, and a sign-in whose preferences hold it
+   * declines, so a later sign-in, a new tab or a full load lands on the route it asked for. The
+   * record, the instance's definition rows and the map's verdict are all re-read on every signed-in
+   * pass above; this waits on those reads rather than issuing its own.
    *
    * It declines quietly in every other case: a caller the map refuses, an instance that already
-   * holds an enabled definition, and a browser already on the form.
+   * holds an enabled definition, an account the form has already been opened for, and a browser
+   * already on the form. Cancel on the form it opened goes to Home (`DefinitionForm.openedByGate`).
    */
-  private async runFirstLoginGate(map: Promise<void>, status: Promise<void>): Promise<void> {
+  private async runFirstLoginGate(
+    map: Promise<void>,
+    status: Promise<void>,
+    preferences: Promise<void>
+  ): Promise<void> {
     if (!this.session.hasFreshSignIn()) return;
     // No screen mounts from here until this method settles, whichever way it settles: the
     // requested screen would otherwise issue its declared read (AD-36) for rows the navigation
@@ -761,21 +770,26 @@ export class App {
     // unchanged -- only the page waits.
     const release = this.shell.holdScreen();
     try {
-      await Promise.all([map, status]);
+      await Promise.all([map, status, preferences]);
       // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
       // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
-      // instance will refuse them at. Either read unanswered leaves the flag for a later pass.
-      if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
+      // instance will refuse them at. Any read unanswered leaves the flag for a later pass.
+      if (!this.agentStatus.answered() || !this.navigation.loaded() || !this.accountPreferences.loaded()) return;
       if (!isSignedIn(this.session.state())) return;
       if (!this.session.consumeFreshSignIn()) return;
       if (this.agentStatus.configured()) return;
       if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
+      if (this.accountPreferences.firstSignInRecorded()) return;
       const list = screenForRoute(DEFINITIONS_ROUTE);
       const form = list === null ? null : editorScreenFor(list);
       if (form === null) return;
       // Already there: a deep link straight to the form is honoured rather than replaced, which
-      // would otherwise drop the id a browser was asked to open.
-      if (routeFromUrl(this.router.url).startsWith(form.route)) return;
+      // would otherwise drop the id a browser was asked to open. The form is on screen at this
+      // first sign-in all the same, so it is recorded.
+      if (routeFromUrl(this.router.url).startsWith(form.route)) {
+        void this.accountPreferences.recordFirstSignIn();
+        return;
+      }
       // An ordinary history entry, never `replaceUrl`. The route the gate moved off is the one the
       // browser was asked for, and Back is this product's published way out of a screen it did not
       // choose ("Undo by Back"; EXPERIENCE.md's own "They may leave"). Replacing would erase the
@@ -784,7 +798,11 @@ export class App {
       // Awaited, not floated: the hold is released the moment this method settles, so returning
       // before the router had moved would mount the very screen the gate is leaving. A navigation
       // the router refuses leaves the browser where it is, which is the same outcome as declining.
-      await this.router.navigateByUrl(withQuery(form.route, this.router.url)).catch(() => false);
+      const moved = await this.router.navigateByUrl(withQuery(form.route, this.router.url)).catch(() => false);
+      if (moved !== true) return;
+      // Before the hold is released, so the form this navigation mounts takes the arrival on `open()`.
+      this.definitionForm.arriveFromGate();
+      void this.accountPreferences.recordFirstSignIn();
     } finally {
       release();
     }
@@ -792,7 +810,7 @@ export class App {
 
   /**
    * Another pass at the gate once a read settles, for a sign-in whose flag a failed read left
-   * unspent. Taken only when both reads now answer, so a pass never holds the screen for a read
+   * unspent. Taken only when all three reads now answer, so a pass never holds the screen for a read
    * that is still out.
    */
   /**
@@ -808,9 +826,20 @@ export class App {
     this.session.consumeFreshSignIn();
   }
 
+  /**
+   * The arrival the gate hands the Definition form is for the page its own navigation mounts. A
+   * user navigation that starts before any page took it -- Back off a form that never mounted --
+   * drops it, so a form the person opens later is their own. A `replaceUrl` correction is not the
+   * user's and leaves it.
+   */
+  private dropUntakenGateArrival(): void {
+    if (this.router.currentNavigation()?.extras.replaceUrl === true) return;
+    this.definitionForm.dropGateArrival();
+  }
+
   private retryFirstLoginGate(): void {
     if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
-    if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
-    void this.runFirstLoginGate(Promise.resolve(), Promise.resolve());
+    if (!this.agentStatus.answered() || !this.navigation.loaded() || !this.accountPreferences.loaded()) return;
+    void this.runFirstLoginGate(Promise.resolve(), Promise.resolve(), Promise.resolve());
   }
 }

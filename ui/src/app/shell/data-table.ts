@@ -646,6 +646,10 @@ export class DataTable implements OnInit {
     const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
     const rowTarget = screen.rowTarget;
     const rowTargetField = rowTarget?.field ?? '';
+    // Story 16.12 (DW-1074): a row target may name the read field that withholds a row's link --
+    // a lock a remote client holds has no local pid for Process details to open -- so a row where
+    // that field is JSON `true` renders its name cell as text.
+    const rowTargetUnless = rowTarget?.unless ?? '';
     const rowTargetScreen = rowLinked || rowTarget === null ? null : screenForRoute(rowTarget.route);
     const linkTarget = rowLinked
       ? null
@@ -671,7 +675,8 @@ export class DataTable implements OnInit {
       const isActive = key !== '' && key === active;
       const isChanged = key !== '' && markedKeys.has(key);
       const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
-      const url = linkable && linkValue !== '' ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
+      const withheld = rowTargetScreen !== null && rowTargetUnless !== '' && fieldOf(row, rowTargetUnless) === true;
+      const url = linkable && linkValue !== '' && !withheld ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
       return {
         key,

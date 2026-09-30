@@ -138,6 +138,10 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'startmanager'), STRINGS.taskManagerStartAction);
   assert.equal(actionLabel('', TASK_MANAGER_SUSPEND_ACTION_ID), STRINGS.taskManagerSuspendAction);
   assert.equal(actionLabel(DEFINITIONS, 'resumemanager'), 'resumemanager');
+  // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
+  // Mutation (Rule 19): drop the LockList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.LockList', 'remove'), STRINGS.lockRemoveAction);
+  assert.equal(actionLabel(DEFINITIONS, 'remove'), 'remove');
 });
 
 test("Story 16.11: a banner's actions are the ids its cases name, once each and in case order", () => {

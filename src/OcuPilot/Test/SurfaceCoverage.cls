@@ -82,7 +82,7 @@ XData Coverage
 <screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsTenthEntryKeyedByName"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
-<screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns"/>
+<screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsNineFieldsAndSevenColumns"/>
 <screen name="LogAlertViewer" class="OcuPilot.Test.Descriptor" method="TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair"/>
 <screen name="LogAnalyticsViewer" class="OcuPilot.Test.Descriptor" method="TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair" corpus="the six secondary log viewers are asserted together in one loop"/>
 <screen name="LogErrorList" class="OcuPilot.Test.Descriptor" method="TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs"/>
@@ -263,6 +263,9 @@ XData Coverage
 <tool name="tasks.schedule.suspendmanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
 <tool name="tasks.schedule.resumemanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
 <tool name="tasks.schedule.startmanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
+<tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
+<tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
+<tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

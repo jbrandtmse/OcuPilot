@@ -132,7 +132,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.languageservers.delete": true,
   "tasks.schedule.suspendmanager": true,
   "tasks.schedule.resumemanager": true,
-  "tasks.schedule.startmanager": true
+  "tasks.schedule.startmanager": true,
+  "osmgmt.locks.remove": true,
+  "osmgmt.locks.removeprocess": true,
+  "osmgmt.locks.removeclient": true
 }
 }
 

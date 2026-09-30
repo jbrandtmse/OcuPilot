@@ -425,6 +425,8 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+  /** The read field that withholds a row's link where it reads `true` (Story 16.12, DW-1074). */
+  readonly unless?: string;
 }
 
 /**
@@ -5690,7 +5692,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "remove",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeprocess",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeclient",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -5700,7 +5715,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Reference",
         "Directory",
         "System",
-        "DeleteID"
+        "DeleteID",
+        "RemoteOwner"
       ],
       "secretFields": []
     },
@@ -5744,7 +5760,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Reference",
         "Directory",
         "System",
-        "DeleteID"
+        "DeleteID",
+        "RemoteOwner"
       ],
       "filter": [
         "Pid",
@@ -5809,12 +5826,13 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "emptyKey": "lockSystemLocal"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "lockListEmptyAgent"
     },
     "rowTarget": {
       "route": "os-management/processes/details",
-      "field": "Pid"
+      "field": "Pid",
+      "unless": "RemoteOwner"
     },
     "toolIdentifier": "osmgmt.locks",
     "refreshDefault": 0,

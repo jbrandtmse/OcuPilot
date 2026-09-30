@@ -391,7 +391,15 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// or not the state changes; <code>RUN</code> is <code>StartTASKMGR()</code> and answers 409 while the
 /// process is alive. None reads a body or the <code>id</code> query parameter, and
 /// <code>ResourcesOR()</code> is <code>%Admin_Task</code> or <code>%Admin_Operate</code> for each.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN";
+/// <p>The three <code>Lock</code> pairs are Story 16.12's lock removals. <code>Lock/DELETE</code> is the
+/// vendor's own: read on this build, it takes <code>id</code> (a <code>DeleteID</code>) and
+/// <code>checkTxn</code> as query parameters and reads no body; with <code>checkTxn</code> 1 and the
+/// owner in a transaction it answers 409 and removes nothing (<parameter>UNLOGGEDREFUSALS</parameter>),
+/// and it records <code>%System/%System/ConfigurationChange</code> "Delete lock". It is issued only by
+/// <class>OcuPilot.Port.LockPort</class>, for the tools' <code>Lock/REMOVE</code> and
+/// <code>Lock/REMOVEOWNER</code>, which that port answers itself
+/// (<parameter>OcuPilot.Port.LockPort.COMPOSEDTYPES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -407,7 +415,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -469,6 +477,13 @@ Parameter AWAITEDDELETEPOLLMS As INTEGER = 250;
 /// with it masked (<method>Unlogged</method>): <code>WebSession</code>'s 404 names the session id it
 /// was sent.</p>
 Parameter UNLOGGEDQUERY = "WebSession/DELETE=id";
+
+/// <p>The vendor refusals that are an expected answer rather than a fault, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;/&lt;HTTP status&gt;</code> entries: <method>Fail</method> logs
+/// nothing for a listed one, and the caller still gets its fault (AD-2 as amended 2026-09-30).
+/// <code>Lock/DELETE/409</code> has found the lock's owner in an open transaction, which is the answer
+/// Story 16.12's warning is taken from.</p>
+Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
 /// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
@@ -1058,7 +1073,7 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Quit
         }
         ; AD-2: a read the vendor answers 404 has its answer, an absence, and is not logged.
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType))
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody, '..IsMutating(pEndpoint, pType), pType)
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -2271,6 +2286,14 @@ ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#MUTATINGTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> answered
+/// <var>pHttpStatus</var> is a refusal <parameter>UNLOGGEDREFUSALS</parameter> lists.</p>
+ClassMethod IsUnloggedRefusal(pEndpoint As %String, pSuffix As %String, pHttpStatus As %Integer) As %Boolean
+{
+    If pSuffix = "" Quit 0
+    Quit ''$ListFind($ListFromString(..#UNLOGGEDREFUSALS), pEndpoint _ "/" _ pSuffix _ "/" _ (+pHttpStatus))
+}
+
 /// <p>The code <parameter>TYPEFAULTS</parameter> names for <var>pEndpoint</var>'s request type
 /// <var>pSuffix</var>, or <code>""</code>.</p>
 ClassMethod TypeFault(pEndpoint As %String, pSuffix As %String) As %String
@@ -2567,7 +2590,9 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 /// which is its answer and not a fault: its vendor status is not logged, so a delete's re-read or an
 /// existence check never writes an error line that raises the instance's alert state (AD-2). Every
 /// other 404, a write's included, is logged as any failure is.</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "", pRead As %Boolean = 0) As %Status [ Private ]
+/// <p><var>pType</var> is the request type, where the caller knows it: a refusal
+/// <parameter>UNLOGGEDREFUSALS</parameter> lists for that type and status is not logged either.</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "", pRead As %Boolean = 0, pType As %String = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
@@ -2591,7 +2616,7 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
         Do tFieldDetail.%Set("violations", tViolations)
         Do pFault.%Set("detail", tFieldDetail)
     }
-    If $$$ISERR(pVendorSC) && '(pRead && (pHttpStatus = 404)) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
+    If $$$ISERR(pVendorSC) && '(pRead && (pHttpStatus = 404)) && '..IsUnloggedRefusal(pEndpoint, pType, pHttpStatus) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 

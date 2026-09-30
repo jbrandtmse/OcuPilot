@@ -50,6 +50,7 @@ import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
 import { LanguageServerFormPage } from '../areas/os-management/language-server-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { LockListPage } from '../areas/os-management/lock-list.page';
 import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
@@ -167,6 +168,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
   // Story 16.25: the external language server editor, create and edit alike.
   'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
+  // Story 16.12: the Locks list with its Remove locks dialog.
+  'OcuPilot.Screen.Descriptor.LockList': LockListPage,
 };
 
 /**
