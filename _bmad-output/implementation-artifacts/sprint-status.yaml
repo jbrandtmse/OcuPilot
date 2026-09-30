@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-30-2026 06:50'
+last_updated: '09-30-2026 08:53'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -247,7 +247,7 @@ development_status:
   16-9-the-unified-log-hub: done
   16-10-external-language-servers: done
   16-11-start-suspend-and-resume-the-task-manager: done
-  16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: in-progress
+  16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: review
   16-13-the-service-editor: backlog
   16-14-the-ldap-and-kerberos-editor: backlog
   16-15-the-data-egress-line: backlog
