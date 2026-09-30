@@ -84,9 +84,9 @@ const WINDOW_SEED_ROWS = 5;
 const FIRST_ROW_BUDGET_MS = 2000;
 
 /**
- * How long the AC6 leg waits for the first row, which is deliberately **longer** than the budget it
- * asserts: a wait that timed out at the budget would make the budget assertion unreachable, and a
- * breach would surface as a puppeteer selector timeout instead of the measured figure.
+ * How long the AC6 leg waits for its Search's answer, which is deliberately **longer** than the
+ * budget it asserts: a wait that timed out at the budget would make the budget assertion
+ * unreachable, and a breach would surface as a wait's timeout instead of the measured figure.
  */
 const FIRST_ROW_WAIT_MS = FIRST_ROW_BUDGET_MS * 5;
 
@@ -334,12 +334,7 @@ async function typeCriterion(page, selector, value) {
   if (value !== '') await page.type(selector, value);
 }
 
-/**
- * Press Search and wait until the table shows this Search's own answer: the answer's row count,
- * with every rendered row one of the answered rows by Source, Type and Description -- or the empty
- * state when it answered none. The opening read's rows stay on screen until the answer is applied,
- * so neither the response arriving nor rows being present says the rows on screen are the answer's.
- */
+/** Press Search and wait until the table shows this Search's own answer (`showsAnswer`). */
 async function search(page, reads) {
   const before = reads.length;
   const answered = page.waitForResponse(
@@ -347,7 +342,17 @@ async function search(page, reads) {
     { timeout: config.navigationTimeoutMs }
   );
   await page.click(SEARCH_BUTTON);
-  const response = await answered;
+  await showsAnswer(page, await answered, config.navigationTimeoutMs);
+  assert.ok(reads.length > before, 'the Search press issued a read');
+}
+
+/**
+ * Wait until the table shows the answer `response` carries: the answer's row count, with every
+ * rendered row one of the answered rows by Source, Type and Description -- or the empty state when
+ * it answered none. The opening read's rows stay on screen until the answer is applied, so neither
+ * the response arriving nor rows being present says the rows on screen are the answer's.
+ */
+async function showsAnswer(page, response, timeoutMs) {
   const body = await response.json();
   assert.ok(response.ok() && Array.isArray(body.rows), `the Search read answered rows: ${JSON.stringify(body).slice(0, 300)}`);
   const keys = body.rows.map((row) => JSON.stringify([row.EventSource, row.EventType, row.Description].map((value) => String(value ?? '').trim())));
@@ -364,13 +369,12 @@ async function search(page, reads) {
           return held.has(JSON.stringify([1, 2, 7].map((index) => cells[index]?.textContent.trim() ?? '')));
         });
       },
-      { timeout: config.navigationTimeoutMs },
+      { timeout: timeoutMs },
       keys
     );
   } catch {
     throw new Error(`the table never showed this Search's ${keys.length}-row answer; the view held ${await viewCount(page)} row(s)`);
   }
-  assert.ok(reads.length > before, 'the Search press issued a read');
 }
 
 /**
@@ -791,18 +795,18 @@ test('AC6 (DW-258): with the throwaway seeded to a thousand rows, a 1,000-row Se
     await widenToAllTime(page);
     await typeCriterion(page, SOURCE_FIELD, SEED_SOURCE);
 
-    // Timed from the press to the first row of THIS Search's own answer: the opening read's rows
-    // are already in the DOM, so the clock stops only once the Search's response has landed and
-    // the frame after it has painted (Story 11.11).
+    // Timed from the press until the table shows THIS Search's own answer (`showsAnswer`). The
+    // opening read's rows are already on screen, and its 24-hour window can fill the same
+    // thousand-row cap, so a first row, the row count and the response arriving can all be true
+    // before the answer is drawn. The clock also covers the harness reading the response body, so
+    // it can only overstate the figure.
     const answered = page.waitForResponse(
       (response) => new URL(response.url()).pathname === READ_PATH && response.url().includes(`eventSources=${SEED_SOURCE}`),
       { timeout: FIRST_ROW_WAIT_MS }
     );
     const startedAt = Date.now();
     await page.click(SEARCH_BUTTON);
-    await answered;
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    await page.waitForSelector(`${ROW_SELECTOR}[aria-rowindex="2"]`, { timeout: FIRST_ROW_WAIT_MS });
+    await showsAnswer(page, await answered, FIRST_ROW_WAIT_MS);
     const elapsed = Date.now() - startedAt;
 
     // The two figures are spelled out rather than derived from `SEED_ROWS`: the AC names a
@@ -815,7 +819,7 @@ test('AC6 (DW-258): with the throwaway seeded to a thousand rows, a 1,000-row Se
     assert.equal(rowcount, 1001, 'aria-rowcount reaches 1,001, the thousand rows and their header');
     assert.ok(
       elapsed <= FIRST_ROW_BUDGET_MS,
-      `the first data row is in the DOM within ${FIRST_ROW_BUDGET_MS} ms of the Search press: ${elapsed} ms`
+      `this Search's first rows are in the DOM within ${FIRST_ROW_BUDGET_MS} ms of the Search press: ${elapsed} ms`
     );
     assert.ok(reads.length >= 1, 'and the measurement is of a real read');
   } finally {

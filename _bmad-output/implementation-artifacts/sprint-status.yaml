@@ -260,7 +260,7 @@ development_status:
   16-22-the-guardrails-page: done
   16-23-any-table-downloaded-as-csv: done
   16-24-a-try-it-request-copied-as-curl: done
-  16-25-the-external-language-server-editor: ready-for-dev
+  16-25-the-external-language-server-editor: in-progress
   epic-16-retrospective: optional
 
   epic-17: backlog
