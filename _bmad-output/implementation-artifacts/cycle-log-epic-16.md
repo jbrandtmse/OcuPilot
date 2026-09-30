@@ -560,3 +560,6 @@
 2026-09-30T07:38:05Z	Story 16.25	story_boundary	story=16.25 head=fc32921f ci_run=36681132055 ci=success reported_to=main
 2026-09-30T07:38:28Z	Epic 16	dispatch_ledger	open_before=119 resolved=13 terminal=12 chartered=0 chartered_size=0 overflow=0 reowned=2(DW-1827,DW-1856_to_range-end-cleanup) to_decision_sheet=0 open_after=106 filed_this_dispatch=18 closed_this_dispatch=25 drain_ratio=1.39 note=no_burn-down_gate(epic_not_at_its_end;16.11-16.15_backlog)
 2026-09-30T07:38:28Z	Epic 16	epic_runner_complete	dispatch=recover-5 stories=16.7,16.4,16.10,16.25 owner_fixes=DW-1838,DW-1836,DW-1837,DW-1845,DW-1768,DW-1852,DW-1780,DW-1857 head_code=fc32921f ci=success run=36681132055
+2026-09-30T08:21:22Z	Epic 16	lead_model_gate	model=claude-opus-5-5 action=proceed dispatch=final(16.11-16.15)
+2026-09-30T08:21:22Z	Epic 16	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh slot=a(docker_port_ocupilot=52774,profile_ocupilot-slot-a_baseUrl=52774) bootstrap=node_modules_ok,irislib_symlink_ok
+2026-09-30T08:21:22Z	Epic 16	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp(5a8faea6:23.2_charter,range-end-cleanup_re-sort,DW-1824_bullet,epics_md_hash) merge=93752b7e conflicts=0 docs_ledger_only=yes ledger=intact(DW-1827,DW-1856,DW-253,DW-1423,DW-1768,DW-1852_effective_unchanged) tracker=valid
