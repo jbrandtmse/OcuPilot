@@ -341,6 +341,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T13:27:48Z by=cr note=a compile error in any Test.* class now fails every start; Install.DemoTask ships on every path, flag off too
 - 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=owner-delegated decision: move Test.* to a sibling tree excluded from the start hook and module.xml. A compile error in any test class fails every container start and DemoTask ships with the flag off, which is exactly what a first-time install must not do
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:49Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-49: A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
@@ -2934,6 +2935,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:29:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. The specs hardcode the STATE.CONFLICT reason text, and 5-3 owns what a conflict on a confirmed write means and says
 - 2026-09-19T18:55:05Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=lead note=re-owned off 5.3: the assertions are not.toContain over a hardcoded server sentence, which is a pin that cannot fail - 13.2's charter - and one of the two files, definition-form.page.spec.ts, is contended by Epic 10
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 
 ### DW-435: Two first writers to a singleton store can both create a row, and GuardedCurrent's TOP 1 then hides the second
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -3105,6 +3107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T02:12:25Z status=routed owner=11-1-explain-this-screen by=merge_gate note=at the yielding viewport a narrowed panel traps the side bar and the panel cannot be widened back
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3119,6 +3122,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=the rail stays live under a full-screen panel, so a click changes a side bar or route the panel covers
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: panel layout/rail behavior, not on the explain path; residual unchanged
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3633,6 +3637,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
 - 2026-09-19T03:19:55Z status=routed owner=15-4-home-s-system-information-panel by=x0 note=DESIGN.md Home geometry against the built arrival; 15.4 revisits Home's panels
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a DESIGN.md geometry row the ordinary Home arrival cannot reach
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1149: ERROR_LOG_DATES_PATH duplicates error-log.store.ts's prefix with nothing pinning the two equal, so a path change fails silently as no line
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3826,6 +3831,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: no Epic 7 story touches derived read-tool criterion descriptions; 11.1 is the first story whose agent reads a screen through its read tool and must describe its criteria truthfully (not floor-blocking, so Rule 27 charters no burn-down story)
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3896,6 +3902,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: moves with DW-1001 (descriptor-declared field meaning for derived read tools)
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -4368,6 +4375,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T12:40:08Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=cr note=the general case behind DW-1190; 13.2 owns the CI suite. Until it is fixed the browser gate must run on a container the sweep has not touched, which is what this story did
 - 2026-09-19T14:20:56Z occurrence=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -4411,6 +4419,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T13:19:31Z status=routed owner=range-end-cleanup by=cr note=Non-blocking: it neither gates the 2026-09-27 floor nor any downstream story - the card that renders step text is 5.2's and reads whatever the poll carries. What it needs is a per-poll bound on the steps projection, which no story owns.
 - 2026-09-26T09:53:49Z status=routed owner=burndown by=spec_gate note=per-poll bound on Step.GuardedRows needs a poll-contract call (tool-card text vs incremental poll)
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1211: The acceptance criterion that no path from a write tool's View reaches the claim gate is checked by a five-filename source scan, not by a tree rule
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py
@@ -4497,12 +4506,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Entry.Seq is COUNT(*)+1, so it coincides with the ordinal join in every state the append path produces; the ordinal mutation was applied and stayed green. The implement pass corrected its own comment at the origin rather than leaving the claim. Location: src/OcuPilot/Api/Conversation.cls AttachProposals
 - 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a pin that cannot fail is 13.2's charter; reaching a divergent state needs a fixture that writes entries out of order
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1234: The conversation read's unreadable-proposal-store contract is pinned only by a scan of the handler's source text
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: No executing assertion drives a store that refuses; the test reads the handler's own source for the degradation branch. Location: src/OcuPilot/Api/Conversation.cls, src/OcuPilot/Test/Convo.cls
 - 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1235: A new index on the Proposal table is not built for rows stored before it, and nothing in the install path builds it
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4515,6 +4526,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Every other two-engine declaration rule reads one XData corpus from disk; these four sentences are literals in both Test.Descriptor and ui/tools/screen-mirror.test.mjs, so a reword lands in one place or two. Location: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
 - 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a divergence shows up as a failing two-engine test, not as shipped behaviour
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; a reword that lands in one copy fails the two-engine test, so drift cannot ship; reopen_if=the two copies ever pass while disagreeing
 
 ### DW-1237: Nothing refuses a built screen that ships a write tool and declares no singular entity noun, and a missing noun renders a title with a doubled space
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4616,36 +4628,42 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Test.ConfirmRoute drives the refusals and the browser spec drives the success, so the happy path has no class-level assertion. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's coverage; the browser leg alone makes the happy path depend on a bundle
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; the confirmed-write success path is driven end to end by the browser leg; reopen_if=that browser leg is removed, or a confirmed-write success defect ships
 
 ### DW-1254: AC6's no-window-in-which-both-are-live-and-one-is-burned is pinned by a source-text ordering scan, not an executed observation
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The assertion reads the method's source for statement order rather than observing two callers. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; the source-order scan pins the ordering the AC names; reopen_if=Confirm's burn and consume code is restructured
 
 ### DW-1255: The turn-start proactive close has no test that drives its handler
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ProposalClose drives Api.Conversation.HandleCreate's close only through the store, never through the handler. Location: src/OcuPilot/Test/ProposalClose.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=handler-level coverage is 13.2's charter
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1256: DW-412's rollback restore ships unpinned
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: No test in the tree makes pObject.%Save() itself fail, so the new restore on the TROLLBACK path is never executed. Location: src/OcuPilot/Kernel/State/Base.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=reaching it needs a save-failure fixture, which is 13.2's charter
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; an untested error branch that needs a %Save fault seam, as with DW-429 and DW-1287; reopen_if=a defect is observed on the TROLLBACK restore path
 
 ### DW-1257: Nine of the thirteen matrix rows never reach a rendered HTTP envelope in the class suite
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Test/ConfirmRoute.cls drives the store directly for nine rows and the envelope for four. Location: src/OcuPilot/Test/ConfirmRoute.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's envelope coverage
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; the four envelope rows cover the renderer and the nine store rows cover the decisions; reopen_if=the envelope renderer gains per-row branches
 
 ### DW-1258: The port's mutating path has no class-level test
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: MUTATINGTYPES, HttpMethodFor and EndpointType's widening are exercised only through the confirm route. Location: src/OcuPilot/Port/AdminPort.cls
 - 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns class-level port coverage; the mutating path is new in this story
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1259: A mutating endpoint that queues its own work would be reported by AwaitTask, which consults no pair table
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4657,6 +4675,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Propose's expiry projection sweeps every row on each confirm or cancel. Location: src/OcuPilot/Kernel/State/Propose.cls
 - 2026-09-19T22:44:10Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): bounded by AD-6's ten-minute window, so the table stays small; no measurement establishes a cost
+- 2026-09-30T06:34:01Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; bounded by AD-6's ten-minute window with no measured cost; reopen_if=a measurement shows confirm or cancel latency growing with the proposal table
 
 ### DW-1261: The sibling cancel leaves each sibling's RowVersion where it was, so a stale-save check would not see the change
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4692,11 +4711,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: SwitchState's index is pinned and Egress's identical one is not, since Kernel/State/Egress.cls is Epic 10's for the whole of Epic 5. Location: src/OcuPilot/Kernel/State/Egress.cls
 - 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27) and it needs the contention to end, which it does before the range end
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; Egress's index is a declared twin of SwitchState's pinned one; reopen_if=Egress's index declaration changes
 
 ### DW-1267: RemoveSeeded's contract does not match its code, and its error path discards the keys it had not reached
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The doc comment promises a sweep the method does not perform on its error path. Location: the 5.3 test fixtures
 - 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a fixture-hygiene defect with no shipped consequence
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1278: ChannelProblem's accept arm and its structured-secret guard are executed by no test, because no shipped descriptor declares a secret
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4732,6 +4753,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Confirm.MissingPair and Confirm.HoldsPair duplicate Kernel/Agent/Dispatch.cls's, forced only because Dispatch's are Private. Dispatch.cls is not contended, so making them reachable was available. AD-8's two gates would disagree silently if one copy changed. Location: src/OcuPilot/Kernel/Proposal/Confirm.cls MissingPair, HoldsPair
 - 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): both copies are correct today and pinned by their own tests; the risk is future drift
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; both copies are correct today and pinned by their own tests; reopen_if=either copy changes without the other
 
 ### DW-1284: Screen/Registry.DeclaredReadFields swallows its exception with a no-op assignment, and its screen-mirror twin does not
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4962,18 +4984,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite; a gate asserted only through a substituted class is the vacuous-pin shape
 - 2026-09-20T06:02:47Z by=code-review note=correction at origin: EvaluateAnyOf's OR semantics ARE pinned - refused-tool.browser-spec.mjs runs a real turn as a principal holding one member of INVOKEPAIRS and asserts two provider calls, which AND semantics would refuse. What stands is only the substituted gate class in the class-level port assertions
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1307: TurnSecretResidue sweeps no log line although its class header and AC5 both name one
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The class asserts residue in the ledger and the transcript and not in the log, which is the surface AD-35 is most concerned with. Location: src/OcuPilot/Test/TurnSecretResidue.cls
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; a header promising a sweep the code does not perform is the claim this project corrects at origin
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 
 ### DW-1308: The matrix's exactly-one-refused-ledger-row-per-refused-call is asserted nowhere
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DenialParity asserts the sentence and not the row count. Location: src/OcuPilot/Test/DenialParity.cls
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1309: The provider port's new gate evaluates the calling process where the matrix row describes the turn owner's live grants
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4987,6 +5012,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; an assertion on a path where the thing could not be present is the vacuous shape
 - 2026-09-20T06:02:47Z by=code-review note=half closed: the identity-role absence assertion was deleted from Test/AsTheUser.cls because it could not fail on that path, and what the identity role reaches is now pinned where it can fail (Test/IdentityInstall.cls). The AC1 tool-identity falsifier half stands with this owner
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; a coverage gap with no shipped defect; reopen_if=an identity defect is observed in tool dispatch
 
 ### DW-1311: The per-request identity read is unmeasured
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -5022,6 +5048,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Location: src/OcuPilot/Test/Disabled.cls
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; the order is unexercised but both gates refuse; reopen_if=OnPreDispatch's gate order changes
 
 ### DW-1316: The doc claim that a second application gives the escalation to one method overstates the containment
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -5034,6 +5061,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ToolSetFull asserts the advertised set at the dispatcher, one layer before the request the AC describes. Location: src/OcuPilot/Test/ToolSetFull.cls
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; the dispatcher's advertised set is what the provider request carries; reopen_if=the provider request builder starts filtering tools itself
 
 ### DW-1319: The spine's decisions table still records the Epic 4 decision as refuse /refresh for a disabled user, which Story 5.4 disproved
 - source: cr | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -5071,6 +5099,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The class header names 'the four token paths' and drives one of them. Whether the vendor refuses a disabled account's /login is IRIS behaviour rather than OcuPilot's, which is why it is coverage and not a hole. Location: src/OcuPilot/Test/Disabled.cls
 - 2026-09-20T06:03:15Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=code-review note=13.2 owns coverage; the refusal at use already covers every route a minted pair can be presented to
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; a disabled account on /login, /logout and /revoke is refused by IRIS, not OcuPilot; reopen_if=OcuPilot adds its own handling on those token paths
 
 ### DW-1325: NewTurnKey is duplicated verbatim in two new test classes, review narration included
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
@@ -5287,6 +5316,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 - 2026-09-26T09:53:50Z status=routed owner=burndown by=spec_gate note=needs an AD-39 amendment on how a PasswordValidationRoutine's text reaches the caller, plus a system-wide fixture
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
@@ -5297,6 +5327,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T13:39:52Z status=routed owner=range-end-cleanup by=merge_gate note=Decided at Epic 15's merge gate and applied here. Tautological-test class: the assertion passes for a reason unrelated to the behaviour it claims to pin, the same family as Epic 5's green-suite-over-broken-path defects. Re-derive the expected sentence independently of the code's index assumption.
 - 2026-09-26T09:53:50Z status=routed owner=burndown by=spec_gate note=needs a code-keyed oracle (DecomposeStatus layout unmeasured on 2026.2); pairs with DW-1289
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1291: The change-password dialog does not submit on Enter, where the house credential form does
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: med | footprint: in-story
@@ -5401,11 +5432,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: app.ts resets lastRoute on sign-out but leaves the router subscription armed, and screenForUrl reads the static generated mirror rather than the reset navigation map. A NavigationEnd after sign-out therefore still resolves a built screen and POSTs /account/preferences, which ApiService meets with its lapsed-pair refresh path. Every other per-principal read in the client is gated on the signed-in state.
 - 2026-09-20T10:52:09Z status=open owner=range-end-cleanup by=cr note=Outcome is a refused write nobody sees, not a wrong render; the fix is a session check in record().
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1342: The locator favorite toggle has no in-flight guard, so two activations inside one round trip both send add and the screen ends pinned
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: toggleFavorite reads isFavorite() synchronously at click time and the store only moves when the instance answers, so a user who presses the star twice to undo sends two adds rather than an add and a remove. The instance's add is idempotent, so the outcome is pinned -- the opposite of what the second press meant. Same shape on Home's per-row remove, where the double send is harmless.
 - 2026-09-20T10:52:16Z status=open owner=range-end-cleanup by=cr note=Distinct from DW-1327: that entry is the server-side race the two requests can trip, this is the client offering the gesture at all. Fix is a pending-route guard in the component.
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 ### DW-1286: OcuPilot.Test.AgentConnection's verification-write test no longer reaches the branch it names, so Api/Definitions.cls:853 is undriven
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
@@ -5518,6 +5551,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T16:28:45Z status=escalated owner=burndown by=cr note=for the epic decision sheet: keep 500 INTERNAL, or give lock contention its own retryable code
 - 2026-09-20T16:48:05Z status=routed owner=burndown by=lead note=OWNER DECISION 2026-09-20, decided in principle and not left as a question: LOCK CONTENTION IS NOT A SERVER ERROR. A 500 says OcuPilot failed when the system worked exactly as designed and refused a concurrent write, which is the product telling the user something that is not so. It needs a named, retryable refusal a client can act on and a person can understand. NOT floor-blocking: two concurrent confirms on one target is real but uncommon and Story 5.3 has shipped, and the lead checked the AD-invariant ruling rather than assuming it applied -- AD-39's Rule governs the envelope's SHAPE (a stable machine code, a written reason, the violations pair) and AD-34's governs the loser's refusal WITH A TERMINAL STATE, which a live row does not have, so neither invariant is named directly and this is charterable at the burn-down rather than obligatory in 5.5. The burn-down implements the decision above; it does not re-open it
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1367: An id that normalizes to nothing is refused by EntityRef.Key and reaches the agent as 500 INTERNAL rather than an argument refusal
 - source: code review, spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: low | fix-risk: med | footprint: in-story
@@ -5774,6 +5808,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: HelpLinks.load adds the route to asked before awaiting and never removes it on failure; helpHrefFor collapses a refusal, an unavailable answer and an unreachable instance to the same empty string. Closing it gives helpHrefFor a third outcome, which changes its contract. ui/src/app/core/help.ts
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: HelpLinks.load adds a route to asked before awaiting and never removes it on failure, so one transient refusal hides that screen's Help control until reload. Non-blocking for the 2026-09-27 floor and for every downstream story: Help is a convenience link to vendor documentation, the instance is unaffected, and a reload clears it. Closing it gives helpHrefFor a third outcome, which changes a contract this story just published
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
@@ -5792,12 +5827,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: app.ts renders app-stale-bundle-notice outside the signed-in branch beside the fault banner; the blocking notice is meant to replace the product surface rather than share it. ui/src/app/app.ts
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: app.ts renders app-stale-bundle-notice outside the signed-in branch, so the strip can stand above the blocking instance notice that EXPERIENCE.md says replaces the product surface rather than sharing it. Non-blocking: both surfaces are correct in isolation and the overlap needs an install or upgrade to be in flight while a stale bundle is held. Belongs with the other shell-chrome polish rather than re-opening a done story for a z-order
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The house idiom in home.page.ts and account-menu.ts keeps a hidden region mounted and sets its text. EXPERIENCE.md now publishes this prompt among the polite status messages, so the announcement is a published contract; the browser spec asserts the attribute, not that anything was announced
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral; touches a published EXPERIENCE.md contract
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: the prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced, while EXPERIENCE.md now publishes it among the polite status messages. Non-blocking for the floor; the spine's own Deferred row puts accessibility mechanics with EXPERIENCE.md as component-level and not an architecture concern, so this names no AD invariant. The visual prompt and its Reload are pinned in two tiers
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5868,6 +5905,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/src/styles/_components.scss:5020 sets height on .ocu-home-system-row; DESIGN.md makes heights outside the virtualized lists minimums, so text-only zoom clips rather than growing the row
 - 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking at the shipped type scale and contradicts a published DESIGN.md contract rather than an AD; a one-line min-height change belongs with the other shell-chrome polish
 - 2026-09-20T21:41:36Z occurrence=15-4-home-s-system-information-panel
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 
 ### DW-1400: The shell-chrome read seam is in its third verbatim copy -- Members/Payload/Field/ReadSource/LogSourceFailure/LOGSUBSYSTEM -- with no extracted base, so a change to the per-field degrade contract has to be made in three places
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5957,6 +5995,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-21T16:03:05Z status=decision-pending owner=burndown by=harvest note=note=human=may a CLASSIFIED opaque value have a rendering of its own - a count, a placeholder - rather than the secret mask. THIS IS THE REAL RESIDUAL OF DW-1429, whose own premise was refuted: unlike that alleged case the mask here is backed by a real classification, and the defect is that a reader still cannot tell a classified container from a secret. Recommended disposition: give opaque its own rendering, because it is the same direction the owner took on DW-1428 - the disclosure's job is that every field stays available, and a count is strictly more informative than eight bullets while disclosing nothing. Settling it edits DESIGN.md, which is product surface no Epic 5 story owns.
 - 2026-09-21T19:49:53Z status=routed owner=burndown by=merge_gate note=DECIDED YES: a classified opaque value gets a rendering of its own rather than the secret mask. Same direction as DW-1428, and it is the honest half of what DW-1429 turned out to be. Charter it in the burn-down: give opaque a count or a placeholder in DESIGN.md's card recipes and render it from Disclosure.Mask's caller.
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1437: AD-10's user-account set is enumerated by verb and by role name, so two equivalent-effect lockouts are permitted: stripping %All from the last holder, and a service account nobody can sign in as counting as another holder
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: med | fix-risk: med | footprint: in-story
@@ -5987,6 +6026,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=reproduce where Globals and Routines databases differ; grant both resources and amend AD-21's wording
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1441: OcuPilot.Test.UserUpdate is about 700 lines against task 8's under-500 guidance and the project testing rule's roughly-500
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: low | fix-risk: med | footprint: in-story
@@ -6050,6 +6090,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a PermittedFields-aware settable set in Registry and screen-mirror; reachable only by a descriptor author
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
@@ -6060,6 +6101,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a confirm-following (call-graph) checker; the limit is stated at check-objectscript.py:1287
 - 2026-09-28T08:16:00Z occurrence=18-1-the-directory-allow-list
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
@@ -6119,6 +6161,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-1453's fix made SurfaceCoverage.DeriveScreens roster every declared descriptor built or not, so spec-13-2's recorded recipe (flipped LockList's built key to false -> the coverage test went red) no longer reddens anything, and it names a method this story renamed
 - 2026-09-22T04:54:00Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=A_STALE_MUTATION_LINE_IS_A_RULE_19_DEFECT_IN_THE_STORY_THAT_OWNS_IT,_not_in_the_one_that_invalidated_it,_and_13.2_is_in_another_epic_whose_spec_I_do_not_edit_from_here._Worth_filing_rather_than_shrugging_at:_a_recorded_recipe_that_no_longer_reddens_is_exactly_the_unfalsifiable_pass_this_epic_keeps_finding,_and_the_next_reader_of_that_spec_would_take_it_as_evidence
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
+- 2026-09-30T06:34:02Z status=wontfix-accepted by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a LOW is never parked; a done story's spec records history and its recipe is not rerun; reopen_if=an audit re-runs spec-13-2's recorded mutation
 
 ### DW-1462: shell.screen.open's entityId now means a row key on three screens and the parent's id on four, with nothing declaring which
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-epic
@@ -6634,6 +6677,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=a per-target lock must cover both callers' port write, not only the claim: an AD-34/AD-53 design change
 - 2026-09-28T14:20:24Z occurrence=18-2-namespaces-and-their-mappings
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -7153,6 +7197,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Confirm.cls:409 finalizes a 202-started write with status ok and code empty; only the transient continues answer says it runs on, and the port never re-polls, so a worker that later fails leaves an ok row. Cheapest carry: Code = a new PORT.STARTED on that ok path (one expression, one Api.Error parameter + roster row).
 - 2026-09-24T21:26:58Z status=routed owner=burndown by=cr note=12.3 re-review: AD-26 as amended is met (applied+marked); the durable started outcome is the ruling item's unmet 'with the outcome' clause
 - 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow (remainder 2, under cap, no repeat occurrence; no burn-down story chartered): a PORT.STARTED code on Confirm's 202-started ok path so a queued audit copy's ledger row says started, not ok
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1640: The vendor writes the OAuth registration access token in plain text into its own audit row (Modify OAuth2 Server Definition EventData); OcuPilot's Logs > Audit screen and logs.audit.read show EventData, so the token reaches the screen and the model provider
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: high | fix-risk: med | footprint: out-of-footprint
@@ -7170,6 +7215,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T00:39:03Z status=routed owner=burndown by=harvest note=settle after Epic 9 merges: merge the agent's Metadata over the fresh read via Write.MergeUpdate
 - 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor
 - 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow: Epic 9's Write.MergeUpdate is now on this branch, so the agent's server-description (and 12.5 client) Metadata can be merged over the fresh read; no Epic 12 story left to carry it
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 
 ### DW-1642: Discover against an unreachable issuer waits for the vendor's own connect timeout (~30 s) before the named refusal
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -7320,6 +7366,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T06:57:00Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 11 merge (orchestrator, recommended disposition): a post-release follow-up that re-reads live proposals slowly after the turn ends so a revoked privilege shows its warning; Confirm already refuses correctly
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=re-read live proposals slowly after the turn ends so a revoked privilege shows; Confirm refuses today
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
 - source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
@@ -7351,6 +7398,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rules.CustomizationViolations admits a create's role only through the RoleList read (StoredRoles of no fresh read is empty), while Effective() gives every other create field Defaults(); run 807 measured that admitting Defaults() roles on a create lets the two-pair principal create (vendor PUT 201).
 - 2026-09-25T16:49:33Z status=decision-pending owner=burndown by=cr note=recommend: admit Defaults() roles on a create; QA's Wire create test then flips; spec line 73 reads stored values only
 - 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): a create accepts the default roles it pre-ticks (the vendor answers 201, reviewer-confirmed); fix in the range-end cleanup
+- 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -7359,6 +7407,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T01:23:58Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the Epic 12 merge (orchestrator, recommended disposition): flag a customization role destructive by the role's actual privileges (a role read), not by name; post-release, high fix-risk
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=flag a customization role by its privileges (a role read), not its name; high fix-risk, post-release
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -7529,6 +7578,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Error.cls:260-262 predates Story 10.6's retry; B6 refined the same rule in Base.Attempts and left the sentence, mid-file in an add-only file
 - 2026-09-26T16:35:43Z status=open owner=23-1-the-range-end-cleanup by=cr note=Batch B7 (appends to Error.cls): replace the two words if the add-only rule allows, else close wontfix
+- 2026-09-30T06:31:00Z status=routed owner=range-end-cleanup by=merge_gate note=Story 23.1 closed as it stood (owner-approved burn-down plan 2026-09-29); a two-word doc correction in Api/Error.cls, into Story 23.3 (next release) since 23.2 is capped at 12
 
 ### DW-1707: Preferences and about 24 Area save handlers answer a server-side body read or decode fault as the caller's (422 or 400), mostly unlogged
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -7563,6 +7613,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
 - evidence: upgrade check on ocupilot-c-ci: 2,635/2,664 with two seeded definitions, 2,664/2,664 after deleting them; fresh 1.0.2 install with one definition seeded reproduces AgentState 13/13 and TurnWire 1/13
 - 2026-09-27T19:21:32Z status=open owner=range-end-cleanup by=orchestrator note=test isolation, not a product defect; each test should create and clean up its own definition state or tolerate existing definitions
+- 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 ### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
 - source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
@@ -7581,6 +7632,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
 - 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
 - 2026-09-27T16:36:14Z status=routed owner=range-end-cleanup by=merge_gate note=decided: a create re-reads by createdId through the update tool's read; AD-58 wording amended with the fix (orchestrator 2026-09-27)
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
 - source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
@@ -7816,6 +7868,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: origin/OCU-1-epic16 src/OcuPilot/Kernel/Shell/Guardrails.cls:103-110 lists contextRowCap and two character caps; turnsPerHour (Kernel.State.Switch, Story 14.6) is absent (inference until merged)
 - 2026-09-27T18:41:50Z status=routed owner=16-22-the-guardrails-page by=harvest note=the Guardrails page belongs to Story 16.22; add turnsPerHour at or after the 1.0.2 staging merge
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=16-22 is done; add turnsPerHour to the Guardrails page
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1757: Smoke's two turn reserves record start records against the operator, counting toward that account's turns an hour
 - source: spec-14-6 code review | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7839,21 +7892,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
 - evidence: Registry.cls:736 and screen-mirror.mjs:811 accept both; only the owners roster pinned in screen-mirror.test.mjs:2110 guards it
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=fix: in both engines refuse an own pair the declaration's area already declares
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1761: The instance's MalformedPair accepts a non-string resource or permission ({resource: 5}) where the client mirror's malformedPair refuses it; the corpus has only string cases
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
 - evidence: Registry.cls:2994 vs screen-mirror.mjs malformedPair; the mirror is stricter, so the build fails rather than leaks
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=merge_gate note=fix: add a non-string case to both corpora and align the instance on %GetTypeOf = string
+- 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1762: Every container stop in the 1.0.2 upgrade check logged Previous system shutdown was abnormal (restart of 1.0.1 code and recreate of 1.0.2); the README update step (docker compose restart) triggers it on every update
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: docker-compose.yml, scripts/ci-throwaway.sh, README.md
 - evidence: container log [ERROR] Status of instance IRIS is running; messages.log ends at Stopping User Jobs; next start recovered cleanly (0 blocks pending); pre-existing in 1.0.1; cause not investigated (inference: the default stop timeout is shorter than IRIS needs)
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
 - evidence: the router's comment names the prerequisite; same text in 1.0.1; %Manager plus %DB_HSCUSTOM works
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=plain one-line README note (owner collateral rule)
+- 2026-09-30T06:34:06Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a one-line README prerequisite (READ on the install namespace's database) belongs with the README; the Planner is told for the release prep
 
 ### DW-1764: home-findings.browser-spec.mjs AC1 failed once nondeterministically: an Integrity Check or Automatic Table Statistics line appeared in the Operations findings, and the assertion does not name which task
 - source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
@@ -8009,12 +8066,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: recommended route to range-end-cleanup, store the redaction mark in Step.Target at write time as the ledger does (AD-35, AD-41)
 - 2026-09-28T13:44:39Z occurrence=16-16-the-agent-audit-viewer note=the agent panel's tool-call card can show the same step target (review inference)
 - 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: store the redaction mark on the progress step's target when written, as the ledger does
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
+- 2026-09-30T07:53:11Z status=routed owner=range-end-cleanup by=owner note=owner 2026-09-30 via the Planner: leave it where it is - top of the 23.3 queue (p2 security); 23.2 stays at its 12
 
 ### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: review probe on ocupilot-ci: /etc/localtime Etc/UTC, $ZTIMEZONE 0, $H equals $ZTS; a process-level $ZTIMEZONE change does not move $ZDATETIME(h,-3)
 - 2026-09-28T13:44:39Z status=escalated owner=burndown by=harvest note=for the decision sheet: needs one run on a throwaway started with a non-UTC TZ (CI or ci-throwaway.sh change); recommended route to range-end-cleanup
 - 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: one run on a throwaway started in a non-UTC time zone
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1789: A user named in the agent audit viewer in another letter case than the stored account name reads an empty list with no refusal, because a named ledger read matches UserName exactly
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
@@ -8172,6 +8232,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: feature CI run 36507726737 attempt 1 on 3fa9c0db (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/audit-events.browser-spec.mjs
 - evidence: spec :342 deepStrictEqual [200] vs [200,200]; the same code passed on 580d4005 (run 36504027685) and every earlier feature run; nothing in 16.5 touches the spec or the auditing screen
 - 2026-09-29T01:47:49Z status=routed owner=range-end-cleanup by=orchestrator note=wait for the re-read response by URL before asserting the list, instead of a fixed collection window
+- 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 
 ### DW-1809: Prohibited.BaseMappingMoves judges a %ALL subscript mapping of a code global on an inference that %ALL's base mapping lands on each namespace's globals database (read from the vendor's NSPMAP, not measured: the throwaway has no %ALL)
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
@@ -8213,6 +8274,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T15:14:07Z status=escalated owner=burndown by=cr note=decision sheet: review TaskClass+RunAsUser, classify RunAs-other, preview on screen (spec amendment), or accept vendor parity
 - 2026-09-29T15:14:30Z status=escalated owner=burndown by=cr note=port lines cited are 8bc275b5's; after this review's doc edit they read TaskTransferPort.cls:382/313
 - 2026-09-29T17:56:22Z status=routed owner=range-end-cleanup by=merge_gate note=agent import key tasks.schedule.import disabled by default in 1.0.3 (staging); follow-up: review TaskClass and RunAsUser on an import proposal, classify run-as-other at the strongest confirmation, apply the create rules, then re-enable
+- 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 
 ### DW-1828: A vendor ImportTasks failure after Examine passes answers 500 with the tasks before it kept and no change event (unverified)
 - source: spec-16-4-task-export-and-import.md | severity: med | fix-risk: med | footprint: in-story
@@ -8223,6 +8285,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: staging-16-7 run 36569407842 attempt 1 on ff53360c (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/a11y-structural-invariants.browser-spec.mjs, ui/browser/structural-walk.mjs
 - evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
 - 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
+- 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8246,6 +8309,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: namespace-form.page.ts resets its store on destroy (retaining() false), so the change-bus re-read never runs for this flow; database-wizard.page.ts replaces the route with the editor. AC6 holds only because the form's next open re-reads.
 - 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
 - 2026-09-29T22:56:19Z status=routed owner=range-end-cleanup by=merge_gate note=decided as recommended (orchestrator 2026-09-29): Create a database from the New Namespace form keeps what was typed and returns to it, as the classic portal does; routed to range-end-cleanup, 18.4 stays bounded
+- 2026-09-30T06:34:06Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): the decided fix (Create a database keeps the typed New Namespace form and returns to it) goes to the story that owns the New Namespace page
 
 ### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8263,6 +8327,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T16:48:14Z status=routed owner=burndown by=harvest note=BackgroundSeed.cls is Epic 16's (16.5); a longer seeded compact and a Settled that tolerates the process-state window would remove both races
 - 2026-09-29T17:04:25Z status=routed owner=burndown by=cr note=void 30 s half: run 36530303753 (dc34dc4a) predates 6bcc6d3b, a DW-1819 sighting; open cause is DW-1802 race
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8274,6 +8339,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
 - 2026-09-30T03:36:26Z status=routed owner=range-end-cleanup by=merge_gate note=restores the owner-approved decision-sheet line (into Story 23.2) that a union merge from OCU-1-epic18 placed before an older trailer
+- 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 
 ### DW-1846: Admin API behaviours in Database.Actions on 2026.2 that OcuPilot designs around: mount without %Admin_Secure:USE answers 500 #356; a queued action refused for privilege answers 202 and fails in the task; modify-size silently no-ops a shrink and clamps above MaxSize (logging a severity-2 alert); an integrity check on a non-database directory reports both no errors and errors; NewVolumeDirectory collisions answer 500 (#576, #575); deleting an AsyncTaskSysBackground row as an object leaves its %SYS.BackgroundTask row
 - source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8306,6 +8372,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:56:44Z status=routed owner=burndown by=merge_gate note=restores the 17:09:15Z routing; the 15:25:45Z resolved-by:16-4 trailer above is DW-1823's, misplaced by the 1.0.3 staging union merge
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T02:07:11Z status=routed owner=range-end-cleanup by=merge_gate note=restores the 22:56:51Z routing; the 15:25:45Z and 17:56:44Z trailers above are DW-1831's (feature), misplaced here by the d9f84f52 forward-merge union
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
@@ -8329,6 +8396,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.3 upgrade check (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/**
 - evidence: upgrade check on ocupilot-c-ci: a seeded osmgmt.devices.delete disabled override gave 7 failures (GOVERNANCE.DISABLED, 'leaves every key to the baseline'); all 3,031 passed after resetting it to inherit; fresh installs hold no override
 - 2026-09-29T19:58:42Z status=routed owner=range-end-cleanup by=orchestrator note=test isolation: each test sets and restores the governance state it relies on, or tolerates overrides
+- 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 ### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
 - source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
@@ -8431,6 +8499,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-25-the-external-language-server-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: orchestrator decision 2026-09-29: option A for 16.25 (shown, never set, SSL/TLS precedent); the PathPort-backed follow-up is routed here
 - 2026-09-29T23:53:28Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator: 16.25 option A; follow-up for the four single-location fields
+- 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 
 ### DW-1857: audit.browser-spec AC6 waits for a row the opening read already drew, so its timing can measure the response arriving rather than this Search's first row (same weak wait as DW-1780's audit AC1)
 - source: DW-1780 fix | severity: low | fix-risk: low | footprint: in-epic

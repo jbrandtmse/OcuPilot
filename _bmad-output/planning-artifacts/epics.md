@@ -7375,6 +7375,7 @@ So that the namespace configuration the contest deferred includes the step the c
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
 - DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
 - DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
+- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
 
 ### Story 18.16: Remote databases
 
@@ -8074,4 +8075,34 @@ So that the ledger the judges' build leaves behind is honest and the code it nam
 - **Given** the entries the owner routed here on 2026-09-25
 - **When** they are triaged
 - **Then** DW-1681 (the demo fixture seeds a duplicate application error on every start), DW-1682 (four comments cite README sections that moved to docs/DEVELOPMENT.md) and DW-1688 (proposal-card.ts's comment names the scratched Story 14.7) are fixed here.
+
+### Story 23.2: The range-end cleanup, part 2
+
+Chartered by the orchestrator on 2026-09-30 from the owner-approved burn-down decision sheet (`_bmad-output/implementation-artifacts/decision-sheet-2026-09-29-burndown.md`) under Rule 27 as the owner restated it on 2026-09-29. Story 23.1 closed as it stood. This story takes at most 12 entries, by priority: CI flakes, then security, then repeat occurrences, then the lowest fix-risk. On the owner's instruction of 2026-09-30 it starts before the `release/1.0.4` cut, and each batch merges to the feature branch as soon as it is green, in this order: the CI flakes, the user-visible defects, security, then the remaining entries, with DW-48 last because it changes what the installer compiles. A batch green on the feature branch at the cut ships in 1.0.4; the rest follow.
+
+As the team keeping OcuPilot's CI and its guardrails trustworthy between releases,
+I want the twelve highest-priority deferred entries fixed, or declined with a reason,
+So that every lane stops paying for the same flakes and the guardrails say what they do.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story (DW-1829, DW-1831, DW-1450, DW-1663, DW-1289, DW-1451, DW-1497, DW-1290, DW-1440, DW-1210, DW-1669 and DW-48)
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition. None is re-owned onward unless the plan says why.
+
+- **Given** the two CI flakes, DW-1829 (the background-task seed can read Running for its whole wait) and DW-1831 (an OAuth discover case misreads intermittently)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the case passing under that same condition, with a Rule 19 mutation where the fix is a wait or a predicate.
+
+- **Given** the three security entries: DW-1450 (a secret argument may name a derived field the write tool does not permit), DW-1663 (adding `%Manager`, `%Operator` or `%SecurityAdministrator` to the authorization server's customization role is not flagged as a privilege grant) and DW-48 (the container start hook compiles every `Test.*` class, fault-injection classes included, into a product install)
+- **When** each is fixed
+- **Then** a test reddens on the defect. For DW-48, a product install compiles no `Test.*` class, and the CI and throwaway paths that need them still load them.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
+
+- **Given** a fix that changes behavior a user can see
+- **When** it is proposed
+- **Then** the plan names it with the entry that asks for it, and a fix that contradicts a document corrects the document at origin.
 
