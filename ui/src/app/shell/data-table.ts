@@ -33,7 +33,7 @@ import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
-import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel, bannerActionIds } from '../core/screen-actions';
 import { isCheckable, isCheckedSetAction } from '../core/multi-select';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
@@ -885,8 +885,12 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
     const row = rowFor(this.store().data(), screen, selected);
+    const onBanner = bannerActionIds(screen);
     return screen.rowActions
       .filter((action) => action.id !== '')
+      // Story 16.11: an action a banner case offers names no row; the strip and the command box
+      // draw it.
+      .filter((action) => !onBanner.includes(action.id))
       // Story 16.6: a multi-select action acts on the checked rows, from the command bar and the
       // command box, never on the one row a menu opens on.
       .filter((action) => !isCheckedSetAction(screen, action.id))

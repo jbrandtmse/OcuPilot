@@ -35,6 +35,10 @@ import {
   TASK_EXPORT,
   TASK_IMPORT,
   TASK_IMPORT_TARGET,
+  TASK_MANAGER_RESUME,
+  TASK_MANAGER_START,
+  TASK_MANAGER_SUSPEND,
+  TASK_MANAGER_TARGET,
   TASK_SCHEDULE,
 } from './screen-action-handler';
 
@@ -1864,5 +1868,78 @@ describe('the disk operations (Story 18.4)', () => {
     await settle();
     expect(JSON.parse(calls[0].body)).toEqual({ action: EXPAND_VOLUME, id: 'OCUPROBE184A', values: { InitialSize: '5' } });
     expect(applied).toEqual([EXPAND_VOLUME]);
+  });
+});
+
+/**
+ * Story 16.11: the Task schedule's three Task Manager actions. The handler registers none of them --
+ * the page does -- and each is sent on the literal target: Suspend behind its warning dialog, whose
+ * body is the published consequence, and Resume and Start at once. A refusal in the wrong state, or
+ * of a task type's privilege, shows its published sentence.
+ */
+describe('the Task Manager\u2019s Suspend, Resume and Start (Story 16.11)', () => {
+  const TARGET = { type: 'task', scope: 'instance', id: TASK_MANAGER_TARGET };
+
+  it('leaves all three undrawn for the page to register', () => {
+    // Mutation (Rule 19): drop the three from the Task schedule's `UNDRAWN_ACTIONS` entry -> the
+    // handler registers them as row actions and this goes red.
+    const { actions } = mount(undefined, TASK_SCHEDULE);
+    for (const actionId of [TASK_MANAGER_SUSPEND, TASK_MANAGER_RESUME, TASK_MANAGER_START]) {
+      expect(actions.has(TASK_SCHEDULE, actionId)).toBe(false);
+    }
+  });
+
+  it('opens the warning before Suspend, titled with its label and stating its consequence; Cancel sends nothing and Proceed sends once', async () => {
+    // Mutation (Rule 19): drop the Task schedule's entry from WARNING_CONSEQUENCES -> Suspend is sent
+    // at once and the warning assertions go red.
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, TASK_SCHEDULE);
+    handler.startFor(TASK_SCHEDULE, TASK_MANAGER_SUSPEND, TASK_MANAGER_TARGET, {}, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.taskManagerSuspendAction);
+    expect(pending?.consequence).toBe(STRINGS.taskManagerSuspendConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+
+    handler.startFor(TASK_SCHEDULE, TASK_MANAGER_SUSPEND, TASK_MANAGER_TARGET, {}, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.schedule/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: TASK_MANAGER_SUSPEND, id: TASK_MANAGER_TARGET });
+    expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual([`task:updated:${TASK_MANAGER_TARGET}`]);
+  });
+
+  it('sends Resume and Start at once, with no dialog', async () => {
+    for (const actionId of [TASK_MANAGER_RESUME, TASK_MANAGER_START]) {
+      const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, TASK_SCHEDULE);
+      handler.startFor(TASK_SCHEDULE, actionId, TASK_MANAGER_TARGET, {}, store);
+      expect(handler.pending()).toBeNull();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: actionId, id: TASK_MANAGER_TARGET }]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('shows each published refusal rather than the envelope\u2019s generic reason', async () => {
+    // Mutation (Rule 19): drop the Task Manager sentences from `PUBLISHED_PROBLEMS` -> the store shows
+    // the generic reason and this goes red.
+    const published = [
+      STRINGS.taskManagerRefusalRunning,
+      STRINGS.taskManagerRefusalSuspended,
+      STRINGS.taskManagerRefusalSuspendedStart,
+      STRINGS.taskManagerRefusalStopped,
+      STRINGS.taskTypePrivilegeRefusal,
+    ];
+    for (const problem of published) {
+      const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem } } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, TASK_SCHEDULE);
+      handler.startFor(TASK_SCHEDULE, TASK_MANAGER_RESUME, TASK_MANAGER_TARGET, {}, store);
+      await settle();
+      expect(store.refusal()).toBe(problem);
+      expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
   });
 });

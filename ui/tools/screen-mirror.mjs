@@ -1546,8 +1546,9 @@ function shown(value) {
  * banner is a screen with no banner; otherwise it is an object carrying only `source`, `field` and
  * `cases`; `source` carries only `port` (`admin`), `endpoint` (a package-relative name) and `type`
  * (`GET`); `field` is a non-empty string; `cases` is a non-empty array of objects carrying only
- * `equals`, `messageKey` and `severity`, each `equals` and `messageKey` a non-empty string, each
- * `equals` declared once, each `severity` one of `BANNER_SEVERITIES`; and, last of all, a banner
+ * `equals`, `messageKey`, `severity` and an optional `action`, each `equals` and `messageKey` a
+ * non-empty string, each `equals` declared once, each `severity` one of `BANNER_SEVERITIES`, each
+ * `action` the id of one of the declaration's `rowActions`; and, last of all, a banner
  * declared while `read` is not is refused, because a banner is chrome on a declared read's screen
  * and rides in that read's own response. `OcuPilot.Test.BannerCorpus` is the corpus both engines
  * run.
@@ -1578,7 +1579,7 @@ export function bannerProblem(declaration) {
     return 'banner.field is empty, and a banner compares one named field to the values its cases name';
   }
 
-  const casesFault = bannerCasesProblem(banner);
+  const casesFault = bannerCasesProblem(banner, declaration);
   if (casesFault !== null) return casesFault;
 
   const { read } = declaration;
@@ -1586,8 +1587,11 @@ export function bannerProblem(declaration) {
   return null;
 }
 
-/** What is wrong with a banner's `cases`, or `null` (DW-270). */
-function bannerCasesProblem(banner) {
+/**
+ * What is wrong with a banner's `cases`, or `null` (DW-270). A case may name the action it offers
+ * (`action`, Story 16.11), which must be the id of one of the declaration's `rowActions` (AD-5).
+ */
+function bannerCasesProblem(banner, declaration) {
   if (!Array.isArray(banner.cases)) return 'banner.cases is not an array of banner cases';
   if (banner.cases.length === 0) {
     return 'banner.cases is empty, and a declared banner raises at least one sentence';
@@ -1597,7 +1601,7 @@ function bannerCasesProblem(banner) {
     const entry = banner.cases[index];
     const where = `banner.cases entry #${index + 1}`;
     if (!isObject(entry)) return `${where} is not an object declaring its equals, messageKey and severity`;
-    const entryKeysFault = unknownKeyProblem(where, entry, ['equals', 'messageKey', 'severity']);
+    const entryKeysFault = unknownKeyProblem(where, entry, ['equals', 'messageKey', 'severity', 'action']);
     if (entryKeysFault !== null) return entryKeysFault;
     for (const key of ['equals', 'messageKey']) {
       if (typeof entry[key] !== 'string' || entry[key] === '') {
@@ -1612,6 +1616,11 @@ function bannerCasesProblem(banner) {
     if (typeof entry.severity !== 'string' || !BANNER_SEVERITIES.includes(entry.severity)) {
       return `${where} severity '${shown(entry.severity)}' is not one of ${BANNER_SEVERITIES.join(',')}`;
     }
+    if (!Object.hasOwn(entry, 'action')) continue;
+    if (typeof entry.action !== 'string') return `${where} action is not a string naming one of rowActions`;
+    const actions = Array.isArray(declaration.rowActions) ? declaration.rowActions : [];
+    const declared = actions.filter((action) => isObject(action) && typeof action.id === 'string').map((action) => action.id);
+    if (!declared.includes(entry.action)) return `${where} action '${entry.action}' is not one of rowActions`;
   }
   return null;
 }
@@ -3297,11 +3306,15 @@ export interface BannerSource {
 /** The \`.ocu-banner-*\` variants a declared banner may take (DESIGN.md \`:1203\`). */
 export type BannerSeverity = ${BANNER_SEVERITIES.map((value) => `'${value}'`).join(' | ')};
 
-/** One value a banner's field may take, and the sentence it raises (DW-270). */
+/**
+ * One value a banner's field may take, and the sentence it raises (DW-270); \`action\`, where
+ * declared, is the id of the screen's row action the strip offers (Story 16.11, AD-5).
+ */
 export interface BannerCase {
   readonly equals: string;
   readonly messageKey: string;
   readonly severity: BannerSeverity;
+  readonly action?: string;
 }
 
 /**

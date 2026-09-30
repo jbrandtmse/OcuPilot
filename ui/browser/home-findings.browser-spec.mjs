@@ -14,6 +14,9 @@
  *   the fixed sentence, its screen context names the task and carries its row, and the proposal
  *   card appears with Confirm. Nothing is confirmed, so the task stays suspended.
  * - **AC4.** A principal without `%Admin_Secure:USE` sees "Not checked" lines naming that pair.
+ * - **Story 16.11 AC7.** With the throwaway's Task Manager suspended, its finding offers Fix it,
+ *   which opens Task schedule and sends the fixed sentence; the scripted turn proposes the resume,
+ *   and nothing is confirmed. The leg resumes the Task Manager in a `finally`.
  *
  * **It creates a web application and a security principal**, so it refuses the live container and
  * any container that is not a throwaway; `after` removes both and the probe definition whether or
@@ -344,6 +347,76 @@ test('AC3: Fix it opens Task details on the demo task, sends the fixed sentence 
     assert.equal(markerValue(suspended, 'FSUSP'), 'true', 'nothing changed before Confirm: the task is still suspended');
   } finally {
     await context.close();
+    forgetTag(probe, tag);
+    await requireFreeSlot(config).catch(() => {});
+    dropProposals();
+  }
+});
+
+/** Suspend (`true`) or resume the throwaway's Task Manager, answering its status once settled: `'2'` suspended, `'1'` running. */
+function setTaskManagerSuspended(suspended) {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'the live instance\u2019s Task Manager is never touched');
+  const wanted = suspended ? 2 : 1;
+  const { values, output } = inSys(
+    [
+      `Set tSC=##class(%SYS.Task).SuspendSet(${suspended ? 1 : 0})`,
+      `For tI=1:1:20 { Quit:##class(%SYS.Task).TASKMGRStatus()=${wanted}  Hang 0.5 }`,
+      mark('FTM', '##class(%SYS.Task).TASKMGRStatus()'),
+    ],
+    ['FTM']
+  );
+  assert.ok(values.FTM, `the Task Manager's status was read:\n${output}`);
+  return values.FTM;
+}
+
+// Story 16.11 AC7. Mutation (Rule 19): make `OcuPilot.Kernel.Shell.Findings.TaskManager` answer
+// FIXLINK and recompile on the throwaway -> the finding offers Open and the Fix it wait goes red.
+test('Story 16.11 AC7: a suspended Task Manager\u2019s finding offers Fix it, which opens Task schedule, sends the fixed sentence, and the agent proposes the resume', async () => {
+  await requireFreeSlot(config);
+  dropProposals();
+  const tag = nextTag(probe);
+  setTag(probe, preparedId, tag);
+  const input = { Id: 'manager', rationale: 'The Task Manager is suspended.', expectedImpact: 'scheduled tasks run again', reverse: 'suspend it again' };
+  scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_resumemanager", "name": "tasks_schedule_resumemanager", "input": ${JSON.stringify(input)}}])`);
+  scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).TextReply("${escapeOs('Resuming it needs your Confirm.')}")`);
+  let context = null;
+  try {
+    assert.equal(setTaskManagerSuspended(true), '2', 'the throwaway Task Manager is suspended');
+    const signed = await signedInAt(browser, config, HOME_URL);
+    context = signed.context;
+    const page = signed.page;
+    await waitForPanel(page);
+    await page.waitForFunction(
+      (sentence) =>
+        Array.from(document.querySelectorAll('.ocu-home-finding')).some(
+          (item) => item.querySelector('.ocu-home-finding-sentence')?.textContent?.trim() === sentence && item.querySelector('.ocu-home-finding-fix:not([aria-disabled])') !== null
+        ),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.taskManagerSuspendedBanner
+    );
+    await page.evaluate((sentence) => {
+      const item = Array.from(document.querySelectorAll('.ocu-home-finding')).find((candidate) => candidate.querySelector('.ocu-home-finding-sentence')?.textContent?.trim() === sentence);
+      item.querySelector('.ocu-home-finding-fix').click();
+    }, STRINGS.taskManagerSuspendedBanner);
+
+    await page.waitForFunction(() => location.pathname.endsWith('/tasks/schedule'), { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
+    const userLine = await page.$eval('.ocu-panel-message-user', (node) => node.textContent.trim());
+    assert.equal(userLine, STRINGS.findingFixTaskManager, 'the transcript shows the fixed sentence');
+    const messages = recordedMessages(tag);
+    assert.equal(lastUserText(messages), STRINGS.findingFixTaskManager, 'the user message is the fixed sentence and nothing else');
+    const payload = screenContextPayload(messages);
+    assert.ok(payload, 'the turn carried screen context');
+    assert.equal(payload.route, 'tasks/schedule', 'from Task schedule');
+    const { values } = inSys([mark('FTMNOW', '##class(%SYS.Task).TASKMGRStatus()')], ['FTMNOW']);
+    assert.equal(values.FTMNOW, '2', 'nothing changed before Confirm: the Task Manager is still suspended');
+  } finally {
+    try {
+      setTaskManagerSuspended(false);
+    } catch {
+      /* the next leg's own reads report a Task Manager left suspended */
+    }
+    if (context !== null) await context.close();
     forgetTag(probe, tag);
     await requireFreeSlot(config).catch(() => {});
     dropProposals();

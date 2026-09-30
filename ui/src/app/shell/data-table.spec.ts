@@ -620,6 +620,32 @@ describe('the data table', () => {
     expect(wired.host().querySelector('.ocu-data-table-trigger')).toBeNull();
   });
 
+  it('Story 16.11: an action a banner case offers is in no row menu, beside a row action that is', async () => {
+    // Mutation (Rule 19): drop the banner filter from `DataTable.menuItems` -> `enable` is listed
+    // beside `disable`, red.
+    const declaration = tableDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+      banner: {
+        source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+        field: 'Status',
+        cases: [{ equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'enable' }],
+      },
+    });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const items = Array.from(wired.host().querySelectorAll('[role="menu"] [role="menuitem"]')).map((item) =>
+      item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()
+    );
+    expect(items).toEqual([STRINGS.agentDefinitionDisable]);
+  });
+
   it("AD-53: a self-protected row's menu entry stays listed, aria-disabled with the reason inline, and runs nothing", async () => {
     // The row menu's half of the refusal the command bar and the command box also draw: a
     // non-selectable entry a key manager still reaches, never the `disabled` attribute, with the

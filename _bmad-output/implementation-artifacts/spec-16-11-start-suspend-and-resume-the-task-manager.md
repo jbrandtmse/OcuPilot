@@ -2,7 +2,8 @@
 title: 'Story 16.11: Start, suspend and resume the Task Manager'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '395fb83ea9b0f469b9163c6fcd95b578abc75db6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -307,6 +308,29 @@ Anchors are as of `9a874a14`. Measured vendor facts are under Design Notes.
 
 ## Review Triage Log
 
+### 2026-09-30 — Review pass
+
+- verdicts: 18 findings — high 0, medium 3, low 9, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `readNow`'s `bannerRequires` pass-through had no test; auto-refresh defaults off, so it is the path AC3 runs on — added a `readNow` leg to `refresh.test.mjs`, mutation demonstrated.
+  - `[medium]` `[patch]` AC5's agent-path start was never minted or confirmed — added `TaskManagerLive.TestTheAgentsStartOfAStoppedTaskManagerIsConfirmed` (row, confirm, TASKMGR with `%All`, marker, `nothingSent`, no vendor row, second start refused), mutation demonstrated.
+  - `[low]` `[patch]` `tasks.browser-spec.mjs`'s re-read assertion counted the suspend POST — now counts only the list's `GET .../read`.
+  - `[low]` `[patch]` `ScreenRead`'s `bannerRequires` message claimed what a `%All` runner cannot observe — reworded to what it asserts; pinning `Read.BannerRequires`'s descriptor filter would need a new principal-and-fixture test for a filter no second screen exercises today.
+  - `[low]` `[patch]` AC9 had no `mutation:` line — demonstrated on `TaskManagerLive.Restore` and recorded under Verification.
+  - `[low]` `[reject]` AD-9's no-escalated-frame start is not observable by a `%All` caller — the write reaches the port through the kernel's unescalated path for every tool (AD-9); observing it needs a non-`%All` start principal whose Task Manager then runs with its roles. The agent-start half is the second row's patch.
+  - `[low]` `[reject]` the start's 403 at the mint and Confirm is asserted through `Operation.Gate`, not each surface — both call that gate for every tool, pinned by existing mint-as-principal classes (`TaskWire`); a per-surface leg adds a job-as-user helper for no new path.
+  - `[low]` `[patch]` wrong-verb refusals were unit-only at the agent mint and for two route pairs — the new agent leg mints resume and suspend of a stopped Task Manager, and the route leg adds suspend-while-stopped and start-while-suspended.
+  - `[low]` `[patch]` the agent's other-id mint asserted only a failing status — now asserts 400 `TOOL.ARGUMENTS` naming the literal id.
+  - `[false]` `[reject]` gated Start is checked only in jsdom — AC3 names exactly its pins: the component spec for the control and `TaskManagerLive`'s live `bannerRequires` for the principal.
+  - `[false]` `[reject]` Start from the stopped banner is not a browser leg — each piece is pinned (the strip's click in jsdom, the route start and TASKMGR live, the change-event re-read in the browser's resume leg); no bad outcome shown.
+  - `[medium]` `[patch]` agent-path start audit unexercised — grouped with the second row; the marker-failure half is AD-15's kernel behavior, pinned by its own classes.
+  - `[low]` `[reject]` DW-1638 also reaches `tasks.ondemand.run`, untested, and the 404 pass-through is unexercised — the on-demand run is the same `TaskRun` methods `TaskScheduleRun` inherits, which `TaskRowWire` drives, and a deleted task is refused by the fresh read after it.
+  - `[low]` `[reject]` the command box lists Start ungated in states where no banner raises it — the read computes `bannerRequires` for the raised case only and the client holds no pair map (spec Never); the route still refuses naming the pair. The fix edits the spec's read contract.
+  - `[false]` `[reject]` Home's Fix it in the stopped state is not a browser leg — the stopped and suspended findings share one check, one constant and one client path; no bad outcome shown.
+  - `[false]` `[reject]` `rowActions` appends the three ids after `delete` — no row menu draws them (`DataTable.menuItems` banner filter, `UNDRAWN_ACTIONS`), so the drawn menu keeps the destructive action last.
+  - `[false]` `[reject]` `screens.generated.ts` may be hand-edited — `npm run build`'s `screen-mirror.mjs --check` passed.
+  - `[false]` `[reject]` `npm run test:tools` unverified by the auditor — `npm test` ran green (1,728 tools, 1,967 components).
+
 ## Design Notes
 
 **Measured on `ocupilot-ci`, 2026-09-30.** The transcript and the extracted source are in the session scratchpad, `epic-16/16-11/` (`tm-probe-transcript.txt`, `Api.Admin.Endpoints.Task.Manager.cls`).
@@ -429,20 +453,74 @@ Only one test run may be in flight at a time.
 - **AC7:** `Findings.TaskManager` goes back to `FIXLINK`. `Findings` goes red.
 - **AC8:** drop `TaskResume.ScreenActionDelta`'s check. `TaskRowWire`'s route leg goes red.
 
+Mutations demonstrated (implement stage, each reverted with the tree unchanged after):
+
+- mutation (AC1): the Task schedule's entry dropped from `WARNING_CONSEQUENCES` -> `screen-action-handler.spec.ts` "opens the warning before Suspend, ..." went red.
+- mutation (AC2): `ListPage.bannerAction` answers `null` for every raised case, rebuilt and redeployed -> `tasks.browser-spec.mjs` "Story 16.11 AC1, AC2: ..." went red at the Resume Task Manager wait.
+- mutation (AC3): `ListPage.bannerAction` reads `bannerRequires` as `''` -> `list-page.spec.ts` "Story 16.11: the raised case's action is drawn in the strip, gated ..." went red.
+- mutation (AC4): `TaskManagerSuspend.SENDSBODY` set to 1, recompiled with its subclasses -> `OcuPilot.Test.TaskManagerTools.TestEachToolIsAnActionWriteOverTheTaskManager` went red (run 21465).
+- mutation (AC5): `TaskManagerStart.PrivilegePairs` appends no `%Admin_Secure:USE` -> `OcuPilot.Test.TaskManagerLive.TestTheStartIsRefusedWithoutTheSecurePair` and the stopped leg's refusal and `bannerRequires` went red (run 21467).
+- mutation (AC6): `TaskManagerSuspend.StateDiff` accepts `Suspended` for the suspend, recompiled with its subclasses -> `OcuPilot.Test.TaskManagerTools.TestEachToolActsFromOneStateAndRefusesTheOthers` went red alone (run 21466).
+- mutation (AC7): `Findings.TaskManager` answers `FIXLINK` -> `OcuPilot.Test.Findings`' two Task Manager legs went red (run 21469).
+- mutation (AC8): `TaskResume.ScreenActionDelta` skips `TargetProblem`, recompiled with `TaskSuspend` -> `OcuPilot.Test.TaskRowWire.TestTheRouteRefusesACallerWithoutTheTypesPair` went red on the suspend and the resume (run 21470).
+- mutation (AC3, `readNow` path): `RefreshService.readNow` passes `''` instead of `result.bannerRequires` -> `refresh.test.mjs` "readNow carries the bannerRequires pair ..." went red alone.
+- mutation (AC5, agent path): `TaskManagerStart.WRITETYPE` set to `RESUME`, recompiled -> `OcuPilot.Test.TaskManagerLive.TestTheAgentsStartOfAStoppedTaskManagerIsConfirmed` and the route start leg went red (run 21864).
+- mutation (AC9): `TaskManagerLive.Restore` no longer resumes a suspended Task Manager, recompiled -> `OnAfterOneTest`'s "the Task Manager is restored" went red after `TestTheAgentsSuspendAndResumeAreConfirmed`, and every later test's setup refused (run 21863).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Plan only.** No source was changed. The only file written in the worktree is this spec.
-- **Probes on `ocupilot-ci`:**
-  - The Task Manager was suspended and resumed, and stopped by terminating its process and started through the admin API, both as the least-privileged probe principals and as `_SYSTEM`.
-  - A harmless probe task (`%SYS.Task.PurgeTaskHistory`, KeepDays 36500) was run to test whether a started Task Manager works.
-  - End state: running as `TASKMGR` with `%All`. The probe user, role and task are deleted.
-  - The transcript and helpers are in the session scratchpad, `epic-16/16-11/`.
-- **Spine amendments for the lead** (Design Notes):
-  - AD-8: Start's `%Admin_Secure:USE`;
-  - AD-15 and AD-53: the ninth unaudited write;
-  - AD-5: the banner `action` and `bannerRequires`.
-- **DW-1638** is addressed by AC8.
-
+- **Implemented.**
+  - Three action-style tools over `Task.Manager`: `TaskManagerSuspend` (the base) and its `TaskManagerResume` and `TaskManagerStart` subclasses. They have literal id `manager`, a `Status` state matrix with four published refusals, and Start's `%Admin_Secure:USE`.
+  - The banner case `action`, validated alike in `Registry`, `screen-mirror.mjs` and `BannerCorpus`, with `bannerRequires` from `Read`.
+  - Client:
+    - the strip button, gated `aria-disabled`;
+    - Suspend Task Manager on the command bar behind its warning;
+    - all three in the command box.
+  - Home's finding answers `agent`.
+  - DW-1638: `TaskRules.TargetProblem` is called from `TaskResume`, `TaskRun` and `TaskDelete` on both callers.
+- **Files.**
+  - Server: the three new tools, `TaskScheduleList`, `Registry`, `Read`, `AdminPort`, `Baseline`, `TaskRules`, `TaskResume`, `TaskRun`, `TaskDelete` and `Findings`.
+  - New tests: `TaskManagerTools`, `TaskManagerLive` (armed) and `TaskRowWire` (armed).
+  - Rosters: `ReadTool` (185), `SurfaceCoverage`, `ToolRoundTrip`, `TaskScheduleActions`, `Findings`, `BannerCorpus`, `PortFixture`, `ScreenRead` and `scripts/ci-throwaway.sh` (both arming lines).
+  - Client: `screen-read`, `screen-store`, `refresh`, `list-page`, `screen-actions`, `screen-action-handler`, `command-bar`, `command-box`, `task-schedule.page`, `fix-finding`, `proposal-view`, `strings.ts` (11 keys) and the regenerated `screens.generated.ts`.
+  - EXPERIENCE.md stays at 993 lines. The client tests and three browser specs are updated.
+- **Outside the Code Map:**
+  - `shell/data-table.ts` and its spec: a banner action is kept off the row menu.
+  - `_components.scss` (add-only).
+  - `ui/tools/strings.test.mjs`: literal bound 1800 → 1900.
+  - The `proposal-view`, `screen-read`, `screen-store` and `refresh` tools tests.
+  - `browser/task-schedule-actions.browser-spec.mjs`: bar roster.
+  - `Test/Descriptor.cls`, `Test/ReadBanner/Stopped.cls`.
+  - `Test/ToolEmit.cls`: the start's pair, which the sweep reddened.
+  - Epic 23 touched none of these files.
+- **Review.** 18 findings (Review Triage Log):
+  - patched: 3 medium entries across 2 root causes, and 6 low;
+  - rejected: 3 low, and 6 false;
+  - deferred: none.
+- **Follow-up review recommendation: `false`.**
+  - The two medium entries patched (`readNow`'s pass-through, the agent-path start) add tests only, and each red was demonstrated by mutation.
+  - No product code changed in the patch pass, so no unverified risk can be named.
+- **Verification fixes found by the sweep:**
+  - `ToolEmit` gains the start's `STARTRESOURCE` pair.
+  - `TaskManagerLive` reads the vendor's audit rows with `%NOINDEX` on the event predicates. The `Event` index lagged by 34–60 s (measured), which failed the audit leg in the sweep. With `%NOINDEX` a row is seen within 0.1 s.
+- **Verification (slot A, `ocupilot-ci`, one run at a time):**
+  - Passed:
+    - `npm test` (1,728 tools, 1,967 components; the tools file re-run after the patch);
+    - `check-objectscript` (0 problems) and `lint-docs` (0 issues);
+    - bundle 2.31 MB.
+  - Targeted ObjectScript: `TaskManagerTools`, `TaskManagerLive` (5 tests), `TaskRowWire`, `Findings`, `ToolEmit` and `ScreenRead` green (runs 21474–21477, 21860–21862, 21865–21866).
+  - Browser, rebuilt and redeployed: `home-findings` 5/5 and `task-schedule-actions` 4/4.
+    - `tasks` passes its Story 16.11 legs, including DW-1337 in both themes.
+    - Its three Task history legs time out searching for the demo task's install-time run. The throwaway is 10 days old, so that run falls outside the default window (instance-age residue). Its history read answers in 0.08 s.
+  - Full sweep: 382 classes, 2,951 tests, 8 failed.
+    - `TaskManagerLive` and `ToolEmit` failed and are fixed above.
+    - The rest is named residue: `WireSecurityRead` task history (DW-1425/DW-1468), `TaskHistory` 3, `Retention` 1, and `PathPortInstance`'s iristemp.
+    - 22 classes did not run because their arming variables are outside the shim's four.
+  - Eleven mutations are recorded under Verification: one for each of AC1–AC9, and a second for AC3 and for AC5. Each was reverted, with the tree byte-identical afterwards.
+- **Residual risks.**
+  - AD-9's unescalated start is observed only through `%All` callers.
+  - The command box lists Start ungated in states where no banner raises it. The route still refuses it, naming the pair.
+  - The Task Manager on `ocupilot-ci` is left running as `TASKMGR`.

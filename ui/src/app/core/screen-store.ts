@@ -10,15 +10,15 @@
  * and survive leaving and returning to the screen -- and a sign-out (Story 15.5, AD-50): the rate
  * and the others are two rows on the instance, keyed by this screen's route (Home's rate by
  * `HOME_REFRESH_NAME`), adopted on the
- * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
+ * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `bannerRequires`, `lastUpdate`, `selection`, `active`,
  * `changed`, `refusal`, `checked` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
  * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
  * have since changed is worse than none, and a remembered `lastUpdate` would claim a freshness the
  * screen does not have.
  *
- * **A tick writes exactly four of them** (`applyTick`): `data`, `truncated`, `banner` and
- * `lastUpdate`.
+ * **A tick writes exactly five of them** (`applyTick`): `data`, `truncated`, `banner`,
+ * `bannerRequires` and `lastUpdate`.
  * The rest are untouched by construction rather than by care, which is what makes "sort, filter,
  * selection, scroll and max rows survive every tick" a property of this method rather than of
  * every caller.
@@ -120,6 +120,7 @@ export class ScreenStore {
   private rows: readonly ScreenRow[] = [];
   private truncatedFlag = false;
   private bannerKey = '';
+  private bannerRequiresPair = '';
   private refusalText = '';
   private lastUpdateAt: Date | null = null;
   private selected: readonly string[] = [];
@@ -252,6 +253,15 @@ export class ScreenStore {
     return this.bannerKey;
   }
 
+  /**
+   * The first pair the caller lacks for the raised banner case's action, as `resource:permission`,
+   * `''` for none (Story 16.11, AD-5). The instance evaluates it at each read, beside the banner, so
+   * it is written by `applyTick` with it and never set by the client.
+   */
+  bannerRequires(): string {
+    return this.bannerRequiresPair;
+  }
+
   lastUpdate(): Date | null {
     return this.lastUpdateAt;
   }
@@ -280,14 +290,15 @@ export class ScreenStore {
   }
 
   /**
-   * Record one read. The four slots a re-fetch owns, and no others: a tick that also cleared
+   * Record one read. The five slots a re-fetch owns, and no others: a tick that also cleared
    * the selection or reset the scroll would be visible to the user, which is what "refresh is
    * silent" forbids (EXPERIENCE.md "**Auto-refresh controls.** On Processes").
    */
-  applyTick(rows: readonly ScreenRow[], truncated: boolean, banner: string, at: Date): void {
+  applyTick(rows: readonly ScreenRow[], truncated: boolean, banner: string, at: Date, bannerRequires = ''): void {
     this.rows = rows;
     this.truncatedFlag = truncated;
     this.bannerKey = banner;
+    this.bannerRequiresPair = bannerRequires;
     this.lastUpdateAt = at;
     this.notify();
   }
@@ -304,6 +315,7 @@ export class ScreenStore {
     this.rows = [];
     this.truncatedFlag = false;
     this.bannerKey = '';
+    this.bannerRequiresPair = '';
     this.refusalText = '';
     this.lastUpdateAt = null;
     this.selected = [];

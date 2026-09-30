@@ -253,6 +253,9 @@ services:
       # classes: WireAreaAnyScreen
       # The language server editor's class also creates, edits, starts, stops and deletes probe servers.
       # classes: LanguageServerEditorWire
+      # The Task Manager classes also suspend, resume, stop and start the Task Manager and act on a
+      # probe purge task as their principals.
+      # classes: TaskManagerLive, TaskRowWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -327,6 +330,10 @@ services:
       # Task export and import's classes export probe tasks to files under the first allowed
       # directory and import them back, then delete every task named OcuP164* and that directory.
       # classes: TaskTransfer, TaskTransferLive
+      # The Task Manager classes suspend, resume, stop and start this instance's Task Manager and
+      # restore it running as TASKMGR on every exit; the row class suspends, resumes and deletes a
+      # probe purge task it creates, never running it.
+      # classes: TaskManagerLive, TaskRowWire
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted

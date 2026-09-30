@@ -11,7 +11,8 @@
 /// this block against <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class>'s before driving
 /// it, so a fixture that drifted from the shipped mapping pins nothing.</p>
 /// <p>Its own package, enumerated by no registry, so the production roster and the tool registry
-/// are unchanged by it.</p>
+/// are unchanged by it. It declares the two row actions its banner cases name, which no tool
+/// carries, so its read answers no <code>bannerRequires</code>.</p>
 Class OcuPilot.Test.ReadBanner.Stopped Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -34,7 +35,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["Name"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "resumemanager", "selfProtection": ""}, {"id": "startmanager", "selfProtection": ""}],
   "emptyStateKey": "taskListEmpty",
   "commandAliases": [],
   "classicPage": "",
@@ -55,8 +56,8 @@ XData Declaration
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
     "field": "Status",
     "cases": [
-      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"},
-      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning"}
+      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": "resumemanager"},
+      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning", "action": "startmanager"}
     ]
   },
   "toolIdentifier": "tasks.bannerstopped"

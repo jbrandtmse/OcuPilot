@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 
 import { AllowedDirectoriesStore } from '../../core/allowed-directories';
 import { ApiService } from '../../core/api';
-import { ScreenActions, TASK_IMPORT_ACTION_ID } from '../../core/screen-actions';
+import { ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -14,6 +14,10 @@ import {
   TASK_EXPORT,
   TASK_IMPORT,
   TASK_IMPORT_TARGET,
+  TASK_MANAGER_RESUME,
+  TASK_MANAGER_START,
+  TASK_MANAGER_SUSPEND,
+  TASK_MANAGER_TARGET,
   TASK_SCHEDULE,
   type ActionSink,
 } from '../../shell/screen-action-handler';
@@ -57,6 +61,12 @@ function fill(template: string, values: Readonly<Record<string, string>>): strin
  * task, "Nothing was imported: task <task> cannot be created here. <reason>" (AD-39). An applied
  * write closes the dialog and the status line reads its done line; the list re-reads on the change
  * event the handler publishes (AD-14).
+ *
+ * **The Task Manager's three actions are this page's too** (Story 16.11): Suspend Task Manager under
+ * the screen-level `TASK_MANAGER_SUSPEND_ACTION_ID`, and Resume and Start under their declared ids,
+ * which the banner draws when its raised case names one. Each starts the handler's own flow on the
+ * one target the tools read, reporting to the list's store: Suspend opens its warning dialog, and the
+ * other two are sent at once. The banner follows the change event's re-read (AD-14, AD-43).
  */
 @Component({
   selector: 'app-task-schedule-page',
@@ -142,6 +152,9 @@ export class TaskSchedulePage {
     const stops = [
       this.actions.register(TASK_SCHEDULE, TASK_EXPORT, () => this.onOpenExport()),
       this.actions.register(TASK_SCHEDULE, TASK_IMPORT_ACTION_ID, () => this.onOpenImport()),
+      this.actions.register(TASK_SCHEDULE, TASK_MANAGER_SUSPEND_ACTION_ID, () => this.onTaskManager(TASK_MANAGER_SUSPEND)),
+      this.actions.register(TASK_SCHEDULE, TASK_MANAGER_RESUME, () => this.onTaskManager(TASK_MANAGER_RESUME)),
+      this.actions.register(TASK_SCHEDULE, TASK_MANAGER_START, () => this.onTaskManager(TASK_MANAGER_START)),
     ];
     inject(DestroyRef).onDestroy(() => {
       for (const stop of stops) stop();
@@ -171,6 +184,15 @@ export class TaskSchedulePage {
     if (selected === '') return;
     this.exportTarget.set({ id: selected, name: this.nameOf(selected) });
     this.openDialog('export');
+  }
+
+  /**
+   * Start one of the Task Manager's actions on its one target, reporting to the list's store, never
+   * over one of this page's dialogs or while a send is in flight.
+   */
+  protected onTaskManager(actionId: string): void {
+    if (!this.canOpen() || this.store === null) return;
+    this.handler.startFor(TASK_SCHEDULE, actionId, TASK_MANAGER_TARGET, {}, this.store);
   }
 
   /** Open the import dialog, never over another dialog and never while a send is in flight. */

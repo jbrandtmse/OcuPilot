@@ -42,6 +42,7 @@ const {
   CONSEQUENCE_COPYMAPPINGS,
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_PYTHONCUSTOM,
+  CONSEQUENCE_TASKMANAGERSUSPEND,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -260,6 +261,19 @@ test("the language server update's Python consequence code is the tool's own and
   assert.ok(declared, 'LanguageServerUpdate.cls declares its consequence code');
   assert.equal(CONSEQUENCE_PYTHONCUSTOM, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_PYTHONCUSTOM), STRINGS.languageServerPythonConsequence);
+});
+
+// Story 16.11: the agent's Task Manager suspend carries the suspend tool's consequence code, read here
+// from `TaskManagerSuspend.cls` rather than restated, and the card states the warning dialog's own
+// consequence sentence.
+//
+// Mutation (Rule 19): drop the TASK.MANAGER.SUSPEND branch from `consequenceSentence` -> this goes red.
+test("the Task Manager suspend's consequence code is the tool's own and resolves to the warning's sentence", () => {
+  const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'TaskManagerSuspend.cls'), 'utf8');
+  const declared = /^Parameter CONSEQUENCESUSPEND = "([^"]+)";/m.exec(source);
+  assert.ok(declared, 'TaskManagerSuspend.cls declares its consequence code');
+  assert.equal(CONSEQUENCE_TASKMANAGERSUSPEND, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_TASKMANAGERSUSPEND), STRINGS.taskManagerSuspendConsequence);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

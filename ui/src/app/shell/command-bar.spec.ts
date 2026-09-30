@@ -8,7 +8,14 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
+import {
+  DOWNLOAD_CSV_ACTION_ID,
+  PERMISSION_CHECK_ACTION_ID,
+  REFRESH_ACTION_ID,
+  ScreenActions,
+  TASK_IMPORT_ACTION_ID,
+  TASK_MANAGER_SUSPEND_ACTION_ID,
+} from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -1295,6 +1302,50 @@ describe('the command bar', () => {
     stop();
     fixture.detectChanges();
     expect(importButton()).toBeNull();
+  });
+
+  it('Story 16.11: the bar draws Suspend Task Manager at screen level, and no action a banner case offers', () => {
+    // Mutation (Rule 19): drop `hasTaskManagerSuspendAction` from the template -> the drawn assertion
+    // goes red; drop the banner filter from `resolved` -> Resume and Start are drawn as row actions.
+    const banner = {
+      source: { port: 'admin' as const, endpoint: 'Task.Manager', type: 'GET' as const },
+      field: 'Status',
+      cases: [
+        { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' as const, action: 'resumemanager' },
+        { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning' as const, action: 'startmanager' },
+      ],
+    };
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.TaskScheduleList',
+      banner,
+      rowActions: [
+        { id: 'export', selfProtection: '' },
+        { id: 'suspendmanager', selfProtection: '' },
+        { id: 'resumemanager', selfProtection: '' },
+        { id: 'startmanager', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'export', () => {});
+    actions.register(declared.descriptor, 'resumemanager', () => {});
+    actions.register(declared.descriptor, 'startmanager', () => {});
+    fixture.detectChanges();
+    const suspend = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-task-manager-suspend');
+    expect(suspend()).toBeNull();
+    const labels = (): string[] =>
+      Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action') as NodeListOf<HTMLElement>).map((node) => node.textContent?.trim() ?? '');
+    expect(labels()).not.toContain(STRINGS.taskManagerResumeAction);
+    expect(labels()).not.toContain(STRINGS.taskManagerStartAction);
+    expect(labels()).toContain(STRINGS.taskExportAction);
+    let ran = 0;
+    actions.register(declared.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID, () => {
+      ran += 1;
+    });
+    fixture.detectChanges();
+    expect(suspend()?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendAction);
+    expect(suspend()?.getAttribute('aria-disabled')).toBeNull();
+    suspend()?.click();
+    expect(ran).toBe(1);
   });
 
   // --- Story 16.23: Download CSV --------------------------------------------------------------

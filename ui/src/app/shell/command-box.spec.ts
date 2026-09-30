@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -653,6 +653,50 @@ describe('the command box', () => {
     stop();
     chord();
     expect(option()).toBeNull();
+  });
+
+  it('Story 16.11: the Task Manager\u2019s three actions are listed at screen level, the raised one held by the read\u2019s requirement', () => {
+    // Mutation (Rule 19): drop the banner branch from `actionCandidates` -> Resume and Start are
+    // listed as row actions held by "Select a row first", and the screen-level assertions go red.
+    const schedule = screen('tasks/schedule', 'taskListLabel', 'tasks', {
+      descriptor: 'OcuPilot.Screen.Descriptor.TaskScheduleList',
+      rowActions: [
+        { id: 'suspendmanager', selfProtection: '' },
+        { id: 'resumemanager', selfProtection: '' },
+        { id: 'startmanager', selfProtection: '' },
+      ],
+      banner: {
+        source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+        field: 'Status',
+        cases: [
+          { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'resumemanager' },
+          { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning', action: 'startmanager' },
+        ],
+      },
+    });
+    navigation.current = schedule;
+    const ran: string[] = [];
+    for (const id of [TASK_MANAGER_SUSPEND_ACTION_ID, 'resumemanager', 'startmanager']) actions.register(schedule.descriptor, id, () => ran.push(id));
+    chord();
+    const option = (id: string): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${id}`);
+    expect(option(TASK_MANAGER_SUSPEND_ACTION_ID)?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendAction);
+    expect(option('resumemanager')?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerResumeAction);
+    expect(option('startmanager')?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerStartAction);
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-row-resumemanager')).toBeNull();
+    for (const id of [TASK_MANAGER_SUSPEND_ACTION_ID, 'resumemanager', 'startmanager']) {
+      expect(option(id)?.getAttribute('aria-disabled')).toBeNull();
+      expect(option(id)?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    }
+
+    const store = TestBed.inject(ScreenStores).for(schedule.descriptor, schedule.refreshRates);
+    store.applyTick([], false, 'taskManagerStoppedBanner', new Date(), '%Admin_Secure:USE');
+    type('task manager');
+    expect(option('startmanager')?.getAttribute('aria-disabled')).toBe('true');
+    expect(option('startmanager')?.textContent).toContain(STRINGS.privilegeRequiresResource.replace('<resource>', '%Admin_Secure:USE'));
+    expect(option('resumemanager')?.getAttribute('aria-disabled')).toBeNull();
+    option('resumemanager')?.click();
+    fixture.detectChanges();
+    expect(ran).toEqual(['resumemanager']);
   });
 
   it('Integration AC: Escape closes the box, restores focus, and leaves the side bar alone', () => {

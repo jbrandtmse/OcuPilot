@@ -604,7 +604,7 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
         ; vendor's own word for status 0, and a stopped Task Manager runs no scheduled task either
         ; -- the single-case banner left that state silent.
         Do $$$AssertEquals(tBanner.field, "Status", "over the one field the manager reports")
-        Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings")
+        Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning"",""action"":""resumemanager""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning"",""action"":""startmanager""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings, each offering its remedy (Story 16.11)")
         Do $$$AssertEquals(tBanner.cases.%Size(), 2, "and Running, the third value the vendor answers, raises none")
 
         ; DW-304: the comparison above is against a typed copy of the same three words, which

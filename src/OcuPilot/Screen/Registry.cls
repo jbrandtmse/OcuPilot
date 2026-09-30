@@ -899,7 +899,7 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tProblem = ..BannerCasesProblem(tBanner)
+        Set tProblem = ..BannerCasesProblem(tBanner, pDeclaration)
         If tProblem '= "" Quit
 
         Set tReadType = pDeclaration.%GetTypeOf("read")
@@ -913,12 +913,14 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
 }
 
 /// <p>What is wrong with <var>pBanner</var>'s <code>cases</code>, or <code>""</code> (DW-270): a
-/// non-empty array of objects carrying only <code>equals</code>, <code>messageKey</code> and
-/// <code>severity</code>, each <code>equals</code> and <code>messageKey</code> a non-empty string,
-/// each <code>equals</code> declared once -- a repeated value would make the second case
-/// unreachable, since <method>OcuPilot.Screen.Read.BannerKey</method> raises the first that matches
-/// -- and each <code>severity</code> one of <parameter>BANNERSEVERITIES</parameter>.</p>
-ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
+/// non-empty array of objects carrying only <code>equals</code>, <code>messageKey</code>,
+/// <code>severity</code> and an optional <code>action</code>, each <code>equals</code> and
+/// <code>messageKey</code> a non-empty string, each <code>equals</code> declared once -- a repeated
+/// value would make the second case unreachable, since <method>OcuPilot.Screen.Read.BannerKey</method>
+/// raises the first that matches -- each <code>severity</code> one of
+/// <parameter>BANNERSEVERITIES</parameter>, and each <code>action</code> the id of one of
+/// <var>pDeclaration</var>'s <code>rowActions</code> (AD-5, Story 16.11).</p>
+ClassMethod BannerCasesProblem(pBanner As %DynamicObject, pDeclaration As %DynamicObject) As %String [ Private ]
 {
     If pBanner.%GetTypeOf("cases") '= "array" Quit "banner.cases is not an array of banner cases"
     Set tCases = pBanner.%Get("cases")
@@ -934,7 +936,7 @@ ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
             Set tProblem = tWhere _ " is not an object declaring its equals, messageKey and severity"
             Quit
         }
-        Set tProblem = ..UnknownKeyProblem(tCase, tWhere, $ListBuild("equals", "messageKey", "severity"))
+        Set tProblem = ..UnknownKeyProblem(tCase, tWhere, $ListBuild("equals", "messageKey", "severity", "action"))
         If tProblem '= "" Quit
         For tKey = "equals", "messageKey" {
             If (tCase.%GetTypeOf(tKey) '= "string") || (tCase.%Get(tKey) = "") {
@@ -953,8 +955,33 @@ ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
             Set tProblem = tWhere _ " severity '" _ tCase.%Get("severity") _ "' is not one of " _ ..#BANNERSEVERITIES
             Quit
         }
+        Set tActionType = tCase.%GetTypeOf("action")
+        If tActionType = "unassigned" Continue
+        If tActionType '= "string" {
+            Set tProblem = tWhere _ " action is not a string naming one of rowActions"
+            Quit
+        }
+        If '$ListFind(..RowActionIdsOf(pDeclaration), tCase.%Get("action")) {
+            Set tProblem = tWhere _ " action '" _ tCase.%Get("action") _ "' is not one of rowActions"
+            Quit
+        }
     }
     Quit tProblem
+}
+
+/// <p>The <code>id</code> of each of <var>pDeclaration</var>'s <code>rowActions</code> that carries a
+/// string one, as a <class>%List</class>.</p>
+ClassMethod RowActionIdsOf(pDeclaration As %DynamicObject) As %List [ Private ]
+{
+    Set tIds = ""
+    If '$IsObject(pDeclaration) Quit tIds
+    Set tActions = pDeclaration.%Get("rowActions")
+    If '$IsObject(tActions) || 'tActions.%IsA("%Library.DynamicArray") Quit tIds
+    Set tIterator = tActions.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tAction) {
+        If $IsObject(tAction) && tAction.%IsA("%Library.DynamicObject") && (tAction.%GetTypeOf("id") = "string") Set tIds = tIds _ $ListBuild(tAction.%Get("id"))
+    }
+    Quit tIds
 }
 
 /// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
