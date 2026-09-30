@@ -58,6 +58,14 @@ Parameter NEWVOLUMETHRESHOLDSHAPE = "DATABASE.NEWVOLUMETHRESHOLD.SHAPE";
 
 Parameter REASONMEGABYTESSHAPE = "Enter a whole number of megabytes, 0 or more.";
 
+/// <p>Violation code (the owner's database-directory rule at AD-21's sixth case, DW-1860): a file edit
+/// that leaves a new volume threshold above 0 on a database whose new volume directory is the manager
+/// directory -- IRISSYS on a stock instance -- where the instance's own expansion would add volume
+/// files.</p>
+Parameter NEWVOLUMETHRESHOLDMANAGER = "DATABASE.NEWVOLUMETHRESHOLD.MANAGER";
+
+Parameter REASONNEWVOLUMETHRESHOLDMANAGER = "This database's new volume directory is the manager directory, which holds the instance's own files, so its new volume threshold must be 0. Set another new volume directory first.";
+
 /// <p>Violation code: a resource name that does not begin with <code>%DB_</code> (the vendor's 896,
 /// mapped at the port).</p>
 Parameter RESOURCESHAPE = "DATABASE.RESOURCE.SHAPE";
@@ -157,7 +165,7 @@ Parameter REASONVOLUMEDIRECTORYMANAGER = "This database's new volume directory i
 /// <p>Every field-level code, as a <class>%List</class>, in the order the form lists its rules.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE)
+    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#NEWVOLUMETHRESHOLDMANAGER, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for a code this class does not
@@ -172,6 +180,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#DIRECTORYINUSE Quit ..#REASONDIRECTORYINUSE
     If pCode = ..#SIZESHAPE Quit ..#REASONSIZESHAPE
     If (pCode = ..#MAXSIZESHAPE) || (pCode = ..#EXPANSIONSIZESHAPE) || (pCode = ..#NEWVOLUMETHRESHOLDSHAPE) Quit ..#REASONMEGABYTESSHAPE
+    If pCode = ..#NEWVOLUMETHRESHOLDMANAGER Quit ..#REASONNEWVOLUMETHRESHOLDMANAGER
     If pCode = ..#RESOURCESHAPE Quit ..#REASONRESOURCESHAPE
     If pCode = ..#RESOURCEABSENT Quit ..#REASONRESOURCEABSENT
     If pCode = ..#INUSE Quit ..#REASONINUSE

@@ -1382,10 +1382,17 @@ ClassMethod MayDeleteTask(pGuid As %String) As %Boolean [ Private ]
 /// state, and whose <code>TimeQueued</code> is earlier than that many hours ago on the instance's
 /// clock, which is the clock the vendor queues by. A row this port did not queue is never
 /// touched.</p>
-/// <p><b>Caller contract:</b> one bound-parameter <code>DELETE</code> in <code>%SYS</code> (AD-16,
-/// AD-21), as the caller, who must be able to delete from the vendor's table -- the retention task's
-/// user. <var>pHours</var> is a whole number above zero. The status is the delete's own, and nothing
-/// is logged here: <method>OcuPilot.Kernel.Retention.Sweep</method> logs a failed step.</p>
+/// <p><b>Each row is deleted as an object, never by SQL</b> (DW-1859). The vendor's table runs a SQL
+/// delete trigger that attaches the row's work-queue token; the port's own finished read has already
+/// ended that queue, so the attach logs ERROR #7846 at severity 2 for every row, which the instance
+/// copies to <code>alerts.log</code> and counts toward its Warning state (measured on this build). An
+/// object delete does not run the trigger. A row whose result was never read keeps its queue until
+/// the vendor's own ten-day detach timeout (inference from the vendor's queueing code).</p>
+/// <p><b>Caller contract:</b> one bound-parameter <code>SELECT</code> and an object delete per row it
+/// answers, in <code>%SYS</code> (AD-16, AD-21), as the caller, who must be able to delete from the
+/// vendor's table -- the retention task's user. <var>pHours</var> is a whole number above zero. A row
+/// that fails to delete does not stop the others; the status is the first failure, and nothing is
+/// logged here: <method>OcuPilot.Kernel.Retention.Sweep</method> logs a failed step.</p>
 ClassMethod SweepOwnTasks(pHours As %Integer = 24) As %Status
 {
     Set tSC = $$$OK
@@ -1401,10 +1408,20 @@ ClassMethod SweepOwnTasks(pHours As %Integer = 24) As %Status
         Set tCutoff = $ZDateTime((tSeconds \ 86400) _ "," _ (tSeconds # 86400), 3)
         Set tStatement = ##class(%SQL.Statement).%New()
         Set $NAMESPACE = "%SYS"
-        Set tSC = tStatement.%Prepare("DELETE FROM " _ tTable _ " WHERE %EXACT(TaskName) [ ? AND %EXACT(State) IN (?, ?, ?) AND TimeQueued < ?")
+        Set tSC = tStatement.%Prepare("SELECT %EXACT(GUID) AS GUID FROM " _ tTable _ " WHERE %EXACT(TaskName) [ ? AND %EXACT(State) IN (?, ?, ?) AND TimeQueued < ?")
         If $$$ISOK(tSC) {
             Set tResult = tStatement.%Execute(tLabel, $Parameter(..#ASYNCTASKCLASS, "STATEFINISHED"), $Parameter(..#ASYNCTASKCLASS, "STATEFAILED"), $Parameter(..#ASYNCTASKCLASS, "STATECANCELED"), tCutoff)
             If tResult.%SQLCODE < 0 Set tSC = $$$ERROR($$$GeneralError, "the async task rows could not be swept: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+            ; Collected first, so no delete runs while the result set still walks the table.
+            Set tGuids = ""
+            While $$$ISOK(tSC) && tResult.%Next() {
+                Set tGuids = tGuids _ $ListBuild(tResult.%Get("GUID"))
+            }
+            Set tPointer = 0
+            While $ListNext(tGuids, tPointer, tGuid) {
+                Set tDeleteSC = $ClassMethod(..#ASYNCTASKCLASS, "%DeleteId", tGuid)
+                If $$$ISERR(tDeleteSC) && $$$ISOK(tSC) Set tSC = tDeleteSC
+            }
         }
         Set tResult = ""
         Set $NAMESPACE = tOrigNS

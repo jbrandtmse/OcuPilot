@@ -82,7 +82,7 @@ Method TestTheFormIsBuiltUnlistedWithTheListsPairs()
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a sentence")
         Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ ##class(OcuPilot.Area.OsMgmt.DatabaseRules).FieldOf($List(tCodes, tI))
     }
-    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals", "each code names its own field, Story 18.4's operation arguments among them")
+    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals", "each code names its own field, Story 18.4's operation arguments and DW-1860's threshold among them")
     Do $$$AssertEquals(##class(OcuPilot.Area.OsMgmt.DatabaseRules).Rules().%Size(), $ListLength(tCodes), "and the form read publishes one rule per code")
     For tCode = "DATABASE.INUSE", "DATABASE.REMOTE" {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "", tCode _ ": the envelope code carries a sentence too")
