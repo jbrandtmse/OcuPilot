@@ -2,7 +2,7 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f101494cfb7b26aaaa393cfec57ede3f5fdb19e9'
 baseline_commit: 'f101494cfb7b26aaaa393cfec57ede3f5fdb19e9'
 review_loop_iteration: 0
@@ -179,6 +179,8 @@ deferred: []
   - **Red:** in `Test/WebApp.cls`, create a namespace configuration over two existing databases (Globals `USER`, Routines `HSCUSTOM`). Its derivation must include the vendor's own `$Piece($zu(90,21,ns),"^",4)`; today it returns only `%DB_HSCUSTOM`. Remove the namespace afterwards.
   - Files: `Install/Installer.cls` (comments at :2248-2253, :2285-2305 and :2333), `Install/Roster.cls:30`, `Test/WebApp.cls` (:77, :536, :563), `docs/DEVELOPMENT.md:293-294`. ADs: AD-21 (amended below), AD-9, AD-17, AD-45.
   - AC: Given a namespace whose globals and routines databases differ, when the installer derives the anonymous floor, then it grants read on both resources and the anonymous request is not refused 403.
+
+- [ ] [CI] browser shard 1/3 (run 36720188412, job 109903017094): `seeded-injection.browser-spec.mjs:212` "channels" leg is red on 323948ad. It expands the roles read's tool card and requires the seeded role's marker in the card text; DW-1210 now cuts that text at 4,095 characters and the seed's row lies past the cut. Keep the spec's intent (the seed reaches the model only as tool-result text: no proposal, no navigation, nothing off the origin) and DW-1210's cut; make the leg read the seed within the cut (for example by narrowing the scripted read to the seeded role with the read's own criteria) or assert on what the model received, and sweep every other browser spec that asserts on a tool card's result text for the same dependency — https://github.com/jbrandtmse/OcuPilot/actions/runs/36720188412/job/109903017094
 
 ### Batch c: security
 
