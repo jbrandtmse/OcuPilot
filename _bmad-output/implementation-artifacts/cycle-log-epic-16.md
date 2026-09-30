@@ -528,3 +528,6 @@
 2026-09-30T00:38:33Z	Epic 16	ci_resolved	story=owner_fix_DW-1768 run=36647650086 result=failure(attempt1) job=browser_shard_1(refused-tool_AC2_30s:DW-1780_flake,green_locally) action=rerun_failed_jobs
 2026-09-30T00:38:33Z	Epic 16	owner_fix_implemented	item=DW-1852(by=merge_gate) agent=dw1852-tab-group-area-implement-1 model=opus tests=Navigation_14(r20930),WireOAuthRead_6(r20931),WireAreaAnyScreen_3(r20924),Wire_20,Descriptor_60,WireSecurityRead_24/25(residue),tools_1717,components_1902,browser_oauth_6/6,security_5/5 mutations=7 review=1_read-only_layer(med_spine_by_design,3_low_patched)
 2026-09-30T00:38:33Z	Epic 16	spine_updated	ad=AD-8(tab_group_counts_through_any_tab),Deferred(DW-1768_row),Conventions(listed_screens_row) reason=decision_sheet(DW-1852) by=runner story=none lint=ok
+2026-09-30T01:02:39Z	Epic 16	ci_resolved	story=owner_fix_DW-1768 run=36647650086 result=success(attempt2) head=7c721b34
+2026-09-30T01:02:39Z	Epic 16	owner_fix_boundary	item=DW-1768 head=7c721b34 ci_run=36647650086 ci=success(attempt2) reported_to=main
+2026-09-30T01:02:39Z	Epic 16	owner_fix_pushed	item=DW-1852 sha=00711084 run=36653198545 note=carries_ef4bb312(16.25_spec_gate_bookkeeping)
