@@ -8560,6 +8560,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
 - 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured
+- 2026-09-30T19:41:42Z status=routed owner=16-13-the-service-editor by=merge_gate note=decided (orchestrator 2026-09-30): re-list before each delete (LockPort, pinned by LockRecordPort) - a stale listed id could reach a different lock; Epic 16 fixes it as its own commit right after the 1.0.4 cut, before 16.13's implement
 ### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
@@ -8584,6 +8585,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
 - evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
 - 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
+- 2026-09-30T19:41:42Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=6c893da1 (run 36758817996 green; staging 8320a038 run 36762284179 green): the key form auto-opens only on the first sign-in, Cancel goes to Home, recorded per user in account preferences; edge accepted by=merge_gate: a first sign-in with a definition enabled shows the form once later, when none is
 
 ### DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state
 - source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
