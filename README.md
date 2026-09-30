@@ -55,7 +55,7 @@ instance. Sign in as `demo` with the password `ocupilot-demo`. Or watch it first
 - To see how OcuPilot treats a user with fewer privileges, sign in as `operator` with the password
   `ocupilot-operator`: an operator who runs tasks and processes but holds no security privileges.
 
-![The agent proposes enabling /csp/myapp: the proposal card beside the Web applications list shows the before-and-after comparison, the agent's rationale and expected impact, how to reverse the change, and the privilege it needs.](docs/images/02-proposal.png)
+![The agent proposes enabling /csp/myapp: the proposal card beside the Web applications list shows the before-and-after comparison, the agent's rationale and expected impact, how to reverse the change, the privilege it needs, and Give me the script instead.](docs/images/02-proposal.png)
 
 <details>
 <summary><b>More screenshots</b></summary>
@@ -83,6 +83,11 @@ Confirm and what is never sent to the model, read from the rules the instance en
 permission that grants it, and **Check permission** for any user or role.
 
 ![The user editor's Effective privileges tab for operator, listing each resource and the role that grants it.](docs/images/14-effective-privileges.png)
+
+**Disks, not only a list of them** - mount, dismount, truncate, compact and defragment a database,
+and a three-step integrity check with its own log.
+
+![The Check integrity wizard with two databases selected, followed by its Globals and Report steps.](docs/images/15-integrity-check.png)
 
 **Asking about the screen you are on** - the agent reads the task schedule and history and explains
 what needs attention.
@@ -139,10 +144,10 @@ change and says what would be needed; Home marks the screens this user may not o
   accounts, OcuPilot's own applications, roles, resources and processes. An administrator can stop
   the agent everywhere with a kill switch, hold it read-only, switch off individual agent writes,
   and cap how many turns each user runs an hour; anyone can make the agent read-only for
-  themselves. Four agent actions ship switched off - deleting a local database, deleting a
-  namespace, importing tasks and purging the audit database - and an administrator turns them on
-  under **Agent co-pilot → Governance policy**. The **Guardrails** page shows all of it in one
-  place.
+  themselves. Twelve agent actions ship switched off - deleting a local database, deleting a
+  namespace, importing tasks, purging the audit database and the eight disk operations - and an
+  administrator turns them on under **Agent co-pilot → Governance policy**. The **Guardrails** page
+  shows all of it in one place.
 - **Findings you can fix.** Home checks for open web applications, an open monitoring API, accounts
   holding `%All`, certificates that expire within 30 days, auditing switched off, dismounted or
   nearly full databases, the Task Manager's state and suspended tasks. Where a fix exists, **Fix
@@ -160,14 +165,17 @@ change and says what would be needed; Home marks the screens this user may not o
 | Web applications | Web applications, web sessions, REST API explorer, OpenAPI document viewer | Create, edit, enable, disable and delete applications; end web sessions; browse every REST application's endpoints, send a request from its OpenAPI document and copy it as curl |
 | Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions, enable and disable services; see a user's effective privileges, and check whether a user or role holds a permission and through which role |
 | Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
-| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; pause, resume and cancel background tasks |
-| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, namespaces, devices | Suspend, resume and terminate processes; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; edit devices; free space per database |
-| Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry |
+| Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; suspend and resume the Task Manager itself; pause, resume and cancel background tasks |
+| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, integrity check and its log, namespaces, devices, external language servers | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; edit devices; free space per database; create, edit, delete, start and stop external language servers and read their activity log |
+| Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry, which it reads alongside the rest of the page |
 
 Two more areas sit beside the six. **Home** shows the instance's performance, refreshing itself,
 and its findings. **Agent co-pilot** holds the agent's definitions, switches and governance policy
 for administrators, and for everyone the Guardrails page, your transcripts, and the agent audit
 ledger of each model call, tool call and confirmed write.
+
+An area opens when you may use any of its screens, and each screen still checks your own
+privileges.
 
 ## Quick start
 
@@ -194,7 +202,8 @@ run beside an IRIS container you already have. The classic Management Portal sta
 ### Connect a model
 
 The first time an administrator signs in with no model configured, OcuPilot opens the agent
-definition form.
+definition form. It opens only that once: **Cancel** takes you to Home, and every screen works
+without a model.
 
 1. Enter a **Name**, choose a **Provider** and keep its default **Model** or type another.
 2. Paste the **API key** (see [Get a model key](#get-a-model-key-in-two-minutes)).
@@ -246,6 +255,10 @@ switched off, on an update as on a new install, unless you already set them expl
 themselves still do all four; to let the agent propose them, turn them on under **Agent co-pilot →
 Governance policy**.
 
+In 1.0.4, the agent's eight disk operations - mount, dismount, truncate, compact, defragment,
+expand, grow and the integrity check - start switched off in the same way. The screens do all eight,
+and settings you already made are kept.
+
 ## Get a model key in two minutes
 
 | Provider | Default model | Where to get a key |
@@ -293,6 +306,11 @@ user; otherwise it prints the one command that grants it. OcuPilot needs IRIS or
 **2026.2 or later** and IPM 0.10.0 or later. On plain IRIS Community, which has no `HSCUSTOM`
 namespace, the container installs into `USER`.
 
+OcuPilot signs each person in with their own IRIS account, and every screen checks that account's
+privileges. An account whose only role is `%Manager` also needs read access to the database of the
+namespace OcuPilot is installed in, for example `%DB_HSCUSTOM`; without it, every request is
+refused.
+
 ## What installing OcuPilot changes
 
 OcuPilot is an administration tool, so it says plainly what it adds to an instance.
@@ -331,7 +349,7 @@ Uninstalling (`zpm "uninstall ocupilot"`) removes what the installer created.
    instance now holds the new values; the panel shows the change done and audit-marked, confirmed by
    you.
 
-   ![The Web applications list with /csp/myapp enabled and marked Changed, and the confirmed proposal in the panel.](docs/images/03-changed.png)
+   ![The Web applications list with /csp/myapp enabled and marked Changed with its read-back line, and the confirmed proposal in the panel.](docs/images/03-changed.png)
 
 5. **Open Logs → Audit database**, tick **Agent-marked events only** and press **Search**: the
    change is there as an `OcuPilot/Security/AgentWrite` event.
@@ -418,8 +436,8 @@ token and hidden values left as placeholders.
   portal in headless Chrome, compiles and smoke-tests on both IRIS Community and IRIS for Health
   Community, and builds and loads the IPM package offline. The two long suites each run across three
   containers at once, so a full run takes about 20 minutes.
-- **Tests:** 363 `%UnitTest` classes run inside IRIS; 97 Node test files and 134 Angular component
-  specs cover the client; 126 browser specs exercise the running portal.
+- **Tests:** 386 `%UnitTest` classes run inside IRIS; 98 Node test files and 147 Angular component
+  specs cover the client; 131 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question.
@@ -438,6 +456,15 @@ token and hidden values left as placeholders.
   look for the `container-start:` lines. `LOAD-FAILED` means a compile error, `STARTPATH-FAILED`
   names the install step that failed. A failed install is retried three times and then left
   stopped; fix the cause and run `docker compose up -d --wait` again.
+- **On Windows, the container stops at once with `set: Illegal option -`:** the clone checked the
+  start scripts out with Windows line endings. A clone of 1.0.4 or later is not affected. In a clone
+  made before 1.0.4, run this once from its folder after `git pull`, then start again; it replaces any
+  local edits in those three folders:
+
+  ```bash
+  git checkout HEAD -- scripts .githooks _bmad/scripts
+  ```
+
 - **Test connection says the model did not answer in time:** see the local-model note under
   [Get a model key](#get-a-model-key-in-two-minutes).
 - **Anthropic refuses the key:** create a key inside one workspace.
@@ -462,10 +489,9 @@ that carry Community Opportunity status:
 ## Known limitations
 
 - **One instance at a time.** OcuPilot manages the instance it is installed on.
-- **Not every portal page yet.** Remote databases, the disk operations (mount, compact, the
-  integrity check and the rest), journals, encryption, mirroring and Interoperability are still the
-  classic portal's; the LDAP and Kerberos and the service editors cover the common fields and link to
-  the classic page for the rest.
+- **Not every portal page yet.** Remote databases, journals, encryption, mirroring and
+  Interoperability are still the classic portal's; the LDAP and Kerberos and the service editors
+  cover the common fields and link to the classic page for the rest.
 - **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
@@ -486,12 +512,9 @@ that carry Community Opportunity status:
 New releases arrive every few days, each installed and tested on a clean machine before it reaches
 `main`. Next:
 
-- **Databases and disks:** remote databases, and mount, dismount, compact, defragment, expand and
-  the integrity check.
-- **The rest of system operation:** journals, licensing and ECP, encryption, superservers and
-  authentication options.
-- **The remaining editors:** the service editor and the LDAP and Kerberos editor in full, external
-  language servers, starting and suspending the Task Manager, and removing locks.
+- **The rest of system operation:** remote databases, journals, licensing and ECP, encryption,
+  superservers and authentication options.
+- **The remaining editors:** the service editor and the LDAP and Kerberos editor in full.
 - **Permissions and monitoring:** SQL privileges, the raw metrics, and a live log tail.
 
 After that, OcuPilot grows toward parity with the classic portal: a code and SQL explorer,
