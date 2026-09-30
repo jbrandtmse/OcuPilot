@@ -8328,6 +8328,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:04:25Z status=routed owner=burndown by=cr note=void 30 s half: run 36530303753 (dc34dc4a) predates 6bcc6d3b, a DW-1819 sighting; open cause is DW-1802 race
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8340,6 +8341,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
 - 2026-09-30T03:36:26Z status=routed owner=range-end-cleanup by=merge_gate note=restores the owner-approved decision-sheet line (into Story 23.2) that a union merge from OCU-1-epic18 placed before an older trailer
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 fixture listens once; linger leg r89 red/r90,r110 green; CI 36702722757
 
 ### DW-1846: Admin API behaviours in Database.Actions on 2026.2 that OcuPilot designs around: mount without %Admin_Secure:USE answers 500 #356; a queued action refused for privilege answers 202 and fails in the task; modify-size silently no-ops a shrink and clamps above MaxSize (logging a severity-2 alert); an integrity check on a non-database directory reports both no errors and errors; NewVolumeDirectory collisions answer 500 (#576, #575); deleting an AsyncTaskSysBackground row as an object leaves its %SYS.BackgroundTask row
 - source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint

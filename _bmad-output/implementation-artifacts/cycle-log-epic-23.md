@@ -84,3 +84,9 @@
 2026-09-30T10:30:45Z	Story 23.2	cr_complete	batch=a spawn_at=2026-09-30T10:03:00Z model=opus batch_verdict=clean resolved=6 fixed_at_source=6 by_design=0 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=17 high=0 med=1 low=19 rows=33 unresolved_high_med=0 clarifications=0 closing_sections_present=true layers=blind-hunter,edge-case-hunter,verification-gap,acceptance-auditor agent=a1c63229c3ae2783f subagent_tokens=405631 sprint=in-progress(further_batches)
 2026-09-30T10:30:45Z	Story 23.2	committed	batch=a sha=9cc37242 code=840ab37f,9cc37242 ci=pending run=36702722757 amendments=none
 2026-09-30T10:30:45Z	Story 23.2	smoke_complete	batch=a method=other result=pass iterations=1 defects_caught=0 evidence=LoadDir_ocupilot-b-ci_OK_errors=0_at_9cc37242;OAuthServerDiscover_6/6_run116;BackgroundTasksLive_7/7_run117 model=claude-opus-5-5
+2026-09-30T11:05:33Z	Story 23.2	ci_resolved	batch=a story=23.2 run=36702722757 head=9cc37242 result=success resolved_at=batch_boundary
+2026-09-30T11:05:33Z	Story 23.2	ledger_adjudicated	batch=a owned=2 resolved=2(DW-1829,DW-1831) reowned=0 terminal=0 slice_after=10
+2026-09-30T11:05:33Z	Story 23.2	batch_boundary_reported	batch=a to=main code_head=9cc37242 branch_head=4163d97c run=36702722757 feature_code_moved=no
+2026-09-30T11:05:33Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@5a8faea6 merge=4163d97c conflicts=none code_changes=none(bookkeeping) before=batch_b
+2026-09-30T11:05:33Z	Story 23.2	rework_opened	cycle_iteration=2 iteration=batch_b trigger=next_batch items=DW-1289,DW-1210,DW-1669,DW-1440 scope_baseline=HEAD
+2026-09-30T11:05:37Z	Story 23.2	stage_spawned	stage=implement batch=b spawn_at=2026-09-30T11:05:37Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-implement-b cycle_iteration=2 prior_ci=success(36702722757) epic16_contended=EXPERIENCE.md(disjoint_lines)
