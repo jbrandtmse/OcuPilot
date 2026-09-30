@@ -2,7 +2,8 @@
 /// through keep the signatures it calls them with; a discovery of the local issuer answers its
 /// published members over the editor's route and saves nothing, a stored description included; a Save
 /// then stores the discovered members; and each of the four causes a discovery fails for is refused
-/// by name.</p>
+/// by name, the document cases also back to back against an issuer that lingers before it ends each
+/// connection.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving with the demo
 /// fixture, an account holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes OAuth 2.0 server descriptions. The issuer is
@@ -26,6 +27,10 @@ Parameter SCREEN = "OcuPilot.Test.OAuthServerSaveFixture";
 
 /// <p>The editor's discovery route, under the test helper's base path.</p>
 Parameter DISCOVERPATH = "/oauth/server-description/discover";
+
+/// <p>How long the issuer waits after each answer before it ends the connection in
+/// <method>TestTheDocumentCasesHoldAgainstALingeringIssuer</method>, in seconds.</p>
+Parameter LINGERSECONDS = 0.3;
 
 Method OnBeforeAllTests() As %Status
 {
@@ -151,24 +156,68 @@ Method TestTheRouteRefusesItsRulesAndAStrayKeyBeforeTheFetch()
 /// answers.</p>
 Method TestEachCauseIsRefusedByName()
 {
-    Set tBase = $ClassMethod(..#FIXTURE, "Issuer")
-    Set tSSL = $Parameter(..#PROBE, "SSLCONFIG")
     Set tCount = $ClassMethod(..#PROBE, "Count")
-    Set tCases = $ListBuild($ListBuild(tBase _ "/status", "OAUTH.DISCOVERY.STATUS", "status", tBase _ "/status answered HTTP 503."))
-    Set tCases = tCases _ $ListBuild($ListBuild(tBase _ "/not-json", "OAUTH.DISCOVERY.CONTENT", "content", tBase _ "/not-json did not answer JSON."))
-    Set tCases = tCases _ $ListBuild($ListBuild(tBase _ "/bad-json", "OAUTH.DISCOVERY.CONTENT", "content", tBase _ "/bad-json did not answer JSON."))
-    Set tCases = tCases _ $ListBuild($ListBuild(tBase _ "/wrong-issuer", "OAUTH.DISCOVERY.ISSUER", "issuer", "The document names a different issuer: " _ tBase _ "/another-issuer."))
     Set tClosed = $ClassMethod(..#FIXTURE, "Issuer", $Parameter(..#FIXTURE, "CLOSEDPORT"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tClosed, "OAUTH.DISCOVERY.UNREACHABLE", "unreachable", tClosed _ " could not be reached."))
-    For tI = 1:1:$ListLength(tCases) {
-        Set tCase = $List(tCases, tI)
+    Set tCases = ..DocumentCases($ClassMethod(..#FIXTURE, "Issuer")) _ $ListBuild($ListBuild(tClosed, "OAUTH.DISCOVERY.UNREACHABLE", "unreachable", tClosed _ " could not be reached."))
+    Do ..AssertCauses(tCases)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count"), tCount, "and nothing is saved")
+}
+
+/// <p>The four document cases, run back to back against an issuer that waits
+/// <parameter>LINGERSECONDS</parameter> after each answer before it ends the connection, are each
+/// still refused 422 by name: a discovery that connects while the previous answer's connection is
+/// still open is answered, never reset. The first case returns before its connection's linger ends,
+/// so the second connects while that connection is still open. The issuer answers one connection at
+/// a time, so each later case waits out the previous connection's linger and the four take at least
+/// three lingers; the leg asserts two, which shows the linger was in effect.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Test.OAuthIssuerFixture.Serve</method> close its
+/// listening port after each answer and open it again -- two cases answer unreachable and this goes
+/// red; drop the linger <method>OcuPilot.Test.OAuthIssuerFixture.Start</method> passes to
+/// <method>OcuPilot.Test.OAuthIssuerFixture.Serve</method> -- the elapsed-time assertion goes red;
+/// drop the flush in <method>OcuPilot.Test.OAuthIssuerFixture.Converse</method> -- the first-case
+/// assertion goes red.</p>
+Method TestTheDocumentCasesHoldAgainstALingeringIssuer()
+{
+    Set tSC = $ClassMethod(..#FIXTURE, "Start", , .tIssuer, ..#LINGERSECONDS)
+    Do $$$AssertStatusOK(tSC, "the issuer listens, lingering " _ ..#LINGERSECONDS _ " s after each answer")
+    If $$$ISERR(tSC) Quit
+    Set tCases = ..DocumentCases(tIssuer)
+    Set tStart = $ZHorolog
+    Do ..AssertCauses($List(tCases, 1, 1))
+    Set tFirst = $ZHorolog - tStart
+    Do ..AssertCauses($List(tCases, 2, *))
+    Set tElapsed = $ZHorolog - tStart
+    Do $$$AssertTrue(tFirst < ..#LINGERSECONDS, "the first case returned before its connection's linger ended, in " _ $FNumber(tFirst, "", 3) _ " s")
+    Do $$$AssertTrue(tElapsed >= (2 * ..#LINGERSECONDS), "and the issuer lingered: the four cases took " _ $FNumber(tElapsed, "", 3) _ " s")
+}
+
+/// <p>The four document cases under issuer <var>pBase</var> -- a 503, an answer that is not JSON,
+/// JSON that does not parse, and another issuer -- each as
+/// <code>$ListBuild(issuer, code, cause, reason)</code>.</p>
+ClassMethod DocumentCases(pBase As %String) As %List
+{
+    Set tCases = $ListBuild($ListBuild(pBase _ "/status", "OAUTH.DISCOVERY.STATUS", "status", pBase _ "/status answered HTTP 503."))
+    Set tCases = tCases _ $ListBuild($ListBuild(pBase _ "/not-json", "OAUTH.DISCOVERY.CONTENT", "content", pBase _ "/not-json did not answer JSON."))
+    Set tCases = tCases _ $ListBuild($ListBuild(pBase _ "/bad-json", "OAUTH.DISCOVERY.CONTENT", "content", pBase _ "/bad-json did not answer JSON."))
+    Set tCases = tCases _ $ListBuild($ListBuild(pBase _ "/wrong-issuer", "OAUTH.DISCOVERY.ISSUER", "issuer", "The document names a different issuer: " _ pBase _ "/another-issuer."))
+    Quit tCases
+}
+
+/// <p>Run the port's discovery for each case in <var>pCases</var> (<method>DocumentCases</method>'s
+/// shape), one after another, and assert each is refused 422 with its code, cause and reason.</p>
+Method AssertCauses(pCases As %List)
+{
+    Set tSSL = $Parameter(..#PROBE, "SSLCONFIG")
+    For tI = 1:1:$ListLength(pCases) {
+        Set tCase = $List(pCases, tI)
+        Kill tFault
+        Set tHttp = ""
         Set tSC = $ClassMethod(..#PORT, "Discover", $List(tCase, 1), tSSL, .tMetadata, .tHttp, .tFault)
-        Do $$$AssertStatusNotOK(tSC, $List(tCase, 3) _ ": refused")
+        Do $$$AssertStatusNotOK(tSC, $List(tCase, 1) _ ": refused")
         Set tAnswer = ""
         If $IsObject($Get(tFault)) Set tAnswer = tHttp _ "|" _ tFault.%Get("code") _ "|" _ tFault.%Get("detail").%Get("cause") _ "|" _ tFault.%Get("reason")
-        Do $$$AssertEquals(tAnswer, "422|" _ $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), $List(tCase, 3) _ ": at 422, by name")
+        Do $$$AssertEquals(tAnswer, "422|" _ $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), $List(tCase, 1) _ ": at 422, by name")
     }
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count"), tCount, "and nothing is saved")
 }
 
 }
