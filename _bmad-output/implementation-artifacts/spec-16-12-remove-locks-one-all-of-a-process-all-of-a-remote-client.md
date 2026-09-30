@@ -2,15 +2,22 @@
 title: 'Story 16.12: Remove locks - one, all of a process, all of a remote client'
 type: 'feature'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '7e8cd3ceab5c88138aeda1f1f664f391079ab7bf'
+status: 'done'
+baseline_revision: '9c5ad0649262c039ae4d13d699c3b8e0a3ef8b27'
 baseline_commit: '7e8cd3ceab5c88138aeda1f1f664f391079ab7bf'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      AuditingUpdate pins the prohibited-code count as a literal that repeats Test/Prohibited's, so every story that adds a prohibited code must bump both.
+    evidence: |-
+      src/OcuPilot/Test/AuditingUpdate.cls:505 and src/OcuPilot/Test/Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()) as a number; Story 16.12 bumped only the second and CI run 36745076438 went red on the first. The first's message ("this write earned none of them") is not something a count can check. Pre-existing since Story 5.10.
+    location: >-
+      src/OcuPilot/Test/AuditingUpdate.cls:505
+    severity: low
 ---
 
 <intent-contract>
@@ -297,7 +304,7 @@ Anchors are as of `eb6ed8f4`. Paths are relative to `src/OcuPilot/` unless they 
   3. A transaction holder: the warning appears, then "Remove anyway" → the row leaves the list.
   4. The DW-1337 structural walk of the dialog, in both themes.
 
-- [ ] [CI] instance shard 1/3 (run 36745076438, head 4d7a5aa1): `OcuPilot.Test.AuditingUpdate.TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField` pins `$ListLength(Prohibited.Codes())` at 23 (`src/OcuPilot/Test/AuditingUpdate.cls:505`); this story's `PROHIBITED.OCUPILOTLOCK` makes 24. Bump the count and add this story's lock code to the assertion's message, then run `AuditingUpdate` through the shim armed with `OCUPILOT_ALLOW_AUDIT_TOGGLE` (it did not run locally: the shim's four names left it unarmed), and grep `src/OcuPilot/Test/` and `ui/tools/` for any other pin of the code count.
+- [x] [CI] instance shard 1/3 (run 36745076438, head 4d7a5aa1): `OcuPilot.Test.AuditingUpdate.TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField` pins `$ListLength(Prohibited.Codes())` at 23 (`src/OcuPilot/Test/AuditingUpdate.cls:505`); this story's `PROHIBITED.OCUPILOTLOCK` makes 24. Bump the count and add this story's lock code to the assertion's message, then run `AuditingUpdate` through the shim armed with `OCUPILOT_ALLOW_AUDIT_TOGGLE` (it did not run locally: the shim's four names left it unarmed), and grep `src/OcuPilot/Test/` and `ui/tools/` for any other pin of the code count.
 
 **Acceptance Criteria:**
 
@@ -397,6 +404,19 @@ Code review 2026-09-30, full-opus tier: blind-hunter, edge-case-hunter, verifica
   - `[false]` `[reject]` (intent-alignment) Edits beyond the Tasks (`Lock/REMOVE` and `Lock/REMOVEOWNER` in `MUTATINGTYPES`, `Fail`'s `pType`, a `PATH.ROOT` expectation, `Prohibited`'s uncovered probe) — each is additive and required by `ToolWrite`'s roster, `UNLOGGEDREFUSALS`, `ActionRefusal.code` and `lock` being covered.
   - `[false]` `[reject]` (intent-alignment) The diff cannot show `screens.generated.ts` was regenerated — `screen-mirror.mjs --check` in `prebuild` and the tools suite fail on any generated file that differs from the generator's output; both pass.
   - `[low]` `[reject]` (intent-alignment) Principals are deleted once per class, not per test — `OnAfterAllTests` runs on failure too, so AC9 holds when the class ends; per-test re-creation adds cost and no protection.
+
+### 2026-09-30 — Review pass (rework 1)
+
+- verdicts: 8 findings — high 0, medium 0, low 3, false 5, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap) The Verification section's shim line lists four arming names and omits `OCUPILOT_ALLOW_AUDIT_TOGGLE` — the fix edits this build's spec; the lead's spawn prompt carries the arming list.
+  - `[low]` `[defer]` (verification-gap) `AuditingUpdate.cls:505` repeats `Test/Prohibited.cls:687`'s literal code count, and its message claims more than a count checks — pre-existing (Story 5.10's pin); recorded under `deferred:`.
+  - `[false]` `[reject]` (verification-gap) The rework's green runs are not in the spec and the Auto Run Result is stale — finalize writes this pass's Auto Run Result after review.
+  - `[false]` `[reject]` (intent-alignment) The in-place edit to `AuditingUpdate.cls` is allowed only if the `[CI]` item is a declared task — it is: the item sits under Tasks & Acceptance and names the file and the edit; Epic 23 does not touch the file.
+  - `[false]` `[reject]` (intent-alignment) The count does not check `OCUPILOTLOCK`'s membership, and its mutation proves nothing about the lock arm — it is a roster pin, not AC7's; the code is pinned by `LockRemoveTools.cls:204-205`, `self-protection.test.mjs:280` and `LockRemoveLive` (runs 21923, 22346).
+  - `[false]` `[reject]` (intent-alignment) The evidence (green runs, grep) is not recorded — same as the third row; written at finalize.
+  - `[false]` `[reject]` (intent-alignment) The diff does not record the Epic 23 footprint check — the check was done at dispatch and by the handoff; the Auto Run Result records it.
+  - `[low]` `[defer]` (intent-alignment) Every story that adds a prohibited code edits this same literal — same root cause as the second row; same deferred item.
 
 ## Design Notes
 
@@ -552,11 +572,26 @@ Everything that takes or removes a lock, or creates a principal, runs on `ocupil
 - mutation (code review): the Locks list's `context.fields` drops `RemoteOwner` → `LockRemoveTools.TestTheLocksListSendsTheOwnerKindAsContext` red (run 22347).
 - mutation (code review): `LockListPage.onOpen` reads `remote` as `false` → `lock-list.page.spec.ts` "AC1: on a row a remote client owns…" red (AC1).
 - mutation (code review): `LockListPage.onRemove` drops its open-dialog check → `lock-list.page.spec.ts` "ignores a Remove answered after its dialog was canceled…" red.
+- mutation (rework 1): `Prohibited.Codes()` drops `OCUPILOTLOCK` → `AuditingUpdate.TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField` red on the count, 10/11 (run 22351).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework iteration 1 (CI run 36745076438, 2026-09-30).**
+
+- **Changed.** `Test/AuditingUpdate.cls:505` pins 24 prohibited codes, and its message names Story 16.12's lock code. The `[CI]` item is ticked, and its mutation line is under Verification. Nothing else changed; the file is outside the Code Map and Epic 23 does not touch it.
+- **Grep.** The only other literal pin of the count is `Test/Prohibited.cls:687`, already 24. `GuardrailsWire` and `GuardrailsFixture` derive it from `Codes()`, and `ui/tools/` holds no count.
+- **Verification** (`ocupilot-ci`, one class per call, counts read from `^UnitTest.Result`):
+  - `AuditingUpdate`, armed with `OCUPILOT_ALLOW_AUDIT_TOGGLE`: 11/11 (run 22350); 10/11 with the mutation on the count (22351); 11/11 once the mutation was reverted (22352). Auditing on `ocupilot-ci` reads enabled afterward.
+  - `Prohibited` 13/13 (22353), `GuardrailsWire` 2/2 (22354). `check-objectscript` found 0 problems and `lint-docs` 0 issues.
+  - The throwaway's source matches the worktree.
+- **Review** (verification-gap, intent-alignment): 8 findings, 0 patched, 1 deferred (the duplicated count literal, low), and 7 rejected (reasons are in the Review Triage Log).
+- **Follow-up review recommendation: `false`.** This follow-up pass patched nothing.
+- **Note for the lead.** The intent-alignment reviewer ran one read-only `git worktree list` in the main checkout.
+
+**Implement stage (first pass).**
 
 - **Implemented.** Three action-style lock removals (`LockRemove`, `LockRemoveProcess`, `LockRemoveClient`) over a new `Port/LockPort` that re-lists and sends one vendor `Lock` `DELETE` per freshly listed id, the vendor's in-transaction 409 as `LOCK.INTRANSACTION` (new `Api/LockError`, unlogged via `AdminPort.UNLOGGEDREFUSALS`), the `PROHIBITED.OCUPILOTLOCK` arm, `rowTarget.unless` in both engines, the Locks page and its Remove locks dialog, 14 strings, and EXPERIENCE.md `:376` rewritten in place (993 lines).
 - **Files.**
