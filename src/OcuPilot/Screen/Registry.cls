@@ -3323,7 +3323,8 @@ ClassMethod ScreensForArea(pAreaKey As %String, pBuiltOnly As %Boolean = 1, Outp
 
 /// <p>The descriptor classes <var>pAreaKey</var>'s side bar lists: its built screens at a
 /// <code>sideBarPosition</code> above 0, in <method>ScreensForArea</method>'s order. An area's
-/// verdict is read over these (<method>OcuPilot.Screen.Gate.EvaluateArea</method>, AD-8).</p>
+/// verdict is read over these and the tabs of a tab group one of them heads
+/// (<method>OcuPilot.Screen.Gate.EvaluateArea</method>, AD-8).</p>
 ClassMethod ListedScreensForArea(pAreaKey As %String, Output pList As %List) As %Status
 {
     Set tSC = $$$OK
@@ -3334,6 +3335,47 @@ ClassMethod ListedScreensForArea(pAreaKey As %String, Output pList As %List) As 
         For tI = 1:1:$ListLength(tBuilt) {
             Set tClass = $List(tBuilt, tI)
             If +$ClassMethod(tClass, "SideBarPosition") > 0 Set pList = pList _ $ListBuild(tClass)
+        }
+    } Catch ex {
+        Set pList = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The other built tabs of the tab group <var>pDescriptor</var> heads, in strip order (AD-5): the
+/// built screens of its area whose declared <code>tab.group</code> is its route, less itself. Empty
+/// for a screen that heads no group -- one that declares no <code>tab</code>, or a tab under another
+/// screen's group. <method>TabGroupProblem</method> keeps a group's members in its head's area.</p>
+ClassMethod TabMembersFor(pDescriptor As %String, Output pList As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pList = ""
+    Try {
+        Set tTab = $ClassMethod(pDescriptor, "Field", "tab")
+        If '$IsObject(tTab) Quit
+        Set tGroup = tTab.%Get("group")
+        If (tGroup = "") || (tGroup '= $ClassMethod(pDescriptor, "Route")) Quit
+        Set tSC = ..ScreensForArea($ClassMethod(pDescriptor, "AreaKey"), 1, .tBuilt)
+        If $$$ISERR(tSC) Quit
+        Kill tOrdered
+        For tI = 1:1:$ListLength(tBuilt) {
+            Set tClass = $List(tBuilt, tI)
+            If tClass = pDescriptor Continue
+            Set tMemberTab = $ClassMethod(tClass, "Field", "tab")
+            If '$IsObject(tMemberTab) || (tMemberTab.%Get("group") '= tGroup) Continue
+            Set tOrdered(+tMemberTab.%Get("position"), tClass) = ""
+        }
+        Set tPosition = ""
+        For {
+            Set tPosition = $Order(tOrdered(tPosition))
+            If tPosition = "" Quit
+            Set tClass = ""
+            For {
+                Set tClass = $Order(tOrdered(tPosition, tClass))
+                If tClass = "" Quit
+                Set pList = pList _ $ListBuild(tClass)
+            }
         }
     } Catch ex {
         Set pList = ""

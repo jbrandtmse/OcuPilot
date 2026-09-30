@@ -64,9 +64,9 @@ export interface AreaDeclaration {
   readonly navigates: boolean;
   readonly pinBottom: boolean;
   /**
-   * Empty for an area that never gates. Otherwise the area opens when any screen it lists is allowed,
-   * and when none is it names the first of these the caller lacks, or a listed screen's failed pair
-   * when the caller lacks none (AD-8).
+   * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
+   * of a tab group it lists, is allowed, and when none is it names the first of these the caller
+   * lacks, or a listed screen's failed pair when the caller lacks none (AD-8).
    */
   readonly privileges: readonly PrivilegePair[];
 }

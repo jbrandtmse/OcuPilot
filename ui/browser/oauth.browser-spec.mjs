@@ -7,16 +7,18 @@
  * authorization server or registration resources, offered the rail item, reading the Resource servers tab
  * under a strip whose authorization server and server client tabs are gated, and refused Server client
  * descriptions by name (AC5); and, Story 12.9, every tab's name cells opening OcuPilot's own editor
- * in this tab, with no link to the classic portal and no classic-link card on any of the five (AD-44).
+ * in this tab, with no link to the classic portal and no classic-link card on any of the five (AD-44);
+ * and a principal holding only the authorization server tab's pairs, whose Security side bar offers
+ * OAuth 2.0 alone and opens it on that tab (AD-8 as amended for DW-1852).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), whose SSL/TLS configuration the probe's
  * client configurations name. `before` runs `OcuPilot.Test.OAuthProbe.Create()` and `after` its
  * `Remove()`.
  *
- * **It creates a security principal and OAuth 2.0 objects, so it refuses the live container.**
- * `before` creates a role and an account holding read on the install namespace's code database plus
- * `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%Admin_OAuth2_Client:USE`; `after` deletes both whether
- * or not a test failed.
+ * **It creates two security principals and OAuth 2.0 objects, so it refuses the live container.**
+ * `before` creates, for each, a role and an account holding read on the install namespace's code
+ * database plus `%DB_IRISSYS:READ` and either `%Admin_Secure:USE` with `%Admin_OAuth2_Client:USE`, or
+ * `%Admin_OAuth2_Server:USE`; `after` deletes all four whether or not a test failed.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -37,13 +39,15 @@ import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
-const { formatArea, formatDeniedScreen } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { formatArea, formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
 
 const config = browserConfig();
 const READ_PREFIX = '/api/ocupilot/screens/';
 const SECURE_USER = 'OcuPilotOAuthSecure';
 const SECURE_ROLE = 'OcuPilotOAuthSecureRole';
+const SERVER_USER = 'OcuPilotOAuthServerOnly';
+const SERVER_ROLE = 'OcuPilotOAuthServerOnlyRole';
 const PASSWORD = 'OcuPilotOAuth1';
 const CLIENT_B = 'OcuPilotTestB';
 const EDITOR_ROUTE = 'security/oauth/clients/edit';
@@ -133,6 +137,8 @@ const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression}
 const deleteLines = [
   `If ##class(Security.Users).Exists("${SECURE_USER}") Do ##class(Security.Users).Delete("${SECURE_USER}")`,
   `If ##class(Security.Roles).Exists("${SECURE_ROLE}") Do ##class(Security.Roles).Delete("${SECURE_ROLE}")`,
+  `If ##class(Security.Users).Exists("${SERVER_USER}") Do ##class(Security.Users).Delete("${SERVER_USER}")`,
+  `If ##class(Security.Roles).Exists("${SERVER_ROLE}") Do ##class(Security.Roles).Delete("${SERVER_ROLE}")`,
 ];
 
 before(async () => {
@@ -147,18 +153,22 @@ before(async () => {
       'Set tRes=##class(SYS.Database).%OpenId(##class(Config.Databases).Open(##class(Config.Namespaces).Open(tNS).Routines).Directory).ResourceName',
       `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R,%Admin_OAuth2_Client:U","")`,
       `Set tSC2=##class(Security.Users).Create("${SECURE_USER}","${SECURE_ROLE}","${PASSWORD}","OcuPilot OAuth browser spec probe (throwaway)","","","",0,1,"")`,
-      mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)'),
+      `Set tSC4=##class(Security.Roles).Create("${SERVER_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%DB_IRISSYS:R,%Admin_OAuth2_Server:U","")`,
+      `Set tSC5=##class(Security.Users).Create("${SERVER_USER}","${SERVER_ROLE}","${PASSWORD}","OcuPilot OAuth browser spec probe (throwaway)","","","",0,1,"")`,
+      mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)&&$System.Status.IsOK(tSC4)&&$System.Status.IsOK(tSC5)'),
       mark('WALLET', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_Wallet","USE")`),
       mark('REGISTRATION', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_OAuth2_Registration","USE")`),
+      mark('SERVERONLY', `$SYSTEM.Security.CheckUserPermission("${SERVER_USER}","%Admin_OAuth2_Server","USE")_$SYSTEM.Security.CheckUserPermission("${SERVER_USER}","%DB_IRISSYS","READ")_$SYSTEM.Security.CheckUserPermission("${SERVER_USER}","%Admin_OAuth2_Client","USE")_$SYSTEM.Security.CheckUserPermission("${SERVER_USER}","%Admin_Secure","USE")`),
       'ZNspace tNS',
       'Set tSC3=##class(OcuPilot.Test.OAuthProbe).Create()',
       mark('PROBE', '$System.Status.IsOK(tSC3)'),
     ],
-    ['CREATED', 'WALLET', 'REGISTRATION', 'PROBE']
+    ['CREATED', 'WALLET', 'REGISTRATION', 'SERVERONLY', 'PROBE']
   );
-  assert.equal(values.CREATED, '1', `the role and principal were created:\n${output}`);
+  assert.equal(values.CREATED, '1', `the roles and principals were created:\n${output}`);
   assert.equal(values.WALLET, '0', 'the principal does not hold %Admin_Wallet:USE');
   assert.equal(values.REGISTRATION, '0', 'nor %Admin_OAuth2_Registration:USE');
+  assert.equal(values.SERVERONLY, '1100', 'the authorization server probe holds %Admin_OAuth2_Server:USE and %DB_IRISSYS:READ, and not %Admin_OAuth2_Client:USE or %Admin_Secure:USE');
   assert.equal(values.PROBE, '1', `the probe OAuth 2.0 objects were made:\n${output}`);
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -169,14 +179,17 @@ after(async () => {
   const { values, output } = irisSession(
     [
       ...deleteLines,
-      mark('CLEAN', `('##class(Security.Users).Exists("${SECURE_USER}"))&&('##class(Security.Roles).Exists("${SECURE_ROLE}"))`),
+      mark(
+        'CLEAN',
+        `('##class(Security.Users).Exists("${SECURE_USER}"))&&('##class(Security.Roles).Exists("${SECURE_ROLE}"))&&('##class(Security.Users).Exists("${SERVER_USER}"))&&('##class(Security.Roles).Exists("${SERVER_ROLE}"))`
+      ),
       'ZNspace $Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
       'Set tSC=##class(OcuPilot.Test.OAuthProbe).Remove()',
       mark('REMOVED', '$System.Status.IsOK(tSC)'),
     ],
     ['CLEAN', 'REMOVED']
   );
-  assert.equal(values.CLEAN, '1', `the principal and its role are gone:\n${output}`);
+  assert.equal(values.CLEAN, '1', `the principals and their roles are gone:\n${output}`);
   assert.equal(values.REMOVED, '1', `the probe OAuth 2.0 objects are removed:\n${output}`);
 });
 
@@ -474,5 +487,72 @@ test('AC5: with the Resource servers pairs alone the Security rail item opens (S
     assert.deepEqual(denied.reads, [], 'and no read');
   } finally {
     await denied.context.close();
+  }
+});
+
+test('AD-8 as amended for DW-1852: with the authorization server pairs alone the Security side bar offers OAuth 2.0 alone, and it opens on the Authorization server tab while every other tab stays gated', async () => {
+  // Mutation (Rule 19): make OcuPilot.Screen.Gate.EvaluateArea call Evaluate instead of EvaluateEntry
+  // -- the listed tab alone counts -- and recompile on the throwaway -> the rail assertion goes red.
+  const requires = (pair) => formatRequires(STRINGS.privilegeRequiresResource, pair);
+  const server = TABS[3];
+  const { context, page, reads } = await signedInAt('/ocupilot/?ns=HSCUSTOM', SERVER_USER, PASSWORD);
+  try {
+    const rail = await page.evaluate((label) => {
+      const item = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
+      return { disabled: item.getAttribute('aria-disabled'), tip: document.getElementById(item.getAttribute('aria-describedby'))?.textContent.trim() };
+    }, STRINGS.navAreaSecurity);
+    assert.deepEqual(rail, { disabled: null, tip: formatArea(STRINGS.navRailItemTooltip, STRINGS.navAreaSecurity) }, 'the Security rail item opens for the authorization server pairs alone');
+
+    const landmark = STRINGS.navSideBarLandmark.split('<Area>').join(STRINGS.navAreaSecurity);
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const shown = await page.$$eval('app-side-bar nav.ocu-side-bar', (nodes, label) => nodes.some((node) => node.getAttribute('aria-label') === label), landmark);
+      if (shown) break;
+      await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaSecurity}"]`);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    await page.waitForSelector('app-side-bar .ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
+    const entries = await page.$$eval('app-side-bar .ocu-side-bar-item', (items) =>
+      items.map((item) => ({
+        label: item.querySelector('.ocu-side-bar-label')?.textContent.trim() ?? '',
+        disabled: item.getAttribute('aria-disabled'),
+        reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
+      }))
+    );
+    assert.deepEqual(
+      entries,
+      [
+        { label: STRINGS.sslListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.x509ListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.ldapListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.walletListLabel, disabled: 'true', reason: requires('%Admin_Wallet:USE') },
+        { label: STRINGS.oauthLabel, disabled: null, reason: '' },
+        { label: STRINGS.auditingConfigurationLink, disabled: 'true', reason: requires('%Admin_Secure:USE') },
+        { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
+      ],
+      'every Security entry is listed, and OAuth 2.0 alone is open'
+    );
+
+    const readsBefore = reads.length;
+    await page.evaluate((label) => {
+      const entry = [...document.querySelectorAll('app-side-bar .ocu-side-bar-item')].find(
+        (candidate) => candidate.querySelector('.ocu-side-bar-label')?.textContent?.trim() === label
+      );
+      entry.click();
+    }, STRINGS.oauthLabel);
+    await atTab(page, server);
+    assert.deepEqual(reads.slice(readsBefore), [server.read], 'the entry opens the Authorization server tab, which reads once');
+    assert.deepEqual(
+      (await stripOf(page)).map((entry) => [entry.label, entry.selected, entry.disabled, entry.reason]),
+      [
+        [TABS[0].label, 'false', 'true', requires('%Admin_OAuth2_Client:USE')],
+        [TABS[1].label, 'false', 'true', requires('%Admin_OAuth2_Client:USE')],
+        [TABS[2].label, 'false', 'true', requires('%Admin_Secure:USE')],
+        [TABS[3].label, 'true', 'false', null],
+        [TABS[4].label, 'false', 'true', requires('%Admin_OAuth2_Registration:USE')],
+      ],
+      'under a strip whose every other tab keeps its own gate'
+    );
+  } finally {
+    await context.close();
   }
 });

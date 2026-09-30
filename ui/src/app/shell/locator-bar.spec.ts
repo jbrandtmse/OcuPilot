@@ -49,13 +49,18 @@ class StubNavigation {
     if (path.startsWith('permissions/users')) return USERS;
     if (path.startsWith('web-applications/rest-apis/document/')) return screenForRoute('web-applications/rest-apis/document');
     if (path.startsWith('security/oauth/clients')) return screenForRoute('security/oauth/clients');
+    if (/^security\/oauth\/server(\/|$)/.test(path)) return screenForRoute('security/oauth/server');
     return null;
   }
 
   /** Settable since DW-161, so an area with a refused first screen has a second one to skip to. */
   areaScreens: readonly ScreenDeclaration[] = [USERS];
 
+  /** DW-1852: the Security side bar's roster, empty unless a spec about its tab group sets it. */
+  securityScreens: readonly ScreenDeclaration[] = [];
+
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
+    if (areaKey === 'security') return this.securityScreens;
     return areaKey === 'permissions' ? this.areaScreens : areaKey === 'home' ? [HOME] : [];
   }
 
@@ -132,6 +137,7 @@ describe('the locator bar', () => {
           { path: 'permissions/users/details/:id', children: [] },
           { path: 'web-applications/rest-apis/document/:id', children: [] },
           { path: 'security/oauth/clients/:id', children: [] },
+          { path: 'security/oauth/server/:id', children: [] },
           { path: 'agent/definitions/edit/:id', children: [] },
           { path: '**', children: [] },
         ]),
@@ -338,6 +344,29 @@ describe('the locator bar', () => {
     screenLink?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/security/oauth?ns=HSCUSTOM');
+  });
+
+  it('AD-8 as amended for DW-1852: with the group\'s first tab refused, the area and screen segments open the first tab the caller may open', async () => {
+    // Mutation (Rule 19): route both segments through the old lookups -- `firstAllowedScreen` for the
+    // area and `tabGroupFor(screen)` for the screen -- and they open the refused first tab, or nothing.
+    navigation.securityScreens = [screenForRoute('security/oauth') as ScreenDeclaration];
+    for (const route of ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server-clients']) {
+      navigation.verdicts.set(route, { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+    }
+    await go('/security/oauth/server/OcuPilotServer?ns=HSCUSTOM');
+    const link = (label: string): HTMLButtonElement | undefined =>
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-locator-link')).find((el) => el.textContent?.trim() === label);
+
+    link(STRINGS.oauthTabServer)?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server?ns=HSCUSTOM');
+
+    await go('/security/oauth/server/OcuPilotServer?ns=HSCUSTOM');
+    const area = link(STRINGS.navAreaSecurity);
+    expect(area?.getAttribute('aria-disabled')).toBeNull();
+    area?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server?ns=HSCUSTOM');
   });
 
   it('DW-143: a denied area segment stays listed and refuses, exactly as the rail does', async () => {

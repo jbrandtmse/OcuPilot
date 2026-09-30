@@ -344,6 +344,8 @@ describe('Home', () => {
           { path: 'web-applications/list/:id', children: [] },
           { path: 'permissions/users/:id', children: [] },
           { path: 'security/auditing', children: [] },
+          // DW-1852: the Security tile's target for a holder of only the authorization-server tab.
+          { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -611,6 +613,30 @@ describe('Home', () => {
     osManagement.click();
     await fixture.whenStable();
     expect(router.url).toBe('/os-management/locks');
+  });
+
+  it('AD-8 as amended for DW-1852: a holder of only the authorization-server tab opens the Security tile on that tab', async () => {
+    // The OAuth 2.0 entry is a tab group whose listed tab that holder cannot open; the entry, and so
+    // the tile, opens on the first tab of the group the map allows, and every other tab keeps its
+    // own verdict.
+    //
+    // Mutation (Rule 19): make `openableEntry` answer `null` whenever the listed tab's own verdict
+    // refuses it -- the listed tab alone counts -- and the tile is gated, so this goes red.
+    await router.navigateByUrl('/');
+    const listed = ['security/ssl', 'security/oauth'].map((route) => screenForRoute(route) as ScreenDeclaration);
+    navigation.screens.set('security', listed);
+    for (const route of ['security/ssl', 'security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server-clients']) {
+      navigation.screenVerdicts.set(route, { allowed: false, failedPair: '%Admin_Secure:USE' });
+    }
+    navigation.notify();
+    fixture.detectChanges();
+
+    const security = tiles()[5];
+    expect(tileNames()[5]).toBe(STRINGS.navAreaSecurity);
+    expect(security.getAttribute('aria-disabled')).toBeNull();
+    security.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server');
   });
 
   it('an area with no built screen still opens its list, and navigates nowhere', async () => {

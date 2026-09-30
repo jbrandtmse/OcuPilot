@@ -263,6 +263,68 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "SslConfigList"), "%Admin_Secure:USE", "and SSL/TLS on its own")
 }
 
+/// <p>AD-8 as amended for DW-1852: a listed tab group opens its area through any of its tabs, and
+/// each tab keeps its own gate. A holder of only the OAuth 2.0 authorization-server or registration
+/// resource, with <code>%DB_IRISSYS:READ</code>, opens Security and secrets and its OAuth 2.0 entry
+/// while the listed tab and the client configurations tab stay refused on
+/// <code>%Admin_OAuth2_Client:USE</code>; without the database read nothing opens and the area names
+/// its set's first pair. <method>OcuPilot.Screen.Registry.TabMembersFor</method> answers the group's
+/// other tabs in strip order for its head and nothing for any other screen.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.EvaluateArea</method> call
+/// <method>OcuPilot.Screen.Gate.Evaluate</method> instead of
+/// <method>OcuPilot.Screen.Gate.EvaluateEntry</method> -- the listed tab alone counts -- and recompile
+/// the package -> the two area rows go red while the screen rows stay green.</p>
+Method TestATabGroupOpensItsAreaThroughAnyOfItsTabs()
+{
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Set tDescriptor = "OcuPilot.Screen.Descriptor."
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "OAuthServerDescriptionTab", .tMembers)
+    Do $$$AssertStatusOK(tSC, "the OAuth 2.0 group's tabs read")
+    Do $$$AssertEquals($ListToString(tMembers), tDescriptor _ "OAuthClientTab," _ tDescriptor _ "OAuthResourceServerTab," _ tDescriptor _ "OAuthServerTab," _ tDescriptor _ "OAuthServerClientTab", "the listed tab heads four others, in strip order")
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "OAuthServerTab", .tMembers)
+    Do $$$AssertStatusOK(tSC, "a tab's own members read")
+    Do $$$AssertEquals($ListLength(tMembers), 0, "a tab under another's group heads none")
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "SslConfigList", .tMembers)
+    Do $$$AssertStatusOK(tSC, "and so do a screen's that is no tab")
+    Do $$$AssertEquals($ListLength(tMembers), 0, "which heads none either")
+
+    For tCase = $ListBuild("%Admin_OAuth2_Server", "OAuthServerTab"), $ListBuild("%Admin_OAuth2_Registration", "OAuthServerClientTab") {
+        Set tResource = $List(tCase, 1)
+        Do $ClassMethod(tGate, "Reset")
+        Do $ClassMethod(tGate, "Hold", tResource, "USE")
+        Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+        Set tFailed = "unset"
+        Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", "security", .tFailed), "a holder of " _ tResource _ " opens Security and secrets: " _ tFailed)
+        Do $$$AssertEquals(tFailed, "", "naming nothing")
+        Set tFailed = "unset"
+        Do $$$AssertTrue($ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "and its OAuth 2.0 entry")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ $List(tCase, 2)), "open", "its own tab opens")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthServerDescriptionTab"), "%Admin_OAuth2_Client:USE", "while the listed tab keeps its own gate")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthClientTab"), "%Admin_OAuth2_Client:USE", "and so does the client configurations tab")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "SslConfigList"), "%Admin_Secure:USE", "and SSL/TLS")
+
+        Do $ClassMethod(tGate, "Reset")
+        Do $ClassMethod(tGate, "Hold", tResource, "USE")
+        Set tFailed = "unset"
+        Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "security", .tFailed), "without %DB_IRISSYS:READ a holder of " _ tResource _ " opens nothing there")
+        Do $$$AssertEquals(tFailed, "%Admin_Secure:USE", "and the area names its set's first pair")
+        Set tFailed = "unset"
+        Do $$$AssertTrue('$ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "nor the OAuth 2.0 entry")
+        Do $$$AssertEquals(tFailed, "%Admin_OAuth2_Client:USE", "which names its listed tab's failed pair")
+    }
+
+    ; A group whose tabs cannot be read refuses, even to a holder of one of them.
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Admin_OAuth2_Server", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Do $ClassMethod(tGate, "ArmTabMembersFailure", tDescriptor _ "OAuthServerDescriptionTab")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('$ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "a tab roster that cannot be read opens no entry")
+    Do $$$AssertEquals(tFailed, "%Admin_OAuth2_Client:USE", "naming the listed tab's own pair")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "security", .tFailed), "and no area")
+}
+
 /// <p>AD-8 as amended for DW-1768: an area none of whose listed screens opens names the first pair
 /// of its declared set the caller lacks, and, when the caller holds that whole set, the first failed
 /// pair a listed screen names. In every shipped area the first listed screen fails on the pair its

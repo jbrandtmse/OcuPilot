@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AgentStatus } from '../core/agent-status';
@@ -156,5 +156,103 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       { gated: 'true', reason: requires('%Admin_ExternalLanguageServerEdit:USE') },
       manage,
     ]);
+  });
+});
+
+/**
+ * AD-8 as amended for DW-1852: a listed tab group opens its area and its one side-bar entry through
+ * any of its tabs, and each tab keeps its own gate. The map is the one the instance answers a holder
+ * of only `%Admin_OAuth2_Server:USE` and `%DB_IRISSYS:READ`, as `OcuPilot.Test.WireOAuthRead`
+ * asserts it over the wire: Security and secrets opens, every entry but OAuth 2.0 stays gated naming
+ * its pair, and the OAuth 2.0 entry, whose listed tab that holder cannot open, opens on the
+ * Authorization server tab.
+ *
+ * Mutation (Rule 19): make `openableEntry` answer `null` whenever the listed tab's own verdict refuses
+ * it -- the listed tab alone counts -- and the entry and navigation assertions go red.
+ */
+const AUTHORIZATION_SERVER_MAP = {
+  areas: [
+    { key: 'home', allowed: true, screens: [{ route: '', allowed: true }] },
+    {
+      key: 'security',
+      allowed: true,
+      screens: [
+        { route: 'security/oauth/clients', allowed: false, failedPair: '%Admin_OAuth2_Client:USE' },
+        { route: 'security/oauth/resource-servers', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/oauth/server-clients', allowed: false, failedPair: '%Admin_OAuth2_Registration:USE' },
+        { route: 'security/oauth/server', allowed: true },
+        { route: 'security/ssl', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/x509', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/ldap', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/wallet', allowed: false, failedPair: '%Admin_Wallet:USE' },
+        { route: 'security/oauth', allowed: false, failedPair: '%Admin_OAuth2_Client:USE' },
+        { route: 'security/auditing', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/allowed-directories', allowed: false, failedPair: '%Admin_FileSystemAccess:USE' },
+      ],
+    },
+    { key: 'agent', allowed: true, screens: [] },
+  ],
+};
+
+describe('a tab group opens its area and its entry through any of its tabs (AD-8, DW-1852)', () => {
+  let rail: ComponentFixture<Rail>;
+  let sideBar: ComponentFixture<SideBar>;
+  let shell: ShellState;
+  let router: Router;
+
+  beforeEach(async () => {
+    const api = { requestJson: async () => ({ kind: 'ok' as const, status: 200, body: AUTHORIZATION_SERVER_MAP }) };
+    const navigation = new NavigationService({ api: api as unknown as ApiService });
+    await navigation.load();
+    const account = stubAccountPreferences();
+    shell = new ShellState({ account });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: '', children: [] },
+          { path: 'security/oauth/server', children: [] },
+        ]),
+        { provide: NavigationService, useValue: navigation },
+        { provide: AgentStatus, useValue: stubAgentStatus() },
+        { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: new PanelState({ account, shell }) },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
+    rail = TestBed.createComponent(Rail);
+    sideBar = TestBed.createComponent(SideBar);
+    router = TestBed.inject(Router);
+    rail.detectChanges();
+    sideBar.detectChanges();
+  });
+
+  it('opens Security, offers the OAuth 2.0 entry alone, and the entry opens the Authorization server tab', async () => {
+    const item: HTMLButtonElement = rail.nativeElement.querySelector(`.ocu-rail-item[aria-label="${STRINGS.navAreaSecurity}"]`);
+    expect(item.getAttribute('aria-disabled')).toBeNull();
+    item.click();
+    rail.detectChanges();
+    sideBar.detectChanges();
+    expect(shell.visibleArea()).toBe('security');
+
+    const items = Array.from((sideBar.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-side-bar-item'));
+    const entries = items.map((entry) => ({
+      label: entry.querySelector('.ocu-side-bar-label')?.textContent?.trim() ?? '',
+      gated: entry.getAttribute('aria-disabled'),
+      reason: entry.querySelector('.ocu-side-bar-reason')?.textContent?.trim() ?? '',
+    }));
+    const requires = (pair: string) => `Requires ${pair}`;
+    expect(entries).toEqual([
+      { label: STRINGS.sslListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.x509ListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.ldapListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.walletListLabel, gated: 'true', reason: requires('%Admin_Wallet:USE') },
+      { label: STRINGS.oauthLabel, gated: null, reason: '' },
+      { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
+    ]);
+
+    items[4].click();
+    await sideBar.whenStable();
+    expect(router.url).toBe('/security/oauth/server');
   });
 });

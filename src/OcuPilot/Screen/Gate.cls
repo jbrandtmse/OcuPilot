@@ -1,6 +1,6 @@
 /// <p>The privilege gate (AD-8). A screen's requirement is a <b>set</b> of
 /// <code>(resource, permission)</code> pairs, <b>all</b> of which are required, and an area opens on
-/// its listed screens' answers (<method>EvaluateArea</method>); each pair is checked
+/// its listed entries' answers (<method>EvaluateArea</method>); each pair is checked
 /// with <code>$System.Security.Check</code> in the calling process at the moment of the call
 /// (the <method>OcuPilot.Api.Router.HoldsAdminResource</method> idiom); nothing is cached,
 /// there is no service account and no <code>$ROLES</code> is inspected. A denial names the
@@ -98,8 +98,9 @@ ClassMethod Evaluate(pTarget As %String, Output pFailedPair As %String) As %Bool
 /// <p>Whether the calling process may open the area <var>pAreaKey</var>: its rail item, Home tile
 /// and side bar (AD-8). A key the area vocabulary does not declare is refused, naming nothing. An
 /// area that declares no pair never gates (Home, Agent co-pilot). Any other area opens when at
-/// least one screen its side bar lists (<method>ListedScreens</method>) passes that screen's own
-/// gate (<method>Evaluate</method>, the classic page's custom resource included). Each screen keeps
+/// least one entry its side bar lists (<method>ListedScreens</method>) opens
+/// (<method>EvaluateEntry</method>): the screen passes its own gate, the classic page's custom
+/// resource included, or it heads a tab group one of whose tabs passes its own. Each screen keeps
 /// its own gate, so the answer admits no read that screen's gate refuses.</p>
 /// <p>When none of them does, <var>pFailedPair</var> is the first pair of the area's declared set the
 /// caller lacks, or, when the caller holds that whole set, the first failed pair a listed screen
@@ -127,7 +128,7 @@ ClassMethod EvaluateArea(pAreaKey As %String, Output pFailedPair As %String) As 
         Set tScreenPair = ""
         For tI = 1:1:$ListLength(tScreens) {
             Set tFailed = ""
-            If ..Evaluate($List(tScreens, tI), .tFailed) {
+            If ..EvaluateEntry($List(tScreens, tI), .tFailed) {
                 Set tAllowed = 1
                 Quit
             }
@@ -142,6 +143,44 @@ ClassMethod EvaluateArea(pAreaKey As %String, Output pFailedPair As %String) As 
         Set pFailedPair = ""
     }
     Quit tAllowed
+}
+
+/// <p>Whether the calling process may open the side-bar entry <var>pDescriptor</var>: the screen
+/// passes its own gate (<method>Evaluate</method>), or it heads a tab group (AD-5) and another tab
+/// of that group (<method>TabMembers</method>) passes its own. <var>pFailedPair</var> is the listed
+/// screen's own failed pair, and <code>""</code> when the answer is yes. The entry opens on a tab
+/// only through that tab's gate, so the answer admits no read a tab's gate refuses; a group whose
+/// tabs cannot be read refuses.</p>
+ClassMethod EvaluateEntry(pDescriptor As %String, Output pFailedPair As %String) As %Boolean
+{
+    Set pFailedPair = ""
+    If ..Evaluate(pDescriptor, .pFailedPair) Quit 1
+    Set tAllowed = 0
+    Try {
+        Set tSC = ..TabMembers(pDescriptor, .tMembers)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tMembers) {
+            Set tMemberFailed = ""
+            If ..Evaluate($List(tMembers, tI), .tMemberFailed) {
+                Set tAllowed = 1
+                Quit
+            }
+        }
+    } Catch {
+        Set tAllowed = 0
+    }
+    If tAllowed Set pFailedPair = ""
+    Quit tAllowed
+}
+
+/// <p>The other tabs of the tab group <var>pDescriptor</var> heads, in strip order
+/// (<method>OcuPilot.Screen.Registry.TabMembersFor</method>), which <method>EvaluateEntry</method>
+/// reads.</p>
+/// <p><b>Overridable</b> for the reason <method>ListedScreens</method> is. Production never
+/// overrides it.</p>
+ClassMethod TabMembers(pDescriptor As %String, Output pList As %List) As %Status
+{
+    Quit ##class(OcuPilot.Screen.Registry).TabMembersFor(pDescriptor, .pList)
 }
 
 /// <p>The descriptor classes <var>pAreaKey</var>'s side bar lists, in side-bar order

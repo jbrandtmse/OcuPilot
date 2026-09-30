@@ -14,7 +14,8 @@
 /// assigns.</li>
 /// <li><method>ListedScreens</method> answers an armed roster for an area instead of the registry's,
 /// or an armed failure, so an area's verdict can be driven over a roster the shipped descriptors do
-/// not form.</li>
+/// not form. <method>TabMembers</method> answers an armed failure for a tab group's head the same
+/// way.</li>
 /// </ul>
 /// <p>Every answer lives in process-private globals, cleared by <method>Reset</method>, so
 /// nothing survives the process that armed it. Their subscripts follow identifier rules -- no
@@ -30,6 +31,7 @@ ClassMethod Reset()
     Kill ^||OcuPilotGateClassic
     Kill ^||OcuPilotGateListed
     Kill ^||OcuPilotGateListedFails
+    Kill ^||OcuPilotGateTabsFail
 }
 
 /// <p>Declare that the caller holds <var>pResource</var> at <var>pPermission</var>. Anything
@@ -58,6 +60,19 @@ ClassMethod ArmListed(pAreaKey As %String, pClasses As %String)
 ClassMethod ArmListedFailure(pAreaKey As %String)
 {
     Set ^||OcuPilotGateListedFails(pAreaKey) = 1
+}
+
+/// <p>Declare that reading the tabs of the group <var>pDescriptor</var> heads fails.</p>
+ClassMethod ArmTabMembersFailure(pDescriptor As %String)
+{
+    Set ^||OcuPilotGateTabsFail(pDescriptor) = 1
+}
+
+ClassMethod TabMembers(pDescriptor As %String, Output pList As %List) As %Status
+{
+    Set pList = ""
+    If $Get(^||OcuPilotGateTabsFail(pDescriptor)) Quit $$$ERROR($$$GeneralError, "armed tab roster failure for " _ pDescriptor)
+    Quit ##class(OcuPilot.Screen.Registry).TabMembersFor(pDescriptor, .pList)
 }
 
 ClassMethod ListedScreens(pAreaKey As %String, Output pList As %List) As %Status

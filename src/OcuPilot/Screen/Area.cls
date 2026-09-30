@@ -4,8 +4,9 @@
 /// (AD-8).</p>
 /// <p><b>An area's verdict is its screens', and its declared set is what a gated area names.</b>
 /// <method>OcuPilot.Screen.Gate.EvaluateArea</method> opens an area -- its rail item, Home tile and
-/// side bar -- when any screen its side bar lists passes that screen's own gate, and each screen
-/// keeps its own gate. When none does, the area names the first pair of the set declared here that
+/// side bar -- when any screen its side bar lists passes that screen's own gate, or, for a listed
+/// tab group, any of its tabs passes its own, and each screen keeps its own gate. When none does,
+/// the area names the first pair of the set declared here that
 /// the caller lacks, or, when the caller holds all of it, the first failed pair a listed screen
 /// names. <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> holds the set to every pair
 /// the area's screens declare, less the pairs a screen declares its own, so holding it opens every
