@@ -4058,12 +4058,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: The endpoint's delete path answers 409 'is currently in a transaction' and the classic Manage Locks page asks the same before its Remove confirm; probed on slot B, $zu(67,19,$Job) reads non-zero inside a transaction and 0 outside, 100 calls cost 0.01 ms against 116 ms for 100 %SYS.ProcessQuery opens, so the check belongs at the confirm and not in the list read
 - 2026-09-17T19:45:52Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=plan note=orchestrator-decided at the 6.10 spec gate (Q2 option c): 6.10 ships no transaction column; the warning is this story's, taken from the endpoint's refusal rather than a $zu probe
+- 2026-09-30T16:32:24Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=adjudication note=LockPort maps the vendor 409 to LOCK.INTRANSACTION; dialog warns, Remove anyway; LockRemoveLive + locks browser spec
 
 ### DW-1074: A remote-owner lock row links to Process details, which then says the process no longer exists
 - source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
 - 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar
 - 2026-09-18T19:44:55Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=suppress the owner link on a remote-owner row rather than linking to a process that cannot exist
+- 2026-09-30T16:32:24Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=adjudication note=rowTarget.unless RemoteOwner: remote row's Process ID is text; data-table.spec, lock-list.page.spec, RowTargetCorpus
 
 ### DW-1078: rowTarget admits a target screen whose composite id has more than one part, and one field value is encoded as that whole id
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -8525,3 +8527,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
 - 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager
+
+### DW-1868: An owner-scope lock removal lists once and then sends its DELETEs, so a lock its owner renumbers during the sequence is sent under a stale DeleteID
+- source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
+- 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured

@@ -143,6 +143,9 @@ export class LockListPage {
       { setRefusal: () => undefined }
     );
     this.sending.set(false);
+    // A dialog canceled while this send was in flight no longer answers it: another row's dialog may
+    // be open by now, and neither its warning nor its closing belongs to this answer.
+    if (this.removeTarget() !== target) return;
     if (applied) {
       this.onClose();
       return;

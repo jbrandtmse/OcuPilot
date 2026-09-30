@@ -217,12 +217,17 @@ async function structural(page) {
 /** Signed in at the list with its rows rendered, recording every request to the action route. */
 async function atLocks() {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
-  const posts = [];
-  page.on('request', (request) => {
-    if (new URL(request.url()).pathname === ACTION_PATH) posts.push({ method: request.method(), body: request.postData() ?? '' });
-  });
-  await waitForRows(page, config.navigationTimeoutMs);
-  return { context, page, posts };
+  try {
+    const posts = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === ACTION_PATH) posts.push({ method: request.method(), body: request.postData() ?? '' });
+    });
+    await waitForRows(page, config.navigationTimeoutMs);
+    return { context, page, posts };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 /** Filter the list by `text` and wait until exactly `count` rows show it. */
@@ -311,9 +316,14 @@ async function typeAndRemove(page, pid) {
 test('Story 16.12, AC1: Remove locks offers the three scopes with the remote client\'s aria-disabled, and removes this lock alone', async () => {
   assert.match(config.container, /-ci$/, `this leg holds and removes probe locks, so it runs only in a throwaway; ${config.container} is not one`);
   const tag = freshTag();
-  const pid = startHolder(tag, 2, false);
-  const { context, page, posts } = await atLocks();
+  const pids = [];
+  let context = null;
   try {
+    const pid = startHolder(tag, 2, false);
+    pids.push(pid);
+    const opened = await atLocks();
+    context = opened.context;
+    const { page, posts } = opened;
     await filterTo(page, tag, 2);
     const first = `^OcuProbeLock("${tag}",1)`;
     await openRemove(page, first);
@@ -326,6 +336,12 @@ test('Story 16.12, AC1: Remove locks offers the three scopes with the remote cli
     await page.click('[data-scope="removeclient"] input');
     await frames(page);
     assert.equal((await scopes(page))[2].checked, false, 'a click leaves the remote client\'s scope unselected');
+    await page.click('[data-scope="removeprocess"] input');
+    await page.keyboard.press('ArrowDown');
+    await frames(page);
+    assert.deepEqual((await scopes(page)).map((scope) => scope.checked), [false, true, false], 'an arrow key leaves it unselected too, and the chosen scope stays chosen');
+    await page.click('[data-scope="remove"] input');
+    await frames(page);
     assert.equal(await page.$eval('.ocu-lock-remove-consequence', (line) => line.textContent.trim()), STRINGS.lockRemoveConsequence, 'the body states the consequence');
     await typeAndRemove(page, pid);
     await page.waitForFunction(() => document.querySelector('app-lock-remove-dialog') === null, { timeout: config.navigationTimeoutMs });
@@ -334,18 +350,23 @@ test('Story 16.12, AC1: Remove locks offers the three scopes with the remote cli
     assert.equal(posts.length, 1, `one request: ${JSON.stringify(posts)}`);
     assert.equal(JSON.parse(posts[0].body).action, 'remove', 'for this lock');
   } finally {
-    await context.close();
-    stopHolders([pid]);
+    await context?.close();
+    stopHolders(pids);
   }
 });
 
 test('Story 16.12, AC4: every lock of a process is removed, and another process\'s lock stays', async () => {
   assert.match(config.container, /-ci$/, `this leg holds and removes probe locks, so it runs only in a throwaway; ${config.container} is not one`);
   const tag = freshTag();
-  const first = startHolder(`${tag}p`, 2, false);
-  const other = startHolder(`${tag}q`, 1, false);
-  const { context, page } = await atLocks();
+  const pids = [];
+  let context = null;
   try {
+    const first = startHolder(`${tag}p`, 2, false);
+    pids.push(first);
+    pids.push(startHolder(`${tag}q`, 1, false));
+    const opened = await atLocks();
+    context = opened.context;
+    const { page } = opened;
     await filterTo(page, tag, 3);
     await openRemove(page, `^OcuProbeLock("${tag}p",1)`);
     await page.click('[data-scope="removeprocess"] input');
@@ -356,17 +377,22 @@ test('Story 16.12, AC4: every lock of a process is removed, and another process\
     await waitForProbeRows(page, tag, 1);
     assert.equal((await probeRows(page, tag))[0][4], `^OcuProbeLock("${tag}q",1)`, 'the other process\'s lock stays');
   } finally {
-    await context.close();
-    stopHolders([first, other]);
+    await context?.close();
+    stopHolders(pids);
   }
 });
 
 test('Story 16.12, AC2: a holder in a transaction is warned about before anything is removed, and Remove anyway removes it', async () => {
   assert.match(config.container, /-ci$/, `this leg holds and removes probe locks, so it runs only in a throwaway; ${config.container} is not one`);
   const tag = freshTag();
-  const pid = startHolder(tag, 1, true);
-  const { context, page, posts } = await atLocks();
+  const pids = [];
+  let context = null;
   try {
+    const pid = startHolder(tag, 1, true);
+    pids.push(pid);
+    const opened = await atLocks();
+    context = opened.context;
+    const { page, posts } = opened;
     await filterTo(page, tag, 1);
     await openRemove(page, `^OcuProbeLock("${tag}",1)`);
     await typeAndRemove(page, pid);
@@ -386,25 +412,30 @@ test('Story 16.12, AC2: a holder in a transaction is warned about before anythin
     await waitForProbeRows(page, tag, 0);
     assert.deepEqual(posts.map((post) => JSON.parse(post.body).values), [{ RemoveInTransaction: 'false' }, { RemoveInTransaction: 'true' }], 'the second send overrides the check');
   } finally {
-    await context.close();
-    stopHolders([pid]);
+    await context?.close();
+    stopHolders(pids);
   }
 });
 
 test('Story 16.12, DW-1337: the Remove locks dialog, warning shown, passes the structural walk in both themes', async () => {
   assert.match(config.container, /-ci$/, `this leg holds a probe lock, so it runs only in a throwaway; ${config.container} is not one`);
   const tag = freshTag();
-  const pid = startHolder(tag, 1, true);
-  const { context, page } = await atLocks();
+  const pids = [];
+  let context = null;
   try {
+    const pid = startHolder(tag, 1, true);
+    pids.push(pid);
+    const opened = await atLocks();
+    context = opened.context;
+    const { page } = opened;
     await filterTo(page, tag, 1);
     await openRemove(page, `^OcuProbeLock("${tag}",1)`);
     await typeAndRemove(page, pid);
     await page.waitForSelector('.ocu-lock-remove-warning', { timeout: config.navigationTimeoutMs });
     assert.deepEqual(await structural(page), [], 'with the dialog open and its warning showing, no violation beyond the baseline\'s entries');
   } finally {
-    await context.close();
-    stopHolders([pid]);
+    await context?.close();
+    stopHolders(pids);
   }
 });
 

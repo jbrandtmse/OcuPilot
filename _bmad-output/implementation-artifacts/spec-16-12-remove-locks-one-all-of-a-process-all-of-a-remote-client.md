@@ -107,7 +107,7 @@ deferred: []
 | Least privilege | A holder of exactly the screen's two pairs | It lists; each removal is refused 403 naming `%DB_IRISSYS:WRITE`. With that pair added, it removes. | Refused before any port call |
 | State moved | P1 takes a new lock after an owner-scope mint | Confirm is refused `PROPOSAL.TARGETCHANGED` | Nothing sent |
 | Crafted id | `DeleteID` `1,1,P<live pid>,` | The fresh read finds no such row: the mint refuses it as not present, and the route answers 404 | Never reaches the vendor |
-| Remote-owner row (DW-1074) | `RemoteOwner` true | The Process ID cell is text, with no link. Only the client scope is enabled. | Unobservable without ECP: canned rows only |
+| Remote-owner row (DW-1074) | `RemoteOwner` true | The Process ID cell is text, with no link. The process scope is drawn `aria-disabled`; this lock and the client scope stay enabled. | Unobservable without ECP: canned rows only |
 | Audit | Any removal, auditing on | The vendor records `%System/%System/ConfigurationChange` "Delete lock <reference>" under the caller. The agent's path also emits its marker. | Marker failure never fails the write |
 
 </intent-contract>
@@ -320,7 +320,50 @@ Anchors are as of `eb6ed8f4`. Paths are relative to `src/OcuPilot/` unless they 
 - **AC8 (DW-1074).** Given a row whose `RemoteOwner` is true, when the table renders, then its Process ID cell is text, with no link. `rowTarget.unless` is refused alike by both engines. Pinned by `data-table.spec.ts`, `RowTargetCorpus` through `Descriptor` and `screen-mirror.test.mjs`.
 - **AC9.** Given any test in this story, when it ends, whether it passed or failed, then no `^OcuProbeLock` holder, probe principal or test lock remains.
 
+### Review Findings
+
+Code review 2026-09-30, full-opus tier: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor; 38 rows, 8 entries after grouping. Every patch is applied and verified on `ocupilot-ci`.
+
+- [x] [Review][Patch] **High (AD-10).** An owner-scope removal on the screen's caller could remove one of OcuPilot's own locks [src/OcuPilot/Port/LockPort.cls:109]. The trigger is the target lock dropping out between the route's read and the prohibited set's own read. The set then reads the target as absent and permits the write. The port still sent every stored id it found listed, and the screen's caller has no fingerprint to stop it. The fix: a write whose target is no longer listed answers 404 and sends nothing. Fix-risk low; in-story. Pinned by the new owner leg of `LockRemoveTools.TestThePortSendsOnlyWhatItsFreshListingHolds`.
+- [x] [Review][Patch] **Medium (AC9).** Each browser leg started its holders and signed in before its `try` [ui/browser/locks.browser-spec.mjs:319]. A failed setup therefore leaked the holder for up to 300 s, and the browser context with it. Holders now start inside `try`, and `atLocks` closes its own context on failure. Fix-risk low.
+- [x] [Review][Patch] **Medium (Rule 19, AC1).** No test gave the page a row owned by a remote client, so its `RemoteOwner` mapping was unpinned [ui/src/app/areas/os-management/lock-list.page.spec.ts:160]. A canned remote row now checks the withheld process scope and the `removeclient` send. Fix-risk low.
+- [x] [Review][Patch] **Low.** A Remove could be answered after its dialog was canceled and another row's dialog opened [ui/src/app/areas/os-management/lock-list.page.ts:148]. That answer then armed "Remove anyway" on the new dialog, or closed it. The page now ignores an answer whose dialog is gone, and a component test pins it.
+- [x] [Review][Patch] **Low (Rule 19).** The lock arm's quoted-directory case could not fail: its only `]`-inside-quotes case sat in a `|...|` prefix [src/OcuPilot/Test/LockRemoveTools.cls:192]. Cases were added for a closing character inside each prefix kind, and for the state classes' `^OcuPilot.Kernel.State.BaseD` storage global.
+- [x] [Review][Patch] **Low.** Nothing pinned the Locks list's `context.fields` `RemoteOwner` or its `emptyAgentKey` [src/OcuPilot/Test/LockRemoveTools.cls:349]. The new test sits in the story's own class, because `Test/Descriptor.cls` is contended by Epic 23.
+- [x] [Review][Patch] **Low.** The dialog's claim that an arrow key cannot select a refused scope was untested [ui/browser/locks.browser-spec.mjs:340]. A new browser assertion holds it green: Chrome's arrow-key selection goes through the canceled click.
+- [x] [Review][Defer] **Medium, unverified.** An owner-scope removal lists once and then sends its `DELETE`s one after another [src/OcuPilot/Port/LockPort.cls:120]. So a lock its owner renumbers during that sequence is sent under a stale `DeleteID`. The renumbering was measured here: taking a sibling under the same first subscript changed the held lock's id. The vendor's answer to such an id was not measured, because this stage may not send an unlisted id. Deferred as DW-1868, `decision-pending owner=burndown`: it is the AD-52 named-limit call, set out under Decisions in the review's closing summary.
+
+**Rejected (25 rows):**
+
+- `false`:
+  - The fingerprint subject should carry `Reference`. Measured: a reused slot gets a new second piece (230006, then 230008), so no `DeleteID` named a different reference.
+  - `HoldsOcuPilotLock` fails open. The port's answers always carry `Reference` as a string, so the object without one is unreachable.
+  - AC5 is contradicted at the mint. `Dispatch.cls:257-262` refuses the tool call on its pairs before the mint runs.
+  - `IdsOf`'s single-id fallback. It is unreachable, because `PortQuery` always stores the read's ids.
+  - The client's code literals are unpinned. The browser AC2 leg drives the real 409 through them.
+  - The `EndpointCoverage` probe could remove a lock. Its body is refused unreadable, and it names no listed id.
+  - The port's own 404 is left unlogged. No vendor call is made, and AD-2 governs vendor answers.
+  - `LockRemoveClient` inherits its read and write types. Their values are identical and pinned.
+- By design (spec-bound):
+  - A failure part-way through an owner removal leaves its earlier removals done and listed until the next read (the named limit: not atomic).
+  - The script renders no re-list (AD-59 and the named limit).
+  - Waiter rows join the set (the named limit on vendor-unremovable rows).
+  - The empty state's agent invitation is the spec's.
+  - A remote owner's key granularity, and its `Pid` as the title and typed name (two rows), are inference on unobserved rows under the spec's decision.
+- `low`, not worth the change:
+  - A dialog with no sentence for a transport fault; the connectivity banner reports it.
+  - Review counts in the bookkeeping.
+  - Stale EXPERIENCE.md anchors (`:319`, `:408`) that predate this story.
+  - `LockRemoveLive` running past 500 lines.
+  - Swapped `IdOf` labels in a test.
+  - The wording of the non-string `unless` refusal; two sentences are fixed.
+  - Shared and waiter rows sharing an id.
+  - An owner above 201 matching rows reading as absent rather than as too many.
+- Needs a spec edit, not a code change: I/O row "Remote-owner row" reads "only the client scope is enabled", while Boundaries, AC1 and the code withhold the one scope that does not fit. For the lead.
+
 ## Spec Change Log
+
+- 2026-09-30, lead, after code review (tier 1, Rule 5): the I/O row "Remote-owner row" said only the client scope is enabled; Boundaries, AC1 and the code withhold only the scope that does not fit, so the row now says the process scope is drawn `aria-disabled`.
 
 ## Review Triage Log
 
@@ -501,6 +544,11 @@ Everything that takes or removes a lock, or creates a principal, runs on `ocupil
 - mutation: `LockPort.Invoke`'s fresh-listing guard treats an unlisted id as listed → `LockRemoveTools.TestThePortSendsOnlyWhatItsFreshListingHolds` red on its 404, no-`DELETE` and sent-ids assertions (run 22339).
 - mutation: `LockPort.Listing` asks `maxRows` `MAXOWNERLOCKS` rather than one more → `LockRemoveTools.TestAnOwnerBeyondTheCapIsRefused` red, the owner reading 200 locks and no refusal (run 22340).
 - mutation: `consequenceSentence` drops its `LOCK.INTRANSACTION` branch → `proposal-view.test.mjs` "the lock removal's in-transaction consequence code…" red.
+- mutation (code review): `LockPort.Invoke` answers a target it no longer lists only for a read → `LockRemoveTools.TestThePortSendsOnlyWhatItsFreshListingHolds` red on the `REMOVE` 404 and the owner-target 404 legs (AC7, run 22345).
+- mutation (code review): `Prohibited.GlobalName` drops its quote toggle → `LockRemoveTools.TestTheLockArmReadsOcuPilotsOwnGlobals` red on both quoted-directory legs (AC7, run 22346).
+- mutation (code review): the Locks list's `context.fields` drops `RemoteOwner` → `LockRemoveTools.TestTheLocksListSendsTheOwnerKindAsContext` red (run 22347).
+- mutation (code review): `LockListPage.onOpen` reads `remote` as `false` → `lock-list.page.spec.ts` "AC1: on a row a remote client owns…" red (AC1).
+- mutation (code review): `LockListPage.onRemove` drops its open-dialog check → `lock-list.page.spec.ts` "ignores a Remove answered after its dialog was canceled…" red.
 
 ## Auto Run Result
 

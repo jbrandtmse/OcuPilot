@@ -7,7 +7,8 @@
 /// 200; an override on a local owner carries the consequence; the arm refuses a lock on OcuPilot's own
 /// globals and permits a system process's; the script is one <code>DELETE</code> step per stored id;
 /// and the port sends only an id its fresh listing holds, stops at the vendor's 409, sends a remote
-/// owner's lock without the check, and reads an owner one row beyond the cap.</p>
+/// owner's lock without the check, and reads an owner one row beyond the cap; and the Locks list
+/// sends each row's owner kind as context.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed. Every read is canned; nothing is
 /// sent to the instance's lock table (<class>OcuPilot.Test.LockRecordPort</class>).</p>
 Class OcuPilot.Test.LockRemoveTools Extends %UnitTest.TestCase
@@ -186,11 +187,12 @@ Method TestAnOverrideOnALocalOwnerCarriesTheConsequence()
 /// of an owner's <code>Locks</code>, and fails closed on a target it cannot read.</p>
 /// <p>Mutation (Rule 19): skip the extended-reference prefix in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.GlobalName</method> -- the install lock's leg goes
-/// red.</p>
+/// red; drop its quote toggle -- the legs whose quoted directory holds the prefix's own closing
+/// character go red.</p>
 Method TestTheLockArmReadsOcuPilotsOwnGlobals()
 {
     Set tSet = "OcuPilot.Kernel.Proposal.Prohibited"
-    For tCase = $ListBuild("^OcuPilotTurnSlot(""_SYSTEM"")", 1), $ListBuild("^OcuPilotProposalTarget", 1), $ListBuild("^[""^^/durable/iris/mgr/""]OcuPilotInstallLock(""probe"")", 1), $ListBuild("^|""^^/a]b/""|OcuPilotStateCap(1)", 1), $ListBuild("^TASKMGR", 0), $ListBuild("^ISC.LMFMON(""License Monitor"")", 0), $ListBuild("^ocupilotTurnSlot", 0), $ListBuild("^[""^^/durable/OcuPilot/""]Other(1)", 0), $ListBuild("^OcuProbeLock(""a"",1)", 0), $ListBuild("OcuPilotLocal", 0) {
+    For tCase = $ListBuild("^OcuPilotTurnSlot(""_SYSTEM"")", 1), $ListBuild("^OcuPilotProposalTarget", 1), $ListBuild("^[""^^/durable/iris/mgr/""]OcuPilotInstallLock(""probe"")", 1), $ListBuild("^|""^^/a]b/""|OcuPilotStateCap(1)", 1), $ListBuild("^[""^^/a]b/""]OcuPilotInstallLock(1)", 1), $ListBuild("^|""^^/a|b/""|OcuPilotStateCap(1)", 1), $ListBuild("^OcuPilot.Kernel.State.BaseD(5)", 1), $ListBuild("^TASKMGR", 0), $ListBuild("^ISC.LMFMON(""License Monitor"")", 0), $ListBuild("^ocupilotTurnSlot", 0), $ListBuild("^[""^^/durable/OcuPilot/""]Other(1)", 0), $ListBuild("^OcuProbeLock(""a"",1)", 0), $ListBuild("OcuPilotLocal", 0) {
         Do $$$AssertEquals($ClassMethod(tSet, "IsOcuPilotLock", $List(tCase, 1)), $List(tCase, 2), $List(tCase, 1))
     }
     Do $$$AssertEquals($ClassMethod(tSet, "HoldsOcuPilotLock", {"Reference": ("^OcuPilotTurnSlot(""x"")")}), 1, "a single own lock is held")
@@ -234,12 +236,14 @@ Method TestTheScriptIsOneDeleteStepPerStoredId()
 /// the instance (<class>OcuPilot.Test.LockRecordPort</class>). A stored id the fresh listing no longer
 /// holds is never sent, and a <code>REMOVE</code> of one answers 404 <code>PORT.NOTFOUND</code>; an
 /// owner-scope removal sends exactly the stored ids the listing holds for that owner, in order, and
-/// none of a row whose text merely carries the owner key; the vendor's 409 answers
+/// none of a row whose text merely carries the owner key, and sends nothing, answering 404, once its
+/// target is no longer listed; the vendor's 409 answers
 /// <code>LOCK.INTRANSACTION</code> and stops the sequence; and a row the listing reports held by a remote
 /// owner is sent with <code>checkTxn</code> 0 whatever the query asked.</p>
 /// <p>Mutation (Rule 19): drop the fresh-listing guard (<code>If '$Data(tByDeleteID(tDeleteID))
 /// Continue</code>) from <method>OcuPilot.Port.LockPort.Invoke</method> -- the released id is sent and
-/// this goes red.</p>
+/// this goes red; drop the target's own listing check before the writes -- the released target's
+/// owner locks are sent and this goes red.</p>
 Method TestThePortSendsOnlyWhatItsFreshListingHolds()
 {
     Set tPort = "OcuPilot.Test.LockRecordPort"
@@ -276,7 +280,23 @@ Method TestThePortSendsOnlyWhatItsFreshListingHolds()
     Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "DELETE"), ","), tA _ "|1||," _ tB _ "|1||", "it sends A and B with the check, and neither the released id nor another owner's")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("removed"), 1: ""), 2, "answering two removed")
 
+    ; An owner removal whose target its owner has released is 404, and sends none of the owner's other
+    ; locks: the prohibited set judged the target's set, which no longer exists.
+    Do $ClassMethod(tPort, "Reset")
+    Do $ClassMethod(tPort, "Arm", tRows)
+    Kill tQuery
+    Set tQuery("id") = tGone
+    Set tQuery("ids") = "[""" _ tA _ """,""" _ tB _ """]"
+    Set tQuery("checkTxn") = 1
+    Set tSC = $ClassMethod(tPort, "Invoke", "Lock", "REMOVEOWNER", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ " " _ +$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "1 404 " _ ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "an owner removal whose target was released answers 404 PORT.NOTFOUND")
+    Do $$$AssertEquals($ListLength($ClassMethod(tPort, "Calls", "DELETE")), 0, "and sends none of the owner's listed locks")
+
     ; The vendor's 409 answers LOCK.INTRANSACTION, and nothing further is sent.
+    Kill tQuery
+    Set tQuery("id") = tA
+    Set tQuery("ids") = "[""" _ tA _ """,""" _ tGone _ """,""" _ tDecoy _ """,""" _ tB _ """]"
+    Set tQuery("checkTxn") = 1
     Do $ClassMethod(tPort, "Reset")
     Do $ClassMethod(tPort, "Arm", tRows)
     Do $ClassMethod(tPort, "ArmStatus", tA, 409)
@@ -320,6 +340,19 @@ Method TestAnOwnerBeyondTheCapIsRefused()
     Set tSC = ##class(OcuPilot.Screen.Tool.LockRemoveProcess).StateDiff(tRead, .tDiff, .tProblem)
     Do $$$AssertEquals(tProblem, $Parameter(..#REMOVE, "TOOMANYREASON"), "and a set beyond 200 is refused with the published sentence")
     Do $ClassMethod(tPort, "Reset")
+}
+
+/// <p>AD-24, Story 16.12: the Locks list sends each row's owner kind to the agent as context, so the
+/// agent can tell which owner scope fits, and its empty state invites the agent's removal.</p>
+/// <p>Mutation (Rule 19): drop <code>RemoteOwner</code> from the Locks list's
+/// <code>context.fields</code> -- this goes red.</p>
+Method TestTheLocksListSendsTheOwnerKindAsContext()
+{
+    Set tDeclaration = ..XDataJson(..#SCREEN, "Declaration")
+    Do $$$AssertTrue($IsObject(tDeclaration), "the Locks list's declaration reads")
+    If '$IsObject(tDeclaration) Quit
+    Do $$$AssertEquals(tDeclaration.%Get("context").%Get("fields").%ToJSON(), "[""Pid"",""OSUserName"",""RoutineInfo"",""ModeCount"",""Reference"",""Directory"",""System"",""DeleteID"",""RemoteOwner""]", "its context carries RemoteOwner beside the read's other fields")
+    Do $$$AssertEquals(tDeclaration.%Get("table").%Get("emptyAgentKey") _ "|" _ tDeclaration.%Get("table").%Get("emptyNextKey"), "lockListEmptyAgent|", "its empty state invites the agent's removal")
 }
 
 /// <p>A canned <code>OWNER</code> read for owner <var>pOwner</var> holding <var>pCount</var> locks.</p>

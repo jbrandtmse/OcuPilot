@@ -48,14 +48,14 @@ interface Call {
   readonly body: string;
 }
 
-/** Mount the page; each request resolves to the next of `answers`. */
-function mount(answers: JsonResult<unknown>[]) {
+/** Mount the page over `rows`; each request resolves to the next of `answers`, which may be held open. */
+function mount(answers: (JsonResult<unknown> | Promise<JsonResult<unknown>>)[], rows: readonly Record<string, unknown>[] = ROWS) {
   TestBed.resetTestingModule();
   const calls: Call[] = [];
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       calls.push({ path, body: init.body ?? '' });
-      return (answers.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<T>;
+      return (await (answers.shift() ?? { kind: 'ok', status: 200, body: {} })) as JsonResult<T>;
     },
   };
   const bus = new ChangeBus();
@@ -73,7 +73,7 @@ function mount(answers: JsonResult<unknown>[]) {
   });
   TestBed.overrideComponent(LockListPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
   const store = stores.for(LOCKS.descriptor, LOCKS.refreshRates);
-  store.applyTick(ROWS, false, '', new Date());
+  store.applyTick(rows, false, '', new Date());
   const fixture = TestBed.createComponent(LockListPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -151,5 +151,56 @@ describe('the Locks list page', () => {
     expect(host.querySelector('.ocu-lock-remove-refusal')?.textContent?.trim()).toBe(STRINGS.lockRefusalOcuPilot);
     expect(host.querySelector('.ocu-lock-remove-warning')).toBeNull();
     expect(store.refusal()).toBe('');
+  });
+
+  // A remote owner is unobservable without ECP, so the row is canned (DW-1074).
+  //
+  // Mutation (Rule 19): read `remote` as `false` in `onOpen` -> the process scope is offered and the
+  // client scope withheld on a remote row, and this goes red.
+  it('AC1: on a row a remote client owns, withholds every lock of the process and sends every lock of the client', async () => {
+    const remoteId = '313131009,2,C4,';
+    const { fixture, host, store, actions, calls } = mount([], [{ ...ROWS[0], DeleteID: remoteId, RemoteOwner: true }]);
+    store.setSelection([remoteId]);
+    actions.run(LOCK_LIST, LOCK_REMOVE);
+    await settle(fixture);
+    const process = host.querySelector(`[data-scope="${LOCK_REMOVE_PROCESS}"] input`) as HTMLInputElement;
+    const client = host.querySelector(`[data-scope="${LOCK_REMOVE_CLIENT}"] input`) as HTMLInputElement;
+    expect(process.getAttribute('aria-disabled')).toBe('true');
+    expect(document.getElementById(process.getAttribute('aria-describedby') ?? '')?.textContent?.trim()).toBe(STRINGS.lockRemoveRefusalRemote);
+    expect(client.getAttribute('aria-disabled')).toBeNull();
+    client.click();
+    fixture.detectChanges();
+    typeName(fixture, host, '905');
+    (host.querySelector('.ocu-lock-remove-submit') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: LOCK_REMOVE_CLIENT, id: remoteId, values: { RemoveInTransaction: 'false' } });
+  });
+
+  // Mutation (Rule 19): drop `onRemove`'s check that its dialog is still the open one -> the late
+  // in-transaction answer arms Remove anyway on the other row's dialog, and this goes red.
+  it('ignores a Remove answered after its dialog was canceled and another row\u2019s opened', async () => {
+    let answer: (result: JsonResult<unknown>) => void = () => undefined;
+    const late = new Promise<JsonResult<unknown>>((resolve) => {
+      answer = resolve;
+    });
+    const otherId = '313131010,1,P906,';
+    const { fixture, host, store, actions } = mount([late], [...ROWS, { ...ROWS[0], Pid: 906, DeleteID: otherId, Reference: '^OcuProbeLock("b",1)' }]);
+    store.setSelection([LOCAL_ID]);
+    actions.run(LOCK_LIST, LOCK_REMOVE);
+    await settle(fixture);
+    typeName(fixture, host, '905');
+    (host.querySelector('.ocu-lock-remove-submit') as HTMLButtonElement).click();
+    await settle(fixture);
+    (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    store.setSelection([otherId]);
+    actions.run(LOCK_LIST, LOCK_REMOVE);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Remove locks held by 906');
+    answer({ kind: 'error', status: 409, code: 'LOCK.INTRANSACTION', reason: STRINGS.lockRemoveInTransaction, detail: null } as JsonResult<unknown>);
+    await settle(fixture);
+    expect(host.querySelector('app-lock-remove-dialog')).not.toBeNull();
+    expect(host.querySelector('.ocu-lock-remove-warning')).toBeNull();
+    expect(host.querySelector('.ocu-lock-remove-submit')?.textContent?.trim()).toBe(STRINGS.lockRemoveAction);
   });
 });

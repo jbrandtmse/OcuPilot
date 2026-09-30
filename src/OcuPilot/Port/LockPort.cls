@@ -17,9 +17,10 @@
 /// re-list first and then send one <code>Lock</code> <code>DELETE</code>
 /// <code>?id=&lt;DeleteID&gt;&amp;checkTxn=&lt;c&gt;</code> per id the <parameter>IDSQUERY</parameter>
 /// query parameter names, in its order, and only for an id found verbatim in that fresh listing: a
-/// <code>DeleteID</code> naming no listed lock crashed the serving process in measurement. An id no
-/// longer listed is skipped, since its owner has released it; for <parameter>REMOVETYPE</parameter>
-/// that skip is 404 <code>PORT.NOTFOUND</code>. <code>c</code> is the
+/// <code>DeleteID</code> naming no listed lock crashed the serving process in measurement. A target
+/// id the listing no longer holds is 404 <code>PORT.NOTFOUND</code> with nothing sent, for either
+/// write; any other stored id no longer listed is skipped, since its owner has released it. The
+/// listing is taken once, before the first <code>DELETE</code>. <code>c</code> is the
 /// <parameter>CHECKTXNQUERY</parameter> query parameter, <code>1</code> unless it reads
 /// <code>0</code>, and <code>0</code> for a lock the listing reports held by a remote owner. The
 /// vendor's 409 answers <parameter>OcuPilot.Api.LockError.INTRANSACTION</parameter> and the port sends
@@ -103,8 +104,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     If $$$ISERR(tSC) Quit tSC
     Set pHttpStatus = 0
     Set pFault = ""
+    ; A target no longer listed is absent for a write as for a read: the prohibited set judged the
+    ; target's own set, and the screen's caller has no fingerprint to stop the rest (AD-10, AD-53).
+    If '$Data(tByDeleteID(tId)) Quit ..Absent(pEndpoint, .pHttpStatus, .pFault)
     If 'tWrite {
-        If '$Data(tByDeleteID(tId)) Quit ..Absent(pEndpoint, .pHttpStatus, .pFault)
         If pType = ..#ROWTYPE {
             Set pResult = ..RowAnswer(tByDeleteID(tId))
         } Else {
@@ -132,7 +135,6 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tRemoved = tRemoved + 1
     }
     If $$$ISERR(tSC) Quit tSC
-    If (pType = ..#REMOVETYPE) && (tRemoved = 0) Quit ..Absent(pEndpoint, .pHttpStatus, .pFault)
     Set pResult = {}
     Do pResult.%Set("removed", tRemoved, "number")
     Set pHttpStatus = 200
