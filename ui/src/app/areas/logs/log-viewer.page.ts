@@ -3,14 +3,16 @@ import { NavigationEnd, Router } from '@angular/router';
 
 import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
-import { formatDeniedAction, NavigationService } from '../../core/navigation';
+import { formatDeniedAction, NavigationService, parentCriteria } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenArrivals, type ArrivalEntry } from '../../core/screen-arrival';
+import { screenReadPath } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import {
   SEVERITY_CHIPS,
+  checkOptionText,
   fileOptionText,
   highlightSpans,
   matchCountText,
@@ -23,6 +25,7 @@ import {
   ALERTS_SOURCE,
   ANALYTICS_SOURCE,
   EVENT_LOG_SOURCE,
+  INTEGRITY_SOURCE,
   MESSAGES_SOURCE,
   SQL_DIAGNOSTICS_SOURCE,
   SYSTEM_MONITOR_SOURCE,
@@ -42,8 +45,11 @@ interface RowView {
   readonly spans: readonly { readonly text: string; readonly match: boolean }[];
   readonly raw: string;
   readonly match: boolean;
-  /** The entry as its screen's context declares it, which "Explain this entry" sends (Story 11.2). */
-  readonly entry: { readonly time: string; readonly severity: string; readonly text: string };
+  /**
+   * The entry as its screen's context declares it, which "Explain this entry" sends (Story 11.2):
+   * `{time, severity, text}`, or a declared read's row as answered (Story 16.10).
+   */
+  readonly entry: object;
   /** Whether this is the entry the log hub opened the viewer at (Story 16.9). */
   readonly current: boolean;
 }
@@ -78,6 +84,20 @@ interface ChipView {
   readonly count: number;
 }
 
+/**
+ * The source of a `log-viewer` screen that reads its own declared read (Story 16.10), resolved per
+ * page from the route id and the screen store's max rows (`declaredReadSource`).
+ */
+const DECLARED_READ: LogViewerSource = { tailPath: '', kind: 'read' };
+
+/**
+ * `screen`'s declared read for the route id `url` carries and `maxRows`, as a `read` source: the
+ * screen's own read route, never a log route (AD-36).
+ */
+export function declaredReadSource(screen: ScreenDeclaration, url: string, maxRows: number): LogViewerSource {
+  return { tailPath: screenReadPath(screen, maxRows, parentCriteria(screen, url)), kind: 'read' };
+}
+
 /** The source each `log-viewer` descriptor reads, keyed by its route. */
 const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/alerts': ALERTS_SOURCE,
@@ -88,6 +108,8 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/sqldiagnostics': SQL_DIAGNOSTICS_SOURCE,
   'logs/eventlog': EVENT_LOG_SOURCE,
   'logs/analytics': ANALYTICS_SOURCE,
+  'os-management/databases/integrity-log': INTEGRITY_SOURCE,
+  'os-management/language-servers/activity': DECLARED_READ,
 };
 
 /**
@@ -127,6 +149,16 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
  * **The six secondary logs read entries** (Story 16.8): their sources declare `entries`, the rows
  * arrive already normalized, and Load newer reads the newest window again and jumps to the bottom.
  *
+ * **The Integrity log reads one check's report** (Story 18.4): its source declares `report`, its
+ * choice lists the instance's checks newest first, each "<time> \u00b7 <state>", with the newest read
+ * when none is named; a check still running reads "This check is still running.", and an instance
+ * holding none "This instance holds no integrity check.".
+ *
+ * **A language server's Activity log reads its own declared read** (Story 16.10): its source is
+ * the screen's read route for the server its route id names, under the screen store's max rows; the
+ * rows are mapped to lines, Load newer reads the window again, and the screen publishes the rows as
+ * answered. It offers no file choice.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -149,7 +181,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
         <select
           class="ocu-criteria-select"
           data-ocu-log="file"
-          [attr.aria-label]="STRINGS.databaseVolumeColumnFile"
+          [attr.aria-label]="fileChoiceLabel"
           (change)="onFile($event)"
         >
           @for (option of fileOptions; track option.value) {
@@ -312,8 +344,8 @@ export class LogViewerPage {
   /** The screen this page renders, which an explained entry is sent as. */
   private readonly screen: ScreenDeclaration | null;
 
-  /** The file source this screen reads. */
-  private readonly source: LogViewerSource;
+  /** The source this screen reads; a declared read's follows the route id. */
+  private source: LogViewerSource;
 
   /** This screen's store, which a turn's screen context reads its rows from (AD-24). */
   private readonly screenStore: ScreenStore | null;
@@ -347,9 +379,13 @@ export class LogViewerPage {
     const stopExplain = this.explainEntry?.subscribe(() => this.generation.update((value) => value + 1)) ?? null;
     const screen = this.navigation.screenForUrl(this.router.url);
     this.screen = screen;
-    const source = SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE;
-    this.source = source;
     this.screenStore = screen === null ? null : inject(ScreenStores).for(screen.descriptor, screen.refreshRates);
+    const declared = SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE;
+    const source =
+      declared.kind === 'read' && screen !== null && this.screenStore !== null
+        ? declaredReadSource(screen, this.router.url, this.screenStore.maxRows())
+        : declared;
+    this.source = source;
     this.store.setSource(source, this.addressedFile());
     // Manual Refresh only (DW-260). This screen binds no `RefreshService`: it declares
     // `refreshes: false` and adds rows only on an explicit Load newer, so Refresh re-opens the
@@ -365,6 +401,15 @@ export class LogViewerPage {
     const stopAddress = this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd) || screen === null) return;
       if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
+      // A declared read follows its route id: another server is another window.
+      if (this.source.kind === 'read' && this.screenStore !== null) {
+        const next = declaredReadSource(screen, this.router.url, this.screenStore.maxRows());
+        if (next.tailPath === this.source.tailPath) return;
+        this.source = next;
+        this.store.setSource(next);
+        void this.store.open();
+        return;
+      }
       const file = this.addressedFile();
       if (file === this.store.file()) return;
       // Another file is not the window the log hub's entry was looked for in.
@@ -440,16 +485,25 @@ export class LogViewerPage {
 
   /**
    * Publish the entries on screen into this screen's store, newest first as the declared read
-   * answers them, each as its declared `{time, severity, text}` (AD-24). The panel's own
-   * `assembleScreenContext` caps and narrows them.
+   * answers them, each as its declared `{time, severity, text}` (AD-24); a declared read's rows are
+   * published as the read answered them (Story 16.10). The panel's own `assembleScreenContext` caps
+   * and narrows them.
    */
   private publishRows(): void {
     if (this.screenStore === null) return;
     const lines = this.store.lines();
     if (lines === this.publishedLines) return;
     this.publishedLines = lines;
-    const rows = [...lines].reverse().map((line) => ({ time: line.stamp, severity: line.severity, text: line.text }));
+    const rows =
+      this.source.kind === 'read'
+        ? this.store.rows()
+        : [...lines].reverse().map((line) => ({ time: line.stamp, severity: line.severity, text: line.text }));
     this.screenStore.applyTick(rows, this.store.truncated(), this.screenStore.banner(), new Date());
+  }
+
+  /** The choice's accessible name: "File", or "Integrity check" for the Integrity log's checks. */
+  protected get fileChoiceLabel(): string {
+    return this.source.report === true ? STRINGS.databaseIntegrityCheck : STRINGS.databaseVolumeColumnFile;
   }
 
   /** Whether the file choice renders: the source lists files, and its list has answered. */
@@ -466,6 +520,16 @@ export class LogViewerPage {
     this.generation();
     const own = this.source.ownFile ?? '';
     const chosen = this.store.file();
+    if (this.source.report === true) {
+      // A check is named by its id; no name reads the newest, which is the list's first.
+      const checks = this.store.files().map((entry, index) => ({
+        value: entry.name,
+        text: checkOptionText(entry),
+        selected: chosen === '' ? index === 0 : entry.name === chosen,
+      }));
+      if (chosen !== '' && !checks.some((option) => option.value === chosen)) checks.push({ value: chosen, text: chosen, selected: true });
+      return checks;
+    }
     const options: FileOptionView[] = this.store.files().map((entry) => {
       const value = entry.name === own ? '' : entry.name;
       return { value, text: fileOptionText(entry), selected: value === chosen };
@@ -521,7 +585,7 @@ export class LogViewerPage {
       spans: highlightSpans(line.text, needle),
       raw: line.raw,
       match: matchesSearch(line, needle),
-      entry: { time: line.stamp, severity: line.severity, text: line.text },
+      entry: line.record ?? { time: line.stamp, severity: line.severity, text: line.text },
       current: line === this.currentLine,
     }));
   }
@@ -613,7 +677,10 @@ export class LogViewerPage {
   protected get emptyTitle(): string {
     this.generation();
     const narrowed = this.searchValue !== '' || this.chipValue !== '';
-    return narrowed && this.store.lines().length > 0 ? STRINGS.logViewerNoMatches : STRINGS.logViewerEmpty;
+    if (narrowed && this.store.lines().length > 0) return STRINGS.logViewerNoMatches;
+    // Story 18.4: a check still running has no report yet; an instance with none has nothing to read.
+    if (this.source.report === true) return this.store.running() ? STRINGS.databaseIntegrityRunning : STRINGS.databaseIntegrityNone;
+    return STRINGS.logViewerEmpty;
   }
 
   protected get showLoadNewer(): boolean {
@@ -682,7 +749,7 @@ export class LogViewerPage {
 
   protected onLoadNewer(): void {
     void this.store.loadNewer().then(() => {
-      if (this.source.entries !== true) return;
+      if (this.source.entries !== true && this.source.kind !== 'read') return;
       afterNextRender(() => this.onBottom(), { injector: this.injector });
     });
   }

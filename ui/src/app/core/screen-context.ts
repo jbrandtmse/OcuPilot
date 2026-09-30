@@ -26,6 +26,10 @@ export interface ScreenContextView {
   readonly sort: string;
   readonly direction: string;
   readonly filter: string;
+  /** An "Explain this entry" turn's marker: the chosen entry's index in `rows` (`assembleEntryContext`). */
+  readonly selected?: number;
+  /** An "Explain this entry" turn's marker when `rows` does not hold the chosen entry: that entry, narrowed. */
+  readonly focus?: Record<string, unknown>;
 }
 
 /** The `context` member of `POST /turn`'s body, or what `assembleScreenContext` omits entirely. */
@@ -137,37 +141,33 @@ export function assembleScreenContext(inputs: ScreenContextInputs): ScreenContex
   };
 }
 
-/** What `assembleEntryContext` needs: the entry's screen, the shell scope, sharing, and the entry. */
-export interface EntryContextInputs {
-  readonly descriptor: ScreenDeclaration | null;
-  readonly namespace: string;
-  readonly share: boolean;
+/** What `assembleEntryContext` needs: everything `assembleScreenContext` reads for the entry's screen, and the entry. */
+export interface EntryContextInputs extends ScreenContextInputs {
   readonly row: unknown;
 }
 
+/** Whether two narrowed rows hold the same value under every one of `fields`, a member absent from both counting as equal. */
+function sameEntry(a: Record<string, unknown>, b: Record<string, unknown>, fields: readonly string[]): boolean {
+  return fields.every((field) => field in a === field in b && JSON.stringify(a[field]) === JSON.stringify(b[field]));
+}
+
 /**
- * The `context` an "Explain this entry" turn carries (Story 11.2): the entry's screen and the shell
- * scope, with a `view` of that one row narrowed to the screen's declared `context.fields` and no
- * `entity`. `null`, so nothing is sent, when sharing is off, the descriptor or namespace is
- * missing, or the screen would post no `view` (`contextViewDeclared`).
+ * The `context` an "Explain this entry" turn carries (Story 11.2, DW-1838): exactly what
+ * `assembleScreenContext` sends for the entry's screen, with one marker added to its `view`.
+ * `selected` is the index in `view.rows` of the first row whose declared `context.fields` equal the
+ * entry's -- the model sees only those fields, so rows equal in all of them are one entry to it.
+ * When no sent row does (the cap, the filter or the screen's own rows leave it out), `focus` is the
+ * entry narrowed to those fields instead. Exactly one of the two is present. `null`, so nothing is
+ * sent, exactly when `assembleScreenContext` would send no `view`.
  */
 export function assembleEntryContext(inputs: EntryContextInputs): ScreenContextPayload | null {
-  if (!inputs.share) return null;
-  const descriptor = inputs.descriptor;
-  if (descriptor === null) return null;
-  if (inputs.namespace === '') return null;
-  if (!contextViewDeclared(descriptor)) return null;
-  return {
-    route: descriptor.route,
-    namespace: inputs.namespace,
-    view: {
-      rows: [narrowRow(inputs.row, descriptor.context.fields)],
-      rowsAvailable: 1,
-      sort: '',
-      direction: '',
-      filter: '',
-    },
-  };
+  const payload = assembleScreenContext(inputs);
+  const view = payload?.view;
+  if (payload === null || view === undefined || inputs.descriptor === null) return null;
+  const fields = inputs.descriptor.context.fields;
+  const entry = narrowRow(inputs.row, fields);
+  const selected = view.rows.findIndex((row) => sameEntry(row, entry, fields));
+  return { ...payload, view: selected >= 0 ? { ...view, selected } : { ...view, focus: entry } };
 }
 
 /** A known credential-key prefix (Requirements & Constraints); checked against the trimmed draft. */

@@ -183,6 +183,17 @@ test('Story 18.3: a database delete names the namespaces that use it, the applic
   assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), 'IRISSYS'), reason, 'a refused delete states the refusal');
 });
 
+// Mutation (Rule 19): drop `database-dismount` from IMPACT_PARTS -> the refused read is null and this goes red.
+test('Story 18.4: a database dismount carries no parts, and states the prohibited set\u2019s refusal of a protected database', () => {
+  assert.deepEqual(IMPACT_PARTS['database-dismount'], []);
+  const read = (parts, refused = null) => impactOf({ kind: 'database-dismount', refused, parts });
+  assert.notEqual(read([]), null, 'the kind is in the vocabulary');
+  assert.equal(read([part('namespaces', 0)]), null, 'and carries no part');
+  assert.equal(impactLine(read([]), '/db/'), '', 'a dismount the set permits states nothing');
+  const reason = STRINGS.databaseRefusalOcuPilot;
+  assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), '/db/'), reason, 'a protected database states the refusal');
+});
+
 test('the proposal row carries the impact to the card view, and a row without one carries null', () => {
   const row = (impact) => ({
     proposalId: 'p1',

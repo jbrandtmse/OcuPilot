@@ -240,8 +240,10 @@ Method TestDatabasesDismountedOrAtEightyFivePercentAreFindings()
 }
 
 /// <p><code>task-manager</code> and <code>task-error</code>: a suspended or stopped Task Manager is
-/// a finding carrying its banner key; a task suspended after an error is, and one suspended by a
-/// person, one whose last run succeeded, and one not suspended are not.</p>
+/// a finding carrying its banner key, which the agent fixes; a task suspended after an error is, and
+/// one suspended by a person, one whose last run succeeded, and one not suspended are not.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Shell.Findings.TaskManager</method> answer
+/// <code>FIXLINK</code> -- the Task Manager's fix leg goes red.</p>
 Method TestTaskManagerAndTasksSuspendedAfterAnError()
 {
     Set tRows = []
@@ -260,7 +262,7 @@ Method TestTaskManagerAndTasksSuspendedAfterAnError()
     Do $$$AssertEquals(tTask.%Get("id") _ " " _ tTask.%Get("route") _ " " _ tTask.%Get("fix"), "1002 tasks/schedule/details agent", "on its details, fixed by the agent")
     Set tManager = ..First(tAnswer, "task-manager")
     Do $$$AssertTrue($IsObject(tManager), "a suspended Task Manager is a finding")
-    If $IsObject(tManager) Do $$$AssertEquals(tManager.%Get("detail") _ " " _ tManager.%Get("route") _ " " _ tManager.%Get("fix"), "taskManagerSuspendedBanner tasks/schedule link", "carrying the banner key, as a link")
+    If $IsObject(tManager) Do $$$AssertEquals(tManager.%Get("detail") _ " " _ tManager.%Get("route") _ " " _ tManager.%Get("fix"), "taskManagerSuspendedBanner tasks/schedule agent", "carrying the banner key, fixed by the agent (Story 16.11)")
     Do ##class(OcuPilot.Test.FindingsFixture).SetRows(..#TASKS, [], 0, "")
     Do $$$AssertEquals(..First(..Answer(), "task-manager"), "", "a running Task Manager is not")
 }
@@ -344,7 +346,7 @@ Method TestDetailGoneRoleReadCutTaskReadCutAndOneOwnReadFailing()
     Set tAnswer = ..Answer()
     Do $$$AssertEquals(..CheckRow(tAnswer, "webapp-open").%Get("status") _ " " _ ..CheckRow(tAnswer, "monitor-open").%Get("status"), "checked checked", "an application gone before its GET is skipped, not a failure")
     Do $$$AssertEquals(..CheckRow(tAnswer, "task-manager").%Get("status"), "checked", "a cut task read still answers the Task Manager")
-    Do $$$AssertEquals(..First(tAnswer, "task-manager").%Get("detail"), "taskManagerStoppedBanner", "and reports it")
+    Do $$$AssertEquals(..First(tAnswer, "task-manager").%Get("detail") _ " " _ ..First(tAnswer, "task-manager").%Get("fix"), "taskManagerStoppedBanner agent", "and reports it, fixed by the agent as a suspended one is (Story 16.11)")
     Do $$$AssertEquals(..CheckRow(tAnswer, "task-error").%Get("status"), "truncated", "while the rows it cut are truncated")
     Do $$$AssertEquals(..CheckRow(tAnswer, "certificate").%Get("status"), "failed", "the check whose own read raised failed")
     Do $$$AssertEquals(##class(OcuPilot.Test.FindingsFixture).LogCalls() _ " " _ ##class(OcuPilot.Test.FindingsFixture).Logged(), "1 certificate", "logged once, naming it")

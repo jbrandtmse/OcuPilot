@@ -2,12 +2,15 @@
 /// Management Portal compact listed as the portal reports it, and read in <code>%SYS</code> by the
 /// task error log too; the screen's resume, pause and cancel each acting on it; an admin API compact
 /// queued as the test account listed as that account's own and paused through
-/// <code>AsyncResult</code>; the agent's confirm pausing a compact; a holder of the Tasks area's
-/// pairs alone refused Background tasks by name; and the task error log refusing a caller without
+/// <code>AsyncResult</code>; the agent's confirmed pause of a compact, as the request the vendor
+/// records; the seed's teardown ending such a compact after its job stops answering for a while; a
+/// holder of the Tasks area's pairs alone refused Background tasks by name; and the task error log
+/// refusing a caller without
 /// <code>%DB_IRISSYS:READ</code> before its read can rewrite a live job's status.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
 /// serving over HTTP as <class>OcuPilot.Test.Http</class>'s test account, the admin API answering
-/// that account, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
+/// that account, <code>%System_CallOut:USE</code> to stop and continue a job through
+/// <code>$ZF(-100)</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class
 /// creates and deletes three users and three roles, a scratch database
 /// (<class>OcuPilot.Test.BackgroundSeed</class>) and one idle job of its own. Each test seeds its own
 /// work and removes it.</p>
@@ -24,9 +27,15 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 Parameter SEED = "OcuPilot.Test.BackgroundSeed";
 
-/// <p>How many seeded compacts <method>TestTheAgentsConfirmPausesACompact</method> may propose its
-/// pause against.</p>
-Parameter AGENTATTEMPTS As INTEGER = 3;
+/// <p>How long <method>TestTheAgentsConfirmPausesACompact</method> waits between resuming its compact
+/// and minting the pause: longer than a resumed seed compact takes to finish its work (about two
+/// seconds), so an unheld compact would record its end before the confirm.</p>
+Parameter RESUMEDSECONDS As INTEGER = 3;
+
+/// <p>How long <method>TestTheTeardownOutlastsAStalledCompact</method> stops its compact's job: past
+/// the vendor's cancel of a stopped job (which blocks about 18 s) plus a ten-second wait for its end,
+/// and well inside that cancel plus <parameter>OcuPilot.Test.BackgroundSeed.ENDSECONDS</parameter>.</p>
+Parameter STALLSECONDS As INTEGER = 35;
 
 /// <p>The purpose-built principal holding the install namespace's code read and the Tasks area's
 /// two pairs, and not <code>%Admin_Operate</code>.</p>
@@ -212,6 +221,8 @@ Method TestTheScreensActionsResumePauseAndCancelACompact()
 /// account's own, under "Admin API" with its GUID as the id; the screen's Pause reaches it through
 /// <code>AsyncResult</code>, and <code>AsyncResult</code>'s own refusal of a cancel while it is paused
 /// is the published <code>TASK.BACKGROUND.STATE</code>; Resume sets it running again.</p>
+/// <p>While it is paused it is listed once, on its admin API row, naming the database it runs against
+/// (DW-1821).</p>
 /// <p>Mutation (Rule 19): drop the admin half from
 /// <method>OcuPilot.Port.BackgroundTaskPort.Rows</method> -- the listing leg goes red.</p>
 Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
@@ -243,6 +254,11 @@ Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
     Set tSC = ..Act("pause", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals(..StatusOf("Admin API", tGuid), "Paused", "and the row re-reads Paused")
+    ; DW-1821 (Story 18.4): the paused compact is listed once, on its admin API row, with its database.
+    Set tDirectory = $ZConvert(##class(%File).NormalizeDirectory($ClassMethod(..#SEED, "Directory")), "U")
+    Set tPaused = ..Listed("Admin API", tGuid)
+    Do $$$AssertEquals($Select($IsObject(tPaused): $ZConvert(##class(%File).NormalizeDirectory(tPaused.%Get("Database")), "U"), 1: ""), tDirectory, "the admin row names the database its task runs against")
+    Do $$$AssertEquals(..ListedFor(tDirectory), 1, "and the task is listed once")
     Set tSC = ..Act("cancel", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tAnswer) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("reason"), 1: ""), "409 TASK.BACKGROUND.STATE " _ ##class(OcuPilot.Api.Error).#REASONTASKBACKGROUNDSTATE, "AsyncResult refuses to cancel a paused compact, with the published sentence")
     Set tSC = ..Act("resume", tId, "", "", .tStatus, .tAnswer)
@@ -280,81 +296,85 @@ Method TestAnotherCallersAdminTaskIsNotListed()
 }
 
 /// <p>AC2, AD-15: the agent's proposal to pause a running compact shows its status moving to
-/// Paused, and its confirm pauses it and lands the agent marker.</p>
-/// <p>The seeded compact runs for about two seconds once resumed, which a slow host's mint and
-/// confirm can outlast, and then the fingerprint correctly refuses the confirm (AD-51: its status
-/// moved from Running to Done). A confirm refused <code>PROPOSAL.TARGETCHANGED</code> whose compact
-/// reads Done afterwards is taken for that race: the attempt is removed and another compact seeded,
-/// up to <parameter>AGENTATTEMPTS</parameter> compacts in all. Any other refusal, one while the
-/// compact still runs, or a compact that ends before the mint, fails at once.</p>
-/// <p>Mutation (Rule 19): answer <code>$$$OK</code> in place of the vendor's <code>Pause()</code> in
-/// <method>OcuPilot.Port.BackgroundTaskPort.PortalControl</method> -- the compact runs to its end
-/// and this goes red; fingerprint the tools over a value that moves on every read -- every confirm
-/// is refused and this goes red.</p>
+/// Paused, and its confirm applies, the vendor records the pause request, and the agent marker
+/// lands.</p>
+/// <p>The compact is held (<method>OcuPilot.Test.BackgroundSeed.Hold</method>) before it is resumed,
+/// and the mint waits <parameter>RESUMEDSECONDS</parameter> after the resume, so the compact's work
+/// is done before the mint while its end is not recorded. A held compact whose work is done reads
+/// Running after the pause, so the leg reads the pause request, not the state.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Test.BackgroundSeed.Hold</method> call -- the
+/// compact records Done before the mint and this goes red; fingerprint the tools over a value that
+/// moves on every read -- every confirm is refused and this goes red.</p>
 Method TestTheAgentsConfirmPausesACompact()
 {
-    Set tSent = 0
-    For tAttempt = 1:1:..#AGENTATTEMPTS {
-        Set tSent = ..ProposeAndConfirmPause(.tTaskId, .tTurn, .tSC, .tCode)
-        If 'tSent || (tAttempt = ..#AGENTATTEMPTS) || '..EndedBeforeTheConfirm(tSC, tCode, tTaskId) Quit
-        Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
-        Do $$$AssertStatusOK($ClassMethod(..#SEED, "Remove"), "a compact that ended before its confirm is removed before another is seeded")
-        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
-    }
-    If 'tSent Quit
-    Do $$$AssertStatusOK(tSC, "the confirm pauses it: " _ tCode _ " (attempt " _ tAttempt _ ", the compact then read " _ $ClassMethod(..#SEED, "State", tTaskId) _ ")")
-    Do $$$AssertEquals($ClassMethod(..#SEED, "Settled", tTaskId), "Paused", "and the compact is paused")
+    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
+    Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#SEED, "Hold", tTaskId)
+    Do $$$AssertStatusOK(tSC, "its end is held: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Kill tQuery
+    Set tQuery("id") = tId
+    Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "RESUME", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the compact is resumed through the port")
+    Hang ..#RESUMEDSECONDS
+    Set tTool = "OcuPilot.Screen.Tool.BackgroundTaskPause"
+    Set tArgs = {"source": "Management Portal"}
+    Do tArgs.%Set("id", tJob, "string")
+    Set tSC = ##class(OcuPilot.Screen.Tool.BackgroundTaskMint).Mint(..#SCREEN, "tasks.background.pause", $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tJob, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusOK(tSC, "the pause mints: " _ $System.Status.GetErrorText(tSC) _ " (the compact read " _ $ClassMethod(..#SEED, "State", tTaskId) _ ")")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tProposal.%Get("changed").%ToJSON(), "[{""field"":""Status"",""before"":""Running"",""after"":""Paused""}]", "the card shows the status moving to Paused")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm applies: " _ $Get(tCode) _ " (the compact then read " _ $ClassMethod(..#SEED, "State", tTaskId) _ ")")
+    Do $$$AssertEquals($ClassMethod(..#SEED, "RequestOf", tTaskId), 1, "and the vendor records the pause request")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurn, .tLedger), 1, "one write-kind ledger row")
     Do $$$AssertEquals($Get(tLedger("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the agent marker landed on it")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
-/// <p>Seed a paused compact, resume it through the port, mint the agent's pause of it and confirm
-/// that: 1 once the confirm was sent, with its status in <var>pSC</var> and its code in
-/// <var>pCode</var>; 0 when the seed, the turn or the mint failed. Each step is asserted here.</p>
-Method ProposeAndConfirmPause(Output pTaskId As %String, Output pTurn As %String, Output pSC As %Status, Output pCode As %String) As %Boolean
+/// <p>The seed's teardown ends the agent leg's compact after its job stops answering for a while, as
+/// a CI host whose writes stall stops it: the compact is held, resumed and paused through the port in
+/// that leg's order, its job is stopped for <parameter>STALLSECONDS</parameter>, and
+/// <method>OcuPilot.Test.BackgroundSeed.Remove</method> still removes the database and every task over
+/// it, so the next test's seed is not refused.</p>
+/// <p>Mutation (Rule 19): wait ten seconds for the canceled task's end in
+/// <method>OcuPilot.Test.BackgroundSeed.Remove</method>, or count a task that does not open as ended
+/// -- the removal answers that a task still runs and this goes red.</p>
+Method TestTheTeardownOutlastsAStalledCompact()
 {
-    Set pTaskId = ""
-    Set pTurn = ""
-    Set pSC = $$$OK
-    Set pCode = ""
-    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .pTaskId)
+    Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)
     Do $$$AssertStatusOK(tSC, "a portal compact is seeded and paused: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit 0
-    Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .pTurn)
-    Do $$$AssertStatusOK(tSC, "a turn is seeded")
-    If $$$ISERR(tSC) Quit 0
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#SEED, "Hold", tTaskId)
+    Do $$$AssertStatusOK(tSC, "its end is held: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
     Kill tQuery
-    Set tQuery("id") = tId
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Management Portal", tJob))
     Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "RESUME", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the compact is resumed through the port")
-    Set tTool = "OcuPilot.Screen.Tool.BackgroundTaskPause"
-    Set tArgs = {"source": "Management Portal"}
-    Do tArgs.%Set("id", tJob, "string")
-    Set tSC = ##class(OcuPilot.Screen.Tool.BackgroundTaskMint).Mint(..#SCREEN, "tasks.background.pause", $Username, "", pTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tJob, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
-    Do $$$AssertStatusOK(tSC, "the pause mints: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit 0
-    Do $$$AssertEquals(tProposal.%Get("changed").%ToJSON(), "[{""field"":""Status"",""before"":""Running"",""after"":""Paused""}]", "the card shows the status moving to Paused")
-    Set pSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
-    Set pCode = $Get(tCode)
-    Quit 1
-}
-
-/// <p>Whether a confirm answered <var>pSC</var> and <var>pCode</var> was refused
-/// <code>PROPOSAL.TARGETCHANGED</code> and background task <var>pTaskId</var> now reads Done. It
-/// does not tell a status that moved from a fresh read that failed as the task ended.</p>
-ClassMethod EndedBeforeTheConfirm(pSC As %Status, pCode As %String, pTaskId As %String) As %Boolean
-{
-    If $$$ISOK(pSC) || (pCode '= $Parameter("OcuPilot.Kernel.Proposal.Write", "TARGETCHANGED")) Quit 0
-    Quit ($ClassMethod(..#SEED, "State", pTaskId) = "Done")
+    Hang ..#RESUMEDSECONDS
+    Set tSC = ##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask", "PAUSE", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and paused through the port, as the confirm pauses it")
+    Do $$$AssertEquals($ClassMethod(..#SEED, "RequestOf", tTaskId), 1, "the vendor records the pause request")
+    Set tSC = $ClassMethod(..#SEED, "Stall", tJob, ..#STALLSECONDS)
+    Do $$$AssertStatusOK(tSC, "its job is stopped for " _ ..#STALLSECONDS _ " s: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#SEED, "Remove")
+    Do $$$AssertStatusOK(tSC, "the seed's removal outlasts the stall: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals($ListLength($ClassMethod(..#SEED, "Tasks", 0)), 0, "and leaves no task over the seed database, so the next seed is not refused")
 }
 
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its
 /// other screens, while Background tasks is shown and refused on <code>%Admin_Operate:USE</code>, and
 /// its read is refused naming that pair.</p>
-/// <p>Mutation (Rule 19): move <code>%Admin_Operate:USE</code> from the descriptor's
-/// <code>ownPrivileges</code> into the area's pairs -- the area reads denied and this goes red.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from the descriptor's
+/// <code>privileges</code> and <code>ownPrivileges</code> -- Background tasks reads open and this goes
+/// red.</p>
 Method TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
@@ -427,6 +447,24 @@ Method Listed(pSource As %String, pId As %String) As %DynamicObject
         If (tEntry.%Get("Source") = pSource) && (tEntry.%Get("Id") = pId) Set tFound = tEntry
     }
     Quit tFound
+}
+
+/// <p>How many rows the screen's read lists as the test account whose <code>Database</code> is the
+/// directory <var>pDirectory</var>, normalized and upper-cased; <code>-1</code> when the read fails.</p>
+Method ListedFor(pDirectory As %String) As %Integer
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/tasks.background/read?maxRows=1000", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit -1
+    Set tRead = ""
+    Try { Set tRead = ##class(%DynamicObject).%FromJSON(tRaw) } Catch {}
+    If '$IsObject(tRead) || '$IsObject(tRead.%Get("rows")) Quit -1
+    Set tCount = 0
+    Set tIterator = tRead.%Get("rows").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get("Database") = "" Continue
+        If $ZConvert(##class(%File).NormalizeDirectory(tEntry.%Get("Database")), "U") = pDirectory Set tCount = tCount + 1
+    }
+    Quit tCount
 }
 
 /// <p>The status the screen's read lists for <var>pSource</var> and <var>pId</var>, or

@@ -43,11 +43,17 @@
 /// both of this <code>list (two views)</code> screen's views, so eight descriptors declare
 /// <code>refreshes</code> against seven named screens -- at the rates
 /// <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. As a list archetype it links out to
-/// nothing (<code>classicLinkExemption.exempt</code> false); it declares no primary or row action,
-/// so its empty state names what to do next rather than inviting the agent. The database writes are
+/// nothing (<code>classicLinkExemption.exempt</code> false). The database configuration writes are
 /// <class>OcuPilot.Screen.Descriptor.LocalDatabaseList</class>'s, so this list declares
 /// <code>database-configuration</code> as a secondary entity type and re-fetches after a create or a
 /// delete there (AD-14, Story 18.3).</p>
+/// <p><b>Its one action is the integrity check</b> (Story 18.4): <code>integrity</code> is the primary
+/// action, which opens the Check integrity flow (<class>OcuPilot.Screen.Descriptor.DatabaseIntegrity</class>)
+/// with the selected row checked. It is declared as a row action too, because the action route
+/// admits only a declared row action: the flow sends it with the checked directories as its target
+/// (<class>OcuPilot.Screen.Tool.DatabaseIntegrityCheck</class>). The command bar and the command box
+/// offer it once, as the primary, and no row menu offers it, so no row cell changes. Its empty state
+/// invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.DatabaseList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -68,8 +74,8 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "integrity", "selfProtection": ""},
+  "rowActions": [{"id": "integrity", "selfProtection": ""}],
   "context": {"fields": ["Directory", "Size", "MaxSize", "Status", "Resource"], "secretFields": []},
   "emptyStateKey": "databaseListEmpty",
   "commandAliases": ["databases", "disks"],
@@ -95,8 +101,8 @@ XData Declaration
       {"field": "Status", "labelKey": "taskHistoryColumnStatus", "kind": "text"},
       {"field": "Resource", "labelKey": "webAppColumnResource", "kind": "identifier"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "databaseListEmptyAgent"
   },
   "toolIdentifier": "osmgmt.databases"
 }

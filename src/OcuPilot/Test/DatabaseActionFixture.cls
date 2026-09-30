@@ -5,7 +5,9 @@
 /// <method>ProhibitedClassName</method> answers the class a test names in
 /// <code>^||OcuPilotDatabaseProhibited</code>. The pairs and the prohibited set's own read of the live
 /// target are the shipped route's. <method>ToolFor</method> runs the database delete through
-/// <class>OcuPilot.Test.SeamLocalDatabaseDelete</class>, so that seam applies to it.</p>
+/// <class>OcuPilot.Test.SeamLocalDatabaseDelete</class>, and each disk operation a screen reaches
+/// through its own <code>OcuPilot.Test.Seam*</code> subclass (Story 18.4), so that seam applies to
+/// them.</p>
 /// <p><method>Act</method> runs <method>OcuPilot.Api.ScreenAction.Handle</method> in this process
 /// against request and response stubs and captures the envelope it writes.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -34,6 +36,8 @@ ClassMethod ToolFor(pDescriptor As %String, pActionId As %String, Output pTool A
     Set tSC = ##super(pDescriptor, pActionId, .pTool, .pToolClass)
     If $$$ISERR(tSC) Quit tSC
     If $Get(pToolClass) = "OcuPilot.Screen.Tool.LocalDatabaseDelete" Set pToolClass = "OcuPilot.Test.SeamLocalDatabaseDelete"
+    ; Story 18.4: the disk operations reached by a screen action, each through its own seam.
+    If $ListFind($ListBuild("DatabaseMount", "DatabaseDismount", "DatabaseTruncate", "DatabaseCompact", "DatabaseDefragment", "DatabaseIntegrityCheck", "LocalDatabaseExpand"), $Piece($Get(pToolClass), "OcuPilot.Screen.Tool.", 2)) Set pToolClass = "OcuPilot.Test.Seam" _ $Piece(pToolClass, "OcuPilot.Screen.Tool.", 2)
     Quit tSC
 }
 

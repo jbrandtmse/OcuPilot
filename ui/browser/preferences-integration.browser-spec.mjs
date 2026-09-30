@@ -144,9 +144,9 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
     );
 
     // AC3: a recent is registered by visiting a second built screen, with no explicit action.
-    // `page.goto` is a fresh SPA bootstrap, and the first-login gate re-fires on every one of
-    // those on a throwaway with no enabled definition -- so every `goto` to a non-gate route
-    // needs its own `leaveFirstLoginGate`, the same as `signedInAt`'s own sign-in navigation.
+    // `page.goto` is a fresh SPA bootstrap, which is a sign-in the first-login gate acts on while
+    // this account's first-sign-in record is absent -- so every `goto` to a non-gate route passes
+    // through `leaveFirstLoginGate`, which tolerates either, as `signedInAt`'s own sign-in does.
     await first.page.goto(`${config.origin}${ALERTS_URL}`, { waitUntil: 'networkidle2' });
     await leaveFirstLoginGate(first.page, config.navigationTimeoutMs, ALERTS_URL);
     await first.page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });

@@ -58,6 +58,8 @@ const {
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
+  firstOpenableEntry,
+  openableEntry,
   screenForChange,
   screenForEntityType,
   screenForToolName,
@@ -149,12 +151,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/hub',
       'os-management/databases/details',
       'os-management/database-free-space',
+      'os-management/databases/integrity',
+      'os-management/databases/integrity-log',
       'os-management/databases/volumes',
       'os-management/devices/edit',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 16.10: the unlisted Activity log of External language servers, by descriptor class name.
+      'os-management/language-servers/activity',
+      'os-management/language-servers/edit',
       // Story 16.7: License usage's three unlisted tabs, by descriptor class name.
       'os-management/license-usage/distributed',
       'os-management/license-usage/processes',
@@ -179,7 +186,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 16.7: License usage and the Dashboard, the seventh and eighth OS management entries.
       'os-management/license-usage',
       'os-management/dashboard',
-      // Story 18.3: Local databases, the ninth OS management entry.
+      // Story 16.10: External language servers, position 9.
+      'os-management/language-servers',
+      // Story 18.3: Local databases, the tenth OS management entry.
       'os-management/local-databases',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
@@ -241,16 +250,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files, device editor, the global mapping form and list, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, License usage, Dashboard, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Integrity log, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
 // Story 18.2 (AC1): Namespaces is OS management's sixth side-bar entry, after Devices, and its
-// editor takes no position. Story 18.3 (AC1): Local databases is the ninth, and its form takes none.
+// editor takes no position. Story 18.3 (AC1): Local databases is the tenth, after Story 16.10's
+// External language servers, and its form takes none.
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
 // the built-screens roster above go red.
-test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage, Dashboard and Local databases', () => {
+test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage, Dashboard, External language servers and Local databases', () => {
   assert.deepEqual(
     listedScreensForArea('os-management').map((screen) => screen.route),
     [
@@ -260,12 +270,17 @@ test('OS management lists Processes, Locks, System usage, Databases, Devices, Na
       'os-management/databases',
       'os-management/devices',
       'os-management/namespaces',
-      // Story 16.7: the seventh and eighth entries; Story 18.3: the ninth.
+      // Story 16.7: the seventh and eighth entries.
       'os-management/license-usage',
       'os-management/dashboard',
+      // Story 16.10: the ninth entry.
+      'os-management/language-servers',
+      // Story 18.3: the tenth.
       'os-management/local-databases',
     ]
   );
+  // Story 16.10: the list's name cell opens its one parent-scoped child, the Activity log.
+  assert.equal(childListFor(screenForRoute('os-management/language-servers'))?.route, 'os-management/language-servers/activity');
   assert.equal(stringFor(screenForRoute('os-management/namespaces').labelKey), STRINGS.namespaceListLabel);
   assert.equal(stringFor(screenForRoute('os-management/local-databases').labelKey), STRINGS.localDatabaseListLabel);
   const databaseForm = createFormFor(screenForRoute('os-management/local-databases'));
@@ -1074,6 +1089,30 @@ test("firstAllowedScreen over the shipped mirror: Home's own area opens Home", (
   const home = builtScreensForArea('home');
   assert.equal(firstAllowedScreen(home, () => UNGATED)?.route, home[0]?.route);
   assert.equal(firstAllowedScreen(home, () => ({ allowed: false, failedPair: 'R:USE' })), null);
+});
+
+// --- DW-1852: a tab group's one entry opens when any of its tabs does ---------------------------
+//
+// Mutation (Rule 19): make `openableEntry` answer `null` whenever the screen's own verdict refuses
+// it -- the listed tab alone counts -> the authorization-server, registration, strip-order and
+// Security-landing rows go red.
+
+test('openableEntry opens the OAuth 2.0 entry on the first tab the caller may open, and firstOpenableEntry lands there', () => {
+  const head = screenForRoute('security/oauth');
+  const allow = (allowed) => (route) => ({ allowed: allowed.includes(route), failedPair: allowed.includes(route) ? '' : 'R:USE' });
+  assert.equal(openableEntry(head, allow(['security/oauth', 'security/oauth/server']))?.route, 'security/oauth', 'the listed tab opens itself when it may');
+  assert.equal(openableEntry(head, allow(['security/oauth/server']))?.route, 'security/oauth/server', 'an authorization-server holder lands on its tab');
+  assert.equal(openableEntry(head, allow(['security/oauth/server-clients']))?.route, 'security/oauth/server-clients', 'and a registration holder on theirs');
+  assert.equal(openableEntry(head, allow(['security/oauth/server-clients', 'security/oauth/server']))?.route, 'security/oauth/server', 'strip order decides, never verdict order');
+  assert.equal(openableEntry(head, allow([])), null, 'a holder of no tab opens nothing');
+  // Only the group's head speaks for the group: a tab under it, and a screen that is no tab, answer for themselves.
+  assert.equal(openableEntry(screenForRoute('security/oauth/clients'), allow(['security/oauth/server'])), null);
+  assert.equal(openableEntry(screenForRoute('security/ssl'), allow(['security/oauth/server'])), null);
+  // Home's tile and the locator's area segment land where the side-bar entry does, while
+  // firstAllowedScreen still answers only a member of the roster it was given.
+  assert.equal(firstOpenableEntry(listedScreensForArea('security'), allow(['security/oauth/server']))?.route, 'security/oauth/server');
+  assert.equal(firstOpenableEntry(listedScreensForArea('security'), allow([])), null);
+  assert.equal(firstAllowedScreen(listedScreensForArea('security'), allow(['security/oauth/server'])), null);
 });
 
 // AD-13, AD-14: the one predicate `RefreshService` and the toast store both call. Two inline

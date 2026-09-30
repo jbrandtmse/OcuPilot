@@ -245,6 +245,44 @@ test('a tick carries the banner the read answered, an omitted one reads as none,
   assert.equal(store.banner(), '', 'and a read carrying no banner key at all reads as no strip');
 });
 
+// Story 16.11: the tick hands the read's `bannerRequires` to the store beside the banner.
+//
+// Mutation (Rule 19): pass a constant `''` instead of `result.bannerRequires` in `tick` -> this goes red.
+test('a tick carries the bannerRequires pair the read answered, and an omitted one reads as none', async () => {
+  const harness = wired();
+  const answers = [
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: 'taskManagerStoppedBanner', bannerRequires: '%Admin_Secure:USE' },
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: 'taskManagerStoppedBanner' },
+  ];
+  harness.setAnswer(() => answers.shift());
+  harness.refresh.bind(screen(), harness.read);
+  const store = harness.stores.for(DESCRIPTOR, [10]);
+  harness.refresh.setRate(10);
+  await harness.fire();
+  assert.equal(store.bannerRequires(), '%Admin_Secure:USE', 'the tick carried the pair');
+  await harness.fire();
+  assert.equal(store.bannerRequires(), '', 'and the next tick, answering none, cleared it');
+});
+
+// Story 16.11: `readNow` -- the first load and the change event's re-read, the only reads while
+// auto-refresh is off -- hands the pair to the store as the tick does.
+//
+// Mutation (Rule 19): pass a constant `''` instead of `result.bannerRequires` in `readNow` -> this goes red.
+test('readNow carries the bannerRequires pair the read answered, and an omitted one reads as none', async () => {
+  const harness = wired();
+  const answers = [
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: 'taskManagerStoppedBanner', bannerRequires: '%Admin_Secure:USE' },
+    { kind: 'ok', rows: ['r1'], truncated: false, banner: 'taskManagerStoppedBanner' },
+  ];
+  harness.setAnswer(() => answers.shift());
+  harness.refresh.bind(screen({ refreshes: false, refreshRates: [] }), harness.read);
+  const store = harness.stores.for(DESCRIPTOR, []);
+  await harness.refresh.readNow();
+  assert.equal(store.bannerRequires(), '%Admin_Secure:USE', 'the read carried the pair');
+  await harness.refresh.readNow();
+  assert.equal(store.bannerRequires(), '', 'and the next read, answering none, cleared it');
+});
+
 test('the default cap is what an untouched screen reads with', async () => {
   const harness = wired();
   harness.refresh.bind(screen(), harness.read);

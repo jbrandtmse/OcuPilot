@@ -7,7 +7,10 @@ import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { OverlayStack } from '../../core/overlay-stack';
 import { uncheckedLine } from '../../core/privileges';
+import { ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DatabaseEditorPage } from './database-editor.page';
 import { DATABASE_FORM_PATH, DATABASE_PATH } from './database-wizard.store';
 
@@ -57,6 +60,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 async function mount(options: { readonly form?: unknown; readonly save?: JsonResult<unknown> } = {}) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
+  let actionAnswer: JsonResult<unknown> | null = null;
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       const method = init.method ?? 'GET';
@@ -68,6 +72,7 @@ async function mount(options: { readonly form?: unknown; readonly save?: JsonRes
       if (path.includes('/read?')) {
         return { kind: 'ok', status: 200, body: { rows: [{ Directory: ROOT }], truncated: false, banner: '' } } as unknown as JsonResult<T>;
       }
+      if (path.endsWith('/action') && actionAnswer !== null) return actionAnswer as JsonResult<T>;
       return (options.save ?? { kind: 'ok', status: 200, body: { name: 'OCUPROBE183A', file: {} } }) as JsonResult<T>;
     },
   };
@@ -78,6 +83,9 @@ async function mount(options: { readonly form?: unknown; readonly save?: JsonRes
       { provide: FormDirty, useValue: new FormDirty() },
       { provide: ChangeBus, useValue: new ChangeBus() },
       { provide: OverlayStack, useValue: new OverlayStack() },
+      // Story 18.4: Add a volume runs through the shell's handler, which registers every declared action.
+      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
     ],
   });
   await TestBed.inject(Router).navigateByUrl('/os-management/local-databases/edit/OCUPROBE183A?ns=USER');
@@ -85,7 +93,10 @@ async function mount(options: { readonly form?: unknown; readonly save?: JsonRes
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, calls, host: fixture.nativeElement as HTMLElement };
+  const setAction = (value: JsonResult<unknown>): void => {
+    actionAnswer = value;
+  };
+  return { fixture, calls, host: fixture.nativeElement as HTMLElement, setAction };
 }
 
 function save(host: HTMLElement): void {
@@ -188,5 +199,116 @@ describe('DatabaseEditorPage', () => {
     save(host);
     await settle(fixture);
     expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe('You need %Admin_Operate:USE to change this database.');
+  });
+
+  it('Story 18.4: Size (MB) is drawn from the form read\u2019s size and sent as its own group, and absent without one', async () => {
+    // Mutation (Rule 19): send Size inside the file group -> the body assertion goes red.
+    const without = await mount();
+    expect(without.host.querySelector('[data-field="size"]')).toBeNull();
+    const { fixture, host, calls } = await mount({ form: { ...FORM, size: { Size: 1 } } });
+    const size = host.querySelector('#ocu-database-edit-Size') as HTMLInputElement;
+    expect(host.querySelector('label[for="ocu-database-edit-Size"]')?.textContent?.trim()).toBe(STRINGS.databaseSizeField);
+    expect(size.value).toBe('1');
+    size.value = '3';
+    size.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    save(host);
+    await settle(fixture);
+    const write = calls.find((call) => call.method === 'PUT');
+    expect(JSON.parse(write?.body ?? '{}')).toEqual({ size: { Size: 3 } });
+  });
+
+  it('Story 18.4: Add a volume waits for a clean form, then warns with its initial size and sends expand', async () => {
+    // Mutation (Rule 19): release Add a volume while the form is dirty -> the first click sends and this goes red.
+    const { fixture, host, calls } = await mount();
+    const add = () => host.querySelector('[data-action="add-volume"]') as HTMLButtonElement;
+    expect(add().textContent?.trim()).toBe(STRINGS.databaseExpandAction);
+    expect(add().getAttribute('aria-disabled')).toBeNull();
+    const expansion = host.querySelector('#ocu-database-edit-ExpansionSize') as HTMLInputElement;
+    expansion.value = '8';
+    expansion.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(add().getAttribute('aria-disabled')).toBe('true');
+    const reason = host.querySelector('[data-volume="dirty"]') as HTMLElement;
+    expect(reason.textContent?.trim()).toBe(STRINGS.databaseExpandDirty);
+    expect(add().getAttribute('aria-describedby')).toBe(reason.id);
+    add().click();
+    await settle(fixture);
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expansion.value = '0';
+    expansion.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    save(host);
+    await settle(fixture);
+    expect(add().getAttribute('aria-disabled')).toBeNull();
+    const volumeReads = calls.filter((call) => call.path.includes('osmgmt.databasevolumes/read?')).length;
+    add().click();
+    await settle(fixture);
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.databaseExpandAction);
+    expect(dialog.textContent).toContain(STRINGS.databaseExpandConsequence);
+    const field = dialog.querySelector('[data-slot="field"] input') as HTMLInputElement;
+    expect(dialog.querySelector('[data-slot="field"] label')?.textContent?.trim()).toBe(STRINGS.databaseInitialSize);
+    // Mutation (Rule 19): drop the expand's `hintKey` -> the hint and Proceed's reason go red.
+    const hint = dialog.querySelector('[data-slot="field"] .ocu-field-caption') as HTMLElement;
+    expect(hint.textContent?.trim()).toBe(STRINGS.databaseInitialSizeHint);
+    const proceed = dialog.querySelector('.ocu-dialog-actions .ocu-button-primary') as HTMLButtonElement;
+    expect([proceed.getAttribute('aria-disabled'), proceed.getAttribute('aria-describedby')]).toEqual(['true', hint.id]);
+    field.value = '5';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (dialog.querySelector('.ocu-dialog-actions .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    const action = calls.find((call) => call.path.endsWith('/osmgmt.localdatabases/action'));
+    expect(JSON.parse(action?.body ?? '{}')).toEqual({ action: 'expand', id: 'OCUPROBE183A', values: { InitialSize: '5' } });
+    expect(calls.filter((call) => call.path.includes('osmgmt.databasevolumes/read?')).length).toBe(volumeReads + 1);
+    expect(host.querySelector('[data-volume="operation"]')?.textContent?.trim()).toBe(
+      STRINGS.databaseOperationFinished.replace('<operation>', STRINGS.databaseExpandAction)
+    );
+  });
+
+  it('Story 18.4: Add a volume that continues reads the still-running sentence, and a 409 its sentence', async () => {
+    // Mutation (Rule 19): `operationLine` answers '' for `continues` -> the still-running line goes red;
+    // `onAddVolume` drops its `setRefusal` -> the refusal goes red.
+    const { fixture, host, setAction } = await mount();
+    const addVolume = async (): Promise<void> => {
+      (host.querySelector('[data-action="add-volume"]') as HTMLButtonElement).click();
+      await settle(fixture);
+      const field = host.querySelector('[role="dialog"] [data-slot="field"] input') as HTMLInputElement;
+      field.value = '5';
+      field.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      (host.querySelector('[role="dialog"] .ocu-dialog-actions .ocu-button-primary') as HTMLButtonElement).click();
+      await settle(fixture);
+    };
+    setAction({ kind: 'ok', status: 200, body: { action: 'updated', continues: true } });
+    await addVolume();
+    expect(host.querySelector('[data-volume="operation"]')?.textContent?.trim()).toBe(STRINGS.auditDatabaseStillRunning);
+    const reason = 'This database is dismounted. Mount it first.';
+    setAction({ kind: 'error', status: 409, code: 'DATABASE.DISMOUNTED', reason, detail: null });
+    await addVolume();
+    expect(host.querySelector('[data-volume="refusal"]')?.textContent?.trim()).toBe(reason);
+    expect(host.querySelector('[data-volume="operation"]')?.textContent?.trim()).toBe('');
+  });
+
+  it('Story 18.4: a Save whose size grow continues reads the still-running sentence until the next edit', async () => {
+    // Mutation (Rule 19): `savedText` ignores the store's `continues` -> the still-running line goes red.
+    const { fixture, host } = await mount({
+      form: { ...FORM, size: { Size: 1 } },
+      save: { kind: 'ok', status: 200, body: { name: 'OCUPROBE183A', size: {}, continues: true } },
+    });
+    const status = () => host.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim();
+    const size = host.querySelector('#ocu-database-edit-Size') as HTMLInputElement;
+    size.value = '3';
+    size.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    save(host);
+    await settle(fixture);
+    expect(status()).toBe(STRINGS.auditDatabaseStillRunning);
+    const expansion = host.querySelector('#ocu-database-edit-ExpansionSize') as HTMLInputElement;
+    expansion.value = '8';
+    expansion.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(status()).toBeUndefined();
   });
 });

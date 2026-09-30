@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -118,6 +118,15 @@ Parameter RULEINTEGER = "integer";
 /// one. The order is on the string -- sign, then length, then digits -- so
 /// <file>ui/src/app/core/entity-ref.ts</file> answers the same without arithmetic.</p>
 Parameter RULEINTEGERSET = "integerset";
+
+/// <p>The database rule (Story 18.4, AD-13 as amended 2026-09-29): a value beginning <code>[</code>
+/// that is a JSON array of directories names a set -- an integrity check's target. Its canonical form
+/// keeps each member's first spelling, drops a later one
+/// <method>OcuPilot.Port.DatabasePort.SameDirectory</method> matches, and sorts the rest by their text,
+/// as compact JSON; a one-member array reads as that directory. Any other value is kept exactly, so a
+/// database's own directory id is unchanged. <method>OcuPilot.Port.DatabasePort.CanonicalSet</method>
+/// is the rule, and <file>ui/src/app/core/entity-ref.ts</file> mirrors it.</p>
+Parameter RULEDIRECTORYSET = "directoryset";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
 /// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
@@ -268,6 +277,7 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     If tRule = ..#RULESINGLETON Quit ..#RULESINGLETONID
     If tRule = ..#RULEINTEGER Quit ..PlainInteger(pId)
     If tRule = ..#RULEINTEGERSET Quit ..PlainIntegerSet(pId)
+    If tRule = ..#RULEDIRECTORYSET Quit ##class(OcuPilot.Port.DatabasePort).CanonicalSet(pId)
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule = ..#RULEFOLDCASEFIRSTPART {
         Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)

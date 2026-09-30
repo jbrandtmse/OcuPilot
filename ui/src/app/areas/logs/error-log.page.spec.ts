@@ -15,7 +15,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { explainContext, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { ErrorLogPage, LOG_ERROR_LIST } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
 
@@ -1152,6 +1152,13 @@ describe('ErrorLogPage', () => {
     expect(taken?.screen.route).toBe('logs/errors');
     expect(taken?.row).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5, time: '17:02:10' });
     expect(fixture.nativeElement.querySelector('.ocu-data-table-menu')).toBeNull();
+    // Mutation (Rule 19): send the one entry as the view, as Story 11.2 shipped it (DW-1838) -> this
+    // goes red on the rows.
+    const context = explainContext(TestBed.inject(ScreenStores), taken);
+    expect(context?.view?.rows).toHaveLength(2);
+    expect(context?.view?.selected).toBe(1);
+    expect(context?.view?.rows[1]).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5 });
+    expect(context?.view?.focus).toBeUndefined();
   });
 
   it('Story 11.2: the namespaces, dates and detail levels offer no explain item, and Delete stays first', async () => {

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -63,6 +63,11 @@ export interface AreaDeclaration {
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
+   * of a tab group it lists, is allowed, and when none is it names the first of these the caller
+   * lacks, or a listed screen's failed pair when the caller lacks none (AD-8).
+   */
   readonly privileges: readonly PrivilegePair[];
 }
 
@@ -128,7 +133,7 @@ export interface ReadRowGet {
   readonly key: string;
   readonly param: string;
   /** The detail type issued per row; absent means `GET`. */
-  readonly type?: 'GET' | 'INFO' | 'CERTINFO';
+  readonly type?: 'GET' | 'INFO' | 'CERTINFO' | 'ACTIVITY';
   readonly fields: readonly string[];
   readonly derived: readonly ReadDerived[];
 }
@@ -163,7 +168,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'ACTIVITY' | 'LICENSEUSAGE';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -289,11 +294,15 @@ export interface BannerSource {
 /** The `.ocu-banner-*` variants a declared banner may take (DESIGN.md `:1203`). */
 export type BannerSeverity = 'info' | 'warning' | 'restrained';
 
-/** One value a banner's field may take, and the sentence it raises (DW-270). */
+/**
+ * One value a banner's field may take, and the sentence it raises (DW-270); `action`, where
+ * declared, is the id of the screen's row action the strip offers (Story 16.11, AD-5).
+ */
 export interface BannerCase {
   readonly equals: string;
   readonly messageKey: string;
   readonly severity: BannerSeverity;
+  readonly action?: string;
 }
 
 /**
@@ -416,6 +425,8 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+  /** The read field that withholds a row's link where it reads `true` (Story 16.12, DW-1074). */
+  readonly unless?: string;
 }
 
 /**
@@ -470,7 +481,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "global-mapping",
   "routine-mapping",
   "package-mapping",
-  "database-configuration"
+  "database-configuration",
+  "language-server"
 ];
 
 /**
@@ -506,7 +518,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "global-mapping": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
-  "database-configuration": "foldcase"
+  "database-configuration": "foldcase",
+  "database": "directoryset"
 };
 
 /**
@@ -2804,7 +2817,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "mount",
+        "selfProtection": ""
+      },
+      {
+        "id": "dismount",
+        "selfProtection": ""
+      },
+      {
+        "id": "truncate",
+        "selfProtection": ""
+      },
+      {
+        "id": "compact",
+        "selfProtection": ""
+      },
+      {
+        "id": "defragment",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Directory",
@@ -3013,8 +3047,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseDetailsEmptyAgent"
     },
     "toolIdentifier": "osmgmt.databasedetails",
     "refreshDefault": 0,
@@ -3189,6 +3223,204 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseIntegrity",
+    "route": "os-management/databases/integrity",
+    "area": "os-management",
+    "labelKey": "databaseIntegrityLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "check integrity",
+      "integrity check"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.Integ",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.databaseintegrity",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseIntegrityLog",
+    "route": "os-management/databases/integrity-log",
+    "area": "os-management",
+    "labelKey": "databaseIntegrityLogLabel",
+    "sideBarPosition": 0,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseIntegrityNone",
+    "commandAliases": [
+      "integrity log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.IntegLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "integrity",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.integritylog",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseList",
     "route": "os-management/databases",
     "area": "os-management",
@@ -3224,10 +3456,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "integrity",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "integrity",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Directory",
@@ -3325,8 +3562,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.databases",
     "refreshDefault": 0,
@@ -4023,6 +4260,388 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerActivity",
+    "route": "os-management/language-servers/activity",
+    "area": "os-management",
+    "labelKey": "languageServerActivityLabel",
+    "sideBarPosition": 0,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/language-servers",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "DateTime",
+        "RecordType",
+        "Job",
+        "Text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerActivityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ExternalLanguageServerActivities",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "LanguageServer",
+        "type": "ACTIVITY",
+        "rows": "Activity"
+      },
+      "fields": [
+        "ID",
+        "DateTime",
+        "RecordType",
+        "Job",
+        "Text"
+      ],
+      "filter": [
+        "DateTime",
+        "RecordType",
+        "Text"
+      ],
+      "sort": {
+        "fields": [
+          "ID"
+        ],
+        "default": "ID",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 50
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "DateTime",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "RecordType",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "Job",
+          "labelKey": "processColumnPid",
+          "kind": "number"
+        },
+        {
+          "field": "Text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.languageserveractivity",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerForm",
+    "route": "os-management/language-servers/edit",
+    "area": "os-management",
+    "labelKey": "languageServerFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "language-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "languageServerFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "languageServerFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "languageServerFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ExternalLanguageServer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.languageserverform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerList",
+    "route": "os-management/language-servers",
+    "area": "os-management",
+    "labelKey": "languageServersLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_ExternalLanguageServerEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "language-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Port",
+        "CurrentlyRunning"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "languageServerListEmpty",
+    "commandAliases": [
+      "language servers",
+      "gateways",
+      "external servers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "languageServerListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ExternalLanguageServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "LanguageServer",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Name",
+          "param": "name",
+          "type": "ACTIVITY",
+          "fields": [
+            "CurrentlyRunning"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Port",
+        "CurrentlyRunning"
+      ],
+      "filter": [
+        "Name",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Port",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        },
+        {
+          "field": "CurrentlyRunning",
+          "labelKey": "languageServerColumnRunning",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "languageServerListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.languageservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "entityLabelKey": ""
   },
   {
@@ -4904,7 +5523,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "route": "os-management/local-databases",
     "area": "os-management",
     "labelKey": "localDatabaseListLabel",
-    "sideBarPosition": 9,
+    "sideBarPosition": 10,
     "archetype": "list",
     "built": true,
     "refreshes": false,
@@ -4920,7 +5539,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "database-configuration",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "database"
+    ],
     "scope": "instance",
     "parentScope": "",
     "id": {
@@ -4934,6 +5555,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowActions": [
       {
         "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "expand",
         "selfProtection": ""
       }
     ],
@@ -5067,7 +5692,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "remove",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeprocess",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeclient",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -5077,7 +5715,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Reference",
         "Directory",
         "System",
-        "DeleteID"
+        "DeleteID",
+        "RemoteOwner"
       ],
       "secretFields": []
     },
@@ -5121,7 +5760,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Reference",
         "Directory",
         "System",
-        "DeleteID"
+        "DeleteID",
+        "RemoteOwner"
       ],
       "filter": [
         "Pid",
@@ -5186,12 +5826,13 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "emptyKey": "lockSystemLocal"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "lockListEmptyAgent"
     },
     "rowTarget": {
       "route": "os-management/processes/details",
-      "field": "Pid"
+      "field": "Pid",
+      "unless": "RemoteOwner"
     },
     "toolIdentifier": "osmgmt.locks",
     "refreshDefault": 0,
@@ -11161,6 +11802,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "suspendmanager",
+        "selfProtection": ""
+      },
+      {
+        "id": "resumemanager",
+        "selfProtection": ""
+      },
+      {
+        "id": "startmanager",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -11192,6 +11845,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupTroubleshooting",
         "textKey": "taskScheduleListPrompt3"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskScheduleListPrompt4"
       }
     ],
     "classicPage": "%CSP.UI.Portal.TaskSchedule",
@@ -11293,12 +11950,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "equals": "Suspended",
           "messageKey": "taskManagerSuspendedBanner",
-          "severity": "warning"
+          "severity": "warning",
+          "action": "resumemanager"
         },
         {
           "equals": "Not running",
           "messageKey": "taskManagerStoppedBanner",
-          "severity": "warning"
+          "severity": "warning",
+          "action": "startmanager"
         }
       ]
     },

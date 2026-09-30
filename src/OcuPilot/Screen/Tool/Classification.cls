@@ -31,6 +31,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 {
 
 /// <p>The reviewed entries, one per write tool.</p>
+/// <p><b><code>osmgmt.languageservers.create</code></b> and <b><code>osmgmt.languageservers.update</code></b>
+/// (Story 16.25) classify the untyped <code>LanguageServer</code> list's literals
+/// <code>ordinary</code> and its member-less <code>Custom</code> <code>opaque</code>, compared by the
+/// members sent, since the vendor merges it member by member (AD-4). <code>LogFile</code> is ordinary
+/// and neither tool admits it: a file location is never an argument (AD-21), and each tool's own
+/// positive list decides that.</p>
 /// <p><b><code>webapp.list.update</code></b> classifies every classifiable row of
 /// <code>WebApp.App</code> as <code>ordinary</code> except the <code>MatchRoles</code> subtree,
 /// which is left unnamed and so emitted <code>secret</code> by the generator's fail-closed default:
@@ -1033,6 +1039,42 @@ XData Entries
       "LDAPSearchUsername": "ordinary",
       "LDAPServerTimeout": "ordinary",
       "LDAPUniqueDNIdentifier": "ordinary"
+    }
+  },
+  "osmgmt.languageservers.create": {
+    "fieldList": "LanguageServer",
+    "compare": {"Custom": "members"},
+    "classification": {
+      "BindToIPAddress": "ordinary",
+      "ConnectionTimeout": "ordinary",
+      "InitializationTimeout": "ordinary",
+      "LogFile": "ordinary",
+      "Port": "ordinary",
+      "Resource": "ordinary",
+      "Type": "ordinary",
+      "UseSharedMemory": "ordinary",
+      "SSLConfigurationServer": "ordinary",
+      "SSLConfigurationClient": "ordinary",
+      "VerifySSLHostName": "ordinary",
+      "Custom": "opaque"
+    }
+  },
+  "osmgmt.languageservers.update": {
+    "fieldList": "LanguageServer",
+    "compare": {"Custom": "members"},
+    "classification": {
+      "BindToIPAddress": "ordinary",
+      "ConnectionTimeout": "ordinary",
+      "InitializationTimeout": "ordinary",
+      "LogFile": "ordinary",
+      "Port": "ordinary",
+      "Resource": "ordinary",
+      "Type": "ordinary",
+      "UseSharedMemory": "ordinary",
+      "SSLConfigurationServer": "ordinary",
+      "SSLConfigurationClient": "ordinary",
+      "VerifySSLHostName": "ordinary",
+      "Custom": "opaque"
     }
   }
 }

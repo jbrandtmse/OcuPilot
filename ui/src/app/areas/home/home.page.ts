@@ -34,7 +34,7 @@ import {
   NavigationService,
   areaByKey,
   entityUrl,
-  firstAllowedScreen,
+  firstOpenableEntry,
   formatRequires,
   isListedScreen,
   screenForDescriptor,
@@ -562,7 +562,7 @@ export class HomePage {
         // one declared. An area whose verdict allows entry but whose first built screen this
         // user's own `screenVerdict` refuses used to be a tile that navigated straight into a
         // refusal; it now opens the next screen that is allowed instead.
-        const openable = firstAllowedScreen(screens, (route) =>
+        const openable = firstOpenableEntry(screens, (route) =>
           this.navigation.screenVerdict(route)
         );
         // ...and when none of them is, the tile is gated in place -- listed, focusable,

@@ -1,10 +1,11 @@
 /**
  * How a browser spec gets a signed-in shell onto the screen it is about (Story 3.6).
  *
- * **Signing in is not arriving any more.** An OcuPilot administrator who authenticates while the
+ * **Signing in is not arriving any more.** An OcuPilot administrator's first sign-in while the
  * instance holds no enabled definition is taken to the Definition form by the first-login gate
- * (FR-28), whatever URL the browser asked for -- and a throwaway holds no enabled definition, so
- * that is every spec here. A helper that signed in and then waited for its own screen waited for
+ * (FR-28), whatever URL the browser asked for -- and a throwaway holds no enabled definition, and
+ * `resetRememberedState` forgets the account's first-sign-in record, so that is every spec whose
+ * context starts from it. A helper that signed in and then waited for its own screen waited for
  * a screen that was never going to mount.
  *
  * **The way out is Back**, which is what the gate leaves: it navigates with an ordinary history
@@ -15,8 +16,10 @@
  *
  * **Never a second `page.goto`.** A fresh document is not a resumed tab: `TokenStore` adopts a
  * stored pair only across a reload or a Back/Forward (DW-6), so a `goto` clears the pair, the
- * silent probe mints a new one, `adopt()` runs -- and the gate is entitled to act on that. A spec
- * that re-issued its deep link would meet the gate again, every time.
+ * silent probe mints a new one, `adopt()` runs -- and the gate is entitled to act on that. Whether
+ * it does turns on the account's first-sign-in record, which the gate writes when it opens the form,
+ * so a spec that re-issues its deep link passes it through `leaveFirstLoginGate`, which tolerates
+ * either.
  *
  * `gate.browser-spec.mjs` is the one file that does not use this: it is about the gate, so it
  * asserts where the gate put the browser rather than stepping around it.
@@ -47,8 +50,8 @@ export function pathOf(page) {
  *
  * `requested` is the URL the spec asked for, so the helper can tell the gate's own navigation from
  * a spec whose screen IS the Definition form -- where the browser is already where it asked to be
- * and Back would take it out of the app. It is a no-op there, and on any instance that holds an
- * enabled definition or refuses this caller.
+ * and Back would take it out of the app. It is a no-op there, on any instance that holds an
+ * enabled definition or refuses this caller, and for an account whose first sign-in is recorded.
  */
 export async function leaveFirstLoginGate(page, timeoutMs, requested) {
   const wanted = new URL(requested, 'http://ignored.invalid').pathname;
@@ -60,12 +63,12 @@ export async function leaveFirstLoginGate(page, timeoutMs, requested) {
       GATE_PATH
     );
   } catch {
-    // The gate did not fire: this instance holds an enabled definition, or this caller may not
-    // configure one. Either way the browser should already be where it asked to be -- and that is
-    // asserted rather than assumed, because the other way to reach this line is a gate that was
-    // slower than the window. Returning silently there would leave the caller asserting against a
-    // screen the gate is about to navigate away from, and the failure would name a missing
-    // selector rather than the gate.
+    // The gate did not fire: this instance holds an enabled definition, this caller may not
+    // configure one, or this account's first sign-in is recorded. Either way the browser should
+    // already be where it asked to be -- and that is asserted rather than assumed, because the
+    // other way to reach this line is a gate that was slower than the window. Returning silently
+    // there would leave the caller asserting against a screen the gate is about to navigate away
+    // from, and the failure would name a missing selector rather than the gate.
     assert.equal(
       pathOf(page),
       wanted,

@@ -107,7 +107,43 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     if (at < 0) return id.toLowerCase();
     return id.slice(0, at).toLowerCase() + id.slice(at);
   },
+  // A database is addressed by its directory, kept exactly, or by a set of directories -- the
+  // integrity check's target (Story 18.4): a value beginning `[` that is a JSON array of non-empty
+  // strings keeps each member's first spelling, drops a later one naming the same directory
+  // (`sameDirectory`), sorts the rest by their text, code unit by code unit, and answers the array
+  // as compact JSON, or its one member when one remains -- what
+  // `OcuPilot.Port.DatabasePort.CanonicalSet` answers. Any other value is kept exactly.
+  directoryset: (id) => canonicalDirectorySet(id),
 };
+
+/**
+ * Whether two directories are the same one, as `OcuPilot.Port.DatabasePort.SameDirectory` answers:
+ * compared without trailing separators and without case, and never when either is empty.
+ */
+function sameDirectory(a: string, b: string): boolean {
+  const left = a.replace(/[\\/]+$/, '').toLowerCase();
+  const right = b.replace(/[\\/]+$/, '').toLowerCase();
+  return left !== '' && right !== '' && left === right;
+}
+
+/** The `directoryset` rule's canonical spelling of `id` (Story 18.4). */
+export function canonicalDirectorySet(id: string): string {
+  if (!id.startsWith('[')) return id;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(id);
+  } catch {
+    return id;
+  }
+  if (!Array.isArray(parsed)) return id;
+  const kept: string[] = [];
+  for (const member of parsed) {
+    if (typeof member !== 'string' || member === '') return id;
+    if (!kept.some((held) => sameDirectory(held, member))) kept.push(member);
+  }
+  kept.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return kept.length === 1 ? kept[0] : JSON.stringify(kept);
+}
 
 /**
  * `id`'s plain decimal spelling -- surrounding space or tab dropped, a leading `+` dropped, leading

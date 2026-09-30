@@ -99,6 +99,8 @@ export const STRINGS = {
   agentExplainScreenAction: 'Explain this screen',
   /** EXPERIENCE.md:268 */
   agentExplainEntryAction: 'Explain this entry',
+  /** EXPERIENCE.md:268 */
+  agentExplainEntryMessage: 'Explain the selected entry',
   /** EXPERIENCE.md:269 */
   actionTestConnection: 'Test connection',
   /** EXPERIENCE.md:269 */
@@ -1434,10 +1436,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:388 */
   proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
 
-  // Story 5.7's six. The first three are AD-14's closed action set as published sentences: the
+  // Story 5.7's five. The first three are AD-14's closed action set as published sentences: the
   // off-screen toast renders one, and the panel appends the same one to a confirmed write's reply
   // so the record outlives a toast that expired or was never raised. `<entity>` resolves to the
-  // entity's own id; the noun is on the toast's own link, which names the screen.
+  // entity's own id; the noun is on the toast's own link, which names the screen. A data table
+  // announces the same sentence when a change marks one of its rows.
   /** EXPERIENCE.md:390 */
   tableChangeCreated: '<entity> was created',
   /** EXPERIENCE.md:390 */
@@ -1448,8 +1451,6 @@ export const STRINGS = {
   tableChangeToastRegion: 'Changes',
   /** EXPERIENCE.md:391 */
   tableChangeToastDismiss: 'Dismiss',
-  /** EXPERIENCE.md:392 */
-  tableChangeAnnouncement: 'Updated: <entity> <action>',
 
   // Story 5.8's one. The direction word completes the pair "was"/"now" carries on a changed row:
   // an unchanged row has one value and no arrow, so the word is what says the payload sends the
@@ -3007,7 +3008,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:574 */
   tryItNoAddress: 'This operation has no address on this instance, so it cannot be tried here.',
   /** EXPERIENCE.md:574 */
-  tryItFailed: 'The request did not complete.',
+  tryItFailed: 'No complete answer came back: the connection failed, or something between the browser and the instance stopped it.',
+  /** EXPERIENCE.md:574 */
+  tryItRedirected: 'The request did not reach the application: something between the browser and the instance, such as a proxy, answered it with a redirect, which the console does not follow.',
+  /** EXPERIENCE.md:574 */
+  tryItRedirectedWrite: 'The answer was a redirect, which the console does not follow, so the outcome is unknown: the instance may have acted on this request. Check before you send it again.',
+  /** EXPERIENCE.md:574 */
+  tryItUnsent: 'The browser would not build this request, so nothing was sent to the instance.',
   /** EXPERIENCE.md:574 */
   tryItCut: 'The response was cut at 256 KB.',
   /** EXPERIENCE.md:574 */
@@ -3770,7 +3777,7 @@ export const STRINGS = {
     'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
   /** EXPERIENCE.md:481 */
   databaseRefusalOcuPilot:
-    'OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.',
+    'OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.',
   /** EXPERIENCE.md:577 */
   impactNamespacesUse: '<n> namespaces use it and must stop using it first: <names>',
   /** EXPERIENCE.md:577 */
@@ -3789,6 +3796,234 @@ export const STRINGS = {
   impactSharedFileOne: '1 other database shares its file, which stays: <names>',
   /** EXPERIENCE.md:577 */
   impactSharedFileUnchecked: 'whether another database shares its file was not checked',
+  // Story 16.10, External language servers. The Port column reuses `sslTestPort`, and the Name and
+  // Type columns `tableColumnName` and `tableColumnType`, because a value already published belongs
+  // to one key.
+  /** EXPERIENCE.md:584 */
+  languageServersLabel: 'External language servers',
+  /** EXPERIENCE.md:584 */
+  languageServerColumnRunning: 'Running',
+  /** EXPERIENCE.md:584 */
+  languageServerActivityLabel: 'Activity log',
+  /** EXPERIENCE.md:584 */
+  actionStart: 'Start',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalRunning: 'This server is already running.',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalStopped: 'This server is not running.',
+  /** EXPERIENCE.md:584 */
+  languageServerStopConsequence: 'Stopping it ends every connection to it at once.',
+  /** EXPERIENCE.md:584 */
+  languageServerStartFailed: 'The server did not start. Its activity log records why.',
+  /** EXPERIENCE.md:584 */
+  languageServerListEmpty: 'No external language servers on this instance.',
+  /** EXPERIENCE.md:584 */
+  languageServerListEmptyAgent: 'start or stop an external language server',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt1: 'Which external language servers are running?',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt2: 'Which servers share a port with another server?',
+  /** EXPERIENCE.md:585 */
+  languageServerListPrompt3: 'Which server should I check first when a gateway call fails?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt1: 'What does this server\'s activity log say about its last start?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt2: 'Did this server log any errors?',
+  /** EXPERIENCE.md:585 */
+  languageServerActivityPrompt3: 'When was this server last started or stopped?',
+  /** EXPERIENCE.md:584 */
+  languageServerFormLabel: 'External language server',
+  /** EXPERIENCE.md:584 */
+  languageServerFormNew: 'New external language server',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldBindAddress: 'Bind address',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldConnectionTimeout: 'Connection timeout (seconds)',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldInitializationTimeout: 'Initialization timeout (seconds)',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldSharedMemory: 'Use shared memory',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldServerTls: 'Server TLS configuration',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldClientTls: 'Client TLS configuration',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldVerifyHostName: 'Verify the server\'s host name',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldLogFile: 'Log file',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldClassPath: 'Class path',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldJavaHome: 'Java home',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldFilePath: 'File path',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldPythonPath: 'Python executable',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldJvmArgs: 'JVM arguments',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldDotNetVersion: '.NET version',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldExec32: 'Run as 32-bit',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldPythonOptions: 'Python options',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldAddress: 'Address',
+  /** EXPERIENCE.md:584 */
+  languageServerPathClassicOnly: 'File locations are set on the classic portal\'s External Language Server page.',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalRunningEdit: 'This server is running. Stop it before changing or deleting it.',
+  /** EXPERIENCE.md:584 */
+  languageServerPythonConsequence: 'Saving this also turns the server\'s virtual environment back on and clears its PYTHONPATH, which only the classic portal shows.',
+  /** EXPERIENCE.md:584 */
+  languageServerNameTaken: 'A server with this name already exists.',
+  /** EXPERIENCE.md:479 */
+  languageServerDeleteConsequence: 'Deleting it removes this server\'s definition from the instance.',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt1: 'What does each setting on this server do?',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt2: 'Why might this server fail to start?',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt3: 'Which resource should protect this server?',
+  // Story 18.4: the disk operations on Database details, the editor's size and Add a volume, the
+  // Check integrity flow and the Integrity log. The flow's Databases and Globals steps reuse
+  // `databaseListLabel` and `processColumnGlobals`, Add a volume's field `databaseInitialSize`, and a
+  // run past the port's wait `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:377 */
+  databaseActionMount: 'Mount',
+  /** EXPERIENCE.md:377 */
+  databaseActionDismount: 'Dismount',
+  /** EXPERIENCE.md:377 */
+  databaseActionTruncate: 'Truncate',
+  /** EXPERIENCE.md:377 */
+  databaseActionCompact: 'Compact',
+  /** EXPERIENCE.md:377 */
+  databaseActionDefragment: 'Defragment',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLabel: 'Check integrity',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityCheck: 'Integrity check',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogLabel: 'Integrity log',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityStepReport: 'Report',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityGlobalsOnly: 'Only these globals',
+  /** EXPERIENCE.md:377 */
+  databaseExpandAction: 'Add a volume',
+  /** EXPERIENCE.md:377 */
+  databaseSizeField: 'Size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseMountReadOnly: 'Mount read-only',
+  /** EXPERIENCE.md:377 */
+  databaseMountConsequence: 'Mounting makes this database available again to every namespace that uses it.',
+  /** EXPERIENCE.md:377 */
+  databaseDismountConsequence: 'Dismounting this database stops every process from reading or writing it until it is mounted again.',
+  /** EXPERIENCE.md:377 */
+  databaseTruncateConsequence: 'Truncating returns the unused space at the end of the database\'s file to the operating system. No data is removed.',
+  /** EXPERIENCE.md:377 */
+  databaseCompactConsequence: 'Compacting moves the database\'s free space to the end of its file, where Truncate can return it.',
+  /** EXPERIENCE.md:377 */
+  databaseDefragmentConsequence: 'Defragmenting can grow the database to make room while it works, and it cannot be paused.',
+  /** EXPERIENCE.md:377 */
+  databaseExpandConsequence: 'The new volume file is created in the database\'s new volume directory.',
+  /** EXPERIENCE.md:377 */
+  databaseTargetSizeLabel: 'Target file size (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseTargetSizeHint: '0 returns all unused space. Otherwise enter less than the current size.',
+  /** EXPERIENCE.md:377 */
+  databaseTargetFreeLabel: 'Target free space at end of file (MB)',
+  /** EXPERIENCE.md:377 */
+  databaseTargetFreeHint: 'Enter a number from 0 to the database\'s free space.',
+  /** EXPERIENCE.md:377 */
+  databaseGlobalsHint: 'One name per line. Leave empty to check every global.',
+  /** EXPERIENCE.md:377 */
+  databaseGlobalsOneDatabase: 'Globals can be chosen when one database is checked.',
+  /** EXPERIENCE.md:377 */
+  databaseOperationRunning: '<operation> running on the instance since <time>',
+  /** EXPERIENCE.md:377 */
+  databaseOperationFinished: '<operation> finished.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityOpenLog: 'Open the integrity log',
+  /** EXPERIENCE.md:377 */
+  databaseExpandDirty: 'Save your changes before adding a volume.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityRunning: 'This check is still running.',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityNone: 'This instance holds no integrity check.',
+  /** EXPERIENCE.md:377 */
+  databaseListEmptyAgent: 'check the integrity of a database',
+  /** EXPERIENCE.md:377 */
+  databaseDetailsEmptyAgent: 'mount, dismount, truncate, compact or defragment a database',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt1: 'Which databases can I check for integrity?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt2: 'What does an integrity check read?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityPrompt3: 'Can an integrity check run while a database is in use?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt1: 'Did the last integrity check find any errors?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt2: 'Which databases did the last check cover?',
+  /** EXPERIENCE.md:377 */
+  databaseIntegrityLogPrompt3: 'When did the last integrity check run?',
+  /** EXPERIENCE.md:377 */
+  databaseInitialSizeHint: 'Enter a number of 1 or more, up to the new volume threshold when one is set.',
+  // Story 16.11: the Task Manager's three actions, the suspend's warning, the refusals of a Task Manager
+  // action in the wrong state and of a task row action whose type needs a privilege (DW-1638), the
+  // Task schedule's fourth prompt and Home's Fix it sentence.
+  /** EXPERIENCE.md:269 */
+  taskManagerSuspendAction: 'Suspend Task Manager',
+  /** EXPERIENCE.md:269 */
+  taskManagerResumeAction: 'Resume Task Manager',
+  /** EXPERIENCE.md:269 */
+  taskManagerStartAction: 'Start Task Manager',
+  /** EXPERIENCE.md:304 */
+  taskManagerSuspendConsequence: 'No scheduled task will run until it is resumed.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalRunning: 'The Task Manager is already running.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalSuspended: 'The Task Manager is already suspended.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalSuspendedStart: 'The Task Manager is suspended. Resume it instead.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalStopped: 'The Task Manager is not running. Start it first.',
+  /** EXPERIENCE.md:304 */
+  taskTypePrivilegeRefusal: 'This task type needs a privilege you do not hold.',
+  /** EXPERIENCE.md:562 */
+  taskScheduleListPrompt4: 'What would stop running while the Task Manager is suspended?',
+  /** EXPERIENCE.md:582 */
+  findingFixTaskManager: 'The Task Manager is not running scheduled tasks. Propose resuming it, or starting it if it is stopped.',
+  // Story 16.12: the Locks list's Remove locks dialog, its three scopes, the in-transaction warning,
+  // the refusals it and the agent share, and the list's agent invitation.
+  /** EXPERIENCE.md:376 */
+  lockRemoveAction: 'Remove locks',
+  /** EXPERIENCE.md:376 */
+  lockRemoveTitle: 'Remove locks held by <PID>',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeLegend: 'What to remove',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeLock: 'This lock: <REFERENCE>',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeProcess: 'Every lock this process holds',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeClient: 'Every lock its remote client holds',
+  /** EXPERIENCE.md:376 */
+  lockRemoveConsequence: 'Removing a lock lets another process take it at once, whatever its owner was using it to protect. This cannot be undone.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveInTransaction: 'Its owner is in an open transaction. Removing the lock leaves that transaction running without it.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveAnyway: 'Remove anyway',
+  /** EXPERIENCE.md:376 */
+  lockRemoveRefusalRemote: 'Its owner is a remote client, not a process on this instance.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveRefusalLocal: 'Its owner is a process on this instance, not a remote client.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveTooMany: 'This owner holds more than 200 locks, and one removal names at most 200.',
+  /** EXPERIENCE.md:376 */
+  lockRefusalOcuPilot: 'This lock keeps OcuPilot\'s own state consistent. It cannot be removed from OcuPilot.',
+  /** EXPERIENCE.md:376 */
+  lockListEmptyAgent: 'remove a lock that a stuck process still holds',
 } as const;
 
 /**

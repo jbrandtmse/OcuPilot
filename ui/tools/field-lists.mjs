@@ -177,7 +177,14 @@ export function checkLists(lists) {
       problems.push(`FieldLists.cls: list ${key} has source "${list.source}"`);
       continue;
     }
-    const expectedKey = list.source === 'class' ? `${list.endpoint}:${list.class}` : list.endpoint;
+    // A template list read once per argument keys by that argument as `endpoint:type`
+    // (`LanguageServer:Java`, Story 16.25, DW-253); an untyped one keys by its endpoint alone.
+    const expectedKey =
+      list.source === 'class'
+        ? `${list.endpoint}:${list.class}`
+        : list.source === 'template' && list.type !== ''
+          ? `${list.endpoint}:${list.type}`
+          : list.endpoint;
     if (list.endpoint === '' || key !== expectedKey) {
       problems.push(`FieldLists.cls: list ${key} should be keyed ${expectedKey}`);
     }

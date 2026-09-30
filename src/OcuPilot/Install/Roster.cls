@@ -27,7 +27,8 @@
 /// <p><b>Every application declares its own <code>matchRole</code></b> (Story 1.17, AD-21).
 /// It is the name of the one purpose-built role
 /// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> creates and asserts for
-/// that application -- read-only on the install namespace's code database and nothing else --
+/// that application -- read-only on the install namespace's routine and default globals databases
+/// and nothing else --
 /// and <code>""</code> means the application carries no matching role at all, which is what
 /// the password-authenticated API declares so that a request runs with exactly the privileges
 /// its own account holds (AD-8). The field is required on every application and refused when
@@ -83,7 +84,7 @@ XData Manifest
 {
   "module": {
     "name": "ocupilot",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "An agent co-pilot for the InterSystems IRIS System Management Portal: an Angular shell over an ObjectScript REST API.",
     "packaging": "module",
     "sourcesRoot": "src"

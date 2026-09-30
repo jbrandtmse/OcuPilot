@@ -2,9 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService, type Verdict } from '../core/navigation';
+import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../core/screen-actions';
+import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -144,6 +144,8 @@ describe('the command box', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'logs/messages', children: [] },
+          // DW-1852: where the OAuth 2.0 row lands for a holder of only the authorization server tab.
+          { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: OverlayStack, useValue: overlays },
@@ -247,6 +249,26 @@ describe('the command box', () => {
     await fixture.whenStable();
     expect(router.url).toBe('/');
     expect(field().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('AD-8 as amended for DW-1852: a tab group\'s row opens when any of its tabs does, on the first tab the caller may open', async () => {
+    // Mutation (Rule 19): gate a screen row on its own verdict again (`!verdict.allowed`) and
+    // navigate to its own route -- the row reads unavailable and the click opens nothing.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    navigation.roster = [screenForRoute('security/oauth') as ScreenDeclaration];
+    for (const route of ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server-clients']) {
+      navigation.verdicts.set(route, { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+    }
+    navigation.notify();
+    chord();
+
+    const row = options()[0];
+    expect(row.textContent).toContain(STRINGS.oauthLabel);
+    expect(row.getAttribute('aria-disabled')).toBeNull();
+    row.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth/server');
   });
 
   it('arrow keys move the active descendant and Enter opens the highlighted screen', async () => {
@@ -527,6 +549,20 @@ describe('the command box', () => {
     expect(count()).toBe('2 screens, 1 actions');
   });
 
+  it('Story 18.4: an action declared as both the primary and a row action is listed once, as the primary', () => {
+    // Mutation (Rule 19): drop the primary-id `continue` from the row-action loop in `command-box.ts`
+    // -> the row-scoped option is listed beside the primary one, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: 'delete', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'current-user' }],
+    });
+    chord();
+    const ids = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')).map(
+      (option) => (option as HTMLElement).id
+    );
+    expect(ids).toEqual(['ocu-command-box-action-delete']);
+  });
+
   it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
     // `command-bar.spec.ts` pins the bar; this is the other surface `actionLabel` was given a
     // descriptor for. Every other case here uses the stub descriptor, which publishes nothing of
@@ -617,6 +653,50 @@ describe('the command box', () => {
     stop();
     chord();
     expect(option()).toBeNull();
+  });
+
+  it('Story 16.11: the Task Manager\u2019s three actions are listed at screen level, the raised one held by the read\u2019s requirement', () => {
+    // Mutation (Rule 19): drop the banner branch from `actionCandidates` -> Resume and Start are
+    // listed as row actions held by "Select a row first", and the screen-level assertions go red.
+    const schedule = screen('tasks/schedule', 'taskListLabel', 'tasks', {
+      descriptor: 'OcuPilot.Screen.Descriptor.TaskScheduleList',
+      rowActions: [
+        { id: 'suspendmanager', selfProtection: '' },
+        { id: 'resumemanager', selfProtection: '' },
+        { id: 'startmanager', selfProtection: '' },
+      ],
+      banner: {
+        source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+        field: 'Status',
+        cases: [
+          { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'resumemanager' },
+          { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning', action: 'startmanager' },
+        ],
+      },
+    });
+    navigation.current = schedule;
+    const ran: string[] = [];
+    for (const id of [TASK_MANAGER_SUSPEND_ACTION_ID, 'resumemanager', 'startmanager']) actions.register(schedule.descriptor, id, () => ran.push(id));
+    chord();
+    const option = (id: string): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${id}`);
+    expect(option(TASK_MANAGER_SUSPEND_ACTION_ID)?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerSuspendAction);
+    expect(option('resumemanager')?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerResumeAction);
+    expect(option('startmanager')?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.taskManagerStartAction);
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-row-resumemanager')).toBeNull();
+    for (const id of [TASK_MANAGER_SUSPEND_ACTION_ID, 'resumemanager', 'startmanager']) {
+      expect(option(id)?.getAttribute('aria-disabled')).toBeNull();
+      expect(option(id)?.textContent).not.toContain(STRINGS.privilegeSelectRowFirst);
+    }
+
+    const store = TestBed.inject(ScreenStores).for(schedule.descriptor, schedule.refreshRates);
+    store.applyTick([], false, 'taskManagerStoppedBanner', new Date(), '%Admin_Secure:USE');
+    type('task manager');
+    expect(option('startmanager')?.getAttribute('aria-disabled')).toBe('true');
+    expect(option('startmanager')?.textContent).toContain(STRINGS.privilegeRequiresResource.replace('<resource>', '%Admin_Secure:USE'));
+    expect(option('resumemanager')?.getAttribute('aria-disabled')).toBeNull();
+    option('resumemanager')?.click();
+    fixture.detectChanges();
+    expect(ran).toEqual(['resumemanager']);
   });
 
   it('Integration AC: Escape closes the box, restores focus, and leaves the side bar alone', () => {

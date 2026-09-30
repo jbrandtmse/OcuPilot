@@ -48,11 +48,14 @@ import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
+import { LanguageServerFormPage } from '../areas/os-management/language-server-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { LockListPage } from '../areas/os-management/lock-list.page';
 import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
+import { DatabaseIntegrityPage } from '../areas/os-management/database-integrity.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -149,6 +152,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.PackageMappingForm': MappingFormPage,
   // Story 18.3: the local database form's bare route is the create wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseWizardPage,
+  // Story 18.4: the Check integrity flow, a stepped form page of its own.
+  'OcuPilot.Screen.Descriptor.DatabaseIntegrity': DatabaseIntegrityPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
@@ -161,6 +166,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
   // Story 16.4: the Task schedule with its Export and Import dialogs.
   'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
+  // Story 16.25: the external language server editor, create and edit alike.
+  'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
+  // Story 16.12: the Locks list with its Remove locks dialog.
+  'OcuPilot.Screen.Descriptor.LockList': LockListPage,
 };
 
 /**

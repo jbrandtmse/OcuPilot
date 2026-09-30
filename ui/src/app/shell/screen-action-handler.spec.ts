@@ -16,7 +16,13 @@ import {
   ADD_MATCHING_ROLE,
   ADD_ROLE,
   COPY_MAPPINGS,
+  DATABASE_DETAILS,
+  EXPAND_VOLUME,
   LOCAL_DATABASE_LIST,
+  LOCK_LIST,
+  LOCK_REMOVE,
+  LOCK_REMOVE_CLIENT,
+  LOCK_REMOVE_PROCESS,
   NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
@@ -33,6 +39,10 @@ import {
   TASK_EXPORT,
   TASK_IMPORT,
   TASK_IMPORT_TARGET,
+  TASK_MANAGER_RESUME,
+  TASK_MANAGER_START,
+  TASK_MANAGER_SUSPEND,
+  TASK_MANAGER_TARGET,
   TASK_SCHEDULE,
 } from './screen-action-handler';
 
@@ -1413,6 +1423,110 @@ describe('the Background tasks list\u2019s Cancel task, Pause and Resume (Story 
 });
 
 /**
+ * Story 16.10: External language servers' Start, sent at once, and its Stop, which warns first with
+ * its own consequence; the wrong verb for a server's state is refused with its published sentence.
+ */
+describe('External language servers\u2019 Start and Stop (Story 16.10)', () => {
+  const SERVERS = 'OcuPilot.Screen.Descriptor.LanguageServerList';
+  const NAME = '%Java Server';
+  const ROW = { Name: NAME, Type: 'Java', Port: 53272, CurrentlyRunning: false };
+  const TARGET = { type: 'language-server', scope: 'instance', id: NAME };
+
+  it('sends Start at once, with no dialog, keyed by the server\u2019s name, and publishes the updated event', async () => {
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, SERVERS);
+    expect(actions.has(SERVERS, 'start')).toBe(true);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    expect(handler.pending()).toBeNull();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.languageservers/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'start', id: NAME });
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated language-server ${NAME}`]);
+  });
+
+  it('opens the warning before Stop with its consequence, sends nothing on Cancel, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): remove the LanguageServerList entry from WARNING_CONSEQUENCES -> Stop is
+    // sent at once and the warning assertions go red.
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, SERVERS);
+    handler.startFor(SERVERS, 'stop', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.actionStop);
+    expect(pending?.consequence).toBe(STRINGS.languageServerStopConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    handler.startFor(SERVERS, 'stop', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'stop', id: NAME }]);
+  });
+
+  it('shows a state refusal\u2019s published sentence rather than the envelope\u2019s generic reason', async () => {
+    // Mutation (Rule 19): drop the published problems from `refusalReason` -> the store shows the
+    // generic reason and this goes red.
+    for (const problem of [STRINGS.languageServerRefusalRunning, STRINGS.languageServerRefusalStopped]) {
+      const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The tool call\'s arguments do not match what the tool accepts.', detail: { problem } } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, SERVERS);
+      handler.startFor(SERVERS, 'start', NAME, ROW, store);
+      await settle();
+      expect(store.refusal()).toBe(problem);
+      expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+    const unpublished = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem: 'this instance did not report whether that server is running' } } as unknown as JsonResult<unknown>;
+    const { handler, store } = mount(unpublished, SERVERS);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    await settle();
+    expect(store.refusal()).toBe('The generic reason.');
+  });
+
+  it('a start the instance refused shows the envelope\u2019s own sentence', async () => {
+    const refused = { kind: 'error', status: 500, code: 'LANGUAGESERVER.START', reason: STRINGS.languageServerStartFailed, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, SERVERS);
+    handler.startFor(SERVERS, 'start', NAME, ROW, store);
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.languageServerStartFailed);
+    expect(events).toEqual([]);
+  });
+
+  // Story 16.25: Delete types the server's name under its consequence, and a running server's
+  // refusal is the published sentence, not the envelope's generic reason.
+  it('opens Delete\u2019s typed-name dialog with its consequence, sends nothing on Cancel, and sends the name once confirmed', async () => {
+    // Mutation (Rule 19): drop the LanguageServerList entry from DESTRUCTIVE_CONSEQUENCES -> no dialog
+    // opens and the typed-name assertions go red.
+    const deleted = { action: 'deleted', target: TARGET };
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: deleted }, SERVERS);
+    expect(actions.has(SERVERS, 'delete')).toBe(true);
+    handler.startFor(SERVERS, 'delete', NAME, ROW, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(pending?.name).toBe(NAME);
+    expect(pending?.consequence).toBe(STRINGS.languageServerDeleteConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    handler.startFor(SERVERS, 'delete', NAME, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'delete', id: NAME }]);
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted language-server ${NAME}`]);
+  });
+
+  it('shows a running server\u2019s delete refusal in its published sentence', async () => {
+    // Mutation (Rule 19): drop languageServerRefusalRunningEdit from PUBLISHED_PROBLEMS -> the store
+    // shows the generic reason and this goes red.
+    const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem: STRINGS.languageServerRefusalRunningEdit } } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, SERVERS);
+    handler.startFor(SERVERS, 'delete', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    handler.confirmPending();
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.languageServerRefusalRunningEdit);
+    expect(events).toEqual([]);
+  });
+});
+
+/**
  * Story 18.14: the three mapping lists' Delete types the mapping's name -- the row key is
  * `[namespace, Name]`, whose separator no one can type -- states its kind's consequence, and sends
  * the whole row key; the Namespaces list's Copy mappings is left to that list's own page.
@@ -1501,6 +1615,7 @@ describe('lastRefusal, the refusal a dialog draws on its own fields', () => {
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'import', id: 'import', values: { root: '/r/', path: 't.xml' } });
     expect(handler.lastRefusal()).toEqual({
       reason: 'Choose an allowed directory.',
+      code: 'PATH.ROOT',
       violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }],
       detail: refused.kind === 'error' ? refused.detail : null,
     });
@@ -1618,5 +1733,251 @@ describe('the Local databases list\u2019s Delete (Story 18.3)', () => {
     handler.confirmPending(true);
     await settle();
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'terminate-with-error', id: '4711' });
+  });
+});
+
+/**
+ * Story 18.4 (AD-53, AD-56 (ii), AD-10): Database details' five disk operations each warn before they
+ * are sent; the mount's warning carries its read-only flag and the truncate's and compact's a size,
+ * each sent as the tool's one declared value; the Dismount reads the prohibited set's refusal as its
+ * advisory when it opens; and every send leaves its progress for the page's status line. The Local
+ * databases list's Add a volume is undrawn, and warns with its initial size when the editor starts it.
+ */
+describe('the disk operations (Story 18.4)', () => {
+  const DETAILS = SCREENS.find((screen) => screen.descriptor === DATABASE_DETAILS)!;
+  const LOCAL = SCREENS.find((screen) => screen.descriptor === LOCAL_DATABASE_LIST)!;
+  const DIRECTORY = '/durable/iris/mgr/ocuprobe184a/';
+
+  function mountWith(answers: readonly JsonResult<unknown>[], descriptor = DATABASE_DETAILS) {
+    const mounted = mount(undefined, descriptor);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('registers the five operations on Database details and leaves Add a volume undrawn', () => {
+    // Mutation (Rule 19): drop Database details from `SCREEN_ACTION_DESCRIPTORS` -> the five go red.
+    const { actions } = mount(undefined, DATABASE_DETAILS);
+    for (const id of ['mount', 'dismount', 'truncate', 'compact', 'defragment']) {
+      expect(DETAILS.rowActions.some((action) => action.id === id)).toBe(true);
+      expect(actions.has(DATABASE_DETAILS, id)).toBe(true);
+    }
+    expect(LOCAL.rowActions.some((action) => action.id === EXPAND_VOLUME)).toBe(true);
+    expect(actions.has(LOCAL_DATABASE_LIST, EXPAND_VOLUME)).toBe(false);
+  });
+
+  it('warns before the mount with its read-only flag, and sends ReadOnly as a string value either way', async () => {
+    // Mutation (Rule 19): drop the mount's `WARNING_VALUES` entry -> the flag label and the value go red.
+    for (const checked of [true, false]) {
+      const { handler, calls, store } = mountWith([]);
+      handler.startFor(DATABASE_DETAILS, 'mount', DIRECTORY, null, store);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('warning');
+      expect(pending?.verb).toBe(STRINGS.databaseActionMount);
+      expect(pending?.consequence).toBe(STRINGS.databaseMountConsequence);
+      expect(pending?.flagLabel).toBe(STRINGS.databaseMountReadOnly);
+      expect(pending?.fieldLabel).toBe('');
+      expect(calls).toHaveLength(0);
+      handler.confirmPending(checked);
+      await settle();
+      expect(calls[0].path).toBe(`/api/ocupilot/screens/${DETAILS.toolIdentifier}/action`);
+      expect(JSON.parse(calls[0].body)).toEqual({ action: 'mount', id: DIRECTORY, values: { ReadOnly: checked ? 'true' : 'false' } });
+    }
+  });
+
+  it('warns before the truncate and the compact with a size field, and sends the size under its declared name', async () => {
+    for (const [action, value, label, hint, consequence] of [
+      ['truncate', 'TargetSize', STRINGS.databaseTargetSizeLabel, STRINGS.databaseTargetSizeHint, STRINGS.databaseTruncateConsequence],
+      ['compact', 'TargetFreeSpace', STRINGS.databaseTargetFreeLabel, STRINGS.databaseTargetFreeHint, STRINGS.databaseCompactConsequence],
+    ] as const) {
+      const { handler, calls, store } = mountWith([]);
+      handler.startFor(DATABASE_DETAILS, action, DIRECTORY, null, store);
+      const pending = handler.pending();
+      expect(pending?.consequence).toBe(consequence);
+      expect(pending?.fieldLabel).toBe(label);
+      expect(pending?.fieldHint).toBe(hint);
+      expect(pending?.flagLabel).toBe('');
+      handler.confirmPending(false, '30');
+      await settle();
+      expect(JSON.parse(calls[0].body)).toEqual({ action, id: DIRECTORY, values: { [value]: '30' } });
+    }
+  });
+
+  it('warns before the defragment and sends no value', async () => {
+    const { handler, calls, store } = mountWith([]);
+    handler.startFor(DATABASE_DETAILS, 'defragment', DIRECTORY, null, store);
+    expect(handler.pending()?.consequence).toBe(STRINGS.databaseDefragmentConsequence);
+    handler.confirmPending();
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'defragment', id: DIRECTORY });
+  });
+
+  it('reads the dismount\u2019s impact as its dialog opens, and states a protected database\u2019s refusal as the advisory', async () => {
+    // Mutation (Rule 19): drop Database details from `IMPACT_ACTIONS` -> the read and the advisory go red.
+    const reason = STRINGS.databaseRefusalOcuPilot;
+    const { handler, calls, store } = mountWith([
+      { kind: 'ok', status: 200, body: { impact: { kind: 'database-dismount', refused: { code: 'PROHIBITED.OCUPILOTDATABASE', reason }, parts: [] } } },
+    ]);
+    handler.startFor(DATABASE_DETAILS, 'dismount', DIRECTORY, null, store);
+    await settle();
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${DETAILS.toolIdentifier}/impact?action=dismount&id=${encodeURIComponent(DIRECTORY)}`);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.consequence).toBe(STRINGS.databaseDismountConsequence);
+    expect(pending?.advisory).toBe(reason);
+    handler.cancelPending();
+    expect(calls.map((call) => call.method)).toEqual(['GET']);
+
+    const permitted = mountWith([{ kind: 'ok', status: 200, body: { impact: null } }]);
+    permitted.handler.startFor(DATABASE_DETAILS, 'dismount', DIRECTORY, null, permitted.store);
+    await settle();
+    expect(permitted.handler.pending()?.advisory).toBe('');
+  });
+
+  it('leaves each send\u2019s progress: running while in flight, then finished, still running or refused', async () => {
+    // Mutation (Rule 19): never set `continues` in `send()` -> the still-running leg reads finished.
+    for (const [answer, state] of [
+      [{ kind: 'ok', status: 200, body: {} }, 'finished'],
+      [{ kind: 'ok', status: 200, body: { continues: true } }, 'continues'],
+      [{ kind: 'error', status: 409, code: 'DATABASE.DISMOUNTED', reason: STRINGS.databaseGlobalsHint, detail: null }, 'refused'],
+    ] as const) {
+      const { handler, store } = mountWith([answer as JsonResult<unknown>]);
+      expect(handler.progress()).toBeNull();
+      const sent = handler.sendFor(DATABASE_DETAILS, 'defragment', DIRECTORY);
+      expect(handler.progress()?.state).toBe('running');
+      expect(handler.progress()?.target).toBe(DIRECTORY);
+      await sent;
+      expect(handler.progress()?.state).toBe(state);
+      expect(handler.progress()?.actionId).toBe('defragment');
+      if (state === 'refused') expect(store.refusal()).toBe(STRINGS.databaseGlobalsHint);
+    }
+  });
+
+  it('warns before Add a volume with its initial size, and reports to the editor\u2019s own sink', async () => {
+    const { handler, calls } = mountWith([{ kind: 'ok', status: 200, body: {} }], LOCAL_DATABASE_LIST);
+    const refusals: string[] = [];
+    const applied: string[] = [];
+    handler.startFor(LOCAL_DATABASE_LIST, EXPAND_VOLUME, 'OCUPROBE184A', null, {
+      setRefusal: (reason) => refusals.push(reason),
+      applied: (action) => applied.push(action),
+    });
+    const pending = handler.pending();
+    expect(pending?.verb).toBe(STRINGS.databaseExpandAction);
+    expect(pending?.consequence).toBe(STRINGS.databaseExpandConsequence);
+    expect(pending?.fieldLabel).toBe(STRINGS.databaseInitialSize);
+    handler.confirmPending(false, '5');
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: EXPAND_VOLUME, id: 'OCUPROBE184A', values: { InitialSize: '5' } });
+    expect(applied).toEqual([EXPAND_VOLUME]);
+  });
+});
+
+/**
+ * Story 16.11: the Task schedule's three Task Manager actions. The handler registers none of them --
+ * the page does -- and each is sent on the literal target: Suspend behind its warning dialog, whose
+ * body is the published consequence, and Resume and Start at once. A refusal in the wrong state, or
+ * of a task type's privilege, shows its published sentence.
+ */
+describe('the Task Manager\u2019s Suspend, Resume and Start (Story 16.11)', () => {
+  const TARGET = { type: 'task', scope: 'instance', id: TASK_MANAGER_TARGET };
+
+  it('leaves all three undrawn for the page to register', () => {
+    // Mutation (Rule 19): drop the three from the Task schedule's `UNDRAWN_ACTIONS` entry -> the
+    // handler registers them as row actions and this goes red.
+    const { actions } = mount(undefined, TASK_SCHEDULE);
+    for (const actionId of [TASK_MANAGER_SUSPEND, TASK_MANAGER_RESUME, TASK_MANAGER_START]) {
+      expect(actions.has(TASK_SCHEDULE, actionId)).toBe(false);
+    }
+  });
+
+  it('opens the warning before Suspend, titled with its label and stating its consequence; Cancel sends nothing and Proceed sends once', async () => {
+    // Mutation (Rule 19): drop the Task schedule's entry from WARNING_CONSEQUENCES -> Suspend is sent
+    // at once and the warning assertions go red.
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, TASK_SCHEDULE);
+    handler.startFor(TASK_SCHEDULE, TASK_MANAGER_SUSPEND, TASK_MANAGER_TARGET, {}, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.taskManagerSuspendAction);
+    expect(pending?.consequence).toBe(STRINGS.taskManagerSuspendConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+
+    handler.startFor(TASK_SCHEDULE, TASK_MANAGER_SUSPEND, TASK_MANAGER_TARGET, {}, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.schedule/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: TASK_MANAGER_SUSPEND, id: TASK_MANAGER_TARGET });
+    expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual([`task:updated:${TASK_MANAGER_TARGET}`]);
+  });
+
+  it('sends Resume and Start at once, with no dialog', async () => {
+    for (const actionId of [TASK_MANAGER_RESUME, TASK_MANAGER_START]) {
+      const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, TASK_SCHEDULE);
+      handler.startFor(TASK_SCHEDULE, actionId, TASK_MANAGER_TARGET, {}, store);
+      expect(handler.pending()).toBeNull();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: actionId, id: TASK_MANAGER_TARGET }]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('shows each published refusal rather than the envelope\u2019s generic reason', async () => {
+    // Mutation (Rule 19): drop the Task Manager sentences from `PUBLISHED_PROBLEMS` -> the store shows
+    // the generic reason and this goes red.
+    const published = [
+      STRINGS.taskManagerRefusalRunning,
+      STRINGS.taskManagerRefusalSuspended,
+      STRINGS.taskManagerRefusalSuspendedStart,
+      STRINGS.taskManagerRefusalStopped,
+      STRINGS.taskTypePrivilegeRefusal,
+    ];
+    for (const problem of published) {
+      const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem } } as unknown as JsonResult<unknown>;
+      const { handler, store, events } = mount(refused, TASK_SCHEDULE);
+      handler.startFor(TASK_SCHEDULE, TASK_MANAGER_RESUME, TASK_MANAGER_TARGET, {}, store);
+      await settle();
+      expect(store.refusal()).toBe(problem);
+      expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+  });
+});
+
+/**
+ * Story 16.12: the Locks list's three removals are undrawn here, for the list's own page to register
+ * Remove locks; a published owner refusal replaces the envelope's generic reason; and `lastRefusal`
+ * carries the envelope's code, which the dialog answers `LOCK.INTRANSACTION` by.
+ */
+describe('the Locks list\u2019s removals', () => {
+  it('leaves the three removals undrawn, for the Locks list\u2019s own page to register', () => {
+    // Mutation (Rule 19): drop the Locks list's entry from `UNDRAWN_ACTIONS` -> this goes red.
+    const { actions } = mount(undefined, LOCK_LIST);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE)).toBe(false);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE_PROCESS)).toBe(false);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE_CLIENT)).toBe(false);
+  });
+
+  it('answers a published owner refusal with its sentence, and carries the envelope\u2019s code', async () => {
+    // Mutation (Rule 19): drop the three lock sentences from `PUBLISHED_PROBLEMS` -> the reason
+    // assertion goes red, reading the generic TOOL.ARGUMENTS sentence instead.
+    for (const problem of [STRINGS.lockRemoveRefusalRemote, STRINGS.lockRemoveRefusalLocal, STRINGS.lockRemoveTooMany]) {
+      const refused: JsonResult<unknown> = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The tool was called with arguments it cannot use.', detail: { problem } };
+      const { handler } = mount(refused, LOCK_LIST);
+      expect(await handler.sendFor(LOCK_LIST, LOCK_REMOVE_CLIENT, '313131008,13,P905,', { RemoveInTransaction: 'false' })).toBe(false);
+      expect(handler.lastRefusal()?.reason).toBe(problem);
+      expect(handler.lastRefusal()?.code).toBe('TOOL.ARGUMENTS');
+    }
+    const inTransaction: JsonResult<unknown> = { kind: 'error', status: 409, code: 'LOCK.INTRANSACTION', reason: STRINGS.lockRemoveInTransaction, detail: null };
+    const { handler, calls } = mount(inTransaction, LOCK_LIST);
+    expect(await handler.sendFor(LOCK_LIST, LOCK_REMOVE, '313131008,13,P905,', { RemoveInTransaction: 'false' })).toBe(false);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: LOCK_REMOVE, id: '313131008,13,P905,', values: { RemoveInTransaction: 'false' } });
+    expect(handler.lastRefusal()?.code).toBe('LOCK.INTRANSACTION');
+    expect(handler.lastRefusal()?.reason).toBe(STRINGS.lockRemoveInTransaction);
   });
 });

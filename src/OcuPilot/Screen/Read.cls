@@ -62,7 +62,9 @@
 /// AD-36, Story 16.7): the type is issued as a list is, with <code>maxRows</code> the cap plus one,
 /// and the answer must be an object whose member <code>rows</code> names is an array of objects
 /// (<method>RowsMember</method>). Those objects are the rows, projected, filtered, sorted, capped and
-/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read.</p>
+/// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read. On a
+/// parent-scoped screen (Story 16.10's <code>ACTIVITY</code>) its one criterion is the route id and
+/// is required, refused 400 <code>READ.CRITERION</code> before the port is called when missing.</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -115,6 +117,12 @@ Parameter OBJECTTYPE = "GET";
 /// <p>The request type a declared <code>rowGet</code> issues once per surviving row when it declares
 /// no <code>type</code> of its own.</p>
 Parameter DETAILTYPE = "GET";
+
+/// <p>The detail type that answers one member's row array beside the fields a row merges
+/// (<code>LanguageServer</code>'s <code>ACTIVITY</code>, AD-36 as amended, Story 16.10). A
+/// <code>rowGet</code> of this type sends the vendor's <code>maxRows</code> 1, because only its
+/// scalar fields merge.</p>
+Parameter ACTIVITYTYPE = "ACTIVITY";
 
 /// <p>The ASCII capitals the view rule lower-cases, and nothing else.</p>
 Parameter UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -253,7 +261,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 }
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
-/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
+/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner, bannerRequires}</code>
+/// (<method>BannerKey</method>), plus
 /// <code>criteria</code> when the read declares criteria, <code>document</code> when a
 /// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
 /// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and
@@ -267,7 +276,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// every screen that declares none. <var>pHttpStatus</var> is 200.</p>
 /// <p>When the read declares <code>source.rowGet</code>, each surviving row's detail is read with
 /// one call of the declared <code>rowGet.type</code> -- <code>GET</code> when it declares none, or
-/// <code>INFO</code> or <code>CERTINFO</code> -- carrying <code>param</code> set to that row's
+/// <code>INFO</code>, <code>CERTINFO</code> or <code>ACTIVITY</code>, which also sends
+/// <code>maxRows</code> 1 -- carrying <code>param</code> set to that row's
 /// <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
 /// is set from its rule (<method>Derive</method>). A row whose detail call answers 404 was
@@ -483,6 +493,14 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tSeededPart _ " is required", .pHttpStatus, .pFault)
                 Quit
             }
+            ; A parent-scoped list over one member (Story 16.10's Activity log) reads for its route
+            ; id, so its one criterion is required, as a single-object read's route-id criterion is.
+            Set tRouteParam = ""
+            If tBareRows && ($ClassMethod(pDescriptor, "ParentScope") '= "") Set tRouteParam = ..ObjectCriterionParam(tRead)
+            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
+                Quit
+            }
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
@@ -541,7 +559,8 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tTruncated, "boolean")
-        Do pResult.%Set("banner", ..BannerKey(pDescriptor))
+        Do pResult.%Set("banner", ..BannerKey(pDescriptor, .tBannerRequires))
+        Do pResult.%Set("bannerRequires", tBannerRequires, "string")
         If $IsObject(tApplied) Do pResult.%Set("criteria", tApplied)
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
         If $IsObject(tSources) Do pResult.%Set("sources", tSources)
@@ -1016,9 +1035,13 @@ ClassMethod AtOrAfter(pRows As %DynamicArray, ByRef pCutoffs) As %DynamicArray [
 /// The declaration's own shape is refused at install instead
 /// (<method>OcuPilot.Screen.Registry.BannerProblem</method>), which is what keeps that silence from
 /// hiding a misdeclared banner.</p>
-ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
+/// <p><var>pRequires</var> is <method>BannerRequires</method>'s verdict for the raised case's
+/// <code>action</code>, and <code>""</code> for no raised case or no action.</p>
+ClassMethod BannerKey(pDescriptor As %String, Output pRequires As %String) As %String [ Private ]
 {
     Set tKey = ""
+    Set pRequires = ""
+    Set tAction = ""
     Try {
         Set tBanner = $ClassMethod(pDescriptor, "Banner")
         If '$IsObject(tBanner) Quit
@@ -1036,12 +1059,50 @@ ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
             If '$IsObject(tCase) Continue
             If tCase.%Get("equals") '= tValue Continue
             Set tKey = tCase.%Get("messageKey")
+            If tCase.%GetTypeOf("action") = "string" Set tAction = tCase.%Get("action")
             Quit
         }
     } Catch {
         Set tKey = ""
+        Set tAction = ""
     }
+    If (tKey '= "") && (tAction '= "") Set pRequires = ..BannerRequires(pDescriptor, tAction)
     Quit tKey
+}
+
+/// <p>The first pair the calling process lacks for the write tool that carries screen action
+/// <var>pAction</var> of <var>pDescriptor</var>, as <code>resource:permission</code>, or
+/// <code>""</code> (AD-5, AD-8). The tool is the one registered write tool whose descriptor is
+/// <var>pDescriptor</var> and whose screen actions include <var>pAction</var>; its declared pairs are
+/// evaluated in the caller's process at each read.</p>
+/// <p><b>Screen chrome, never the tool's view</b> (AD-36). Every fault, and an action no tool carries,
+/// answers <code>""</code> and never fails the read: the route and the mint still refuse a caller
+/// short of a pair by name.</p>
+ClassMethod BannerRequires(pDescriptor As %String, pAction As %String) As %String [ Private ]
+{
+    Set tRequires = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+        If $$$ISERR(tSC) Quit
+        Set tTool = ""
+        Set tIterator = tTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) || (tEntry.%Get("kind") '= "write") Continue
+            Set tClass = tEntry.%Get("class")
+            If tClass = "" Continue
+            If $Parameter(tClass, "DESCRIPTORCLASS") '= pDescriptor Continue
+            If '$ListFind($ClassMethod(tClass, "ScreenActionIds"), pAction) Continue
+            Set tTool = tEntry
+            Quit
+        }
+        If '$IsObject(tTool) Quit
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
+        If 'tResolved Quit
+        If '##class(OcuPilot.Screen.Gate).EvaluatePairs(tPairs, .tFailed) Set tRequires = tFailed
+    } Catch {
+        Set tRequires = ""
+    }
+    Quit tRequires
 }
 
 /// <p>One surviving list row with its detail merged, as <var>pOut</var>, or <var>pOut</var>
@@ -1069,6 +1130,7 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
         Set tQuery(pRowGet.%Get("param")) = pRow.%Get(tKeyField)
         Set tDetailType = pRowGet.%Get("type")
         If tDetailType = "" Set tDetailType = ..#DETAILTYPE
+        If tDetailType = ..#ACTIVITYTYPE Set tQuery("maxRows") = 1
         Set tDetail = ""
         Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tDetailType, .tQuery, "", .tDetail, .tHttp, .tFault)
         If $$$ISERR(tPortSC) {

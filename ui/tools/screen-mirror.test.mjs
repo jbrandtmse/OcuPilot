@@ -217,8 +217,10 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['package-mapping', 'foldcase-firstpart'],
     // Story 18.3: a database configuration name resolves without case and is stored upper case.
     ['database-configuration', 'foldcase'],
+    // Story 18.4: a database id is its directory, or an integrity check's set of directories.
+    ['database', 'directoryset'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -317,7 +319,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -921,7 +923,14 @@ test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuP
 
   const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
   const emittedLocks = emitted.find((screen) => screen.route === 'os-management/locks');
-  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid' });
+  // Story 16.12 (DW-1074): the Locks list withholds a remote owner's link.
+  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid', unless: 'RemoteOwner' });
+  const unlessHostile = structuredClone(locks.declaration);
+  unlessHostile.rowTarget = { ...unlessHostile.rowTarget, unless: 'Bogus' };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(unlessHostile) }),
+    /rowTarget\.unless 'Bogus' is not one of read\.fields/
+  );
   assert.ok(emitted.every((screen) => 'rowTarget' in screen), 'every screen emits rowTarget, null when it declares none');
 });
 
@@ -1045,11 +1054,12 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
   // field its INFO rowGet answers, and its empty state invites the agent. Story 16.4 adds Export
-  // and Import before Delete, so the row menu lists the destructive action last.
+  // and Import before Delete, so the row menu lists the destructive action last. Story 16.11 appends
+  // the Task Manager's three actions, which no row menu draws.
   const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
   assert.deepEqual(
     schedule.declaration.rowActions.map((action) => action.id),
-    ['run', 'suspend', 'resume', 'export', 'import', 'delete']
+    ['run', 'suspend', 'resume', 'export', 'import', 'delete', 'suspendmanager', 'resumemanager', 'startmanager']
   );
   assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
   assert.deepEqual(
@@ -1211,8 +1221,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Secrets list, whose one criterion is its parent collection, filled from the route id
   // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
   // criterion each is the parent Databases route's directory; Story 16.9's log hub, whose one
-  // criterion is its timeline's window; and Story 18.14's three mapping lists, whose one criterion
-  // each is the parent namespace, filled from the route id and seeded onto every row.
+  // criterion is its timeline's window; Story 18.14's three mapping lists, whose one criterion
+  // each is the parent namespace, filled from the route id and seeded onto every row; and Story
+  // 16.10's Activity log, whose one criterion is the language server its route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1221,6 +1232,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.PackageMappingList',
@@ -1299,9 +1311,10 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     field: 'Status',
     // Two cases over one field and one read (DW-270): the Task Manager is suspended, or it is
     // stopped -- `Not running` is the vendor's own word for status 0 -- and `Running` raises none.
+    // Each offers its remedy (Story 16.11): the resume, or the start.
     cases: [
-      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' },
-      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning' },
+      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'resumemanager' },
+      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning', action: 'startmanager' },
     ],
   });
   for (const screen of emittedScreens) {
@@ -2204,12 +2217,17 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // screens, which own their pair so the Security area declares only %Admin_Secure and IRISSYS;
   // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way, and Story 16.2's
   // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
-  // Background tasks does beside the Tasks area's.
+  // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
+  // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
+  // Story 16.25's editor owns it the same way.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.LanguageServerActivity',
+      'OcuPilot.Screen.Descriptor.LanguageServerForm',
+      'OcuPilot.Screen.Descriptor.LanguageServerList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',
       'OcuPilot.Screen.Descriptor.OAuthClientForm',
@@ -2285,42 +2303,25 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
     'and so is one naming a field the screen\'s own read declares'
   );
 
-  // DW-1206's refusing direction: both keys are checked against one set, so an entry naming
-  // nothing is refused rather than left to be read as a whitelist by two consumers.
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['Pasword'] }), toolFields),
-    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
-      'tool nor one its read declares (AD-6)'
-  );
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['Timeout'] }), toolFields),
-    null,
-    'while one naming a settable field of that tool is sound'
-  );
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: [webApp.declaration.read.fields[0]] }), toolFields),
-    null,
-    "and so is one naming a field the screen's own read declares"
-  );
-  // 'Timeout' above is a string field, so it cannot tell the membership check's 'settable' set
-  // apart from the credential heuristic's string-only one; 'AutoCompile' is a boolean field of
-  // the same tool and is sound here too.
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['AutoCompile'] }), toolFields),
-    null,
-    'and so is a non-string settable field'
-  );
-  // The two spellings the one set carries: the schema drops a declared secret by the []-stripped
-  // name, while an exclusion of an array reaches the fingerprint as <path>[].
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['CorsAllowlist'] }), toolFields),
-    null,
-    'a secret named in the spelling the schema honours is sound'
-  );
+  // A secretArguments entry opens the confirm channel to a value the write sends as a secret, so
+  // it names a top-level secret row of the screen's write tools and nothing else. A misspelling, Path (ordinary on both web-application tools, and set by neither, AD-21),
+  // a string and a boolean settable field, an array field in the spelling the schema honours and a
+  // field the read declares are each refused. The web applications list's tools send no secret.
+  //
+  // Mutation (Rule 19): re-admit a settable name in `confirmChannelProblem`'s secretArguments check
+  // -> the Path leg goes red.
+  for (const name of ['Pasword', 'Path', 'Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.equal(
+      confirmChannelProblem(of({ secretArguments: [name] }), toolFields),
+      `secretArguments names '${name}', which is not a top-level secret field of this screen's write tools (AD-6)`,
+      `${name}: refused, as no write tool of this screen sends it as a secret`
+    );
+  }
+  // An exclusion of an array reaches the fingerprint as <path>[], and is named in that spelling.
   assert.equal(
     confirmChannelProblem(of({ fingerprintExcludes: ['CorsAllowlist[]'] }), toolFields),
     null,
-    'and an exclusion named in the spelling the fingerprint honours is sound'
+    'an exclusion named in the spelling the fingerprint honours is sound'
   );
   // The tightening direction: any row of the entry was accepted before, a secret-classified
   // subtree included.
@@ -2340,8 +2341,16 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
   });
   // The loosening direction, and the flag half the builder missed: a criterion is one of the names
   // the read declares, so its parameter is a nameable exclusion.
+  const withOwner = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: {
+        fields: [{ param: 'owner', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }],
+      },
+    },
+  });
   assert.equal(
-    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'], fingerprintExcludes: ['apiKey'] }, toolFields),
+    confirmChannelProblem({ ...withOwner, fingerprintExcludes: ['owner'] }, toolFields),
     null,
     "a typed criterion's parameter is a nameable exclusion"
   );
@@ -2359,13 +2368,13 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
   );
   assert.equal(
     confirmChannelProblem(withCriterion, toolFields),
-    "read.criteria names 'apiKey', whose name matches the credential pattern and which " +
-      'secretArguments does not declare (AD-3)'
+    "read.criteria names 'apiKey', whose name matches the credential pattern and which is not a " +
+      "declared secret of this screen's write tools (AD-3)"
   );
   assert.equal(
     confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'] }, toolFields),
-    null,
-    'declaring it is what admits it'
+    "secretArguments names 'apiKey', which is not a top-level secret field of this screen's write tools (AD-6)",
+    'and declaring it does not admit it, as no write tool of this screen sends it as a secret'
   );
 
   // The generator refuses to emit it at all, which is the assertion that makes this rule part of
@@ -2408,8 +2417,8 @@ test('DW-1206: the projection roster is the kernel\'s, and a mismatch fails the 
   );
 });
 
-// The one builder, asserted as one: both confirm-channel keys read `declaredNames`' projections, so
-// the set cannot be built twice and drift.
+// The one builder, asserted as one: `fingerprintExcludes` and the credential-name rule read
+// `declaredNames`' projections, so the set cannot be built twice and drift.
 test('DW-1206: declaredNames answers one union in the two spellings its consumers honour', () => {
   const { screens, toolFields } = readSources();
   const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
@@ -2472,16 +2481,15 @@ test('entityLabelProblem returns the instance-side sentences, and every shipped 
   );
 });
 
-// AD-3, AD-6: a `secretArguments` name also qualifies when it is a top-level `secret` literal row
-// of the screen's write tools -- a derived credential, or an authored wrapper field such as
-// `Security.User`'s POST `Password` (Story 8.2). The widening is additive, so both directions are
-// pinned: a top-level secret row passes, and every name that qualified before still qualifies
-// while an unknown name, a nested secret path and an array element are still refused.
+// AD-3, AD-6: a `secretArguments` name qualifies when it is a top-level `secret` literal row of the
+// screen's write tools -- a derived credential, or an authored wrapper field such as
+// `Security.User`'s POST `Password` (Story 8.2) -- and only then: an unknown name, a nested secret
+// path, an array element, a settable field and a field the read declares are refused.
 //
 // Mutation (Rule 19): drop the `secretRows` clause from `confirmChannelProblem` -> the Users list
 // and the synthetic secret row below are refused; make `secretRowNames` admit nested paths -> the
-// `MatchRoles[].MatchRole` assertion goes red.
-test('a secretArguments entry may name a top-level secret row, and nothing that qualified stops qualifying', async () => {
+// `MatchRoles[].MatchRole` assertion goes red; re-admit a settable name -> the Path leg goes red.
+test('a secretArguments entry may name a top-level secret row, and nothing else', async () => {
   const { secretRowNames } = await import('./screen-mirror.mjs');
   const { screens, toolFields } = readSources();
   const users = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserList');
@@ -2491,9 +2499,8 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
   assert.equal(confirmChannelProblem(users.declaration, toolFields), null, 'the declaration passes');
   assert.equal(
     confirmChannelProblem({ ...users.declaration, secretArguments: ['Pasword'] }, toolFields),
-    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
-      'tool nor one its read declares (AD-6)',
-    'a name no source carries is still refused'
+    "secretArguments names 'Pasword', which is not a top-level secret field of this screen's write tools (AD-6)",
+    'a name no source carries is refused'
   );
 
   const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
@@ -2516,8 +2523,8 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
   for (const name of ['ProbeNested.Key', 'ProbeNested', 'ProbeList', 'ProbeList[]', 'ProbeOpaque']) {
     assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify`);
   }
-  for (const name of ['Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
-    assert.equal(confirmChannelProblem(of([name]), widened), null, `${name} still qualifies`);
+  for (const name of ['Path', 'Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify: no tool sends it as a secret`);
   }
   assert.notEqual(
     confirmChannelProblem(of(['MatchRoles[].MatchRole']), widened),

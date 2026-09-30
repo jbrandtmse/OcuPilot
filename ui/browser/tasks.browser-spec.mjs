@@ -28,6 +28,11 @@
  * **Story 9.7** adds the list's Create, which opens the New Task wizard; the wizard itself is
  * `task-wizard.browser-spec.mjs`'s.
  *
+ * **Story 16.11** adds the Task Manager's controls: Suspend Task Manager on the command bar behind
+ * its warning, and the suspended banner's Resume Task Manager, each sent through the screen route
+ * and each leg resuming the throwaway's Task Manager in a `finally`; the dialog and the banner pass
+ * the DW-1337 structural walk in both themes.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -43,6 +48,7 @@ import { parseMarkers, taskManagerStateFrom } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -63,6 +69,9 @@ const TASK_USER = 'OcuPilotTasksTaskOnly';
 const TASK_ROLE = 'OcuPilotTasksTaskOnlyRole';
 const TASK_PASSWORD = 'OcuPilotTasks1';
 const SYSTEM_TASK = 'Switch Journal';
+const ACTION_PATH = '/api/ocupilot/screens/tasks.schedule/action';
+const SCHEDULE_ROUTE = 'tasks/schedule';
+const BANNER_ACTION = 'app-list-page .ocu-banner .ocu-banner-action';
 
 /** `%SYS.Task.TASKMGRStatus()`: 0 not running, 1 running, 2 suspended. */
 const RUNNING = '1';
@@ -113,6 +122,61 @@ function setTaskManagerSuspended(suspended) {
     ['OK', 'STATE']
   );
   return taskManagerStateFrom(values, suspended, output);
+}
+
+/** The throwaway Task Manager's status as `TASKMGRStatus()` reads it, `'1'` running and `'2'` suspended. */
+function taskManagerStatus() {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'the live instance\'s Task Manager is never read here');
+  const { values, output } = irisSession([mark('STATE', '##class(%SYS.Task).TASKMGRStatus()')], ['STATE']);
+  assert.ok(values.STATE !== undefined, `the Task Manager's status was read:\n${output}`);
+  return values.STATE;
+}
+
+/** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
+function frames(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/** The DW-1337 walk of `route` at 1280 light, 720 light and 1280 dark, answering every entry the baseline does not hold. */
+async function structural(page, route) {
+  const found = [];
+  const passes = [
+    { viewport: VIEWPORTS.wide, theme: 'light', checks: INVARIANTS },
+    { viewport: VIEWPORTS.narrow, theme: 'light', checks: ['name', 'min-width', 'overflow'] },
+    { viewport: VIEWPORTS.wide, theme: 'dark', checks: ['contrast'] },
+  ];
+  const minimums = componentMinimums();
+  const surfaces = {};
+  for (const { viewport, theme, checks } of passes) {
+    await page.setViewport(viewport);
+    await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
+    await frames(page);
+    surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
+    found.push(...entries);
+  }
+  await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+  await page.setViewport(VIEWPORTS.wide);
+  await frames(page);
+  assert.notEqual(surfaces.dark, surfaces.light, 'the dark pass measured the dark theme, not the light one');
+  return compare(collapse(found), readBaseline()?.entries ?? []).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
+}
+
+/** Open Suspend Task Manager's warning from the command bar, answering what the dialog shows. */
+async function openSuspendWarning(page) {
+  const suspend = await page.waitForSelector('.ocu-command-bar-task-manager-suspend', { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await suspend.evaluate((node) => node.textContent.trim()), STRINGS.taskManagerSuspendAction, 'the command bar offers Suspend Task Manager');
+  await suspend.click();
+  await page.waitForSelector('app-warning-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
+  return page.evaluate(() => {
+    const surface = document.querySelector('[role="dialog"]');
+    return {
+      title: (surface.querySelector('.ocu-dialog-title')?.textContent ?? '').trim(),
+      body: (surface.querySelector('.ocu-warning-consequence')?.textContent ?? '').trim(),
+      destructive: surface.querySelector('.ocu-button-destructive') !== null,
+      proceed: (surface.querySelector('.ocu-dialog-actions .ocu-button-primary')?.textContent ?? '').trim(),
+    };
+  });
 }
 
 /** Delete the Story 6.5 principal and its role, whichever of them exists. */
@@ -308,7 +372,8 @@ function describeBanner(page) {
       text: strip.querySelector('.ocu-banner-message')?.textContent?.trim() ?? '',
       classes: [...strip.classList].sort(),
       glyphHidden: strip.querySelector('.ocu-banner-glyph')?.getAttribute('aria-hidden') ?? null,
-      dismiss: strip.querySelector('button') !== null,
+      actions: Array.from(strip.querySelectorAll('button')).map((button) => button.textContent.trim()),
+      gated: strip.querySelector('.ocu-banner-action')?.getAttribute('aria-disabled') ?? null,
     };
   });
 }
@@ -398,7 +463,8 @@ test('AC2: a suspended Task Manager raises the warning strip above the table whi
     );
     assert.ok(banner.classes.includes('ocu-banner-warning'), `it takes the warning variant: ${banner.classes.join(' ')}`);
     assert.equal(banner.glyphHidden, 'true', 'its glyph is decorative, so the strip reads as its sentence alone');
-    assert.equal(banner.dismiss, false, 'and it carries no control: not dismissible, and no Resume (Epic 7 ships that)');
+    assert.deepEqual(banner.actions, [STRINGS.taskManagerResumeAction], 'and its one control is Resume Task Manager (Story 16.11): it is not dismissible');
+    assert.equal(banner.gated, null, 'which the account holds every pair for');
     assert.equal(await viewCount(page), running, 'and the rows still list, unchanged in number');
 
     // The strip is above the table, not inside it: the table's own frame starts below it.
@@ -421,6 +487,120 @@ test('AC2: a suspended Task Manager raises the warning strip above the table whi
     // The resume runs whatever the leg did, but its own assertion must not replace the leg's
     // failure: a throw from here would be the only message left, and the real cause would be lost.
     // `after` resumes again and asserts there, where nothing is masked.
+    try {
+      setTaskManagerSuspended(false);
+    } catch {
+      /* reported by `after`, which resumes and asserts once more */
+    }
+    await context.close();
+  }
+});
+
+// Story 16.11 AC1, AC2. Mutation (Rule 19): drop the banner action from list-page.ts's template, then
+// rebuild and redeploy -> the Resume Task Manager wait goes red; drop the Task schedule's entry from
+// WARNING_CONSEQUENCES -> Suspend is sent at once and the dialog wait goes red.
+test('Story 16.11 AC1, AC2: Suspend Task Manager warns before it is sent; the suspended banner offers Resume Task Manager, which clears it with no refresh; the dialog and the banner pass DW-1337', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password);
+  const posts = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) posts.push(request.postData() ?? '');
+  });
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.equal(await describeBanner(page), null, 'no strip stands while the Task Manager runs');
+    const running = await viewCount(page);
+
+    const opened = await openSuspendWarning(page);
+    assert.equal(opened.title, STRINGS.taskManagerSuspendAction, 'the warning is titled Suspend Task Manager');
+    assert.equal(opened.body, STRINGS.taskManagerSuspendConsequence, 'and states the published consequence');
+    assert.equal(opened.destructive, false, 'never a destructive one');
+    assert.equal(opened.proceed, STRINGS.actionProceed, 'its confirming action is Proceed');
+    assert.deepEqual(posts, [], 'nothing is sent before Proceed');
+    assert.deepEqual(await structural(page, SCHEDULE_ROUTE), [], 'the warning dialog: no violation beyond the baseline\'s entries');
+
+    const listReads = () => reads.filter((url) => new URL(url).pathname === READ_PATH).length;
+    const before = listReads();
+    await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(
+      (selector, label) => Array.from(document.querySelectorAll(selector)).some((button) => button.textContent.trim() === label),
+      { timeout: config.navigationTimeoutMs },
+      BANNER_ACTION,
+      STRINGS.taskManagerResumeAction
+    );
+    assert.deepEqual(posts.map((body) => JSON.parse(body)), [{ action: 'suspendmanager', id: 'manager' }], 'Proceed sent one suspend');
+    assert.ok(listReads() > before, 'the change event re-read the list, with no refresh asked for');
+    const banner = await describeBanner(page);
+    assert.equal(banner?.text, STRINGS.taskManagerSuspendedBanner, 'the suspended banner stands');
+    assert.deepEqual(banner?.actions, [STRINGS.taskManagerResumeAction], 'offering Resume Task Manager');
+    assert.equal(banner?.gated, null, 'ungated for the account');
+    assert.equal(await viewCount(page), running, 'while the rows still list');
+    assert.equal(taskManagerStatus(), SUSPENDED, 'the throwaway Task Manager is suspended');
+    assert.deepEqual(await structural(page, SCHEDULE_ROUTE), [], 'the banner and its Resume Task Manager: no violation beyond the baseline\'s entries');
+
+    await page.click(BANNER_ACTION);
+    await page.waitForFunction(() => document.querySelector('app-list-page .ocu-banner') === null, { timeout: config.navigationTimeoutMs });
+    assert.deepEqual(JSON.parse(posts.at(-1)), { action: 'resumemanager', id: 'manager' }, 'Resume Task Manager sent the resume at once');
+    assert.equal(posts.length, 2, 'with no dialog');
+    assert.equal(taskManagerStatus(), RUNNING, 'and the Task Manager runs');
+  } finally {
+    try {
+      setTaskManagerSuspended(false);
+    } catch {
+      /* reported by `after`, which resumes and asserts once more */
+    }
+    await context.close();
+  }
+});
+
+test('Story 16.11 AC1: Cancel on the Suspend Task Manager warning sends nothing', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  const posts = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) posts.push(request.postData() ?? '');
+  });
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await openSuspendWarning(page);
+    await page.click('[role="dialog"] .ocu-button-secondary');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.deepEqual(posts, [], 'Cancel sent nothing');
+    assert.equal(await describeBanner(page), null, 'no strip stands');
+    assert.equal(taskManagerStatus(), RUNNING, 'and the Task Manager still runs');
+  } finally {
+    try {
+      setTaskManagerSuspended(false);
+    } catch {
+      /* reported by `after`, which resumes and asserts once more */
+    }
+    await context.close();
+  }
+});
+
+// Story 16.11 AC2's tick. Mutation (Rule 19): make `RefreshService`'s tick pass `''` for the banner,
+// then rebuild and redeploy -> the suspended banner never rises and its wait goes red.
+test('Story 16.11 AC2: with auto-refresh on, a tick raises the banner for a suspend made elsewhere and clears it for the resume, with no refresh asked for', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.equal(await describeBanner(page), null, 'no strip stands while the Task Manager runs');
+    const chip = await page.waitForSelector('.ocu-command-bar-refresh', { visible: true, timeout: config.navigationTimeoutMs });
+    await chip.click();
+    await page.waitForFunction(
+      () => document.querySelector('.ocu-command-bar-refresh').textContent.trim() === 'Auto-refresh: every 5 s',
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(setTaskManagerSuspended(true), SUSPENDED, 'the throwaway Task Manager is suspended out of band');
+    await page.waitForFunction(
+      (text) => document.querySelector('app-list-page .ocu-banner .ocu-banner-message')?.textContent?.trim() === text,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.taskManagerSuspendedBanner
+    );
+    assert.deepEqual((await describeBanner(page))?.actions, [STRINGS.taskManagerResumeAction], 'a tick raised the suspended banner with its Resume Task Manager');
+    assert.equal(setTaskManagerSuspended(false), RUNNING, 'the throwaway Task Manager is resumed out of band');
+    await page.waitForFunction(() => document.querySelector('app-list-page .ocu-banner') === null, { timeout: config.navigationTimeoutMs });
+  } finally {
     try {
       setTaskManagerSuspended(false);
     } catch {

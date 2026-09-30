@@ -32,6 +32,11 @@ export interface LogLine {
   readonly raw: string;
   /** Whether the entry opened with a head line. A window can open mid-continuation. */
   readonly head: boolean;
+  /**
+   * The row as a screen's declared read answered it (Story 16.10), which that screen's context and
+   * "Explain this entry" carry; absent for a line read from a log's own route.
+   */
+  readonly record?: Readonly<Record<string, unknown>>;
 }
 
 /** The vendor's severity scale (`irissys/%sySystem.inc`), which has five words, not four. */
@@ -173,6 +178,12 @@ export interface LogFileEntry {
   readonly size: number;
   /** ISO-8601 UTC, or `''` when the instance had no time for it. */
   readonly modified: string;
+  /**
+   * An integrity check's start, as a log entry's local `time`, and its running state (Story 18.4):
+   * present only on the Integrity log's list, whose entries are checks rather than files.
+   */
+  readonly time?: string;
+  readonly state?: string;
 }
 
 function twoDigits(value: number): string {
@@ -192,4 +203,13 @@ export function fileOptionText(entry: LogFileEntry): string {
     ? ''
     : `${when.getFullYear()}-${twoDigits(when.getMonth() + 1)}-${twoDigits(when.getDate())} ${twoDigits(when.getHours())}:${twoDigits(when.getMinutes())}`;
   return STRINGS.logViewerFileOption.replace('<name>', entry.name).replace('<size>', kilobytes).replace('<modified>', modified);
+}
+
+/**
+ * The Integrity log's check choice's option text for `entry` (Story 18.4): its start as
+ * `YYYY-MM-DD HH:MM:SS` in the instance's own clock, as the log's rows carry it, then its state.
+ */
+export function checkOptionText(entry: LogFileEntry): string {
+  const time = (entry.time ?? '').slice(0, 19).replace('T', ' ');
+  return `${time} \u00b7 ${entry.state ?? ''}`;
 }

@@ -12,12 +12,11 @@ import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { DOWNLOAD_CSV_ACTION_ID, REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
-import { assembleEntryContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { stubExplainEntry } from '../../testing/explain-entry';
+import { explainContext, narrowedEntry, stubExplainEntry } from '../../testing/explain-entry';
 import { LogHubPage } from './log-hub.page';
 import { LogHubStore, nextSecond } from './log-hub.store';
 
@@ -266,24 +265,37 @@ describe('LogHubPage', () => {
     expect(arrivals.take('logs/errors')).toBeNull();
   });
 
-  // Mutation (Rule 19): send every row from a Sources row's Explain -> the AC2 payload goes red.
-  it("AC2, AC8: Explain sends one entry alone, a source's being its last entry, and a refused one sends nothing", async () => {
+  // Mutation (Rule 19): send the one entry as the view, as Story 11.2 shipped it (DW-1838) -> the
+  // timeline's rows go red.
+  it("AC2, AC8: Explain marks one entry among the timeline's rows, a source's being its last entry, and a refused one sends nothing", async () => {
     const { entry } = stubExplainEntry();
-    const { fixture, host } = await mount(entry);
+    const { fixture, host, stores } = await mount(entry);
     host.querySelectorAll<HTMLElement>('[data-ocu-hub="explain"]')[3].click();
     const timelineRequest = entry.take();
     expect(timelineRequest?.row).toEqual(ROWS[3]);
-    const context = assembleEntryContext({ descriptor: HUB, namespace: 'HSCUSTOM', share: true, row: timelineRequest?.row });
-    expect(context?.view?.rows).toEqual([{ time: '2026-09-27T10:10:00.000', source: 'logs/alerts', severity: '1', text: 'a warning' }]);
+    const context = explainContext(stores, timelineRequest);
+    expect(context?.view?.rows).toHaveLength(ROWS.length);
+    expect(context?.view?.rows[context?.view?.selected ?? -1]).toEqual({ time: '2026-09-27T10:10:00.000', source: 'logs/alerts', severity: '1', text: 'a warning' });
+    expect(context?.view?.focus).toBeUndefined();
 
     (sourceRow(host, 'logs/audit').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement).click();
-    expect(entry.take()?.row).toEqual(ROWS[2]);
+    const auditRequest = entry.take();
+    expect(auditRequest?.row).toEqual(ROWS[2]);
+    const auditContext = explainContext(stores, auditRequest);
+    expect(auditContext?.view?.rows).toHaveLength(ROWS.length);
+    expect(auditContext?.view?.rows[auditContext?.view?.selected ?? -1]).toEqual(narrowedEntry(HUB, ROWS[2]));
 
-    // A last entry older than the window, with a Source filter hiding its source, is still the one sent.
+    // A last entry older than the window, with a Source filter hiding its source, is still the one
+    // sent, as the focus row beside the timeline's rows the filter leaves.
     await choose(fixture, '[data-ocu-hub="source-filter"]', 'logs/alerts');
     expect(sourceRow(host, 'logs/xdbc').querySelector('[data-ocu-hub="last"]')?.textContent).toContain('a quiet xDBC line');
     (sourceRow(host, 'logs/xdbc').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement).click();
-    expect(entry.take()?.row).toEqual(QUIET);
+    const quietRequest = entry.take();
+    expect(quietRequest?.row).toEqual(QUIET);
+    const quietContext = explainContext(stores, quietRequest);
+    expect(quietContext?.view?.rows).toEqual([narrowedEntry(HUB, ROWS[0]), narrowedEntry(HUB, ROWS[3])]);
+    expect(quietContext?.view?.focus).toEqual(narrowedEntry(HUB, QUIET));
+    expect(quietContext?.view?.selected).toBeUndefined();
 
     const denied = sourceRow(host, 'logs/eventlog').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement;
     expect(denied.getAttribute('aria-disabled')).toBe('true');

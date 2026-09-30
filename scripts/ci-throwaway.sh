@@ -237,6 +237,7 @@ services:
       # classes: NamespaceWriteGate
       # classes: ClassicPageGate, MappingWriteGate
       # classes: DatabaseRefusals, DatabaseWriteGate
+      # classes: DatabaseActionsGate, DatabaseIntegrity
       # classes: WebSessionsLive
       # The Background tasks classes also create a scratch database and pause, resume and cancel a
       # compact of it; AdminPortForget runs the whole retention sweep.
@@ -247,6 +248,16 @@ services:
       # classes: ProcessBroadcastLive
       # Task export and import's live class also exports and imports probe tasks as its principals.
       # classes: TaskTransferLive
+      # The language server class also creates, starts, stops and deletes probe Java servers.
+      # classes: LanguageServerWire
+      # classes: WireAreaAnyScreen
+      # The language server editor's class also creates, edits, starts, stops and deletes probe servers.
+      # classes: LanguageServerEditorWire
+      # The Task Manager classes also suspend, resume, stop and start the Task Manager and act on a
+      # probe purge task as their principals.
+      # classes: TaskManagerLive, TaskRowWire
+      # The lock removal class also starts processes that hold probe locks and removes those locks.
+      # classes: LockRemoveLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -321,6 +332,10 @@ services:
       # Task export and import's classes export probe tasks to files under the first allowed
       # directory and import them back, then delete every task named OcuP164* and that directory.
       # classes: TaskTransfer, TaskTransferLive
+      # The Task Manager classes suspend, resume, stop and start this instance's Task Manager and
+      # restore it running as TASKMGR on every exit; the row class suspends, resumes and deletes a
+      # probe purge task it creates, never running it.
+      # classes: TaskManagerLive, TaskRowWire
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -388,6 +403,10 @@ services:
       # OCUPROBE183SRV data server they create, and write to the instance's own databases only
       # through a port that sends nothing.
       # classes: DatabaseRefusals, DatabaseWrite, DatabaseWriteDetail, DatabaseWriteGate, PathPortDatabases
+      # It also mounts, dismounts, truncates, compacts, defragments, grows, adds volumes to and
+      # checks the integrity of OCUPROBE184* databases, removing their background tasks and
+      # integrity checks by probe directory (Story 18.4).
+      # classes: DatabaseActions, DatabaseActionsGate, DatabaseActionsProhibited, DatabaseGrowExpand, DatabaseIntegrity
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

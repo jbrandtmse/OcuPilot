@@ -1,8 +1,9 @@
 /// <p>Stories 11.9, 11.10, 11.1 and 11.2 in process: the built-in prompt's eight screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
-/// Home's empty route, the error read tool's input schema, and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
-/// branches and inside the total bound (AD-11, AD-24).</p>
+/// Home's empty route, the error read tool's input schema, the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
+/// branches and inside the total bound, and the explain-entry marker it carries, drops when invalid
+/// and keeps within the bounds (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
 /// compiled.</p>
@@ -26,7 +27,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
         7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
-        8: "When the user asks you to explain this entry, explain the one row in screen_context: what it records, what likely caused it and what to check next, and propose no change.",
+        8: "When the user asks you to explain the selected entry, screen_context marks the entry they chose: selected is its index in rows, the first row being 0, or focus holds it when rows does not; that marker, not entity, names the entry, and the other rows are the rest of the screen, context for that entry. Explain that one entry: what it records, what likely caused it and what to check next, and propose no change.",
         : "")
 }
 
@@ -54,7 +55,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
-    Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement, which says what the marker means")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
@@ -250,6 +251,145 @@ Method TestTheMembersCountWithinTheTotalBound()
     Do $$$AssertTrue((tPayload.rowsSent > 0) && (tPayload.rowsSent < 1000), "whole rows were cut: " _ tPayload.rowsSent)
     Do $$$AssertEquals(tPayload.rows.%Size(), tPayload.rowsSent, "rowsSent counts the rows kept")
     Do $$$AssertEquals(tPayload.truncated, 1, "and the payload is marked truncated")
+}
+
+/// <p>A messages.log context of three rows, with <var>pMarker</var>'s members set on its view.</p>
+ClassMethod MessagesContext(pMarker As %DynamicObject = "") As %DynamicObject
+{
+    Set tContext = {"route": "logs/messages", "view": {"sort": "", "direction": "", "filter": "", "rowsAvailable": 3, "rows": [{"time": "2026-09-29T10:00:02.000", "severity": "2", "text": "third"}, {"time": "2026-09-29T10:00:01.000", "severity": "1", "text": "the chosen entry"}, {"time": "2026-09-29T10:00:00.000", "severity": "0", "text": "first"}]}}
+    Do tContext.%Set("namespace", ##class(OcuPilot.Kernel.Scope).Current(), "string")
+    If $IsObject(pMarker) {
+        Set tIterator = pMarker.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue, .tType) {
+            If (tType = "object") || (tType = "array") {
+                Do tContext.view.%Set(tKey, tValue)
+            } Else {
+                Do tContext.view.%Set(tKey, tValue, tType)
+            }
+        }
+    }
+    Quit tContext
+}
+
+/// <p><var>pContext</var>'s bounded payload under a row cap of <var>pRowCap</var>, parsed, or
+/// <code>""</code> when none was built.</p>
+Method Bounded(pContext As %DynamicObject, pRowCap As %Integer = 200) As %DynamicObject
+{
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation({"context": (pContext)}, ..#LIMITS), "", "the context passes the shape check")
+    Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(pContext, 0, pRowCap, ..#LIMITS, .tJson), "the payload builds")
+    Do $$$AssertTrue(tJson '= "", "and is not empty")
+    If tJson = "" Quit ""
+    Quit ##class(%DynamicObject).%FromJSON(tJson)
+}
+
+/// <p>An explain turn's <code>selected</code> reaches the payload beside every row of the screen,
+/// the first row's index 0 among them; its <code>focus</code> reaches it narrowed to the declared
+/// fields, an object or array value dropped and reported; and an ordinary turn's payload carries
+/// neither.</p>
+/// <p>Mutation: drop the marker projection from <method>OcuPilot.Screen.Context.Build</method> --
+/// this goes red; raise the lower bound on <code>selected</code> to 1 -- the first row's case goes
+/// red.</p>
+Method TestAnEntryMarkerRidesBesideTheScreensRows()
+{
+    Set tPayload = ..Bounded(..MessagesContext({"selected": 1}))
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.rowsSent _ "|" _ tPayload.rows.%Size(), "3|3", "every row of the screen is sent")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("selected") _ "|" _ tPayload.selected, "number|1", "with the chosen entry's index")
+    Do $$$AssertEquals(tPayload.rows.%Get(1).text, "the chosen entry", "which names the chosen row")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("focus"), "unassigned", "and no focus row")
+
+    Set tPayload = ..Bounded(..MessagesContext({"selected": 0}))
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.%GetTypeOf("selected") _ "|" _ tPayload.selected, "number|0", "the first row's index is kept")
+
+    Set tFocus = {"time": "2026-09-29T09:00:00.000", "severity": "2", "text": "an older entry", "pid": "4711"}
+    Set tPayload = ..Bounded(..MessagesContext({"focus": (tFocus)}))
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.rowsSent, 3, "the screen's rows are still sent")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("focus"), "object", "beside the focus row")
+    Do $$$AssertEquals(tPayload.focus.text, "an older entry", "which is the chosen entry")
+    Do $$$AssertEquals(tPayload.focus.%IsDefined("pid"), 0, "narrowed to the declared fields")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("selected"), "unassigned", "and no index")
+
+    Set tPayload = ..Bounded(..MessagesContext({"focus": {"time": "t", "severity": ["2"], "text": "nested"}}))
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.focus.%IsDefined("severity") _ "|" _ tPayload.truncatedFields.%ToJSON(), "0|[""severity""]", "a focus value that is an array is dropped and reported")
+
+    Set tPayload = ..Bounded(..MessagesContext())
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.%GetTypeOf("selected") _ "|" _ tPayload.%GetTypeOf("focus"), "unassigned|unassigned", "an ordinary turn carries neither marker")
+}
+
+/// <p>A marker of the wrong shape is dropped and the turn's payload is built without it: an index
+/// out of range, negative, fractional, sent as a string or too large to read, a focus that is not
+/// an object or holds a number too large to read, and both markers sent together. None is refused,
+/// and a screen declaring secret fields carries no marker.</p>
+/// <p>Mutation: drop the range check on <code>selected</code> in
+/// <method>OcuPilot.Screen.Context.Build</method> -- the out-of-range case goes red; drop the
+/// <code>Try</code> around the marker read -- the two unreadable cases go red.</p>
+Method TestAnInvalidMarkerIsDroppedNotRefused()
+{
+    Set tCases = [{"selected": 3}, {"selected": -1}, {"selected": 1.5}, {"selected": "1"}, {"focus": "the chosen entry"}, {"focus": [{"text": "x"}]}, {"selected": 1, "focus": {"text": "x"}}]
+    Set tIterator = tCases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMarker) {
+        Set tLabel = tMarker.%ToJSON()
+        Set tPayload = ..Bounded(..MessagesContext(tMarker))
+        If '$IsObject(tPayload) Continue
+        Do $$$AssertEquals(tPayload.%GetTypeOf("selected") _ "|" _ tPayload.%GetTypeOf("focus"), "unassigned|unassigned", tLabel _ " is dropped")
+        Do $$$AssertEquals(tPayload.rowsSent, 3, tLabel _ ": the rows are still sent")
+    }
+    For tMarkerJson = """selected"":1e400", """focus"":{""time"":""t"",""text"":1e400}" {
+        Set tJson = $Replace(..MessagesContext().%ToJSON(), """rowsAvailable"":3", """rowsAvailable"":3," _ tMarkerJson)
+        Set tPayload = ..Bounded(##class(%DynamicObject).%FromJSON(tJson))
+        If '$IsObject(tPayload) Continue
+        Do $$$AssertEquals(tPayload.%GetTypeOf("selected") _ "|" _ tPayload.%GetTypeOf("focus") _ "|" _ tPayload.rowsSent, "unassigned|unassigned|3", tMarkerJson _ " is dropped")
+    }
+    Set tSecret = {"route": "security/wallet/secrets/edit", "view": {"rows": [], "focus": {"Name": "x"}}}
+    Do tSecret.%Set("namespace", ##class(OcuPilot.Kernel.Scope).Current(), "string")
+    Set tPayload = ..Bounded(tSecret)
+    If $IsObject(tPayload) Do $$$AssertEquals(tPayload.%GetTypeOf("focus") _ "|" _ tPayload.%GetTypeOf("rows"), "unassigned|unassigned", "a screen declaring secret fields carries no marker")
+}
+
+/// <p>A selected entry the row cap cuts, or the total bound cuts, arrives as the focus row, cut per
+/// field as a row is; one the cap keeps keeps its index; a focus row's over-long field is cut as a
+/// row's is and reported.</p>
+/// <p>Mutation: drop the selected-to-focus step from
+/// <method>OcuPilot.Api.Turn.BoundedContext</method> -- the two cut cases go red; skip either
+/// <method>OcuPilot.Api.Turn.BoundFocus</method> call -- its field case goes red; convert whenever
+/// a row was cut -- the kept case goes red.</p>
+Method TestACutEntryArrivesAsTheFocusRow()
+{
+    Set tContext = ..MessagesContext({"selected": 2})
+    Do tContext.view.rows.%Get(2).%Set("text", $Translate($Justify("", 1500), " ", "f"), "string")
+    Set tPayload = ..Bounded(tContext, 2)
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.rowsSent, 2, "the row cap cuts the chosen row")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("selected"), "unassigned", "so its index is not sent")
+    Do $$$AssertEquals(tPayload.focus.time _ "|" _ $Length(tPayload.focus.text), "2026-09-29T10:00:00.000|1000", "and it arrives as the focus row, cut to the field bound")
+
+    Set tPayload = ..Bounded(..MessagesContext({"selected": 1}), 2)
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.rowsSent _ "|" _ tPayload.selected _ "|" _ tPayload.%GetTypeOf("focus"), "2|1|unassigned", "a chosen row the cap keeps keeps its index")
+
+    Set tContext = ..MessagesContext()
+    Set tRows = []
+    Set tText = $Translate($Justify("", 900), " ", "t")
+    For tI = 1:1:100 Do tRows.%Push({"time": (tI _ ""), "severity": "0", "text": (tText)})
+    Do tContext.view.%Set("rows", tRows)
+    Do tContext.view.%Set("rowsAvailable", 100, "number")
+    Do tContext.view.%Set("selected", 99, "number")
+    Set tPayload = ..Bounded(tContext)
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertTrue(tPayload.rowsSent < 99, "the total bound cuts the chosen row: " _ tPayload.rowsSent)
+    Do $$$AssertEquals(tPayload.%GetTypeOf("focus") _ "|" _ tPayload.focus.time, "object|100", "and it arrives as the focus row")
+    Do $$$AssertTrue($Length(tPayload.%ToJSON()) <= 65536, "within the total bound")
+
+    Set tLong = $Translate($Justify("", 1500), " ", "x")
+    Set tPayload = ..Bounded(..MessagesContext({"focus": {"time": "t", "severity": "0", "text": (tLong)}}))
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals($Length(tPayload.focus.text), 1000, "a focus field is cut to the field bound")
+    Do $$$AssertEquals($Extract(tPayload.focus.text, *), ##class(OcuPilot.Kernel.Agent.Bound).Ellipsis(), "and marked")
+    Do $$$AssertEquals(tPayload.truncated _ "|" _ tPayload.truncatedFields.%ToJSON(), "1|[""text""]", "and reported")
 }
 
 }

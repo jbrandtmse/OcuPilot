@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 // never has a handler, and listeners hear only changes that happened.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ScreenActions, actionLabel, REFRESH_ACTION_ID, TASK_IMPORT_ACTION_ID } = await import(
+const { ScreenActions, actionLabel, bannerActionIds, REFRESH_ACTION_ID, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } = await import(
   join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts')
 );
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -130,6 +130,33 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'export'), STRINGS.taskExportAction);
   assert.equal(actionLabel(DEFINITIONS, 'export'), 'export');
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', TASK_IMPORT_ACTION_ID), STRINGS.actionImport);
+  // Story 16.11: the Task Manager's three actions on the Task schedule, the suspend also under the
+  // screen-level id its page registers and the command bar draws.
+  // Mutation (Rule 19): drop the three entries from the TaskScheduleList labels -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'suspendmanager'), STRINGS.taskManagerSuspendAction);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'resumemanager'), STRINGS.taskManagerResumeAction);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'startmanager'), STRINGS.taskManagerStartAction);
+  assert.equal(actionLabel('', TASK_MANAGER_SUSPEND_ACTION_ID), STRINGS.taskManagerSuspendAction);
+  assert.equal(actionLabel(DEFINITIONS, 'resumemanager'), 'resumemanager');
+  // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
+  // Mutation (Rule 19): drop the LockList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.LockList', 'remove'), STRINGS.lockRemoveAction);
+  assert.equal(actionLabel(DEFINITIONS, 'remove'), 'remove');
+});
+
+test("Story 16.11: a banner's actions are the ids its cases name, once each and in case order", () => {
+  const banner = {
+    source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+    field: 'Status',
+    cases: [
+      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'resumemanager' },
+      { equals: 'Paused', messageKey: 'taskManagerSuspendedBanner', severity: 'info', action: 'resumemanager' },
+      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning', action: 'startmanager' },
+      { equals: 'Other', messageKey: 'taskManagerStoppedBanner', severity: 'info' },
+    ],
+  };
+  assert.deepEqual(bannerActionIds({ banner }), ['resumemanager', 'startmanager']);
+  assert.deepEqual(bannerActionIds({ banner: null }), []);
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

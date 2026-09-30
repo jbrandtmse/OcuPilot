@@ -4,10 +4,10 @@
 
 ## Goal
 
-This is the voting-week work. It gives the classic portal's remaining second-tier screens and actions an OcuPilot equivalent that a person and the agent both use. It also carries the six stories deferred from the contest build (16.11 to 16.16), the contest-survey additions (16.17 to 16.24), and 16.25, which was split from 16.10 for size. **Nothing here may break a Release 1 screen or a Release 1 agent write.** Anything that risks either waits for Stage 2.
+This is the voting-week work: the classic portal's remaining second-tier screens and actions, each reached by a person and by the agent through one operation. The epic closes with stories deferred from the contest build. The last three finish Release 1's two reduced editors, the full service editor and the full LDAP and Kerberos editor, and make egress visible on every turn through a data-egress line in the agent panel. **Nothing here may break a Release 1 screen or agent write**; anything that risks either waits for Stage 2.
 
-- **Done:** 16.1 to 16.9 and 16.16 to 16.24. 16.4 is committed at 6b3fe9c7, with CI pending.
-- **Next on slot A:** 16.10 (spec validated, ready for dev), then 16.25. After those, 16.11 to 16.15 are backlog.
+- **Done:** 16.1 to 16.12 and 16.16 to 16.25. 16.12's merge waits on its CI run.
+- **Remaining, on slot A, in order:** 16.13, 16.14, 16.15, then the epic close.
 
 ## Stories
 
@@ -39,110 +39,106 @@ This is the voting-week work. It gives the classic portal's remaining second-tie
 
 ## Requirements & Constraints
 
-- **Every story.**
-  - **Screens.** A screen is one hand-written descriptor with its derived read tool and at least three grouped suggested prompts. It enters the side bar only once built. A screen-adding story extends every browser spec pinning its area's side-bar list (`grep -l ocu-side-bar-label ui/browser`).
-  - **Governance key.** An action ships with its confirmed write tool. Through 2026-10-04 its key joins `Kernel/Governance/Baseline.cls` in the same change, enabled unless the criteria say disabled.
-  - **Each write tool** meets all of the following, and a test fails on any gap:
-    - Its port has a `Snippet` for every `Invoke` branch.
-    - A field the instance normalizes on save declares a read-back `compare`.
-    - Its entity type gets a canonical-spelling rule.
-    - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are six so far, the latest being the task export.
-  - **Prohibited arms.** A new arm needs reason text, because the Guardrails page is generated from the prohibited set. Its sentence is published once in Fixed strings and pinned equal to the kernel's reason.
-- **Copy.** New strings go into EXPERIENCE.md's Fixed strings and `strings.ts` in the same change. Edit EXPERIENCE.md in place so it stays at 993 lines. After touching it or epics.md, run `cd ui && npm run test:tools`.
-- **Bundle.** It measures about 2.18 MB, against a 2217kB `maximumWarning`.
-  - Crossing the warning re-bases it to about 5% above the measured total, with the `angular-json.test.mjs` literal updated in the same change.
-  - Stop and ask above 3800kB. The hard stop is 4000kB.
-- **16.10 (spec validated).**
-  - **List and actions.** The list shows status. Start and stop update the row in place, and the Activity log opens in the shared log viewer.
-  - **Privilege.** Both screens declare `%Admin_ExternalLanguageServerEdit:USE` as their own pair, beside `%DB_IRISSYS:READ`.
-  - **Auditing.** Stop is unaudited (the fifth named case).
-- **16.25.**
-  - **Round trip.** Create, edit and delete round-trip through the admin API, and delete confirms by name.
-  - **DW-253.** Derive one field list per server type, as `Wallet.Secret` does, and amend AD-3.
-- **16.11.**
-  - **Tool shape.** `Task.Manager` has no body template, so the tool is action-style.
-  - **Suspend** first warns that no scheduled task will run until it is resumed.
-  - **Banner.** The suspended banner, with its privilege-gated Resume, sits above rows that still list. Its copy for suspended and stopped is already published.
-  - **DW-1638.** Task delete, suspend, resume and run must enforce the task type's declared privilege, as the create and the edit do.
-- **16.12.**
-  - **Tool shape.** `Lock` has no template, so the tool is action-style.
-  - **Scopes.** It offers three scopes, each naming what it removes.
-  - **DW-1073.** Warn from the endpoint's own 409 "in a transaction" refusal, never from a `$zu` probe.
-  - **DW-1074.** Drop the Process details link on a row with a remote owner.
-- **16.13.**
-  - **Coverage.** The editor covers enabled state, allowed addresses with add and delete, roles and authentication methods.
-  - **Disabling `%Service_WebGateway`.** The control is drawn disabled with the published sentence. The disable is refused `PROHIBITED.SERVINGSERVICE` on the instance for both callers.
-  - **Address and authentication changes** on that service are permitted, minted destructive with a consequence line.
-  - **DW-1016.** An empty address-list diff cell reads as unrestricted, not "(none)".
-- **16.14.**
-  - **Fields.** The editor covers the classic LDAP page's fields.
-  - **Test.** List, get and put stay synchronous. The test runs through `AdminPort`'s async path and reports the instance's own result text.
-  - **Open questions (inference).** AD-39 names only the SSL/TLS test as screen-only instance text, so this test likely needs its own case there. Check whether the queued-write refusal treats its request type as mutating.
-  - **DW-1639.** The list's Enabled column reads No for an enabled configuration. Derive it from LDAPFlags bit 64 or the List query.
-- **16.15.**
-  - **Egress line.** It derives from the configuration the request actually uses (AD-42): a marked-local endpoint bypasses the proxy, and a proxy is judged as a destination.
-  - **DW-1076.** Add a live leg in which the chip follows a real default-marker move.
-  - **DW-1192.** A Gemini endpoint with no model placeholder is allowed, but never silently: log that the Model is unused, and say so where the endpoint is edited.
+- **Every write tool.** A registry test fails on any gap in the following.
+  - Its declared port has a `Snippet` for every `Invoke` branch.
+  - A field the instance normalizes on save declares a read-back `compare` in its Classification entry.
+  - Its entity type has a canonical-spelling rule. A type with no rule canonicalizes to itself.
+  - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are nine so far; the ninth is 16.11's Task Manager start.
+  - Each classic page or Hidden dialog whose operation it performs beyond its descriptor's `classicPage` is named in `CLASSICPAGES`, read on the instance.
+- **Governance key.** Through 2026-10-04, a new write key joins `Kernel/Governance/Baseline.cls` in the same change. It is enabled unless the criteria say disabled.
+- **Refusal copy.** A self-protection sentence is published once in EXPERIENCE.md's Fixed strings. The kernel's reason is that sentence, pinned equal by a test.
+- **Copy.** New strings go into Fixed strings and `ui/src/app/core/strings.ts` in the same change. Other suites cite EXPERIENCE.md (993 lines) and epics.md by line, so edit in place. Run `cd ui && npm run test:tools` after touching either.
+- **Bundle.** `maximumWarning` is 2346kB and `maximumError` is 4000kB. A re-base updates the `angular-json.test.mjs` literal in the same change.
+- **Tests.** One test-runner call at a time, never two in one message.
+- **16.13, the service editor.**
+  - **Coverage.** Enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
+  - **Disabling `%Service_WebGateway`,** the only service serving OcuPilot on this build. The screen draws the control disabled with "OcuPilot is served through this service. Turning it off would cut off every user, including you." Both callers are refused `PROHIBITED.SERVINGSERVICE` on the instance, and the agent's disable is never advertised as a tool.
+  - **Address and authentication changes on that service are permitted.** They warn and refuse nothing.
+    - The agent's proposal is minted destructive, with the line "OcuPilot itself is served through this service, so a change here can cut off every user, including you."
+    - A person's Save shows the same line under the connection list.
+    - Letting any other service admit unauthenticated connections carries "Anyone who reaches this service can use it without signing in."
+  - **DW-1016.** An empty address list in a proposal diff row reads "Unrestricted", the Services column's `emptyKey` word, not "(none)".
+  - **Exemption.** The story lifts `ServiceForm`'s classic-link exemption.
+- **16.14, the LDAP and Kerberos editor.**
+  - **Fields.** The editor covers the fields of the classic `%CSP.UI.Portal.LDAP`. Its `irislib/` export is the field list, and Kerberos appears there as a connection flag carried in `LDAPFlags`.
+  - **Test authentication.** List, get and put stay synchronous. `Security.LDAP` `TEST` goes through `AdminPort`'s async path, which the slice sees as an ordinary call that resolves later, so the slice writes no polling. It reports the instance's own result text.
+  - **Search password.** It travels only as a declared secret through `Security.LDAP` `CHANGEPWD`, AD-56's secret-only body (inference).
+  - **DW-1639.** The list's Enabled column reads No for an enabled configuration, because the vendor LIST answers false. Derive it from `LDAPFlags` bit 64, or from `Security.LDAPConfigs:List`, as the reduced form does from GET.
+  - **Exemption.** The story lifts `LdapConfigForm`'s classic-link exemption.
+  - **Open questions (inference).** Settle each at the spec gate.
+    - AD-39 names only the SSL/TLS test as screen-only instance text, so the LDAP test likely needs its own named case there.
+    - Check whether AD-26's queued-write refusal classes `TEST` as mutating.
+    - Check whether the `AsyncResult` poll needs `%Admin_Operate:USE` declared under AD-8's endpoint clause, as the audit copy and purge and the copy-mappings did.
+    - `%CSP.UI.Portal.LDAPTest` exists in `irislib/` and is a `CLASSICPAGES` candidate for the test.
+    - The spine's Deferred table still lists the LDAP test among Stage 2 async paths. Correct it at origin if 16.14 takes it.
+- **16.15, the data-egress line.**
+  - **The line.** On a turn with context sharing on, the panel names the provider in use and says whether screen data left the instance. For a local provider on a private network it says the data did not leave, matching the chip's absent egress pill.
+  - **Source.** The line derives from the configuration the request actually uses, so it cannot disagree with the destination.
+  - **Copy.** The line's copy is not in Fixed strings yet, so add it there and to `strings.ts`.
+  - **DW-1076.** Add a fixture with a second enabled definition on a different endpoint host; `TurnWireFixture` has none today. Add a live browser leg in which the chip and the line follow a real default-marker move. Today that is pinned only at store level, in `agent-context.test.mjs`.
+  - **DW-1192 (decided).** A Gemini endpoint with no `{model}` placeholder is allowed, but never silently: at minimum, log that the definition's Model is unused, and say so where the endpoint is edited. A create-time model validation rule stays deferred; the wire already refuses an unusable model as `PROVIDER.EGRESS`.
 - **Epic-level DW-118.** Story 15.6 resolved it, so decline it with that reason.
 
 ## Technical Decisions
 
-- **Reads (AD-5, AD-36).** One declared read serves both screen and tool, is bounded, and reports truncation.
-  - **Optional parts:** a `rowGet` per row, `source.rows` over one member (the vendor's `maxRows` sent as the cap plus one), and up to three `parts`.
-  - **16.10.** `rowGet` issues `LanguageServer` `ACTIVITY` with `maxRows` 1 to merge `CurrentlyRunning`. The parent-scoped Activity log reads `ACTIVITY` with `source.rows` `Activity`.
-- **Privilege (AD-8, AD-29, AD-44).**
-  - Pairs are checked at call time, and an administrative resource is required at `USE`, never `WRITE`.
+- **Two callers, one operation (AD-53, AD-55).**
+  - A screen Save resolves through the same tool class as the agent's write. Today those are the reduced `Area/Permissions/ServiceSave` and `Area/Security/LdapSave`.
+  - The screen caller mints no proposal and emits no marker. Read-only, the kill switch and governance do not gate it.
+  - Both callers share the declared port, the fresh read, the prohibited set, privileges, the change event, the read-back and removal impact.
+  - The prohibited set is judged by effect, never by payload shape, inside the single confirm transition (AD-10, AD-34, AD-40).
+  - Governance is asked at dispatch and again at Confirm (AD-22).
+  - The write base's `Write.ConfirmProblem` is asked inside the confirm transition, for a rule that must be judged again at Confirm (16.11, DW-1861).
+- **Write kinds.**
+  - **Merge (AD-4), both editors.** Read fresh, apply the diff and send the complete body. Neither `Security.Service` nor `Security.LDAP` is in AD-4's measured lists, so measure whether each keeps an omitted key and record it there (inference).
+  - **Field lists (AD-3)** are derived, never typed by hand. A derived string field matching the credential pattern must be classified secret, or the build fails.
+  - **Lists (AD-56).** A list field changes by a server-side delta over a fresh read, never by a client-computed list. A screen action accepts only the values its tool declares.
+  - **Secrets (AD-56, AD-35).** A secret travels only as a declared secret argument. It is never stored in a proposal, diffed, logged or sent as screen context, and the confirm channel admits no other key.
+  - **Create (AD-54).** The LDAP editor's Create fingerprints the target's absence under its canonical spelling, whether or not the PUT upserts. Measure whether it does.
+  - **Read-back (AD-58).** Sent top-level keys are compared, and a secret is reported written, never read back. A 202 continuation reads `unchecked`.
+- **Async (AD-26), 16.14.** An endpoint is async per request type, never per class, and `Security.LDAP` is async for its test connection only.
+  - The port polls `AsyncResult` once, with a bounded wait that fails `PORT.TIMEOUT` and never gives a partial result.
+  - A mutating type that would queue is refused unless it is on `QUEUEDWRITES`.
+  - A finished task's result is read once. A second `async-result` read logs #7846 and turns the instance to Warning.
+- **Privilege (AD-8, AD-29).**
+  - Pairs are checked at call time. An administrative resource is required at `USE`, never `WRITE`.
+  - **Known sets.** Services and LDAP both use `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. The classic pages are the service editor `%CSP.UI.Portal.Dialog.Service` (list `%CSP.UI.Portal.Services`) and the LDAP editor `%CSP.UI.Portal.LDAP` (list `%CSP.UI.Portal.LDAPs`).
+  - **Extra pairs.** A tool declares a pair beyond its screen's set only when its vendor class writes a database the screen's read does not, or an endpoint its call must reach names that resource (an async poll among them). Name each new case in AD-8. A caller without it is refused by name before any port call.
   - **Establishing a set.** Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
-  - **Extra pairs** go in the screen's `ownPrivileges` or on the write tool. A caller without one is refused by name before any port call.
-  - **Classic pages.** Each classic page a tool's operation replaces is named in `CLASSICPAGES`, and its custom resource joins the tool's pairs at `USE`.
-- **Writes.**
-  - **Two callers.** A screen action and the agent's write are one operation. The screen caller mints no proposal and emits no marker, and read-only and the kill switch do not gate it (AD-53, AD-55).
-  - **Declared shape.** Each tool declares its port, `AdminPort` by default (AD-52).
-    - An action-style write sends no body and fingerprints a declared subject holding every precondition field (AD-51).
-    - A merge sends the complete body (AD-4).
-    - A create fingerprints the target's absence (AD-54).
-    - A screen action accepts only declared values, and changes a list field by a server-side delta over a fresh read (AD-56).
-  - **Named cases.** Each is a closed list, and a new entry is added to the AD, never assumed.
-    - **A port that builds the vendor body** from declared non-secret arguments (AD-51).
-    - **A vendor `%SYS` class** reached instead of the admin API, allowed only where the admin API cannot carry the call (AD-27).
-    - **16.4 is the latest of both.** `TaskTransferPort` calls `%SYS.Task.ExportTasks` and `ImportTasks`, which the admin API lacks, and builds their file argument from the declared `root` and `path`.
-  - **Gates.**
-    - The prohibited set is judged by effect, inside the confirm transition, for both callers (AD-10, AD-34).
-    - Governance is checked at dispatch and again at Confirm.
-    - A write that would queue is refused unless it is listed on `QUEUEDWRITES` (AD-26).
-  - **Absence (AD-2, DW-1814).** A read answered 404 writes no log line: a delete's re-read, a read-back or an existence check still gets `PORT.NOTFOUND`, but it no longer raises the instance's alert state. A write answered 404 is still logged at error.
-  - **After the write.** It reads its target back (AD-58), and a copy-out draft renders on the instance (AD-59).
-- **Paths and logs (AD-21, AD-60).**
-  - **No endpoint accepts a path.** A file is named as a root and a relative name through `Port/PathPort`, and is resolved again at the write. The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`.
-  - **Overwriting consumers** are also refused configuration, database, journal and OcuPilot-served files. A file the tool reads is a `source`.
-  - **Log text** reaches the model only through the sanitizer.
-- **Refresh (AD-43).** Auto-refresh now covers nine screens, including the Dashboard. A new one needs both its descriptor and EXPERIENCE.md's Auto-refresh controls row.
+- **Classic-link exemptions (AD-44).** Exactly two remain, declared by `ServiceForm` and `LdapConfigForm` and counted against SM-C1. 16.13 and 16.14 each remove one and amend AD-44's count at its origin: two, then one, then zero.
+- **Provider egress (AD-42), 16.15.**
+  - A configured proxy is a destination, judged by the same policy. A marked-local endpoint bypasses any proxy and is not judged against it. A cloud metadata endpoint is refused even when marked local.
+  - The chip's "leaves the instance" statement is computed from the configuration the call uses. Story 10.3 pins that server-side `LeavesInstance` computation in `Test/EgressLocal`. The line reuses it rather than computing a second answer (inference).
+  - Moving the default marker is a security change, because it selects a turn's endpoint and credential.
+  - The context-sharing toggle is remembered per user, falling back to the instance default (AD-24).
+- **Spine amendments of 2026-09-30.** They are precedents for naming a new case: each is a named entry, never a general license.
+  - **16.11.** AD-5's banner case names its action and the read answers `bannerRequires`. AD-8 gives `tasks.schedule.startmanager` `%Admin_Secure:USE`. AD-15 and AD-53 record the ninth unaudited write.
+  - **16.12.** AD-2 leaves a `Lock` `DELETE` 409 unlogged; AD-5 adds a row target's `unless`; AD-8 adds `%DB_IRISSYS:WRITE`; AD-10 adds `PROHIBITED.OCUPILOTLOCK`; AD-44 names `%CSP.UI.Portal.Locks`; AD-51 and AD-52 name `LockPort`.
+  - **DW-1868 (decision-pending).** Whether an owner-scope lock removal re-lists before each `DELETE` goes to Epic 16's decision sheet.
 
 ## UX & Interaction Patterns
 
-- **Placement.**
-  - **External language servers** is an OS management list, whose form-page editor (16.25) takes side-bar position 0. Its Activity log uses the shared log viewer.
-  - **Remove locks** is a dialog from the Locks row menu.
-  - **Suspend Task Manager** is on the Task schedule command bar.
-  - **The service and LDAP editors** are tabbed form pages.
-- **Dialogs.** One level deep and titled with the action and target.
-  - A destructive dialog asks for the typed name.
-  - A non-destructive warning uses a primary button and states the consequence.
-- **Controls.** A gated control uses `aria-disabled` with "Requires <resource>". Row actions update the row in place with "Changed".
+- **The two editors** are tabbed form pages at side-bar position 0. The tabs mirror the classic tab names, one Save applies every tab, and a validation error switches to the tab holding it. The service editor opens from the Services name cell; the LDAP editor from its name cell and the command bar's Create.
+- **The LDAP test** is a dialog attached to the editor (a P1 row in the UX screen inventory).
+- **The egress line** appears in the agent panel once per turn, beside the context chip.
+  - The chip reads `<Screen>, <NAMESPACE> · <N rows> · <provider> · <endpoint host>`, plus a "leaves the instance" pill when the host is not private.
+  - Color never carries egress alone.
+- **Dialogs and controls.** A dialog is one level deep, titled with the action and target, and a destructive one asks for the typed name. A gated control uses `aria-disabled` with "Requires <resource>".
+- **A stale UX row.** EXPERIENCE.md's "Warning before a write" row still lists a warning before disabling OcuPilot's web service. AD-10 and 16.13's amended criterion govern: the control is drawn disabled.
 
 ## Cross-Story Dependencies
 
-- **Keep intact.** 16.6's shared multi-select table, and Epic 14's baseline, sanitizer and per-user read-only.
-- **Within the epic.**
-  - 16.25 builds on 16.10's list and entity type.
-  - 16.11's Task Manager resume becomes 16.21's Operations "Fix it", which links to the screen until then.
-  - 16.12 extends Story 6.10's Locks list.
-  - 16.13 and 16.14 each remove one classic-link exemption (`ServiceForm`, `LdapConfigForm`), which lowers SM-C1 from two.
-  - **An open owner decision.** DW-1827 (16.4's import reviews task names only) is escalated to the owner. A later task story does not re-decide it.
-- **Epic 18, on slot B.**
-  - Shared rosters are unioned at each merge, so keep edits additive: `EntityType`, `Prohibited` codes and covered types, `ReadTool` counts, `AdminPort` type lists, the baseline and the screen mirror.
-  - OS management side-bar positions are reconciled from the merged registry.
+- **Within the epic and beyond.**
+  - **16.13 and 16.14** replace Story 9.9's reduced forms and extend their Save tools and held fixtures.
+  - **16.15** builds on the context chip (`ui/src/app/shell/context-chip.ts`), Story 4.11's re-read of the agent definition, and Story 10.3's egress computation.
+  - **Keep intact.** 16.6's shared multi-select table, 16.8's shared log viewer, and Epic 14's baseline, sanitizer and per-user read-only.
+  - **DW-1827 is decided.** `tasks.schedule.import` ships disabled by default.
+- **Slot B.**
+  - **Its queue.** Story 23.2 merges batch by batch. Batches (a) and (b) have merged; (c) is security, DW-1663 and DW-1450; (d) is DW-48. Epic 18 resumes with 18.15 after 23.2.
+  - **Before editing a file,** check whether `.worktrees/epic-23` changes it: `diff --stat` against feature, plus `status -s`. Edit a contended file add-only, and stop and ask otherwise.
+  - **Shared rosters** are unioned at each merge, so keep edits to them additive. They are `EntityType`, the `Prohibited` codes and covered types, the `AdminPort` type lists (`QUEUEDWRITES` among them), the `CLASSICPAGES` rosters, the baseline and the screen mirror.
 - **Slot A.** It uses `ocupilot-slot-a` and the `ocupilot-ci` throwaway (52776/1975).
-- **Release 1.0.3.** It is cut Tue 2026-09-29 at 14:00 PDT.
-  - No story starts after 12:00 PDT unless it reaches its boundary by 14:00.
-  - Stories done with green CI merge, and the one in progress waits.
+- **Release 1.0.4.** It is cut 2026-09-30 at 14:00 PDT, and whatever is green on feature then ships.
+- **Epic close.** After 16.15, the Rule 27 burn-down gate runs.
+  - It charters only entries that block the next release or a downstream story, plus CI flakes. DW-1867, the language-server-editor browser flake, was filed for this close.
+  - Every other entry is re-owned to `range-end-cleanup`, and DW-1868 goes to the decision sheet.
+  - Epic 19 follows on slot A.

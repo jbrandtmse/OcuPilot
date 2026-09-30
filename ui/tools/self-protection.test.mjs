@@ -275,6 +275,9 @@ const KERNEL_REFUSALS = [
   // Story 18.3: OcuPilot's own database, its install namespace's databases and the seven system
   // databases, whose Delete dialog states this sentence as its advisory when it opens.
   ['OCUPILOTDATABASE', 'databaseRefusalOcuPilot'],
+  // Story 16.12: a lock on one of OcuPilot's own globals, alone or among an owner's, which the
+  // Remove locks dialog states in place when either caller is answered with it.
+  ['OCUPILOTLOCK', 'lockRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -380,4 +383,101 @@ test('Story 16.6: the broadcast recipient refusal is one sentence on both surfac
   assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+});
+
+/** Story 16.10's start tool, which declares both state refusals (its stop extends it). */
+const LANGUAGE_SERVER_START = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'LanguageServerStart.cls');
+
+/** Story 16.10's three published refusals: `[file, parameter, strings.ts key]`. */
+const LANGUAGE_SERVER_REFUSALS = [
+  [LANGUAGE_SERVER_START, 'RUNNINGREASON', 'languageServerRefusalRunning'],
+  [LANGUAGE_SERVER_START, 'STOPPEDREASON', 'languageServerRefusalStopped'],
+  [ERROR, 'REASONLANGUAGESERVERSTART', 'languageServerStartFailed'],
+];
+
+test('Story 16.10: the two state refusals and the refused start are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of RUNNINGREASON in LanguageServerStart.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LANGUAGE_SERVER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 16.25's editor tools and error codes, which declare its published sentences. */
+const LANGUAGE_SERVER_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
+const LANGUAGE_SERVER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'LanguageServerError.cls');
+
+/** Story 16.25's published sentences: `[file, parameter, strings.ts key]`. */
+const LANGUAGE_SERVER_EDITOR_SENTENCES = [
+  [LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'RUNNINGREASON', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_TOOL('LanguageServerDelete'), 'RUNNINGREASON', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_ERROR, 'REASONRUNNING', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'PYTHONCONSEQUENCE', 'languageServerPythonConsequence'],
+  [LANGUAGE_SERVER_ERROR, 'REASONNAMETAKEN', 'languageServerNameTaken'],
+  [LANGUAGE_SERVER_ERROR, 'REASONPATH', 'languageServerPathClassicOnly'],
+];
+
+test('Story 16.25: the running refusal, the Python consequence, the name check and the file caption are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of RUNNINGREASON in LanguageServerUpdate.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LANGUAGE_SERVER_EDITOR_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+  // The update tool's description carries the Python consequence, so the agent states it too (AD-4).
+  const description = /Parameter DESCRIPTION = "([^"]+)";/.exec(readFileSync(LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'utf8'));
+  assert.ok(description !== null && description[1].includes(stringValue('languageServerPythonConsequence')), 'the update tool describes the Python consequence in its published words');
+});
+
+/** Story 16.11's suspend tool, which declares the four state refusals its resume and start inherit. */
+const TASK_MANAGER_SUSPEND = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'TaskManagerSuspend.cls');
+
+/** Story 16.11's five published refusals: `[file, parameter, strings.ts key]`. */
+const TASK_MANAGER_REFUSALS = [
+  [TASK_MANAGER_SUSPEND, 'RUNNINGREASON', 'taskManagerRefusalRunning'],
+  [TASK_MANAGER_SUSPEND, 'SUSPENDEDREASON', 'taskManagerRefusalSuspended'],
+  [TASK_MANAGER_SUSPEND, 'SUSPENDEDSTARTREASON', 'taskManagerRefusalSuspendedStart'],
+  [TASK_MANAGER_SUSPEND, 'STOPPEDREASON', 'taskManagerRefusalStopped'],
+  [ERROR, 'REASONTASKTASKCLASSPERMISSION', 'taskTypePrivilegeRefusal'],
+];
+
+test('Story 16.11: the four Task Manager state refusals and the task type privilege refusal are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of SUSPENDEDREASON in TaskManagerSuspend.cls -> this goes red naming both.
+  for (const [file, parameter, key] of TASK_MANAGER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 16.12's lock tool, which declares the three owner refusals its owner-scope tools answer. */
+const LOCK_REMOVE_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'LockRemove.cls');
+
+/** Story 16.12's lock error class, which declares the in-transaction refusal. */
+const LOCK_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'LockError.cls');
+
+/** Story 16.12's four published refusals: `[file, parameter, strings.ts key]`. */
+const LOCK_REFUSALS = [
+  [LOCK_REMOVE_TOOL, 'REMOTEREASON', 'lockRemoveRefusalRemote'],
+  [LOCK_REMOVE_TOOL, 'LOCALREASON', 'lockRemoveRefusalLocal'],
+  [LOCK_REMOVE_TOOL, 'TOOMANYREASON', 'lockRemoveTooMany'],
+  [LOCK_ERROR, 'REASONINTRANSACTION', 'lockRemoveInTransaction'],
+];
+
+test('Story 16.12: the three owner refusals and the in-transaction refusal are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of LOCALREASON in LockRemove.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LOCK_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
 });

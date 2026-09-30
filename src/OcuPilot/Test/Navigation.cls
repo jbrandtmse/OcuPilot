@@ -203,81 +203,214 @@ Method TestAMalformedPrivilegePairIsRefused()
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Test.Pair.Bad", "PrivilegePairs")), 0, "the malformed pair contributes nothing to the requirement")
 }
 
-/// <p>An area's own set is evaluated the same way a screen's is, and a denial names its pair.
-/// This is what Home's tile grid gates on (Story 1.12) and what the rail item carries as its
-/// reason. Every gated area needs <code>%DB_IRISSYS:READ</code> as well as its own administrative
-/// resource, as every screen in it does -- Logs included since Story 2.10, whose audit database
-/// viewer is the area's first screen with an admin API endpoint behind it.</p>
-/// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from the <code>permissions</code> area in
-/// <class>OcuPilot.Screen.Area</class> -> the "%Admin_Secure alone" assertions go red; drop it from
-/// <code>tasks</code> -> the "%Admin_Task alone" assertion goes red; drop
-/// <code>%Admin_Manage:USE</code> from <code>os-management</code> -> the "%Admin_Operate alone"
-/// assertion goes red naming the database read instead, while the <code>logs</code> one keeps
-/// naming <code>%Admin_Secure:USE</code>, which is what separates the two areas on the resource
-/// they share; put <code>%Admin_Wallet:USE</code> back on <code>security</code> -> the security
-/// admission assertion goes red.</p>
-Method TestAnAreaGatesOnItsOwnDeclaredSet()
+/// <p>AD-8 as amended for DW-1768: an area opens when any screen its side bar lists is allowed, and
+/// each screen keeps its own gate. Driven through the fixture seam over the shipped areas and
+/// descriptors: a holder of <code>%Operator</code>'s grants opens Logs, OS management, Tasks and
+/// Web applications and is still refused the audit database viewer and the processes list; a holder
+/// of only a wallet or only the OAuth 2.0 client resource opens Security and secrets and is still
+/// refused SSL/TLS; a holder of nothing opens only the two areas that never gate, each other area
+/// naming the first pair of its declared set.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.EvaluateArea</method> answer
+/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> over the area's declared set -- the all-pairs
+/// rule -- and recompile the package -> the <code>%Operator</code>, wallet and OAuth 2.0 area rows go
+/// red, while the screen rows and the holder-of-nothing rows stay green.</p>
+Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
 {
-    Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "an area whose pair is not held is refused")
-    Do $$$AssertEquals(tFailed, "%Admin_Secure:USE", "naming the pair")
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Set tDescriptor = "OcuPilot.Screen.Descriptor."
 
-    ; Logs from nothing held: %Admin_Operate:USE is what it declares first, and it is the pair the
-    ; audit viewer's own async-result poll requires (AD-26). Asserted here, before anything is
-    ; held, because every later step in this method holds more.
-    Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs is refused with nothing held")
-    Do $$$AssertEquals(tFailed, "%Admin_Operate:USE", "naming the pair it declares first")
+    ; Nothing held: the two areas that declare no pair never gate, and every other area is refused
+    ; on the first pair of its declared set.
+    Set tExpected = "home=open logs=%Admin_Operate:USE os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE agent=open"
+    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "a holder of nothing opens Home and Agent co-pilot alone, each other area naming its set's first pair")
 
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
-    For tArea = "permissions", "web-applications", "security" {
+    ; %Operator's six grants on a stock instance: %Admin_Operate:U, %DB_IRISLOCALDATA:R,
+    ; %DB_IRISSYS:RW, %DB_IRISTEMP:RW, %Service_DocDB:U and %Service_WebGateway:U.
+    Do $ClassMethod(tGate, "Hold", "%Admin_Operate", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISLOCALDATA", "READ")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "WRITE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISTEMP", "READ")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISTEMP", "WRITE")
+    Do $ClassMethod(tGate, "Hold", "%Service_DocDB", "USE")
+    Do $ClassMethod(tGate, "Hold", "%Service_WebGateway", "USE")
+    Set tExpected = "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE agent=open"
+    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogMessageViewer"), "open", "messages.log opens for them")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "AuditList"), "%Admin_Secure:USE", "while the audit database viewer keeps its own gate")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogEventViewer"), "%Ens_EventLog:USE", "and so does the interoperability event log")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LockList"), "open", "Locks opens for them")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "ProcessList"), "%Admin_Manage:USE", "while Processes keeps its own gate")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "TaskScheduleList"), "%Admin_Task:USE", "and so does the task schedule, inside the Tasks area Background tasks opens")
+
+    ; A wallet holder and an OAuth 2.0 holder, each with the database read and no %Admin_Secure.
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Admin_Wallet", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Set tFailed = "unset"
+    Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", "security", .tFailed), "a wallet holder opens Security and secrets")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "WalletCollectionList"), "open", "and its Wallet list")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "SslConfigList"), "%Admin_Secure:USE", "and is refused SSL/TLS on its own gate")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthServerDescriptionTab"), "%Admin_OAuth2_Client:USE", "and OAuth 2.0 on its own")
+
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Admin_OAuth2_Client", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Set tFailed = "unset"
+    Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", "security", .tFailed), "an OAuth 2.0 client holder opens Security and secrets")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthServerDescriptionTab"), "open", "and its OAuth 2.0 entry")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "WalletCollectionList"), "%Admin_Wallet:USE", "and is refused the Wallet list on its own gate")
+    Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "SslConfigList"), "%Admin_Secure:USE", "and SSL/TLS on its own")
+}
+
+/// <p>AD-8 as amended for DW-1852: a listed tab group opens its area through any of its tabs, and
+/// each tab keeps its own gate. A holder of only the OAuth 2.0 authorization-server or registration
+/// resource, with <code>%DB_IRISSYS:READ</code>, opens Security and secrets and its OAuth 2.0 entry
+/// while the listed tab and the client configurations tab stay refused on
+/// <code>%Admin_OAuth2_Client:USE</code>; without the database read nothing opens and the area names
+/// its set's first pair. <method>OcuPilot.Screen.Registry.TabMembersFor</method> answers the group's
+/// other tabs in strip order for its head and nothing for any other screen.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.EvaluateArea</method> call
+/// <method>OcuPilot.Screen.Gate.Evaluate</method> instead of
+/// <method>OcuPilot.Screen.Gate.EvaluateEntry</method> -- the listed tab alone counts -- and recompile
+/// the package -> the two area rows go red while the screen rows stay green.</p>
+Method TestATabGroupOpensItsAreaThroughAnyOfItsTabs()
+{
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Set tDescriptor = "OcuPilot.Screen.Descriptor."
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "OAuthServerDescriptionTab", .tMembers)
+    Do $$$AssertStatusOK(tSC, "the OAuth 2.0 group's tabs read")
+    Do $$$AssertEquals($ListToString(tMembers), tDescriptor _ "OAuthClientTab," _ tDescriptor _ "OAuthResourceServerTab," _ tDescriptor _ "OAuthServerTab," _ tDescriptor _ "OAuthServerClientTab", "the listed tab heads four others, in strip order")
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "OAuthServerTab", .tMembers)
+    Do $$$AssertStatusOK(tSC, "a tab's own members read")
+    Do $$$AssertEquals($ListLength(tMembers), 0, "a tab under another's group heads none")
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(tDescriptor _ "SslConfigList", .tMembers)
+    Do $$$AssertStatusOK(tSC, "and so do a screen's that is no tab")
+    Do $$$AssertEquals($ListLength(tMembers), 0, "which heads none either")
+
+    For tCase = $ListBuild("%Admin_OAuth2_Server", "OAuthServerTab"), $ListBuild("%Admin_OAuth2_Registration", "OAuthServerClientTab") {
+        Set tResource = $List(tCase, 1)
+        Do $ClassMethod(tGate, "Reset")
+        Do $ClassMethod(tGate, "Hold", tResource, "USE")
+        Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
         Set tFailed = "unset"
-        Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed), tArea _ ": %Admin_Secure alone is refused")
-        Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", tArea _ ": %Admin_Secure alone is refused naming the system database read")
+        Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", "security", .tFailed), "a holder of " _ tResource _ " opens Security and secrets: " _ tFailed)
+        Do $$$AssertEquals(tFailed, "", "naming nothing")
+        Set tFailed = "unset"
+        Do $$$AssertTrue($ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "and its OAuth 2.0 entry")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ $List(tCase, 2)), "open", "its own tab opens")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthServerDescriptionTab"), "%Admin_OAuth2_Client:USE", "while the listed tab keeps its own gate")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "OAuthClientTab"), "%Admin_OAuth2_Client:USE", "and so does the client configurations tab")
+        Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "SslConfigList"), "%Admin_Secure:USE", "and SSL/TLS")
+
+        Do $ClassMethod(tGate, "Reset")
+        Do $ClassMethod(tGate, "Hold", tResource, "USE")
+        Set tFailed = "unset"
+        Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "security", .tFailed), "without %DB_IRISSYS:READ a holder of " _ tResource _ " opens nothing there")
+        Do $$$AssertEquals(tFailed, "%Admin_Secure:USE", "and the area names its set's first pair")
+        Set tFailed = "unset"
+        Do $$$AssertTrue('$ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "nor the OAuth 2.0 entry")
+        Do $$$AssertEquals(tFailed, "%Admin_OAuth2_Client:USE", "which names its listed tab's failed pair")
     }
 
-    ; Tasks takes a different administrative resource and the same database read, so holding the
-    ; first alone is refused on the second -- the pair order the wire fixtures pin.
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Task", "USE")
+    ; A group whose tabs cannot be read refuses, even to a holder of one of them.
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Admin_OAuth2_Server", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Do $ClassMethod(tGate, "ArmTabMembersFailure", tDescriptor _ "OAuthServerDescriptionTab")
     Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "tasks: %Admin_Task alone is refused")
-    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "tasks: naming the system database read")
+    Do $$$AssertTrue('$ClassMethod(tGate, "EvaluateEntry", tDescriptor _ "OAuthServerDescriptionTab", .tFailed), "a tab roster that cannot be read opens no entry")
+    Do $$$AssertEquals(tFailed, "%Admin_OAuth2_Client:USE", "naming the listed tab's own pair")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "security", .tFailed), "and no area")
+}
 
-    ; OS management and Logs both name %Admin_Operate first, and holding it alone opens neither.
-    ; OS management wants two more -- %Admin_Manage:USE, which the CONTROLPANEL query behind its
-    ; first screen checks for itself, then the database read (Story 2.9); Logs wants
-    ; %Admin_Secure:USE, its audit viewer's own endpoint gate, then the same database read (Story
-    ; 2.10). Each is named in declared order as it is held, which is the whole of what "the gate
-    ; names the FIRST unheld pair" means -- and the two areas are separated by which pair they name
-    ; from the same starting point.
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
+/// <p>AD-8 as amended for DW-1768: an area none of whose listed screens opens names the first pair
+/// of its declared set the caller lacks, and, when the caller holds that whole set, the first failed
+/// pair a listed screen names. In every shipped area the first listed screen fails on the pair its
+/// area names for a caller who opens nothing there, so the first arm is told apart over an armed
+/// roster whose first screen needs another resource; the second arm is reached through the classic-page union (AD-44): a holder of
+/// Permissions' two pairs whose every listed screen's classic page carries a custom resource.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Gate.EvaluateArea</method> always name the
+/// first failed pair a listed screen names -> the armed-roster arm goes red. Drop its fallback so a
+/// caller holding the whole set is named nothing -> the classic-page arm goes red.</p>
+Method TestAGatedAreaNamesItsSetsFirstUnheldPairThenItsFirstListedScreens()
+{
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Do $ClassMethod(tGate, "ArmListed", "logs", "OcuPilot.Screen.Descriptor.LogEventViewer,OcuPilot.Screen.Descriptor.AuditList")
     Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "os-management: %Admin_Operate alone is refused")
-    Do $$$AssertEquals(tFailed, "%Admin_Manage:USE", "os-management: naming the query's own resource, not the database read behind it")
-    Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "logs: refused too, since Story 2.10 -- %Admin_Operate no longer opens it alone")
-    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "logs: naming the one pair of its three still unheld here, the audit endpoint's own %Admin_Secure:USE being held above")
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "logs", .tFailed), "a Logs roster led by the event log opens nothing for a holder of nothing")
+    Do $$$AssertEquals(tFailed, "%Admin_Operate:USE", "and the area names its own set's first pair, not the %Ens_EventLog:USE its first screen fails on")
 
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Manage", "USE")
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Admin_Secure", "USE")
     Set tFailed = "unset"
-    Do $$$AssertTrue('##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "os-management: two of its three pairs is still refused")
-    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "os-management: now naming the system database read")
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "permissions", .tFailed), "%Admin_Secure alone opens no Permissions screen")
+    Do $$$AssertEquals(tFailed, "%DB_IRISSYS:READ", "and the area names the one pair of its set still unheld")
 
-    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
+    Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("permissions", .tListed)
+    Do $$$AssertStatusOK(tSC, "the Permissions side bar reads")
+    Do $$$AssertEquals($ListLength(tListed), 4, "and lists its four screens")
+    For tI = 1:1:$ListLength(tListed) {
+        Set tPage = $ClassMethod($List(tListed, tI), "ClassicPage")
+        Do $$$AssertTrue(tPage '= "", $List(tListed, tI) _ " replaces a classic page")
+        Do $ClassMethod(tGate, "AssignClassic", tPage, "OcuPilotTestCustom" _ tI)
+    }
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("logs", .tFailed), "and the logs area is admitted once its three are held")
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "permissions", .tFailed), "with every listed screen's classic page carrying a custom resource, the whole set opens none")
+    Do $$$AssertEquals(tFailed, "OcuPilotTestCustom1:USE", "and the area names its first listed screen's failed pair")
+}
+
+/// <p>An area that lists no screen is answered by its declared set alone, as its Home tile expects;
+/// an area whose roster cannot be read is refused naming nothing, even to a holder of its set; and a
+/// key the area vocabulary does not declare is refused by
+/// <method>OcuPilot.Screen.Gate.EvaluateArea</method> itself, naming nothing.</p>
+/// <p>Mutation (Rule 19): drop the no-screen branch from <method>OcuPilot.Screen.Gate.EvaluateArea</method>
+/// -> the holder-of-the-set row goes red. Answer a roster failure from the declared set -> the
+/// roster-failure row goes red. Drop its vocabulary check -> the unknown-key row goes red.</p>
+Method TestAnAreaListingNoScreenIsAnsweredByItsSet()
+{
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Do $ClassMethod(tGate, "ArmListed", "tasks", "")
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("tasks", .tFailed), "and the tasks area is admitted once both are held")
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "tasks", .tFailed), "a Tasks area listing no screen is refused to a holder of nothing")
+    Do $$$AssertEquals(tFailed, "%Admin_Task:USE", "naming its set's first pair")
+    Do $ClassMethod(tGate, "Hold", "%Admin_Task", "USE")
+    Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("os-management", .tFailed), "and so is the os-management area")
+    Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", "tasks", .tFailed), "and opens for a holder of its set: " _ tFailed)
+
+    Do $ClassMethod(tGate, "ArmListedFailure", "tasks")
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("permissions", .tFailed), "and admitted once both are held")
-    Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("security", .tFailed), "and the security area is admitted on %Admin_Secure:USE and %DB_IRISSYS:READ with no wallet or OAuth 2.0 resource held, its wallet and OAuth 2.0 screens owning their pair (DW-1018): " _ tFailed)
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", "tasks", .tFailed), "a Tasks area whose roster cannot be read is refused to a holder of its set")
+    Do $$$AssertEquals(tFailed, "", "naming nothing")
 
     Set tFailed = "unset"
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("home", .tFailed), "while Home never gates")
-    Do $$$AssertTrue(##class(OcuPilot.Test.ScreenGate).Evaluate("agent", .tFailed), "and neither does the agent rail item")
+    Do $$$AssertTrue('$ClassMethod(tGate, "EvaluateArea", "no-such-area", .tFailed), "an undeclared area key is refused")
+    Do $$$AssertEquals(tFailed, "", "naming nothing")
+}
+
+/// <p>Every area's verdict through <class>OcuPilot.Test.ScreenGate</class>, in rail order, as
+/// <code>key=open</code> or <code>key=failedPair</code>.</p>
+ClassMethod AreaVerdicts() As %String
+{
+    Set tOut = ""
+    For tArea = "home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "agent" {
+        Set tFailed = ""
+        Set tAllowed = ##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed)
+        Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea _ "=" _ $Select(tAllowed: "open", 1: tFailed)
+    }
+    Quit tOut
+}
+
+/// <p>One descriptor's verdict through <class>OcuPilot.Test.ScreenGate</class>: <code>open</code>, or
+/// its failed pair.</p>
+ClassMethod ScreenVerdict(pDescriptor As %String) As %String
+{
+    Set tFailed = ""
+    Set tAllowed = ##class(OcuPilot.Test.ScreenGate).Evaluate(pDescriptor, .tFailed)
+    Quit $Select(tAllowed: "open", 1: tFailed)
 }
 
 /// <p>The navigation payload's shape: every area in declared order, each with an
@@ -324,22 +457,27 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
 
     ; OS management proves the screen half follows the roster rather than a fixed list: it
-    ; carries its twenty-five built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
-    ; own collation (Registry.cls) -- so the sixteen unlisted, sideBarPosition-0 screens sort first,
-    ; alphabetically by descriptor class name (Database details, Database free-space, Database
-    ; volumes, the device editor, the global mapping editor and list, License usage's three unlisted
-    ; tabs, the local database editor, the namespace editor, the package mapping editor and list,
-    ; Process details, then the routine mapping editor and list), ahead of the listed ones in position
-    ; order (Processes, Locks, System usage, Databases, Devices, Namespaces, License usage, the
-    ; Dashboard at position 8, and Local databases last at position 9). Story 6.11 took this from four
-    ; to eight, Story 6.12 to nine, Story 8.8 to ten, Story 18.2 to twelve, Story 18.14 to eighteen,
-    ; Story 16.7 to twenty-three and Story 18.3 to twenty-five; an added os-management screen updates
-    ; this count and the per-index assertions below with it.
+    ; carries its thirty built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
+    ; own collation (Registry.cls) -- so the twenty unlisted, sideBarPosition-0 screens sort first,
+    ; alphabetically by descriptor class name (Database details, Database free-space, Check
+    ; integrity, the Integrity log, Database volumes, the device editor, the global mapping editor and
+    ; list, External language servers' Activity log and editor, License usage's three unlisted tabs,
+    ; the local database editor, the namespace editor, the package mapping editor and list, Process
+    ; details, then the routine mapping editor and list), ahead of the listed ones in position order
+    ; (Processes, Locks, System usage, Databases, Devices, Namespaces, License usage, the Dashboard at
+    ; position 8, External language servers at position 9, and Local databases last at position 10).
+    ; Story 6.11 took this from four to eight, Story 6.12 to nine, Story 8.8 to ten, Story 18.2 to
+    ; twelve, Story 18.14 to eighteen, Story 16.7 to twenty-three, Story 18.3 to twenty-five, Story
+    ; 16.10 to twenty-seven, its unlisted Activity log sorting between the global mappings list and
+    ; License usage's tabs, Story 18.4 to twenty-nine, its Check integrity and Integrity log sorting
+    ; between Database free-space and Database volumes, and Story 16.25 to thirty, its editor sorting
+    ; after the Activity log; an added os-management screen updates this count and the per-index
+    ; assertions below with it.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 25, "which carries its twenty-five built screens -- an added os-management screen updates this count and the per-index assertions below with it")
-        Set tExpected = $ListBuild($ListBuild("os-management/databases/details", "databaseDetailsLabel", "the unlisted database details, first alphabetically among sideBarPosition 0"), $ListBuild("os-management/database-free-space", "databaseFreeSpaceLabel", "then the unlisted free-space view"), $ListBuild("os-management/databases/volumes", "databaseVolumeListLabel", "then the unlisted volume files"), $ListBuild("os-management/devices/edit", "deviceFormLabel", "then the unlisted device editor"), $ListBuild("os-management/namespaces/global-mappings/edit", "globalMappingFormLabel", "then the unlisted global mapping editor"), $ListBuild("os-management/namespaces/global-mappings", "globalMappingListLabel", "then the unlisted global mappings list"), $ListBuild("os-management/license-usage/distributed", "licenseUsageDistributed", "then License usage's unlisted Distributed tab"), $ListBuild("os-management/license-usage/processes", "licenseUsageByProcess", "then its unlisted By process tab"), $ListBuild("os-management/license-usage/users", "licenseUsageByUser", "then its unlisted By user tab"), $ListBuild("os-management/local-databases/edit", "systemInfoDatabase", "then the unlisted local database editor"), $ListBuild("os-management/namespaces/edit", "headerNamespaceLabel", "then the unlisted namespace editor"), $ListBuild("os-management/namespaces/package-mappings/edit", "packageMappingFormLabel", "then the unlisted package mapping editor"), $ListBuild("os-management/namespaces/package-mappings", "packageMappingListLabel", "then the unlisted package mappings list"), $ListBuild("os-management/processes/details", "processDetailsLabel", "then the unlisted process details"), $ListBuild("os-management/namespaces/routine-mappings/edit", "routineMappingFormLabel", "then the unlisted routine mapping editor"), $ListBuild("os-management/namespaces/routine-mappings", "routineMappingListLabel", "then the unlisted routine mappings list, last alphabetically among sideBarPosition 0"), $ListBuild("os-management/processes", "processListLabel", "then the processes list, position 1"), $ListBuild("os-management/locks", "lockListLabel", "then Locks, position 2"), $ListBuild("os-management/system-usage", "systemUsageLabel", "then system usage, position 3"), $ListBuild("os-management/databases", "databaseListLabel", "then Databases, position 4"), $ListBuild("os-management/devices", "deviceListLabel", "then Devices, position 5"), $ListBuild("os-management/namespaces", "namespaceListLabel", "then Namespaces, position 6"), $ListBuild("os-management/license-usage", "licenseUsageLabel", "then License usage, position 7"), $ListBuild("os-management/dashboard", "dashboardLabel", "then the Dashboard, position 8"), $ListBuild("os-management/local-databases", "localDatabaseListLabel", "and Local databases last, position 9"))
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 30, "which carries its thirty built screens -- an added os-management screen updates this count and the per-index assertions below with it")
+        Set tExpected = $ListBuild($ListBuild("os-management/databases/details", "databaseDetailsLabel", "the unlisted database details, first alphabetically among sideBarPosition 0"), $ListBuild("os-management/database-free-space", "databaseFreeSpaceLabel", "then the unlisted free-space view"), $ListBuild("os-management/databases/integrity", "databaseIntegrityLabel", "then the unlisted Check integrity flow"), $ListBuild("os-management/databases/integrity-log", "databaseIntegrityLogLabel", "then the unlisted Integrity log"), $ListBuild("os-management/databases/volumes", "databaseVolumeListLabel", "then the unlisted volume files"), $ListBuild("os-management/devices/edit", "deviceFormLabel", "then the unlisted device editor"), $ListBuild("os-management/namespaces/global-mappings/edit", "globalMappingFormLabel", "then the unlisted global mapping editor"), $ListBuild("os-management/namespaces/global-mappings", "globalMappingListLabel", "then the unlisted global mappings list"), $ListBuild("os-management/language-servers/activity", "languageServerActivityLabel", "then the unlisted Activity log of External language servers"), $ListBuild("os-management/language-servers/edit", "languageServerFormLabel", "then the unlisted external language server editor"), $ListBuild("os-management/license-usage/distributed", "licenseUsageDistributed", "then License usage's unlisted Distributed tab"), $ListBuild("os-management/license-usage/processes", "licenseUsageByProcess", "then its unlisted By process tab"), $ListBuild("os-management/license-usage/users", "licenseUsageByUser", "then its unlisted By user tab"), $ListBuild("os-management/local-databases/edit", "systemInfoDatabase", "then the unlisted local database editor"), $ListBuild("os-management/namespaces/edit", "headerNamespaceLabel", "then the unlisted namespace editor"), $ListBuild("os-management/namespaces/package-mappings/edit", "packageMappingFormLabel", "then the unlisted package mapping editor"), $ListBuild("os-management/namespaces/package-mappings", "packageMappingListLabel", "then the unlisted package mappings list"), $ListBuild("os-management/processes/details", "processDetailsLabel", "then the unlisted process details"), $ListBuild("os-management/namespaces/routine-mappings/edit", "routineMappingFormLabel", "then the unlisted routine mapping editor"), $ListBuild("os-management/namespaces/routine-mappings", "routineMappingListLabel", "then the unlisted routine mappings list, last alphabetically among sideBarPosition 0"), $ListBuild("os-management/processes", "processListLabel", "then the processes list, position 1"), $ListBuild("os-management/locks", "lockListLabel", "then Locks, position 2"), $ListBuild("os-management/system-usage", "systemUsageLabel", "then system usage, position 3"), $ListBuild("os-management/databases", "databaseListLabel", "then Databases, position 4"), $ListBuild("os-management/devices", "deviceListLabel", "then Devices, position 5"), $ListBuild("os-management/namespaces", "namespaceListLabel", "then Namespaces, position 6"), $ListBuild("os-management/license-usage", "licenseUsageLabel", "then License usage, position 7"), $ListBuild("os-management/dashboard", "dashboardLabel", "then the Dashboard, position 8"), $ListBuild("os-management/language-servers", "languageServersLabel", "then External language servers, position 9"), $ListBuild("os-management/local-databases", "localDatabaseListLabel", "and Local databases last, position 10"))
         For tI = 1:1:$ListLength(tExpected) {
             Set tRow = $List(tExpected, tI)
             Do $$$AssertEquals(tOsMgmt.screens.%Get(tI - 1).route, $List(tRow, 1), $List(tRow, 3))

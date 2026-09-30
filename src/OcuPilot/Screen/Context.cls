@@ -42,6 +42,12 @@ ClassMethod ToolRegistryClass() As %String
 /// <code>truncatedFields</code> beside whatever <method>OcuPilot.Kernel.Agent.Bound.Apply</method>
 /// adds, since a dropped object or array is never a value that cutter's own per-field string check
 /// sees.</p>
+/// <p>An "Explain this entry" view carries one marker for the chosen entry, and the payload carries
+/// it on: <code>selected</code>, a whole-number index into <code>rows</code>, or
+/// <code>focus</code>, the entry as an object, projected as a row is. A marker that is not one of
+/// those shapes -- an index out of range or not whole, a focus that is not an object, both sent
+/// together, or a number too large to read -- is dropped and the rest of the payload is built as
+/// though none were sent.</p>
 ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output pPayload As %DynamicObject, Output pFieldMaxLengths, Output pDroppedFields As %List) As %Status
 {
     Set tSC = $$$OK
@@ -99,22 +105,29 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
         Set tRows = []
         Set tRowIterator = tRawRows.%GetIterator()
         While tRowIterator.%GetNext(.tRowIndex, .tRow) {
-            Set tNewRow = {}
-            If $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject") {
-                Set tFieldIterator = tRow.%GetIterator()
-                While tFieldIterator.%GetNext(.tKey, .tValue, .tValueType) {
-                    If '$ListFind(tFieldList, tKey) Continue
-                    If (tValueType = "object") || (tValueType = "array") {
-                        If '$ListFind(pDroppedFields, tKey) Set pDroppedFields = pDroppedFields _ $ListBuild(tKey)
-                        Continue
-                    }
-                    Do tNewRow.%Set(tKey, tValue, tValueType)
-                }
-            }
-            Do tRows.%Push(tNewRow)
+            Do tRows.%Push(..ProjectRow(tRow, tFieldList, .pDroppedFields))
         }
         Do tPayload.%Set("rows", tRows)
         If tRowsAvailable '= "" Do tPayload.%Set("rowsAvailable", tRowsAvailable, "number")
+        If $IsObject(tView) {
+            Set tDroppedBefore = pDroppedFields
+            Try {
+                Set tSelectedType = tView.%GetTypeOf("selected")
+                Set tFocusType = tView.%GetTypeOf("focus")
+                If (tSelectedType = "number") && (tFocusType = "unassigned") {
+                    Set tSelected = tView.%Get("selected")
+                    If (tSelected = (tSelected \ 1)) && (tSelected >= 0) && (tSelected < tRows.%Size()) Do tPayload.%Set("selected", +tSelected, "number")
+                }
+                If (tFocusType = "object") && (tSelectedType = "unassigned") {
+                    Do tPayload.%Set("focus", ..ProjectRow(tView.%Get("focus"), tFieldList, .pDroppedFields))
+                }
+            } Catch {
+                ; A number IRIS cannot hold (1e400) raises on read; its marker is dropped, never refused.
+                Do tPayload.%Remove("selected")
+                Do tPayload.%Remove("focus")
+                Set pDroppedFields = tDroppedBefore
+            }
+        }
 
         Do $ClassMethod(tDescriptor, "ContextMaxLengths", .pFieldMaxLengths)
         Set pPayload = tPayload
@@ -127,6 +140,25 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p><var>pRow</var> narrowed to the fields <var>pFieldList</var> names: an empty object when it is
+/// not an object, and each object or array value dropped, its field name added once to
+/// <var>pDroppedFields</var>.</p>
+ClassMethod ProjectRow(pRow, pFieldList As %List, ByRef pDroppedFields As %List) As %DynamicObject [ Private ]
+{
+    Set tNewRow = {}
+    If '$IsObject(pRow) || 'pRow.%IsA("%Library.DynamicObject") Quit tNewRow
+    Set tFieldIterator = pRow.%GetIterator()
+    While tFieldIterator.%GetNext(.tKey, .tValue, .tValueType) {
+        If '$ListFind(pFieldList, tKey) Continue
+        If (tValueType = "object") || (tValueType = "array") {
+            If '$ListFind(pDroppedFields, tKey) Set pDroppedFields = pDroppedFields _ $ListBuild(tKey)
+            Continue
+        }
+        Do tNewRow.%Set(tKey, tValue, tValueType)
+    }
+    Quit tNewRow
 }
 
 /// <p>The wire names of the tools that act on the screen <var>pDescriptor</var>, as

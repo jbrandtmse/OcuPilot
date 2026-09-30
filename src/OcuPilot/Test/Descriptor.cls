@@ -77,6 +77,7 @@ XData ReadShapes
 <screen name="BackgroundTaskList" filter="Source,Task,Namespace,Status,Details" sort="StartTime,Task,Source,Namespace,Status" kinds="Task:name,Source:text,Status:status,Namespace:text,Details:text,ErrorCount:text,StartTime:text"/>
 <screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
 <screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
+<screen name="DatabaseIntegrityLog" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
 <screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
 <screen name="DatabaseVolumeList" filter="VolumeDirectory,File" sort="VolumeNumber,File,VolumeDirectory,Size,VolumeDirectoryTotalSize,DiskFree" kinds="File:name,VolumeNumber:number,VolumeDirectory:identifier,Size:number,VolumeDirectoryTotalSize:number,DiskFree:number"/>
 <screen name="DeviceList" filter="Name,PhysicalDevice,Type,SubType,Description,Alias" sort="Name,PhysicalDevice,Type,SubType,Description,Alias" kinds="Name:name,PhysicalDevice:identifier,Type:text,SubType:text,Description:text,Alias:number"/>
@@ -127,6 +128,8 @@ XData ReadShapes
 <screen name="LicenseUserTab" filter="UserId,Type" sort="UserId,Type,Connects,MaxCon,CSPCon,LU,Active,Grace" kinds="UserId:name,Type:text,Connects:number,MaxCon:number,CSPCon:number,LU:number,Active:number,Grace:number"/>
 <screen name="LicenseDistributedTab" filter="UserId,ServerIP" sort="UserId,LicenseUnits,Connections,ServerIP,Instance" kinds="UserId:name,LicenseUnits:number,Connections:number,ServerIP:identifier,Instance:text"/>
 <screen name="Dashboard" filter="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" sort="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" kinds="Sensors.cpuUsage:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.GlobalRefs:number,Dashboard.Performance.GlobalSetKill:number,Dashboard.Performance.RoutineRefs:number,Dashboard.Performance.LogicalRequests:number,Dashboard.Performance.DiskReads:number,Dashboard.Performance.DiskWrites:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.ECP.ECPClients:text,Dashboard.ECP.ECPClientTraffic:number,Dashboard.ECP.ECPServers:text,Dashboard.ECP.ECPServerTraffic:number,Dashboard.ECP.ShadowConnections:text,Dashboard.ECP.Shadows:text,Dashboard.Status.UpTime:name,Dashboard.Status.LastBackup:text,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.DatabaseJournal:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.JournalEntries:number,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text,Dashboard.SystemUsage.Processes:number,Dashboard.SystemUsage.CSPSessions:number,Dashboard.Alerts.SeriousAlerts:number,Dashboard.Alerts.ApplicationErrors:number,Dashboard.Licensing.LicenseLimit:number,Dashboard.Licensing.LicenseUse:number,Dashboard.Licensing.LicenseUseHigh:number"/>
+<screen name="LanguageServerList" filter="Name,Type" sort="Name" kinds="Name:name,Type:text,Port:number,CurrentlyRunning:status"/>
+<screen name="LanguageServerActivity" filter="DateTime,RecordType,Text" sort="ID" kinds="DateTime:name,RecordType:status,Job:number,Text:text"/>
 </shapes>
 }
 
@@ -278,14 +281,17 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
 /// credential-named field it does not declare is refused where it is declared. Without this rule
 /// <code>secretArguments</code> is a list nothing reads, which is the inversion AD-3 forbids:
 /// the schema layer advisory and the name pattern the real defense.</p>
-/// <p><b>Every shipped descriptor passes it</b>, and the two malformed shapes and the planted
-/// credential-named criterion are refused with the sentence
-/// <file>ui/tools/screen-mirror.mjs</file>'s own <code>confirmChannelProblem</code> returns for the
-/// same input.</p>
+/// <p><b>Every shipped descriptor passes it</b>, and the two malformed shapes, the planted
+/// credential-named criterion and a <code>secretArguments</code> entry that is no top-level secret
+/// of the screen's write tools -- <code>Path</code>, ordinary on both web-application tools, among
+/// them (AD-6, AD-21) -- are refused with the sentence <file>ui/tools/screen-mirror.mjs</file>'s own
+/// <code>confirmChannelProblem</code> returns for the same input.</p>
 /// <p>Mutation (Rule 19): restore <method>SecretArguments</method> on
 /// <class>OcuPilot.Kernel.Shell.ReadTool</class> and plant a credential-named criterion on a
 /// shipped descriptor -- the refusal below is what bites, and without it the declaration would be
-/// overruled by an intermediate class with nothing noticing.</p>
+/// overruled by an intermediate class with nothing noticing. Re-admit a settable field in
+/// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method>'s <code>secretArguments</code>
+/// check -- the <code>Path</code> leg goes red.</p>
 Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
 {
     Set tSC = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "DeclarationJson", .tSound)
@@ -308,33 +314,20 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     Do tBad.%Set("fingerprintExcludes", [(tSound.%Get("read").%Get("fields").%Get(0))])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares (DW-1205)")
 
-    ; DW-1206, the refusing direction: secretArguments is read as a whitelist by the confirm channel
-    ; and by the tool's own schema, both by exact name, so an entry naming nothing left the real
-    ; field advertised and the channel closed to the spelling nobody sends. Both keys are now
-    ; checked against one set.
+    ; A secretArguments entry opens the confirm channel to a value the write sends as a secret, so
+    ; it names a top-level secret row of the screen's write tools and nothing else. A misspelling, Path (ordinary on both web-application tools, and set by neither, AD-21),
+    ; a string and a boolean settable field, an array field in the spelling the schema honours and a
+    ; field the read declares are each refused. The web applications list's tools send no secret.
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
-    Do tBad.%Set("secretArguments", ["Pasword"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names 'Pasword', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)", "a secretArguments entry naming nothing is refused")
-    Do tBad.%Set("secretArguments", ["Timeout"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "while one naming a settable field of that tool is sound")
-    Do tBad.%Set("secretArguments", [(tSound.%Get("read").%Get("fields").%Get(0))])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares")
+    For tName = "Pasword", "Path", "Timeout", "AutoCompile", "CorsAllowlist", (tSound.%Get("read").%Get("fields").%Get(0)) {
+        Do tBad.%Set("secretArguments", [(tName)])
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names '" _ tName _ "', which is not a top-level secret field of this screen's write tools (AD-6)", tName _ ": refused, as no write tool of this screen sends it as a secret")
+    }
 
-    ; "Timeout" above is a string field, so it cannot tell the membership check's "settable" set
-    ; apart from the credential heuristic's string-only one; "AutoCompile" is a boolean field of
-    ; the same tool and is sound here too.
-    Do tBad.%Set("secretArguments", ["AutoCompile"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is a non-string settable field")
-
-    ; The two spellings the one set carries, because their consumers honour different ones: the
-    ; schema drops a declared secret by the []-stripped name, while an exclusion of an array reaches
-    ; the fingerprint as <path>[].
-    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
-    Do tBad.%Set("secretArguments", ["CorsAllowlist"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "a secret named in the spelling the tool's schema honours is sound")
+    ; An exclusion of an array reaches the fingerprint as <path>[], and is named in that spelling.
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Set("fingerprintExcludes", ["CorsAllowlist[]"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and an exclusion named in the spelling the fingerprint honours is sound")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "an exclusion named in the spelling the fingerprint honours is sound")
 
     ; The tightening half: any row of the entry was accepted before, a secret-classified subtree
     ; included. An exclusion covering a field the tool cannot set is nameable through the read half.
@@ -344,9 +337,9 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
 
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Get("read").%Set("criteria", {"fields": [{"param": "apiKey", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]})
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which secretArguments does not declare (AD-3)", "a credential-named criterion the declaration does not hold is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which is not a declared secret of this screen's write tools (AD-3)", "a credential-named criterion the declaration does not hold is refused")
     Do tBad.%Set("secretArguments", ["apiKey"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and declaring it is what admits it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names 'apiKey', which is not a top-level secret field of this screen's write tools (AD-6)", "and declaring it does not admit it, as no write tool of this screen sends it as a secret")
 
     ; The loosening half: a declared criterion is one of the names the read declares, so it is a
     ; nameable exclusion where it was refused before -- including a FLAG criterion, whose value is
@@ -601,7 +594,7 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
         ; vendor's own word for status 0, and a stopped Task Manager runs no scheduled task either
         ; -- the single-case banner left that state silent.
         Do $$$AssertEquals(tBanner.field, "Status", "over the one field the manager reports")
-        Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings")
+        Do $$$AssertEquals(tBanner.cases.%ToJSON(), "[{""equals"":""Suspended"",""messageKey"":""taskManagerSuspendedBanner"",""severity"":""warning"",""action"":""resumemanager""},{""equals"":""Not running"",""messageKey"":""taskManagerStoppedBanner"",""severity"":""warning"",""action"":""startmanager""}]", "raising the suspended sentence at Suspended and the stopped one at Not running, both warnings, each offering its remedy (Story 16.11)")
         Do $$$AssertEquals(tBanner.cases.%Size(), 2, "and Running, the third value the vendor answers, raises none")
 
         ; DW-304: the comparison above is against a typed copy of the same three words, which
@@ -696,9 +689,8 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error,broadcast", "its row actions are Suspend, Resume, Terminate, the Terminate dialog's flag and the checked rows' Broadcast")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
-    ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
-    ; the area's own set, and dropping it there makes this screen fail coverage at install rather
-    ; than making the narrower screens reachable.
+    ; %Admin_Manage:USE is in the area's own set, and dropping it there makes this screen fail
+    ; coverage at install.
     Set tAreaPairs = ##class(OcuPilot.Screen.Area).PrivilegePairs("os-management")
     Set tHasManage = 0
     For tI = 1:1:$ListLength(tAreaPairs) {
@@ -1186,9 +1178,9 @@ Method TestTheLogHubDeclaresItsComposedRead()
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
 /// uncovered set and <code>""</code> for a covered one; and the production roster still validates
 /// now that every area covers its screens.</p>
-/// <p><b>Why the refusal matters:</b> <class>OcuPilot.Screen.Gate</class> evaluates an area's set
-/// and a screen's set separately and never unions them, so an area declaring less than its screens
-/// require shows the rail item allowed and refuses everything inside it.</p>
+/// <p><b>Why the refusal matters:</b> a gated area names a pair from its declared set
+/// (<method>OcuPilot.Screen.Gate.EvaluateArea</method>), and holding that set opens every screen of
+/// the area that declares no own pair only while the set covers each such screen's pairs.</p>
 /// <p>Mutation: make <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answer
 /// <code>""</code> unconditionally -> the fixture-roster and value assertions go red. Drop
 /// <code>%DB_IRISSYS:READ</code> from the <code>security</code> area in
@@ -1210,11 +1202,11 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tSubset), "", "so does a set the area declares more than")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", ""), "", "and so does an empty set")
     Set tUncovered = $ListBuild($ListBuild("%Admin_Operate", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tUncovered), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "an uncovered pair answers the sentence Validate prefixes")
     ; The method names the FIRST uncovered pair, so a covered pair ahead of it is skipped and a
     ; second uncovered one behind it is not the one reported.
     Set tMixed = $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_Operate", "USE"), $ListBuild("%Admin_Task", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tMixed), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "and the first uncovered pair is the one named, past a covered one and ahead of a second uncovered one")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", tMixed), "area 'security' does not declare %Admin_Operate:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "and the first uncovered pair is the one named, past a covered one and ahead of a second uncovered one")
 
     Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
     Do $$$AssertEquals(tProdProblem, "", "and every production area covers its own screens' pairs")
@@ -1254,9 +1246,9 @@ Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
     Set tPairs = $ListBuild($ListBuild("%Admin_Operate", "USE"), $ListBuild("%Ens_EventLog", "USE"))
     Set tOwn = $ListBuild($ListBuild("%Ens_EventLog", "USE"))
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs, tOwn), "", "a pair the screen declares its own passes the logs area's coverage")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs), "area 'logs' does not declare %Ens_EventLog:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "and the same pair not declared its own is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tPairs), "area 'logs' does not declare %Ens_EventLog:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "and the same pair not declared its own is refused")
     Set tExtra = tPairs _ $ListBuild($ListBuild("%Admin_Manage", "USE"))
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tExtra, tOwn), "area 'logs' does not declare %Admin_Manage:USE, which this screen requires, so the area would read allowed while the screen is refused (AD-8)", "an extra pair not declared its own is still refused beside one that is")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", tExtra, tOwn), "area 'logs' does not declare %Admin_Manage:USE, which this screen requires, so a holder of the area's set would still be refused it (AD-8)", "an extra pair not declared its own is still refused beside one that is")
 
     Set tSC = ##class(OcuPilot.Test.OwnPairRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair it does not require is refused")
@@ -1712,7 +1704,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 39, "the closed vocabulary holds thirty-nine values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14 and database-configuration in Story 18.3; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 40, "the closed vocabulary holds forty values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3 and language-server in Story 16.10; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -1913,20 +1905,15 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
     Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 
-/// <p>DW-275 -- the os-management area's union, and what it costs a narrower screen.</p>
-/// <p><class>OcuPilot.Test.NarrowArea</class> is the screen Stories 6.8 and 6.10 will add: one
-/// needing <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> and not
-/// <code>%Admin_Manage:USE</code>. It validates, and the area covers it -- coverage is
-/// containment, so an area declaring more than a screen requires is sound. The cost, recorded at
-/// <class>OcuPilot.Screen.Area</class> and accepted, is a false denial for an operator holding
-/// only those two pairs. <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
-/// observes the area denial itself with a real principal; that the denial turns false once a
-/// screen like this one is built is an <b>(inference)</b>, since this fixture is not a built
-/// screen and no real principal can be denied it.</p>
+/// <p>DW-275 -- the os-management area's union holds a narrower screen.</p>
+/// <p><class>OcuPilot.Test.NarrowArea</class> is a screen needing <code>%Admin_Operate:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> and not <code>%Admin_Manage:USE</code>, as Locks and System usage
+/// are. It validates, and the area covers it -- coverage is containment, so an area declaring more
+/// than a screen requires is sound, and such a screen opens its area for a holder of its two pairs (<method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
+/// observes it with a real principal).</p>
 /// <p>Mutation: drop <code>%Admin_Manage:USE</code> from the <code>os-management</code> area ->
-/// the processes list's own coverage assertion goes red (the decision cannot be reversed by
-/// accident), while the narrow fixture's assertions here stay green -- which is what says these
-/// two halves are independent. Relax
+/// the processes list's own coverage assertion goes red, while the narrow fixture's coverage
+/// assertion here stays green -- which is what says these two halves are independent. Relax
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage -> the
 /// same assertion goes red.</p>
 Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
@@ -1941,10 +1928,8 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", "inside the same area as the processes list")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the area's union covers it, because coverage is containment")
 
-    ; The area is still gated on the union, so this screen's own operator is denied the rail entry
-    ; -- the accepted false denial, stated as the count it costs rather than left implicit.
     Do $$$AssertEquals(..PairText("os-management"), "%Admin_Operate:USE, %Admin_Manage:USE, %DB_IRISSYS:READ", "the area declares the union of its screens' pairs")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "PrivilegePairs")), 2, "while this screen needs two of them, which is the accepted false denial")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "PrivilegePairs")), 2, "while this screen needs two of them")
 
     ; And it is a fixture, not a screen: the production roster never lists it.
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
@@ -2098,13 +2083,15 @@ Method TestTheEntityLabelRuleAnswersTheSameSentencesAsTheMirror()
     }
 }
 
-/// <p>AC9 -- the Locks descriptor's read and table are exactly the eight fields and seven columns
-/// Boundaries names: no transaction column, no <code>Removable</code>, <code>CanBeExamined</code>
-/// or <code>RemoteOwner</code> field, no derived field, and no <code>$zu(67,19</code> anywhere in
-/// this descriptor's own source -- the class this test reads, not the whole read path.</p>
+/// <p>AC9 -- the Locks descriptor's read and table are exactly the nine fields and seven columns
+/// Boundaries names: no transaction column, no <code>Removable</code> or <code>CanBeExamined</code>
+/// field, <code>RemoteOwner</code> read with no column (Story 16.12), no derived field, and no
+/// <code>$zu(67,19</code> anywhere in this descriptor's own source -- the class this test reads, not
+/// the whole read path. Its row target withholds a remote owner's link (<code>unless</code>,
+/// DW-1074).</p>
 /// <p>Mutation: add an eighth column to <code>table.columns</code> in
 /// <class>OcuPilot.Screen.Descriptor.LockList</class> -> the column-set assertion goes red.</p>
-Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
+Method TestTheLocksListDeclaresExactlyItsNineFieldsAndSevenColumns()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.LockList"
     Set tRead = $ClassMethod(tClass, "Read")
@@ -2113,7 +2100,7 @@ Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
     Set tFields = ""
     Set tIterator = tRead.%Get("fields").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
-    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID", "exactly the eight declared fields, no transaction column and no Removable, CanBeExamined or RemoteOwner")
+    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID,RemoteOwner", "exactly the nine declared fields, no transaction column and no Removable or CanBeExamined")
 
     Set tTable = $ClassMethod(tClass, "Field", "table")
     Do $$$AssertTrue($IsObject(tTable), "the Locks list declares a table")
@@ -2134,6 +2121,7 @@ Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
     If $IsObject(tRowTarget) {
         Do $$$AssertEquals(tRowTarget.%Get("route"), "os-management/processes/details", "at Process details' route")
         Do $$$AssertEquals(tRowTarget.%Get("field"), "Pid", "keyed by Pid, not by this row's own DeleteID")
+        Do $$$AssertEquals(tRowTarget.%Get("unless"), "RemoteOwner", "and withheld where RemoteOwner reads true (DW-1074)")
     }
     Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.ProcessList).RowTarget(), "", "and a screen that declares no row target answers the empty string")
 }

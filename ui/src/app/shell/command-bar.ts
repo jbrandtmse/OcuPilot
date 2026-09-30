@@ -14,7 +14,16 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
-import { DOWNLOAD_CSV_ACTION_ID, PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, actionLabel } from '../core/screen-actions';
+import {
+  DOWNLOAD_CSV_ACTION_ID,
+  PERMISSION_CHECK_ACTION_ID,
+  REFRESH_ACTION_ID,
+  ScreenActions,
+  TASK_IMPORT_ACTION_ID,
+  TASK_MANAGER_SUSPEND_ACTION_ID,
+  actionLabel,
+  bannerActionIds,
+} from '../core/screen-actions';
 import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
@@ -332,6 +341,15 @@ interface SortOption {
         {{ taskImportLabel }}
       </button>
     }
+    @if (hasTaskManagerSuspendAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-task-manager-suspend"
+        (click)="onTaskManagerSuspend()"
+      >
+        {{ taskManagerSuspendLabel }}
+      </button>
+    }
     @if (hasDownloadAction) {
       <span class="ocu-command-bar-action-slot">
         <button
@@ -433,8 +451,14 @@ export class CommandBar {
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
+    const onBanner = bannerActionIds(screen);
     return screen.rowActions
       .filter((action) => action.id !== '')
+      // An action the screen also declares as its primary is drawn once, as the primary, which
+      // needs no selection (Story 18.4: Databases' Check integrity).
+      .filter((action) => action.id !== screen.primaryAction.id)
+      // An action a banner case offers names no row, and the strip draws it (Story 16.11).
+      .filter((action) => !onBanner.includes(action.id))
       // DW-389: a declared action with no registered handler is a control nothing can act on, so
       // it is not drawn at all -- the same test the primary action above already applies.
       .filter((action) => this.actions.has(screen.descriptor, action.id))
@@ -635,6 +659,7 @@ export class CommandBar {
       this.hasRefreshAction ||
       this.hasPermissionCheckAction ||
       this.hasTaskImportAction ||
+      this.hasTaskManagerSuspendAction ||
       this.hasDownloadAction ||
       this.hasRefreshChip
     );
@@ -744,6 +769,27 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, TASK_IMPORT_ACTION_ID);
+  }
+
+  /**
+   * Suspend Task Manager on Task schedule (Story 16.11), drawn after Import on exactly the screen that
+   * registered it. Screen-level: it names the Task Manager, not a row, so it is never
+   * `aria-disabled` for want of a selection; a suspend in the wrong state is refused by the instance
+   * after its warning dialog.
+   */
+  protected get hasTaskManagerSuspendAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID);
+  }
+
+  protected readonly taskManagerSuspendLabel = actionLabel('', TASK_MANAGER_SUSPEND_ACTION_ID);
+
+  protected onTaskManagerSuspend(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID);
   }
 
   /**

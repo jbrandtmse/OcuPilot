@@ -189,6 +189,51 @@ Method TestAPortalRowNamesTheDatabaseItsTaskRunsAgainst()
     Do $$$AssertEquals($$$ISERR(tSC) _ " " _ +$Get(tHttp), "1 500", "a task database read that fails fails the whole read")
 }
 
+/// <p>DW-1821 (Story 18.4): a background task running against a database that neither half lists is
+/// listed once as a "Database" row naming its database; an admin API row linked to its background task
+/// takes that task's database and the task is not listed again; a portal row is unchanged; the one-row
+/// read finds a database row by its id, and its control goes to its background task; and a database
+/// half that fails fails the whole read.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.BackgroundTaskPort.Linked</method> drops the admin-row
+/// link -> the linked task is listed twice and this goes red.</p>
+Method TestADatabaseTaskIsListedOnceWithItsDatabase()
+{
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmPortal(..Rows(..PortalRow("4242", "Running", "7", "2026-09-28 12:00:05")))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabases("[{""ID"":""7"",""Database"":""/DURABLE/IRIS/MGR/OCUBGSEED/"",""HasEnded"":false}]")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmAdmin(..Rows(..AdminRow(..#GUID, "Running", "2026-09-28 12:30:00")))
+    Set tDatabase = []
+    Do tDatabase.%Push(..DatabaseRow("7", "/DURABLE/IRIS/MGR/OCUBGSEED/", "2026-09-28 12:00:05"))
+    Do tDatabase.%Push(..DatabaseRow("9", "/DURABLE/IRIS/MGR/OCUBGADMIN/", "2026-09-28 12:30:00"))
+    Do tDatabase.%Push(..DatabaseRow("11", "/DURABLE/IRIS/MGR/OCUBGOTHER/", "2026-09-28 11:00:00"))
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabaseRows(tDatabase.%ToJSON())
+    Set tLinks = {}
+    Do tLinks.%Set(..#GUID, "9", "string")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmTaskLinks(tLinks.%ToJSON())
+    Kill tQuery
+    Set tQuery("maxRows") = 10
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tListed, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the list answers")
+    If $$$ISERR(tSC) Quit
+    Set tText = ""
+    Set tIterator = tListed.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tText = tText _ $Select(tText = "": "", 1: "|") _ tRow.%Get("Source") _ "/" _ tRow.%Get("Id") _ "=" _ tRow.%Get("Database")
+    }
+    Do $$$AssertEquals(tText, "Admin API/" _ ..#GUID _ "=/DURABLE/IRIS/MGR/OCUBGADMIN/|Management Portal/4242=/DURABLE/IRIS/MGR/OCUBGSEED/|Database/11=/DURABLE/IRIS/MGR/OCUBGOTHER/", "each task once: the admin row with its linked task's database, the portal row unchanged, and the unlisted task as a Database row")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DeviceCreate).Keys(tListed.%Get(2)), "Database,Details,ErrorCount,Id,Namespace,Source,StartTime,Status,Task", "a Database row answers the declared fields and no background task id")
+    Kill tQuery
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Database", "11"))
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tOne, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tOne)): tOne.%Get("Source") _ " " _ tOne.%Get("Database"), 1: tHttp), "Database /DURABLE/IRIS/MGR/OCUBGOTHER/", "the one-row read finds it by its id")
+    Do ..Control("PAUSE", "Database", "11", .tHttp, .tFault)
+    Do $$$AssertEquals(+$Get(tHttp) _ " " _ ##class(OcuPilot.Test.BackgroundTaskFixture).Calls(), "200 PORTAL PAUSE 11", "and its control goes to its background task")
+    Do ##class(OcuPilot.Test.BackgroundTaskFixture).ArmDatabaseRows("fail")
+    Kill tQuery
+    Set tQuery("maxRows") = 10
+    Set tSC = $ClassMethod(..#FIXTURE, "Invoke", "BackgroundTask", "LIST", .tQuery, "", .tListed, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISERR(tSC) _ " " _ +$Get(tHttp), "1 500", "a database half that fails fails the whole read")
+}
+
 /// <p>AD-13: the mint refuses a <code>source</code> or <code>id</code> carrying the composite
 /// separator, U+0001, with 400 <code>TOOL.ARGUMENTS</code> before either half is read, so one
 /// argument cannot stand for two parts.</p>
@@ -373,9 +418,11 @@ Method TestEveryVendorStateRefusalIsTheOnePublishedCode()
 
 /// <p>AD-59: an admin API row's script is the admin port's <code>AsyncResult</code> call naming the
 /// GUID alone; a portal row's is the documented class's method on the job's background task, refused
-/// with the published sentence when it has none.</p>
+/// with the published sentence when it has none; a database row's (DW-1821) is that method on its own
+/// background task, by its id.</p>
 /// <p>Mutation (Rule 19): render every row through the admin branch in
-/// <method>OcuPilot.Port.BackgroundTaskPort.Snippet</method> -- the portal leg goes red.</p>
+/// <method>OcuPilot.Port.BackgroundTaskPort.Snippet</method> -- the portal leg goes red; drop its
+/// database branch -- the database leg reads the job log and goes red.</p>
 Method TestTheScriptRendersBothBranches()
 {
     Set tContext = {"origin": "https://draft.example:52773", "user": "OcuPilotDraftProbeUser"}
@@ -389,6 +436,11 @@ Method TestTheScriptRendersBothBranches()
     Set tText = $Select($IsObject(tSteps.%Get(0)): tSteps.%Get(0).%Get("text"), 1: "")
     Do $$$AssertEquals($Select(tSteps.%Size() = 1: tSteps.%Get(0).%Get("kind"), 1: tSteps.%ToJSON()), "objectscript", "a portal row renders one ObjectScript step")
     Do $$$AssertTrue((tText [ "MgtPortalTask(""4242"", ""SysBGTaskId"")") && (tText [ "##class(%SYS.BackgroundTask).%OpenId(tTaskId)") && (tText [ "tTask.Cancel()") && (tText [ ..#PUBLISHED), "reading the job's background task and canceling it, or refusing as the port does: " _ tText)
+    Set tQuery("id") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Database", "4343"))
+    Set tSteps = $ClassMethod(..#PORT, "Snippet", "BackgroundTask", "PAUSE", .tQuery, "", tContext)
+    Set tText = $Select($IsObject(tSteps.%Get(0)): tSteps.%Get(0).%Get("text"), 1: "")
+    Do $$$AssertEquals($Select(tSteps.%Size() = 1: tSteps.%Get(0).%Get("kind"), 1: tSteps.%ToJSON()), "objectscript", "a database row renders one ObjectScript step")
+    Do $$$AssertTrue((tText [ "##class(%SYS.BackgroundTask).%OpenId(""4343"")") && (tText [ "tTask.Pause()") && (tText '[ "MgtPortalTask"), "pausing its own background task by its id, reading no job log: " _ tText)
     Do $$$AssertEquals($ClassMethod(..#PORT, "SnippetForm", "BackgroundTask", "RESUME") _ " " _ $ClassMethod(..#PORT, "SnippetForm", "AsyncResult", "RESUME"), "objectscript rest", "and each type has a script form")
 }
 
@@ -435,6 +487,17 @@ ClassMethod AdminRow(pGuid As %String, pState As %String, pStart As %String) As 
     Do tRow.%Set("GUID", pGuid, "string")
     Do tRow.%Set("State", pState, "string")
     Do tRow.%Set("TimeStarted", pStart, "string")
+    Quit tRow
+}
+
+/// <p>One running background task as the port's database half answers it.</p>
+ClassMethod DatabaseRow(pTaskId As %String, pDatabase As %String, pStart As %String) As %DynamicObject
+{
+    Set tRow = {"Source": "Database", "Task": "Compact DB Space", "Namespace": "", "Status": "Running", "Details": "", "ErrorCount": ""}
+    Do tRow.%Set("Id", pTaskId, "string")
+    Do tRow.%Set("SysBGTaskId", pTaskId, "string")
+    Do tRow.%Set("StartTime", pStart, "string")
+    Do tRow.%Set("Database", pDatabase, "string")
     Quit tRow
 }
 

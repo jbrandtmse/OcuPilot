@@ -24,6 +24,18 @@ export interface LogViewerSource {
    * GET with no cursor, answered as `{source, entries, truncated}` already normalized on the server.
    */
   readonly entries?: true;
+  /**
+   * Whether the route answers one integrity check's report rather than a page of a log file (Story
+   * 18.4): `filesPath` lists the checks, `file` names one by its id, and no name reads the newest.
+   * Each report line is its own row, at the check's start time, an error where the report marks it.
+   */
+  readonly report?: true;
+  /**
+   * `read` when `tailPath` is a screen's own declared read (Story 16.10): a bare GET for the newest
+   * window, answered as `{fields, rows, truncated}`, each row mapped to a line by `readRowsOf`. Load
+   * newer reads that window again, and the rows as answered are what the screen publishes.
+   */
+  readonly kind?: 'read';
 }
 
 /** The alerts.log screen's route. */
@@ -45,6 +57,20 @@ export const XDBC_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/xdbc
 export const SQL_DIAGNOSTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/sqldiagnostics', entries: true };
 export const EVENT_LOG_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/eventlog', entries: true };
 export const ANALYTICS_SOURCE: LogViewerSource = { tailPath: '/api/ocupilot/logs/analytics', entries: true };
+
+/** The Integrity log (Story 18.4), bound to the `integrity` source key by `Api/Router.cls`. */
+export const INTEGRITY_SOURCE: LogViewerSource = {
+  tailPath: '/api/ocupilot/logs/integrity',
+  filesPath: '/api/ocupilot/logs/integrity/files',
+  report: true,
+};
+
+/** The mark `OcuPilot.Port.LogSourcePort` reads an integrity report's error lines by. */
+const REPORT_ERROR_MARK = '****';
+
+/** The vendor severities an integrity report's lines are drawn with: severe for an error, info otherwise. */
+const REPORT_ERROR_SEVERITY = '2';
+const REPORT_INFO_SEVERITY = '0';
 
 /**
  * `OcuPilot.Api.Error`'s code for a log file this instance does not have. It is a 404 rather than an
@@ -99,6 +125,56 @@ function entriesOf(body: unknown): readonly LogLine[] {
   return lines.reverse();
 }
 
+/**
+ * A language server's activity record types, on the severity scale's own numbers (Story 16.10), as
+ * `OcuPilot.Port.LogSourcePort`'s `EventSeverity` maps the interoperability event log's. A word
+ * outside the four reads as itself.
+ */
+const RECORD_SEVERITIES: Readonly<Record<string, string>> = { Debug: '-1', Info: '0', Warning: '1', Error: '2' };
+
+/** A vendor `YYYY-MM-DD HH:MM:SS` as a log line's stamp, already the instance's local time. */
+const RECORD_TIME_RE = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/;
+
+function scalarAt(row: unknown, key: string): string {
+  if (row === null || typeof row !== 'object') return '';
+  const value = (row as Record<string, unknown>)[key];
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
+/** A declared read's rows, as the answer carries them, newest first. */
+function answeredRowsOf(body: unknown): readonly Readonly<Record<string, unknown>>[] {
+  if (body === null || typeof body !== 'object') return [];
+  const rows = (body as Record<string, unknown>)['rows'];
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row): row is Readonly<Record<string, unknown>> => row !== null && typeof row === 'object' && !Array.isArray(row));
+}
+
+/**
+ * A declared read's activity rows as lines, oldest first as the viewer draws them (Story 16.10):
+ * `DateTime` as the stamp with `.000` (no zone, since the vendor's time is the instance's own),
+ * `Job` as the pid, `RecordType` on the severity scale, and `Text` as both the text and the raw line.
+ * Each line carries its row as answered.
+ */
+export function readRowsOf(body: unknown): readonly LogLine[] {
+  const lines: LogLine[] = answeredRowsOf(body).map((row) => {
+    const time = scalarAt(row, 'DateTime');
+    const matched = RECORD_TIME_RE.exec(time);
+    const type = scalarAt(row, 'RecordType');
+    const text = scalarAt(row, 'Text');
+    return {
+      stamp: matched === null ? time : `${matched[1]}T${matched[2]}.000`,
+      pid: scalarAt(row, 'Job'),
+      severity: RECORD_SEVERITIES[type] ?? type,
+      category: '',
+      text,
+      raw: text,
+      head: true,
+      record: row,
+    };
+  });
+  return lines.reverse();
+}
+
 function filesOf(body: unknown): readonly LogFileEntry[] {
   if (body === null || typeof body !== 'object') return [];
   const files = (body as Record<string, unknown>)['files'];
@@ -107,9 +183,30 @@ function filesOf(body: unknown): readonly LogFileEntry[] {
   for (const file of files) {
     const name = textAt(file, 'name');
     if (name === '') continue;
-    entries.push({ name, size: numberAt(file, 'size'), modified: textAt(file, 'modified') });
+    const entry: LogFileEntry = { name, size: numberAt(file, 'size'), modified: textAt(file, 'modified') };
+    // An integrity check (Story 18.4) carries its start and its state in place of a size.
+    const time = textAt(file, 'time');
+    entries.push(time === '' ? entry : { ...entry, time, state: textAt(file, 'state') });
   }
   return entries;
+}
+
+/**
+ * An integrity report's lines as rows (Story 18.4): each non-empty line its own entry at the check's
+ * start `time`, severe where the report marks it an error, info otherwise.
+ */
+function reportLinesOf(lines: readonly string[], time: string): readonly LogLine[] {
+  return lines
+    .filter((line) => line.trim() !== '')
+    .map((line) => ({
+      stamp: time,
+      pid: '',
+      severity: line.startsWith(REPORT_ERROR_MARK) ? REPORT_ERROR_SEVERITY : REPORT_INFO_SEVERITY,
+      category: '',
+      text: line,
+      raw: line,
+      head: true,
+    }));
 }
 
 /**
@@ -150,6 +247,9 @@ export class LogViewerStore {
 
   private fileEntries: readonly LogLine[] = [];
 
+  /** A declared read's rows as answered, newest first (Story 16.10); empty for every other source. */
+  private answeredRows: readonly Readonly<Record<string, unknown>>[] = [];
+
   private offsetValue = 0;
 
   private identityValue = '';
@@ -159,6 +259,9 @@ export class LogViewerStore {
   private restartedValue = false;
 
   private truncatedValue = false;
+
+  /** Whether the integrity check the window names has not ended (Story 18.4). */
+  private runningValue = false;
 
   private cursorValue = false;
 
@@ -195,11 +298,13 @@ export class LogViewerStore {
   private clearWindow(): void {
     this.goneValue = false;
     this.fileEntries = [];
+    this.answeredRows = [];
     this.offsetValue = 0;
     this.identityValue = '';
     this.sizeValue = 0;
     this.restartedValue = false;
     this.truncatedValue = false;
+    this.runningValue = false;
     this.cursorValue = false;
     this.loadingValue = false;
     this.loadedValue = false;
@@ -277,6 +382,11 @@ export class LogViewerStore {
     return this.fileEntries;
   }
 
+  /** A declared read's rows as the answer carried them, newest first; empty for any other source. */
+  rows(): readonly Readonly<Record<string, unknown>>[] {
+    return this.answeredRows;
+  }
+
   loading(): boolean {
     return this.loadingValue;
   }
@@ -307,6 +417,11 @@ export class LogViewerStore {
     return this.sizeValue;
   }
 
+  /** Whether the integrity check on screen is still running, so it has no report yet (Story 18.4). */
+  running(): boolean {
+    return this.runningValue;
+  }
+
   /**
    * Whether Load newer is offered: only once a page has answered and left a cursor, or, for a
    * source that reads entries, once its window has answered.
@@ -316,13 +431,19 @@ export class LogViewerStore {
    * request for one.
    */
   canLoadNewer(): boolean {
-    if (this.sourceValue.entries === true) return this.loadedValue && this.faultValue === null;
+    if (this.windowed()) return this.loadedValue && this.faultValue === null;
     return this.cursorValue;
+  }
+
+  /** Whether the source reads its newest window whole: the secondary logs' entries and a declared read. */
+  private windowed(): boolean {
+    return this.sourceValue.entries === true || this.sourceValue.kind === 'read';
   }
 
   /** The first read: the last bytes of the file. */
   async open(): Promise<void> {
     this.fileEntries = [];
+    this.answeredRows = [];
     this.restartedValue = false;
     await this.read('');
   }
@@ -335,7 +456,7 @@ export class LogViewerStore {
    * file's own start, so the rows it replaces are gone and the held cursor with them.
    */
   async loadNewer(): Promise<void> {
-    if (this.sourceValue.entries === true) {
+    if (this.windowed()) {
       await this.read('');
       return;
     }
@@ -351,14 +472,16 @@ export class LogViewerStore {
     this.goneValue = false;
     this.notify();
 
-    const entriesMode = this.sourceValue.entries === true;
+    const entriesMode = this.windowed();
+    const declared = this.sourceValue.kind === 'read';
     const params: string[] = [];
     if (!entriesMode && offset !== '') {
       params.push('offset=' + encodeURIComponent(offset), 'identity=' + encodeURIComponent(this.identityValue));
     }
     if (!entriesMode && this.fileValue !== '') params.push('file=' + encodeURIComponent(this.fileValue));
     const path = this.sourceValue.tailPath + (params.length === 0 ? '' : '?' + params.join('&'));
-    const result = await this.injector.get(ApiService).requestJson<unknown>(path, { scope: null });
+    // A declared read travels under the API service's own scope, as every screen's read does.
+    const result = await this.injector.get(ApiService).requestJson<unknown>(path, declared ? {} : { scope: null });
     if (generation !== this.generation) return;
 
     if (result.kind !== 'ok') {
@@ -383,6 +506,17 @@ export class LogViewerStore {
       return;
     }
 
+    if (declared) {
+      this.fileEntries = readRowsOf(result.body);
+      this.answeredRows = answeredRowsOf(result.body);
+      this.truncatedValue = flagAt(result.body, 'truncated');
+      this.cursorValue = false;
+      this.loadedValue = true;
+      this.loadingValue = false;
+      this.notify();
+      return;
+    }
+
     if (entriesMode) {
       this.fileEntries = entriesOf(result.body);
       this.truncatedValue = flagAt(result.body, 'truncated');
@@ -394,7 +528,11 @@ export class LogViewerStore {
     }
 
     const restarted = flagAt(result.body, 'restarted');
-    const window = parseFileLines(linesOf(result.body));
+    this.runningValue = this.sourceValue.report === true && flagAt(result.body, 'running');
+    const window =
+      this.sourceValue.report === true
+        ? reportLinesOf(linesOf(result.body), textAt(result.body, 'time'))
+        : parseFileLines(linesOf(result.body));
     this.offsetValue = numberAt(result.body, 'offset');
     this.identityValue = textAt(result.body, 'identity');
     this.sizeValue = numberAt(result.body, 'size');

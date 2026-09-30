@@ -159,7 +159,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -530,10 +530,12 @@ export function entityLabelProblem(declaration) {
  * pattern and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm
  * channel would otherwise carry in clear.
  *
- * A `secretArguments` name also qualifies when it is a top-level `secret` literal row of one of
- * the screen's write tools (`secretRowNames`) -- a derived credential such as X.509's
- * `PrivateKeyPassword`, or an authored wrapper field such as `Security.User`'s POST `Password`.
- * That is additive: every name the two sources above admit is still admitted.
+ * A `secretArguments` name is valid only when it is a top-level `secret` literal row of one of the
+ * screen's write tools (`secretRowNames`) -- a derived credential such as X.509's
+ * `PrivateKeyPassword`, or an authored wrapper field such as `Security.User`'s POST `Password`. A
+ * name the confirm channel opens is a value the write sends as a secret, so an ordinary field, a
+ * field the read declares and a misspelling are all refused; `fingerprintExcludes` keeps the two
+ * sources above.
  *
  * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
  * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
@@ -553,8 +555,8 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
   }
   const secretRows = secretRowNames(declaration.toolIdentifier, toolFields);
   for (const name of secrets) {
-    if (!names.settable.includes(name) && !names.read.includes(name) && !secretRows.includes(name)) {
-      return `secretArguments names '${name}', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)`;
+    if (!secretRows.includes(name)) {
+      return `secretArguments names '${name}', which is not a top-level secret field of this screen's write tools (AD-6)`;
     }
   }
   const criterionFault = credentialNameProblem(names.criteria, secrets, 'read.criteria');
@@ -563,16 +565,15 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
 }
 
 /**
- * The one set of names a declaration's two confirm-channel keys are validated against (DW-1206) --
- * `OcuPilot.Screen.Registry.DeclaredNames`' five projections, built once from the write tool's
- * classified rows and the declaration's own read.
+ * The one set of names a declaration's `fingerprintExcludes` and credential-name rule are validated
+ * against (DW-1206) -- `OcuPilot.Screen.Registry.DeclaredNames`' projections, built once from the
+ * write tool's classified rows and the declaration's own read. `secretArguments` is checked against
+ * the tools' secret rows alone (`secretRowNames`).
  *
- * `settable` is the `[]`-stripped spelling `OcuPilot.Screen.Tool.Write.FieldRows` drops a declared
- * secret by, so `secretArguments` is checked in it; `path` is the spelling written in the field
- * list, `[]` included, which is the spelling `OcuPilot.Kernel.Proposal.Fingerprint.Canonical`
- * matches an exclusion by, so `fingerprintExcludes` is checked in that. One traversal answers both,
- * because their consumers honour different spellings and a single spelling would admit the entry
- * one of them ignores -- the defect this builder exists to close.
+ * `settable` is the `[]`-stripped spelling `OcuPilot.Screen.Tool.Write.FieldRows` admits a field
+ * by; `path` is the spelling written in the field list, `[]` included, which is the spelling
+ * `OcuPilot.Kernel.Proposal.Fingerprint.Canonical` matches an exclusion by, so `fingerprintExcludes`
+ * is checked in that.
  *
  * `criteria` is the typed criterion parameters plus the flag criteria; `read` is `read.fields`, the
  * `rowGet` detail fields, the derived names and `criteria`; `credential` is `path` narrowed to a
@@ -746,9 +747,9 @@ function toolFieldRows(identifier, toolFields) {
 }
 
 /**
- * The top-level `secret` literal rows of the write tools `identifier` owns, by name -- the third
- * source a `secretArguments` entry may name (`OcuPilot.Screen.Registry.SecretRowNames`). A nested
- * path, an array element and a row of any other class contribute nothing.
+ * The top-level `secret` literal rows of the write tools `identifier` owns, by name -- the names a
+ * `secretArguments` entry may take (`OcuPilot.Screen.Registry.SecretRowNames`). A nested path, an
+ * array element and a row of any other class contribute nothing.
  */
 export function secretRowNames(identifier, toolFields) {
   const names = [];
@@ -772,8 +773,8 @@ function credentialNameProblem(names, secrets, where) {
     if (!isCredentialName(name)) continue;
     if (secrets.includes(name)) continue;
     return (
-      `${where} names '${name}', whose name matches the credential pattern and which ` +
-      'secretArguments does not declare (AD-3)'
+      `${where} names '${name}', whose name matches the credential pattern and which is not a ` +
+      "declared secret of this screen's write tools (AD-3)"
     );
   }
   return null;
@@ -843,8 +844,8 @@ export function ownPrivilegesProblem(declaration) {
  * refuses it for a descriptor, but nothing on the serving path calls `Validate`, and no rule
  * anywhere read `XData Areas` at all: `check-objectscript.py`'s entity-type rule reads
  * `XData Declaration` only. Refusing it here means the bad declaration never reaches a running
- * instance, which is where Epic 1's gating actually lives -- every area's screen list is empty
- * until Epic 2, so the area sets are the whole gate.
+ * instance, where an area whose set collapses to empty never gates
+ * (`OcuPilot.Screen.Gate.EvaluateArea`).
  *
  * `scope` is checked only when a screen declares one (a non-empty string): a fixture built to
  * exercise the privilege-pair refusal above declares no `scope` at all, and treating an absent
@@ -1202,6 +1203,8 @@ export function readProblem(declaration) {
   if (source.rows !== undefined && source.rows !== null) {
     const rowsFault = rowsProblem(source);
     if (rowsFault !== null) return rowsFault;
+    const activityFault = activityRowsProblem(declaration);
+    if (activityFault !== null) return activityFault;
   } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
   }
@@ -1544,8 +1547,9 @@ function shown(value) {
  * banner is a screen with no banner; otherwise it is an object carrying only `source`, `field` and
  * `cases`; `source` carries only `port` (`admin`), `endpoint` (a package-relative name) and `type`
  * (`GET`); `field` is a non-empty string; `cases` is a non-empty array of objects carrying only
- * `equals`, `messageKey` and `severity`, each `equals` and `messageKey` a non-empty string, each
- * `equals` declared once, each `severity` one of `BANNER_SEVERITIES`; and, last of all, a banner
+ * `equals`, `messageKey`, `severity` and an optional `action`, each `equals` and `messageKey` a
+ * non-empty string, each `equals` declared once, each `severity` one of `BANNER_SEVERITIES`, each
+ * `action` the id of one of the declaration's `rowActions`; and, last of all, a banner
  * declared while `read` is not is refused, because a banner is chrome on a declared read's screen
  * and rides in that read's own response. `OcuPilot.Test.BannerCorpus` is the corpus both engines
  * run.
@@ -1576,7 +1580,7 @@ export function bannerProblem(declaration) {
     return 'banner.field is empty, and a banner compares one named field to the values its cases name';
   }
 
-  const casesFault = bannerCasesProblem(banner);
+  const casesFault = bannerCasesProblem(banner, declaration);
   if (casesFault !== null) return casesFault;
 
   const { read } = declaration;
@@ -1584,8 +1588,11 @@ export function bannerProblem(declaration) {
   return null;
 }
 
-/** What is wrong with a banner's `cases`, or `null` (DW-270). */
-function bannerCasesProblem(banner) {
+/**
+ * What is wrong with a banner's `cases`, or `null` (DW-270). A case may name the action it offers
+ * (`action`, Story 16.11), which must be the id of one of the declaration's `rowActions` (AD-5).
+ */
+function bannerCasesProblem(banner, declaration) {
   if (!Array.isArray(banner.cases)) return 'banner.cases is not an array of banner cases';
   if (banner.cases.length === 0) {
     return 'banner.cases is empty, and a declared banner raises at least one sentence';
@@ -1595,7 +1602,7 @@ function bannerCasesProblem(banner) {
     const entry = banner.cases[index];
     const where = `banner.cases entry #${index + 1}`;
     if (!isObject(entry)) return `${where} is not an object declaring its equals, messageKey and severity`;
-    const entryKeysFault = unknownKeyProblem(where, entry, ['equals', 'messageKey', 'severity']);
+    const entryKeysFault = unknownKeyProblem(where, entry, ['equals', 'messageKey', 'severity', 'action']);
     if (entryKeysFault !== null) return entryKeysFault;
     for (const key of ['equals', 'messageKey']) {
       if (typeof entry[key] !== 'string' || entry[key] === '') {
@@ -1610,6 +1617,11 @@ function bannerCasesProblem(banner) {
     if (typeof entry.severity !== 'string' || !BANNER_SEVERITIES.includes(entry.severity)) {
       return `${where} severity '${shown(entry.severity)}' is not one of ${BANNER_SEVERITIES.join(',')}`;
     }
+    if (!Object.hasOwn(entry, 'action')) continue;
+    if (typeof entry.action !== 'string') return `${where} action is not a string naming one of rowActions`;
+    const actions = Array.isArray(declaration.rowActions) ? declaration.rowActions : [];
+    const declared = actions.filter((action) => isObject(action) && typeof action.id === 'string').map((action) => action.id);
+    if (!declared.includes(entry.action)) return `${where} action '${entry.action}' is not one of rowActions`;
   }
   return null;
 }
@@ -2055,6 +2067,31 @@ export function rowsProblem(source) {
   return null;
 }
 
+/** The detail type that answers one server's activity rows beside its running state (Story 16.10). */
+export const ACTIVITY_TYPE = 'ACTIVITY';
+
+/**
+ * What is wrong with a `rows` read of type `ACTIVITY`, or `null` for any other type (AD-36 as
+ * amended, Story 16.10). An `ACTIVITY` answer is one server's activity, so the read is admitted only
+ * on a screen declaring a `parentScope` whose one criterion is the `text` criterion `name`, which the
+ * route id fills. `OcuPilot.Screen.Registry.ActivityRowsProblem` returns the same sentence for every
+ * case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function activityRowsProblem(declaration) {
+  const { read } = declaration;
+  if (read.source.type !== ACTIVITY_TYPE) return null;
+  if (typeof declaration.parentScope !== 'string' || declaration.parentScope === '') {
+    return "read.source.type 'ACTIVITY' is declared with no parentScope, and a list over one server's activity reads the server its route id names (AD-36, Story 16.10)";
+  }
+  const fields = isObject(read.criteria) ? read.criteria.fields : undefined;
+  const sound =
+    Array.isArray(fields) && fields.length === 1 && isObject(fields[0]) && fields[0].param === 'name' && fields[0].kind === 'text';
+  if (!sound) {
+    return "read.criteria on an 'ACTIVITY' read is not the one text criterion 'name', which its route id fills (AD-36, Story 16.10)";
+  }
+  return null;
+}
+
 /**
  * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
  * `fields` its declared fields.
@@ -2314,8 +2351,8 @@ export function parentScopeResolutionProblem(screens) {
   return null;
 }
 
-/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10). */
-export const ROW_TARGET_KEYS = ['route', 'field'];
+/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10; `unless`, Story 16.12). */
+export const ROW_TARGET_KEYS = ['route', 'field', 'unless'];
 
 /**
  * What is wrong with `declaration`'s declared `rowTarget`, or `null` when nothing is, including
@@ -2328,7 +2365,9 @@ export const ROW_TARGET_KEYS = ['route', 'field'];
  * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
  * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
  * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
- * non-empty string that is one of `read.fields`. Whether the named route resolves is
+ * non-empty string that is one of `read.fields`. Its optional `unless`, where declared, is a
+ * non-empty string that is one of `read.fields` too: a row where that field reads `true` renders its
+ * name cell as text (Story 16.12, DW-1074). Whether the named route resolves is
  * `rowTargetResolutionProblem`'s question. `OcuPilot.Screen.Registry.RowTargetProblem` returns
  * the same sentence for every case in `OcuPilot.Test.RowTargetCorpus`.
  */
@@ -2356,6 +2395,13 @@ export function rowTargetProblem(declaration) {
   const fields = Array.isArray(declaration.read?.fields) ? declaration.read.fields : [];
   if (!fields.includes(rowTarget.field)) {
     return `rowTarget.field '${rowTarget.field}' is not one of read.fields`;
+  }
+  if (rowTarget.unless === undefined) return null;
+  if (typeof rowTarget.unless !== 'string' || rowTarget.unless === '') {
+    return "rowTarget.unless is empty, and an unless names the read field that withholds a row's link";
+  }
+  if (!fields.includes(rowTarget.unless)) {
+    return `rowTarget.unless '${rowTarget.unless}' is not one of read.fields`;
   }
   return null;
 }
@@ -2487,9 +2533,10 @@ export const ROW_GET_RULES = ['beforeToday'];
 /**
  * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
  * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
- * row is wrong; and `CERTINFO`, where only that type carries the fields.
+ * row is wrong; `CERTINFO`, where only that type carries the fields; and `ACTIVITY`, which alone
+ * answers a language server's `CurrentlyRunning`.
  */
-export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO'];
+export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO', 'ACTIVITY'];
 
 const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
@@ -3038,6 +3085,11 @@ export interface AreaDeclaration {
   readonly labelKey: string;
   readonly navigates: boolean;
   readonly pinBottom: boolean;
+  /**
+   * Empty for an area that never gates. Otherwise the area opens when any screen it lists, or any tab
+   * of a tab group it lists, is allowed, and when none is it names the first of these the caller
+   * lacks, or a listed screen's failed pair when the caller lacks none (AD-8).
+   */
   readonly privileges: readonly PrivilegePair[];
 }
 
@@ -3264,11 +3316,15 @@ export interface BannerSource {
 /** The \`.ocu-banner-*\` variants a declared banner may take (DESIGN.md \`:1203\`). */
 export type BannerSeverity = ${BANNER_SEVERITIES.map((value) => `'${value}'`).join(' | ')};
 
-/** One value a banner's field may take, and the sentence it raises (DW-270). */
+/**
+ * One value a banner's field may take, and the sentence it raises (DW-270); \`action\`, where
+ * declared, is the id of the screen's row action the strip offers (Story 16.11, AD-5).
+ */
 export interface BannerCase {
   readonly equals: string;
   readonly messageKey: string;
   readonly severity: BannerSeverity;
+  readonly action?: string;
 }
 
 /**
@@ -3391,6 +3447,8 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+  /** The read field that withholds a row's link where it reads \`true\` (Story 16.12, DW-1074). */
+  readonly unless?: string;
 }
 
 /**

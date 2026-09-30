@@ -11,6 +11,9 @@
  * next poll's line is the warning, Confirm stays offered, and the instance refuses it naming the
  * pair.
  *
+ * (c) lets the same principal's turn end before the pair is taken away, so the line can move only
+ * through the ended turn's re-read, every 15 s: it warns within one re-read.
+ *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
  * browser/proposal-privilege.browser-spec.mjs`.
@@ -27,7 +30,7 @@ import { signedInAt } from './panel-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import {
-  abandonTurns,
+  SLOT_FREE_TIMEOUT_MS,
   armProbeDefinition,
   disarmProbeDefinition,
   escapeOs,
@@ -60,6 +63,17 @@ const TOOL_GRANTS_REVOKED = ',%DB_IRISSYS:R';
 
 /** How long the panel has to show the revoked line once the role changes. */
 const REVOKE_WINDOW_MS = 5000;
+
+/** How long (c)'s ended turn has to show it: one 15 s re-read, and the read itself. */
+const REREAD_WINDOW_MS = 20000;
+
+/**
+ * How long (b)'s second provider call hangs, keeping the panel polling while the role changes. No
+ * longer than `requireFreeSlot` waits, so this file's `after` can wait the principal's turn out: an
+ * abandon is honoured only at a step boundary, which a hanging call has not reached, and a slot
+ * still held when this file ends refuses the next Send as this account 409 TURN.BUSY.
+ */
+const PRINCIPAL_HANG_SECONDS = SLOT_FREE_TIMEOUT_MS / 1000;
 
 const password = `OcuPilotPrivLine${randomBytes(12).toString('hex')}Aa9`;
 let browser = null;
@@ -107,7 +121,9 @@ after(async () => {
   if (config.container === LIVE_CONTAINER) return;
   await requireFreeSlot(config).catch(() => {});
   if (user !== '') {
-    await abandonTurns({ ...config, username: user, password }).catch(() => {});
+    // Waits (b)'s hanging turn out (`PRINCIPAL_HANG_SECONDS`), so the next file that signs in as
+    // this account finds its slot free.
+    await requireFreeSlot({ ...config, username: user, password }).catch(() => {});
     dropProposals(user);
   }
   dropProposals(config.username);
@@ -200,6 +216,17 @@ async function sendAndAwaitCard(page) {
   await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
 }
 
+/** Sign `page` in as the least-privileged principal on Home, past the first-login gate. */
+async function signInAsPrincipal(page) {
+  await page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.type('#ocu-signin-user', user);
+  await page.type('#ocu-signin-password', password);
+  await page.click('.ocu-signin-card button[type="submit"]');
+  await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, HOME_URL);
+}
+
 /** What the card's privilege line reads, whether it is the warning, and Confirm's aria-disabled. */
 async function readLine(page) {
   return page.evaluate(() => {
@@ -246,20 +273,14 @@ test('(b) a principal who loses a pair sees the warning within one poll, Confirm
   setRole(baseResources + TOOL_GRANTS);
   // The principal's own single turn slot (AD-41): an earlier run's hanging turn may still hold it.
   await requireFreeSlot({ ...config, username: user, password });
-  const tag = armProposal(30);
+  const tag = armProposal(PRINCIPAL_HANG_SECONDS);
   await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
   await page.setViewport(config.viewport);
   try {
-    await page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
-    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-    await page.type('#ocu-signin-user', user);
-    await page.type('#ocu-signin-password', password);
-    await page.click('.ocu-signin-card button[type="submit"]');
-    await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
-    await leaveFirstLoginGate(page, config.navigationTimeoutMs, HOME_URL);
+    await signInAsPrincipal(page);
     await sendAndAwaitCard(page);
     await page.waitForSelector('app-proposal-card [data-slot="privilege"]', { timeout: config.navigationTimeoutMs });
     const held = await readLine(page);
@@ -291,6 +312,53 @@ test('(b) a principal who loses a pair sees the warning within one poll, Confirm
       { timeout: config.navigationTimeoutMs },
       REVOKED_PAIR
     );
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('(c) once the turn has ended, a pair taken away reaches the line within one re-read, and Confirm stays offered', async () => {
+  // Mutation (Rule 19): never arm the ended turn's re-read in `TurnStore`, rebuild and redeploy ->
+  // the line keeps the held answer and this goes red.
+  setRole(baseResources + TOOL_GRANTS);
+  // (b)'s turn hangs on this principal's one slot (AD-41) until its call returns.
+  await requireFreeSlot({ ...config, username: user, password });
+  const tag = armProposal(0);
+  await resetRememberedState();
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  await page.setViewport(config.viewport);
+  try {
+    await signInAsPrincipal(page);
+    await sendAndAwaitCard(page);
+    // The second provider call answers at once, so the turn ends and the composer unlocks.
+    await page.waitForFunction(
+      () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForSelector('app-proposal-card [data-slot="privilege"]', { timeout: config.navigationTimeoutMs });
+    const held = await readLine(page);
+    assert.equal(held.warning, false, `the principal holds the whole set when the turn ends: ${held.text}`);
+
+    setRole(baseResources + TOOL_GRANTS_REVOKED);
+    await page.waitForFunction(
+      () => document.querySelector('app-proposal-card [data-slot="privilege"]')?.classList.contains('ocu-banner-warning') === true,
+      { timeout: REREAD_WINDOW_MS }
+    );
+    const revoked = await readLine(page);
+    const stored = storedPairs(user);
+    assert.equal(
+      revoked.text,
+      STRINGS.privilegeProposalMissing
+        .split('<resources>')
+        .join(stored.split(',').join(', '))
+        .split('<resource>')
+        .join(REVOKED_PAIR),
+      `the warning names the stored set and ${REVOKED_PAIR}`
+    );
+    assert.equal(revoked.confirmDisabled, null, 'and Confirm is still offered');
   } finally {
     await context.close();
     forgetTag(tag);

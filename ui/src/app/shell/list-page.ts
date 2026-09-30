@@ -2,14 +2,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChi
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../core/api';
-import { NavigationService, ownIdSegment, parentCriteria } from '../core/navigation';
+import { NavigationService, formatRequires, ownIdSegment, parentCriteria } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { createScreenRead } from '../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import type { BannerCase, ScreenDeclaration } from '../core/screens.generated';
-import { stringFor } from '../core/strings';
+import { STRINGS, stringFor } from '../core/strings';
 import { COMMAND_BAR_FILTER_ID } from './command-bar';
 import { DataTable } from './data-table';
 import { ScreenActionDialogs } from './screen-action-dialogs';
@@ -20,6 +20,21 @@ interface ListView {
   readonly screen: ScreenDeclaration;
   readonly store: ScreenStore;
 }
+
+/**
+ * The action the raised banner case offers, resolved for rendering: its label, and while the read's
+ * `bannerRequires` names a pair, the "Requires <pair>" reason it is `aria-disabled` with.
+ */
+interface BannerAction {
+  readonly id: string;
+  readonly label: string;
+  readonly reason: string;
+  readonly ariaDisabled: 'true' | null;
+  readonly describedBy: string | null;
+}
+
+/** The id of the banner action's reason, which describes the gated control. */
+export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
 
 /**
  * The page every `list` archetype renders (AD-5): the screen's declared read, bound once, and the
@@ -36,8 +51,11 @@ interface ListView {
  * the instance resolves it inside the screen's own read and the store holds the string key the
  * answer carried, so the strip appears and disappears with the rows rather than on a second request,
  * and an auto-refresh tick clears it the moment the condition clears (EXPERIENCE.md "panel (top), form-pages, Task"). It is
- * never dismissible while it stands, and it carries no action -- the Task Manager's Resume is
- * Epic 7's (FR-51).
+ * never dismissible while it stands. **A raised case may name the action it offers** (AD-5, Story
+ * 16.11): the strip draws it once a handler is registered, labelled through `actionLabel`, and
+ * `aria-disabled` with "Requires <pair>" while the read's `bannerRequires` names a pair the caller
+ * lacks; otherwise a click runs it. Nothing here sets the banner from a write's answer: the change
+ * event's re-read and the refresh tick do (AD-14, AD-43).
  *
  * **A parent-scoped list reads for its route id** (AD-5). A screen declaring a `parentScope` declares
  * exactly one criterion, and the page fills it with the id the URL carries (`parentCriteria`), read
@@ -61,6 +79,22 @@ interface ListView {
       <p [class]="bannerClass" role="status">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ bannerText }}</span>
+        @if (bannerAction; as action) {
+          <span class="ocu-banner-action-slot">
+            <button
+              type="button"
+              class="ocu-button-text ocu-banner-action"
+              [attr.aria-disabled]="action.ariaDisabled"
+              [attr.aria-describedby]="action.describedBy"
+              (click)="onBannerAction()"
+            >
+              {{ action.label }}
+            </button>
+            @if (action.reason) {
+              <span class="ocu-banner-action-reason" role="tooltip" [id]="bannerReasonId">{{ action.reason }}</span>
+            }
+          </span>
+        }
       </p>
     }
     @if (refusalText) {
@@ -109,6 +143,8 @@ export class ListPage {
   /** Bumped by the store, so the strip re-renders under `OnPush` when a read changes it. */
   private readonly generation = signal(0);
 
+  protected readonly bannerReasonId = BANNER_REASON_ID;
+
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
@@ -148,9 +184,12 @@ export class ListPage {
       void this.refresh.readNow();
     });
     const stopStore = store.subscribe(() => this.generation.update((value) => value + 1));
+    // A banner action is drawn once its handler is registered, which a page may do after this one.
+    const stopActions = this.actions.subscribe(() => this.generation.update((value) => value + 1));
     inject(DestroyRef).onDestroy(() => {
       stopIdChange.unsubscribe();
       stopStore();
+      stopActions();
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
       // The handler is the app's, so a typed-name confirm left open would otherwise outlive the
@@ -225,6 +264,35 @@ export class ListPage {
    */
   protected onActing(): void {
     this.table()?.focusGrid();
+  }
+
+  /**
+   * The raised case's action (AD-5, Story 16.11), or `null` when the case names none or no handler
+   * carries it. The instance's `bannerRequires` is the only gate: the client holds no map of what a
+   * tool requires.
+   */
+  protected get bannerAction(): BannerAction | null {
+    this.generation();
+    const view = this.list;
+    const id = this.raisedCase()?.action ?? '';
+    if (view === null || id === '' || !this.actions.has(view.screen.descriptor, id)) return null;
+    const requires = view.store.bannerRequires();
+    const reason = requires === '' ? '' : formatRequires(STRINGS.privilegeRequiresResource, requires);
+    return {
+      id,
+      label: actionLabel(view.screen.descriptor, id),
+      reason,
+      ariaDisabled: reason === '' ? null : 'true',
+      describedBy: reason === '' ? null : BANNER_REASON_ID,
+    };
+  }
+
+  /** Run the banner's action, unless it is gated: a gated control explains itself and does nothing. */
+  protected onBannerAction(): void {
+    const view = this.list;
+    const action = this.bannerAction;
+    if (view === null || action === null || action.ariaDisabled !== null) return;
+    this.actions.run(view.screen.descriptor, action.id);
   }
 
   /** The strip's sentence, or `''` when none stands. */

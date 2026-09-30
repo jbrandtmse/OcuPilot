@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -318,9 +318,9 @@ Parameter EFFECTSERVERCLIENTSDELETED = "OAUTH.SERVERCLIENTSDELETED";
 
 Parameter EFFECTSERVERCLIENTSDELETEDHIDDEN = "OAUTH.SERVERCLIENTSDELETEDHIDDEN";
 
-/// <p>The consequence of customization roles that add <parameter>ALLROLE</parameter> or an
-/// <parameter>ADMINROLEPREFIX</parameter> role: the vendor's customization code runs with them. Alone,
-/// and with each client effect.</p>
+/// <p>The consequence of customization roles that add a role granting <parameter>ALLROLE</parameter>
+/// or an administrative privilege (<method>AddsPrivilegedCustomizationRole</method>): the vendor's
+/// customization code runs with them. Alone, and with each client effect.</p>
 Parameter EFFECTCUSTOMIZATIONPRIVILEGED = "OAUTH.CUSTOMIZATIONPRIVILEGED";
 
 Parameter EFFECTSERVERCLIENTSPRIVILEGED = "OAUTH.SERVERCLIENTSPRIVILEGED";
@@ -366,17 +366,26 @@ Parameter OWNNAMESPACEFIELDS = "Globals,Routines";
 /// <p>A database configuration (Story 18.3, <method>Database</method>), keyed by its name.</p>
 Parameter TYPEDATABASECONFIG = "database-configuration";
 
+/// <p>A database, keyed by its directory (Story 18.4, <method>Database</method>): the disk
+/// operations' target.</p>
+Parameter TYPEDATABASE = "database";
+
+/// <p>The disk operation the own-database arm refuses on a <parameter>TYPEDATABASE</parameter>
+/// target.</p>
+Parameter DISMOUNTWRITETYPE = "DISMOUNT";
+
 /// <p>The write would delete, or change the directory, data server, resource or read-only setting
 /// of, one of the databases OcuPilot or the instance itself depends on
 /// (<method>OwnDatabaseNames</method>), compared by name without regard to case, or change the
 /// resource or read-only setting of another configuration name over one of their directories, which
-/// reaches the same file (AD-10 as amended 2026-09-29).</p>
+/// reaches the same file; or it would dismount one, matched by directory (AD-10 as amended
+/// 2026-09-29).</p>
 Parameter OCUPILOTDATABASE = "PROHIBITED.OCUPILOTDATABASE";
 
 /// <p>The one sentence <parameter>OCUPILOTDATABASE</parameter> carries, caller-neutral, published in
 /// EXPERIENCE.md's Fixed strings and pinned equal to <code>databaseRefusalOcuPilot</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
-Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted, and its directory, resource and read-only setting cannot be changed.";
+Parameter OCUPILOTDATABASEREASON = "OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.";
 
 /// <p>The seven databases the classic Delete Database dialog refuses by name
 /// (<code>%CSP.UI.Portal.Dialog.DatabaseDelete</code>), comma-separated.</p>
@@ -395,6 +404,29 @@ Parameter TYPEWEBSESSION = "web-session";
 /// <p>A background task (Story 16.5), whose cancel, pause and resume the reviewed-few sweep alone
 /// judges (<method>ReviewedFewOnly</method>).</p>
 Parameter TYPEBACKGROUNDTASK = "background-task";
+
+/// <p>An external language server (Story 16.10), whose start, stop, create, change and delete the
+/// reviewed-few sweep alone judges (<method>LanguageServer</method>): OcuPilot runs in no language
+/// server (AD-10).</p>
+Parameter TYPELANGUAGESERVER = "language-server";
+
+/// <p>A lock (Story 16.12), whose removals the <method>Lock</method> arm judges: a lock on one of
+/// OcuPilot's own globals is refused, and every other lock may be removed.</p>
+Parameter TYPELOCK = "lock";
+
+/// <p>The write would remove a lock on one of OcuPilot's own globals (<method>IsOcuPilotLock</method>),
+/// alone or among an owner's locks (AD-10 as amended 2026-09-30): the turn slot, the proposal target,
+/// the state cap and the install lock each keep a single-holder guarantee. Refused whatever the
+/// caller.</p>
+Parameter OCUPILOTLOCK = "PROHIBITED.OCUPILOTLOCK";
+
+/// <p>The one sentence <parameter>OCUPILOTLOCK</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>lockRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTLOCKREASON = "This lock keeps OcuPilot's own state consistent. It cannot be removed from OcuPilot.";
+
+/// <p>The prefix every global OcuPilot locks begins with, compared with its case.</p>
+Parameter OWNGLOBALPREFIX = "OcuPilot";
 
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
@@ -577,6 +609,11 @@ Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 /// rows are judged as it (Story 9.8).</p>
 Parameter SETTINGSFIELD = "Settings";
 
+/// <p>The object an external language server's type-specific settings travel under, whose
+/// <code>Custom.&lt;member&gt;</code> diff rows are judged as it, as <parameter>SETTINGSFIELD</parameter>'s
+/// are (Story 16.25).</p>
+Parameter CUSTOMFIELD = "Custom";
+
 /// <p>The account's last usable date. The vendor refuses a sign-in after it and disables the account
 /// at that refusal (measured on this build), so a date before today is a disable by effect.</p>
 Parameter FIELDEXPIRATIONDATE = "ExpirationDate";
@@ -614,11 +651,11 @@ Parameter READTYPE = "GET";
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
-/// <method>Mapping</method> adds, and the one <method>Database</method> adds last -- twenty-three in
-/// all.</p>
+/// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
+/// <method>Lock</method> adds last -- twenty-four in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -653,6 +690,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
     If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
+    If pCode = ..#OCUPILOTLOCK Quit ..#OCUPILOTLOCKREASON
     Quit ""
 }
 
@@ -756,6 +794,9 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseChangeFields()
+    If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields()
+    ; A disk operation moves no field (Story 18.4): its one argument is its fingerprint subject's.
+    If pType = ..#TYPEDATABASE Quit ""
     Quit ""
 }
 
@@ -865,6 +906,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
+    If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields() _ $ListBuild("Type")
     Quit ""
 }
 
@@ -945,7 +987,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && '..IsMappingType(tType) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1041,8 +1083,8 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..Mapping(tType, tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
-        If tType = ..#TYPEDATABASECONFIG {
-            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode)
+        If (tType = ..#TYPEDATABASECONFIG) || (tType = ..#TYPEDATABASE) {
+            Set tSC = ..Database(tId, $Get(tToolClass), tTarget, .tChanged, .pProhibits, .pCode, tType)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1085,6 +1127,17 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; reviewed-few sweep over an empty permitted list, and nothing else (Story 16.5).
         If tType = ..#TYPEBACKGROUNDTASK {
             Set tSC = ..ReviewedFewOnly(..#TYPEBACKGROUNDTASK, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; An external language server: AD-10 names no effect on one, so its writes pass the
+        ; reviewed-few sweep and nothing else (Stories 16.10 and 16.25).
+        If tType = ..#TYPELANGUAGESERVER {
+            Set tSC = ..LanguageServer($Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A lock (Story 16.12): OcuPilot's own locks are refused, alone or among an owner's.
+        If tType = ..#TYPELOCK {
+            Set tSC = ..Lock(tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1779,6 +1832,109 @@ ClassMethod DeviceFields() As %List [ Private ]
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
 }
 
+/// <p>The lock arm (AD-10 as amended 2026-09-30): a removal is refused <parameter>OCUPILOTLOCK</parameter>
+/// when <var>pTarget</var>, the fresh read, names a lock on one of OcuPilot's own globals -- its
+/// <code>Reference</code>, or any <code>Locks[].Reference</code> of an owner's set -- and is otherwise
+/// permitted, a lock held by an IRIS system process included. A removal sends no body and its card
+/// rows are removals read from the fresh read, so it reaches the reviewed-few sweep with nothing
+/// changed.</p>
+ClassMethod Lock(pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..HoldsOcuPilotLock(pTarget) {
+            Do ..Refuse(..#OCUPILOTLOCK, .pProhibits, .pCode)
+            Quit
+        }
+        Kill pChanged
+        Set tSC = ..ReviewedFewOnly(..#TYPELOCK, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var>, a lock read's answer, names a lock on one of OcuPilot's own globals:
+/// its own <code>Reference</code>, or the <code>Reference</code> of any member of its
+/// <code>Locks</code>.</p>
+/// <p><b>It fails closed</b>: a target that is not an object, or a member of <code>Locks</code> that
+/// is not one, reads as naming such a lock.</p>
+ClassMethod HoldsOcuPilotLock(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    If (pTarget.%GetTypeOf("Reference") = "string") && ..IsOcuPilotLock(pTarget.%Get("Reference")) Quit 1
+    If pTarget.%GetTypeOf("Locks") '= "array" Quit 0
+    Set tHolds = 0
+    Set tIterator = pTarget.%Get("Locks").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLock) {
+        If '$IsObject(tLock) || ..IsOcuPilotLock(tLock.%Get("Reference")) {
+            Set tHolds = 1
+            Quit
+        }
+    }
+    Quit tHolds
+}
+
+/// <p>Whether the lock table's reference <var>pReference</var> names a global whose name begins with
+/// <parameter>OWNGLOBALPREFIX</parameter>, compared with its case: the name after the caret and any
+/// <code>[...]</code> or <code>|...|</code> extended-reference prefix, up to its first
+/// subscript.</p>
+ClassMethod IsOcuPilotLock(pReference As %String) As %Boolean
+{
+    Quit ($Extract(..GlobalName(pReference), 1, $Length(..#OWNGLOBALPREFIX)) = ..#OWNGLOBALPREFIX)
+}
+
+/// <p>The global name <var>pReference</var> locks, as <method>IsOcuPilotLock</method> reads it, or
+/// <code>""</code> for a reference that names no global. A quoted directory inside the prefix may
+/// hold <code>]</code> or <code>|</code>, so the prefix is skipped outside quotes only.</p>
+ClassMethod GlobalName(pReference As %String) As %String
+{
+    If $Extract(pReference) '= "^" Quit ""
+    Set tRest = $Extract(pReference, 2, *)
+    Set tOpen = $Extract(tRest)
+    If (tOpen = "[") || (tOpen = "|") {
+        Set tClose = $Select(tOpen = "[": "]", 1: "|")
+        Set tQuoted = 0
+        Set tEnd = 0
+        For tI = 2:1:$Length(tRest) {
+            Set tChar = $Extract(tRest, tI)
+            If tChar = """" Set tQuoted = 'tQuoted Continue
+            If 'tQuoted && (tChar = tClose) {
+                Set tEnd = tI
+                Quit
+            }
+        }
+        If tEnd = 0 Quit ""
+        Set tRest = $Extract(tRest, tEnd + 1, *)
+    }
+    Quit $Piece(tRest, "(", 1)
+}
+
+/// <p>The external language server predicates (Stories 16.10 and 16.25): the reviewed-few sweep and
+/// nothing else, as a device's. OcuPilot runs in no language server, so none is its own and AD-10
+/// names no effect on one. A start, a stop and a delete send no body (AD-51), and their card rows
+/// are the state or the removal read from the fresh read, so they reach the sweep with nothing
+/// changed. <var>pToolClass</var> is the proposal's tool.</p>
+ClassMethod LanguageServer(pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    If ..WriteTypeOf(pToolClass) = "DELETE" Kill pChanged
+    Quit ..ReviewedFewOnly(..#TYPELANGUAGESERVER, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>An external language server's settable fields on a change (Story 16.25): its port, its two
+/// timeouts, its bind address, its resource, its two TLS configuration names and the flags beside
+/// them, and <parameter>CUSTOMFIELD</parameter>, whose members its type takes. A create sets its
+/// <code>Type</code> as well (<method>PermittedCreateFields</method>). Its file locations are not
+/// among them: no caller names a path (AD-21).</p>
+ClassMethod LanguageServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("Port", "ConnectionTimeout", "InitializationTimeout", "BindToIPAddress", "Resource", "UseSharedMemory", "SSLConfigurationServer", "SSLConfigurationClient", "VerifySSLHostName", ..#CUSTOMFIELD)
+}
+
 /// <p>The namespace predicates, in declared order, first hit wins: for an own namespace
 /// (<method>IsOwnNamespace</method>), a delete, or a change to its globals or routines database, is
 /// refused <parameter>OCUPILOTNAMESPACE</parameter>; then, for every write, the reviewed-few sweep
@@ -1854,12 +2010,40 @@ ClassMethod NamespaceFields() As %List [ Private ]
 /// reaches the protected file through another name. Then the reviewed-few sweep over
 /// <method>DatabaseChangeFields</method>. A read that fails refuses. A create is
 /// <method>Created</method>'s.</p>
-ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p><b>A disk operation</b> (<var>pType</var> <parameter>TYPEDATABASE</parameter>, Story 18.4) is
+/// keyed by directory: a <parameter>DISMOUNTWRITETYPE</parameter> of a database whose directory
+/// <var>pTarget</var> answers is one of those databases' directories
+/// (<method>OwnDatabaseDirectories</method>, compared by
+/// <method>OcuPilot.Port.DatabasePort.SameDirectory</method>) is refused
+/// <parameter>OCUPILOTDATABASE</parameter>, and a read that fails refuses; every other operation is
+/// permitted, its one argument being its fingerprint subject's (<method>SkippedFields</method>).</p>
+ClassMethod Database(pId As %String, pToolClass As %String, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String, pType As %String = {..#TYPEDATABASECONFIG}) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPEDATABASE {
+            If ..WriteTypeOf(pToolClass) = ..#DISMOUNTWRITETYPE {
+                Set tPort = ..PortClassOf(pToolClass)
+                Set tNamesSC = ..OwnDatabaseNames(tPort, .tOwn)
+                If $$$ISOK(tNamesSC) Set tDirsSC = ..OwnDatabaseDirectories(tPort, tOwn, .tDirectories)
+                Set tDirectory = ..Rendered(pTarget, "Directory")
+                If $$$ISERR(tNamesSC) || $$$ISERR(tDirsSC) || (tDirectory = "") {
+                    Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                    Quit
+                }
+                For tI = 1:1:$ListLength(tDirectories) {
+                    If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) {
+                        Do ..Refuse(..#OCUPILOTDATABASE, .pProhibits, .pCode)
+                        Quit
+                    }
+                }
+                If pProhibits Quit
+            }
+            Set tSC = ..ReviewedFewOnly(..#TYPEDATABASE, .pChanged, .pProhibits, .pCode)
+            Quit
+        }
         Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE") || ..RemovesOf(pToolClass)
         If tDelete Kill pChanged
         Set tPort = ..PortClassOf(pToolClass)
@@ -2364,9 +2548,10 @@ ClassMethod ServerClientsEffect(pTarget As %DynamicObject) As %String
 }
 
 /// <p>Whether <var>pPayload</var>'s <code>CustomizationRoles</code> adds a role
-/// <var>pTarget</var>'s does not hold that is <parameter>ALLROLE</parameter> or carries
-/// <parameter>ADMINROLEPREFIX</parameter> (<method>IsPrivilegedRole</method>): the customization code
-/// then runs with it (Story 12.7). A payload without the list adds none.</p>
+/// <var>pTarget</var>'s does not hold that grants <code>%All</code> or an administrative privilege
+/// (<method>RoleGrantsAdministrativePrivilege</method>, the form's own mark): the customization code
+/// then runs with it. A role whose answer cannot be read counts as privileged. A payload without the
+/// list adds none.</p>
 ClassMethod AddsPrivilegedCustomizationRole(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
 {
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf("CustomizationRoles") '= "array") Quit 0
@@ -2380,7 +2565,7 @@ ClassMethod AddsPrivilegedCustomizationRole(pPayload As %DynamicObject, pTarget 
     Set tIterator = pPayload.%Get("CustomizationRoles").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRole) {
         If $IsObject(tRole) || $Data(tHeld($ZConvert(tRole, "U"))) Continue
-        If ..IsPrivilegedRole(tRole) Set tAdds = 1 Quit
+        If ..RoleGrantsAdministrativePrivilege(tRole) Set tAdds = 1 Quit
     }
     Quit tAdds
 }
@@ -2663,41 +2848,47 @@ ClassMethod RoleNames(pObject As %DynamicObject, Output pNames, pField As %Strin
 /// and each carries <code>%Admin_Secure:U</code> or <code>%Admin_Operate:U</code> as a resource, so
 /// granting one is a grant of exactly the privilege this write tool itself gates on. Each role in
 /// the recursed set is therefore read for its resource list as well as its name.</p>
+/// <p><b>A read that fails counts as privileged</b>, with an OK status: a failed
+/// <code>GetRecursedRoleSet</code>, and a role <method>RoleGrantsPrivilege</method> cannot read.
+/// Measured on this build, a caller without <code>%Admin_Secure:USE</code> is refused both
+/// (#921 and #822), so the answer it cannot get is never read as "grants nothing". An empty name
+/// grants nothing.</p>
 ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %Status [ Private ]
 {
     Set pEscalates = 0
     Set tSC = $$$OK
     Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
         If ..IsPrivilegedRole(pRole) {
             Set pEscalates = 1
             Quit
         }
         Set tRecursed = ""
-        Set tSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
-        If $$$ISERR(tSC) Quit
+        Set tRecursedSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
+        If $$$ISERR(tRecursedSC) {
+            Set pEscalates = 1
+            Quit
+        }
         For tI = 1:1:$Length(tRecursed, ",") {
             Set tOne = $Piece(tRecursed, ",", tI)
             If ..IsPrivilegedRole(tOne) {
                 Set pEscalates = 1
                 Quit
             }
-            Set tSC = ..RoleGrantsPrivilege(tOne, .tGrants)
-            If $$$ISERR(tSC) Quit
-            If tGrants {
+            Set tReadSC = ..RoleGrantsPrivilege(tOne, .tGrants)
+            If $$$ISERR(tReadSC) || tGrants {
                 Set pEscalates = 1
                 Quit
             }
         }
-        If $$$ISERR(tSC) Quit
         ; A name the instance holds no role for recurses to nothing, so the loop above saw no
         ; member: ask for the name's own resources before answering that it grants nothing.
         If 'pEscalates && (tRecursed = "") {
-            Set tSC = ..RoleGrantsPrivilege(pRole, .tGrants)
-            If $$$ISERR(tSC) Quit
-            Set pEscalates = ''tGrants
+            Set tReadSC = ..RoleGrantsPrivilege(pRole, .tGrants)
+            Set pEscalates = ($$$ISERR(tReadSC) || tGrants)
         }
     } Catch ex {
-        Set pEscalates = 0
+        Set pEscalates = 1
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -2722,13 +2913,19 @@ ClassMethod RoleGrantsAdministrativePrivilege(pRole As %String) As %Boolean
     Quit ''tEscalates
 }
 
+/// <p>The error code <class>Security.Roles</class> <code>Exists</code> answers for a role the
+/// instance does not hold (measured on this build, beside #822 for a caller refused the read).</p>
+Parameter ROLEABSENTCODE = 883;
+
 /// <p>Whether role <var>pRole</var> carries a privileged <b>resource</b>, in <var>pGrants</var>:
 /// one named <parameter>ALLROLE</parameter> or carrying <parameter>ADMINROLEPREFIX</parameter>, at
 /// any permission.</p>
 /// <p>The resource list is the instance's own (<class>Security.Roles</class>, read in
-/// <code>%SYS</code> and restored, AD-16). A name the instance holds no role for carries nothing,
-/// which is the same answer <method>RoleEscalates</method> gives it: the vendor's own validation is
-/// what refuses an unknown role.</p>
+/// <code>%SYS</code> and restored, AD-16). <code>Exists</code> tells an absent role from one that
+/// cannot be read: a name the instance holds no role for (<parameter>ROLEABSENTCODE</parameter>)
+/// carries nothing, which is the same answer <method>RoleEscalates</method> gives it, and the
+/// vendor's own validation is what refuses an unknown role. Any other failure to read the role is
+/// an error status, which <method>RoleEscalates</method> counts as privileged.</p>
 /// <p><b>The prefix, not a list.</b> Matching the resource-name prefix rather than a roster of
 /// today's administrative resources is a rule a later build's new <code>%Admin_*</code> resource
 /// cannot outgrow. It admits every resource outside that prefix, which is what keeps an ordinary
@@ -2742,11 +2939,22 @@ ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As
     Try {
         If $ZStrip(pRole, "<>W") = "" Quit
         Set $NAMESPACE = "%SYS"
+        Set tExistsSC = $$$OK
+        Set tExists = ##class(Security.Roles).Exists(pRole, , .tExistsSC)
         Kill tProps
-        Set tGetSC = ##class(Security.Roles).Get(pRole, .tProps)
-        Set tResources = ""
-        If $$$ISOK(tGetSC) Set tResources = $Get(tProps("Resources"))
+        Set tGetSC = $$$OK
+        If tExists Set tGetSC = ##class(Security.Roles).Get(pRole, .tProps)
         Set $NAMESPACE = tOrigNS
+        If 'tExists {
+            If (("," _ $System.Status.GetErrorCodes(tExistsSC) _ ",") [ ("," _ ..#ROLEABSENTCODE _ ",")) Quit
+            Set tSC = $Select($$$ISERR(tExistsSC): tExistsSC, 1: $$$ERROR($$$GeneralError, "the role " _ pRole _ " could not be read"))
+            Quit
+        }
+        If $$$ISERR(tGetSC) {
+            Set tSC = tGetSC
+            Quit
+        }
+        Set tResources = $Get(tProps("Resources"))
         For tI = 1:1:$Length(tResources, ",") {
             If ..IsPrivilegedRole($Piece($Piece(tResources, ",", tI), ":", 1)) Set pGrants = 1
         }
@@ -3493,6 +3701,16 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             If $Piece(tField, ".", 1) = ..#SETTINGSFIELD, $Length(tField, ".") > 1 {
                 Set tMember = $Piece(tField, ".", 2, *)
                 Set tField = ..#SETTINGSFIELD
+                If $Data(pChanged(tField)) Continue
+                If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
+                Set pChanged(tField) = ""
+                Set pChanged = pChanged + 1
+                Continue
+            }
+            ; A language server's Custom.<member> row is judged the same way (Story 16.25).
+            If $Piece(tField, ".", 1) = ..#CUSTOMFIELD, $Length(tField, ".") > 1 {
+                Set tMember = $Piece(tField, ".", 2, *)
+                Set tField = ..#CUSTOMFIELD
                 If $Data(pChanged(tField)) Continue
                 If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
                 Set pChanged(tField) = ""

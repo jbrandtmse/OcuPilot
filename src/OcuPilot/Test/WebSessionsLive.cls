@@ -263,8 +263,9 @@ Method TestAPrincipalWithoutTheWritePairIsRefusedByName()
 /// <p>AD-8's own-pair case: a holder of the Web applications area's two pairs alone keeps the area,
 /// its list and the REST API explorer, while Web sessions is shown and refused on
 /// <code>%Admin_Operate:USE</code>.</p>
-/// <p>Mutation (Rule 19): move <code>%Admin_Operate:USE</code> from the descriptor's
-/// <code>ownPrivileges</code> into the area's pairs -- the area reads denied and this goes red.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from the descriptor's
+/// <code>privileges</code> and <code>ownPrivileges</code> -- Web sessions reads open and this goes
+/// red.</p>
 Method TestAnAreaHolderKeepsTheAreaAndIsRefusedWebSessions()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")

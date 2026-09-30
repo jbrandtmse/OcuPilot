@@ -174,7 +174,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 
 #### PRD 5.12 - Polish-week capabilities (P1, 2026-09-28 to 2026-10-04)
 
-- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending that entry alone; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
+- FR-70: Screen-aware help from the agent - "Explain this screen" as one click on every screen citing the read tool it used; an explain entry point on every log and audit entry sending the screen's context with that entry marked [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"]; at least three suggested prompts per screen grouped by task. Catalog: CP-23, CP-24, CP-25.
 - FR-71: Agent transparency - click-through citation chips on every reply that used a read tool; a data-egress line on every turn with context sharing on; an agent audit viewer over the ledger with filters by user, screen and date, where administrators see all users' rows and others their own. Catalog: CP-26, CP-27, CP-31.
 - FR-72: Agent restraint and governance - a copy-out ObjectScript, CLI or REST draft instead of an execution on any proposal; a per-tool-and-action governance policy with read-only and full presets over a baseline that keeps every Release 1 write key enabled and, through 2026-10-04, gains each new write key in the story that ships it [AMENDED 2026-09-26, owner: new write keys join the baseline through the voting week; was "a frozen baseline"]; truncation, control-stripping, delimiter-wrapping and secret redaction of tool and log content before it reaches the model with a seeded-injection test; transcripts persisted per user with a retention purge, an administrator's view of another user's transcript ledgered and gated by the resources those calls required. Catalog: CP-29, CP-30, CP-32, CP-33.
 - FR-73: Shell conveniences - change own password, favorites, recent items, menu search, About, per-screen Help, the fixed shortcuts menu, the links panel, the Home system information panel, UI state across sessions and a light or dark theme, each reachable from the header or Home with per-user state surviving a sign-out. Catalog: SH-12 to SH-22.
@@ -938,7 +938,7 @@ A developer gets classes and routines with source view, compile, delete, export,
 
 **FRs covered:** FR-80, covering 36 post-Release-1 catalog rows (S 17 / M 15 / L 4, 0 new REST endpoints)
 
-**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided as a choice between an explicit Basic header and a pass-through on the OcuPilot API: the JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
+**Implementation notes:** Row groups: CP-36; OS-23; EX-02 to EX-34; DT-01. **EX-15 must ship with EX-14** - `action/query` executes any statement type unguarded, and the same guard protects the agent's free-form SQL tool, which Release 1 deliberately withheld. The Atelier port's authentication is decided: through the OcuPilot API, in process as the signed-in user, never an explicit Basic header [AMENDED 2026-09-29, owner]. The JWT route is **closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The iris-table-editor harvest lifts cleanly for the builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried.
 
 ### Epic 20: Stage 4 - Interoperability, with the Analytics rider
 
@@ -1959,7 +1959,7 @@ So that I can tell at a glance which ones are reachable and which are not.
 
 - **Given** the user lacks the required privilege
 - **When** they reach the screen
-- **Then** the entry is gated in the rail, side bar and command box naming the resource, and a deep link renders the title plus a permission-denied message.
+- **Then** the entry is gated in the side bar and command box naming the resource, and the rail item too when none of the area's other side-bar entries is open to them [AMENDED 2026-09-29, DW-1768, owner decision], and a deep link renders the title plus a permission-denied message.
 
 - **Given** the descriptor
 - **When** it is declared
@@ -5289,7 +5289,7 @@ So that a log line becomes an explanation in one gesture.
 
 - **Given** any row in a log viewer or the audit database viewer
 - **When** the user activates its explain entry point
-- **Then** a turn is sent carrying **that entry, and only that entry**, as context.
+- **Then** a turn is sent carrying the screen's own context with **that entry marked** as the one asked about [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry, and only that entry"].
 
 - **Given** an application error row
 - **When** its explain entry point is used
@@ -6351,7 +6351,7 @@ So that "all the logs" is literally true.
 
 - **Given** each viewer
 - **When** it renders a row
-- **Then** the row carries an explain entry point sending that entry alone.
+- **Then** the row carries an explain entry point sending that entry marked among the screen's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
 - DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
@@ -6404,7 +6404,7 @@ time; the hub gains that timeline beside its list of sources.
 - **Given** an entry in the timeline
 - **When** it is chosen
 - **Then** its source opens at that entry, and the entry carries the same explain entry point as the source's own
-  viewer, sending that entry alone.
+  viewer, sending that entry marked among the timeline's rows [AMENDED 2026-09-29, DW-1838, owner decision: was "that entry alone"].
 
 - **Given** the strings the timeline needs
 - **When** this story lands
@@ -6803,6 +6803,7 @@ So that a gateway's definition is managed where its status is.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+- DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -7202,6 +7203,7 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
+- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7371,6 +7373,9 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
+- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
+- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
+- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
 
 ### Story 18.16: Remote databases
 
@@ -7392,7 +7397,7 @@ So that database administration also covers the databases an ECP data server hol
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
 
-**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API, whose authentication is a choice between an explicit Basic header and a pass-through on the OcuPilot API - **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
+**Applies to every story in this epic.** **FR-80** governs these too; acceptance is that contract plus each row's backing route. This stage introduces a **new port** for the Atelier API. Its features go **through the OcuPilot API**, which calls the Atelier implementation in process as the signed-in user, the way the admin API is reached [AMENDED 2026-09-29, owner: the authentication decided; was a choice between an explicit Basic header and a pass-through on the OcuPilot API]. The explicit Basic header is not used, and **the JWT route is closed, not untested**, because enabling JWT on `/api/atelier` means modifying a vendor web application, which OcuPilot does not do on an operator's instance. The port carries its own resource gate like every other. Every write is a confirmed proposal; every new destructive key defaults to disabled.
 
 **What gates the stage.** `action/query` executes **any** statement type unguarded, so the DML and DDL guard must ship **with** the query console rather than after it. XML export and load are Atelier v7 routes and carry a version gate. The ETag conflict path on document PUT must be observed rather than assumed. The iris-table-editor harvest lifts cleanly for its builders and formatters but needs three algorithms ported out of a 6,023-line vanilla-DOM grid, and its plaintext-password-in-server-memory session pattern is explicitly not carried. DocDB needs its service enabled.
 
@@ -8070,4 +8075,34 @@ So that the ledger the judges' build leaves behind is honest and the code it nam
 - **Given** the entries the owner routed here on 2026-09-25
 - **When** they are triaged
 - **Then** DW-1681 (the demo fixture seeds a duplicate application error on every start), DW-1682 (four comments cite README sections that moved to docs/DEVELOPMENT.md) and DW-1688 (proposal-card.ts's comment names the scratched Story 14.7) are fixed here.
+
+### Story 23.2: The range-end cleanup, part 2
+
+Chartered by the orchestrator on 2026-09-30 from the owner-approved burn-down decision sheet (`_bmad-output/implementation-artifacts/decision-sheet-2026-09-29-burndown.md`) under Rule 27 as the owner restated it on 2026-09-29. Story 23.1 closed as it stood. This story takes at most 12 entries, by priority: CI flakes, then security, then repeat occurrences, then the lowest fix-risk. On the owner's instruction of 2026-09-30 it starts before the `release/1.0.4` cut, and each batch merges to the feature branch as soon as it is green, in this order: the CI flakes, the user-visible defects, security, then the remaining entries, with DW-48 last because it changes what the installer compiles. A batch green on the feature branch at the cut ships in 1.0.4; the rest follow.
+
+As the team keeping OcuPilot's CI and its guardrails trustworthy between releases,
+I want the twelve highest-priority deferred entries fixed, or declined with a reason,
+So that every lane stops paying for the same flakes and the guardrails say what they do.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story (DW-1829, DW-1831, DW-1450, DW-1663, DW-1289, DW-1451, DW-1497, DW-1290, DW-1440, DW-1210, DW-1669 and DW-48)
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition. None is re-owned onward unless the plan says why.
+
+- **Given** the two CI flakes, DW-1829 (the background-task seed can read Running for its whole wait) and DW-1831 (an OAuth discover case misreads intermittently)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the case passing under that same condition, with a Rule 19 mutation where the fix is a wait or a predicate.
+
+- **Given** the three security entries: DW-1450 (a secret argument may name a derived field the write tool does not permit), DW-1663 (adding `%Manager`, `%Operator` or `%SecurityAdministrator` to the authorization server's customization role is not flagged as a privilege grant) and DW-48 (the container start hook compiles every `Test.*` class, fault-injection classes included, into a product install)
+- **When** each is fixed
+- **Then** a test reddens on the defect. For DW-48, a product install compiles no `Test.*` class, and the CI and throwaway paths that need them still load them.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
+
+- **Given** a fix that changes behavior a user can see
+- **When** it is proposed
+- **Then** the plan names it with the entry that asks for it, and a fix that contradicts a document corrects the document at origin.
 

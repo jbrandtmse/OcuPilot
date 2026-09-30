@@ -1217,6 +1217,8 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForNav(pCode)
     If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForLock(pCode)
+    If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
 
@@ -1411,6 +1413,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
     If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
     If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
+    If $Extract(pCode, 1, 15) = "LANGUAGESERVER." Quit ..ReasonForLanguageServer(pCode)
     Quit ""
 }
 
@@ -1511,6 +1514,33 @@ ClassMethod DatabaseViolationCodes() As %List
 ClassMethod ReasonForDatabase(pCode As %String) As %String
 {
     Quit ##class(OcuPilot.Api.DatabaseError).ReasonFor(pCode)
+}
+
+/// <p>Every <code>LANGUAGESERVER.*</code> field-level violation code (Story 16.25), as a
+/// <class>%List</class>, for the reason <method>WebAppViolationCodes</method> exists. The codes and
+/// their sentences are <class>OcuPilot.Api.LanguageServerError</class>'s, because this class is at
+/// the compiler's limit of parameters; <parameter>LANGUAGESERVERSTART</parameter> is no violation and
+/// is not among them.</p>
+ClassMethod LanguageServerViolationCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.LanguageServerError).ViolationCodes()
+}
+
+/// <p>The sentence a <code>LANGUAGESERVER.*</code> violation code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.LanguageServerError.ReasonFor</method>), which answers no sentence for
+/// <parameter>LANGUAGESERVERSTART</parameter>: that code's own sentence is this class's
+/// <parameter>REASONLANGUAGESERVERSTART</parameter>, read by the port that answers it.</p>
+ClassMethod ReasonForLanguageServer(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.LanguageServerError).ReasonFor(pCode)
+}
+
+/// <p>The sentence a <code>LOCK.*</code> code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.LockError.ReasonFor</method>), so a lock removal's refusal at Confirm is
+/// answered with its own sentence rather than the generic one (Story 16.12).</p>
+ClassMethod ReasonForLock(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.LockError).ReasonFor(pCode)
 }
 
 /// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence
@@ -4237,5 +4267,13 @@ Parameter REASONTASKIMPORTCHANGED = "The file's tasks changed after the import w
 Parameter PROCESSBROADCASTRECIPIENT = "PROCESS.BROADCAST.RECIPIENT";
 
 Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has ended or is not a terminal session, so nothing was sent.";
+
+/// <p>Machine code (AD-12, AD-39, Story 16.10): an external language server's start the instance
+/// refused, answered on the <parameter>SERVERERROR</parameter> slug with 500 by
+/// <class>OcuPilot.Port.AdminPort</class> (<code>TYPEFAULTS</code>) for both callers. The vendor's
+/// text goes to the log alone; the server's activity log records why.</p>
+Parameter LANGUAGESERVERSTART = "LANGUAGESERVER.START";
+
+Parameter REASONLANGUAGESERVERSTART = "The server did not start. Its activity log records why.";
 
 }

@@ -254,9 +254,9 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tOwnProblem
                 Quit
             }
-            ; AD-8: OcuPilot.Screen.Gate evaluates an area's set and a screen's set separately and
-            ; never unions them, so an area declaring less than one of its screens requires shows
-            ; the rail item allowed and refuses everything inside it.
+            ; AD-8: a gated area names a pair from its declared set, and holding that set opens
+            ; every screen of the area that declares no own pair -- true only while the set
+            ; covers each such screen's pairs.
             Set tCoverageProblem = ..AreaCoverageProblem(tArea, $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs"))
             If tCoverageProblem '= "" {
                 Set pProblem = tClass _ ": " _ tCoverageProblem
@@ -780,24 +780,22 @@ ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject) As %String
 /// check. <method>OwnPrivilegesProblem</method> holds each of them to the screen's privileges.</p>
 /// <p><var>pPairs</var> is one screen's pair set in the form
 /// <method>OcuPilot.Screen.Descriptor.Base.PrivilegePairs</method> answers. An area that declares
-/// more than a screen requires is sound; one that declares less is not, because
-/// <class>OcuPilot.Screen.Gate</class> evaluates the area's set and the screen's set separately and
-/// never unions them -- so the rail item reads allowed while every screen inside it is refused.
-/// Checked per descriptor, which is the same statement as "the area covers the union of its
-/// screens' sets" and additionally reports which class the missing pair belongs to.</p>
+/// more than a screen requires is sound; one that declares less is not. An area opens when any
+/// screen its side bar lists opens (<method>OcuPilot.Screen.Gate.EvaluateArea</method>), and when
+/// none does it names the first pair of its declared set the caller lacks, so that set has to be
+/// one whose holder every screen without an own pair admits. Checked per descriptor, which is the
+/// same statement as "the area covers the union of its screens' sets" and additionally reports
+/// which class the missing pair belongs to.</p>
 /// <p><b>The declared set is all this can check.</b>
 /// <method>OcuPilot.Screen.Gate.RequiredPairs</method> also unions the classic page's
-/// operator-assigned custom resource, which is runtime state no roster check reads, so a screen
-/// gated by such a resource can still be refused inside an area that reads allowed.</p>
+/// operator-assigned custom resource, which is runtime state no roster check reads, so a holder of
+/// the area's set can still be refused a screen gated by such a resource.</p>
 /// <p><b>An area that declares <i>no</i> pairs is a never-gating area, and its screens gate
 /// independently.</b> An empty set is not "a set that covers nothing": it is EXPERIENCE.md's
 /// "the rail-item itself never gates" ("Agent co-pilot &#8250; Definitions and Switches"), the
-/// shape <class>OcuPilot.Screen.Area</class> records for Home and Agent co-pilot. The false
-/// admission this rule exists to prevent -- an area that reads allowed while every screen inside
-/// it refuses -- is the intended behaviour there: the rail item carries an attention dot rather
-/// than a gate, and the side-bar entries name the resource. So an empty area set is sound
-/// whatever its screens require; a non-empty one that does not cover a screen's is still
-/// refused, because that is an area that meant to gate and gated too little.</p>
+/// shape <class>OcuPilot.Screen.Area</class> records for Home and Agent co-pilot. So an empty area
+/// set is sound whatever its screens require; a non-empty one that does not cover a screen's is
+/// still refused.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is: a covered
 /// and an uncovered set are exercised as values rather than as one fixture descriptor per case.</p>
 ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List, pOwnPairs As %List = "") As %String
@@ -818,7 +816,7 @@ ClassMethod AreaCoverageProblem(pAreaKey As %String, pPairs As %List, pOwnPairs 
                 If ($List(tOwnPair, 1) = $List(tPair, 1)) && ($List(tOwnPair, 2) = $List(tPair, 2)) Set tCovered = 1
             }
             If tCovered Continue
-            Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so the area would read allowed while the screen is refused (AD-8)"
+            Set tProblem = "area '" _ pAreaKey _ "' does not declare " _ $List(tPair, 1) _ ":" _ $List(tPair, 2) _ ", which this screen requires, so a holder of the area's set would still be refused it (AD-8)"
             Quit
         }
     } Catch ex {
@@ -901,7 +899,7 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tProblem = ..BannerCasesProblem(tBanner)
+        Set tProblem = ..BannerCasesProblem(tBanner, pDeclaration)
         If tProblem '= "" Quit
 
         Set tReadType = pDeclaration.%GetTypeOf("read")
@@ -915,12 +913,14 @@ ClassMethod BannerProblem(pDeclaration As %DynamicObject) As %String
 }
 
 /// <p>What is wrong with <var>pBanner</var>'s <code>cases</code>, or <code>""</code> (DW-270): a
-/// non-empty array of objects carrying only <code>equals</code>, <code>messageKey</code> and
-/// <code>severity</code>, each <code>equals</code> and <code>messageKey</code> a non-empty string,
-/// each <code>equals</code> declared once -- a repeated value would make the second case
-/// unreachable, since <method>OcuPilot.Screen.Read.BannerKey</method> raises the first that matches
-/// -- and each <code>severity</code> one of <parameter>BANNERSEVERITIES</parameter>.</p>
-ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
+/// non-empty array of objects carrying only <code>equals</code>, <code>messageKey</code>,
+/// <code>severity</code> and an optional <code>action</code>, each <code>equals</code> and
+/// <code>messageKey</code> a non-empty string, each <code>equals</code> declared once -- a repeated
+/// value would make the second case unreachable, since <method>OcuPilot.Screen.Read.BannerKey</method>
+/// raises the first that matches -- each <code>severity</code> one of
+/// <parameter>BANNERSEVERITIES</parameter>, and each <code>action</code> the id of one of
+/// <var>pDeclaration</var>'s <code>rowActions</code> (AD-5, Story 16.11).</p>
+ClassMethod BannerCasesProblem(pBanner As %DynamicObject, pDeclaration As %DynamicObject) As %String [ Private ]
 {
     If pBanner.%GetTypeOf("cases") '= "array" Quit "banner.cases is not an array of banner cases"
     Set tCases = pBanner.%Get("cases")
@@ -936,7 +936,7 @@ ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
             Set tProblem = tWhere _ " is not an object declaring its equals, messageKey and severity"
             Quit
         }
-        Set tProblem = ..UnknownKeyProblem(tCase, tWhere, $ListBuild("equals", "messageKey", "severity"))
+        Set tProblem = ..UnknownKeyProblem(tCase, tWhere, $ListBuild("equals", "messageKey", "severity", "action"))
         If tProblem '= "" Quit
         For tKey = "equals", "messageKey" {
             If (tCase.%GetTypeOf(tKey) '= "string") || (tCase.%Get(tKey) = "") {
@@ -955,8 +955,33 @@ ClassMethod BannerCasesProblem(pBanner As %DynamicObject) As %String [ Private ]
             Set tProblem = tWhere _ " severity '" _ tCase.%Get("severity") _ "' is not one of " _ ..#BANNERSEVERITIES
             Quit
         }
+        Set tActionType = tCase.%GetTypeOf("action")
+        If tActionType = "unassigned" Continue
+        If tActionType '= "string" {
+            Set tProblem = tWhere _ " action is not a string naming one of rowActions"
+            Quit
+        }
+        If '$ListFind(..RowActionIdsOf(pDeclaration), tCase.%Get("action")) {
+            Set tProblem = tWhere _ " action '" _ tCase.%Get("action") _ "' is not one of rowActions"
+            Quit
+        }
     }
     Quit tProblem
+}
+
+/// <p>The <code>id</code> of each of <var>pDeclaration</var>'s <code>rowActions</code> that carries a
+/// string one, as a <class>%List</class>.</p>
+ClassMethod RowActionIdsOf(pDeclaration As %DynamicObject) As %List [ Private ]
+{
+    Set tIds = ""
+    If '$IsObject(pDeclaration) Quit tIds
+    Set tActions = pDeclaration.%Get("rowActions")
+    If '$IsObject(tActions) || 'tActions.%IsA("%Library.DynamicArray") Quit tIds
+    Set tIterator = tActions.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tAction) {
+        If $IsObject(tAction) && tAction.%IsA("%Library.DynamicObject") && (tAction.%GetTypeOf("id") = "string") Set tIds = tIds _ $ListBuild(tAction.%Get("id"))
+    }
+    Quit tIds
 }
 
 /// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
@@ -1059,6 +1084,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tRowsType = tSource.%GetTypeOf("rows")
         If (tRowsType '= "unassigned") && (tRowsType '= "null") {
             Set tProblem = ..RowsProblem(tSource)
+            If tProblem '= "" Quit
+            Set tProblem = ..ActivityRowsProblem(pDeclaration)
             If tProblem '= "" Quit
         } ElseIf (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
             Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
@@ -2002,6 +2029,33 @@ ClassMethod RowsProblem(pSource As %DynamicObject) As %String
     Quit tProblem
 }
 
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>rows</code> read of type
+/// <code>ACTIVITY</code>, or <code>""</code> for any other type (AD-36 as amended, Story 16.10). An
+/// <code>ACTIVITY</code> answer is one server's activity, so the read is admitted only on a screen
+/// declaring a <code>parentScope</code> whose one criterion is the <code>text</code> criterion
+/// <code>name</code>, which the route id fills. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>activityRowsProblem</code> returns the same sentence for every case in
+/// <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod ActivityRowsProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tRead = pDeclaration.%Get("read")
+    Set tSource = tRead.%Get("source")
+    If tSource.%Get("type") '= ##class(OcuPilot.Screen.Read).#ACTIVITYTYPE Quit ""
+    If (pDeclaration.%GetTypeOf("parentScope") '= "string") || (pDeclaration.%Get("parentScope") = "") {
+        Quit "read.source.type 'ACTIVITY' is declared with no parentScope, and a list over one server's activity reads the server its route id names (AD-36, Story 16.10)"
+    }
+    Set tSound = 0
+    If tRead.%GetTypeOf("criteria") = "object" {
+        Set tFields = tRead.%Get("criteria").%Get("fields")
+        If $IsObject(tFields) && tFields.%IsA("%Library.DynamicArray") && (tFields.%Size() = 1) {
+            Set tField = tFields.%Get(0)
+            If $IsObject(tField) && tField.%IsA("%Library.DynamicObject") Set tSound = (tField.%Get("param") = "name") && (tField.%Get("kind") = "text")
+        }
+    }
+    If 'tSound Quit "read.criteria on an 'ACTIVITY' read is not the one text criterion 'name', which its route id fills (AD-36, Story 16.10)"
+    Quit ""
+}
+
 /// <p>The <code>port</code> values a declared part may name (AD-36): <code>admin</code>, the default,
 /// and <code>monitor</code>, the sensors behind <class>OcuPilot.Port.MonitorPort</class>'s own gate
 /// (Story 16.7).</p>
@@ -2147,9 +2201,10 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
 Parameter ROWGETRULES = "beforeToday";
 
 /// <p>The request types a <code>read.source.rowGet</code> may issue (AD-36): <code>GET</code>, the
-/// default; <code>INFO</code>, where the list's own row is wrong; and <code>CERTINFO</code>, where only
-/// that type carries the fields.</p>
-Parameter ROWGETTYPES = "GET,INFO,CERTINFO";
+/// default; <code>INFO</code>, where the list's own row is wrong; <code>CERTINFO</code>, where only
+/// that type carries the fields; and <code>ACTIVITY</code>, a language server's running state beside
+/// its activity rows, issued with <code>maxRows</code> 1 (Story 16.10).</p>
+Parameter ROWGETTYPES = "GET,INFO,CERTINFO,ACTIVITY";
 
 /// <p>What is wrong with <var>pSource</var>'s <code>rowGet</code>, or <code>""</code> (AD-36).
 /// <var>pFields</var> is the read's declared fields. <var>pKeyAllowed</var> is non-empty only for a
@@ -2433,19 +2488,13 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// redactor read one list; the string-placeholder qualification is the generator's own
 /// (<file>ui/tools/field-lists.mjs</file>), so a boolean named <code>CSRFToken</code> is not a
 /// credential here either.</p>
-/// <p><b>A <code>secretArguments</code> entry the screen knows no name for is refused too</b>
-/// (DW-1206). <code>secretArguments</code> reached only the shape rules and was then read as a
-/// <i>whitelist</i> by <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> and by
-/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method>, both matching by exact name -- so a
-/// misspelt entry left the real field advertised to the model and the channel closed to the
-/// spelling nobody sends. Both entries are now checked against one set,
-/// <method>DeclaredNames</method>'s, so the two sibling declarations cannot be validated against
-/// different sets, which is the cause rather than the symptom.</p>
-/// <p><b>A <code>secretArguments</code> entry also qualifies when it is a top-level
-/// <code>secret</code> literal row of the screen's write tools</b> (<method>SecretRowNames</method>):
-/// a derived credential, or a wrapper field the tool authors (AD-3). The source is additive --
-/// every name the two sources above admit is still admitted -- and
-/// <file>ui/tools/screen-mirror.mjs</file>'s <code>secretRowNames</code> applies the same rule.</p>
+/// <p><b>A <code>secretArguments</code> entry is valid only when it is a top-level
+/// <code>secret</code> literal row of one of the screen's write tools</b>
+/// (<method>SecretRowNames</method>): a derived credential, or a wrapper field the tool authors
+/// (AD-3). A name the confirm channel opens is a value the write sends as a secret, so an ordinary
+/// field, a field the screen's read declares, and a misspelling are all refused, in one sentence
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>confirmChannelProblem</code> returns too (AD-5,
+/// AD-6). <code>fingerprintExcludes</code> keeps the two sources above.</p>
 /// <p><b>Both directions moved, and both are pinned.</b> Folding the declared criteria into the
 /// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
 /// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
@@ -2484,8 +2533,8 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         Set tSecretRows = ..SecretRowNames(.tRows)
         For tI = 1:1:$ListLength(tSecrets) {
             Set tName = $List(tSecrets, tI)
-            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) && '$ListFind(tSecretRows, tName) {
-                Set tProblem = "secretArguments names '" _ tName _ "', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)"
+            If '$ListFind(tSecretRows, tName) {
+                Set tProblem = "secretArguments names '" _ tName _ "', which is not a top-level secret field of this screen's write tools (AD-6)"
                 Quit
             }
         }
@@ -2722,14 +2771,16 @@ ClassMethod OneActionProblem(pAction As %DynamicObject, pWhere As %String, pRule
     Quit ""
 }
 
-/// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
-/// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from
-/// its own declared read. <var>pNames</var> carries five <class>%List</class> projections of that
-/// one traversal:</p>
+/// <p>The one set of names <var>pDeclaration</var>'s <code>fingerprintExcludes</code>, its
+/// credential-name rule and a tool's declared fingerprint subject are validated against (DW-1206),
+/// built once from its write tool's classified rows <var>pRows</var> and from its own declared
+/// read. <code>secretArguments</code> is checked against the tools' secret rows alone
+/// (<method>SecretRowNames</method>). <var>pNames</var> carries these <class>%List</class>
+/// projections of that one traversal:</p>
 /// <ul>
 /// <li><code>settable</code> -- the write tool's settable field names in the
-/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> matches
-/// a declared secret by, which is the spelling <code>secretArguments</code> is checked in;</li>
+/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> admits a
+/// field by;</li>
 /// <li><code>path</code> -- the same rows in the spelling they are written in,
 /// <code>[]</code> included, which is the spelling
 /// <method>OcuPilot.Kernel.Proposal.Fingerprint.Canonical</method> matches an exclusion by and so
@@ -2747,12 +2798,9 @@ ClassMethod OneActionProblem(pAction As %DynamicObject, pWhere As %String, pRule
 /// screen's declared read and its write tool's own read are not the same set, and a screen that
 /// declares no <code>read</code> at all knows no name a subject could carry.</li>
 /// </ul>
-/// <p><b>The two keys are checked in two spellings and that is not two sets.</b> One traversal
-/// answers both, because their consumers honour different spellings:
-/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> drops a declared secret by its stripped
-/// name, while an exclusion of an array reaches the fingerprint as <code>&lt;path&gt;[]</code>. A
-/// single spelling would admit the entry one consumer ignores -- which is the defect this method
-/// exists to close, in a new place.</p>
+/// <p><b>Two spellings of one traversal, not two sets.</b> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>
+/// admits a field by its stripped name, while an exclusion of an array reaches the fingerprint as
+/// <code>&lt;path&gt;[]</code>, so an exclusion is checked in <code>path</code>.</p>
 /// <p>Read leniently: a malformed read contributes no names rather than a second refusal, because
 /// <method>ReadProblem</method> has already refused it by the time this runs.</p>
 ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames, pToolClass As %String = "") [ Private ]
@@ -2936,7 +2984,7 @@ ClassMethod CredentialNameProblem(pNames As %List, pSecrets As %List, pWhere As 
         Set tName = $List(pNames, tI)
         If '##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(..LastSegment(tName)) Continue
         If $ListFind(pSecrets, tName) Continue
-        Set tProblem = pWhere _ " names '" _ tName _ "', whose name matches the credential pattern and which secretArguments does not declare (AD-3)"
+        Set tProblem = pWhere _ " names '" _ tName _ "', whose name matches the credential pattern and which is not a declared secret of this screen's write tools (AD-3)"
         Quit
     }
     Quit tProblem
@@ -2963,14 +3011,11 @@ ClassMethod LastSegment(pPath As %String) As %String [ Private ]
 /// <code>[]</code> removed and which carries no interior <code>[</code>. It is deliberately
 /// <i>not</i> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>'s output, which narrows the
 /// same rows further by <method>PermittedFields</method> and <method>ExcludedFields</method> and
-/// <b>drops every name the descriptor declares secret</b> -- so validating
-/// <code>secretArguments</code> against that output would reject every entry for being declared,
-/// which is the circularity this shape avoids. The consequence is stated rather than hidden: a
-/// derived field the tool does not permit is still a nameable secret here, and closing that is
-/// this spec's <code>deferred:</code> item. The third element narrows the rows to a string
+/// drops every name the descriptor declares secret. The third element narrows the rows to a string
 /// placeholder, which is the credential-name rule's own qualification and nothing else's; the
-/// fourth marks a top-level <code>secret</code> literal (<method>SecretRowNames</method>). One
-/// reader of the generated block, four questions asked of its rows.</p>
+/// fourth marks a top-level <code>secret</code> literal, the only kind a
+/// <code>secretArguments</code> entry may name (<method>SecretRowNames</method>). One reader of the
+/// generated block, four questions asked of its rows.</p>
 ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Private ]
 {
     Kill pRows
@@ -3012,8 +3057,8 @@ ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Pri
 }
 
 /// <p>The names of the top-level <code>secret</code> literal rows in <var>pRows</var>
-/// (<method>ToolFieldRows</method>'s answer), as a <class>%List</class>: the third source a
-/// <code>secretArguments</code> entry may name. A nested path, an array element and a row of any
+/// (<method>ToolFieldRows</method>'s answer), as a <class>%List</class>: the names a
+/// <code>secretArguments</code> entry may take. A nested path, an array element and a row of any
 /// other class contribute nothing.</p>
 ClassMethod SecretRowNames(ByRef pRows) As %List [ Private ]
 {
@@ -3293,6 +3338,69 @@ ClassMethod ScreensForArea(pAreaKey As %String, pBuiltOnly As %Boolean = 1, Outp
     Quit tSC
 }
 
+/// <p>The descriptor classes <var>pAreaKey</var>'s side bar lists: its built screens at a
+/// <code>sideBarPosition</code> above 0, in <method>ScreensForArea</method>'s order. An area's
+/// verdict is read over these and the tabs of a tab group one of them heads
+/// (<method>OcuPilot.Screen.Gate.EvaluateArea</method>, AD-8).</p>
+ClassMethod ListedScreensForArea(pAreaKey As %String, Output pList As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pList = ""
+    Try {
+        Set tSC = ..ScreensForArea(pAreaKey, 1, .tBuilt)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tBuilt) {
+            Set tClass = $List(tBuilt, tI)
+            If +$ClassMethod(tClass, "SideBarPosition") > 0 Set pList = pList _ $ListBuild(tClass)
+        }
+    } Catch ex {
+        Set pList = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The other built tabs of the tab group <var>pDescriptor</var> heads, in strip order (AD-5): the
+/// built screens of its area whose declared <code>tab.group</code> is its route, less itself. Empty
+/// for a screen that heads no group -- one that declares no <code>tab</code>, or a tab under another
+/// screen's group. <method>TabGroupProblem</method> keeps a group's members in its head's area.</p>
+ClassMethod TabMembersFor(pDescriptor As %String, Output pList As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pList = ""
+    Try {
+        Set tTab = $ClassMethod(pDescriptor, "Field", "tab")
+        If '$IsObject(tTab) Quit
+        Set tGroup = tTab.%Get("group")
+        If (tGroup = "") || (tGroup '= $ClassMethod(pDescriptor, "Route")) Quit
+        Set tSC = ..ScreensForArea($ClassMethod(pDescriptor, "AreaKey"), 1, .tBuilt)
+        If $$$ISERR(tSC) Quit
+        Kill tOrdered
+        For tI = 1:1:$ListLength(tBuilt) {
+            Set tClass = $List(tBuilt, tI)
+            If tClass = pDescriptor Continue
+            Set tMemberTab = $ClassMethod(tClass, "Field", "tab")
+            If '$IsObject(tMemberTab) || (tMemberTab.%Get("group") '= tGroup) Continue
+            Set tOrdered(+tMemberTab.%Get("position"), tClass) = ""
+        }
+        Set tPosition = ""
+        For {
+            Set tPosition = $Order(tOrdered(tPosition))
+            If tPosition = "" Quit
+            Set tClass = ""
+            For {
+                Set tClass = $Order(tOrdered(tPosition, tClass))
+                If tClass = "" Quit
+                Set pList = pList _ $ListBuild(tClass)
+            }
+        }
+    } Catch ex {
+        Set pList = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The ordered area-to-screen roster: a <class>%DynamicArray</class> of areas in rail order,
 /// each carrying its declared fields and its built screens in side-bar order. This is what
 /// <class>OcuPilot.Api.Navigation</class> gates and serves, and what the client mirror is the
@@ -3465,8 +3573,9 @@ ClassMethod ParentScopeResolutionProblem(pRoster As %DynamicArray) As %String [ 
     Quit tProblem
 }
 
-/// <p>The keys a declared <code>rowTarget</code> may carry (AD-5, Story 6.10).</p>
-Parameter ROWTARGETKEYS = "route,field";
+/// <p>The keys a declared <code>rowTarget</code> may carry (AD-5, Story 6.10; <code>unless</code>,
+/// Story 16.12).</p>
+Parameter ROWTARGETKEYS = "route,field,unless";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s declared <code>rowTarget</code>, or
 /// <code>""</code> when nothing is, including when none is declared (AD-5, Story 6.10). A row
@@ -3481,7 +3590,9 @@ Parameter ROWTARGETKEYS = "route,field";
 /// link to. Its <code>route</code> is a non-empty string other than the declaring screen's own
 /// route -- a row already reaches its own route through the id chain -- and its <code>field</code>
 /// is a non-empty string that is one of <code>read.fields</code>, since
-/// <file>data-table.ts</file> reads it off the row.</p>
+/// <file>data-table.ts</file> reads it off the row. Its optional <code>unless</code>, where declared,
+/// is a non-empty string that is one of <code>read.fields</code> too: a row where that field reads
+/// <code>true</code> renders its name cell as text (Story 16.12, DW-1074).</p>
 /// <p>Whether the named route resolves to a built, id-keyed screen that does not already pair
 /// its own surface is <method>RowTargetResolutionProblem</method>'s question, checked over the
 /// whole roster once every declaration's own shape is sound.
@@ -3532,6 +3643,15 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
         }
         If '$ListFind(tFields, tTarget.%Get("field")) {
             Set tProblem = "rowTarget.field '" _ tTarget.%Get("field") _ "' is not one of read.fields"
+            Quit
+        }
+        If tTarget.%GetTypeOf("unless") = "unassigned" Quit
+        If (tTarget.%GetTypeOf("unless") '= "string") || (tTarget.%Get("unless") = "") {
+            Set tProblem = "rowTarget.unless is empty, and an unless names the read field that withholds a row's link"
+            Quit
+        }
+        If '$ListFind(tFields, tTarget.%Get("unless")) {
+            Set tProblem = "rowTarget.unless '" _ tTarget.%Get("unless") _ "' is not one of read.fields"
             Quit
         }
     } Catch ex {

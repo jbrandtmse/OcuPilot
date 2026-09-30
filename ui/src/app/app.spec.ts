@@ -24,9 +24,11 @@ import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { LanguageServerForm } from './areas/os-management/language-server-form.store';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
+import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -61,8 +63,8 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
-import { AccountPreferences } from './core/account-preferences';
-import { stubAccountPreferences } from './testing/account-preferences';
+import { AccountPreferences, FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } from './core/account-preferences';
+import { type StubbedAccountPreferences, lastRemembered, stubAccountPreferences } from './testing/account-preferences';
 import { About } from './core/about';
 import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
@@ -386,7 +388,7 @@ describe('the shell frame', () => {
   let agentContext: AgentContext;
   let suggested: SuggestedView;
   /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
-  let accountPreferences: AccountPreferences;
+  let accountPreferences: StubbedAccountPreferences;
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
   let performanceRow: StubbedPerformanceRow;
@@ -1240,6 +1242,12 @@ describe('the shell frame', () => {
     mappingForm.setValue('Name', 'AMappingThisPrincipalTyped');
     expect(mappingForm.value('Name')).not.toBe('');
 
+    // The same answer for the external language server editor (Story 16.25): a server THIS principal
+    // typed and has not saved, in a root-provided store. A create takes input before its form read.
+    const languageServerForm = TestBed.inject(LanguageServerForm);
+    languageServerForm.setValue('Name', 'AServerThisPrincipalTyped');
+    expect(languageServerForm.value('Name')).not.toBe('');
+
     // The same answer for the database wizard and editor (Story 18.3): a database THIS principal
     // typed or opened and has not saved, in two root-provided stores. The wizard takes input before
     // its form read is made; the editor takes input once its form read has answered.
@@ -1250,6 +1258,10 @@ describe('the shell frame', () => {
     await databaseEditor.open('ADATABASETHISPRINCIPALOPENED');
     databaseEditor.setText('ExpansionSize', '7');
     expect(databaseEditor.text('ExpansionSize')).toBe('7');
+    // And the Check integrity flow (Story 18.4): the globals THIS principal typed.
+    const databaseIntegrity = TestBed.inject(DatabaseIntegrityFlow);
+    databaseIntegrity.setGlobals('AGLOBALTHISPRINCIPALTYPED');
+    expect(databaseIntegrity.globals()).not.toBe('');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1366,6 +1378,10 @@ describe('the shell frame', () => {
     // goes red, and the next principal's mapping editor holds the previous one's typed name.
     expect(mappingForm.value('Name')).toBe('');
 
+    // Mutation (Rule 19): delete `this.languageServerForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's language server editor holds the previous one's typed name.
+    expect(languageServerForm.value('Name')).toBe('');
+
     // Mutation (Rule 19): delete `this.databaseWizard.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's wizard holds the previous one's typed name.
     expect(databaseWizard.values().Name).toBe('');
@@ -1374,6 +1390,9 @@ describe('the shell frame', () => {
     // database and unsaved change.
     expect(databaseEditor.name()).toBe('');
     expect(databaseEditor.text('ExpansionSize')).toBe('');
+    // Mutation (Rule 19): delete `this.databaseIntegrity.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's Check integrity flow holds the previous one's globals.
+    expect(databaseIntegrity.globals()).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.
@@ -1603,7 +1622,8 @@ describe('the shell frame', () => {
     // instance unconfigured -- so this is reachable rather than theoretical.
     //
     // Mutation (Rule 19): delete the `routeFromUrl(this.router.url).startsWith(form.route)` guard
-    // from `App.runFirstLoginGate` -> this goes red at `/agent/definitions/edit`.
+    // from `App.runFirstLoginGate` -> this goes red at `/agent/definitions/edit`. Delete the
+    // `recordFirstSignIn()` call inside it -> the last assertion goes red.
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/agent/definitions/edit/7');
     session.fresh = true;
@@ -1611,6 +1631,8 @@ describe('the shell frame', () => {
     session.move('signed-in');
     await settleGate();
     expect(router.url).toBe('/agent/definitions/edit/7');
+    // The form is on screen at this first sign-in, so the next one is not moved to it.
+    expect(lastRemembered(accountPreferences.calls, SHELL_FIRST_SIGN_IN)).toBe(FIRST_SIGN_IN_RECORDED);
   });
 
   it('AC1b: a reload that resumes a stored pair is not a sign-in, so the requested URL is unchanged', async () => {
@@ -1635,16 +1657,78 @@ describe('the shell frame', () => {
     expect(agentStatus.configured()).toBe(false);
   });
 
-  it('AC1: a second authentication in the same tab fires the gate again while the condition still stands', async () => {
-    // FR-28's own words are "every login until one definition is enabled, and never afterwards" --
-    // not "the first login". Nothing about the gate having fired is stored anywhere (the intent
-    // contract's own "Never" clause), so a tab that authenticates twice while the instance stays
-    // unconfigured must be moved to the form both times, not only the first.
+  it('AC1: the gate opens the form once per account, and a later authentication lands where it asked', async () => {
+    // The form opens on the account's first sign-in while nothing is enabled, and never again:
+    // opening it records that on the instance (AD-50), so a later sign-in, a new tab or a full
+    // load -- each of which is an authentication -- stays on the route it asked for, with the
+    // panel's reminder as the pointer.
     //
-    // Mutation (Rule 19): add a field such as `private gateFiredOnce = false;` to `App`, guard
-    // `runFirstLoginGate` with `if (this.gateFiredOnce) return;` right after the `fresh` check, and
-    // set it just before the navigation -> the second sign-in below goes red, because the tab would
-    // remember having shown the gate once and "every login" would silently narrow to "the first".
+    // Mutation (Rule 19): delete `if (this.accountPreferences.firstSignInRecorded()) return;` from
+    // `App.runFirstLoginGate` -> the second sign-in below goes red at `/agent/definitions/edit`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(lastRemembered(accountPreferences.calls, SHELL_FIRST_SIGN_IN)).toBe(FIRST_SIGN_IN_RECORDED);
+
+    // The administrator leaves the gate the way EXPERIENCE.md's "They may leave" allows.
+    await router.navigateByUrl('/permissions/users');
+    expect(router.url).toBe('/permissions/users');
+
+    // A second, independent authentication in the same tab while the instance is still
+    // unconfigured -- `definitionRows` was never given an enabled row. The sign-out drops the
+    // tab's copy of the preferences, so the record this pass reads is the instance's.
+    session.move('signed-out');
+    expect(accountPreferences.loaded()).toBe(false);
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(accountPreferences.firstSignInRecorded()).toBe(true);
+    expect(router.url).toBe('/permissions/users');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('AC1: an authentication for an account the form was already opened for is not moved, and hands no arrival to the form', async () => {
+    // A new tab or a full load is a fresh sign-in (the token pair is per tab), so this is the path
+    // every later load of `/ocupilot/` takes once the first one has opened the form.
+    const router = TestBed.inject(Router);
+    await accountPreferences.recordFirstSignIn();
+    await router.navigateByUrl('/');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/');
+    expect(session.fresh).toBe(false);
+    void TestBed.inject(DefinitionForm).open('');
+    expect(TestBed.inject(DefinitionForm).openedByGate()).toBe(false);
+  });
+
+  it('AC1: the form the gate opens takes the arrival, which is what sends its Cancel to Home', async () => {
+    // Mutation (Rule 19): delete `this.definitionForm.arriveFromGate();` from
+    // `App.runFirstLoginGate` -> this goes red, and Cancel on the gate's form returns to the list.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    // The mount the route would make: `DefinitionFormPage`'s constructor opens the store.
+    void TestBed.inject(DefinitionForm).open('');
+    expect(TestBed.inject(DefinitionForm).openedByGate()).toBe(true);
+  });
+
+  it('AC1: a user navigation before any form took the arrival drops it, so a form opened later is the person\'s own', async () => {
+    // This harness mounts no page on the form's route, which is the state a form that never
+    // mounted leaves: the arrival is handed over and nothing takes it.
+    //
+    // Mutation (Rule 19): delete the `this.dropUntakenGateArrival()` call from `App`'s
+    // `NavigationStart` handler -> this goes red.
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/permissions/users');
     session.fresh = true;
@@ -1653,18 +1737,52 @@ describe('the shell frame', () => {
     await settleGate();
     expect(router.url).toBe('/agent/definitions/edit');
 
-    // The administrator leaves the gate the way EXPERIENCE.md's "They may leave" allows.
     await router.navigateByUrl('/permissions/users');
-    expect(router.url).toBe('/permissions/users');
+    void TestBed.inject(DefinitionForm).open('');
+    expect(TestBed.inject(DefinitionForm).openedByGate()).toBe(false);
+  });
 
-    // A second, independent authentication in the same tab: the instance is still unconfigured --
-    // `definitionRows` was never given an enabled row -- so this is arranged the way the instance
-    // arranges it, exactly as AC5's test is.
-    session.move('signed-out');
+  it('AC1: a navigation the router refuses records nothing and hands no arrival to the form', async () => {
+    // Mutation (Rule 19): delete `if (moved !== true) return;` from `App.runFirstLoginGate` ->
+    // this goes red: the record is written for a form that never opened.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    const navigate = router.navigateByUrl.bind(router);
+    router.navigateByUrl = ((url: Parameters<Router['navigateByUrl']>[0], extras?: Parameters<Router['navigateByUrl']>[1]) =>
+      String(url).includes('agent/definitions/edit') ? Promise.resolve(false) : navigate(url, extras)) as Router['navigateByUrl'];
     session.fresh = true;
     session.move('probing');
     session.move('signed-in');
     await settleGate();
+    expect(router.url).toBe('/permissions/users');
+    expect(session.fresh).toBe(false);
+    expect(lastRemembered(accountPreferences.calls, SHELL_FIRST_SIGN_IN)).toBeUndefined();
+    void TestBed.inject(DefinitionForm).open('');
+    expect(TestBed.inject(DefinitionForm).openedByGate()).toBe(false);
+  });
+
+  it('AC1: a preferences read that has not answered leaves the sign-in for the gate, which acts when it answers', async () => {
+    // Without the account's record the gate cannot tell a first sign-in from a later one, so it
+    // waits for the read rather than guessing either way.
+    //
+    // Mutation (Rule 19): drop `!this.accountPreferences.loaded()` from `App.runFirstLoginGate` ->
+    // the first assertion goes red. Delete the `accountPreferences.subscribe(...)` retry from
+    // `App` -> the last one does.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    const load = accountPreferences.load.bind(accountPreferences);
+    accountPreferences.load = async () => {};
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+    expect(session.fresh).toBe(true);
+
+    accountPreferences.load = load;
+    await accountPreferences.load();
+    await settleGate();
     expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
   });
 });

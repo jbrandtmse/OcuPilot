@@ -622,13 +622,13 @@ export class LogHubPage {
     void this.router.navigateByUrl(this.entryUrl(row));
   }
 
-  /** Hand this entry alone to the panel; a refused control sends nothing. */
+  /** Hand this entry to the panel, which marks it among the timeline's rows; a refused control sends nothing. */
   protected onExplainEntry(entry: EntryView): void {
     if (this.screen === null) return;
     this.explainEntry?.request(this.screen, entry.row);
   }
 
-  /** Hand a source's last entry alone to the panel; a source not shown, or with none, sends nothing. */
+  /** Hand a source's last entry to the panel, which marks it; a source not shown, or with none, sends nothing. */
   protected onExplainSource(source: SourceView): void {
     if (this.screen === null || source.explainDisabled !== null || source.last === null) return;
     this.explainEntry?.request(this.screen, source.last.row);

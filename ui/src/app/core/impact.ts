@@ -11,7 +11,13 @@
 import { READ_BACK_NAMES_SHOWN } from './read-back.ts';
 import { STRINGS } from './strings.ts';
 
-export type ImpactKind = 'role-delete' | 'resource-delete' | 'role-removal' | 'namespace-delete' | 'database-delete';
+export type ImpactKind =
+  | 'role-delete'
+  | 'resource-delete'
+  | 'role-removal'
+  | 'namespace-delete'
+  | 'database-delete'
+  | 'database-dismount';
 
 export type ImpactPartName =
   | 'holders'
@@ -33,6 +39,9 @@ export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]
   'role-removal': ['loses'],
   'namespace-delete': ['boundApplications', 'databases'],
   'database-delete': ['namespaces', 'applications', 'sharedFile'],
+  // Story 18.4: a dismount carries no parts; the instance answers it only to state the prohibited
+  // set's refusal of a protected database when the Dismount dialog opens.
+  'database-dismount': [],
 };
 
 /** A part's `unchecked` when its read was cut at its cap. */

@@ -225,6 +225,24 @@ test('a malformed list is refused', () => {
   assert.notDeepEqual(checkLists({}), [], 'an empty block is refused, not read as nothing to classify');
 });
 
+// Story 16.25 (DW-253): a template read once per type keys as `endpoint:type`, and its untyped
+// sibling keeps the endpoint alone. Mutation (Rule 19): drop the `endpoint:type` arm from
+// checkLists' key rule -> the committed typed lists and the planted one go red.
+test('a typed template list keys as endpoint:type and checks clean beside its untyped list', () => {
+  const typed = Object.entries(lists).filter(([, list]) => list.source === 'template' && list.type !== '');
+  assert.deepEqual(
+    typed.map(([key]) => key).sort(),
+    ['LanguageServer:.NET', 'LanguageServer:JDBC', 'LanguageServer:Java', 'LanguageServer:ML', 'LanguageServer:ODBC', 'LanguageServer:Python', 'LanguageServer:R', 'LanguageServer:Remote', 'LanguageServer:XSLT'],
+    'the committed lists carry the nine language server types'
+  );
+  assert.equal(lists.LanguageServer?.type, '', 'the untyped list keeps the top-level fields under the endpoint alone');
+  const java = lists['LanguageServer:Java'];
+  assert.deepEqual(java.rows.filter((row) => row.path.startsWith('Custom.')).map((row) => row.path), ['Custom.ClassPath', 'Custom.JavaHome', 'Custom.JVMArgs'], 'the Java list carries its Custom members');
+  assert.deepEqual(checkLists({ 'LanguageServer:Java': java }), [], 'a typed list keyed endpoint:type checks clean');
+  assert.match(checkLists({ LanguageServer: java }).join('\n'), /list LanguageServer should be keyed LanguageServer:Java/, 'and keyed by its endpoint alone it is refused');
+  assert.match(checkLists({ 'LanguageServer:Java': lists.LanguageServer }).join('\n'), /list LanguageServer:Java should be keyed LanguageServer$/m, 'and an untyped list keyed by a type is refused');
+});
+
 // Story 12.5: a class-derived member may carry its kind and its allowed values, and nothing else may.
 // Mutation (Rule 19): drop the `list.source === 'class'` condition from checkLists -> the template
 // leg goes red; accept any kind -> the unknown-kind leg goes red.
@@ -497,5 +515,8 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'security.oauthserverclients.update': members,
     'tasks.schedule.create': { Settings: 'written' },
     'tasks.schedule.update': { Settings: 'written' },
+    // Story 16.25: the vendor answers a type's whole Custom object, its unsent members included.
+    'osmgmt.languageservers.create': { Custom: 'members' },
+    'osmgmt.languageservers.update': { Custom: 'members' },
   });
 });

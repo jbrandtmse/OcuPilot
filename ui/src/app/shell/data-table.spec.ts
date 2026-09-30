@@ -12,7 +12,7 @@ import { ScopeService } from '../core/scope';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
@@ -234,6 +234,27 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toBe('/agent/definitions/edit/0?ns=HSCUSTOM');
   });
 
+  it("Story 16.12 (DW-1074): a rowTarget's unless withholds the link on a row where that field is true, and keeps it elsewhere", async () => {
+    // `rows()` reads `Enabled` true on even rows, the stand-in for a lock a remote client owns: its
+    // name cell is text, with no anchor, no href and nothing for Enter to open.
+    //
+    // Mutation (Rule 19): ignore `rowTarget.unless` in `data-table.ts`'s `url` -> the first row keeps
+    // its link and this goes red.
+    const wired = await wire(
+      tableDeclaration({ rowTarget: { route: 'agent/definitions/edit', field: 'Count', unless: 'Enabled' } }),
+      ok(rows(2))
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const withheld = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
+    expect(withheld.querySelector('a')).toBeNull();
+    expect(withheld.textContent?.trim()).toBe('/csp/app00');
+    const kept = wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(kept).not.toBeNull();
+    expect(kept.getAttribute('href')).toBe('/agent/definitions/edit/1000?ns=HSCUSTOM');
+  });
+
   it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the Secrets list links each at the wallet secret form', async () => {
     // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
     // route out of the generated mirror, so the Wallet list's own route is what is needed here.
@@ -256,6 +277,34 @@ describe('the data table', () => {
     const secretLink = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
     expect(secretLink).not.toBeNull();
     expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+  });
+
+  it('Story 16.10: External language servers draws Running as Yes or No with its disc, and (Story 16.25) links each name at its editor', async () => {
+    // Mutation (Rule 19): declare the list's CurrentlyRunning column `text` -> the disc assertions go red.
+    const servers = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LanguageServerList')!;
+    const wired = await wire(
+      servers,
+      ok([
+        { Name: '%Java Server', Type: 'Java', Port: 53272, CurrentlyRunning: true },
+        { Name: '%Python Server', Type: 'Python', Port: 53472, CurrentlyRunning: false },
+      ])
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const running = Array.from(wired.host().querySelectorAll('[aria-rowindex="2"] [role="gridcell"]')) as HTMLElement[];
+    expect(running[3].querySelector('.ocu-data-table-disc')?.getAttribute('data-disc')).toBe('success');
+    expect(running[3].textContent?.trim()).toBe(STRINGS.tableStatusYes);
+    expect(running[2].classList.contains('ocu-data-table-cell-numeric')).toBe(true);
+    const stopped = Array.from(wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')) as HTMLElement[];
+    expect(stopped[3].querySelector('.ocu-data-table-disc')?.getAttribute('data-disc')).toBe('outline');
+    expect(stopped[3].textContent?.trim()).toBe(STRINGS.tableStatusNo);
+    // Story 16.25: the editor is paired now, so it wins over the Activity log child list, which the
+    // editor links instead.
+    // Mutation (Rule 19): drop the `editorScreenFor(screen) ??` term from `linkTarget` -> this reads the
+    // Activity log's route and goes red.
+    const link = running[0].querySelector('a') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/os-management/language-servers/edit/%2525Java%2520Server?ns=HSCUSTOM');
+    expect(wired.host().querySelector('[role="columnheader"]:nth-child(4)')?.textContent).toContain(STRINGS.languageServerColumnRunning);
   });
 
   it('Story 9.8: a list that pairs both a detail screen and an editor links each name cell at the detail screen', async () => {
@@ -577,6 +626,47 @@ describe('the data table', () => {
     expect(items).toEqual([STRINGS.agentDefinitionDisable]);
   });
 
+  it('Story 18.4: a row action the screen also declares as its primary is in no row menu, so a list with no other draws no menu column', async () => {
+    // Mutation (Rule 19): drop the primary-id filter from `DataTable.menuItems` -> each row draws
+    // the menu trigger and its column, red.
+    const declaration = tableDeclaration({
+      primaryAction: { id: 'enable', selfProtection: '' },
+      rowActions: [{ id: 'enable', selfProtection: '' }],
+    });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    expect(wired.host().querySelectorAll('[role="row"]').length).toBeGreaterThan(1);
+    expect(wired.host().querySelector('.ocu-data-table-trigger')).toBeNull();
+  });
+
+  it('Story 16.11: an action a banner case offers is in no row menu, beside a row action that is', async () => {
+    // Mutation (Rule 19): drop the banner filter from `DataTable.menuItems` -> `enable` is listed
+    // beside `disable`, red.
+    const declaration = tableDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+      banner: {
+        source: { port: 'admin', endpoint: 'Task.Manager', type: 'GET' },
+        field: 'Status',
+        cases: [{ equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'enable' }],
+      },
+    });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const items = Array.from(wired.host().querySelectorAll('[role="menu"] [role="menuitem"]')).map((item) =>
+      item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()
+    );
+    expect(items).toEqual([STRINGS.agentDefinitionDisable]);
+  });
+
   it("AD-53: a self-protected row's menu entry stays listed, aria-disabled with the reason inline, and runs nothing", async () => {
     // The row menu's half of the refusal the command bar and the command box also draw: a
     // non-selectable entry a key manager still reaches, never the `disabled` attribute, with the
@@ -700,17 +790,52 @@ describe('the data table', () => {
 
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+    expect(slot().textContent?.trim()).toBe('/csp/app01 was updated');
 
     // A tick that marks nothing leaves the slot exactly as it was, which is what "the refresh
     // stamp and refresh ticks stay unannounced" means at this tier.
     await wired.refresh.readNow();
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+    expect(slot().textContent?.trim()).toBe('/csp/app01 was updated');
 
     wired.store.markChanged('/csp/app02', 'deleted');
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app02 deleted');
+    expect(slot().textContent?.trim()).toBe('/csp/app02 was deleted');
+  });
+
+  it('DW-1423: each action announces its own sentence, the change toast\'s', async () => {
+    // Mutation (Rule 19): announce `STRINGS.tableChangeUpdated` whatever the action -> the created
+    // and deleted assertions go red, and a screen reader hears "was updated" for a row that was
+    // created or deleted.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    for (const [key, action, sentence] of [
+      ['/csp/app00', 'created', '/csp/app00 was created'],
+      ['/csp/app01', 'updated', '/csp/app01 was updated'],
+      ['/csp/app02', 'deleted', '/csp/app02 was deleted'],
+    ] as const) {
+      wired.store.markChanged(key, action);
+      await settle(wired.fixture);
+      expect(slot()).toBe(sentence);
+    }
+  });
+
+  it('DW-1423: a composite row key is announced as its breadcrumb, never with the control character', async () => {
+    // Mutation (Rule 19): resolve the sentence with the raw row key rather than through
+    // `formatChangeSentence` -> the assertion goes red on the \u0001 the key carries.
+    const wired = await wire(tableDeclaration({ id: { kind: 'composite', parts: ['Name', 'NameSpace'] } }), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    wired.store.markChanged('/csp/app01\u0001USER', 'created');
+    await settle(wired.fixture);
+    expect(
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
+    ).toBe('/csp/app01 \u203a USER was created');
   });
 
   it('Story 5.7: a second change to a row that is still marked is announced too', async () => {
@@ -725,20 +850,20 @@ describe('the data table', () => {
 
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 updated');
+    expect(slot()).toBe('/csp/app01 was updated');
 
     // An identical re-mark says nothing again: the store swallows it and never notifies.
     wired.store.markChanged('/csp/app02', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app02 updated');
+    expect(slot()).toBe('/csp/app02 was updated');
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app02 updated');
+    expect(slot()).toBe('/csp/app02 was updated');
 
     // A second write to app01, which the user never moved onto, so its mark is still standing.
     wired.store.markChanged('/csp/app01', 'deleted');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 deleted');
+    expect(slot()).toBe('/csp/app01 was deleted');
     expect(wired.store.changed().has('/csp/app01')).toBe(true);
   });
 
@@ -761,7 +886,7 @@ describe('the data table', () => {
     // The line is clipped with an ellipsis in a narrow cell, so its whole text is its title.
     expect(line.getAttribute('title')).toBe('Read back: differs in Description');
     expect(tag.nextElementSibling).toBe(line);
-    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: differs in Description');
+    expect(slot()).toBe('/csp/app01 was updated \u00b7 Read back: differs in Description');
 
     // A mark with no read-back draws no line, and a second write under the same action whose
     // read-back differs is announced again.
@@ -770,7 +895,7 @@ describe('the data table', () => {
     expect((wired.host().querySelector('[aria-rowindex="4"]') as HTMLElement).querySelector('.ocu-data-table-read-back')).toBeNull();
     wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'matches', fields: [], written: [] }));
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: matches');
+    expect(slot()).toBe('/csp/app01 was updated \u00b7 Read back: matches');
   });
 
   it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {
@@ -798,7 +923,7 @@ describe('the data table', () => {
     expect(wired.store.active()).toBe('/csp/App01');
     expect(
       (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
-    ).toBe('Updated: /csp/App01 created');
+    ).toBe('/csp/App01 was created');
   });
 
   it('Story 5.7: a pending selection is taken up when the read brings the row, and keeps its mark', async () => {

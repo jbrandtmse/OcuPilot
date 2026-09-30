@@ -33,7 +33,7 @@ import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
-import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel, bannerActionIds } from '../core/screen-actions';
 import { isCheckable, isCheckedSetAction } from '../core/multi-select';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
@@ -41,7 +41,7 @@ import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatChangeAnnouncement } from '../core/toasts';
+import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
 import {
   COLUMN_DEFAULT_PX,
   COLUMN_RESIZE_STEP_PX,
@@ -646,6 +646,10 @@ export class DataTable implements OnInit {
     const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
     const rowTarget = screen.rowTarget;
     const rowTargetField = rowTarget?.field ?? '';
+    // Story 16.12 (DW-1074): a row target may name the read field that withholds a row's link --
+    // a lock a remote client holds has no local pid for Process details to open -- so a row where
+    // that field is JSON `true` renders its name cell as text.
+    const rowTargetUnless = rowTarget?.unless ?? '';
     const rowTargetScreen = rowLinked || rowTarget === null ? null : screenForRoute(rowTarget.route);
     const linkTarget = rowLinked
       ? null
@@ -671,7 +675,8 @@ export class DataTable implements OnInit {
       const isActive = key !== '' && key === active;
       const isChanged = key !== '' && markedKeys.has(key);
       const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
-      const url = linkable && linkValue !== '' ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
+      const withheld = rowTargetScreen !== null && rowTargetUnless !== '' && fieldOf(row, rowTargetUnless) === true;
+      const url = linkable && linkValue !== '' && !withheld ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
       return {
         key,
@@ -885,11 +890,18 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
     const row = rowFor(this.store().data(), screen, selected);
+    const onBanner = bannerActionIds(screen);
     return screen.rowActions
       .filter((action) => action.id !== '')
+      // Story 16.11: an action a banner case offers names no row; the strip and the command box
+      // draw it.
+      .filter((action) => !onBanner.includes(action.id))
       // Story 16.6: a multi-select action acts on the checked rows, from the command bar and the
       // command box, never on the one row a menu opens on.
       .filter((action) => !isCheckedSetAction(screen, action.id))
+      // Story 18.4: an action the screen also declares as its primary is the command bar's, drawn
+      // once there, so no row carries a menu for it (Databases' Check integrity).
+      .filter((action) => action.id !== screen.primaryAction.id)
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
         const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
@@ -1725,7 +1737,8 @@ export class DataTable implements OnInit {
    * would announce the first and silence the second. An identical re-mark announces nothing,
    * because the store itself swallows one and never notifies.
    *
-   * The sentence names the key the view carries, which is the spelling on screen.
+   * The sentence is the change toast's own for the action, and it names the key the view carries,
+   * which is the spelling on screen.
    */
   private announceChanged(): void {
     const store = this.store();
@@ -1743,7 +1756,7 @@ export class DataTable implements OnInit {
       const row = this.viewKeyFor(key);
       if (row === '') continue;
       this.announcedChanged.set(key, said);
-      this.announcement.set(withReadBack(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action), readBack));
+      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), row), readBack));
     }
   }
 

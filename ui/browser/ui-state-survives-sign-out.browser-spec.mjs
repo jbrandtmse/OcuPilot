@@ -37,6 +37,7 @@ import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { SHELL_FIRST_SIGN_IN } = await import(join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts'));
 
 const config = browserConfig();
 
@@ -269,7 +270,8 @@ test('Integration AC: all six remembered things return after a real sign-out and
 
     // The instance is where they went. Read over the shipped route, as the account itself.
     const held = await preferences();
-    const shellNames = held.shell.map((row) => row.name).sort();
+    // The first-login gate's record is written by the sign-in, not by anything this spec moved.
+    const shellNames = held.shell.map((row) => row.name).filter((name) => name !== SHELL_FIRST_SIGN_IN).sort();
     assert.deepEqual(shellNames, ['panelWidth', 'sideBarOpen'], `the instance holds both shell members: ${JSON.stringify(held.shell)}`);
     assert.equal(held.views.length, 1, `and one remembered view: ${JSON.stringify(held.views)}`);
     assert.equal(held.refreshRates.length, 1, `and one remembered rate: ${JSON.stringify(held.refreshRates)}`);

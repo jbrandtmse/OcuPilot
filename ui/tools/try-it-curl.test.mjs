@@ -233,8 +233,14 @@ test('each hostile value arrives byte for byte in a header, a path, a query and 
     const store = new TryItStore({ fetch, accessToken: () => 't', copyText: async () => true });
     await store.send('1', request);
     await store.confirm();
-    assert.equal(calls.length, 1);
-    const { url, init } = calls[0];
+    // A header value the browser cannot carry (a line break, a code point past U+00FF) is never
+    // handed to fetch; the command carries it as typed all the same, as curl sends it.
+    const unsent = store.outcome('1') === 'unsent';
+    assert.equal(unsent, /[\r\n]|[^\u0000-\u00ff]/u.test(value), `unsent for ${JSON.stringify(value.slice(0, 40))}`);
+    assert.equal(calls.length, unsent ? 0 : 1);
+    const { url, init } = unsent
+      ? { url: request.url, init: { method: request.method, headers: Object.fromEntries(sentHeaders(request)), ...(request.body === null ? {} : { body: request.body }) } }
+      : calls[0];
     const expected = [
       '--request',
       init.method,

@@ -2,7 +2,9 @@
  * The seeded-injection test in a real browser, against the throwaway instance (Story 14.8, AD-11).
  * The probe role's description is the seed (`OcuPilot.Test.InjectionSeed`, source e), and a turn
  * run from the panel on the Roles screen reads it through `permissions_roles_read` before the
- * scripted `turnprobe` stub reacts to the marker:
+ * scripted `turnprobe` stub reacts to the marker. The read passes the role's name as the read's own
+ * `filter`, so the result holds the rows that name matches rather than every role, and the tool
+ * step's text, which the instance cuts at `Limits.TOOLSTEPTEXTMAXLENGTH`, carries the seed:
  *
  * - `channels`: the stub obeys only a marker in the system text or a user-role text block, and its
  *   batch would open a route the instance announces. It answers instead with the seed, a Markdown
@@ -123,14 +125,14 @@ function scriptReaction(tag, mode, seed, elseExpr) {
   assert.equal(markerValue(output, 'INJREACT'), '1', `ScriptReaction succeeded: ${output}`);
 }
 
-/** A fresh tag the definition now names: the Roles read, then the reaction in `mode`. Under
- * `channels` the reply that does not obey is the off-origin final reply; under `anywhere` that
- * reply follows the obeyed batch. */
+/** A fresh tag the definition now names: the Roles read filtered to the probe role, then the
+ * reaction in `mode`. Under `channels` the reply that does not obey is the off-origin final reply;
+ * under `anywhere` that reply follows the obeyed batch. */
 function scriptTurn(mode, seed) {
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
   const finalBody = `##class(${SEED_CLASS}).FinalBody("${escapeOs(seed)}")`;
-  scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_inject", "name": "permissions_roles_read", "input": {}}])`);
+  scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_inject", "name": "permissions_roles_read", "input": {"filter": (##class(${SEED_CLASS}).Target())}}])`);
   scriptReaction(tag, mode, seed, mode === 'channels' ? finalBody : `##class(${SEED_CLASS}).ElseBody("${escapeOs(seed)}")`);
   if (mode === 'anywhere') scriptReply(probe, tag, 0, finalBody);
   return tag;

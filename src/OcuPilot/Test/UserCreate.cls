@@ -362,9 +362,9 @@ Method TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs()
 
 /// <p>AD-3, AD-6: a <code>secretArguments</code> name qualifies when it is a top-level
 /// <code>secret</code> row of the screen's write tools -- the create's authored
-/// <code>Password</code> -- while a name no source carries, and a nested secret path, are still
-/// refused, and a settable field still qualifies. The twin of
-/// <file>ui/tools/screen-mirror.test.mjs</file>'s secret-row test.</p>
+/// <code>Password</code> -- while a name no source carries, a nested secret path and a settable
+/// field are refused. The twin of <file>ui/tools/screen-mirror.test.mjs</file>'s secret-row
+/// test.</p>
 /// <p>Mutation: drop the <method>OcuPilot.Screen.Registry.SecretRowNames</method> clause from
 /// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> -> the Users list's own
 /// declaration is refused and this goes red.</p>
@@ -380,7 +380,7 @@ Method TestTheConfirmChannelAdmitsATopLevelSecretRowAndNothingElseNew()
     Do $$$AssertStatusOK(tSC, "the Web applications list's declaration parses")
     If $$$ISERR(tSC) Quit
     Do tApps.%Set("secretArguments", ["Timeout"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tApps), "", "a settable field still qualifies")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tApps) [ "'Timeout'", "a settable field does not qualify, since no tool sends it as a secret")
     Do tApps.%Set("secretArguments", ["MatchRoles[].MatchRole"])
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tApps), "", "and a nested secret path does not")
 }

@@ -215,6 +215,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; system database (measured); every other write tool must still name its own.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
             If (tTool.name '= "osmgmt.localdatabases.update") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
+            ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
+            If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))
@@ -229,6 +232,12 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.2: the namespace delete declares a second pair beyond its write's, the
             ; application pair its cascade reaches (AD-8), after the write's own.
             If $Parameter(tTool.class, "APPLICATIONRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "APPLICATIONRESOURCE"), $Parameter(tTool.class, "APPLICATIONPERMISSION")))
+            ; Story 18.4: the dismount declares the pair its prohibited set's own-database read needs,
+            ; after the write's own (AD-8, AD-10).
+            If $Parameter(tTool.class, "OWNSETRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "OWNSETRESOURCE"), "USE"))
+            ; Story 16.11: the Task Manager's start declares %Admin_Secure:USE after the write's own,
+            ; without which the vendor's start runs it as the caller (AD-8 as amended 2026-09-30).
+            If $Parameter(tTool.class, "STARTRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "STARTRESOURCE"), $Parameter(tTool.class, "STARTPERMISSION")))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {

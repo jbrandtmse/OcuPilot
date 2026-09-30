@@ -24,15 +24,15 @@ import { stubAccountPreferences } from '../testing/account-preferences';
  * `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal (created by `OnBeforeAllTests`, holding
  * exactly `%Admin_Operate:U`, removed by `OnAfterAllTests` -- no real account was touched).
  * `OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal` asserts the identical
- * nine facts against the real `$System.Security.Check` for this same principal -- two allowed and
- * six denied since Story 2.10 moved logs into the denied set, as Story 2.9 had moved
- * os-management -- so the rendered DOM here and that ObjectScript assertion are pinned against one
- * known state rather than against each other -- a field either the server renames or the client
- * mis-reads breaks one of the two.
+ * nine facts against the real `$System.Security.Check` for this same principal -- three allowed and
+ * five denied, Logs opening on the messages.log viewer since an area is allowed when any screen it
+ * lists is (AD-8, DW-1768; the Logs verdict below was edited by hand for it) -- so the rendered DOM
+ * here and that ObjectScript assertion are pinned against one known state rather than against each
+ * other -- a field either the server renames or the client mis-reads breaks one of the two.
  *
  * Mutation (Rule 19): rename the `allowed` key to `permitted` in LIVE_PAYLOAD, standing in for a
  * server-side rename -> `verdictFrom`'s `entry.allowed === true` no longer matches anything, so
- * every area reads denied (`aria-disabled="true"`) including the two the live principal was
+ * every area reads denied (`aria-disabled="true"`) including the three the live principal was
  * actually allowed, and the second test below goes red. Demonstrated 2026-09-12.
  */
 const LIVE_PAYLOAD = {
@@ -52,8 +52,7 @@ const LIVE_PAYLOAD = {
       railPosition: 2,
       navigates: false,
       pinBottom: false,
-      allowed: false,
-      failedPair: '%Admin_Secure:USE',
+      allowed: true,
       screens: [
         {
           route: 'logs/alerts',
@@ -98,8 +97,10 @@ const LIVE_PAYLOAD = {
       // listed ones in position order. Story 18.2 adds the namespace editor among the unlisted ones
       // and Namespaces last, Story 18.14 the three mapping forms and lists among the unlisted ones,
       // Story 16.7 License usage's three unlisted tabs among them and License usage and the
-      // Dashboard last, and Story 18.3 the local database form among the unlisted ones and Local
-      // databases after the Dashboard.
+      // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
+      // language servers after the Dashboard, refused on its own pair; and Story 18.3 the local
+      // database form among the unlisted ones and Local databases last; Story 16.25 the language
+      // server editor among the unlisted ones, refused on the list's own pair.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -114,6 +115,20 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/integrity',
+          labelKey: 'databaseIntegrityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/integrity-log',
+          labelKey: 'databaseIntegrityLogLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/databases/volumes',
@@ -135,6 +150,20 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/language-servers/activity',
+          labelKey: 'languageServerActivityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
+        },
+        {
+          route: 'os-management/language-servers/edit',
+          labelKey: 'languageServerFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
         },
         {
           route: 'os-management/license-usage/distributed',
@@ -263,9 +292,16 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'os-management/language-servers',
+          labelKey: 'languageServersLabel',
+          sideBarPosition: 9,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
+        },
+        {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
-          sideBarPosition: 9,
+          sideBarPosition: 10,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -528,20 +564,16 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const item of items()) expect(item.hidden).toBe(false);
   });
 
-  it('marks exactly the six areas the live principal was denied as aria-disabled, each naming its own pair', () => {
-    // The two that never gate, and nothing else: since Story 2.10 no gated area opens on
-    // `%Admin_Operate` alone.
-    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaAgent]) {
+  it('marks exactly the five areas the live principal was denied as aria-disabled, each naming its own pair', () => {
+    // The two that never gate, and Logs, which a screen it lists opens for this principal (AD-8 as
+    // amended for DW-1768): the messages.log viewer declares `%Admin_Operate:USE` alone.
+    for (const label of [STRINGS.navAreaHome, STRINGS.navAreaAgent, STRINGS.navAreaLogs]) {
       expect(byLabel(label).getAttribute('aria-disabled')).toBeNull();
     }
 
-    // Logs joined the denied set with Story 2.10: the audit database viewer declares
-    // `%Admin_Secure:USE` for the endpoint's own gate and `%DB_IRISSYS:READ` because the read runs
-    // in `%SYS`, so AD-8's area coverage puts both on the area beside `%Admin_Operate:USE`. OS
-    // management joined it with Story 2.9, on a different resource again. Each entry names the
-    // first pair this principal does not hold.
+    // OS management joined the denied set with Story 2.9. Each entry names the first pair of its
+    // area's set this principal does not hold.
     const denied: ReadonlyArray<readonly [string, string]> = [
-      [STRINGS.navAreaLogs, '%Admin_Secure:USE'],
       [STRINGS.navAreaOsManagement, '%Admin_Manage:USE'],
       [STRINGS.navAreaTasks, '%Admin_Task:USE'],
       [STRINGS.navAreaPermissions, '%Admin_Secure:USE'],
@@ -574,6 +606,17 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     expect(navigation.screenVerdict('tasks/background')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
+  it('Story 16.10: reads the External language servers verdicts the live payload carries', () => {
+    // Each declares its own `%Admin_ExternalLanguageServerEdit:USE` first, which this principal does
+    // not hold, so each is denied on it; Story 16.25's editor joined the list and its Activity log.
+    // The payload's entries are what OcuPilot.Test.Wire pins the instance to answer; this pins only
+    // that the navigation service reads them.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/language-servers', 'os-management/language-servers/activity', 'os-management/language-servers/edit']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_ExternalLanguageServerEdit:USE' });
+    }
+  });
+
   it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {
     // Both are denied on `%DB_IRISSYS:READ` in this payload, which this principal does not hold.
     // Without this the alerts.log entry added to LIVE_PAYLOAD is read by nothing here and can
@@ -601,6 +644,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const route of ['os-management/local-databases', 'os-management/local-databases/edit']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
+  });
+
+  it('Story 18.4: reads the Check integrity and Integrity log verdicts the live payload carries', () => {
+    // Check integrity declares the Databases list's pairs; the Integrity log declares
+    // `%Admin_Operate:USE` first, which this principal holds, so it is denied on the second.
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('os-management/databases/integrity')).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+    expect(navigation.screenVerdict('os-management/databases/integrity-log')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
   it('Story 6.14: reads the messages.log verdict the live payload carries', () => {

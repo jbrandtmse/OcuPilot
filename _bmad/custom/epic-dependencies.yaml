@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "359660cb67df7282ddf7f765bb8dca41600bec1af7d24ae41e5b7519ac8f48d7"
+epics_md_hash: "375c59a352dc56a4d77ad9ccf83f62b573bf60aa18c6f8f2710aff9259d4dbf2"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -26,6 +26,7 @@ owner_graph:  # as approved, never reduced
   epic-14: [epic-4, epic-11, epic-12]   # owner 2026-09-26: run extended to Epics 14 and 16 (never 17) after the submission cut
   epic-16: [epic-6, epic-11, epic-12]   # owner 2026-09-26: same
   epic-18: [epic-11, epic-12]   # owner 2026-09-26 (c242eac4): the whole epic joins the voting-week run on slot B after Epic 14; 18.1 on slot A ahead of 16.4 unless slot B reaches Epic 18 first
+  epic-19: [epic-11, epic-12]   # owner 2026-09-29: the whole epic joins the run on slot A after Epic 16, in parallel with Epic 18 on slot B
 
 added_edges:
   hard:
@@ -233,6 +234,9 @@ epics:
     note: >-
       One range-end cleanup story over the ledger slice owner=range-end-cleanup (178 entries at the charter).
       It spans the range, so its paths_hint is broad; a concurrent epic's files are contended-edit for it.
+      Story 23.1 closed as it stood on 2026-09-30; Story 23.2 (12 entries, owner-approved burn-down sheet
+      2026-09-29) runs on slot B from 2026-09-30, before the release/1.0.4 cut (owner), merging batch by
+      batch; Epic 18 stays paused until it merges.
   epic-14:
     depends_on: [epic-4, epic-11, epic-12]
     submodules: []
@@ -254,3 +258,16 @@ epics:
     slot: "B after Epic 14 (14.1, 14.8, 14.3, 14.5, 14.4, 14.2, 14.6)"
     gate: "Stage 2 gate amended at source (c242eac4): build against the pinned 2026.2 image; re-derive the inventory fixture when 2027.1 ships"
     paths_hint: ["src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Port/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]
+  epic-19:
+    depends_on: [epic-11, epic-12]
+    submodules: []
+    in_run: all   # owner 2026-09-29 ("Yeah let's plan epic 19 if it can be done in parallel." / "Yes add it to the graph"): the whole epic, in epics.md story order
+    story_order: ["19-1", "19-2", "19-3", "19-4", "19-5", "19-6 (the DML and DDL guard ships with the query console, never after it)", "19-7", "19-8", "19-9", "19-10", "19-11"]
+    slot: "A after Epic 16 (its owner fixes DW-1838, DW-1836, DW-1837 first, then 16.25 and 16.11-16.15), in parallel with Epic 18 on slot B"
+    gate: "Stage 3 gate: the Atelier port's authentication DECIDED by the owner 2026-09-29 - through the OcuPilot API, calling the Atelier implementation in process as the signed-in user, the pattern AdminPort uses for the admin API; the explicit Basic header is rejected; no vendor web application is changed (spine deferred-decisions row and the Epic 19 preamble amended at origin). Every write a confirmed proposal; every new destructive key defaults to disabled (14.2 baseline rule); Atelier v7 routes carry a version gate; the ETag conflict path is observed, not assumed; DocDB needs its service enabled."
+    paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]
+    note: >-
+      Overlaps Epic 18's paths as Epics 16 and 18 did; parallel through the usual staging merges. 19.11 (the agent gains
+      guarded SQL) and 18.12 (the agent grows with the stage) both touch the agent's tool registry - the second to merge
+      rebases on the first. The iris-table-editor harvest (19.7, 19.8) takes its builders and formatters, ports three grid
+      algorithms, and never carries its plaintext-password session pattern.

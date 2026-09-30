@@ -46,12 +46,15 @@ import {
   authHeader as sharedAuthHeader,
   definitions as sharedDefinitions,
 } from './panel-spec.mjs';
-import { resetRememberedState } from './preferences-reset.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 const { actionLabel } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
+const { FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } = await import(
+  join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts')
+);
 
 /**
  * What the Definitions list's row menu says for its enable row action: the action is read out of
@@ -68,6 +71,9 @@ const ENABLE_ACTION = (() => {
 })();
 
 const config = browserConfig();
+
+/** The application root, which is what a full load of the bare address opens. */
+const ROOT_URL = '/ocupilot/';
 
 /** A screen in another area, so "the gate moved the browser" is a visible change of route. */
 const OTHER_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
@@ -131,6 +137,26 @@ async function removeProbeDefinitions() {
     });
     assert.ok(gone.ok, `the probe definition ${row.name} is removed (HTTP ${gone.status})`);
   }
+}
+
+/**
+ * Forget the account's remembered shell state, the first-sign-in record with it, through the
+ * shipped route -- the value kinds take no per-member remove -- and assert the record is gone.
+ */
+async function forgetFirstSignIn() {
+  let held = await rememberedShellMember(SHELL_FIRST_SIGN_IN);
+  for (let read = 0; read < 20 && held === null; read += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    held = await rememberedShellMember(SHELL_FIRST_SIGN_IN);
+  }
+  assert.equal(held, FIRST_SIGN_IN_RECORDED, 'the sign-in recorded the first sign-in before it is forgotten');
+  const answer = await fetch(`${config.origin}/api/ocupilot/account/preferences`, {
+    method: 'POST',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'shell', action: 'clear' }),
+  });
+  assert.equal(answer.status, 200, `the shell kind cleared: ${await answer.text()}`);
+  assert.equal(await rememberedShellMember(SHELL_FIRST_SIGN_IN), null, 'and the record is gone');
 }
 
 /** Create one probe definition through the shipped route and answer its id. */
@@ -315,6 +341,9 @@ test('AC1b: a reload that resumes a stored pair does not redirect, and the reque
   try {
     const left = pathOf(page);
     assert.notEqual(left, FORM_PATH, 'the administrator has left the gate, and is somewhere else');
+    // The sign-in recorded the account's first sign-in; forgotten here, so a reload that were an
+    // authentication would meet the gate again, and only the resume path keeps the route.
+    await forgetFirstSignIn();
 
     await page.reload({ waitUntil: 'networkidle2' });
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
@@ -325,7 +354,7 @@ test('AC1b: a reload that resumes a stored pair does not redirect, and the reque
     assert.equal(new URL(page.url()).search, '?ns=HSCUSTOM', 'and so did its namespace');
 
     // And the panel's banner is still there, on this route as on every other: leaving the gate
-    // does not clear the condition, and nothing about the gate was remembered.
+    // does not clear the condition the reminder answers to.
     const banner = await page.$eval('.ocu-panel-banner', (node) => node.textContent.trim());
     assert.ok(banner.includes(STRINGS.agentGateReminderBanner), `the reminder banner stands: ${banner}`);
   } finally {
@@ -456,5 +485,74 @@ test('AC6, Integration AC: the dot and the panel clear on the first render after
   } finally {
     await context.close();
     await removeProbeDefinitions();
+  }
+});
+
+test('FR-28: the form opens on the account\'s first sign-in only; Cancel on it goes to Home, and a second full load lands on Home', async () => {
+  // `atSignIn` forgets the account's remembered state, the first-sign-in record included, so this
+  // account signs in for the first time as far as the gate can tell; `finally` forgets it again.
+  //
+  // Mutation (Rule 19): delete `if (this.accountPreferences.firstSignInRecorded()) return;` from
+  // `App.runFirstLoginGate`, rebuild and redeploy -> the second load lands on the form and this
+  // goes red. Make `DefinitionFormPage.cancel()` always go to the list -> Cancel lands on
+  // Definitions and this goes red.
+  const { context, page } = await atSignIn(ROOT_URL);
+  try {
+    assert.equal(await rememberedShellMember(SHELL_FIRST_SIGN_IN), null, 'the account starts with no first-sign-in record');
+    await submitSignIn(page);
+    await page.waitForFunction(
+      (wanted) => new URL(window.location.href).pathname === wanted,
+      { timeout: config.navigationTimeoutMs },
+      FORM_PATH
+    );
+    await page.waitForSelector('.ocu-form-gate-banner', { timeout: config.navigationTimeoutMs });
+
+    // The record the gate wrote is the instance's, for this account (AD-50).
+    let recorded = null;
+    for (let read = 0; read < 20 && recorded === null; read += 1) {
+      recorded = await rememberedShellMember(SHELL_FIRST_SIGN_IN);
+      if (recorded === null) await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(recorded, FIRST_SIGN_IN_RECORDED, 'opening the form recorded the first sign-in on the instance');
+
+    // Cancel on the form the gate opened goes to Home, not to the Definitions list.
+    const clicked = await page.evaluate((label) => {
+      const button = [...document.querySelectorAll('.ocu-form-bar-actions button')].find(
+        (candidate) => candidate.textContent.trim() === label
+      );
+      if (button === undefined) return false;
+      button.click();
+      return true;
+    }, STRINGS.actionCancel);
+    assert.equal(clicked, true, 'the form offers Cancel');
+    await page.waitForFunction(
+      (form) => new URL(window.location.href).pathname !== form,
+      { timeout: config.navigationTimeoutMs },
+      FORM_PATH
+    );
+    assert.equal(pathOf(page), ROOT_URL, 'Cancel on the auto-opened form lands on Home');
+    await page.waitForSelector('.ocu-home-block', { timeout: config.navigationTimeoutMs });
+
+    // A second full load of the bare address: a fresh document re-authenticates, which the gate
+    // sees as a sign-in -- and the account's record now answers it.
+    await page.goto(`${config.origin}${ROOT_URL}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The premise, asserted: a navigation, which `TokenStore` never resumes a pair across, and not
+    // a reload, which it does.
+    assert.equal(
+      await page.evaluate(() => performance.getEntriesByType('navigation')[0]?.type),
+      'navigate',
+      'the second load is a fresh document, not a reload'
+    );
+    // Long enough for a redirect to have happened if one were coming, as AC1b waits.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(pathOf(page), ROOT_URL, 'the second load lands on Home, not on the Definition form');
+    await page.waitForSelector('.ocu-home-block', { timeout: config.navigationTimeoutMs });
+    const banner = await page.$eval('.ocu-panel-banner', (node) => node.textContent.trim());
+    assert.ok(banner.includes(STRINGS.agentGateReminderBanner), `the panel's note is the pointer: ${banner}`);
+    assert.equal(await enabledCount(), 0, 'and no definition was left behind');
+  } finally {
+    await context.close();
+    await resetRememberedState();
   }
 });

@@ -480,6 +480,28 @@ ClassMethod SecretArguments(pTool As %DynamicObject, Output pDeclared As %Boolea
     Quit tNames
 }
 
+/// <p>The names a confirm or a screen action's secret value may carry for write tool
+/// <var>pTool</var>, as its class answers them
+/// (<method>OcuPilot.Screen.Tool.Write.ChannelSecretNames</method>): its descriptor's declared
+/// secrets that the tool itself sends as a secret (AD-6). <var>pDeclared</var> is 0 when the answer
+/// could not be read, a tool that is not a write tool included, and the channel is then closed.</p>
+ClassMethod ChannelSecretNames(pTool As %DynamicObject, Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 0
+    Set tNames = ""
+    Try {
+        Set tNames = $ClassMethod(pTool.%Get("class"), "ChannelSecretNames", pTool.%Get("descriptor"), .pDeclared)
+        If '$ListValid(tNames) {
+            Set tNames = ""
+            Set pDeclared = 0
+        }
+    } Catch {
+        Set tNames = ""
+        Set pDeclared = 0
+    }
+    Quit tNames
+}
+
 /// <p><var>pTool</var>'s declared fulfilment, <code>instance</code> or <code>client</code> (Story
 /// 4.7, AD-11 rule 3): <code>instance</code> for every tool <method>ListTools</method> lists that
 /// carries no <code>fulfilment</code> key at all, which is every tool a pre-4.7 caller built.</p>

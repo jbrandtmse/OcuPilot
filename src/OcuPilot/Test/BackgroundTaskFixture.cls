@@ -1,7 +1,8 @@
 /// <p>Subclass of <class>OcuPilot.Port.BackgroundTaskPort</class> overriding only its seams, so the
 /// Background tasks tests run the port's real merge, fresh read, control routing and refusal
 /// mapping against armed answers: the portal's rows, the admin API's <code>AsyncResult</code>
-/// answers, what the portal's background task answers a control, and a denied pair. Every call it
+/// answers, the database half and its links to the admin rows (Story 18.4), what the portal's
+/// background task answers a control, and a denied pair. Every call it
 /// would make is recorded rather than made.</p>
 /// <p>State lives in <code>^||OcuPilotBackgroundFixture</code>; <method>Clear</method> forgets it.
 /// Nothing on the instance is read or changed.</p>
@@ -22,6 +23,21 @@ ClassMethod ArmPortal(pJson As %String)
 ClassMethod ArmDatabases(pJson As %String)
 {
     Set ^||OcuPilotBackgroundFixture("databases") = pJson
+}
+
+/// <p>Answer the database half (Story 18.4, DW-1821) with the rows <var>pJson</var>, each as
+/// <code>DatabaseRows</code> answers one, or fail that read with <code>"fail"</code>. Unarmed, no task
+/// runs against a database.</p>
+ClassMethod ArmDatabaseRows(pJson As %String)
+{
+    Set ^||OcuPilotBackgroundFixture("databaseRows") = pJson
+}
+
+/// <p>Link the caller's async tasks to background tasks (Story 18.4, DW-1821): <var>pJson</var> is an
+/// object from each GUID to its background task id. Unarmed, no task is linked.</p>
+ClassMethod ArmTaskLinks(pJson As %String)
+{
+    Set ^||OcuPilotBackgroundFixture("links") = pJson
 }
 
 /// <p>Answer the admin API's <code>AsyncResult</code> <code>LIST</code> with the vendor rows
@@ -95,6 +111,26 @@ ClassMethod TaskDatabases(Output pDatabases) As %Status [ Private ]
     Set tArmed = $Get(^||OcuPilotBackgroundFixture("databases"), "[]")
     If tArmed = "fail" Quit $$$ERROR($$$GeneralError, "the armed task database read fails")
     Do ..KeepRunning(##class(%DynamicArray).%FromJSON(tArmed), .pDatabases)
+    Quit $$$OK
+}
+
+ClassMethod DatabaseRows(Output pRows As %DynamicArray) As %Status [ Private ]
+{
+    Set pRows = []
+    Set tArmed = $Get(^||OcuPilotBackgroundFixture("databaseRows"), "[]")
+    If tArmed = "fail" Quit $$$ERROR($$$GeneralError, "the armed database half fails")
+    Set pRows = ##class(%DynamicArray).%FromJSON(tArmed)
+    Quit $$$OK
+}
+
+ClassMethod TaskLinks(pGuids As %List, Output pLinks) As %Status [ Private ]
+{
+    Kill pLinks
+    Set tLinks = ##class(%DynamicObject).%FromJSON($Get(^||OcuPilotBackgroundFixture("links"), "{}"))
+    For tI = 1:1:$ListLength(pGuids) {
+        Set tGuid = $List(pGuids, tI)
+        If tLinks.%IsDefined(tGuid) Set pLinks(tGuid) = tLinks.%Get(tGuid)
+    }
     Quit $$$OK
 }
 

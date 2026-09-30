@@ -10,6 +10,7 @@
  * signal.
  */
 
+import type { ScreenDeclaration } from './screens.generated';
 import { STRINGS } from './strings.ts';
 
 /** What runs one declared action. */
@@ -48,6 +49,28 @@ export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
 export const TASK_IMPORT_ACTION_ID = 'task-import';
 
 /**
+ * Suspend Task Manager on Task schedule (Story 16.11): screen-level like Import. It names the Task
+ * Manager, not a row, so it is never held back for want of a selection. The descriptor declares
+ * `suspendmanager` so the action route admits it; this id is what the Task schedule's page registers
+ * and the two surfaces draw.
+ */
+export const TASK_MANAGER_SUSPEND_ACTION_ID = 'task-manager-suspend';
+
+/**
+ * The declared actions `screen`'s banner cases offer (Story 16.11, AD-5), in case order. Each is
+ * screen-level: it names no row, so the command bar draws none of them as a row action -- the strip
+ * does -- and the command box lists them beside the screen's other screen-level actions.
+ */
+export function bannerActionIds(screen: Pick<ScreenDeclaration, 'banner'>): readonly string[] {
+  const ids: string[] = [];
+  for (const entry of screen.banner?.cases ?? []) {
+    const id = entry.action ?? '';
+    if (id !== '' && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
  * The label a surface draws for `actionId` on `descriptor`.
  *
  * A declared action's label is its own identifier until a screen carries published copy for it.
@@ -81,6 +104,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
   [PERMISSION_CHECK_ACTION_ID]: STRINGS.permissionCheckAction,
   [TASK_IMPORT_ACTION_ID]: STRINGS.actionImport,
+  [TASK_MANAGER_SUSPEND_ACTION_ID]: STRINGS.taskManagerSuspendAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -100,6 +124,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   reset: STRINGS.actionResetCounters,
   // Story 16.5: a background task's Pause, on Background tasks.
   pause: STRINGS.actionPause,
+  // Story 16.10: an external language server's Start and Stop, on External language servers.
+  start: STRINGS.actionStart,
+  stop: STRINGS.actionStop,
 };
 
 /**
@@ -148,8 +175,28 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.NamespaceList': { 'copy-mappings': STRINGS.namespaceCopyMappingsAction },
   // Story 16.6: the Processes list's Broadcast, over its checked rows.
   'OcuPilot.Screen.Descriptor.ProcessList': { broadcast: STRINGS.processBroadcastAction },
-  // Story 16.4: the Task schedule's Export, on the selected task.
-  'OcuPilot.Screen.Descriptor.TaskScheduleList': { export: STRINGS.taskExportAction },
+  // Story 16.4: the Task schedule's Export, on the selected task; Story 16.11: the Task Manager's
+  // three actions, the suspend's also titling its warning dialog.
+  'OcuPilot.Screen.Descriptor.TaskScheduleList': {
+    export: STRINGS.taskExportAction,
+    suspendmanager: STRINGS.taskManagerSuspendAction,
+    resumemanager: STRINGS.taskManagerResumeAction,
+    startmanager: STRINGS.taskManagerStartAction,
+  },
+  // Story 18.4: Database details' five disk operations, each also titling its warning dialog.
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': {
+    mount: STRINGS.databaseActionMount,
+    dismount: STRINGS.databaseActionDismount,
+    truncate: STRINGS.databaseActionTruncate,
+    compact: STRINGS.databaseActionCompact,
+    defragment: STRINGS.databaseActionDefragment,
+  },
+  // Story 18.4: the Databases list's Check integrity, which opens its flow.
+  'OcuPilot.Screen.Descriptor.DatabaseList': { integrity: STRINGS.databaseIntegrityLabel },
+  // Story 18.4: the editor's Add a volume, which also titles its warning dialog.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseList': { expand: STRINGS.databaseExpandAction },
+  // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
+  'OcuPilot.Screen.Descriptor.LockList': { remove: STRINGS.lockRemoveAction },
 };
 
 export class ScreenActions {

@@ -38,6 +38,14 @@ Parameter KINDNAMESPACEDELETE = "namespace-delete";
 
 Parameter KINDDATABASEDELETE = "database-delete";
 
+/// <p>A database dismount (Story 18.4): it has no parts, and answers only the prohibited set's refusal
+/// for a protected target, so the Dismount dialog states that reason when it opens (AD-10); any other
+/// target has no impact.</p>
+Parameter KINDDATABASEDISMOUNT = "database-dismount";
+
+/// <p>The tool whose write is <parameter>KINDDATABASEDISMOUNT</parameter>.</p>
+Parameter DATABASEDISMOUNTTOOL = "osmgmt.databasedetails.dismount";
+
 Parameter PARTHOLDERS = "holders";
 
 Parameter PARTGRANTINGAPPLICATIONS = "grantingApplications";
@@ -151,6 +159,8 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             Set tImpact = tAnswer
             Quit
         }
+        ; A dismount has no parts: only a refusal is worth stating before it is confirmed.
+        If tKind = ..#KINDDATABASEDISMOUNT Quit
         Do tAnswer.%Set("refused", "", "null")
 
         If tKind = ..#KINDROLEDELETE {
@@ -218,6 +228,7 @@ ClassMethod KindOf(pToolName As %String, pFresh As %DynamicObject, pPayload As %
     If pToolName = ..#RESOURCEDELETETOOL Quit ..#KINDRESOURCEDELETE
     If pToolName = ..#NAMESPACEDELETETOOL Quit ..#KINDNAMESPACEDELETE
     If pToolName = ..#DATABASEDELETETOOL Quit ..#KINDDATABASEDELETE
+    If pToolName = ..#DATABASEDISMOUNTTOOL Quit ..#KINDDATABASEDISMOUNT
     If pToolName '= ..#USERUPDATETOOL Quit ""
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#ROLESFIELD) '= "array") Quit ""
     Kill tSent

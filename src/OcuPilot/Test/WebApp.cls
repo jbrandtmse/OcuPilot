@@ -25,6 +25,18 @@ Class OcuPilot.Test.WebApp Extends %UnitTest.TestCase
 /// runs happens on the container that script builds and nowhere else.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";
 
+/// <p>The namespace <method>TestTheFloorCoversASplitNamespacesTwoDatabases</method> creates over
+/// two existing databases and removes.</p>
+Parameter SPLITNAMESPACE = "OCUPILOTSPLITPROBE";
+
+/// <p>The role <method>TestTheFloorCoversASplitNamespacesTwoDatabases</method> creates with the
+/// split namespace's grants and removes.</p>
+Parameter SPLITROLE = "OcuPilotSplitProbeRole";
+
+/// <p>The unauthenticated application <method>TestTheFloorCoversASplitNamespacesTwoDatabases</method>
+/// creates over the split namespace, carrying <parameter>SPLITROLE</parameter>, and removes.</p>
+Parameter SPLITAPP = "/ocupilotsplitprobe";
+
 /// <p>Refuse to run at all unless this instance is armed for a production install.</p>
 /// <p><b>A doc comment does not keep a class that installs from installing.</b> Test classes are
 /// selected by package, so pointing the runner at a container someone cares about would run
@@ -74,22 +86,39 @@ Method ReadApplication(pName As %String, Output pProps) As %Boolean
     Quit tExists
 }
 
-/// <p>The guarding resource of the install namespace's routine database, read independently
-/// of the installer's own resolution so the role assertion is not circular.</p>
-Method CodeDatabaseResource() As %String
+/// <p>The resource set every matching role must grant: read on the resource guarding the install
+/// namespace's routine database and on the one <method>%CSP.REST.AccessCheck</method> tests, read
+/// from the vendor's own <code>$Piece($zu(90,21,ns),"^",4)</code>, each once and in collation
+/// order, as <code>Security.Roles</code> stores them. Read independently of the installer's own
+/// resolution so the role assertions are not circular; <code>""</code> when either cannot be
+/// read.</p>
+Method FloorResources() As %String
 {
-    Set tResource = ""
+    Set tGrants = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        Set tRoutineResource = ""
         Set tNsObj = ##class(Config.Namespaces).Open(tInstallNs)
         If $IsObject(tNsObj) {
             Set tDbObj = ##class(Config.Databases).Open(tNsObj.Routines)
             If $IsObject(tDbObj) {
                 Set tSysDb = ##class(SYS.Database).%OpenId(tDbObj.Directory)
-                If $IsObject(tSysDb) Set tResource = tSysDb.ResourceName
+                If $IsObject(tSysDb) Set tRoutineResource = tSysDb.ResourceName
+            }
+        }
+        Set tAccessResource = $Piece($zu(90, 21, tInstallNs), "^", 4)
+        If (tRoutineResource '= "") && (tAccessResource '= "") {
+            Kill tByName
+            Set tByName(tRoutineResource) = ""
+            Set tByName(tAccessResource) = ""
+            Set tResource = ""
+            For {
+                Set tResource = $Order(tByName(tResource))
+                If tResource = "" Quit
+                Set tGrants = tGrants _ $Select(tGrants = "": "", 1: ",") _ tResource _ ":R"
             }
         }
     } Catch ex {
@@ -97,7 +126,7 @@ Method CodeDatabaseResource() As %String
         Throw ex
     }
     Set $NAMESPACE = tOrigNS
-    Quit tResource
+    Quit tGrants
 }
 
 /// <p>AC1 -- <code>/ocupilot</code>, property by property: enabled, in the install
@@ -533,16 +562,16 @@ Method DriftMatchRoles(pApplication As %String, pValue As %String)
     Set $NAMESPACE = tOrigNS
 }
 
-/// <p>AC1 -- the shell's matching role grants read on the install namespace's code database
-/// and nothing else, and holds no granted role. The expected resource is read from
-/// <class>SYS.Database</class> independently of the installer's own resolution.</p>
+/// <p>AC1 -- the shell's matching role grants read on the install namespace's routine and default
+/// globals databases and nothing else, and holds no granted role. The expected set is
+/// <method>FloorResources</method>, read independently of the installer's own resolution.</p>
 /// <p>Mutation: widen the role's resource set in
 /// <method>OcuPilot.Install.Installer.EnsureApplicationRoles</method> (to <code>:RW</code>, or by
 /// adding a second resource) and the first assertion goes red.</p>
 Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
 {
-    Set tExpected = ..CodeDatabaseResource()
-    Do $$$AssertTrue(tExpected '= "", "the install namespace's routine database carries a guarding resource")
+    Set tExpected = ..FloorResources()
+    Do $$$AssertTrue(tExpected '= "", "the install namespace's databases carry guarding resources")
 
     Set tOrigNS = $NAMESPACE
     Try {
@@ -551,7 +580,7 @@ Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
         Do $$$AssertTrue(##class(Security.Roles).Exists("OcuPilotShell", .tObj, .tExistSC), "the shell role exists after install")
         Set tGetSC = ##class(Security.Roles).Get("OcuPilotShell", .tProps, .tRoleObj)
         Do $$$AssertStatusOK(tGetSC, "read back the shell role")
-        Do $$$AssertEquals($Get(tProps("Resources")), tExpected _ ":R", "the shell role grants read on the code database and nothing else")
+        Do $$$AssertEquals($Get(tProps("Resources")), tExpected, "the shell role grants read on the two databases and nothing else")
         Do $$$AssertEquals($Get(tProps("GrantedRoles")), "", "the shell role holds no granted role")
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -561,7 +590,8 @@ Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
 }
 
 /// <p>AD-21, AD-10, DW-192 -- <b>every</b> matching role the roster declares grants read on the
-/// install namespace's code database and nothing else, and holds no granted role. The method
+/// install namespace's routine and default globals databases and nothing else, and holds no
+/// granted role. The method
 /// above pins the shell's by name; this derives the list from
 /// <class>OcuPilot.Install.Roster</class>, so a fourth application's privilege floor is
 /// asserted by the one roster edit DW-192 promises rather than by a fourth literal here.</p>
@@ -576,8 +606,8 @@ Method TestShellRoleGrantsOnlyReadOnTheCodeDatabase()
 /// role, while <method>TestShellRoleGrantsOnlyReadOnTheCodeDatabase</method> stays green.</p>
 Method TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase()
 {
-    Set tExpected = ..CodeDatabaseResource()
-    Do $$$AssertTrue(tExpected '= "", "the install namespace's routine database carries a guarding resource")
+    Set tExpected = ..FloorResources()
+    Do $$$AssertTrue(tExpected '= "", "the install namespace's databases carry guarding resources")
 
     Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
     Do $$$AssertTrue(tKeys '= "", "the roster names its applications, so this asserts something")
@@ -608,7 +638,7 @@ Method TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase()
             Do $$$AssertTrue(##class(Security.Roles).Exists(tRole, .tObj, .tExistSC), "the matching role '" _ tRole _ "' the roster declares for '" _ tKey _ "' exists after install")
             Set tGetSC = ##class(Security.Roles).Get(tRole, .tProps, .tRoleObj)
             Do $$$AssertStatusOK(tGetSC, "read back the matching role '" _ tRole _ "'")
-            Do $$$AssertEquals($Get(tProps("Resources")), tExpected _ ":R", "'" _ tRole _ "' grants read on the code database and nothing else")
+            Do $$$AssertEquals($Get(tProps("Resources")), tExpected, "'" _ tRole _ "' grants read on the two databases and nothing else")
             Do $$$AssertEquals($Get(tProps("GrantedRoles")), "", "'" _ tRole _ "' holds no granted role")
             Set tChecked = tChecked + 1
             Set tKey = $Order(tWantRole(tKey))
@@ -623,6 +653,107 @@ Method TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase()
     ; silently skipped one cannot pass here either.
     Do $$$AssertTrue(tChecked > 0, "at least one declared matching role was read; checked " _ tChecked)
     Do $$$AssertEquals(tChecked, tDeclared, "every matching role the roster declares was read")
+}
+
+/// <p>AD-21 -- on a namespace whose default globals database is not its routine database, the
+/// floor <method>OcuPilot.Install.Installer.CodeDatabaseResource</method> derives names both
+/// resources: the routine database's, which loading OcuPilot's code needs, and the one
+/// <method>%CSP.REST.AccessCheck</method> tests, read here from the vendor's own
+/// <code>$Piece($zu(90,21,ns),"^",4)</code>. The namespace is a configuration over two existing
+/// databases (globals <code>USER</code>, routines <code>HSCUSTOM</code>), created for this method
+/// and removed by it. The grants the matching roles take are read on both, in collation order, and
+/// a probe role (<parameter>SPLITROLE</parameter>, removed too) created with them reads them back
+/// unchanged, which is what the installer's drift check compares. An unauthenticated application
+/// over the namespace dispatching to <class>OcuPilot.Api.Readiness</class> with that role as its
+/// application role (<parameter>SPLITAPP</parameter>, removed too) answers an anonymous request
+/// rather than refusing it 403.</p>
+/// <p>Mutation (Rule 19): derive the routine database only in
+/// <method>OcuPilot.Install.Installer.CodeDatabaseResource</method> -&gt; the derivation lacks the
+/// globals database's resource, the anonymous request is refused 403, and this goes red.</p>
+Method TestTheFloorCoversASplitNamespacesTwoDatabases()
+{
+    Set tNs = ..#SPLITNAMESPACE
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSC, "switch to %SYS")
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Do $$$AssertStatusOK(##class(Security.Applications).Delete(..#SPLITAPP), "an application an earlier run left is removed first")
+        If ##class(Config.Namespaces).Exists(tNs) Do $$$AssertStatusOK(##class(Config.Namespaces).Delete(tNs), "a namespace an earlier run left is removed first")
+        Kill tProps
+        Set tProps("Globals") = "USER"
+        Set tProps("Routines") = "HSCUSTOM"
+        Set tSC = ##class(Config.Namespaces).Create(tNs, .tProps)
+        Do $$$AssertStatusOK(tSC, "the split namespace is created over USER and HSCUSTOM")
+        If $$$ISERR(tSC) Quit
+        Set tAccessResource = $Piece($zu(90, 21, tNs), "^", 4)
+        Set tRoutineResource = ""
+        Set tDbObj = ##class(Config.Databases).Open("HSCUSTOM")
+        If $IsObject(tDbObj) {
+            Set tSysDb = ##class(SYS.Database).%OpenId(tDbObj.Directory)
+            If $IsObject(tSysDb) Set tRoutineResource = tSysDb.ResourceName
+        }
+        Do $$$AssertTrue((tAccessResource '= "") && (tRoutineResource '= "") && (tAccessResource '= tRoutineResource), "the two databases carry different resources: " _ tAccessResource _ ", " _ tRoutineResource)
+        Set tDbObj = ""
+        Set tSysDb = ""
+        ; The installer is compiled into the install namespace only, so it is called from there.
+        Set $NAMESPACE = tOrigNS
+
+        Set tSC = ##class(OcuPilot.Install.Installer).CodeDatabaseResource(tNs, .tDerived, .tGrants)
+        Do $$$AssertStatusOK(tSC, "the installer derives the split namespace's floor")
+        Do $$$AssertEquals($NAMESPACE, tOrigNS, "and leaves the caller's namespace as it found it")
+        Do $$$AssertTrue(("," _ $Get(tDerived) _ ",") [ ("," _ tAccessResource _ ","), "the floor names the resource the framework's access check tests: " _ $Get(tDerived))
+        Do $$$AssertTrue(("," _ $Get(tDerived) _ ",") [ ("," _ tRoutineResource _ ","), "and the routine database's: " _ $Get(tDerived))
+        Do $$$AssertEquals($Length($Get(tDerived), ","), 2, "and nothing else")
+        Set tFirst = $Select(tAccessResource ]] tRoutineResource: tRoutineResource, 1: tAccessResource)
+        Set tSecond = $Select(tFirst = tAccessResource: tRoutineResource, 1: tAccessResource)
+        Do $$$AssertEquals($Get(tGrants), tFirst _ ":R," _ tSecond _ ":R", "the matching roles are granted read on both, in collation order")
+
+        ; The installer's drift check compares a role's stored resources with this string, so a
+        ; role created with it must read it back unchanged.
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If ##class(Security.Roles).Exists(..#SPLITROLE) Do ##class(Security.Roles).Delete(..#SPLITROLE)
+        Do $$$AssertStatusOK(##class(Security.Roles).Create(..#SPLITROLE, "OcuPilot.Test.WebApp split-namespace probe", $Get(tGrants), ""), "a role is created with the split namespace's grants")
+        Kill tRoleProps
+        Do $$$AssertStatusOK(##class(Security.Roles).Get(..#SPLITROLE, .tRoleProps), "and read back")
+        Do $$$AssertEquals($Get(tRoleProps("Resources")), $Get(tGrants), "reading back exactly as granted, so the drift check repairs nothing")
+
+        ; The floor's purpose: the framework's access check lets an anonymous request through to
+        ; the dispatch class only when the application's role reads the default globals database.
+        Kill tAppProps
+        Set tAppProps("NameSpace") = tNs
+        Set tAppProps("DispatchClass") = "OcuPilot.Api.Readiness"
+        Set tAppProps("AutheEnabled") = 64
+        Set tAppProps("Enabled") = 1
+        Set tAppProps("MatchRoles") = ":" _ ..#SPLITROLE
+        Set tSC = ##class(Security.Applications).Create(..#SPLITAPP, .tAppProps)
+        Do $$$AssertStatusOK(tSC, "an unauthenticated application over the split namespace carries the probe role")
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#SPLITAPP _ "/", "", "", .tHttpStatus, .tHttpBody, .tHttpHeaders)
+        Do $$$AssertStatusOK(tSC, "the anonymous request completes")
+        Do $$$AssertEquals(tHttpStatus, 200, "and is answered by the dispatch class rather than refused 403: " _ $Extract(tHttpBody, 1, 120))
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertStatusOK(ex.AsStatus(), "the split-namespace leg ran without raising")
+    }
+    ; A failure above can leave this process in %SYS, and the switch below saves where it is.
+    Set $NAMESPACE = tOrigNS
+    Set tLeft = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Set tDeleteSC = ##class(Security.Applications).Delete(..#SPLITAPP)
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Set tLeft = ..#SPLITAPP
+        If ##class(Config.Namespaces).Exists(tNs) Set tDeleteSC = ##class(Config.Namespaces).Delete(tNs)
+        If ##class(Config.Namespaces).Exists(tNs) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: " and ") _ tNs
+        If ##class(Security.Roles).Exists(..#SPLITROLE) Set tDeleteSC = ##class(Security.Roles).Delete(..#SPLITROLE)
+        If ##class(Security.Roles).Exists(..#SPLITROLE) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: " and ") _ ..#SPLITROLE
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tLeft = "an unreadable " _ tNs
+    }
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tLeft, "", "the split namespace, the probe application and the probe role are removed")
 }
 
 /// <p>AC12 -- a second run repairs a drifted web application and reports the repair;
@@ -685,14 +816,14 @@ Method TestSecondRunRepairsDriftedShellRole()
     Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
 
-    Set tExpected = ..CodeDatabaseResource() _ ":R"
+    Set tExpected = ..FloorResources()
     Set tOrigNS2 = $NAMESPACE
     Try {
         Set tSC4 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS2)
         Do $$$AssertStatusOK(tSC4, "switch to %SYS")
         Set tGetSC = ##class(Security.Roles).Get("ProbeOcuPilotShell", .tProps, .tRoleObj)
         Do $$$AssertStatusOK(tGetSC, "read back the repaired probe shell role")
-        Do $$$AssertEquals($Get(tProps("Resources")), tExpected, "the second run narrowed the role back to read on the code database")
+        Do $$$AssertEquals($Get(tProps("Resources")), tExpected, "the second run narrowed the role back to read on the two databases")
     } Catch ex {
         Set $NAMESPACE = tOrigNS2
         Throw ex

@@ -138,6 +138,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/logs/integrity/files" Method="GET" Call="LogIntegrityFiles"/>
+  <Route Url="/logs/integrity" Method="GET" Call="LogIntegrity"/>
   <Route Url="/logs/systemmonitor" Method="GET" Call="LogSystemMonitor"/>
   <Route Url="/logs/taskerrors" Method="GET" Call="LogTaskErrors"/>
   <Route Url="/logs/xdbc" Method="GET" Call="LogXdbc"/>
@@ -200,6 +202,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
   <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
   <Route Url="/permissions/check" Method="GET" Call="PermissionCheck"/>
+  <Route Url="/language-server/form" Method="GET" Call="LanguageServerFormRead"/>
+  <Route Url="/language-server/name" Method="GET" Call="LanguageServerNameCheck"/>
+  <Route Url="/language-server/:id" Method="PUT" Call="LanguageServerUpdate"/>
+  <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
 </Routes>
 }
 
@@ -869,6 +875,22 @@ ClassMethod LogMessageFiles() As %Status
     Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/integrity</code>: one page of an integrity
+/// check's report, the check named by <code>file</code> (its id) or the newest, through
+/// <method>OcuPilot.Api.LogPage.Handle</method> with the source key bound here (Story 18.4).</p>
+ClassMethod LogIntegrity() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#INTEGRITYKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/integrity/files</code>: the integrity checks
+/// the instance holds, newest first, through <method>OcuPilot.Api.LogPage.HandleFiles</method>
+/// (Story 18.4).</p>
+ClassMethod LogIntegrityFiles() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#INTEGRITYKEY)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/systemmonitor</code> (Story 16.8): the
 /// System Monitor log's newest entries through <method>OcuPilot.Api.LogPage.HandleRecent</method>,
 /// with the source key bound here from the port's own enum (AD-21).</p>
@@ -1508,6 +1530,36 @@ ClassMethod AuditEventUpdate(pId As %String) As %Status
 ClassMethod AuditEventCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /language-server/form</code> (Story 16.25): the
+/// external language server editor's read, delegating to
+/// <class>OcuPilot.Area.OsMgmt.LanguageServerRules</class>. The two sub-resources precede
+/// <code>/language-server/:id</code>.</p>
+ClassMethod LanguageServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /language-server/name</code>: the editor's blur
+/// check of whether a name is taken.</p>
+ClassMethod LanguageServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /language-server</code>: the editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LanguageServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /language-server/:id</code>: the editor's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LanguageServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerSave).HandleUpdate(pId)
 }
 
 }

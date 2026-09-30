@@ -2,7 +2,7 @@
  * The unified log hub in a real browser, against the throwaway instance (Story 16.9): the Sources
  * list with its counts and last entries (AC1), the timeline newest first (AC3), the three filters
  * with the counts following (AC7), an event log entry and a console line each opening its viewer at
- * that line, an audit entry opening its dialog and an application error its detail (AC8), Explain sending one entry alone (AC8), a `%Manager` +
+ * that line, an audit entry opening its dialog and an application error its detail (AC8), Explain marking one entry among the timeline's (AC8, DW-1838), a `%Manager` +
  * `%DB_HSCUSTOM` principal served the hub with the event log named as not shown (AC6), and the
  * DW-1337 walk of the hub at wide light, narrow light and wide dark (AC10).
  *
@@ -350,7 +350,7 @@ test('AC8: an event log entry and a console line open their viewers at that line
   }
 });
 
-test('AC8: Explain on a timeline entry sends that entry alone, as time, source, severity and text', async () => {
+test('AC8: Explain on a timeline entry marks that entry among the timeline\u2019s, as time, source, severity and text', async () => {
   await requireFreeSlot(config);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
@@ -383,9 +383,11 @@ test('AC8: Explain on a timeline entry sends that entry alone, as time, source, 
     const block = messages[useIndex + 1]?.content?.find?.((candidate) => candidate.type === 'tool_result');
     const payload = resultPayload(block);
     assert.equal(payload.route, 'logs/hub');
-    assert.equal(payload.rowsSent, 1, 'exactly one entry was sent');
-    assert.deepEqual(Object.keys(payload.rows[0]).sort(), ['severity', 'source', 'text', 'time'], 'as the hub declares an entry');
-    assert.ok(String(payload.rows[0].text).includes(wanted), 'the entry clicked');
+    assert.ok(payload.rowsSent > 1, `the timeline's rows were sent, not the entry alone: ${payload.rowsSent}`);
+    assert.equal(Number('selected' in payload) + Number('focus' in payload), 1, `exactly one marker: ${Object.keys(payload).join(',')}`);
+    const entry = 'selected' in payload ? payload.rows[payload.selected] : payload.focus;
+    assert.deepEqual(Object.keys(entry).sort(), ['severity', 'source', 'text', 'time'], 'as the hub declares an entry');
+    assert.ok(String(entry.text).includes(wanted), 'the entry marked is the entry clicked');
   } finally {
     await context.close();
     forgetTag(probe, tag);

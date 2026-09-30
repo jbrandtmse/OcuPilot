@@ -8,7 +8,7 @@ import { RoleDialog } from './role-dialog';
 import { type PendingConfirm, ScreenActionHandler } from './screen-action-handler';
 import { SetPasswordDialog } from './set-password-dialog';
 import { TypedNameDialog } from './typed-name-dialog';
-import { WarningDialog } from './warning-dialog';
+import { WarningDialog, type WarningAnswer } from './warning-dialog';
 
 /**
  * The dialogs a declared action waits on (AD-53): the typed-name confirm of a destructive action,
@@ -62,7 +62,11 @@ import { WarningDialog } from './warning-dialog';
       <app-warning-dialog
         [verb]="pending.verb"
         [consequence]="pending.consequence"
-        (confirmed)="onWarning()"
+        [advisory]="pending.advisory"
+        [flagLabel]="pending.flagLabel"
+        [fieldLabel]="pending.fieldLabel ?? ''"
+        [fieldHint]="pending.fieldHint ?? ''"
+        (confirmed)="onWarning($event)"
         (cancelled)="onCancel()"
       />
     }
@@ -162,10 +166,10 @@ export class ScreenActionDialogs {
     this.handler.confirmPending(flag);
   }
 
-  /** The warning was proceeded past. */
-  protected onWarning(): void {
+  /** The warning was proceeded past, with its checkbox's state and its field's value where drawn (Story 18.4). */
+  protected onWarning(answer: WarningAnswer): void {
     this.acting.emit();
-    this.handler.confirmPending();
+    this.handler.confirmPending(answer.flag ?? false, answer.value ?? '');
   }
 
   /** The set-password dialog's value goes straight to the handler and is held nowhere here. */

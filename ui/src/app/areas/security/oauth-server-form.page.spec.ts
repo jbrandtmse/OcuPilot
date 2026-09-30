@@ -32,7 +32,11 @@ function form(definition: Record<string, unknown> | null): Record<string, unknow
     requiredFields: ['IssuerEndpoint', 'SupportedScopes', 'CustomizationRoles'],
     rules: [],
     namespaces: ['%SYS', 'USER'],
-    roles: ['%DB_IRISSYS', '%Manager', '%All'],
+    roles: [
+      { name: '%DB_IRISSYS', privileged: false },
+      { name: '%Manager', privileged: true },
+      { name: '%All', privileged: true },
+    ],
     sslConfigurations: [],
     credentials: ['OcuPilotDemoCert'],
     clients: [],

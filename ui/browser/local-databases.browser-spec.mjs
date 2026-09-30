@@ -4,7 +4,7 @@
  *
  * What it pins, each on rendered DOM, on the request the page sent, or on the instance itself:
  *
- * 1. **The list and the wizard** (AC1): OS management's ninth side-bar entry reads "Local
+ * 1. **The list and the wizard** (AC1): OS management's tenth side-bar entry reads "Local
  *    databases"; the wizard refuses an empty subdirectory of the manager directory with
  *    `PATH.MANAGERDIR`, drawn under the picker's field before any vendor call (DW-1807's field
  *    mapping), then creates a probe database that reads mounted, journaled and guarded by its own
@@ -469,7 +469,7 @@ async function nextTo(page, label) {
 
 // AC1. Mutation (Rule 19): make the wizard store drop `path` violations, rebuild and redeploy -> the
 // PATH.MANAGERDIR reason never renders under the picker and this goes red.
-test('AC1: Local databases is the ninth OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
+test('AC1: Local databases is the tenth OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
   const user = configured('USER');
   assert.ok(user !== null, 'the instance configures USER');
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
@@ -482,7 +482,7 @@ test('AC1: Local databases is the ninth OS management entry; the wizard refuses 
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries.slice(0, 9), [
+    assert.deepEqual(bar.entries.slice(0, 10), [
       STRINGS.processListLabel,
       STRINGS.lockListLabel,
       STRINGS.systemUsageLabel,
@@ -491,6 +491,7 @@ test('AC1: Local databases is the ninth OS management entry; the wizard refuses 
       STRINGS.namespaceListLabel,
       STRINGS.licenseUsageLabel,
       STRINGS.dashboardLabel,
+      STRINGS.languageServersLabel,
       STRINGS.localDatabaseListLabel,
     ]);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));

@@ -350,7 +350,9 @@ Method TestTheIdentityRouteRefusesACallerHoldingNoAdminResource()
 /// <code>$System.Security.Check</code>: a signed-in principal holding exactly one
 /// administrative resource gets 200 with the areas that resource reaches allowed and the others
 /// denied, each naming the <code>(resource, permission)</code> pair that failed. None is
-/// hidden, and the list is never partial.</p>
+/// hidden, and the list is never partial. An area is allowed when any screen its side bar lists
+/// is (AD-8 as amended for DW-1768), so Logs, whose alerts.log and messages.log viewers need
+/// <code>%Admin_Operate:USE</code> alone, opens for this principal.</p>
 /// <p>This is the only place in the suite where a denial is observed against the instance's own
 /// check rather than a fixture seam: <code>%UnitTest</code> runs as an account holding
 /// <code>%All</code>, for which the real check answers yes to every resource name.
@@ -359,11 +361,11 @@ Method TestTheIdentityRouteRefusesACallerHoldingNoAdminResource()
 /// <p>The principal is this suite's throwaway one, created in
 /// <method>OnBeforeAllTests</method> and removed in <method>OnAfterAllTests</method>. No real
 /// account is created, modified or expired, and no role is granted to one.</p>
-/// <p>Mutation: give the <code>agent</code> area a privilege pair in
-/// <class>OcuPilot.Screen.Area</class>'s declaration -> the "never gates" assertion goes red.
-/// Delete the classic-resource union from <method>OcuPilot.Screen.Gate.RequiredPairs</method>
-/// -> nothing here moves, which is why <class>OcuPilot.Test.Navigation</class> carries that
-/// half.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Gate.EvaluateArea</method> answer
+/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> over the area's declared set -- the all-pairs
+/// rule -> the Logs assertions go red. Delete the classic-resource union from
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> -> nothing here moves, which is why
+/// <class>OcuPilot.Test.Navigation</class> carries that half.</p>
 Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -387,25 +389,22 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
         Set tHasFailed(tArea.key) = ''tArea.%IsDefined("failedPair")
     }
 
-    ; The principal holds %Admin_Operate and nothing else, so only Home and Agent co-pilot -- which
-    ; declare no pair at all -- are reachable, and the six gated areas are not. Since Story 2.10 no
-    ; gated area opens on %Admin_Operate alone: Logs was the last one, and its first screen, the
-    ; audit database viewer, declares %Admin_Secure:USE for the endpoint's own gate and
-    ; %DB_IRISSYS:READ because the read runs in %SYS, so AD-8's area coverage puts both on the area.
-    ; All six denials are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
+    ; The principal holds %Admin_Operate and nothing else. Home and Agent co-pilot declare no pair
+    ; and never gate; Logs opens because its alerts.log and messages.log viewers need that one pair
+    ; (AD-8 as amended for DW-1768); the five other gated areas list no screen it can open. All eight
+    ; verdicts are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
     ; ui/tools/navigation-wire.test.mjs read the same eight verdicts off a payload captured for this
     ; principal, and a claim that the three readings agree has to cover the same eight.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
-    Do $$$AssertEquals($Get(tVerdict("logs")), 0, "while Logs, which this principal's resource used to reach alone, now wants two more pairs")
-    Do $$$AssertEquals($Get(tFailed("logs")), "%Admin_Secure:USE", "naming the audit endpoint's own gate, which this principal does not hold")
-    ; os-management is denied on a different resource again, since Story 2.9: the query behind its
-    ; first screen checks %Admin_Manage:USE for itself and the read runs in %SYS. This principal
-    ; holds only the first of its three pairs, so the gate names the second.
-    ; OcuPilot.Test.WireSecurityRead observes both sets with real principals that hold one, two and
+    Do $$$AssertEquals($Get(tVerdict("logs")), 1, "Logs opens, since a screen it lists needs only this principal's pair")
+    Do $$$AssertEquals($Get(tHasFailed("logs")), 0, "and names no failed pair")
+    ; OS management lists no screen this principal can open: each needs %DB_IRISSYS:READ, and the
+    ; area names the first pair of its declared set the principal lacks, the second.
+    ; OcuPilot.Test.WireSecurityRead observes the set with real principals that hold one, two and
     ; all three of the pairs.
-    Do $$$AssertEquals($Get(tVerdict("os-management")), 0, "while its sibling on the same resource now wants two more pairs")
-    Do $$$AssertEquals($Get(tFailed("os-management")), "%Admin_Manage:USE", "naming the second pair, which this principal does not hold")
+    Do $$$AssertEquals($Get(tVerdict("os-management")), 0, "while OS management lists no screen it can open")
+    Do $$$AssertEquals($Get(tFailed("os-management")), "%Admin_Manage:USE", "naming the second pair of its set, which this principal does not hold")
 
     Do $$$AssertEquals($Get(tVerdict("permissions")), 0, "an area wanting another resource is denied")
     Do $$$AssertEquals($Get(tFailed("permissions")), "%Admin_Secure:USE", "naming the pair that failed")
@@ -439,8 +438,8 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 /// gates on the same resource.</p>
 /// <p>Mutation: declare <code>"privileges": []</code> in
 /// <class>OcuPilot.Screen.Descriptor.AgentDefinitionList</class> -> its entry reads allowed and
-/// the denial assertion goes red. Give the <code>agent</code> area a pair in
-/// <class>OcuPilot.Screen.Area</class> -> the area assertion goes red instead.</p>
+/// the denial assertion goes red. Have <method>OcuPilot.Screen.Gate.EvaluateArea</method> refuse an
+/// area whose declared set is empty -> the area assertion goes red instead.</p>
 Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -693,11 +692,13 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
         }
     }
     ; Story 6.11 took the roster from four screens to eight, Story 6.12 to nine, Story 8.8 to ten,
-    ; Story 18.2 to twelve, Story 18.14 to eighteen, Story 16.7 to twenty-three and Story 18.3 to twenty-five, in ScreensForArea's own (sideBarPosition, class name) collation: the
-    ; unlisted sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead
-    ; of the listed ones in position order (Processes, Locks, System usage, Databases, Devices,
-    ; Namespaces, License usage, Dashboard, Local databases last).
-    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/databases/details"",""labelKey"":""databaseDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/database-free-space"",""labelKey"":""databaseFreeSpaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/volumes"",""labelKey"":""databaseVolumeListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices/edit"",""labelKey"":""deviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings/edit"",""labelKey"":""globalMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings"",""labelKey"":""globalMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-usage/distributed"",""labelKey"":""licenseUsageDistributed"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/processes"",""labelKey"":""licenseUsageByProcess"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/users"",""labelKey"":""licenseUsageByUser"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/local-databases/edit"",""labelKey"":""systemInfoDatabase"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/edit"",""labelKey"":""headerNamespaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings/edit"",""labelKey"":""packageMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings"",""labelKey"":""packageMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings/edit"",""labelKey"":""routineMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings"",""labelKey"":""routineMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/databases"",""labelKey"":""databaseListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces"",""labelKey"":""namespaceListLabel"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-usage"",""labelKey"":""licenseUsageLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/dashboard"",""labelKey"":""dashboardLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/local-databases"",""labelKey"":""localDatabaseListLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its twenty-three built screens, each denied on the first pair this principal lacks: Database details, Locks, System usage, License usage's four tabs and the Dashboard -- each a two-pair set -- name %DB_IRISSYS:READ, since this principal already holds %Admin_Operate:USE, while the Free-space view, Database volumes, the device and namespace editors, the three mapping lists and their editors, Process details, the processes list, the General view, Devices and Namespaces all name %Admin_Manage:USE")
+    ; Story 18.2 to twelve, Story 18.14 to eighteen, Story 16.7 to twenty-three, Story 18.3 to
+    ; twenty-five, Story 16.10 to twenty-seven, Story 18.4 to twenty-nine and Story 16.25 to thirty, in
+    ; ScreensForArea's own (sideBarPosition, class name) collation: the unlisted sideBarPosition-0
+    ; screens sort first, alphabetically by descriptor class name, ahead of the listed ones in position
+    ; order (Processes, Locks, System usage, Databases, Devices, Namespaces, License usage, Dashboard,
+    ; External language servers, Local databases last).
+    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/databases/details"",""labelKey"":""databaseDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/database-free-space"",""labelKey"":""databaseFreeSpaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/integrity"",""labelKey"":""databaseIntegrityLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/integrity-log"",""labelKey"":""databaseIntegrityLogLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/databases/volumes"",""labelKey"":""databaseVolumeListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices/edit"",""labelKey"":""deviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings/edit"",""labelKey"":""globalMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings"",""labelKey"":""globalMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/language-servers/activity"",""labelKey"":""languageServerActivityLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/language-servers/edit"",""labelKey"":""languageServerFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/license-usage/distributed"",""labelKey"":""licenseUsageDistributed"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/processes"",""labelKey"":""licenseUsageByProcess"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/users"",""labelKey"":""licenseUsageByUser"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/local-databases/edit"",""labelKey"":""systemInfoDatabase"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/edit"",""labelKey"":""headerNamespaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings/edit"",""labelKey"":""packageMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings"",""labelKey"":""packageMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings/edit"",""labelKey"":""routineMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings"",""labelKey"":""routineMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/databases"",""labelKey"":""databaseListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces"",""labelKey"":""namespaceListLabel"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-usage"",""labelKey"":""licenseUsageLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/dashboard"",""labelKey"":""dashboardLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/language-servers"",""labelKey"":""languageServersLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/local-databases"",""labelKey"":""localDatabaseListLabel"",""sideBarPosition"":10,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its thirty built screens, each denied on the first pair this principal lacks: Database details, the Integrity log, Locks, System usage, License usage's four tabs and the Dashboard -- each a two-pair set -- name %DB_IRISSYS:READ, since this principal already holds %Admin_Operate:USE, External language servers, its Activity log and its editor name %Admin_ExternalLanguageServerEdit:USE, while the Free-space view, Check integrity, Database volumes, the device, local database and namespace editors, the three mapping lists and their editors, Process details, the processes list, the General view, Devices, Namespaces and Local databases all name %Admin_Manage:USE")
     Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
