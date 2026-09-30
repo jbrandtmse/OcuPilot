@@ -80,3 +80,4 @@
 2026-09-30T10:02:30Z	Story 23.2	adr_verifications_complete	batch=a result=none_required reason=no_AD_tooled_AC mutations=verified_in_UnitTest_Result(DW-1829:r98_red,r99_green;DW-1831:r89_red,r90_green;linger:r109_red,r110_green;classes_green:r100-107,110,111) model=claude-opus-5-5
 2026-09-30T10:02:30Z	Story 23.2	qa_complete	batch=a result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19) tests_added=OAuthServerDiscover.TestTheDocumentCasesHoldAgainstALingeringIssuer,BackgroundTasksLive_agent_leg mutations_demonstrated=3
 2026-09-30T10:02:30Z	Story 23.2	pushed	batch=a head=840ab37f ci=pending run=36699861721
+2026-09-30T10:03:00Z	Story 23.2	stage_spawned	stage=code-review batch=a spawn_at=2026-09-30T10:03:00Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-code-review-a cycle_iteration=1 scope=1a409d00..840ab37f
