@@ -8631,3 +8631,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the database details volumes table template
 - evidence: same class of slip as DW-1837 (a template class name that no stylesheet defines); DW-1188 (queued 23.3) is the lint rule that would catch it
 - 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): use the shared data-table styling, with a check that the header takes the shell font
+
+### DW-1881: A privileged role granted to a service address under a non-%Admin name (%Manager) or in the classic 'address:roles' spelling is not minted destructive: Prohibited.AddressGrantsPrivilege splits on | only and IsPrivilegedRole matches %All or %Admin_* by name
+- source: spec-16-13-the-service-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 16.13 plan: the service arm uses IsPrivilegedRole (by name) and '|' only; 23.2 batch c moved the OAuth arm to RoleGrantsAdministrativePrivilege (DW-1663); 16.13 canonicalizes only entries a write adds or changes
+- 2026-09-30T21:35:51Z status=routed owner=range-end-cleanup by=harvest note=orchestrator 2026-09-30: service arm to RoleGrantsAdministrativePrivilege plus EntryParts for held entries; Prohibited.cls held by Epic 23

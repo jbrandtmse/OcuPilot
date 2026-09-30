@@ -319,6 +319,10 @@ Client:
 - **`ui/browser/oauth.browser-spec.mjs:372`**: a declared edit; the roster becomes `['LdapConfigForm.cls']`.
 - **Bundle.** If `npm run build` crosses `maximumWarning`, raise it and its `angular-json.test.mjs` literal to the measured total rounded up to the next kB (DW-1166). HALT `blocked` above 3800kB.
 
+- **Fix pack (routed by the orchestrator at the 1.0.4 candidate review; lead edit at the spec gate):**
+  - **DW-1879** -- `ui/src/app/shell/` side bar: a gated entry (the Logs side bar's "Interoperability event log", `%Ens_EventLog:USE`) draws its "Requires <pair>" reason as a second column that wraps the label onto two lines. Render the reason inline after the name, per UX-DR22 and EXPERIENCE.md's Privilege Gating row, keeping it the entry's described reason. Pin it in the side bar's component spec and in the structural walk of an existing browser spec that already shows a gated entry (both themes); record the mutation.
+  - **DW-1880** -- Database details' "Volume files" table (the database details page under `ui/src/app/areas/`) is unstyled, with a browser-default serif bold header. Draw it with the shared data-table styling so its header takes the shell font, as DW-1837 did for its table. Pin it with a browser assertion on the header's computed `font-family` (jsdom computes no style) and record the mutation.
+
 **Acceptance Criteria:**
 
 - **AC1 (coverage).** Given the Services list, when a service's name cell is followed, then the editor opens with General (name, description, Service enabled), Authentication methods (the offered methods, with the instance's labels) and Allowed incoming connections (each address with Remove and, where the service gives roles, its roles and Edit roles). Each tab is drawn only where the service has that group, and no classic-portal card is drawn. Pinned by the browser legs 1 and 3 and by `service-editor.page.spec.ts`.
@@ -335,6 +339,8 @@ Client:
 - **AC11 (hygiene).** Given any test in this story, when it ends, pass or fail, then every service it wrote reads as its snapshot, and `%Service_WebGateway` was never written.
 
 ## Spec Change Log
+
+- 2026-09-30, lead, spec gate: the fix pack's DW-1879 and DW-1880 (orchestrator-routed after planning) added under Tasks & Acceptance; the planner's four spine amendments written into the spine; the prohibited-set gap in its Named limits filed as DW-1881 for range-end cleanup.
 
 ## Review Triage Log
 

@@ -6499,6 +6499,8 @@ So that service administration is complete here.
 - **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
 
 - DW-1016: a proposal diff row has no empty-cell word, so restricting a list reads as `(none) -> 10.0.0.1` (ledger; routed by merge_gate 2026-09-18)
+- DW-1879: in the Logs side bar, the gated Interoperability event log entry shows its "Requires %Ens_EventLog:USE" hint as a second column that pushes the label onto two lines; UX-DR22 puts the reason inline after the name (ledger; routed by merge_gate 2026-09-30, 16.13's fix pack)
+- DW-1880: Database details' Volume files table is unstyled, with a browser-default serif bold header; use the shared data-table styling and the shell font (ledger; routed by merge_gate 2026-09-30, 16.13's fix pack)
 
 ### Story 16.14: The LDAP and Kerberos editor
 
