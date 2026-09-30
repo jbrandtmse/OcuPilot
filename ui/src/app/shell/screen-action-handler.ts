@@ -90,10 +90,22 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.LocalDatabaseList',
   'OcuPilot.Screen.Descriptor.LanguageServerList',
   'OcuPilot.Screen.Descriptor.DatabaseDetails',
+  'OcuPilot.Screen.Descriptor.LockList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
 const USER_LIST = 'OcuPilot.Screen.Descriptor.UserList';
+
+/** The Locks list's descriptor (Story 16.12), whose page registers Remove locks itself. */
+export const LOCK_LIST = 'OcuPilot.Screen.Descriptor.LockList';
+
+/**
+ * The Locks list's three removals, one per scope (AD-22): this lock, every lock of its process and
+ * every lock of its remote client. The dialog maps the chosen scope to one of them.
+ */
+export const LOCK_REMOVE = 'remove';
+export const LOCK_REMOVE_PROCESS = 'removeprocess';
+export const LOCK_REMOVE_CLIENT = 'removeclient';
 
 /** The Web applications list's descriptor, whose four role actions the web application editor sends (Story 9.2). */
 const WEB_APP_LIST = 'OcuPilot.Screen.Descriptor.WebAppList';
@@ -244,6 +256,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The Task schedule's page registers Export itself and draws Import as a screen-level action, and
   // registers the Task Manager's three actions itself (Story 16.11).
   [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT, TASK_MANAGER_SUSPEND, TASK_MANAGER_RESUME, TASK_MANAGER_START],
+  // The Locks list's page registers Remove locks itself, whose dialog sends one of the three (Story 16.12).
+  [LOCK_LIST]: [LOCK_REMOVE, LOCK_REMOVE_PROCESS, LOCK_REMOVE_CLIENT],
 };
 
 /**
@@ -459,6 +473,10 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.taskManagerRefusalSuspendedStart,
   STRINGS.taskManagerRefusalStopped,
   STRINGS.taskTypePrivilegeRefusal,
+  // Story 16.12: a lock removal whose scope does not fit its owner, or whose owner holds too many.
+  STRINGS.lockRemoveRefusalRemote,
+  STRINGS.lockRemoveRefusalLocal,
+  STRINGS.lockRemoveTooMany,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
@@ -549,6 +567,8 @@ export interface ActionSink {
  */
 export interface ActionRefusal {
   readonly reason: string;
+  /** The envelope's stable machine code (AD-39), or `''`: a dialog that answers one code in its own way reads it. */
+  readonly code: string;
   readonly violations: readonly Violation[];
   readonly detail: Readonly<Record<string, unknown>> | null;
 }
@@ -1054,6 +1074,7 @@ export class ScreenActionHandler {
       result.kind === 'error'
         ? {
             reason: refusalReason(result),
+            code: result.code ?? '',
             violations: result.detail ? violationsOf(result) : [],
             detail: result.detail ?? null,
           }

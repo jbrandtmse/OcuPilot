@@ -275,6 +275,9 @@ const KERNEL_REFUSALS = [
   // Story 18.3: OcuPilot's own database, its install namespace's databases and the seven system
   // databases, whose Delete dialog states this sentence as its advisory when it opens.
   ['OCUPILOTDATABASE', 'databaseRefusalOcuPilot'],
+  // Story 16.12: a lock on one of OcuPilot's own globals, alone or among an owner's, which the
+  // Remove locks dialog states in place when either caller is answered with it.
+  ['OCUPILOTLOCK', 'lockRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -446,6 +449,31 @@ const TASK_MANAGER_REFUSALS = [
 test('Story 16.11: the four Task Manager state refusals and the task type privilege refusal are each one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of SUSPENDEDREASON in TaskManagerSuspend.cls -> this goes red naming both.
   for (const [file, parameter, key] of TASK_MANAGER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 16.12's lock tool, which declares the three owner refusals its owner-scope tools answer. */
+const LOCK_REMOVE_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'LockRemove.cls');
+
+/** Story 16.12's lock error class, which declares the in-transaction refusal. */
+const LOCK_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'LockError.cls');
+
+/** Story 16.12's four published refusals: `[file, parameter, strings.ts key]`. */
+const LOCK_REFUSALS = [
+  [LOCK_REMOVE_TOOL, 'REMOTEREASON', 'lockRemoveRefusalRemote'],
+  [LOCK_REMOVE_TOOL, 'LOCALREASON', 'lockRemoveRefusalLocal'],
+  [LOCK_REMOVE_TOOL, 'TOOMANYREASON', 'lockRemoveTooMany'],
+  [LOCK_ERROR, 'REASONINTRANSACTION', 'lockRemoveInTransaction'],
+];
+
+test('Story 16.12: the three owner refusals and the in-transaction refusal are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of LOCALREASON in LockRemove.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LOCK_REFUSALS) {
     const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
     assert.notEqual(server, null, `${file} declares ${parameter}`);
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);

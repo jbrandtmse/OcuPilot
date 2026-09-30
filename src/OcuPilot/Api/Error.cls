@@ -1217,6 +1217,8 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForNav(pCode)
     If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForLock(pCode)
+    If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
 
@@ -1531,6 +1533,14 @@ ClassMethod LanguageServerViolationCodes() As %List
 ClassMethod ReasonForLanguageServer(pCode As %String) As %String
 {
     Quit ##class(OcuPilot.Api.LanguageServerError).ReasonFor(pCode)
+}
+
+/// <p>The sentence a <code>LOCK.*</code> code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.LockError.ReasonFor</method>), so a lock removal's refusal at Confirm is
+/// answered with its own sentence rather than the generic one (Story 16.12).</p>
+ClassMethod ReasonForLock(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.LockError).ReasonFor(pCode)
 }
 
 /// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence

@@ -545,3 +545,31 @@ test('the client names exactly the shell members and theme values Pref.cls decla
   assert.deepEqual(themes, { THEMELIGHT: 'light', THEMEDARK: 'dark' }, 'Pref.cls declares the two theme values');
   assert.deepEqual(clientSide('THEME_', []), themes, 'and the client names the same two');
 });
+
+// --- The first-login gate's per-user record (FR-28, AD-50) ---------------------------------------
+//
+// Mutation (Rule 19): make `firstSignInRecorded` answer false, or read another member -> the first
+// row goes red, and the gate would open the Definition form again on every later sign-in.
+// Mutation (Rule 19): make `recordFirstSignIn` write another member -> the second row goes red.
+
+test('firstSignInRecorded reads the shell kind\'s first-sign-in member off the instance\'s answer', async () => {
+  const { settledAccountPreferences } = await import(join(uiRoot, 'src', 'app', 'testing', 'account-preferences.ts'));
+  const { SHELL_FIRST_SIGN_IN, FIRST_SIGN_IN_RECORDED } = await import(join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts'));
+  const none = await settledAccountPreferences();
+  assert.equal(none.firstSignInRecorded(), false, 'an account with no row has not had the form opened for it');
+  const held = await settledAccountPreferences({ shell: { [SHELL_FIRST_SIGN_IN]: FIRST_SIGN_IN_RECORDED } });
+  assert.equal(held.firstSignInRecorded(), true, 'an account holding the row has');
+  const other = await settledAccountPreferences({ shell: { theme: 'dark' } });
+  assert.equal(other.firstSignInRecorded(), false, 'and another shell member is not the record');
+});
+
+test('recordFirstSignIn writes the member once, as a shell value, and the answer settles it', async () => {
+  const { stubAccountPreferences } = await import(join(uiRoot, 'src', 'app', 'testing', 'account-preferences.ts'));
+  const { SHELL_FIRST_SIGN_IN, FIRST_SIGN_IN_RECORDED } = await import(join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts'));
+  const store = stubAccountPreferences();
+  await store.load();
+  await store.recordFirstSignIn();
+  const writes = store.calls.filter((call) => call.method === 'POST').map((call) => JSON.parse(call.body));
+  assert.deepEqual(writes, [{ kind: 'shell', action: 'set', name: SHELL_FIRST_SIGN_IN, value: FIRST_SIGN_IN_RECORDED }]);
+  assert.equal(store.firstSignInRecorded(), true, 'the write\'s own answer carries the record');
+});

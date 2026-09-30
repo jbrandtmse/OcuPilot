@@ -43,6 +43,7 @@ const {
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_TASKMANAGERSUSPEND,
+  CONSEQUENCE_LOCKINTRANSACTION,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -274,6 +275,19 @@ test("the Task Manager suspend's consequence code is the tool's own and resolves
   assert.ok(declared, 'TaskManagerSuspend.cls declares its consequence code');
   assert.equal(CONSEQUENCE_TASKMANAGERSUSPEND, declared[1]);
   assert.equal(consequenceSentence(CONSEQUENCE_TASKMANAGERSUSPEND), STRINGS.taskManagerSuspendConsequence);
+});
+
+// Story 16.12 (DW-1073): an overriding lock removal carries the lock tool's consequence code, read
+// here from `LockRemove.cls` rather than restated, and the card states the Remove locks dialog's own
+// in-transaction warning.
+//
+// Mutation (Rule 19): drop the LOCK.INTRANSACTION branch from `consequenceSentence` -> this goes red.
+test("the lock removal's in-transaction consequence code is the tool's own and resolves to the dialog's warning", () => {
+  const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'LockRemove.cls'), 'utf8');
+  const declared = /^Parameter CONSEQUENCEINTRANSACTION = "([^"]+)";/m.exec(source);
+  assert.ok(declared, 'LockRemove.cls declares its consequence code');
+  assert.equal(CONSEQUENCE_LOCKINTRANSACTION, declared[1]);
+  assert.equal(consequenceSentence(CONSEQUENCE_LOCKINTRANSACTION), STRINGS.lockRemoveInTransaction);
 });
 
 // Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive

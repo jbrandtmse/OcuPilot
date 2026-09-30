@@ -553,4 +553,30 @@ Method TestHomesRateIsRememberedUnderItsOwnName()
     Do $$$AssertEquals(..Count("views"), 0, "nor a view")
 }
 
+/// <p><b>The first-login gate's record is a shell member</b> (FR-28, AD-50): set over the wire it is
+/// answered under <code>shell</code>, a later read answers it, and a clear of the shell kind forgets
+/// it.</p>
+/// <p>Mutation: drop <parameter>OcuPilot.Kernel.State.Pref.SHELLFIRSTSIGNIN</parameter> from
+/// <method>OcuPilot.Kernel.State.Pref.IsShellMember</method> -- the set is refused 422 and the first
+/// leg goes red.</p>
+Method TestTheFirstSignInRecordIsRememberedAndCleared()
+{
+    Set tShell = ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL
+    Set tMember = ##class(OcuPilot.Kernel.State.Pref).#SHELLFIRSTSIGNIN
+    Set tSC = ..Call("POST", ..ValuePayload(tShell, "name", tMember, "1"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the set completes")
+    Do $$$AssertEquals(tStatus, 200, "the record is accepted: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tMember), "1", "and answered under the shell kind")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#PREFERENCESPATH, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the read answers: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tMember), "1", "and a later read answers it")
+
+    Set tSC = ..Call("POST", ..Payload(tShell, "clear"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the shell kind clears: " _ tBody)
+    Do $$$AssertEquals(..Count("shell"), 0, "and the record goes with it")
+}
+
 }

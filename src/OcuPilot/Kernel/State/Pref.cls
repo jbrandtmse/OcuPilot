@@ -108,6 +108,12 @@ Parameter THEMELIGHT As %String = "light";
 /// <p>The <parameter>SHELLTHEME</parameter> value for the dark theme.</p>
 Parameter THEMEDARK As %String = "dark";
 
+/// <p>The <parameter>KINDSHELL</parameter> member recording that the first-login gate has opened
+/// the Definition form for this user, as <code>1</code> (FR-28). The client writes it when the gate
+/// opens the form and reads it before the gate acts, so the form opens automatically once per
+/// user; no row means the gate has not opened it yet.</p>
+Parameter SHELLFIRSTSIGNIN As %String = "firstSignIn";
+
 /// <p>The <property>Kind</property> value for a restraint the user put on the agent for
 /// themselves (Story 14.5). Written only by
 /// <method>OcuPilot.Api.Switches.HandleRestraintUpdate</method> and read only by
@@ -372,6 +378,7 @@ ClassMethod IsShellMember(pName As %String) As %Boolean
     If pName = ..#SHELLSIDEBAROPEN Quit 1
     If pName = ..#SHELLPANELWIDTH Quit 1
     If pName = ..#SHELLTHEME Quit 1
+    If pName = ..#SHELLFIRSTSIGNIN Quit 1
     Quit 0
 }
 

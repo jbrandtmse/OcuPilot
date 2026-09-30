@@ -410,6 +410,8 @@ Method TestTheShellMemberSetIsClosed()
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLSIDEBAROPEN), "the side bar's open state is a member")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLPANELWIDTH), "so is the panel's width")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME), "so is the theme")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLFIRSTSIGNIN), "so is the first-login gate's record")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#SHELLFIRSTSIGNIN, "firstSignIn", "named firstSignIn on the wire")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember("anything"), "and nothing else is")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember(""), "including the empty name")
 }

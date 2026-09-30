@@ -3994,6 +3994,36 @@ export const STRINGS = {
   taskScheduleListPrompt4: 'What would stop running while the Task Manager is suspended?',
   /** EXPERIENCE.md:582 */
   findingFixTaskManager: 'The Task Manager is not running scheduled tasks. Propose resuming it, or starting it if it is stopped.',
+  // Story 16.12: the Locks list's Remove locks dialog, its three scopes, the in-transaction warning,
+  // the refusals it and the agent share, and the list's agent invitation.
+  /** EXPERIENCE.md:376 */
+  lockRemoveAction: 'Remove locks',
+  /** EXPERIENCE.md:376 */
+  lockRemoveTitle: 'Remove locks held by <PID>',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeLegend: 'What to remove',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeLock: 'This lock: <REFERENCE>',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeProcess: 'Every lock this process holds',
+  /** EXPERIENCE.md:376 */
+  lockRemoveScopeClient: 'Every lock its remote client holds',
+  /** EXPERIENCE.md:376 */
+  lockRemoveConsequence: 'Removing a lock lets another process take it at once, whatever its owner was using it to protect. This cannot be undone.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveInTransaction: 'Its owner is in an open transaction. Removing the lock leaves that transaction running without it.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveAnyway: 'Remove anyway',
+  /** EXPERIENCE.md:376 */
+  lockRemoveRefusalRemote: 'Its owner is a remote client, not a process on this instance.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveRefusalLocal: 'Its owner is a process on this instance, not a remote client.',
+  /** EXPERIENCE.md:376 */
+  lockRemoveTooMany: 'This owner holds more than 200 locks, and one removal names at most 200.',
+  /** EXPERIENCE.md:376 */
+  lockRefusalOcuPilot: 'This lock keeps OcuPilot\'s own state consistent. It cannot be removed from OcuPilot.',
+  /** EXPERIENCE.md:376 */
+  lockListEmptyAgent: 'remove a lock that a stuck process still holds',
 } as const;
 
 /**

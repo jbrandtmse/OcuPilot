@@ -16,13 +16,18 @@
 /// bullet, added by this story): the field the client encodes is <code>Pid</code>, resolved by
 /// <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
 /// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method> and, on the client,
-/// ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file>. A
-/// <code>RemoteOwner</code> row has no local pid and the link still renders; Process details
-/// answers "This process no longer exists." (accepted, DW-1074).</p>
-/// <p><b>It declares no <code>Removable</code>, <code>CanBeExamined</code> or
-/// <code>RemoteOwner</code> field, no transaction column, and issues no in-transaction check of
-/// its own.</b> Removal, the in-transaction warning and the fields that support them are Story
-/// 16.12's (DW-1073); this screen reads only what it renders.</p>
+/// ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file>. Its
+/// <code>unless</code> names <code>RemoteOwner</code>: a row a remote client owns has no local pid,
+/// so its Process ID cell is text (Story 16.12, DW-1074).</p>
+/// <p><b>Its three row actions remove locks</b> (Story 16.12): <code>remove</code>, this lock
+/// (<class>OcuPilot.Screen.Tool.LockRemove</class>); <code>removeprocess</code>, every lock of its
+/// local owner (<class>OcuPilot.Screen.Tool.LockRemoveProcess</class>); and <code>removeclient</code>,
+/// every lock of its remote client (<class>OcuPilot.Screen.Tool.LockRemoveClient</class>). The row
+/// menu draws one entry, Remove locks, whose dialog maps the chosen scope to its action. The
+/// in-transaction warning is the vendor's own refusal at the removal (DW-1073), so the read carries
+/// no <code>Removable</code>, <code>CanBeExamined</code> or transaction field and issues no
+/// in-transaction check of its own. <code>RemoteOwner</code> is read and sent as context, and has no
+/// column.</p>
 /// <p><b>The privilege set is two pairs.</b> <code>%Admin_Operate:USE</code> is the endpoint's own
 /// gate (<method>%Api.Admin.Endpoints.Lock.ResourcesOR</method>), which the backing query
 /// (<class>%SYS.LockQuery</class>) also checks directly -- the backing query is not stricter, so no
@@ -31,12 +36,13 @@
 /// requirement (<method>OcuPilot.Screen.Registry.ReadProblem</method>'s last arm).</p>
 /// <p>It declares no <code>rowGet</code>: every field this screen needs is in the LIST, and
 /// <code>context.secretFields</code> is empty because the read carries no secret to strip (AD-24,
-/// AD-35). It declares no <code>banner</code>, no primary or row action, and no refresh pair --
-/// Locks is not among AD-43's seven auto-refreshing screens.</p>
+/// AD-35). It declares no <code>banner</code>, no primary action, and no refresh pair -- Locks is not
+/// among AD-43's auto-refreshing screens.</p>
 /// <p>The classic page is <code>%CSP.UI.Portal.LocksView</code>, whose normalized key answers on
 /// slot B for the bare class name -- a <code>.zen</code> page normalizes that way, unlike Story
 /// 6.9's <code>%cspapp.*</code> key. As a list archetype it links out to nothing
-/// (<code>classicLinkExemption.exempt</code> false); Manage Locks is Story 16.12's page.</p>
+/// (<code>classicLinkExemption.exempt</code> false). The removals perform the classic Manage Locks
+/// page's operation and declare it themselves (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.LockList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -58,8 +64,8 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["DeleteID"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID"], "secretFields": []},
+  "rowActions": [{"id": "remove", "selfProtection": ""}, {"id": "removeprocess", "selfProtection": ""}, {"id": "removeclient", "selfProtection": ""}],
+  "context": {"fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID", "RemoteOwner"], "secretFields": []},
   "emptyStateKey": "lockListEmpty",
   "commandAliases": ["locks", "lock table"],
   "suggestedPrompts": [
@@ -71,7 +77,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Lock", "type": "LIST"},
-    "fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID"],
+    "fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID", "RemoteOwner"],
     "filter": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System"],
     "sort": {"fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System"], "default": "Pid", "direction": "asc"},
     "paging": "cap"
@@ -86,10 +92,10 @@ XData Declaration
       {"field": "Directory", "labelKey": "lockColumnDirectory", "kind": "identifier"},
       {"field": "System", "labelKey": "lockColumnSystem", "kind": "text", "emptyKey": "lockSystemLocal"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "lockListEmptyAgent"
   },
-  "rowTarget": {"route": "os-management/processes/details", "field": "Pid"},
+  "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "unless": "RemoteOwner"},
   "toolIdentifier": "osmgmt.locks"
 }
 }

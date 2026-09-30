@@ -19,6 +19,10 @@ import {
   DATABASE_DETAILS,
   EXPAND_VOLUME,
   LOCAL_DATABASE_LIST,
+  LOCK_LIST,
+  LOCK_REMOVE,
+  LOCK_REMOVE_CLIENT,
+  LOCK_REMOVE_PROCESS,
   NAMESPACE_LIST,
   REMOVE_APPLICATION_ROLE,
   REMOVE_GRANTED_ROLE,
@@ -1611,6 +1615,7 @@ describe('lastRefusal, the refusal a dialog draws on its own fields', () => {
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'import', id: 'import', values: { root: '/r/', path: 't.xml' } });
     expect(handler.lastRefusal()).toEqual({
       reason: 'Choose an allowed directory.',
+      code: 'PATH.ROOT',
       violations: [{ field: 'root', code: 'PATH.ROOT', reason: 'Choose an allowed directory.' }],
       detail: refused.kind === 'error' ? refused.detail : null,
     });
@@ -1941,5 +1946,38 @@ describe('the Task Manager\u2019s Suspend, Resume and Start (Story 16.11)', () =
       expect(events).toEqual([]);
       TestBed.resetTestingModule();
     }
+  });
+});
+
+/**
+ * Story 16.12: the Locks list's three removals are undrawn here, for the list's own page to register
+ * Remove locks; a published owner refusal replaces the envelope's generic reason; and `lastRefusal`
+ * carries the envelope's code, which the dialog answers `LOCK.INTRANSACTION` by.
+ */
+describe('the Locks list\u2019s removals', () => {
+  it('leaves the three removals undrawn, for the Locks list\u2019s own page to register', () => {
+    // Mutation (Rule 19): drop the Locks list's entry from `UNDRAWN_ACTIONS` -> this goes red.
+    const { actions } = mount(undefined, LOCK_LIST);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE)).toBe(false);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE_PROCESS)).toBe(false);
+    expect(actions.has(LOCK_LIST, LOCK_REMOVE_CLIENT)).toBe(false);
+  });
+
+  it('answers a published owner refusal with its sentence, and carries the envelope\u2019s code', async () => {
+    // Mutation (Rule 19): drop the three lock sentences from `PUBLISHED_PROBLEMS` -> the reason
+    // assertion goes red, reading the generic TOOL.ARGUMENTS sentence instead.
+    for (const problem of [STRINGS.lockRemoveRefusalRemote, STRINGS.lockRemoveRefusalLocal, STRINGS.lockRemoveTooMany]) {
+      const refused: JsonResult<unknown> = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The tool was called with arguments it cannot use.', detail: { problem } };
+      const { handler } = mount(refused, LOCK_LIST);
+      expect(await handler.sendFor(LOCK_LIST, LOCK_REMOVE_CLIENT, '313131008,13,P905,', { RemoveInTransaction: 'false' })).toBe(false);
+      expect(handler.lastRefusal()?.reason).toBe(problem);
+      expect(handler.lastRefusal()?.code).toBe('TOOL.ARGUMENTS');
+    }
+    const inTransaction: JsonResult<unknown> = { kind: 'error', status: 409, code: 'LOCK.INTRANSACTION', reason: STRINGS.lockRemoveInTransaction, detail: null };
+    const { handler, calls } = mount(inTransaction, LOCK_LIST);
+    expect(await handler.sendFor(LOCK_LIST, LOCK_REMOVE, '313131008,13,P905,', { RemoveInTransaction: 'false' })).toBe(false);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: LOCK_REMOVE, id: '313131008,13,P905,', values: { RemoveInTransaction: 'false' } });
+    expect(handler.lastRefusal()?.code).toBe('LOCK.INTRANSACTION');
+    expect(handler.lastRefusal()?.reason).toBe(STRINGS.lockRemoveInTransaction);
   });
 });

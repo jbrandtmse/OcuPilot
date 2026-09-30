@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -409,6 +409,24 @@ Parameter TYPEBACKGROUNDTASK = "background-task";
 /// reviewed-few sweep alone judges (<method>LanguageServer</method>): OcuPilot runs in no language
 /// server (AD-10).</p>
 Parameter TYPELANGUAGESERVER = "language-server";
+
+/// <p>A lock (Story 16.12), whose removals the <method>Lock</method> arm judges: a lock on one of
+/// OcuPilot's own globals is refused, and every other lock may be removed.</p>
+Parameter TYPELOCK = "lock";
+
+/// <p>The write would remove a lock on one of OcuPilot's own globals (<method>IsOcuPilotLock</method>),
+/// alone or among an owner's locks (AD-10 as amended 2026-09-30): the turn slot, the proposal target,
+/// the state cap and the install lock each keep a single-holder guarantee. Refused whatever the
+/// caller.</p>
+Parameter OCUPILOTLOCK = "PROHIBITED.OCUPILOTLOCK";
+
+/// <p>The one sentence <parameter>OCUPILOTLOCK</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>lockRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTLOCKREASON = "This lock keeps OcuPilot's own state consistent. It cannot be removed from OcuPilot.";
+
+/// <p>The prefix every global OcuPilot locks begins with, compared with its case.</p>
+Parameter OWNGLOBALPREFIX = "OcuPilot";
 
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
@@ -633,11 +651,11 @@ Parameter READTYPE = "GET";
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
-/// <method>Mapping</method> adds, and the one <method>Database</method> adds last -- twenty-three in
-/// all.</p>
+/// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
+/// <method>Lock</method> adds last -- twenty-four in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -672,6 +690,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PRESERVEDSESSION Quit ..#PRESERVEDSESSIONREASON
     If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
     If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
+    If pCode = ..#OCUPILOTLOCK Quit ..#OCUPILOTLOCKREASON
     Quit ""
 }
 
@@ -968,7 +987,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1114,6 +1133,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; reviewed-few sweep and nothing else (Stories 16.10 and 16.25).
         If tType = ..#TYPELANGUAGESERVER {
             Set tSC = ..LanguageServer($Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A lock (Story 16.12): OcuPilot's own locks are refused, alone or among an owner's.
+        If tType = ..#TYPELOCK {
+            Set tSC = ..Lock(tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1806,6 +1830,88 @@ ClassMethod Device(pToolClass As %String, ByRef pChanged, Output pProhibits As %
 ClassMethod DeviceFields() As %List [ Private ]
 {
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
+}
+
+/// <p>The lock arm (AD-10 as amended 2026-09-30): a removal is refused <parameter>OCUPILOTLOCK</parameter>
+/// when <var>pTarget</var>, the fresh read, names a lock on one of OcuPilot's own globals -- its
+/// <code>Reference</code>, or any <code>Locks[].Reference</code> of an owner's set -- and is otherwise
+/// permitted, a lock held by an IRIS system process included. A removal sends no body and its card
+/// rows are removals read from the fresh read, so it reaches the reviewed-few sweep with nothing
+/// changed.</p>
+ClassMethod Lock(pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..HoldsOcuPilotLock(pTarget) {
+            Do ..Refuse(..#OCUPILOTLOCK, .pProhibits, .pCode)
+            Quit
+        }
+        Kill pChanged
+        Set tSC = ..ReviewedFewOnly(..#TYPELOCK, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pTarget</var>, a lock read's answer, names a lock on one of OcuPilot's own globals:
+/// its own <code>Reference</code>, or the <code>Reference</code> of any member of its
+/// <code>Locks</code>.</p>
+/// <p><b>It fails closed</b>: a target that is not an object, or a member of <code>Locks</code> that
+/// is not one, reads as naming such a lock.</p>
+ClassMethod HoldsOcuPilotLock(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    If (pTarget.%GetTypeOf("Reference") = "string") && ..IsOcuPilotLock(pTarget.%Get("Reference")) Quit 1
+    If pTarget.%GetTypeOf("Locks") '= "array" Quit 0
+    Set tHolds = 0
+    Set tIterator = pTarget.%Get("Locks").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLock) {
+        If '$IsObject(tLock) || ..IsOcuPilotLock(tLock.%Get("Reference")) {
+            Set tHolds = 1
+            Quit
+        }
+    }
+    Quit tHolds
+}
+
+/// <p>Whether the lock table's reference <var>pReference</var> names a global whose name begins with
+/// <parameter>OWNGLOBALPREFIX</parameter>, compared with its case: the name after the caret and any
+/// <code>[...]</code> or <code>|...|</code> extended-reference prefix, up to its first
+/// subscript.</p>
+ClassMethod IsOcuPilotLock(pReference As %String) As %Boolean
+{
+    Quit ($Extract(..GlobalName(pReference), 1, $Length(..#OWNGLOBALPREFIX)) = ..#OWNGLOBALPREFIX)
+}
+
+/// <p>The global name <var>pReference</var> locks, as <method>IsOcuPilotLock</method> reads it, or
+/// <code>""</code> for a reference that names no global. A quoted directory inside the prefix may
+/// hold <code>]</code> or <code>|</code>, so the prefix is skipped outside quotes only.</p>
+ClassMethod GlobalName(pReference As %String) As %String
+{
+    If $Extract(pReference) '= "^" Quit ""
+    Set tRest = $Extract(pReference, 2, *)
+    Set tOpen = $Extract(tRest)
+    If (tOpen = "[") || (tOpen = "|") {
+        Set tClose = $Select(tOpen = "[": "]", 1: "|")
+        Set tQuoted = 0
+        Set tEnd = 0
+        For tI = 2:1:$Length(tRest) {
+            Set tChar = $Extract(tRest, tI)
+            If tChar = """" Set tQuoted = 'tQuoted Continue
+            If 'tQuoted && (tChar = tClose) {
+                Set tEnd = tI
+                Quit
+            }
+        }
+        If tEnd = 0 Quit ""
+        Set tRest = $Extract(tRest, tEnd + 1, *)
+    }
+    Quit $Piece(tRest, "(", 1)
 }
 
 /// <p>The external language server predicates (Stories 16.10 and 16.25): the reviewed-few sweep and

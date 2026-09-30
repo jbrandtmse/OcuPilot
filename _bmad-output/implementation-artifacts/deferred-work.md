@@ -4058,12 +4058,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: The endpoint's delete path answers 409 'is currently in a transaction' and the classic Manage Locks page asks the same before its Remove confirm; probed on slot B, $zu(67,19,$Job) reads non-zero inside a transaction and 0 outside, 100 calls cost 0.01 ms against 116 ms for 100 %SYS.ProcessQuery opens, so the check belongs at the confirm and not in the list read
 - 2026-09-17T19:45:52Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=plan note=orchestrator-decided at the 6.10 spec gate (Q2 option c): 6.10 ships no transaction column; the warning is this story's, taken from the endpoint's refusal rather than a $zu probe
+- 2026-09-30T16:32:24Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=adjudication note=LockPort maps the vendor 409 to LOCK.INTRANSACTION; dialog warns, Remove anyway; LockRemoveLive + locks browser spec
 
 ### DW-1074: A remote-owner lock row links to Process details, which then says the process no longer exists
 - source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
 - 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar
 - 2026-09-18T19:44:55Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=suppress the owner link on a remote-owner row rather than linking to a process that cannot exist
+- 2026-09-30T16:32:24Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=adjudication note=rowTarget.unless RemoteOwner: remote row's Process ID is text; data-table.spec, lock-list.page.spec, RowTargetCorpus
 
 ### DW-1078: rowTarget admits a target screen whose composite id has more than one part, and one field value is encoded as that whole id
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -8556,6 +8558,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36746183320 browser shard 1/3 on 68f76262 (batch c changed no shell or rail code): web-sessions.browser-spec.mjs:234 overflow on the rail tooltip; the same spec was green on the prior two runs
 - 2026-09-30T17:29:36Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: move the pointer off the rail or exclude a hover-revealed tooltip before the structural capture (23.3)
+### DW-1868: An owner-scope lock removal lists once and then sends its DELETEs, so a lock its owner renumbers during the sequence is sent under a stale DeleteID
+- source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
+- 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured
+- 2026-09-30T19:41:42Z status=routed owner=16-13-the-service-editor by=merge_gate note=decided (orchestrator 2026-09-30): re-list before each delete (LockPort, pinned by LockRecordPort) - a stale listed id could reach a different lock; Epic 16 fixes it as its own commit right after the 1.0.4 cut, before 16.13's implement
 ### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
@@ -8581,6 +8588,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
 - evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
 - 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
+- 2026-09-30T19:41:42Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=6c893da1 (run 36758817996 green; staging 8320a038 run 36762284179 green): the key form auto-opens only on the first sign-in, Cancel goes to Home, recorded per user in account preferences; edge accepted by=merge_gate: a first sign-in with a definition enabled shows the form once later, when none is
 
 ### DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state
 - source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
@@ -8603,3 +8611,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: DW-1829 follow-up 398c0190: TestTheTeardownOutlastsAStalledCompact stops the job for 35 s; CI's measured stall was 30 s
 - 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=BackgroundTasksLive teardown fails on CI again with 398c0190 in place (seed left, task over seed)
+### DW-1874: AuditingUpdate pins the prohibited-code count as a literal repeating Test/Prohibited's, so a story adding a prohibited code must bump both
+- source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AuditingUpdate.cls:505 and Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()); 16.12 bumped only the second and CI run 36745076438 went red
+- 2026-09-30T17:35:12Z status=wontfix-accepted owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=harvest note=reopen_if=a later story's CI reddens on AuditingUpdate's code count again

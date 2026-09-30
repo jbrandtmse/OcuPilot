@@ -2083,13 +2083,15 @@ Method TestTheEntityLabelRuleAnswersTheSameSentencesAsTheMirror()
     }
 }
 
-/// <p>AC9 -- the Locks descriptor's read and table are exactly the eight fields and seven columns
-/// Boundaries names: no transaction column, no <code>Removable</code>, <code>CanBeExamined</code>
-/// or <code>RemoteOwner</code> field, no derived field, and no <code>$zu(67,19</code> anywhere in
-/// this descriptor's own source -- the class this test reads, not the whole read path.</p>
+/// <p>AC9 -- the Locks descriptor's read and table are exactly the nine fields and seven columns
+/// Boundaries names: no transaction column, no <code>Removable</code> or <code>CanBeExamined</code>
+/// field, <code>RemoteOwner</code> read with no column (Story 16.12), no derived field, and no
+/// <code>$zu(67,19</code> anywhere in this descriptor's own source -- the class this test reads, not
+/// the whole read path. Its row target withholds a remote owner's link (<code>unless</code>,
+/// DW-1074).</p>
 /// <p>Mutation: add an eighth column to <code>table.columns</code> in
 /// <class>OcuPilot.Screen.Descriptor.LockList</class> -> the column-set assertion goes red.</p>
-Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
+Method TestTheLocksListDeclaresExactlyItsNineFieldsAndSevenColumns()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.LockList"
     Set tRead = $ClassMethod(tClass, "Read")
@@ -2098,7 +2100,7 @@ Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
     Set tFields = ""
     Set tIterator = tRead.%Get("fields").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
-    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID", "exactly the eight declared fields, no transaction column and no Removable, CanBeExamined or RemoteOwner")
+    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID,RemoteOwner", "exactly the nine declared fields, no transaction column and no Removable or CanBeExamined")
 
     Set tTable = $ClassMethod(tClass, "Field", "table")
     Do $$$AssertTrue($IsObject(tTable), "the Locks list declares a table")
@@ -2119,6 +2121,7 @@ Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
     If $IsObject(tRowTarget) {
         Do $$$AssertEquals(tRowTarget.%Get("route"), "os-management/processes/details", "at Process details' route")
         Do $$$AssertEquals(tRowTarget.%Get("field"), "Pid", "keyed by Pid, not by this row's own DeleteID")
+        Do $$$AssertEquals(tRowTarget.%Get("unless"), "RemoteOwner", "and withheld where RemoteOwner reads true (DW-1074)")
     }
     Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.ProcessList).RowTarget(), "", "and a screen that declares no row target answers the empty string")
 }

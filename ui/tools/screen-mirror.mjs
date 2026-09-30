@@ -2351,8 +2351,8 @@ export function parentScopeResolutionProblem(screens) {
   return null;
 }
 
-/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10). */
-export const ROW_TARGET_KEYS = ['route', 'field'];
+/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10; `unless`, Story 16.12). */
+export const ROW_TARGET_KEYS = ['route', 'field', 'unless'];
 
 /**
  * What is wrong with `declaration`'s declared `rowTarget`, or `null` when nothing is, including
@@ -2365,7 +2365,9 @@ export const ROW_TARGET_KEYS = ['route', 'field'];
  * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
  * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
  * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
- * non-empty string that is one of `read.fields`. Whether the named route resolves is
+ * non-empty string that is one of `read.fields`. Its optional `unless`, where declared, is a
+ * non-empty string that is one of `read.fields` too: a row where that field reads `true` renders its
+ * name cell as text (Story 16.12, DW-1074). Whether the named route resolves is
  * `rowTargetResolutionProblem`'s question. `OcuPilot.Screen.Registry.RowTargetProblem` returns
  * the same sentence for every case in `OcuPilot.Test.RowTargetCorpus`.
  */
@@ -2393,6 +2395,13 @@ export function rowTargetProblem(declaration) {
   const fields = Array.isArray(declaration.read?.fields) ? declaration.read.fields : [];
   if (!fields.includes(rowTarget.field)) {
     return `rowTarget.field '${rowTarget.field}' is not one of read.fields`;
+  }
+  if (rowTarget.unless === undefined) return null;
+  if (typeof rowTarget.unless !== 'string' || rowTarget.unless === '') {
+    return "rowTarget.unless is empty, and an unless names the read field that withholds a row's link";
+  }
+  if (!fields.includes(rowTarget.unless)) {
+    return `rowTarget.unless '${rowTarget.unless}' is not one of read.fields`;
   }
   return null;
 }
@@ -3438,6 +3447,8 @@ export interface TabDeclaration {
 export interface ScreenRowTarget {
   readonly route: string;
   readonly field: string;
+  /** The read field that withholds a row's link where it reads \`true\` (Story 16.12, DW-1074). */
+  readonly unless?: string;
 }
 
 /**
