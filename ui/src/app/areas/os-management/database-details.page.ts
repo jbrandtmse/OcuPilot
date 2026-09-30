@@ -2,19 +2,23 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { DetailHighlights } from '../../core/detail-highlights';
 import { NavigationService, parentCriteria, screenForRoute } from '../../core/navigation';
 import { uncheckedLine } from '../../core/privileges';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../../core/screen-actions';
 import { createScreenRead, screenReadPath } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
-import { cellView, fieldOf } from '../../core/table-model';
+import { cellView, fieldOf, rowKey } from '../../core/table-model';
 import { Meter } from '../../shell/meter';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
+import { DATABASE_DETAILS, ScreenActionHandler } from '../../shell/screen-action-handler';
 import { availableSpaceMeterView, isPropertyField } from './database-details.store';
+import { operationLine } from './database-operation';
 
 /** The screen this page renders and the store its fields read. */
 interface DetailsView {
@@ -117,14 +121,31 @@ interface TasksReadBody {
  * own refusal strip covers only its properties read, and the declared empty state would claim the
  * database has no volume files when nobody was allowed to look.
  *
+ * **Its actions are the classic page's operations** (Story 18.4, AD-53): Mount, Dismount, Truncate,
+ * Compact and Defragment. The page has no rows to select, so after each read it selects the one
+ * database it shows -- the `process-details.page.ts` model -- which is what the command bar and the
+ * command box act on; the shell's `ScreenActionHandler` opens each one's warning dialog, which renders
+ * here (`app-screen-action-dialogs`), and a refused action's sentence renders above the properties,
+ * `role="alert"`. While an operation's request is in flight the status line reads "<operation>
+ * running on the instance since <time>", then "<operation> finished." or the still-running sentence;
+ * its `database` change event re-reads the properties through the refresh framework and the
+ * Background tasks section too.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-database-details-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Meter],
+  imports: [Meter, ScreenActionDialogs],
   template: `<section class="ocu-details-page" [attr.aria-busy]="busy">
+    @if (actionRefusal) {
+      <p class="ocu-banner ocu-list-page-banner ocu-banner-warning" role="alert" data-database="refusal">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ actionRefusal }}</span>
+      </p>
+    }
+    <p class="ocu-namespace-copy-status" role="status" data-database="operation">{{ operationStatus }}</p>
     @if (showRefusal) {
       <div class="ocu-data-table-refusal" role="alert">
         <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
@@ -241,6 +262,7 @@ interface TasksReadBody {
         }
       </section>
     }
+    <app-screen-action-dialogs [descriptor]="descriptorName" />
   </section>`,
 })
 export class DatabaseDetailsPage {
@@ -251,8 +273,15 @@ export class DatabaseDetailsPage {
   private readonly api = inject(ApiService);
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
+  private readonly screenActions = inject(ScreenActionHandler);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The warning triangle the shared banner carries, as its escape (Rule 14). */
+  protected readonly bannerGlyph = '\u26A0';
+
+  /** The descriptor whose actions this page carries out, which its dialogs render for. */
+  protected readonly descriptorName = DATABASE_DETAILS;
 
   protected readonly skeletonRows = [0, 1, 2];
 
@@ -354,18 +383,69 @@ export class DatabaseDetailsPage {
       const row = store.data()[0];
       if (row === undefined) this.highlights.reset();
       else this.highlights.update(row, this.fieldNames(screen));
+      this.selectShown(store, screen, row);
       this.generation.update((value) => value + 1);
     });
 
     const stopRefresh = this.refresh.subscribe(() => this.generation.update((value) => value + 1));
+
+    // A write to this database -- an operation of this page's, or the agent's -- may start or end a
+    // background task against it and change its volume files, so both sections read again (Story
+    // 18.4). The properties re-read through the refresh framework, which listens to the same event.
+    const stopBus = inject(ChangeBus).subscribe((event) => {
+      if (event.kind !== 'changed' || event.type !== 'database') return;
+      const directory = comparableDirectory(criteria()['dir'] ?? '');
+      if (directory === '' || comparableDirectory(event.id) !== directory) return;
+      if (!this.scope.loaded()) return;
+      void this.loadVolumes(criteria());
+      void this.loadTasks(criteria());
+    });
 
     inject(DestroyRef).onDestroy(() => {
       stopIdChange.unsubscribe();
       stopStore();
       stopRefresh();
       stopRefreshAction();
+      stopBus();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
+      // The handler is the app's, so a dialog left open would outlive the page it was opened on.
+      if (this.screenActions.pending()?.descriptor === screen.descriptor) this.screenActions.cancelPending();
     });
+  }
+
+  /**
+   * Select the database this page shows, or nothing once it has gone: the page has no table to
+   * select a row in, and the command bar acts on the store's selection (AD-19).
+   */
+  private selectShown(store: ScreenStore, screen: ScreenDeclaration, row: unknown): void {
+    const key = row === undefined ? '' : rowKey(row, screen);
+    const selection = store.selection();
+    if (key === '') {
+      if (selection.length > 0) store.setSelection([]);
+      return;
+    }
+    if (selection.length === 1 && selection[0] === key) return;
+    store.setSelection([key]);
+  }
+
+  /** The sentence the last refused action answered with, or `''` (AD-39). */
+  protected get actionRefusal(): string {
+    this.generation();
+    return this.view?.store.refusal() ?? '';
+  }
+
+  /**
+   * The status line of the last operation sent on this database: running, finished or still
+   * running (`operationLine`); `''` for another database's, a refusal, or before any.
+   */
+  protected get operationStatus(): string {
+    this.generation();
+    const progress = this.screenActions.progress();
+    const view = this.view;
+    if (progress === null || progress.descriptor !== DATABASE_DETAILS || view === null) return '';
+    const directory = comparableDirectory(parentCriteria(view.screen, this.router.url)['dir'] ?? '');
+    if (directory === '' || comparableDirectory(progress.target) !== directory) return '';
+    return operationLine(actionLabel(DATABASE_DETAILS, progress.actionId), progress.state, progress.since);
   }
 
   /**

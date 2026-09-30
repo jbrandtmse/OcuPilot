@@ -37,7 +37,8 @@ const STRINGS = loadStrings();
 
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
-const DATABASES_URL = '/ocupilot/os-management/databases?ns=HSCUSTOM';
+/** Databases' Free-space view: a refreshing list with no action, since the General view gained Check integrity (Story 18.4). */
+const FREE_SPACE_URL = '/ocupilot/os-management/database-free-space?ns=HSCUSTOM';
 const PREFIX = 'OcuPilotPanelProbe';
 
 let browser = null;
@@ -813,7 +814,7 @@ test('the 640px content minimum, measured at 1,280px docked and resized to maxim
 // the sentence is written into the chip directly: a chip that starts a line of its own at that
 // length moves the list down each time a proposal arrives.
 test('a refreshing list keeps its command bar on one line when the chip reads the paused sentence, docked at 1,280px', async () => {
-  const { context, page } = await signedInAt(DATABASES_URL, { width: 1280, height: 900 });
+  const { context, page } = await signedInAt(FREE_SPACE_URL, { width: 1280, height: 900 });
   try {
     await page.waitForFunction(() => document.documentElement.clientWidth === 1280, { timeout: config.navigationTimeoutMs });
     await panelSettlesAt(page, 400);
@@ -833,7 +834,7 @@ test('a refreshing list keeps its command bar on one line when the chip reads th
         clipped: chip.scrollWidth > chip.clientWidth,
       };
     }, STRINGS.statusAutoRefreshPaused);
-    console.log(`MEASURE ${JSON.stringify({ url: DATABASES_URL, bar })}`);
+    console.log(`MEASURE ${JSON.stringify({ url: FREE_SPACE_URL, bar })}`);
 
     assert.equal(Math.round(bar.width), 832);
     assert.equal(bar.height, bar.minHeight, 'the paused sentence does not move the bar onto a second line');

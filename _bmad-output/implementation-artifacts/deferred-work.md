@@ -7936,6 +7936,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.2's plan; the eight are listed under the spec's Design Notes > Vendor defect candidates; OcuPilot guards each on its own side (pairs refused before any call, no maxRows on DELETE)
 - 2026-09-28T10:34:45Z status=decision-pending owner=burndown by=runner note=human=report the eight to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+- 2026-09-30T02:57:24Z status=wontfix-accepted by=merge_gate note=by analogy with the owner's DW-1820 decision (2026-09-29): well-known vendor behaviour, no upstream report; OcuPilot designs around each; reopen_if=a 2027.1 image answers any of the eight differently
 
 ### DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
@@ -8033,6 +8034,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T14:12:01Z occurrence=18-3-databases-configuration-creation-properties-and-volumes
 - 2026-09-29T14:12:01Z status=routed owner=18-3-databases-configuration-creation-properties-and-volumes by=cr note=residual: create refuses; a NewVolumeDirectory naming another DB's directory resolves (vendor collision unmeasured, 18.4)
 - 2026-09-29T15:13:58Z status=routed owner=18-4-the-deferred-disk-operations by=adjudication note=create half resolved in 18.3 (DatabaseRules refuses a directory holding an IRIS.DAT; DatabaseRefusals DW-1791 legs); residual: a NewVolumeDirectory naming another database's directory still resolves, and whether the vendor accepts that collision is unmeasured -- 18.4's expand (new volume) owns it
+- 2026-09-30T02:07:21Z status=resolved-by:18-4-the-deferred-disk-operations by=adjudication note=0ba6ff66: DatabaseRules refuses a new volume directory naming another database's directory or volume directory (the vendor's 500 #576/#575 answered as 422 first), AC11 legs with mutations; expand-volume takes no directory
 
 ### DW-1792: Ending a preserve-mode web session hangs until the gateway answers 504 and never ends it: the vendor DELETE waits on the session lock the session's own process holds
 - source: spec-16-2-web-sessions-listed-and-ended.md | severity: med | fix-risk: med | footprint: in-story
@@ -8086,6 +8088,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: InstanceFile answers 0 for /durable/iris/csp/ocupilot/index.html on ocupilot-b-ci (read-only, blind-hunter layer); DW-1790's 17:21:25Z trailer lists the bundle, and its merge_gate decision names database and journal directories only; no overwriting consumer exists yet.
 - 2026-09-28T22:34:01Z status=decision-pending owner=burndown by=cr note=owner: should an overwriting consumer also be refused OcuPilot's own served files, as self-protection?
+- 2026-09-30T03:35:00Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings by=adjudication note=restores the 2026-09-29T04:42:42Z adjudication (PathPort.Resolve refuses a file under the served directory, PATH.SERVED); that trailer and the 23:19:46Z routing sit under DW-1818, misplaced by a union merge
 
 ### DW-1812: A broadcast whose every checked pid has ended is refused as not found (the RECIPIENTS read's 404), not with AC3's published PROCESS.BROADCAST.RECIPIENT sentence
 - source: spec-16-6-broadcast-a-message-to-processes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8115,6 +8118,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T04:47:44Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=reopen_if=a person meets the generic sentence from a screen dialog, or a second free-text screen value reaches ScreenAction.Refuse
 - 2026-09-28T23:19:46Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=orchestrator: refuse an overwriting consumer OcuPilot's own served files (csp/ocupilot/ and what the installer deploys); folded into 18.14's rework
 - 2026-09-29T04:42:42Z status=resolved-by:18-14-namespace-mappings-and-copy-mappings owner=18-14-namespace-mappings-and-copy-mappings by=adjudication note=PathPort.Resolve refuses an existing file under PathPort.ServedDirectory() to an overwriting consumer; PathPortInstance pins it with a recorded mutation; AD-21 sixth case amended
+- 2026-09-30T03:35:00Z status=wontfix-accepted owner=16-6-broadcast-a-message-to-processes by=cr note=restores the 04:47:44Z disposition; the two 18-14 trailers below it are DW-1798's, misplaced by a union merge; reopen_if=a person meets the generic sentence from a screen route
 
 ### DW-1799: A global mapping's Collation cannot be cleared from the edit form
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
@@ -8232,11 +8236,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EnumerateTasks reads ^IRIS.Temp.MgtPortalTask only (irissys/%CSP/UI/System/BackgroundTask.cls:1195-1256) while %SYS.BackgroundTask:DatabaseList lists every compact and defragment (irissys/%SYS/BackgroundTask.cls:911-920); inference until 18.4 queues one
 - 2026-09-29T13:12:13Z status=routed owner=18-4-the-deferred-disk-operations by=harvest note=18.4 queues admin-API compacts and defragments; it attributes them to their database in Database details' Background tasks section (BackgroundTaskPort PortalRows), or measures that the vendor gives them a portal row
+- 2026-09-30T02:07:21Z status=resolved-by:18-4-the-deferred-disk-operations by=adjudication note=0ba6ff66: BackgroundTaskPort lists unended DatabaseList tasks with no portal row, naming their database, and links an own admin row by SysBGTaskId (AC10; BackgroundTasks/BackgroundTasksLive legs, the database-operations browser AC10 leg added in review)
 
 ### DW-1824: The New Namespace form's Create a database leaves the form: typed values are discarded after the leave prompt, the wizard lands on the new database's editor, and nothing returns to the form
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: namespace-form.page.ts resets its store on destroy (retaining() false), so the change-bus re-read never runs for this flow; database-wizard.page.ts replaces the route with the editor. AC6 holds only because the form's next open re-reads.
 - 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
+- 2026-09-29T22:56:19Z status=routed owner=range-end-cleanup by=merge_gate note=decided as recommended (orchestrator 2026-09-29): Create a database from the New Namespace form keeps what was typed and returns to it, as the classic portal does; routed to range-end-cleanup, 18.4 stays bounded
 
 ### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8264,9 +8270,39 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (CI run 36600327713) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36600327713 on 822c0e3f, instance shard 1/3, run 60: 'content: at 422, by name' red; the class and its port are untouched since Epic 12/14 and passed in runs 36573329469, 36581952884 and 36588987899 and 3/3 on ocupilot-b-ci (runs 428-430)
 - 2026-09-29T17:09:15Z status=routed owner=burndown by=lead note=Epic 12's issuer fixture (OAuthServerDiscover); probe the fixture server's timing on a slow runner
+- 2026-09-30T03:36:26Z status=routed owner=range-end-cleanup by=merge_gate note=restores the owner-approved decision-sheet line (into Story 23.2) that a union merge from OCU-1-epic18 placed before an older trailer
+
+### DW-1846: Admin API behaviours in Database.Actions on 2026.2 that OcuPilot designs around: mount without %Admin_Secure:USE answers 500 #356; a queued action refused for privilege answers 202 and fails in the task; modify-size silently no-ops a shrink and clamps above MaxSize (logging a severity-2 alert); an integrity check on a non-database directory reports both no errors and errors; NewVolumeDirectory collisions answer 500 (#576, #575); deleting an AsyncTaskSysBackground row as an object leaves its %SYS.BackgroundTask row
+- source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-29 by Story 18.4's plan probe; OcuPilot guards each on its own side (pairs before any port call, size and target rules before any vendor call, the volume-directory rule before the PUT)
+- 2026-09-29T22:56:14Z status=wontfix-accepted owner=18-4-the-deferred-disk-operations by=harvest note=owner 2026-09-29 (as DW-1820): well-known vendor behaviour; no upstream report; reopen_if=a 2027.1 image answers any of these differently
+
+### DW-1847: osmgmt.databasedetails.dismount declares %Admin_Manage:USE beyond Database details' pairs, against 18.4's intent (dismount: Database details' pairs only): PROHIBITED.OCUPILOTDATABASE's dismount arm reads the install namespace and the database configurations as the caller, and those reads need %Admin_Manage
+- source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-b-ci 2026-09-29 by 18.4's implement: Namespace.Namespace GET and Database.ConfigCRUD LIST have ResourcesOR %Admin_Manage alone, and a failed read refuses, so an Operate-only holder is refused PROHIBITED on every dismount without the pair
+- 2026-09-29T22:56:14Z status=decision-pending owner=burndown by=harvest note=recommended: accept %Admin_Manage:USE for dismount now (AD-8 amended, intent pair line corrected) -- the classic page lets an Operate-only holder dismount, so an Operate-only path needs a Manage-free own-set read (an AD-27 named case) later
+- 2026-09-29T22:56:51Z status=routed owner=18-4-the-deferred-disk-operations by=merge_gate note=option A (orchestrator 2026-09-29): dismount declares %Admin_Manage:USE because the self-protection check reads the protected set; amend AD-8's 18.4 paragraph and the spec's pair line at origin; test that an Operate-only holder is refused with the missing pair named, not PROHIBITED
+- 2026-09-30T02:07:21Z status=resolved-by:18-4-the-deferred-disk-operations by=adjudication note=4c50e345: dismount declares %Admin_Manage:USE (AD-8 and the intent's pair line amended); DatabaseActionsGate pins an Operate-only holder refused 403 naming the pair on the tool call, the screen and the confirm, never PROHIBITED (mutation recorded)
+
+### DW-1848: The Integrity log's error branch is unverified: no test renders the report of a check that found errors through the real Display^Integrity capture
+- source: spec-18-4-the-deferred-disk-operations.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Every live leg runs a clean check and the fixture replaces IntegrityReport wholesale; that an error line begins **** is taken from the fixture (inference)
+- 2026-09-29T22:56:14Z status=open owner=18-4-the-deferred-disk-operations by=harvest note=settle with a hand-built vendor output global or a damaged probe block on ocupilot-b-ci
+- 2026-09-30T02:07:21Z status=resolved-by:18-4-the-deferred-disk-operations by=adjudication note=4c50e345: DatabaseActionProbe.DamageBlock corrupts one block of a probe database on the throwaway; DatabaseIntegrity.TestADamagedBlockIsReportedAsErrors pins the Integrity log's error lines through the real Display^Integrity capture
+
+### DW-1849: Canceling a compact through %SYS.BackgroundTask kills the admin API worker running it, and that caller's AsyncTask row then stays Running
+- source: spec-18-4-the-deferred-disk-operations.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Observed on ocupilot-b-ci 2026-09-29 by 18.4's implement; BackgroundTaskPort controls a Database row no portal or own admin row holds through %SYS.BackgroundTask (AD-27's 18.4 case); an own admin row cancels through AsyncResult
+- 2026-09-29T22:56:14Z status=wontfix-accepted owner=18-4-the-deferred-disk-operations by=harvest note=vendor behaviour; reopen_if=a user's own admin API task reads Running after another user's cancel on a live instance
+
+### DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE
+- source: cycle-log-epic-18.md (DW-1847 decision) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Orchestrator decision 2026-09-29 on DW-1847: 18.4 ships dismount with %Admin_Manage:USE; the classic page lets an %Admin_Operate holder dismount
+- 2026-09-29T22:56:51Z status=routed owner=range-end-cleanup by=merge_gate note=e.g. the protected directories recorded at install into OcuPilot's protected state, or read through the port's own privileged path
 - 2026-09-29T15:25:45Z status=resolved-by:16-4-task-export-and-import by=adjudication note=security AC5 opens the side bar through the gate spec's toggle-aware openSideBar; old code failed 1/3 locally with the same timeout, fixed 5/5
 - 2026-09-29T17:56:44Z status=routed owner=burndown by=merge_gate note=restores the 17:09:15Z routing; the 15:25:45Z resolved-by:16-4 trailer above is DW-1823's, misplaced by the 1.0.3 staging union merge
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
+- 2026-09-30T02:07:11Z status=routed owner=range-end-cleanup by=merge_gate note=restores the 22:56:51Z routing; the 15:25:45Z and 17:56:44Z trailers above are DW-1831's (feature), misplaced here by the d9f84f52 forward-merge union
 
 ### DW-1836: The try-it console shows a bare "0" in its Response block when a request never reaches the server (status 0: an opaque redirect or a network failure), e.g. on demo.ocupilot.org where the proxy passes only /api/ocupilot
 - source: owner, 2026-09-29 ~12:30 PDT, relayed by the Planner (demo RC) | severity: medium | fix-risk: low | footprint: ui/src/app/areas/web-applications/try-it.ts, its strings and browser spec
@@ -8337,6 +8373,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: pre-existing; only a crafted client sends it; the marker path now drops it (review, 2026-09-29)
 - 2026-09-29T21:09:54Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=any client sends a non-finite number in screen_context
 
+### DW-1851: WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair answers LOG.ABSENT on a fresh instance that has no alerts.log yet, so it fails when it runs before anything has posted a severe line (DW-1814 made that longer: deletes no longer post one)
+- source: cycle-log-epic-18.md (forward merge d9f84f52) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Forward-merge roster run on a freshly recreated ocupilot-b-ci: run 3 red (LOG.ABSENT), alerts.log appeared at 23:13 during the sweep, re-run 17 green
+- 2026-09-29T23:16:25Z status=routed owner=burndown by=lead note=the test should seed or tolerate an absent alerts.log (Epic 16's log hub, 16.9)
+
+### DW-1858: Databases offers no way into the Integrity log: DatabaseIntegrityLog takes no side-bar position and only the Check integrity flow links to it after a send, so a past check (a task's, the classic portal's) is reachable only by running a new one; the classic OpDatabases has its own Integrity Log button
+- source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: Spec Tasks fix DatabaseIntegrityLog at sideBarPosition 0 and name only the flow's Open the integrity log; its doc comment claimed Databases opens it (corrected in review). The command box offers listed screens only (Conventions, screens with no side-bar position).
+- 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=product call: list the Integrity log under OS management after Databases, or give Databases a link; recommended: list it
+- 2026-09-30T02:57:24Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=approved as recommended (orchestrator 2026-09-30): the Integrity log gets an OS management side-bar position right after Databases; a small item in 18.15
+
+### DW-1859: A caller that cannot write the admin API's async-task rows (the disk tools' least-privileged pairs) leaves one finished row per queued call, each STATE read's INFO poll included, and AD-37's sweep deletes them by SQL, which logs ERROR #7846 per row (inference for the sweep)
+- source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: 18.4 Auto Run Result: DatabaseActionsGate's principals left 773 rows ForgetTask could not delete; rework 1 deleted 282 such rows by SQL and messages.log gained one #7846 per row (measured). AdminPort.SweepOwnTasks is an SQL DELETE on the same table (read at review).
+- 2026-09-30T02:04:14Z status=escalated owner=burndown by=cr note=decide: let a caller remove its own finished rows, or sweep without the vendor trigger; measure the sweep's #7846 first
+- 2026-09-30T02:57:24Z status=routed owner=burndown by=merge_gate note=approved as recommended and the priority (orchestrator 2026-09-30): measure the retention sweep on ocupilot-b-ci first (seed a least-privileged caller's finished rows, run the task, read Monitor.State and alerts.log); if it reproduces, a caller removes its own finished rows through the port at read-once time and the sweep never raises the state; own fix commit, next dispatch
+
+### DW-1860: IRISSYS's NewVolumeThreshold can be set through 18.3's file update (AD-10 protects only its directory, resource and read-only setting), after which the instance's own expansion could place volume files in the manager directory, against the owner's database-directory rule (inference: auto-expansion unmeasured)
+- source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: IRISSYS's NewVolumeDirectory is the manager directory with threshold 0 (measured, rework 1); a threshold above 0 lets a grow or defragment add volume files there (measured on a probe); 18.4's refusal covers only its own grow, defragment and Add a volume.
+- 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=owner call on the rule's scope: refuse a non-zero threshold for a database whose new volume directory is the manager directory
+- 2026-09-30T02:57:24Z status=routed owner=burndown by=merge_gate note=approved (orchestrator 2026-09-30): refuse a non-zero NewVolumeThreshold for a database whose new-volume directory is the manager directory, under the owner's directory rule; state it at AD-21; small fix after DW-1859, next dispatch
 ### DW-1845: Try-it's redirect sentence says the request did not reach the application, which is false when the application itself answers a 3xx (e.g. a POST answered 303 after creating something); a resend would then duplicate the write
 - source: DW-1836 review | severity: med | fix-risk: low | footprint: in-epic
 - evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)

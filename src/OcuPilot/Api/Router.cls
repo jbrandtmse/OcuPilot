@@ -138,6 +138,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/logs/integrity/files" Method="GET" Call="LogIntegrityFiles"/>
+  <Route Url="/logs/integrity" Method="GET" Call="LogIntegrity"/>
   <Route Url="/logs/systemmonitor" Method="GET" Call="LogSystemMonitor"/>
   <Route Url="/logs/taskerrors" Method="GET" Call="LogTaskErrors"/>
   <Route Url="/logs/xdbc" Method="GET" Call="LogXdbc"/>
@@ -867,6 +869,22 @@ ClassMethod LogMessages() As %Status
 ClassMethod LogMessageFiles() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/integrity</code>: one page of an integrity
+/// check's report, the check named by <code>file</code> (its id) or the newest, through
+/// <method>OcuPilot.Api.LogPage.Handle</method> with the source key bound here (Story 18.4).</p>
+ClassMethod LogIntegrity() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#INTEGRITYKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/integrity/files</code>: the integrity checks
+/// the instance holds, newest first, through <method>OcuPilot.Api.LogPage.HandleFiles</method>
+/// (Story 18.4).</p>
+ClassMethod LogIntegrityFiles() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleFiles(##class(OcuPilot.Port.LogSourcePort).#INTEGRITYKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/systemmonitor</code> (Story 16.8): the

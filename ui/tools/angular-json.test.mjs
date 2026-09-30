@@ -373,6 +373,8 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Namespaces list page and the copy dialog having passed 2107kB), under the 4000kB hard stop.
 // Release 1.0.3's staging merge of Stories 16.7, 18.3 and 16.4 re-based it to 2346kB, 5% above a
 // measured 2,234,284 bytes, under the 4000kB hard stop.
+// Story 18.4, merged forward onto that figure with the disk operations, the Check integrity flow and
+// the Integrity log, measured 2,275,176 bytes and stays under it.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the

@@ -890,6 +890,9 @@ export class DataTable implements OnInit {
       // Story 16.6: a multi-select action acts on the checked rows, from the command bar and the
       // command box, never on the one row a menu opens on.
       .filter((action) => !isCheckedSetAction(screen, action.id))
+      // Story 18.4: an action the screen also declares as its primary is the command bar's, drawn
+      // once there, so no row carries a menu for it (Databases' Check integrity).
+      .filter((action) => action.id !== screen.primaryAction.id)
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
         const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);

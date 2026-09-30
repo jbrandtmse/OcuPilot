@@ -512,7 +512,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "global-mapping": "foldcase-firstpart",
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
-  "database-configuration": "foldcase"
+  "database-configuration": "foldcase",
+  "database": "directoryset"
 };
 
 /**
@@ -2810,7 +2811,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "mount",
+        "selfProtection": ""
+      },
+      {
+        "id": "dismount",
+        "selfProtection": ""
+      },
+      {
+        "id": "truncate",
+        "selfProtection": ""
+      },
+      {
+        "id": "compact",
+        "selfProtection": ""
+      },
+      {
+        "id": "defragment",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Directory",
@@ -3019,8 +3041,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseDetailsEmptyAgent"
     },
     "toolIdentifier": "osmgmt.databasedetails",
     "refreshDefault": 0,
@@ -3195,6 +3217,204 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseIntegrity",
+    "route": "os-management/databases/integrity",
+    "area": "os-management",
+    "labelKey": "databaseIntegrityLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "check integrity",
+      "integrity check"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.Integ",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.databaseintegrity",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseIntegrityLog",
+    "route": "os-management/databases/integrity-log",
+    "area": "os-management",
+    "labelKey": "databaseIntegrityLogLabel",
+    "sideBarPosition": 0,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseIntegrityNone",
+    "commandAliases": [
+      "integrity log"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "databaseIntegrityLogPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.IntegLog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "logsource",
+        "endpoint": "integrity",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.integritylog",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseList",
     "route": "os-management/databases",
     "area": "os-management",
@@ -3230,10 +3450,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "integrity",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "integrity",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Directory",
@@ -3331,8 +3556,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.databases",
     "refreshDefault": 0,
@@ -5226,7 +5451,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "database-configuration",
-    "secondaryEntityTypes": [],
+    "secondaryEntityTypes": [
+      "database"
+    ],
     "scope": "instance",
     "parentScope": "",
     "id": {
@@ -5240,6 +5467,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowActions": [
       {
         "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "expand",
         "selfProtection": ""
       }
     ],

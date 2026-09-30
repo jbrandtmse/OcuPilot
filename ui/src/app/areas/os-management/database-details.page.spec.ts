@@ -12,6 +12,7 @@ import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { uncheckedLine } from '../../core/privileges';
 import { ScreenStores } from '../../core/screen-store';
+import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { DatabaseDetailsPage } from './database-details.page';
 import { stubAccountPreferences } from '../../testing/account-preferences';
@@ -134,6 +135,7 @@ async function mount(
   let failing = false;
   let volumesFailing = false;
   let tasksAnswer = tasks;
+  let actionAnswer: JsonResult<unknown> | null = null;
   const paths: string[] = [];
   const scheduled: (() => void)[] = [];
   const api = {
@@ -150,16 +152,18 @@ async function mount(
         if (volumesFailing) return { kind: 'error', status: 403, code: 'AUTH.FORBIDDEN', reason: null, detail: null };
         return { kind: 'ok', status: 200, body: { fields: [], rows: volumeAnswerRows, truncated: false, banner: '' } as T };
       }
+      if (path.endsWith('/action') && actionAnswer !== null) return actionAnswer as JsonResult<T>;
       if (failing) return { kind: 'error', status: 500, code: 'SERVER.INTERNAL', reason: null, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: '' } as T };
     },
   };
   volumesFailing = volumesRefused;
   const stores = new ScreenStores({ account: stubAccountPreferences() });
+  const bus = new ChangeBus();
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
-    bus: new ChangeBus(),
+    bus,
     namespace: () => 'HSCUSTOM',
     schedule: (run) => scheduled.push(run),
   });
@@ -174,6 +178,7 @@ async function mount(
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
@@ -201,6 +206,9 @@ async function mount(
     },
     setTasks: (value: TasksAnswer) => {
       tasksAnswer = value;
+    },
+    setAction: (value: JsonResult<unknown>) => {
+      actionAnswer = value;
     },
     actions: TestBed.inject(ScreenActions),
   };
@@ -389,6 +397,102 @@ describe('Database details', () => {
       await settle(fixture);
       expect(paths.filter((path) => path.includes('/tasks.background/')).length).toBe(2);
       expect(taskCells(host).map((cell) => cell[0])).toEqual(['Defragment']);
+    });
+  });
+
+  /**
+   * Story 18.4 (AD-53): the page selects the database it shows, so the command bar acts on it; the
+   * shell's warning dialog renders here; the status line follows the operation; and a `database`
+   * change event for this directory reads the Background tasks again.
+   */
+  describe('the disk operations (Story 18.4)', () => {
+    it('selects the one database it shows, so the command bar acts on it', async () => {
+      // Mutation (Rule 19): drop `selectShown` from the store subscription -> the selection is empty.
+      const { fixture } = await mount();
+      const screen = SCREENS.find((entry) => entry.descriptor === DESCRIPTOR)!;
+      expect(TestBed.inject(ScreenStores).for(DESCRIPTOR, screen.refreshRates).selection()).toEqual(['/durable/iris/mgr/']);
+      expect(fixture.nativeElement.querySelector('app-screen-action-dialogs')).not.toBeNull();
+    });
+
+    it('draws the mount\u2019s warning here, sends it, and reads the operation\u2019s status line', async () => {
+      const { fixture, paths, actions } = await mount();
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('[data-database="operation"]')?.textContent?.trim()).toBe('');
+      expect(actions.run(DESCRIPTOR, 'mount')).toBe(true);
+      await settle(fixture);
+      const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.databaseActionMount);
+      expect(dialog.textContent).toContain(STRINGS.databaseMountConsequence);
+      expect(dialog.querySelector('[data-slot="flag"]')?.textContent).toContain(STRINGS.databaseMountReadOnly);
+      (dialog.querySelector('.ocu-dialog-actions .ocu-button-primary') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(paths.some((path) => path.endsWith('/osmgmt.databasedetails/action'))).toBe(true);
+      expect(host.querySelector('[role="dialog"]')).toBeNull();
+      expect(host.querySelector('[data-database="operation"]')?.textContent?.trim()).toBe(
+        STRINGS.databaseOperationFinished.replace('<operation>', STRINGS.databaseActionMount)
+      );
+    });
+
+    it('offers its five operations, each opening its own warning here and sending nothing until Proceed', async () => {
+      // Mutation (Rule 19): drop `compact` from `DatabaseDetails`' `rowActions` and regenerate the
+      // mirror -> no handler is registered for it, red.
+      const { fixture, paths, actions } = await mount();
+      const host: HTMLElement = fixture.nativeElement;
+      const operations: readonly (readonly [string, string, string])[] = [
+        ['mount', STRINGS.databaseActionMount, STRINGS.databaseMountConsequence],
+        ['dismount', STRINGS.databaseActionDismount, STRINGS.databaseDismountConsequence],
+        ['truncate', STRINGS.databaseActionTruncate, STRINGS.databaseTruncateConsequence],
+        ['compact', STRINGS.databaseActionCompact, STRINGS.databaseCompactConsequence],
+        ['defragment', STRINGS.databaseActionDefragment, STRINGS.databaseDefragmentConsequence],
+      ];
+      for (const [id, label, consequence] of operations) {
+        expect(actions.run(DESCRIPTOR, id), id).toBe(true);
+        await settle(fixture);
+        const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+        expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(label);
+        expect(dialog.querySelector('.ocu-warning-consequence')?.textContent?.trim()).toBe(consequence);
+        (dialog.querySelector('.ocu-button-secondary') as HTMLButtonElement).click();
+        await settle(fixture);
+        expect(host.querySelector('[role="dialog"]')).toBeNull();
+      }
+      expect(paths.some((path) => path.endsWith('/action'))).toBe(false);
+    });
+
+    it('reads the still-running sentence for an operation that continues, and a 409\u2019s sentence above the properties', async () => {
+      // Mutation (Rule 19): `operationLine` answers '' for `continues` -> the still-running line goes
+      // red; `actionRefusal` answers '' -> the refusal banner goes red.
+      const { fixture, actions, setAction } = await mount();
+      const host: HTMLElement = fixture.nativeElement;
+      const proceed = () => (host.querySelector('[role="dialog"] .ocu-dialog-actions .ocu-button-primary') as HTMLButtonElement).click();
+      setAction({ kind: 'ok', status: 200, body: { action: 'updated', continues: true } });
+      expect(actions.run(DESCRIPTOR, 'defragment')).toBe(true);
+      await settle(fixture);
+      proceed();
+      await settle(fixture);
+      expect(host.querySelector('[data-database="operation"]')?.textContent?.trim()).toBe(STRINGS.auditDatabaseStillRunning);
+      const reason = 'This database is already mounted.';
+      setAction({ kind: 'error', status: 409, code: 'DATABASE.MOUNTED', reason, detail: null });
+      expect(actions.run(DESCRIPTOR, 'mount')).toBe(true);
+      await settle(fixture);
+      proceed();
+      await settle(fixture);
+      expect(host.querySelector('[data-database="refusal"] .ocu-banner-message')?.textContent?.trim()).toBe(reason);
+      expect(host.querySelector('[data-database="operation"]')?.textContent?.trim()).toBe('');
+    });
+
+    it('reads the Background tasks and the volume files again on a database change for its own directory, and not for another', async () => {
+      // Mutation (Rule 19): drop the change-bus subscription -> the second read goes red; drop its
+      // volume files read -> the volumes count goes red.
+      const { fixture, paths } = await mount([row()], [volumeRow()], undefined, false, { rows: [] });
+      const bus = TestBed.inject(ChangeBus);
+      bus.publish({ kind: 'changed', type: 'database', scope: 'instance', id: '/durable/iris/mgr/user/', action: 'updated' });
+      await settle(fixture);
+      expect(paths.filter((path) => path.includes('/tasks.background/')).length).toBe(1);
+      expect(paths.filter((path) => path.includes('osmgmt.databasevolumes')).length).toBe(1);
+      bus.publish({ kind: 'changed', type: 'database', scope: 'instance', id: '/DURABLE/IRIS/MGR', action: 'updated' });
+      await settle(fixture);
+      expect(paths.filter((path) => path.includes('/tasks.background/')).length).toBe(2);
+      expect(paths.filter((path) => path.includes('osmgmt.databasevolumes')).length).toBe(2);
     });
   });
 });

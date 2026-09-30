@@ -78,8 +78,9 @@ const CORPUS = [
 
 // The corpus below round-trips verbatim, so the type it runs under must be one the kernel
 // declares no id rule for. `task` held this place until Story 5.11 gave it the `integer` rule,
-// `role` until Story 8.3 gave it `foldcase`, `resource` until Story 8.4 did, and `service` until Story 9.9 did.
-const TYPE = 'database';
+// `role` until Story 8.3 gave it `foldcase`, `resource` until Story 8.4 did, `service` until Story 9.9 did,
+// and `database` until Story 18.4 gave it `directoryset`.
+const TYPE = 'device';
 
 test('the vocabulary is the kernel mirror, not a second list', () => {
   assert.ok(ENTITY_TYPES.includes(TYPE));
@@ -246,7 +247,7 @@ test('AD-13: the singleton rule answers one id for every spelling, from the mirr
     'so two spellings build one key'
   );
   // The rule is per type: an id of another type is untouched by it.
-  assert.equal(normalizeEntityId('database', 'Nightly Purge'), 'Nightly Purge');
+  assert.equal(normalizeEntityId('device', 'Nightly Purge'), 'Nightly Purge');
 });
 
 // Story 5.11, AD-13: a task is addressed by the vendor's own integer id, which the model supplies
@@ -343,4 +344,31 @@ test('AD-13: the integerset rule folds a process id set to unique pids in ascend
   }
   assert.equal(normalizeEntityId(type, 'ABC,1'), 'abc,1', 'and is folded to lower case as the integer rule folds one');
   assert.equal(entityRefKey(type, 'instance', '907, 812,812'), entityRefKey(type, 'instance', '812,907'), 'so two spellings of one set build one key');
+});
+
+// Story 18.4, AD-13: a database is addressed by its directory, or, for an integrity check, by a set
+// of directories as a JSON array. The client answers what `OcuPilot.Port.DatabasePort.CanonicalSet`
+// answers for the same corpus (`OcuPilot.Test.EntityRef`, `OcuPilot.Test.DatabaseIntegrity`).
+//
+// Mutation (Rule 19): keep the members' order in `directoryset` -> the sorted row goes red.
+test('AD-13: the directoryset rule keeps a directory exactly and folds a set to its unique, sorted members', () => {
+  const type = 'database';
+  assert.equal(ENTITY_ID_RULES[type], 'directoryset', 'the mirrored table declares the rule');
+  for (const [spelling, canonical] of [
+    ['/Durable/IRIS/mgr/User/', '/Durable/IRIS/mgr/User/'],
+    ['["/b/","/a/","/b"]', '["/a/","/b/"]'],
+    ['["/a/","/a"]', '/a/'],
+    ['[ "/b/" , "/A/" ]', '["/A/","/b/"]'],
+    ['[]', '[]'],
+  ]) {
+    assert.equal(normalizeEntityId(type, spelling), canonical, `'${spelling}' reads '${canonical}'`);
+  }
+  for (const verbatim of ['[1,2]', '["/a/",""]', '[not json', '{"a":1}']) {
+    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not a set of directories and keeps its spelling`);
+  }
+  assert.equal(
+    entityRefKey(type, 'instance', '["/b/","/a/"]'),
+    entityRefKey(type, 'instance', '["/a/","/b"]'.replace('"/b"', '"/b/"')),
+    'so two spellings of one set build one key'
+  );
 });

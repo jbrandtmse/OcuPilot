@@ -395,7 +395,7 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
             Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
         }
     }
-    Do $$$AssertEquals(tChecked, 8, "all eight production logsource reads are checked, Story 16.8's six included: " _ tChecked)
+    Do $$$AssertEquals(tChecked, 9, "all nine production logsource reads are checked, Story 16.8's six and Story 18.4's Integrity log included: " _ tChecked)
 }
 
 /// <p>Story 16.9 -- every production <code>timeline</code> read answers through the executor on the

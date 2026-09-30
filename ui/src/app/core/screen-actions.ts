@@ -153,6 +153,18 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.ProcessList': { broadcast: STRINGS.processBroadcastAction },
   // Story 16.4: the Task schedule's Export, on the selected task.
   'OcuPilot.Screen.Descriptor.TaskScheduleList': { export: STRINGS.taskExportAction },
+  // Story 18.4: Database details' five disk operations, each also titling its warning dialog.
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': {
+    mount: STRINGS.databaseActionMount,
+    dismount: STRINGS.databaseActionDismount,
+    truncate: STRINGS.databaseActionTruncate,
+    compact: STRINGS.databaseActionCompact,
+    defragment: STRINGS.databaseActionDefragment,
+  },
+  // Story 18.4: the Databases list's Check integrity, which opens its flow.
+  'OcuPilot.Screen.Descriptor.DatabaseList': { integrity: STRINGS.databaseIntegrityLabel },
+  // Story 18.4: the editor's Add a volume, which also titles its warning dialog.
+  'OcuPilot.Screen.Descriptor.LocalDatabaseList': { expand: STRINGS.databaseExpandAction },
 };
 
 export class ScreenActions {

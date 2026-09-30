@@ -2,8 +2,8 @@
 /// <method>Call</method>: every vendor call the port makes is recorded in a process-private global
 /// -- its endpoint, request type, identifying query value and body -- before it is sent, so a test
 /// reads the order of a sequenced write (Story 18.3). A call, read or write, whose
-/// <code>endpoint/type</code> a test names with <method>FailOn</method> is answered 500 without being
-/// sent. When <method>Accepts</method> answers 1 every mutating call is recorded and answered 200 with
+/// <code>endpoint/type</code> a test names with <method>FailOn</method> is answered 500, or the status
+/// it names, without being sent. When <method>Accepts</method> answers 1 every mutating call is recorded and answered 200 with
 /// nothing sent, while reads still reach the instance. <method>Invoke</method> keeps the port's last
 /// answer and fault for each <code>endpoint/type</code>, and answers a namespace read a test armed with
 /// <method>ArmNamespace</method>.</p>
@@ -24,8 +24,9 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
     Set ^||OcuPilotDatabaseCalls(tIndex) = $ListBuild(pEndpoint _ "/" _ pType, $Get(pQuery("name")) _ $Get(pQuery("dir")), $Select($IsObject(pBody): pBody.%ToJSON(), 1: ""), tMutating)
     If $ListFind($ListFromString($Get(^||OcuPilotDatabaseFail)), pEndpoint _ "/" _ pType) {
         Set pResult = ""
-        Set pHttpStatus = 500
+        Set pHttpStatus = $Get(^||OcuPilotDatabaseFail("status"), 500)
         Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        If pHttpStatus = 409 Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#PORTCONFLICT, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
         Quit $$$ERROR($$$GeneralError, "refused by the test port")
     }
     If tMutating && ..Accepts() {
@@ -56,14 +57,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 }
 
 /// <p>Answer every call of each <code>endpoint/type</code> in <var>pPairs</var> (comma-separated) with
-/// a 500 and send nothing; <code>""</code> answers every call as sent.</p>
-ClassMethod FailOn(pPairs As %String = "")
+/// HTTP <var>pStatus</var> -- a 409 with a conflict fault, any other with the internal fault -- and send
+/// nothing; <code>""</code> answers every call as sent.</p>
+ClassMethod FailOn(pPairs As %String = "", pStatus As %Integer = 500)
 {
-    If pPairs = "" {
-        Kill ^||OcuPilotDatabaseFail
-    } Else {
-        Set ^||OcuPilotDatabaseFail = pPairs
-    }
+    Kill ^||OcuPilotDatabaseFail
+    If pPairs = "" Quit
+    Set ^||OcuPilotDatabaseFail = pPairs
+    Set ^||OcuPilotDatabaseFail("status") = pStatus
 }
 
 /// <p>Answer <code>Namespace.Namespace</code> <code>GET</code> with the JSON object text
