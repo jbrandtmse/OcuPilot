@@ -8622,3 +8622,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: dw1868 owner fix review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LockPort sends a stored id the fresh listing holds verbatim, without comparing its Reference; reuse was not observed (16.12 review: a reused slot advanced its second piece, 230006 then 230008)
 - 2026-09-30T21:33:37Z status=wontfix-theoretical owner=16-13-the-service-editor by=harvest note=real if a measurement shows the vendor reusing a vacated DeleteID for another lock of the same owner; then carry each id's Reference
+### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
+- source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
+- evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
+- 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): the gated reason reads inline after the name, as UX-DR22 says, with a browser check of the label on one line
+
+### DW-1880: Database details: the 'Volume files' table is unstyled - browser-default serif bold header (File, Volume, Directory, Size, Directory total, Disk free)
+- source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the database details volumes table template
+- evidence: same class of slip as DW-1837 (a template class name that no stylesheet defines); DW-1188 (queued 23.3) is the lint rule that would catch it
+- 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): use the shared data-table styling, with a check that the header takes the shell font
