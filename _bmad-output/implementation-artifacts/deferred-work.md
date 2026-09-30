@@ -4420,6 +4420,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:49Z status=routed owner=burndown by=spec_gate note=per-poll bound on Step.GuardedRows needs a poll-contract call (tool-card text vs incremental poll)
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+47e15e2b: tool step text cut at 4,096, model result whole; AD-33 amended; CI 36727128251
 
 ### DW-1211: The acceptance criterion that no path from a write tool's View reaches the claim gate is checked by a five-filename source scan, not by a tree rule
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py
@@ -5317,6 +5318,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:50Z status=routed owner=burndown by=spec_gate note=needs an AD-39 amendment on how a PasswordValidationRoutine's text reaches the caller, plus a system-wide fixture
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: 422 with validator's 5001/845/958 text, quote fallback; AD-39 amended; CI 36727128251
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
@@ -6027,6 +6029,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=reproduce where Globals and Routines databases differ; grant both resources and amend AD-21's wording
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: floor reads routines+globals DBs; split-namespace leg 403->200; AD-21 amended
 
 ### DW-1441: OcuPilot.Test.UserUpdate is about 700 lines against task 8's under-500 guidance and the project testing rule's roughly-500
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: low | fix-risk: med | footprint: in-story
@@ -7369,6 +7372,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=re-read live proposals slowly after the turn ends so a revoked privilege shows; Confirm refuses today
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: 15 s re-read after the turn ends; proposal-privilege (c) green; CI 36727128251
 
 ### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
 - source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
@@ -8289,6 +8293,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
 - 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
+- 2026-09-30T18:09:10Z occurrence=23-2-the-range-end-cleanup-part-2
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8332,6 +8337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
+- 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8512,6 +8518,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T02:01:26Z status=routed owner=16-25-the-external-language-server-editor by=lead note=orchestrator: wait for this Search's own answer, pinned under the throttled condition, before 16.25's first code push
 - 2026-09-30T02:13:03Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=AC6 waits for this Search's own answer (showsAnswer, shared with search()); the timing leg now reddens when the answer lands late
 
+### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
+- 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
+
+### DW-1865: proposal-demo AC1 reads the read tool card's status with a bare evaluate once the proposal card shows, so a card still reading running at that instant turns it red (CI flake)
+- source: cycle-log-epic-23.md (CI run 36727128251) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36727128251 attempt 1 browser shard 2/3: proposal-demo.browser-spec.mjs:355 read running; same product code green in run 36720188412 and 3/3 locally on ocupilot-b-ci
+- 2026-09-30T14:50:03Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: wait for the status word done before reading; next standing cleanup (23.3)
 ### DW-1861: The task create and the 9.8 edit judge the task type's privilege (TaskRules.Permitted) only at the mint, never at Confirm, so a caller who lost it since the mint still confirms (AD-6, AD-40)
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
@@ -8529,6 +8544,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
 - 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager
 
+### DW-1869: A service's ClientSystems role grant is judged by the role's name alone, so adding %Manager or any role whose closure holds an %Admin_ resource to an allowed address is not minted destructive
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.AddressGrantsPrivilege (Prohibited.cls:4021) still calls name-only IsPrivilegedRole; batch c (68f76262) replaced it with RoleGrantsAdministrativePrivilege for customization roles only
+- 2026-09-30T16:42:53Z status=routed owner=burndown by=harvest note=Same defect as DW-1663 in the service arm; reuse RoleGrantsAdministrativePrivilege. Prohibited.cls contended with Epic 16
+- 2026-09-30T17:25:28Z occurrence=23-2-the-range-end-cleanup-part-2
+
+### DW-1873: web-sessions AC1's structural check can catch a rail tooltip revealed mid-capture (app-rail span.ocu-rail-tooltip 406px past its slot at 720px), a CI flake unrelated to the screen under test
+- source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36746183320 browser shard 1/3 on 68f76262 (batch c changed no shell or rail code): web-sessions.browser-spec.mjs:234 overflow on the rail tooltip; the same spec was green on the prior two runs
+- 2026-09-30T17:29:36Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: move the pointer off the rail or exclude a hover-revealed tooltip before the structural capture (23.3)
 ### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
@@ -8558,3 +8583,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
 - evidence: on ocupilot-c-ci after the 1.0.3 to 1.0.4 upgrade: a hand-made request without dir took Monitor.State to 2; the details and activity reads refuse a missing parameter with 400 before the admin call and log nothing; the UI always sends dir
 - 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
+
+### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: DW-1870 verification-gap layer, scratch repo: a pre-rule clone fast-forwarded onto 731bf63e kept 16/16 scripts with CR; deleting and re-checking out the scripts gave 0/16
+- 2026-09-30T17:49:33Z status=decision-pending owner=burndown by=harvest note=human=decide whether the 1.0.4 release notes or README tell existing Windows clones to re-check out scripts/
+- 2026-09-30T18:10:26Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=notes+README; verified: git checkout HEAD -- scripts .githooks _bmad/scripts (17/17 CR to 0; not git rm --cached)

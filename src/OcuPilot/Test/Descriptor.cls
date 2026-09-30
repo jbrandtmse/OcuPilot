@@ -281,14 +281,17 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
 /// credential-named field it does not declare is refused where it is declared. Without this rule
 /// <code>secretArguments</code> is a list nothing reads, which is the inversion AD-3 forbids:
 /// the schema layer advisory and the name pattern the real defense.</p>
-/// <p><b>Every shipped descriptor passes it</b>, and the two malformed shapes and the planted
-/// credential-named criterion are refused with the sentence
-/// <file>ui/tools/screen-mirror.mjs</file>'s own <code>confirmChannelProblem</code> returns for the
-/// same input.</p>
+/// <p><b>Every shipped descriptor passes it</b>, and the two malformed shapes, the planted
+/// credential-named criterion and a <code>secretArguments</code> entry that is no top-level secret
+/// of the screen's write tools -- <code>Path</code>, ordinary on both web-application tools, among
+/// them (AD-6, AD-21) -- are refused with the sentence <file>ui/tools/screen-mirror.mjs</file>'s own
+/// <code>confirmChannelProblem</code> returns for the same input.</p>
 /// <p>Mutation (Rule 19): restore <method>SecretArguments</method> on
 /// <class>OcuPilot.Kernel.Shell.ReadTool</class> and plant a credential-named criterion on a
 /// shipped descriptor -- the refusal below is what bites, and without it the declaration would be
-/// overruled by an intermediate class with nothing noticing.</p>
+/// overruled by an intermediate class with nothing noticing. Re-admit a settable field in
+/// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method>'s <code>secretArguments</code>
+/// check -- the <code>Path</code> leg goes red.</p>
 Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
 {
     Set tSC = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "DeclarationJson", .tSound)
@@ -311,33 +314,20 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     Do tBad.%Set("fingerprintExcludes", [(tSound.%Get("read").%Get("fields").%Get(0))])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares (DW-1205)")
 
-    ; DW-1206, the refusing direction: secretArguments is read as a whitelist by the confirm channel
-    ; and by the tool's own schema, both by exact name, so an entry naming nothing left the real
-    ; field advertised and the channel closed to the spelling nobody sends. Both keys are now
-    ; checked against one set.
+    ; A secretArguments entry opens the confirm channel to a value the write sends as a secret, so
+    ; it names a top-level secret row of the screen's write tools and nothing else. A misspelling, Path (ordinary on both web-application tools, and set by neither, AD-21),
+    ; a string and a boolean settable field, an array field in the spelling the schema honours and a
+    ; field the read declares are each refused. The web applications list's tools send no secret.
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
-    Do tBad.%Set("secretArguments", ["Pasword"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names 'Pasword', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)", "a secretArguments entry naming nothing is refused")
-    Do tBad.%Set("secretArguments", ["Timeout"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "while one naming a settable field of that tool is sound")
-    Do tBad.%Set("secretArguments", [(tSound.%Get("read").%Get("fields").%Get(0))])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares")
+    For tName = "Pasword", "Path", "Timeout", "AutoCompile", "CorsAllowlist", (tSound.%Get("read").%Get("fields").%Get(0)) {
+        Do tBad.%Set("secretArguments", [(tName)])
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names '" _ tName _ "', which is not a top-level secret field of this screen's write tools (AD-6)", tName _ ": refused, as no write tool of this screen sends it as a secret")
+    }
 
-    ; "Timeout" above is a string field, so it cannot tell the membership check's "settable" set
-    ; apart from the credential heuristic's string-only one; "AutoCompile" is a boolean field of
-    ; the same tool and is sound here too.
-    Do tBad.%Set("secretArguments", ["AutoCompile"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is a non-string settable field")
-
-    ; The two spellings the one set carries, because their consumers honour different ones: the
-    ; schema drops a declared secret by the []-stripped name, while an exclusion of an array reaches
-    ; the fingerprint as <path>[].
-    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
-    Do tBad.%Set("secretArguments", ["CorsAllowlist"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "a secret named in the spelling the tool's schema honours is sound")
+    ; An exclusion of an array reaches the fingerprint as <path>[], and is named in that spelling.
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Set("fingerprintExcludes", ["CorsAllowlist[]"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and an exclusion named in the spelling the fingerprint honours is sound")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "an exclusion named in the spelling the fingerprint honours is sound")
 
     ; The tightening half: any row of the entry was accepted before, a secret-classified subtree
     ; included. An exclusion covering a field the tool cannot set is nameable through the read half.
@@ -347,9 +337,9 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
 
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Get("read").%Set("criteria", {"fields": [{"param": "apiKey", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]})
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which secretArguments does not declare (AD-3)", "a credential-named criterion the declaration does not hold is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which is not a declared secret of this screen's write tools (AD-3)", "a credential-named criterion the declaration does not hold is refused")
     Do tBad.%Set("secretArguments", ["apiKey"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and declaring it is what admits it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names 'apiKey', which is not a top-level secret field of this screen's write tools (AD-6)", "and declaring it does not admit it, as no write tool of this screen sends it as a secret")
 
     ; The loosening half: a declared criterion is one of the names the read declares, so it is a
     ; nameable exclusion where it was refused before -- including a FLAG criterion, whose value is

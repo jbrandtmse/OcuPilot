@@ -2488,19 +2488,13 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// redactor read one list; the string-placeholder qualification is the generator's own
 /// (<file>ui/tools/field-lists.mjs</file>), so a boolean named <code>CSRFToken</code> is not a
 /// credential here either.</p>
-/// <p><b>A <code>secretArguments</code> entry the screen knows no name for is refused too</b>
-/// (DW-1206). <code>secretArguments</code> reached only the shape rules and was then read as a
-/// <i>whitelist</i> by <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> and by
-/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method>, both matching by exact name -- so a
-/// misspelt entry left the real field advertised to the model and the channel closed to the
-/// spelling nobody sends. Both entries are now checked against one set,
-/// <method>DeclaredNames</method>'s, so the two sibling declarations cannot be validated against
-/// different sets, which is the cause rather than the symptom.</p>
-/// <p><b>A <code>secretArguments</code> entry also qualifies when it is a top-level
-/// <code>secret</code> literal row of the screen's write tools</b> (<method>SecretRowNames</method>):
-/// a derived credential, or a wrapper field the tool authors (AD-3). The source is additive --
-/// every name the two sources above admit is still admitted -- and
-/// <file>ui/tools/screen-mirror.mjs</file>'s <code>secretRowNames</code> applies the same rule.</p>
+/// <p><b>A <code>secretArguments</code> entry is valid only when it is a top-level
+/// <code>secret</code> literal row of one of the screen's write tools</b>
+/// (<method>SecretRowNames</method>): a derived credential, or a wrapper field the tool authors
+/// (AD-3). A name the confirm channel opens is a value the write sends as a secret, so an ordinary
+/// field, a field the screen's read declares, and a misspelling are all refused, in one sentence
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>confirmChannelProblem</code> returns too (AD-5,
+/// AD-6). <code>fingerprintExcludes</code> keeps the two sources above.</p>
 /// <p><b>Both directions moved, and both are pinned.</b> Folding the declared criteria into the
 /// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
 /// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
@@ -2539,8 +2533,8 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         Set tSecretRows = ..SecretRowNames(.tRows)
         For tI = 1:1:$ListLength(tSecrets) {
             Set tName = $List(tSecrets, tI)
-            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) && '$ListFind(tSecretRows, tName) {
-                Set tProblem = "secretArguments names '" _ tName _ "', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)"
+            If '$ListFind(tSecretRows, tName) {
+                Set tProblem = "secretArguments names '" _ tName _ "', which is not a top-level secret field of this screen's write tools (AD-6)"
                 Quit
             }
         }
@@ -2777,14 +2771,16 @@ ClassMethod OneActionProblem(pAction As %DynamicObject, pWhere As %String, pRule
     Quit ""
 }
 
-/// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
-/// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from
-/// its own declared read. <var>pNames</var> carries five <class>%List</class> projections of that
-/// one traversal:</p>
+/// <p>The one set of names <var>pDeclaration</var>'s <code>fingerprintExcludes</code>, its
+/// credential-name rule and a tool's declared fingerprint subject are validated against (DW-1206),
+/// built once from its write tool's classified rows <var>pRows</var> and from its own declared
+/// read. <code>secretArguments</code> is checked against the tools' secret rows alone
+/// (<method>SecretRowNames</method>). <var>pNames</var> carries these <class>%List</class>
+/// projections of that one traversal:</p>
 /// <ul>
 /// <li><code>settable</code> -- the write tool's settable field names in the
-/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> matches
-/// a declared secret by, which is the spelling <code>secretArguments</code> is checked in;</li>
+/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> admits a
+/// field by;</li>
 /// <li><code>path</code> -- the same rows in the spelling they are written in,
 /// <code>[]</code> included, which is the spelling
 /// <method>OcuPilot.Kernel.Proposal.Fingerprint.Canonical</method> matches an exclusion by and so
@@ -2802,12 +2798,9 @@ ClassMethod OneActionProblem(pAction As %DynamicObject, pWhere As %String, pRule
 /// screen's declared read and its write tool's own read are not the same set, and a screen that
 /// declares no <code>read</code> at all knows no name a subject could carry.</li>
 /// </ul>
-/// <p><b>The two keys are checked in two spellings and that is not two sets.</b> One traversal
-/// answers both, because their consumers honour different spellings:
-/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> drops a declared secret by its stripped
-/// name, while an exclusion of an array reaches the fingerprint as <code>&lt;path&gt;[]</code>. A
-/// single spelling would admit the entry one consumer ignores -- which is the defect this method
-/// exists to close, in a new place.</p>
+/// <p><b>Two spellings of one traversal, not two sets.</b> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>
+/// admits a field by its stripped name, while an exclusion of an array reaches the fingerprint as
+/// <code>&lt;path&gt;[]</code>, so an exclusion is checked in <code>path</code>.</p>
 /// <p>Read leniently: a malformed read contributes no names rather than a second refusal, because
 /// <method>ReadProblem</method> has already refused it by the time this runs.</p>
 ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames, pToolClass As %String = "") [ Private ]
@@ -2991,7 +2984,7 @@ ClassMethod CredentialNameProblem(pNames As %List, pSecrets As %List, pWhere As 
         Set tName = $List(pNames, tI)
         If '##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(..LastSegment(tName)) Continue
         If $ListFind(pSecrets, tName) Continue
-        Set tProblem = pWhere _ " names '" _ tName _ "', whose name matches the credential pattern and which secretArguments does not declare (AD-3)"
+        Set tProblem = pWhere _ " names '" _ tName _ "', whose name matches the credential pattern and which is not a declared secret of this screen's write tools (AD-3)"
         Quit
     }
     Quit tProblem
@@ -3018,14 +3011,11 @@ ClassMethod LastSegment(pPath As %String) As %String [ Private ]
 /// <code>[]</code> removed and which carries no interior <code>[</code>. It is deliberately
 /// <i>not</i> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>'s output, which narrows the
 /// same rows further by <method>PermittedFields</method> and <method>ExcludedFields</method> and
-/// <b>drops every name the descriptor declares secret</b> -- so validating
-/// <code>secretArguments</code> against that output would reject every entry for being declared,
-/// which is the circularity this shape avoids. The consequence is stated rather than hidden: a
-/// derived field the tool does not permit is still a nameable secret here, and closing that is
-/// this spec's <code>deferred:</code> item. The third element narrows the rows to a string
+/// drops every name the descriptor declares secret. The third element narrows the rows to a string
 /// placeholder, which is the credential-name rule's own qualification and nothing else's; the
-/// fourth marks a top-level <code>secret</code> literal (<method>SecretRowNames</method>). One
-/// reader of the generated block, four questions asked of its rows.</p>
+/// fourth marks a top-level <code>secret</code> literal, the only kind a
+/// <code>secretArguments</code> entry may name (<method>SecretRowNames</method>). One reader of the
+/// generated block, four questions asked of its rows.</p>
 ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Private ]
 {
     Kill pRows
@@ -3067,8 +3057,8 @@ ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Pri
 }
 
 /// <p>The names of the top-level <code>secret</code> literal rows in <var>pRows</var>
-/// (<method>ToolFieldRows</method>'s answer), as a <class>%List</class>: the third source a
-/// <code>secretArguments</code> entry may name. A nested path, an array element and a row of any
+/// (<method>ToolFieldRows</method>'s answer), as a <class>%List</class>: the names a
+/// <code>secretArguments</code> entry may take. A nested path, an array element and a row of any
 /// other class contribute nothing.</p>
 ClassMethod SecretRowNames(ByRef pRows) As %List [ Private ]
 {

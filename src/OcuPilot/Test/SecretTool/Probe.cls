@@ -32,4 +32,12 @@ ClassMethod SettableFields() As %List
     Quit $ListBuild("Description")
 }
 
+/// <p>The one secret this fixture's write sends, authored for the reason
+/// <method>SettableFields</method> is: with no field-list entry, the confirm channel would be open to
+/// nothing, and the accept arm it exists to drive could not run.</p>
+ClassMethod SecretFieldNames() As %List
+{
+    Quit $ListBuild("Password")
+}
+
 }

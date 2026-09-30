@@ -2,15 +2,36 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'done'
-baseline_revision: '1617332dfc6287bff9ec32caa70f3bc702ee39f4'
-baseline_commit: '1617332dfc6287bff9ec32caa70f3bc702ee39f4'
+status: 'in-progress'
+baseline_revision: '961d45c728646a0b6a411511e4045c5f14ddd128'
+baseline_commit: '961d45c728646a0b6a411511e4045c5f14ddd128'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A service's ClientSystems role grant is judged by the role's name alone, so adding %Manager, or any role whose closure holds an %Admin_ resource, to an allowed address is minted without the destructive treatment.
+    evidence: |-
+      Prohibited.AddressGrantsPrivilege tests each added role with IsPrivilegedRole, the name-only check that batch c replaced with RoleGrantsAdministrativePrivilege for the customization roles; %Manager carries %Admin_*:U resources (measured on slot B for DW-1663). Pre-existing, and outside batch c's tasks.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls:4021
+    severity: medium
+  - summary: >-
+      A Windows clone made with core.autocrlf=true before the `*.sh text eol=lf` rule keeps its CRLF scripts after pulling the rule, and `git status` reads clean, so it still fails `docker compose up --wait` until its scripts are checked out again.
+    evidence: |-
+      Measured by the DW-1870 verification-gap layer in a scratch repo: a pre-rule clone fast-forwarded onto the rule kept 16 of 16 scripts with CR, and `git checkout -- .` left them so; deleting the scripts and checking them out again gave 0 of 16. The remedy is a user step (a release-note or README line), outside the task's Fix.
+    location: >-
+      .gitattributes:3
+    severity: medium
+  - summary: >-
+      `.githooks/pre-commit` is a bash script with no `.sh` suffix, so the rule leaves its line endings unset and a Windows core.autocrlf=true clone checks it out with CRLF.
+    evidence: |-
+      `git check-attr eol text -- .githooks/pre-commit` answers `unspecified` for both. That Git for Windows' bash then fails on it is (inference). It is an opt-in host-side developer hook, not the container start path, and the task's Fix names `*.sh` only.
+    location: >-
+      .githooks/pre-commit:1
+    severity: low
 ---
 
 <intent-contract>
@@ -184,7 +205,7 @@ deferred: []
 
 ### Batch c: security
 
-- [ ] **DW-1663** — `AddsPrivilegedCustomizationRole` judges by name only. `%Manager`, `%Operator` and `%SecurityAdministrator` carry `%Admin_*:U` resources (measured on slot B), yet are minted non-destructive. `RoleGrantsPrivilege` reads a failed `Security.Roles.Get` as "no resources", which fails open.
+- [x] **DW-1663** — `AddsPrivilegedCustomizationRole` judges by name only. `%Manager`, `%Operator` and `%SecurityAdministrator` carry `%Admin_*:U` resources (measured on slot B), yet are minted non-destructive. `RoleGrantsPrivilege` reads a failed `Security.Roles.Get` as "no resources", which fails open.
   - **Fix:**
     - Judge each added role with `RoleEscalates`, the web-application arm's predicate: a role is privileged when its closure holds `%All`, or any `%All` or `%Admin_*` resource.
     - Fail closed: `Security.Roles.Exists` separates an absent role, which grants nothing, from a failed read or a failed `GetRecursedRoleSet`. A failed read counts as privileged and is minted destructive with `OAUTH.CUSTOMIZATIONPRIVILEGED`, never a 500. The web-application arm fails closed the same way.
@@ -198,7 +219,7 @@ deferred: []
     - `oauth-server-form.store.spec.ts:243-252` flips.
   - Files: `Kernel/Proposal/Prohibited.cls` (comment at :2444-2447), `Area/Security/OAuthAuthorizationServerRules.cls`, `Screen/Tool/OAuthAuthorizationServerCreate.cls` (text at :86 and :181-183), and `ui/src/app/areas/security/oauth-server-form.store.ts` with its spec. ADs: AD-10, AD-8, AD-5, AD-39, AD-16.
   - AC: Given an agent proposal that adds `%Manager` to the customization roles, when it is minted, then it takes the destructive treatment and its diff names the privilege. Given a role whose read fails, when a proposal adding it is minted, then it is treated as privileged.
-- [ ] **DW-1450** — `ConfirmChannelProblem` and the mirror accept a `secretArguments` name that is any ordinary field or read field of the identifier's tools. At confirm, `ChannelProblem` admits the descriptor's whole list for every tool, and `WithSecrets` sets it into the body after the AD-10 gate has run.
+- [x] **DW-1450** — `ConfirmChannelProblem` and the mirror accept a `secretArguments` name that is any ordinary field or read field of the identifier's tools. At confirm, `ChannelProblem` admits the descriptor's whole list for every tool, and `WithSecrets` sets it into the body after the AD-10 gate has run.
   - **The ledger's probe is wrong as written:** `Timeout` is permitted by `WebAppUpdate` (:51). The red probe is `Path` instead: ordinary on both web-application tools, permitted by neither, and never caller-nameable (AD-21).
   - **Measured:** `UserUpdate`'s screen admits `Password` at confirm, although the update tool writes no `Password`.
   - **Fix:**
@@ -211,6 +232,22 @@ deferred: []
     - `Test/ProposalConfirm.cls`: confirming `permissions.users.update` with `{"Password":…}` is refused on the closed channel, and `Security.Users.CheckPassword` shows the password unchanged.
   - Files: `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `Kernel/Proposal/Confirm.cls`, `Api/ScreenAction.cls`, and the tests above. ADs: AD-6, AD-56, AD-3, AD-5, AD-10, AD-21, AD-35.
   - AC: Given a descriptor declaring a secret that its tools do not write as a secret, when the registry loads or `npm run build` runs, then both refuse it with one sentence. Given a confirm carrying a key its tool does not write as a secret, when it is sent, then it is refused on the closed channel.
+
+### DW-1870 (owner-approved for 1.0.4, before batch e)
+
+- [x] **DW-1870** (high; owner-routed to this story outside the cap of 12) — a Windows clone with `core.autocrlf=true` checks `scripts/*.sh` out with CRLF, so `durable-init` dies at once (`set: Illegal option -`) and `docker compose up --wait` fails in 1 s. The index is already LF; the `.cls` files are unaffected.
+  - **Fix:** add `*.sh text eol=lf` to `.gitattributes`. No renormalize.
+  - **Red:** a roster-style test in `ui/tools/` that asks `git check-attr eol` for every tracked `*.sh` (`git ls-files '*.sh'`) and requires `lf` for each; it reddens without the rule. Where possible, also a fresh `git -c core.autocrlf=true clone` of the working tree showing every `*.sh` checked out without CR.
+  - Files: `.gitattributes`, one new `ui/tools/*.test.mjs`. ADs: AD-17, AD-45 (the start path must run on every supported host).
+  - AC: Given a clone made with `core.autocrlf=true`, when it is checked out, then every tracked `*.sh` has LF line endings.
+
+### DW-1829 follow-up (reopened)
+
+- [ ] **DW-1829 (reopened)** — staging run 36741141564, instance shard 2/3: `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact`'s `OnAfterOneTest` failed "the seeded database and its tasks are removed" with ERROR #5001 "a background task still runs over the seed database, so the database is left in place", and the next test's seed failed "a background task still runs over the seed database, so it is not refilled". Intermittent: green in runs 36706426500, 36722327485 and 36735796060. The held compact, paused by the confirm, is still running when cleanup runs (inference).
+  - **Reproduce first** on `ocupilot-b-ci`: find and record the condition under which `Remove` finds the held task still running, for example the pause landing just before `Remove`'s cancel, or the task ending or resuming after `%UnlockId`.
+  - **Fix** in `Test/BackgroundSeed.cls`, touching `Test/BackgroundTasksLive.cls` only if needed: teardown waits, with a bound, for the held task to reach a terminal state before the database is removed, so the next test finds no task over the seed. The leg's assertions and the seed's refusal to remove a database a task still runs over are not weakened.
+  - **Red:** the reproducing condition turns cleanup red before the fix and green after, with a `mutation:` line.
+  - AC: Given the agent leg's held compact paused by the confirm, when `OnAfterOneTest` runs, then the seeded database and its tasks are removed and the next test's seed succeeds.
 
 ### Batch e: the rest
 
@@ -340,6 +377,64 @@ Rejected:
 - false: the sweep misdescribes `auditing-write` and `task-resume`, which read whole-card text. They look for status words and a tool name, which a card shows expanded or not, so the cut cannot remove them.
 - false: the `anywhere` leg does not show the filtered read returned the row. That leg pins what a compliant model can do; the `channels` card assertion pins the row.
 
+### Review Findings (batch c)
+
+- [x] [Review][Patch] medium: a screen action's value that the screen declares secret and its tool does not send went to the ordinary values, where the confirm channel refuses the same key; it is refused now, and so is every value when the secret declaration cannot be read (AD-6, AD-56) [src/OcuPilot/Api/ScreenAction.cls:478]
+- [x] [Review][Patch] medium: no real browser observed the privilege line; the create leg now asserts the default `%Manager` shows it and unticking it removes it (Rule 3) [ui/browser/oauth-server-editor.browser-spec.mjs:268]
+- [x] [Review][Patch] The name-only rule stayed at its origin: the customization effect's doc and EXPERIENCE.md :520, corrected in place (993 lines) [src/OcuPilot/Kernel/Proposal/Prohibited.cls:320]
+- [x] [Review][Patch] ×5 doc corrections: `SecretFieldNames` said "the secrets its write sends" (a tool's own `SecretArguments` still closes them); `ChannelProblem` said an empty body is always sound; `ProposalConfirm`'s header said the probe leg is refused before any port call (its mint reads through the shipped port); `SecretSpelling` claimed the X.509 tools' schema where it reads the edit's; a mirror-test comment said both confirm-channel keys read `declaredNames`
+- [x] [Review][Patch] `EnsureUnreadPrincipal`'s `Catch` did not restore `$NAMESPACE` first (AD-16) [src/OcuPilot/Test/OAuthAuthorizationServerUpdate.cls:324]
+- [x] [Review][Patch] ×2 verification: the loop ran none of the shipped secret-confirm suites, and runs 223-225 went out in one message; the review probed every write tool's channel and ran 18 classes one at a time (runs 229-246)
+- [x] [Review][Defer] A service's `ClientSystems` role grant is judged by name [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4046] — deferred: pre-existing, DW-1869 (owner burndown), occurrence appended
+
+Rejected:
+
+- low, wontfix-accepted (`reopen_if=` two tools under one `toolIdentifier` classify one top-level path differently in `ToolFields.cls`): `Registry.ToolFieldRows` keeps the last tool's row for a path while the mirror takes the union; none today, and the Descriptor test's shipped-descriptor leg reddens on the first.
+- low, wontfix-accepted (`reopen_if=` `DECLAREDNAMEKINDS` is next edited): the `settable` projection has no reader left in either engine; removing it moves the pinned roster in three files.
+- low, wontfix-accepted (`reopen_if=` `ProposalConfirm` reads red where `OCUPILOT_ALLOW_PRINCIPALS` is unset): the password leg fails rather than skips unarmed; throwaways and CI arm it, and a skip adds a roster member in `ci-throwaway.sh`.
+- low, wontfix-accepted (`reopen_if=` a tool's payload or diff names a declared secret outside its own secret rows): the draft and the card read the screen's whole list, as in the implement triage; `proposal-view.ts:170`'s name-only comment is in Epic 16's contended file.
+- low, wontfix-theoretical: an exception raised inside `RoleEscalates` itself still answers an error, and the mint a 500 that refuses it; `RoleGrantsPrivilege` catches its own, and no measured path raises one.
+- low, wontfix-theoretical: the line and the card say "%All or an administrative role" for a role that merely could not be read; only a caller without `%Admin_Secure:USE` meets it, `CustomizationViolations` refuses that caller's new role, and `strings.ts` is append-only.
+- low, wontfix-theoretical: `EnsureUnreadPrincipal` deletes an account of its own test-only name without a marker; the class is armed.
+- low, by-design: the shared predicate also moves the user and role arms and every form mark to privileged on a failed read; fail-closed, and those screens require `%Admin_Secure:USE`, which reads roles.
+- low, rejected: `ROLEABSENTCODE` names a vendor code as a parameter, the project's idiom (`Account.cls` `WRONGPASSWORDCODE`, `POLICYCODES`).
+- low, rejected: the top-level secret rule has three readers, and `SecretFieldNames` parses the field lists per call as `FieldRows` does; merging them is a refactor.
+- low, rejected: a write tool on `Screen.Tool.Base` has a closed channel now; all 116 shipped write tools extend `Write` (probe), and closed is the safe side.
+- low, rejected: `TestADeclaredSecretIsAcceptedFromTheScreensOwnDeclaration` cannot tell the intersection from the whole list; the update-password leg pins the intersection (run 206).
+- low, rejected: `X509SecretProbe`'s `Declare` seam is only reset now; `X509Update`'s own `SecretArguments` answers `""` either way.
+- low, rejected: `CredentialNameProblem`'s exemption no longer fires for a settable field; the doc's condition is what the code checks, and the sentence names the remedy.
+- low, rejected: `FieldRows`' declared-secret filter no longer fires for a validated descriptor; it is a second layer that can only hide a field.
+- low, rejected: `MarkedRoles` repeats two other slices' loop, and a shared helper would cross slices. false: its cost, 10 ms for 71 roles on `ocupilot-b-ci`.
+- low, rejected: test prose (a mutation description, a method name, two long comment lines); the description still reads as removing the secret-row source.
+- low, rejected: no HTTP request carries the per-tool refusal; the route passes the body whole (`Api/Confirm.cls:43`) and `ConfirmRoute` pins the route-to-refusal wiring.
+- low, rejected: a role entry with a name and no mark is untested; `OAuthAuthorizationServerClients` pins the server's mark as a boolean.
+- low, rejected: the password-unchanged assertion cannot redden under the defect, since the vendor refuses the body; as in the implement triage.
+- rejected (lead-owned, spec text): "All 15 shipped entries" is 13, in nine descriptors (probe on `ocupilot-b-ci`).
+- false: `EnsureUnreadPrincipal` creates principals ungated. The class's `ARMINGVARIABLE` is `OCUPILOT_ALLOW_PRINCIPALS`, `OnBeforeAllTests` refuses unarmed, and `ci-throwaway.sh` lists it (:213).
+
+### Review Findings (DW-1870)
+
+- [x] [Review][Patch] low: `.githooks/pre-commit`, a bash script with no suffix, was outside the rule and outside the test's `*.sh` population; `.githooks/** text eol=lf` covers it (the index was already `i/lf`), and the population takes in `.githooks/` and must hold every tracked file with a `sh` or `bash` shebang [.gitattributes:4]
+- [x] [Review][Patch] low: the checkout test read an empty or newline-less script (`i/none w/none`) as not LF; `none` is accepted [ui/tools/line-endings.test.mjs:73]
+- [x] [Review][Patch] low: the header said every covered script runs in a container and stops at its first line; compose runs three with `sh`, and a CRLF copy stops at its first command [ui/tools/line-endings.test.mjs:8]
+- [x] [Review][Defer] medium: a Windows clone made before the rule keeps its CRLF scripts after a pull, so the fix commit's "durable-init runs from a Windows clone" holds for a fresh clone only [.gitattributes:3] — deferred: DW-1875 (decision-pending), not re-filed
+
+Rejected:
+
+- low: the test reads attributes and `ls-files --eol`, not the bytes an `autocrlf=true` checkout writes; with `eol=lf` and an LF blob git writes LF, and two layers' fresh clones of `43362b1c` read 0 of 16 with CR.
+- low: the `.githooks/pre-commit` deferral never reached the ledger; moot, patched in this pass.
+- low: replacing the Auto Run Result dropped batch c's residual that `ui/tools/proposal-view.test.mjs:312` still describes the old name rule in a comment; recorded again here, and it stays batch c's. The Story 8.5 AC7 residual survives in the batch c review pass.
+- low: `### User-visible changes` and `### Residuals and owner actions` carry no DW-1870 line; the fix edits the spec, and a pre-rule clone's release note is DW-1875's decision.
+- low: the pre-rule clone's remedy is not written as a tested command; DW-1875's, chosen at the decision sheet.
+- low: the clone evidence does not name where its throwaway commit was made; the worktree reflog holds no reset, so a scratch clone took it.
+- low: the "after" clone ran `durable-init.sh` under host bash, not the image's `sh`; the DW-1870 ledger evidence measured the container start end to end.
+- low: nothing keeps a working copy LF when a Windows editor saves a script with CRLF; an `.editorconfig` is new surface outside the task's Fix.
+- low: the Auto Run Result repeats the loop's clone evidence; the fix edits the spec.
+- low: commit 731bf63e's subject says "every tracked shell script"; with this pass's rule and shebang roster it holds, and history is not rewritten.
+- low: a tracked `*.sh` symlink or deleted working copy reads a blank `i/` or `w/`; none is tracked, and the test fails loudly.
+- low: a `*.sh` in merge conflict is listed once per stage and fails the key-equality assertion; mid-merge only, and loud.
+- maybe-false: the test has run on macOS only; the three `gates` legs (ubuntu-24.04, one per Node band) settle it on the push, resolved under Rule 28.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -432,6 +527,64 @@ Rejected:
 - layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 21 raw rows grouped into 15 entries: high 0, medium 0, low 12, false 3. 1 patched, 14 closed; see `### Review Findings (batch b rework 1)`.
 - The `[CI]` item is fixed. (1) Every AD-11 rule 5 assertion of the `channels` leg is unchanged: no proposal card, URL and announcements unchanged, the card's result text has no child elements, no reply image requested, nothing off the origin, no CSP refusal. (2) No product file changed (`git diff 1617332d -- src ui/src` is empty), and `TOOLSTEPTEXTMAXLENGTH` is 4,096. (3) `filter` is declared in `Screen/Tool/Read.cls` `InputSchema` and reaches the screen's own `ApplyView` (AD-36); the name comes from `InjectionSeed.Target()`. (4) The sweep holds: only `seeded-injection` asserts on `.ocu-tool-call-result` text, `turn` reads the rows line (from `step.result`), and the rest read status words, tool names or failure diagnostics.
 - Measured on `ocupilot-b-ci` (deployed `index.html` equal to the build's): the mutation red and the green re-run under Verification; the probe role reads back absent. `npm run test:tools` 1,731/1,731. CI run 36727128251 on 47e15e2b was queued at review time.
+
+### 2026-09-30 — Review pass (batch c)
+
+- verdicts: 20 findings — high 0, medium 3, low 12, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `RoleGrantsPrivilege`'s fail-closed branch (an `Exists` failure other than 883, or a failed `Get`) and `RoleEscalates`' handling of it ran under no test, since the unread principal fails `GetRecursedRoleSet` first (verification-gap) — `ProhibitedFixture` gains an armed role-read fault and a `RoleRead` accessor; the unreadable-role leg asserts the principal's role read answers an error (red alone in run 219) and that an armed per-role read failure counts as privileged for a caller who may read roles (red alone in run 220); run 224 8/8.
+  - `[low]` `[patch]` `SecretSpelling`'s per-name assertion could not fail: an admitted name is a secret row, and `FieldRows` keeps ordinary rows only (verification-gap) — it now asserts no admitted name is among the field rows or the schema offered with nothing declared; red in run 222 when `FieldRows` keeps `secret` rows, run 223 2/2. The Story 8.5 spec's AC7 mutation record (`spec-8-5-x-509-import-edit-and-delete.md:501`, `:514`) is stale; that correction is the lead's.
+  - `[low]` `[reject]` `Draft.Render` and the card's `payloadSecrets` still read the screen's whole secret list (verification-gap) — no shipped tool's payload or diff carries a declared secret it does not send (the layer's inference); the card is Epic 16's contended `core/proposal-view.ts` and the client holds no per-tool list, so the fix adds a mirrored field. wontfix-accepted, reopen_if a tool's payload or diff names a declared secret outside its own secret rows.
+  - `[low]` `[reject]` `ProposalConfirm`'s password-unchanged assertion cannot move under the defect, since the vendor refuses the merged body (verification-gap) — the refusal and the live, unspent row are the pins (run 206), and the batch c mutation line records the vendor's 400; the password half is the matrix row's postcondition.
+  - `[low]` `[reject]` `ScreenAction.Values`' per-tool narrowing has no pinning test (verification-gap) — Rule 19 binds one pin per AC and this bullet is not one; on shipped tools the two lists coincide (the one secret-valued action's `Password` is its own `SECRETBODY` name), so only a new fixture could tell them apart.
+  - `[low]` `[patch]` The credential-name sentence told an author to declare the name, which `secretArguments` now refuses (verification-gap) — reworded in `Registry.cls` and `screen-mirror.mjs` to "which is not a declared secret of this screen's write tools (AD-3)", both pinned literals updated; `Descriptor` run 225 60/60, `npm run test:tools` 1,738/1,738.
+  - `[false]` `[reject]` `OcuPilot.Test.Proposal` was edited but not run (verification-gap) — the implement stage ran it (run 171, 15/15) and the layer re-ran it (run 217, 15/15).
+  - `[low]` `[reject]` The unreadable-role row is checked at the predicate, not at a mint (intent-alignment) — the spec's Red names the classifier leg for this defensive arm, since `CustomizationViolations` refuses such a caller's new role first (the spec's inference); the mint's privileged-to-destructive step is pinned by the `%Manager` leg through `Mint`.
+  - `[medium]` `[patch]` The failure site the ledger names, `RoleGrantsPrivilege`, is fixed but never exercised (intent-alignment) — same root and patch as the first row.
+  - `[false]` `[reject]` "Never a 500" holds on the authorization server arm only (intent-alignment) — a failed read answers OK and privileged on every arm (the web-application arm in run 208); only an exception raised inside `RoleEscalates` itself answers an error, as before this change, and no measured path raises one.
+  - `[false]` `[reject]` The shared predicate changed the user and role arms, which the task does not name (intent-alignment) — there a failed read now counts as privileged instead of answering 500; those arms' screens require `%Admin_Secure:USE`, which reads roles (inference), so no outcome is worse.
+  - `[medium]` `[defer]` `AddressGrantsPrivilege` (a service's `ClientSystems` roles) still judges a role by name, so `%Manager` there is minted non-destructive (intent-alignment) — pre-existing, the same defect class as DW-1663 in an arm batch c does not name; recorded in `deferred:`.
+  - `[low]` `[reject]` The password-unchanged assertion cannot go red (intent-alignment) — same root as the fourth row.
+  - `[low]` `[reject]` `ScreenAction.Values` routes a descriptor secret the tool does not send into the ordinary values (intent-alignment) — no shipped action declares such a value (the layer's own read of every `SCREENVALUES`); wontfix-theoretical, real when an action's value names a descriptor secret outside its tool's secret rows and `SECRETBODY`.
+  - `[low]` `[reject]` The `ScreenAction.Values` change has no test or `mutation:` line (intent-alignment) — same root as the fifth row.
+  - `[low]` `[patch]` `Confirm.cls:255-256` said the merge and the channel check read one declaration (intent-alignment) — the comment now says the merge sets only the keys the check admitted and the ledger's field list leaves out every declared name.
+  - `[false]` `[reject]` The screen action's `SecretBody` and the confirm's merge still read the whole list (intent-alignment) — only admitted keys reach either, and `FieldNames` needs the whole list to keep every declared name out of the ledger.
+  - `[low]` `[reject]` The accept arm runs against `SecretTool.Probe`'s authored secret, `ProposalScreen`'s declaration is now refused, and the registry and build AC is tested by direct calls (intent-alignment) — those calls are the functions load and build run, the shipped field-list reader is driven both ways (`UserCreate` run 214 accepts `Password`, the new `ProposalConfirm` leg refuses it), and no `SECRETBODY` name lies outside its tool's secret rows.
+  - `[false]` `[reject]` The form change goes beyond the matrix, and no `oauth-server-editor` run is recorded (intent-alignment) — the spec's User-visible changes name the create default's line, and the spec ran 4/4 on the rebuilt bundle (Auto Run Result).
+  - `[low]` `[patch]` New comments in `Test/Descriptor.cls` and `screen-mirror.test.mjs` named ledger ids (intent-alignment, prose discipline) — removed.
+
+### 2026-09-30 — Code review (batch c)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 39 raw rows grouped into 34 entries: high 0, medium 3, low 30, false 1. 11 patched, 1 deferred (DW-1869, occurrence), 22 closed; see `### Review Findings (batch c)`.
+- `[medium]` `[patch]` The screen-action channel did not apply the confirm channel's rule (blind-hunter, edge-case-hunter, acceptance-auditor): a value the screen declares secret and its tool does not send went to the ordinary values, the delta and the preview payload, where the confirm refuses it. Red in run 228; green in run 229.
+- `[medium]` `[patch]` No real browser observed the privilege line DW-1663 moves (verification-gap, Rule 3). Red at `oauth-server-editor.browser-spec.mjs:278` under a mark-less form read; 4/4 after.
+- `[medium]` `[defer]` DW-1869, the service `ClientSystems` arm's name-only judge (edge-case-hunter): pre-existing, outside batch c's tasks; occurrence appended.
+- Focus (1), measured on `ocupilot-b-ci`: the 13 declared entries (nine descriptors) are each a top-level secret row, and every write tool's channel opens to exactly the declared secrets it sends; the secret and value suites ran green (runs 232-246). Focus (2): `RoleGrantsPrivilege` restores the namespace on every path, a failed `Exists`, `Get` or `GetRecursedRoleSet` answers privileged with an OK status, 883 alone reads as absent, and `RoleGrantsAdministrativePrivilege` cannot answer an error.
+- Rules: AD-3, AD-5, AD-6, AD-8, AD-10, AD-16, AD-21, AD-35, AD-39, AD-53, AD-55 and AD-56 match after the patches. Rule 3 is met: the form read's marks over HTTP (`OAuthAuthorizationServerClients`), the line in a real browser, and the screen actions over HTTP (`UserUpdate`). No NFR touched.
+
+### 2026-09-30 — Review pass (DW-1870)
+
+- verdicts: 11 findings — high 0, medium 3, low 6, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The test read the `eol` attribute only, so a script stored with CRLF would keep it green and still check out with CRLF (verification-gap) — the checkout test now also requires `i/lf` and `w/lf` from `git ls-files --eol`; in a scratch clone it went red on a staged CRLF blob and on a CRLF working copy, each naming `scripts/durable-init.sh`; restored, 2/2.
+  - `[medium]` `[defer]` A Windows clone made before the rule keeps its CRLF scripts after pulling it, with `git status` clean (verification-gap) — pre-existing state the rule does not rewrite; the remedy is a user step; recorded in `deferred:`.
+  - `[low]` `[patch]` The header said the answer is the repository's own `.gitattributes`, but `info/attributes` is still read (verification-gap) — reworded to say a repository-local `info/attributes` still applies.
+  - `[low]` `[defer]` `.githooks/pre-commit` is a bash script with no `.sh` suffix, so its line endings stay unset (verification-gap) — pre-existing, and the intent's "do not widen a fix beyond its task" keeps it out; recorded in `deferred:`.
+  - `[medium]` `[patch]` The AC's surface is the files after an `autocrlf=true` clone, the tests read attributes only, and the clone check was neither run nor explained (intent-alignment) — same root and patch as the first row; the clone check ran after the handoff (16 of 16 with CR before, 0 of 16 after) and is recorded under `DW-1870 (loop)`.
+  - `[low]` `[reject]` No CI job starts a container from a CRLF clone, so the start path is not exercised there (intent-alignment) — the scratch clone ran `durable-init.sh` past the `set` line that stopped it before; a Windows CI leg is new infrastructure, not a direct correction.
+  - `[false]` `[reject]` The `.cls` files being unaffected was not checked (intent-alignment) — the DW-1870 ledger evidence measured it: with only the `.sh` files LF, the CRLF `.cls` files compiled and installed (healthy in 132 s, `STARTPATH-OK`).
+  - `[low]` `[patch]` The test title said "every tracked shell script" but selects by the `.sh` suffix (intent-alignment) — renamed `every tracked *.sh checks out with LF line endings`.
+  - `[low]` `[patch]` The test still reads `info/attributes` (intent-alignment) — same root and patch as the third row.
+  - `[low]` `[patch]` The failure message read "scripts .gitattributes does not check out with LF" (intent-alignment) — now "these scripts would not check out with LF".
+  - `[false]` `[reject]` The spec has no Auto Run Result for DW-1870 (intent-alignment) — finalize writes it after review, and the fix would edit this build's spec.
+
+### 2026-09-30 — Code review (DW-1870)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 28 raw rows grouped into 17 entries: high 0, medium 1, low 15, maybe-false 1. 3 patched, 1 deferred (DW-1875, not re-filed), 13 closed; see `### Review Findings (DW-1870)`.
+- `[low]` `[patch]` `.githooks/pre-commit` was outside the rule and the population (blind-hunter, edge-case-hunter; pre-flagged by the lead): a fresh `autocrlf=true` clone of `43362b1c` has CR on 230 of its lines. Each half went red alone under its mutation; restored byte-identical.
+- `[low]` `[patch]` `i/none` read as not LF (blind-hunter, edge-case-hunter); `[low]` `[patch]` the header's claims (all four layers).
+- `[medium]` `[defer]` A pre-rule clone keeps CRLF after a pull (edge-case-hunter): DW-1875.
+- Rules: AD-17 and AD-45 match; compose's three start-path scripts are covered, and no start-path code changed. Rule 3: the real-runtime evidence is the fresh clones and the script runs under `DW-1870 (loop)`. No NFR touched. `npm run test:tools` 1,740/1,740; both changed files ASCII only.
 
 ## Design Notes
 
@@ -575,10 +728,29 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 - Classes: `OAuthAuthorizationServerUpdate`, `OAuthAuthorizationServerClients`, `OAuthAuthorizationServerWire`, `UserCreate`, `UserCreateWire`, `UserUpdate`, `Descriptor`, `ProposalConfirm`, `ConfirmRoute`.
 - Tiers: `npm run test:tools` (screen-mirror), `npm run test:components` (the oauth-server-form store), `npm run build`. Spec: `oauth-server-editor`.
-- `mutation:` restore name-only `IsPrivilegedRole` → the `%Manager` leg goes red.
-- `mutation:` read a failed role read as "no resources" → the fail-closed leg goes red.
-- `mutation:` re-admit the ordinary source → the `Path` legs go red in both `Descriptor` and `screen-mirror.test.mjs`.
-- `mutation:` drop the per-tool intersection → the `ProposalConfirm` `Password` leg goes red.
+- `mutation:` restore name-only `IsPrivilegedRole` in `AddsPrivilegedCustomizationRole` → run 192 red on `TestAPrivilegedCustomizationRoleIsMintedDestructive` (the `%Manager` leg) and on `TestAnUnreadableRoleCountsAsPrivileged`'s authorization server arm (a name-only judge reads `%Developer` as unprivileged whatever the read); reverted byte-identical, run 193 8/8.
+- `mutation:` read a failed role read as "no resources" (`RoleEscalates` answers not privileged on a failed `GetRecursedRoleSet`) → run 194 red on `TestAnUnreadableRoleCountsAsPrivileged` alone, both its authorization server and web-application arms; reverted byte-identical, run 195 8/8.
+- `mutation:` read an absent role (883) as a failed read in `RoleGrantsPrivilege` → run 196 red on that method's absent-role assertion alone; reverted byte-identical, run 197 8/8.
+- `mutation:` `HandleForm` answers the role names without `MarkedRoles` → run 198 red on `OAuthAuthorizationServerClients.TestTheReadNamesTheRegisteredClients`'s mark assertion alone; reverted byte-identical, run 199 6/6.
+- `mutation:` the store reads a missing mark as not privileged → `npm run test:components` 1,966/1,968, the two privilege cases red (the `%Admin_Secure` leg, the unread create); judging by name again → the same two red (the `%Manager` leg, the create default); each reverted byte-identical, 1,968/1,968.
+- `mutation:` re-admit the ordinary source (a settable name) in `Registry.ConfirmChannelProblem` → run 200 red on the `Descriptor` confirm-channel test alone (its `Path`, `Timeout`, `AutoCompile` and `CorsAllowlist` legs), run 201 on both `SecretSpelling` methods, run 202 on `UserCreate`'s `Timeout` leg; the same in `screen-mirror.mjs` → `screen-mirror.test.mjs` 60/62, both confirm-channel tests red at the `Path` leg; reverted byte-identical, runs 203 (60/60), 204 (2/2) and 205 (9/9), `npm run test:tools` 1,738/1,738.
+- `mutation:` drop the per-tool intersection (`ChannelProblem` reads the descriptor's whole list) → run 206 red on `TestAnUpdateConfirmCarryingAPasswordIsRefused` alone (the confirm admitted and the row claimed); its password assertion stayed green because the vendor refuses that body: measured under the same mutation, the claimed confirm answered 400 `PORT.VALIDATION` with the password and `FullName` unchanged; reverted byte-identical, run 207 21/21.
+- `mutation:` answer OK in `RoleGrantsPrivilege` for a role it cannot read (`If 'tExists Quit`) → run 219 red on `TestAnUnreadableRoleCountsAsPrivileged`'s role-read assertion alone; reverted byte-identical, run 224 8/8.
+- `mutation:` drop `$$$ISERR(tReadSC) ||` from both reads in `RoleEscalates` → run 220 red on that test's armed per-role read assertion alone; reverted byte-identical, run 224 8/8.
+- `mutation:` let `Write.FieldRows` keep `secret` rows → run 222 red on `SecretSpelling.TestAnAdmittedSpellingIsNeverOffered` (`PrivateKeyFile` and `PrivateKeyPassword` offered); reverted byte-identical, run 223 2/2.
+- `mutation:` drop the refusal of a declared secret the tool does not send from `ScreenAction.Values` → run 228 red on `ProposalConfirm.TestAScreenActionRefusesADeclaredSecretItsToolDoesNotSend` alone (the value reached the ordinary values); reverted byte-identical, run 229 22/22.
+- `mutation:` `HandleForm` answers the role names without `MarkedRoles` → `oauth-server-editor` AC1 red alone at `:278` (the privilege line stayed once `%Manager` was unticked); reverted byte-identical, the spec 4/4.
+- Code review pass: green on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`), one class at a time: `ProposalConfirm` run 229 (22/22), `OAuthAuthorizationServerUpdate` 230 (8/8), `SecretSpelling` 231 (2/2), and the shipped secret and value channels in runs 232-246 (`OAuthAuthorizationServerSecret`, `OAuthServerToken`, `SslSecret`, `WalletSecretUpdate`, `WalletSecretCreate`, `OAuthClientSecrets`, `OAuthRegisteredClientSecret`, `OAuthResourceServerSecret`, `X509Import`, `UserSignIn`, `UserUpdate`, `AuditPurge`, `RoleUpdate`, `RoleCreate`, `RoleSave`: 119 tests, 0 failed). A probe of all 116 write tools' `ChannelSecretNames` read every declaration and opened each to exactly the declared secrets its tool sends. `npm run test:tools` 1,738/1,738, `oauth-server-editor` 4/4 against the batch c bundle (deployed `index.html` equal to the build's), `check-objectscript.py` and `lint-docs.sh` 0 problems, EXPERIENCE.md 993 lines.
+
+**DW-1870 (loop):**
+
+- Tier: `cd ui && npm run test:tools` (`line-endings.test.mjs`).
+- `mutation:` delete the `*.sh text eol=lf` line from `.gitattributes` → `every tracked shell script checks out with LF line endings` red alone, naming all 16 tracked `*.sh` (`eol: unspecified, stored: lf, checkout: lf`); restored byte-identical (`shasum`, `git status --short` and `git diff --stat` unchanged), 2/2.
+- `mutation:` delete the `.githooks/** text eol=lf` line → the same test red alone, naming `.githooks/pre-commit (eol: unspecified, stored: lf, checkout: lf)`; restored byte-identical, 2/2.
+- `mutation:` drop `.githooks/` from `SCRIPT_PATHSPECS` → `the population is every tracked shell script` red alone, naming `.githooks/pre-commit` as a shebang script outside the pathspecs; restored byte-identical, 2/2.
+- `mutation:` in a scratch clone carrying the fix, stage a CRLF blob as `scripts/durable-init.sh` (`git update-index --cacheinfo`, working copy LF) → the checkout test red alone, naming `scripts/durable-init.sh (eol: lf, stored: crlf, checkout: lf)`; with the working copy CRLF and the stored copy LF → red naming `checkout: crlf`; each restored, 2/2. The scratch clone was deleted.
+- Fresh-clone evidence (`git clone --config core.autocrlf=true --no-local` of the worktree into the scratchpad, deleted afterwards): at `961d45c7`, without the rule, 16 of 16 `*.sh` carried CR and `bash scripts/durable-init.sh` stopped at line 17 (`set: -: invalid option`); after a throwaway commit of this `.gitattributes`, a second such clone had 0 of 16 with CR (`i/lf w/lf attr/text eol=lf`), `README.md` still CRLF as the control, and `durable-init.sh` ran to its own check (`/durable is not a directory`).
+- `.githooks/pre-commit`, the same way: at `43362b1c` it checked out `w/crlf` with CR on 230 lines, and bash 3.2 failed its `set` line (`set: pipefail: invalid option name`); from a scratch commit of this `.gitattributes`, 0 lines with CR (`i/lf w/lf attr/text eol=lf`), `README.md` CRLF as the control. An empty tracked `.sh` (`i/none w/none`) passes this test and fails the one committed at `43362b1c`. Code review: `npm run test:tools` 1,740/1,740.
 
 **Batch e (loop):**
 
@@ -605,19 +777,14 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch b CI rework (the `[CI]` item: `seeded-injection` channels leg).** Batches c, e and d are untouched and stay unchecked.
+**DW-1870 (line endings of the shell scripts).** Batches e and d are untouched and stay unchecked.
 
-- **Change:** the scripted turn's `permissions_roles_read` call passes `{"filter": InjectionSeed.Target()}`, the read's own declared argument, so the result is the probe role's row rather than every role and the seed's marker lies inside DW-1210's 4,095-character cut. The card-text assertion and every AD-11 rule 5 assertion are unchanged; no product code and no `TOOLSTEPTEXTMAXLENGTH` change. Chosen over asserting on the model's input because the read declares a narrowing argument, so the user-visible assertion stays.
-- **Files:** `ui/browser/seeded-injection.browser-spec.mjs` (the scripted read's input, the header and `scriptTurn` doc comments); this spec (the `[CI]` box, one `mutation:` line, the triage entry).
-- **Sweep:** every `ui/browser/*.browser-spec.mjs` was searched for `.ocu-tool-call-result`, tool-card and step-text reads, and model-input reads. Only `seeded-injection` asserts on a tool card's result text. `auditing-write`, `proposal-demo`, `users-write`, `refused-tool`, `proposal-privilege`, `task-resume` and `turn` read the card's status word, tool name or rows line; `process-control` and `task-resume` read card text only for a failure message; `transcripts` reads a screen-context payload sharing the class; model-input reads see the uncut result. No other spec changed, and none of Epic 16's three browser specs is involved.
-- **Review:** 9 findings (low 6, false 3). One low patched (two rows, one root): the header overstated what the filter guarantees. 7 rejected, each with its reason in the triage log. Nothing deferred.
-- **Follow-up review:** not recommended; a follow-up pass that patched no high (patched: high 0, medium 0, low 1).
-- **Verification on `ocupilot-b-ci`:**
-  - Red first: before any edit, `seeded-injection` on the bundle built from 323948ad failed the channels leg at "the tool card shows the seed's marker as text", as in CI; `anywhere` passed.
-  - Green: 2/2 after the fix, and 2/2 again after the review patch. `npm run build` passed its prebuild checks; initial total 2.31 MB; the deployed `index.html` equals the build's (no client code changed).
-  - Mutation: as recorded under Batch b's Verification.
-  - The probe role reads back absent; `lint-docs.sh` 0 issues; the browser spec is ASCII. `npm run test:tools` 1,731/1,731 (run by the re-review). Matrix Test Audit: no matrix row's behavior changed in this pass.
-- **Residual risk:** on an instance with more roles than the read cap (1,000) the filter could miss the probe role; not reachable on a throwaway.
+- **Change:** `.gitattributes` gains `*.sh text eol=lf` (the two existing lines kept, no renormalize; the index was already LF, `git ls-files --eol` read `i/lf` for all 16). The new `ui/tools/line-endings.test.mjs` lists every tracked `*.sh`, requires at least 10 including `scripts/durable-init.sh`, and requires for each that `git check-attr eol` answers `lf` and that `git ls-files --eol` shows LF in the stored copy and in this checkout, naming each offending file. It switches off the host's global and system attributes files.
+- **Files:** `.gitattributes` (the rule); `ui/tools/line-endings.test.mjs` (new; the roster test).
+- **Review:** 11 findings (medium 3, low 6, false 2). Patched: medium 1 (the test now reads the stored and checked-out copies, grouped with the clone-surface finding), low 3 (the header's `info/attributes` claim, the test title, the failure message). Deferred 2: an existing pre-rule Windows clone stays CRLF after a pull (medium), and `.githooks/pre-commit` is outside `*.sh` (low). Rejected: no Windows CI leg (low, new infrastructure), the `.cls` claim (false, measured in the ledger evidence), the missing Auto Run Result (false, written here).
+- **Follow-up review:** not recommended (patched high 0, medium 1, low 3).
+- **Verification:** `npm run test:tools` 1,740/1,740 after the handoff and again after the review patches; `lint-docs.sh` 0 issues; no non-ASCII byte in either changed file. Mutations and the fresh-clone evidence are under `DW-1870 (loop)`: 16 of 16 scripts with CR and `durable-init.sh` stopping at its `set` line before the rule, 0 of 16 after, `README.md` CRLF as the control. Every scratch clone was deleted. No IRIS call, container or throwaway was used.
+- **Residual risks:** the two deferred items; a pre-rule Windows clone needs its scripts checked out again (release-note line, the lead's call).
 
 Status: done
 Blocking condition: none

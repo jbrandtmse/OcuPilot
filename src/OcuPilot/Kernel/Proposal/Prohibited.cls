@@ -318,9 +318,9 @@ Parameter EFFECTSERVERCLIENTSDELETED = "OAUTH.SERVERCLIENTSDELETED";
 
 Parameter EFFECTSERVERCLIENTSDELETEDHIDDEN = "OAUTH.SERVERCLIENTSDELETEDHIDDEN";
 
-/// <p>The consequence of customization roles that add <parameter>ALLROLE</parameter> or an
-/// <parameter>ADMINROLEPREFIX</parameter> role: the vendor's customization code runs with them. Alone,
-/// and with each client effect.</p>
+/// <p>The consequence of customization roles that add a role granting <parameter>ALLROLE</parameter>
+/// or an administrative privilege (<method>AddsPrivilegedCustomizationRole</method>): the vendor's
+/// customization code runs with them. Alone, and with each client effect.</p>
 Parameter EFFECTCUSTOMIZATIONPRIVILEGED = "OAUTH.CUSTOMIZATIONPRIVILEGED";
 
 Parameter EFFECTSERVERCLIENTSPRIVILEGED = "OAUTH.SERVERCLIENTSPRIVILEGED";
@@ -2442,9 +2442,10 @@ ClassMethod ServerClientsEffect(pTarget As %DynamicObject) As %String
 }
 
 /// <p>Whether <var>pPayload</var>'s <code>CustomizationRoles</code> adds a role
-/// <var>pTarget</var>'s does not hold that is <parameter>ALLROLE</parameter> or carries
-/// <parameter>ADMINROLEPREFIX</parameter> (<method>IsPrivilegedRole</method>): the customization code
-/// then runs with it (Story 12.7). A payload without the list adds none.</p>
+/// <var>pTarget</var>'s does not hold that grants <code>%All</code> or an administrative privilege
+/// (<method>RoleGrantsAdministrativePrivilege</method>, the form's own mark): the customization code
+/// then runs with it. A role whose answer cannot be read counts as privileged. A payload without the
+/// list adds none.</p>
 ClassMethod AddsPrivilegedCustomizationRole(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
 {
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf("CustomizationRoles") '= "array") Quit 0
@@ -2458,7 +2459,7 @@ ClassMethod AddsPrivilegedCustomizationRole(pPayload As %DynamicObject, pTarget 
     Set tIterator = pPayload.%Get("CustomizationRoles").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRole) {
         If $IsObject(tRole) || $Data(tHeld($ZConvert(tRole, "U"))) Continue
-        If ..IsPrivilegedRole(tRole) Set tAdds = 1 Quit
+        If ..RoleGrantsAdministrativePrivilege(tRole) Set tAdds = 1 Quit
     }
     Quit tAdds
 }
@@ -2741,41 +2742,47 @@ ClassMethod RoleNames(pObject As %DynamicObject, Output pNames, pField As %Strin
 /// and each carries <code>%Admin_Secure:U</code> or <code>%Admin_Operate:U</code> as a resource, so
 /// granting one is a grant of exactly the privilege this write tool itself gates on. Each role in
 /// the recursed set is therefore read for its resource list as well as its name.</p>
+/// <p><b>A read that fails counts as privileged</b>, with an OK status: a failed
+/// <code>GetRecursedRoleSet</code>, and a role <method>RoleGrantsPrivilege</method> cannot read.
+/// Measured on this build, a caller without <code>%Admin_Secure:USE</code> is refused both
+/// (#921 and #822), so the answer it cannot get is never read as "grants nothing". An empty name
+/// grants nothing.</p>
 ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %Status [ Private ]
 {
     Set pEscalates = 0
     Set tSC = $$$OK
     Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
         If ..IsPrivilegedRole(pRole) {
             Set pEscalates = 1
             Quit
         }
         Set tRecursed = ""
-        Set tSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
-        If $$$ISERR(tSC) Quit
+        Set tRecursedSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
+        If $$$ISERR(tRecursedSC) {
+            Set pEscalates = 1
+            Quit
+        }
         For tI = 1:1:$Length(tRecursed, ",") {
             Set tOne = $Piece(tRecursed, ",", tI)
             If ..IsPrivilegedRole(tOne) {
                 Set pEscalates = 1
                 Quit
             }
-            Set tSC = ..RoleGrantsPrivilege(tOne, .tGrants)
-            If $$$ISERR(tSC) Quit
-            If tGrants {
+            Set tReadSC = ..RoleGrantsPrivilege(tOne, .tGrants)
+            If $$$ISERR(tReadSC) || tGrants {
                 Set pEscalates = 1
                 Quit
             }
         }
-        If $$$ISERR(tSC) Quit
         ; A name the instance holds no role for recurses to nothing, so the loop above saw no
         ; member: ask for the name's own resources before answering that it grants nothing.
         If 'pEscalates && (tRecursed = "") {
-            Set tSC = ..RoleGrantsPrivilege(pRole, .tGrants)
-            If $$$ISERR(tSC) Quit
-            Set pEscalates = ''tGrants
+            Set tReadSC = ..RoleGrantsPrivilege(pRole, .tGrants)
+            Set pEscalates = ($$$ISERR(tReadSC) || tGrants)
         }
     } Catch ex {
-        Set pEscalates = 0
+        Set pEscalates = 1
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -2800,13 +2807,19 @@ ClassMethod RoleGrantsAdministrativePrivilege(pRole As %String) As %Boolean
     Quit ''tEscalates
 }
 
+/// <p>The error code <class>Security.Roles</class> <code>Exists</code> answers for a role the
+/// instance does not hold (measured on this build, beside #822 for a caller refused the read).</p>
+Parameter ROLEABSENTCODE = 883;
+
 /// <p>Whether role <var>pRole</var> carries a privileged <b>resource</b>, in <var>pGrants</var>:
 /// one named <parameter>ALLROLE</parameter> or carrying <parameter>ADMINROLEPREFIX</parameter>, at
 /// any permission.</p>
 /// <p>The resource list is the instance's own (<class>Security.Roles</class>, read in
-/// <code>%SYS</code> and restored, AD-16). A name the instance holds no role for carries nothing,
-/// which is the same answer <method>RoleEscalates</method> gives it: the vendor's own validation is
-/// what refuses an unknown role.</p>
+/// <code>%SYS</code> and restored, AD-16). <code>Exists</code> tells an absent role from one that
+/// cannot be read: a name the instance holds no role for (<parameter>ROLEABSENTCODE</parameter>)
+/// carries nothing, which is the same answer <method>RoleEscalates</method> gives it, and the
+/// vendor's own validation is what refuses an unknown role. Any other failure to read the role is
+/// an error status, which <method>RoleEscalates</method> counts as privileged.</p>
 /// <p><b>The prefix, not a list.</b> Matching the resource-name prefix rather than a roster of
 /// today's administrative resources is a rule a later build's new <code>%Admin_*</code> resource
 /// cannot outgrow. It admits every resource outside that prefix, which is what keeps an ordinary
@@ -2820,11 +2833,22 @@ ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As
     Try {
         If $ZStrip(pRole, "<>W") = "" Quit
         Set $NAMESPACE = "%SYS"
+        Set tExistsSC = $$$OK
+        Set tExists = ##class(Security.Roles).Exists(pRole, , .tExistsSC)
         Kill tProps
-        Set tGetSC = ##class(Security.Roles).Get(pRole, .tProps)
-        Set tResources = ""
-        If $$$ISOK(tGetSC) Set tResources = $Get(tProps("Resources"))
+        Set tGetSC = $$$OK
+        If tExists Set tGetSC = ##class(Security.Roles).Get(pRole, .tProps)
         Set $NAMESPACE = tOrigNS
+        If 'tExists {
+            If (("," _ $System.Status.GetErrorCodes(tExistsSC) _ ",") [ ("," _ ..#ROLEABSENTCODE _ ",")) Quit
+            Set tSC = $Select($$$ISERR(tExistsSC): tExistsSC, 1: $$$ERROR($$$GeneralError, "the role " _ pRole _ " could not be read"))
+            Quit
+        }
+        If $$$ISERR(tGetSC) {
+            Set tSC = tGetSC
+            Quit
+        }
+        Set tResources = $Get(tProps("Resources"))
         For tI = 1:1:$Length(tResources, ",") {
             If ..IsPrivilegedRole($Piece($Piece(tResources, ",", tI), ":", 1)) Set pGrants = 1
         }
