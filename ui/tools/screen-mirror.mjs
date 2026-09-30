@@ -530,10 +530,12 @@ export function entityLabelProblem(declaration) {
  * pattern and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm
  * channel would otherwise carry in clear.
  *
- * A `secretArguments` name also qualifies when it is a top-level `secret` literal row of one of
- * the screen's write tools (`secretRowNames`) -- a derived credential such as X.509's
- * `PrivateKeyPassword`, or an authored wrapper field such as `Security.User`'s POST `Password`.
- * That is additive: every name the two sources above admit is still admitted.
+ * A `secretArguments` name is valid only when it is a top-level `secret` literal row of one of the
+ * screen's write tools (`secretRowNames`) -- a derived credential such as X.509's
+ * `PrivateKeyPassword`, or an authored wrapper field such as `Security.User`'s POST `Password`. A
+ * name the confirm channel opens is a value the write sends as a secret, so an ordinary field, a
+ * field the read declares and a misspelling are all refused; `fingerprintExcludes` keeps the two
+ * sources above.
  *
  * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
  * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
@@ -553,8 +555,8 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
   }
   const secretRows = secretRowNames(declaration.toolIdentifier, toolFields);
   for (const name of secrets) {
-    if (!names.settable.includes(name) && !names.read.includes(name) && !secretRows.includes(name)) {
-      return `secretArguments names '${name}', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)`;
+    if (!secretRows.includes(name)) {
+      return `secretArguments names '${name}', which is not a top-level secret field of this screen's write tools (AD-6)`;
     }
   }
   const criterionFault = credentialNameProblem(names.criteria, secrets, 'read.criteria');
@@ -563,16 +565,15 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
 }
 
 /**
- * The one set of names a declaration's two confirm-channel keys are validated against (DW-1206) --
- * `OcuPilot.Screen.Registry.DeclaredNames`' five projections, built once from the write tool's
- * classified rows and the declaration's own read.
+ * The one set of names a declaration's `fingerprintExcludes` and credential-name rule are validated
+ * against (DW-1206) -- `OcuPilot.Screen.Registry.DeclaredNames`' projections, built once from the
+ * write tool's classified rows and the declaration's own read. `secretArguments` is checked against
+ * the tools' secret rows alone (`secretRowNames`).
  *
- * `settable` is the `[]`-stripped spelling `OcuPilot.Screen.Tool.Write.FieldRows` drops a declared
- * secret by, so `secretArguments` is checked in it; `path` is the spelling written in the field
- * list, `[]` included, which is the spelling `OcuPilot.Kernel.Proposal.Fingerprint.Canonical`
- * matches an exclusion by, so `fingerprintExcludes` is checked in that. One traversal answers both,
- * because their consumers honour different spellings and a single spelling would admit the entry
- * one of them ignores -- the defect this builder exists to close.
+ * `settable` is the `[]`-stripped spelling `OcuPilot.Screen.Tool.Write.FieldRows` admits a field
+ * by; `path` is the spelling written in the field list, `[]` included, which is the spelling
+ * `OcuPilot.Kernel.Proposal.Fingerprint.Canonical` matches an exclusion by, so `fingerprintExcludes`
+ * is checked in that.
  *
  * `criteria` is the typed criterion parameters plus the flag criteria; `read` is `read.fields`, the
  * `rowGet` detail fields, the derived names and `criteria`; `credential` is `path` narrowed to a
@@ -746,9 +747,9 @@ function toolFieldRows(identifier, toolFields) {
 }
 
 /**
- * The top-level `secret` literal rows of the write tools `identifier` owns, by name -- the third
- * source a `secretArguments` entry may name (`OcuPilot.Screen.Registry.SecretRowNames`). A nested
- * path, an array element and a row of any other class contribute nothing.
+ * The top-level `secret` literal rows of the write tools `identifier` owns, by name -- the names a
+ * `secretArguments` entry may take (`OcuPilot.Screen.Registry.SecretRowNames`). A nested path, an
+ * array element and a row of any other class contribute nothing.
  */
 export function secretRowNames(identifier, toolFields) {
   const names = [];
@@ -772,8 +773,8 @@ function credentialNameProblem(names, secrets, where) {
     if (!isCredentialName(name)) continue;
     if (secrets.includes(name)) continue;
     return (
-      `${where} names '${name}', whose name matches the credential pattern and which ` +
-      'secretArguments does not declare (AD-3)'
+      `${where} names '${name}', whose name matches the credential pattern and which is not a ` +
+      "declared secret of this screen's write tools (AD-3)"
     );
   }
   return null;

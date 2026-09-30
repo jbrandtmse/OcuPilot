@@ -3,11 +3,14 @@
 /// the minting user, the conversation, the definition, a restraint, a revoked pair, a changed
 /// target -- is reachable on its own.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot's protected state, an account holding
-/// <code>%All</code>, and nothing else. Every port call is
-/// <class>OcuPilot.Test.ProposalFixture</class>'s, so <b>no write reaches the instance</b>: the
-/// confirmed write goes to the fixture, which records the body it was sent. Every row names the
-/// running account, because the claim's privilege re-check is against a real principal, and is
-/// removed in <method>OnAfterOneTest</method> by the turn it was minted on.</p>
+/// <code>%All</code>, and, for <method>TestAnUpdateConfirmCarryingAPasswordIsRefused</method> alone,
+/// <code>OCUPILOT_ALLOW_PRINCIPALS</code> reading <code>1</code>, since that leg creates and removes
+/// its own probe account through <class>OcuPilot.Test.ProposalFixture</class>. Every other port call
+/// is that fixture's, so <b>no write reaches the instance</b>: the confirmed write goes to the
+/// fixture, which records the body it was sent; the probe account's leg is refused before any port
+/// call. Every row names the running account, because the claim's privilege re-check is against a
+/// real principal, and is removed in <method>OnAfterOneTest</method> by the turn it was minted
+/// on.</p>
 Class OcuPilot.Test.ProposalConfirm Extends %UnitTest.TestCase
 {
 
@@ -29,6 +32,9 @@ Parameter SECRETTOOL = "probe.secret.update";
 Parameter SECRETSCREEN = "OcuPilot.Test.ProposalScreen";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+/// <p>The probe account the password leg confirms an update of, <class>OcuPilot.Test.ProposalFixture</class>'s.</p>
+Parameter PASSWORDUSER = "OcuPilotProbeUserConfirmChannel";
 
 /// <p>Write tools whose verb is a screen's own Cancel row action on an instance object, comma-separated:
 /// Background tasks' cancel (Story 16.5).</p>
@@ -507,6 +513,63 @@ Method TestADeclaredSecretIsAcceptedAndMergedAtThePortCall()
     Do $$$AssertStatusOK(tSC, "the channel check runs")
     Do $$$AssertEquals(tProblem, 1, "and this screen, declaring no secret, refuses even that key")
     Do $$$AssertEquals($ListLength(tDeclared), 0, "because its declared list is empty")
+}
+
+/// <p>AD-6, "for that tool": a confirm of <code>permissions.users.update</code> carrying
+/// <code>Password</code> is refused on the closed channel although the Users list declares that
+/// secret, because the update tool sends no password -- the create and the password tools do -- and
+/// the account's password is unchanged. The proposal is minted and confirmed through the shipped
+/// mint, port and confirm, against a probe account this leg creates and removes.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> reads the
+/// descriptor's whole list (<method>OcuPilot.Screen.Tool.Registry.SecretArguments</method>) -- the
+/// confirm is admitted and this goes red.</p>
+Method TestAnUpdateConfirmCarryingAPasswordIsRefused()
+{
+    Set tName = ..#PASSWORDUSER
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveUser(tName)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureUser(tName, "", 1, .tCreated)
+    Do $$$AssertStatusOK(tSC, "the probe account is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISOK(tSC) {
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        Set tArgs = {"FullName": "confirm channel probe"}
+        Do tArgs.%Set("Name", tName, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint("OcuPilot.Screen.Descriptor.UserList", "permissions.users.update", $Username, "", $Get(tTurnKey), tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "Security.User", "name", tName, "Name", ##class(OcuPilot.Screen.Tool.UserUpdate).SettableFields())
+        Do $$$AssertStatusOK(tSC, "the update is minted: " _ $System.Status.GetErrorText(tSC))
+        If $IsObject($Get(tProposal)) {
+            Set tKey = tProposal.%Get("proposalId")
+            Set tNew = "OcuPilotProbeChannelPw" _ $Job _ "Aa9"
+            Set tBody = {}
+            Do tBody.%Set("Password", tNew, "string")
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, tBody, $Username, .tResult, .tHttp, .tCode, .tDetail)
+            Do $$$AssertEquals(tHttp _ " " _ tCode, "400 " _ ##class(OcuPilot.Kernel.Proposal.Write).#CLOSEDCHANNEL, "the confirm is refused on the closed channel")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State") _ " " _ ##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), "live 0", "and the row is still live, its token unspent")
+            Do $$$AssertEquals(..PasswordHolds(tName, $Parameter("OcuPilot.Test.ProposalFixture", "USERPASSWORD")) _ " " _ ..PasswordHolds(tName, tNew), "1 0", "the account's password is unchanged")
+        }
+    }
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveUser(tName)
+    Do $$$AssertStatusOK(tSC, "the probe account is removed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).UserField(tName, "Enabled"), "", "and does not survive")
+}
+
+/// <p>Whether account <var>pName</var>'s password is <var>pPassword</var>, as
+/// <class>Security.Users</class> checks it in <code>%SYS</code>; 0 for an account it cannot
+/// open.</p>
+ClassMethod PasswordHolds(pName As %String, pPassword As %String) As %Boolean
+{
+    Set tHolds = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tUser = ##class(Security.Users).%OpenId($ZConvert(pName, "L"))
+        If $IsObject(tUser) Set tHolds = ##class(Security.Users).CheckPassword(tUser, pPassword)
+        Set tUser = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tHolds = 0
+    }
+    Quit tHolds
 }
 
 /// <p>The matrix's "write fails after the claim": single-use holds, so the proposal stays confirmed

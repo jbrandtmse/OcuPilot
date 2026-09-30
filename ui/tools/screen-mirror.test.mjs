@@ -2296,42 +2296,25 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
     'and so is one naming a field the screen\'s own read declares'
   );
 
-  // DW-1206's refusing direction: both keys are checked against one set, so an entry naming
-  // nothing is refused rather than left to be read as a whitelist by two consumers.
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['Pasword'] }), toolFields),
-    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
-      'tool nor one its read declares (AD-6)'
-  );
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['Timeout'] }), toolFields),
-    null,
-    'while one naming a settable field of that tool is sound'
-  );
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: [webApp.declaration.read.fields[0]] }), toolFields),
-    null,
-    "and so is one naming a field the screen's own read declares"
-  );
-  // 'Timeout' above is a string field, so it cannot tell the membership check's 'settable' set
-  // apart from the credential heuristic's string-only one; 'AutoCompile' is a boolean field of
-  // the same tool and is sound here too.
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['AutoCompile'] }), toolFields),
-    null,
-    'and so is a non-string settable field'
-  );
-  // The two spellings the one set carries: the schema drops a declared secret by the []-stripped
-  // name, while an exclusion of an array reaches the fingerprint as <path>[].
-  assert.equal(
-    confirmChannelProblem(of({ secretArguments: ['CorsAllowlist'] }), toolFields),
-    null,
-    'a secret named in the spelling the schema honours is sound'
-  );
+  // A secretArguments entry opens the confirm channel to a value the write sends as a secret, so
+  // it names a top-level secret row of the screen's write tools and nothing else. A misspelling, Path (ordinary on both web-application tools, and set by neither, AD-21),
+  // a string and a boolean settable field, an array field in the spelling the schema honours and a
+  // field the read declares are each refused. The web applications list's tools send no secret.
+  //
+  // Mutation (Rule 19): re-admit a settable name in `confirmChannelProblem`'s secretArguments check
+  // -> the Path leg goes red.
+  for (const name of ['Pasword', 'Path', 'Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.equal(
+      confirmChannelProblem(of({ secretArguments: [name] }), toolFields),
+      `secretArguments names '${name}', which is not a top-level secret field of this screen's write tools (AD-6)`,
+      `${name}: refused, as no write tool of this screen sends it as a secret`
+    );
+  }
+  // An exclusion of an array reaches the fingerprint as <path>[], and is named in that spelling.
   assert.equal(
     confirmChannelProblem(of({ fingerprintExcludes: ['CorsAllowlist[]'] }), toolFields),
     null,
-    'and an exclusion named in the spelling the fingerprint honours is sound'
+    'an exclusion named in the spelling the fingerprint honours is sound'
   );
   // The tightening direction: any row of the entry was accepted before, a secret-classified
   // subtree included.
@@ -2351,8 +2334,16 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
   });
   // The loosening direction, and the flag half the builder missed: a criterion is one of the names
   // the read declares, so its parameter is a nameable exclusion.
+  const withOwner = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: {
+        fields: [{ param: 'owner', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }],
+      },
+    },
+  });
   assert.equal(
-    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'], fingerprintExcludes: ['apiKey'] }, toolFields),
+    confirmChannelProblem({ ...withOwner, fingerprintExcludes: ['owner'] }, toolFields),
     null,
     "a typed criterion's parameter is a nameable exclusion"
   );
@@ -2370,13 +2361,13 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
   );
   assert.equal(
     confirmChannelProblem(withCriterion, toolFields),
-    "read.criteria names 'apiKey', whose name matches the credential pattern and which " +
-      'secretArguments does not declare (AD-3)'
+    "read.criteria names 'apiKey', whose name matches the credential pattern and which is not a " +
+      "declared secret of this screen's write tools (AD-3)"
   );
   assert.equal(
     confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'] }, toolFields),
-    null,
-    'declaring it is what admits it'
+    "secretArguments names 'apiKey', which is not a top-level secret field of this screen's write tools (AD-6)",
+    'and declaring it does not admit it, as no write tool of this screen sends it as a secret'
   );
 
   // The generator refuses to emit it at all, which is the assertion that makes this rule part of
@@ -2483,16 +2474,15 @@ test('entityLabelProblem returns the instance-side sentences, and every shipped 
   );
 });
 
-// AD-3, AD-6: a `secretArguments` name also qualifies when it is a top-level `secret` literal row
-// of the screen's write tools -- a derived credential, or an authored wrapper field such as
-// `Security.User`'s POST `Password` (Story 8.2). The widening is additive, so both directions are
-// pinned: a top-level secret row passes, and every name that qualified before still qualifies
-// while an unknown name, a nested secret path and an array element are still refused.
+// AD-3, AD-6: a `secretArguments` name qualifies when it is a top-level `secret` literal row of the
+// screen's write tools -- a derived credential, or an authored wrapper field such as
+// `Security.User`'s POST `Password` (Story 8.2) -- and only then: an unknown name, a nested secret
+// path, an array element, a settable field and a field the read declares are refused.
 //
 // Mutation (Rule 19): drop the `secretRows` clause from `confirmChannelProblem` -> the Users list
 // and the synthetic secret row below are refused; make `secretRowNames` admit nested paths -> the
-// `MatchRoles[].MatchRole` assertion goes red.
-test('a secretArguments entry may name a top-level secret row, and nothing that qualified stops qualifying', async () => {
+// `MatchRoles[].MatchRole` assertion goes red; re-admit a settable name -> the Path leg goes red.
+test('a secretArguments entry may name a top-level secret row, and nothing else', async () => {
   const { secretRowNames } = await import('./screen-mirror.mjs');
   const { screens, toolFields } = readSources();
   const users = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserList');
@@ -2502,9 +2492,8 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
   assert.equal(confirmChannelProblem(users.declaration, toolFields), null, 'the declaration passes');
   assert.equal(
     confirmChannelProblem({ ...users.declaration, secretArguments: ['Pasword'] }, toolFields),
-    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
-      'tool nor one its read declares (AD-6)',
-    'a name no source carries is still refused'
+    "secretArguments names 'Pasword', which is not a top-level secret field of this screen's write tools (AD-6)",
+    'a name no source carries is refused'
   );
 
   const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
@@ -2527,8 +2516,8 @@ test('a secretArguments entry may name a top-level secret row, and nothing that 
   for (const name of ['ProbeNested.Key', 'ProbeNested', 'ProbeList', 'ProbeList[]', 'ProbeOpaque']) {
     assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify`);
   }
-  for (const name of ['Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
-    assert.equal(confirmChannelProblem(of([name]), widened), null, `${name} still qualifies`);
+  for (const name of ['Path', 'Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify: no tool sends it as a secret`);
   }
   assert.notEqual(
     confirmChannelProblem(of(['MatchRoles[].MatchRole']), widened),

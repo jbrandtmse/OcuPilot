@@ -621,11 +621,31 @@ ClassMethod Named(pNames As %DynamicArray, pName As %String, pFoldCase As %Boole
     Quit tFound
 }
 
+/// <p>The roles <var>pNames</var> names, as <code>[{name, privileged}]</code> in its order.
+/// <code>privileged</code> is <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>'s
+/// answer, the one the agent's proposal is marked destructive by, so the form's line and the card's
+/// consequence cannot disagree (AD-10).</p>
+ClassMethod MarkedRoles(pNames As %DynamicArray) As %DynamicArray
+{
+    Set tRoles = []
+    If '$IsObject(pNames) Quit tRoles
+    Set tIterator = pNames.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If $IsObject(tName) || (tName = "") Continue
+        Set tEntry = {}
+        Do tEntry.%Set("name", tName, "string")
+        Do tEntry.%Set("privileged", ##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tName), "boolean")
+        Do tRoles.%Push(tEntry)
+    }
+    Quit tRoles
+}
+
 /// <p>Answer <code>GET /oauth/authorization-server/form</code>: what the form needs before it can
 /// draw a field (AD-39): <code>{requiredFields, rules, namespaces, roles, sslConfigurations,
 /// credentials, clients, clientsHidden}</code>, and <code>definition</code>, the configuration as
 /// the edit tool's own read answers it, when the instance has one. The four name lists are what the
-/// caller reads through the shell's and the three list screens' own reads (AD-5).</p>
+/// caller reads through the shell's and the three list screens' own reads (AD-5); the roles come
+/// as <code>[{name, privileged}]</code> (<method>MarkedRoles</method>).</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -641,7 +661,7 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("requiredFields", tRequired)
         Do tBody.%Set("rules", ..Rules())
         Do tBody.%Set("namespaces", ..Namespaces())
-        Do tBody.%Set("roles", ..ReadableNames(..#ROLESCREEN, ..#ROLENAMEFIELD))
+        Do tBody.%Set("roles", ..MarkedRoles(..ReadableNames(..#ROLESCREEN, ..#ROLENAMEFIELD)))
         Do tBody.%Set("sslConfigurations", ..ReadableNames(..#SSLSCREEN, ..#SSLNAMEFIELD))
         Do tBody.%Set("credentials", ..ReadableNames(..#CREDENTIALSCREEN, ..#CREDENTIALNAMEFIELD))
         Set tReadSC = ..Present(.tFresh, .tHttp, .tFault)

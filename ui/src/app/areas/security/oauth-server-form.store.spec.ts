@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
-import { OAUTH_AUTH_SERVER_FORM_PATH, OAUTH_AUTH_SERVER_PATH, OAuthServerForm, isPrivilegedRole } from './oauth-server-form.store';
+import { OAUTH_AUTH_SERVER_FORM_PATH, OAUTH_AUTH_SERVER_PATH, OAuthServerForm } from './oauth-server-form.store';
 
 /**
  * The authorization server editor's store (AC1, AC2, AC4, AD-4, AD-14, AD-35, AD-55, AD-56).
@@ -22,7 +22,12 @@ function form(definition: Record<string, unknown> | null, patch: Record<string, 
     requiredFields: ['IssuerEndpoint', 'SupportedScopes', 'CustomizationRoles'],
     rules: [{ field: 'IssuerEndpoint', code: 'OAUTH.SERVERISSUER.REQUIRED', reason: 'Enter the issuer endpoint.' }],
     namespaces: ['%SYS', 'USER'],
-    roles: ['%DB_IRISSYS', '%Manager', '%All'],
+    roles: [
+      { name: '%DB_IRISSYS', privileged: false },
+      { name: '%Manager', privileged: true },
+      { name: '%All', privileged: true },
+      { name: '%Developer', privileged: false },
+    ],
     sslConfigurations: ['OcuPilotDemoTLS'],
     credentials: ['OcuPilotDemoCert'],
     clients: [{ ClientId: 'probe-id', Name: 'Probe client' }],
@@ -240,15 +245,35 @@ describe('the authorization server editor store', () => {
     expect(store.violationFor('SupportedScopes')).toBe('');
   });
 
-  it('adding %All or an %Admin_ customization role is named; keeping a stored one is not', async () => {
+  // AD-10: the line reads the instance's own mark, never the role's name. Mutation (Rule 19): read
+  // a missing mark as not privileged in `privileged` -> the %Admin_Secure leg and the unread create
+  // go red; judge by name again (`%All` or `%Admin_`) -> the %Manager leg and the create default go
+  // red.
+  it('adding a role the form read marks privileged, or one it carries no mark for, is named; keeping a stored one, or adding one marked not privileged, is not', async () => {
     const { store } = mount({ ...DEFINITION, CustomizationRoles: ['%DB_IRISSYS', '%All'] });
     await store.open();
     expect(store.addsPrivilegedRole()).toBe(false);
+    store.setRole('%Developer', true);
+    expect(store.addsPrivilegedRole()).toBe(false);
+    store.setRole('%Manager', true);
+    expect(store.addsPrivilegedRole()).toBe(true);
+    store.setRole('%Manager', false);
     store.setRole('%Admin_Secure', true);
     expect(store.addsPrivilegedRole()).toBe(true);
-    expect(store.roleChoices()).toEqual(['%DB_IRISSYS', '%Manager', '%All', '%Admin_Secure']);
-    expect(isPrivilegedRole('%admin_operate')).toBe(true);
-    expect(isPrivilegedRole('%Manager')).toBe(false);
+    expect(store.roleChoices()).toEqual(['%DB_IRISSYS', '%Manager', '%All', '%Developer', '%Admin_Secure']);
+  });
+
+  it("a create's default %Manager is named, and so is every role when the form read carries no mark", async () => {
+    const marked = mount(null).store;
+    await marked.open();
+    expect(marked.roles()).toEqual(['%DB_IRISSYS', '%Manager']);
+    expect(marked.addsPrivilegedRole()).toBe(true);
+    marked.setRole('%Manager', false);
+    expect(marked.addsPrivilegedRole()).toBe(false);
+    const unread = mount(null, undefined, { roles: [] }).store;
+    await unread.open();
+    unread.setRole('%Manager', false);
+    expect(unread.addsPrivilegedRole()).toBe(true);
   });
 
   it('reads the registered clients, and a caller who cannot list them', async () => {

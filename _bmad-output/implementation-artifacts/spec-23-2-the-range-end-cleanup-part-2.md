@@ -2,15 +2,22 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '1617332dfc6287bff9ec32caa70f3bc702ee39f4'
+status: 'done'
+baseline_revision: 'f8e55fb2622353b7ce4024e9888cbc1a776d440a'
 baseline_commit: '1617332dfc6287bff9ec32caa70f3bc702ee39f4'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A service's ClientSystems role grant is judged by the role's name alone, so adding %Manager, or any role whose closure holds an %Admin_ resource, to an allowed address is minted without the destructive treatment.
+    evidence: |-
+      Prohibited.AddressGrantsPrivilege tests each added role with IsPrivilegedRole, the name-only check that batch c replaced with RoleGrantsAdministrativePrivilege for the customization roles; %Manager carries %Admin_*:U resources (measured on slot B for DW-1663). Pre-existing, and outside batch c's tasks.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls:4021
+    severity: medium
 ---
 
 <intent-contract>
@@ -184,7 +191,7 @@ deferred: []
 
 ### Batch c: security
 
-- [ ] **DW-1663** — `AddsPrivilegedCustomizationRole` judges by name only. `%Manager`, `%Operator` and `%SecurityAdministrator` carry `%Admin_*:U` resources (measured on slot B), yet are minted non-destructive. `RoleGrantsPrivilege` reads a failed `Security.Roles.Get` as "no resources", which fails open.
+- [x] **DW-1663** — `AddsPrivilegedCustomizationRole` judges by name only. `%Manager`, `%Operator` and `%SecurityAdministrator` carry `%Admin_*:U` resources (measured on slot B), yet are minted non-destructive. `RoleGrantsPrivilege` reads a failed `Security.Roles.Get` as "no resources", which fails open.
   - **Fix:**
     - Judge each added role with `RoleEscalates`, the web-application arm's predicate: a role is privileged when its closure holds `%All`, or any `%All` or `%Admin_*` resource.
     - Fail closed: `Security.Roles.Exists` separates an absent role, which grants nothing, from a failed read or a failed `GetRecursedRoleSet`. A failed read counts as privileged and is minted destructive with `OAUTH.CUSTOMIZATIONPRIVILEGED`, never a 500. The web-application arm fails closed the same way.
@@ -198,7 +205,7 @@ deferred: []
     - `oauth-server-form.store.spec.ts:243-252` flips.
   - Files: `Kernel/Proposal/Prohibited.cls` (comment at :2444-2447), `Area/Security/OAuthAuthorizationServerRules.cls`, `Screen/Tool/OAuthAuthorizationServerCreate.cls` (text at :86 and :181-183), and `ui/src/app/areas/security/oauth-server-form.store.ts` with its spec. ADs: AD-10, AD-8, AD-5, AD-39, AD-16.
   - AC: Given an agent proposal that adds `%Manager` to the customization roles, when it is minted, then it takes the destructive treatment and its diff names the privilege. Given a role whose read fails, when a proposal adding it is minted, then it is treated as privileged.
-- [ ] **DW-1450** — `ConfirmChannelProblem` and the mirror accept a `secretArguments` name that is any ordinary field or read field of the identifier's tools. At confirm, `ChannelProblem` admits the descriptor's whole list for every tool, and `WithSecrets` sets it into the body after the AD-10 gate has run.
+- [x] **DW-1450** — `ConfirmChannelProblem` and the mirror accept a `secretArguments` name that is any ordinary field or read field of the identifier's tools. At confirm, `ChannelProblem` admits the descriptor's whole list for every tool, and `WithSecrets` sets it into the body after the AD-10 gate has run.
   - **The ledger's probe is wrong as written:** `Timeout` is permitted by `WebAppUpdate` (:51). The red probe is `Path` instead: ordinary on both web-application tools, permitted by neither, and never caller-nameable (AD-21).
   - **Measured:** `UserUpdate`'s screen admits `Password` at confirm, although the update tool writes no `Password`.
   - **Fix:**
@@ -433,6 +440,31 @@ Rejected:
 - The `[CI]` item is fixed. (1) Every AD-11 rule 5 assertion of the `channels` leg is unchanged: no proposal card, URL and announcements unchanged, the card's result text has no child elements, no reply image requested, nothing off the origin, no CSP refusal. (2) No product file changed (`git diff 1617332d -- src ui/src` is empty), and `TOOLSTEPTEXTMAXLENGTH` is 4,096. (3) `filter` is declared in `Screen/Tool/Read.cls` `InputSchema` and reaches the screen's own `ApplyView` (AD-36); the name comes from `InjectionSeed.Target()`. (4) The sweep holds: only `seeded-injection` asserts on `.ocu-tool-call-result` text, `turn` reads the rows line (from `step.result`), and the rest read status words, tool names or failure diagnostics.
 - Measured on `ocupilot-b-ci` (deployed `index.html` equal to the build's): the mutation red and the green re-run under Verification; the probe role reads back absent. `npm run test:tools` 1,731/1,731. CI run 36727128251 on 47e15e2b was queued at review time.
 
+### 2026-09-30 — Review pass (batch c)
+
+- verdicts: 20 findings — high 0, medium 3, low 12, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `RoleGrantsPrivilege`'s fail-closed branch (an `Exists` failure other than 883, or a failed `Get`) and `RoleEscalates`' handling of it ran under no test, since the unread principal fails `GetRecursedRoleSet` first (verification-gap) — `ProhibitedFixture` gains an armed role-read fault and a `RoleRead` accessor; the unreadable-role leg asserts the principal's role read answers an error (red alone in run 219) and that an armed per-role read failure counts as privileged for a caller who may read roles (red alone in run 220); run 224 8/8.
+  - `[low]` `[patch]` `SecretSpelling`'s per-name assertion could not fail: an admitted name is a secret row, and `FieldRows` keeps ordinary rows only (verification-gap) — it now asserts no admitted name is among the field rows or the schema offered with nothing declared; red in run 222 when `FieldRows` keeps `secret` rows, run 223 2/2. The Story 8.5 spec's AC7 mutation record (`spec-8-5-x-509-import-edit-and-delete.md:501`, `:514`) is stale; that correction is the lead's.
+  - `[low]` `[reject]` `Draft.Render` and the card's `payloadSecrets` still read the screen's whole secret list (verification-gap) — no shipped tool's payload or diff carries a declared secret it does not send (the layer's inference); the card is Epic 16's contended `core/proposal-view.ts` and the client holds no per-tool list, so the fix adds a mirrored field. wontfix-accepted, reopen_if a tool's payload or diff names a declared secret outside its own secret rows.
+  - `[low]` `[reject]` `ProposalConfirm`'s password-unchanged assertion cannot move under the defect, since the vendor refuses the merged body (verification-gap) — the refusal and the live, unspent row are the pins (run 206), and the batch c mutation line records the vendor's 400; the password half is the matrix row's postcondition.
+  - `[low]` `[reject]` `ScreenAction.Values`' per-tool narrowing has no pinning test (verification-gap) — Rule 19 binds one pin per AC and this bullet is not one; on shipped tools the two lists coincide (the one secret-valued action's `Password` is its own `SECRETBODY` name), so only a new fixture could tell them apart.
+  - `[low]` `[patch]` The credential-name sentence told an author to declare the name, which `secretArguments` now refuses (verification-gap) — reworded in `Registry.cls` and `screen-mirror.mjs` to "which is not a declared secret of this screen's write tools (AD-3)", both pinned literals updated; `Descriptor` run 225 60/60, `npm run test:tools` 1,738/1,738.
+  - `[false]` `[reject]` `OcuPilot.Test.Proposal` was edited but not run (verification-gap) — the implement stage ran it (run 171, 15/15) and the layer re-ran it (run 217, 15/15).
+  - `[low]` `[reject]` The unreadable-role row is checked at the predicate, not at a mint (intent-alignment) — the spec's Red names the classifier leg for this defensive arm, since `CustomizationViolations` refuses such a caller's new role first (the spec's inference); the mint's privileged-to-destructive step is pinned by the `%Manager` leg through `Mint`.
+  - `[medium]` `[patch]` The failure site the ledger names, `RoleGrantsPrivilege`, is fixed but never exercised (intent-alignment) — same root and patch as the first row.
+  - `[false]` `[reject]` "Never a 500" holds on the authorization server arm only (intent-alignment) — a failed read answers OK and privileged on every arm (the web-application arm in run 208); only an exception raised inside `RoleEscalates` itself answers an error, as before this change, and no measured path raises one.
+  - `[false]` `[reject]` The shared predicate changed the user and role arms, which the task does not name (intent-alignment) — there a failed read now counts as privileged instead of answering 500; those arms' screens require `%Admin_Secure:USE`, which reads roles (inference), so no outcome is worse.
+  - `[medium]` `[defer]` `AddressGrantsPrivilege` (a service's `ClientSystems` roles) still judges a role by name, so `%Manager` there is minted non-destructive (intent-alignment) — pre-existing, the same defect class as DW-1663 in an arm batch c does not name; recorded in `deferred:`.
+  - `[low]` `[reject]` The password-unchanged assertion cannot go red (intent-alignment) — same root as the fourth row.
+  - `[low]` `[reject]` `ScreenAction.Values` routes a descriptor secret the tool does not send into the ordinary values (intent-alignment) — no shipped action declares such a value (the layer's own read of every `SCREENVALUES`); wontfix-theoretical, real when an action's value names a descriptor secret outside its tool's secret rows and `SECRETBODY`.
+  - `[low]` `[reject]` The `ScreenAction.Values` change has no test or `mutation:` line (intent-alignment) — same root as the fifth row.
+  - `[low]` `[patch]` `Confirm.cls:255-256` said the merge and the channel check read one declaration (intent-alignment) — the comment now says the merge sets only the keys the check admitted and the ledger's field list leaves out every declared name.
+  - `[false]` `[reject]` The screen action's `SecretBody` and the confirm's merge still read the whole list (intent-alignment) — only admitted keys reach either, and `FieldNames` needs the whole list to keep every declared name out of the ledger.
+  - `[low]` `[reject]` The accept arm runs against `SecretTool.Probe`'s authored secret, `ProposalScreen`'s declaration is now refused, and the registry and build AC is tested by direct calls (intent-alignment) — those calls are the functions load and build run, the shipped field-list reader is driven both ways (`UserCreate` run 214 accepts `Password`, the new `ProposalConfirm` leg refuses it), and no `SECRETBODY` name lies outside its tool's secret rows.
+  - `[false]` `[reject]` The form change goes beyond the matrix, and no `oauth-server-editor` run is recorded (intent-alignment) — the spec's User-visible changes name the create default's line, and the spec ran 4/4 on the rebuilt bundle (Auto Run Result).
+  - `[low]` `[patch]` New comments in `Test/Descriptor.cls` and `screen-mirror.test.mjs` named ledger ids (intent-alignment, prose discipline) — removed.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -575,10 +607,16 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 - Classes: `OAuthAuthorizationServerUpdate`, `OAuthAuthorizationServerClients`, `OAuthAuthorizationServerWire`, `UserCreate`, `UserCreateWire`, `UserUpdate`, `Descriptor`, `ProposalConfirm`, `ConfirmRoute`.
 - Tiers: `npm run test:tools` (screen-mirror), `npm run test:components` (the oauth-server-form store), `npm run build`. Spec: `oauth-server-editor`.
-- `mutation:` restore name-only `IsPrivilegedRole` → the `%Manager` leg goes red.
-- `mutation:` read a failed role read as "no resources" → the fail-closed leg goes red.
-- `mutation:` re-admit the ordinary source → the `Path` legs go red in both `Descriptor` and `screen-mirror.test.mjs`.
-- `mutation:` drop the per-tool intersection → the `ProposalConfirm` `Password` leg goes red.
+- `mutation:` restore name-only `IsPrivilegedRole` in `AddsPrivilegedCustomizationRole` → run 192 red on `TestAPrivilegedCustomizationRoleIsMintedDestructive` (the `%Manager` leg) and on `TestAnUnreadableRoleCountsAsPrivileged`'s authorization server arm (a name-only judge reads `%Developer` as unprivileged whatever the read); reverted byte-identical, run 193 8/8.
+- `mutation:` read a failed role read as "no resources" (`RoleEscalates` answers not privileged on a failed `GetRecursedRoleSet`) → run 194 red on `TestAnUnreadableRoleCountsAsPrivileged` alone, both its authorization server and web-application arms; reverted byte-identical, run 195 8/8.
+- `mutation:` read an absent role (883) as a failed read in `RoleGrantsPrivilege` → run 196 red on that method's absent-role assertion alone; reverted byte-identical, run 197 8/8.
+- `mutation:` `HandleForm` answers the role names without `MarkedRoles` → run 198 red on `OAuthAuthorizationServerClients.TestTheReadNamesTheRegisteredClients`'s mark assertion alone; reverted byte-identical, run 199 6/6.
+- `mutation:` the store reads a missing mark as not privileged → `npm run test:components` 1,966/1,968, the two privilege cases red (the `%Admin_Secure` leg, the unread create); judging by name again → the same two red (the `%Manager` leg, the create default); each reverted byte-identical, 1,968/1,968.
+- `mutation:` re-admit the ordinary source (a settable name) in `Registry.ConfirmChannelProblem` → run 200 red on the `Descriptor` confirm-channel test alone (its `Path`, `Timeout`, `AutoCompile` and `CorsAllowlist` legs), run 201 on both `SecretSpelling` methods, run 202 on `UserCreate`'s `Timeout` leg; the same in `screen-mirror.mjs` → `screen-mirror.test.mjs` 60/62, both confirm-channel tests red at the `Path` leg; reverted byte-identical, runs 203 (60/60), 204 (2/2) and 205 (9/9), `npm run test:tools` 1,738/1,738.
+- `mutation:` drop the per-tool intersection (`ChannelProblem` reads the descriptor's whole list) → run 206 red on `TestAnUpdateConfirmCarryingAPasswordIsRefused` alone (the confirm admitted and the row claimed); its password assertion stayed green because the vendor refuses that body: measured under the same mutation, the claimed confirm answered 400 `PORT.VALIDATION` with the password and `FullName` unchanged; reverted byte-identical, run 207 21/21.
+- `mutation:` answer OK in `RoleGrantsPrivilege` for a role it cannot read (`If 'tExists Quit`) → run 219 red on `TestAnUnreadableRoleCountsAsPrivileged`'s role-read assertion alone; reverted byte-identical, run 224 8/8.
+- `mutation:` drop `$$$ISERR(tReadSC) ||` from both reads in `RoleEscalates` → run 220 red on that test's armed per-role read assertion alone; reverted byte-identical, run 224 8/8.
+- `mutation:` let `Write.FieldRows` keep `secret` rows → run 222 red on `SecretSpelling.TestAnAdmittedSpellingIsNeverOffered` (`PrivateKeyFile` and `PrivateKeyPassword` offered); reverted byte-identical, run 223 2/2.
 
 **Batch e (loop):**
 
@@ -605,19 +643,19 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch b CI rework (the `[CI]` item: `seeded-injection` channels leg).** Batches c, e and d are untouched and stay unchecked.
+**Batch c (security: DW-1663, DW-1450).** Batches e and d are untouched and stay unchecked.
 
-- **Change:** the scripted turn's `permissions_roles_read` call passes `{"filter": InjectionSeed.Target()}`, the read's own declared argument, so the result is the probe role's row rather than every role and the seed's marker lies inside DW-1210's 4,095-character cut. The card-text assertion and every AD-11 rule 5 assertion are unchanged; no product code and no `TOOLSTEPTEXTMAXLENGTH` change. Chosen over asserting on the model's input because the read declares a narrowing argument, so the user-visible assertion stays.
-- **Files:** `ui/browser/seeded-injection.browser-spec.mjs` (the scripted read's input, the header and `scriptTurn` doc comments); this spec (the `[CI]` box, one `mutation:` line, the triage entry).
-- **Sweep:** every `ui/browser/*.browser-spec.mjs` was searched for `.ocu-tool-call-result`, tool-card and step-text reads, and model-input reads. Only `seeded-injection` asserts on a tool card's result text. `auditing-write`, `proposal-demo`, `users-write`, `refused-tool`, `proposal-privilege`, `task-resume` and `turn` read the card's status word, tool name or rows line; `process-control` and `task-resume` read card text only for a failure message; `transcripts` reads a screen-context payload sharing the class; model-input reads see the uncut result. No other spec changed, and none of Epic 16's three browser specs is involved.
-- **Review:** 9 findings (low 6, false 3). One low patched (two rows, one root): the header overstated what the filter guarantees. 7 rejected, each with its reason in the triage log. Nothing deferred.
-- **Follow-up review:** not recommended; a follow-up pass that patched no high (patched: high 0, medium 0, low 1).
-- **Verification on `ocupilot-b-ci`:**
-  - Red first: before any edit, `seeded-injection` on the bundle built from 323948ad failed the channels leg at "the tool card shows the seed's marker as text", as in CI; `anywhere` passed.
-  - Green: 2/2 after the fix, and 2/2 again after the review patch. `npm run build` passed its prebuild checks; initial total 2.31 MB; the deployed `index.html` equals the build's (no client code changed).
-  - Mutation: as recorded under Batch b's Verification.
-  - The probe role reads back absent; `lint-docs.sh` 0 issues; the browser spec is ASCII. `npm run test:tools` 1,731/1,731 (run by the re-review). Matrix Test Audit: no matrix row's behavior changed in this pass.
-- **Residual risk:** on an instance with more roles than the read cap (1,000) the filter could miss the probe role; not reachable on a throwaway.
+- **DW-1663:** `AddsPrivilegedCustomizationRole` judges each added role with `RoleGrantsAdministrativePrivilege` (`%All`, or an `%All` or `%Admin_*` resource in its closure). `RoleEscalates` counts a failed `GetRecursedRoleSet` or per-role read as privileged with an OK status; `RoleGrantsPrivilege` tells an absent role (883, grants nothing) from one it cannot read (an error). The form read answers `roles:[{name, privileged}]` (`MarkedRoles`); the store drops `isPrivilegedRole` and counts a missing mark as privileged, so the create default `%Manager` shows the privilege line.
+- **DW-1450:** a `secretArguments` name must be a top-level secret row of the screen's write tools, with one sentence in `Registry.cls` and `screen-mirror.mjs`; `fingerprintExcludes` keeps its sources. The confirm channel and a screen action's secret values open only to the declared secrets the tool itself sends (`Write.ChannelSecretNames`: its secret rows and `SECRETBODY` names).
+- **Files:** `Kernel/Proposal/Prohibited.cls` (the classifier), `Area/Security/OAuthAuthorizationServerRules.cls` (`MarkedRoles`), `Screen/Tool/OAuthAuthorizationServerCreate.cls` (model text), `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` (the rule and the credential sentence), `Screen/Tool/Write.cls` and `Screen/Tool/Registry.cls` (`ChannelSecretNames`), `Kernel/Proposal/Confirm.cls` and `Api/ScreenAction.cls` (the narrowed channel), `ui/src/app/areas/security/oauth-server-form.store.ts` (the mark), and tests: `Test/{OAuthAuthorizationServerUpdate,OAuthAuthorizationServerClients,ProposalConfirm,Descriptor,UserCreate,SecretSpelling,Proposal,ProposalScreen,ProhibitedFixture,SecretTool/Probe}.cls`, `ui/tools/screen-mirror.test.mjs`, `oauth-server-form.store.spec.ts`, `oauth-server-form.page.spec.ts`.
+- **Review:** 20 findings (medium 3, low 12, false 5). Patched: medium 1 (the unexercised role-read branch), low 4 (the `SecretSpelling` assertion, the credential sentence, a `Confirm.cls` comment, ledger ids in two comments). Deferred 1 (medium: the service `ClientSystems` name-only judge). Rejected, reasons in the batch c triage entry: the draft and card reading the whole list (theoretical), the password-unchanged assertion (the vendor refuses), the unpinned `ScreenAction` narrowing and its non-own secret routing (theoretical), the predicate-level unreadable leg (the spec's Red), the fixture and direct-call surfaces, and five false.
+- **Follow-up review:** not recommended (a follow-up pass that patched no high; patched high 0, medium 1, low 4).
+- **Verification on `ocupilot-b-ci`** (`OCUPILOT-LOAD:OK:errors=0` after the last edit):
+  - Batch c's classes before review: runs 208-216 green (`OAuthAuthorizationServerUpdate` 8/8, `Clients` 6/6, `Wire` 7/7, `Descriptor` 60/60, `ProposalConfirm` 21/21, `ConfirmRoute` 6/6, `UserCreate` 9/9, `UserCreateWire` 5/5, `UserUpdate` 23/23). After the patches: `OAuthAuthorizationServerUpdate` run 224 8/8, `SecretSpelling` 223 2/2, `Descriptor` 225 60/60, and the fixture's other users `Prohibited` 226 13/13 and `ProhibitedByEffect` 227 8/8.
+  - `npm run test:tools` 1,738/1,738 (after the patches); `npm run test:components` 1,968/1,968; `npm run build` passed its prebuild checks, initial total 2.31 MB, no generated file changed; `oauth-server-editor` 4/4 on the redeployed bundle (deployed `index.html` equal to the build's).
+  - Mutations: as recorded under Batch c's Verification. `check-objectscript.py` 0 problems; no non-ASCII byte added. The probe principal reads back removed.
+  - Three single-class runner calls (runs 223-225) went out in one message; their `%UnitTest_Result` times show them back to back, and the runner counted 0 overlaps.
+- **Residual risks:** the deferred service `ClientSystems` judge; `ui/src/app/core/proposal-view.ts:170` and `ui/tools/proposal-view.test.mjs:312` still describe the old name rule in comments (Epic 16's contended file); the Story 8.5 spec's AC7 mutation record is stale (lead).
 
 Status: done
 Blocking condition: none

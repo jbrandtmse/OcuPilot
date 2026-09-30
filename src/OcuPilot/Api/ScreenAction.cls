@@ -448,8 +448,10 @@ ClassMethod Body(pToolClass As %String, pFresh As %DynamicObject, pArgs As %Dyna
 /// <var>pValues</var> and the declared secrets into <var>pSecrets</var> (AD-56 (ii)).</p>
 /// <p>Absent is sound only for an action that declares no value. Otherwise it is an object of
 /// strings whose keys are exactly the names the action declares, each non-empty. A name the
-/// descriptor declares secret goes to <var>pSecrets</var> and nowhere else. No problem sentence
-/// names a value, so a refused request never echoes one.</p>
+/// descriptor declares secret and <var>pToolClass</var> itself sends as a secret
+/// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>, AD-6) goes to
+/// <var>pSecrets</var> and nowhere else. No problem sentence names a value, so a refused request
+/// never echoes one.</p>
 ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass As %String, pActionId As %String, Output pValues As %DynamicObject, Output pSecrets As %DynamicObject) As %String [ Private ]
 {
     Set pValues = {}
@@ -461,7 +463,7 @@ ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass 
         Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
     }
     If tType '= "object" Quit "'values' must be an object"
-    Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared)
+    Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).ChannelSecretNames(pTool, .tSecretsDeclared)
     Set tGiven = pBody.%Get("values")
     Set tSeen = ""
     Set tIterator = tGiven.%GetIterator()
