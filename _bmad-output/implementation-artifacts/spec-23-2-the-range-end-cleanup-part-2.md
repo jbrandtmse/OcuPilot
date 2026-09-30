@@ -2,11 +2,11 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '1a409d00a3083e6a604087af7dfd371e6dd4aa03'
+status: 'done'
+baseline_revision: 'f101494cfb7b26aaaa393cfec57ede3f5fdb19e9'
 baseline_commit: '1a409d00a3083e6a604087af7dfd371e6dd4aa03'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
@@ -125,7 +125,7 @@ deferred: []
 
 ### Batch b: user-visible defects
 
-- [ ] **DW-1289** — A refusal by a `PasswordValidationRoutine` answers 500.
+- [x] **DW-1289** — A refusal by a `PasswordValidationRoutine` answers 500.
   - **Measured on `ocupilot-b-ci`** (plan stage; the probe was removed):
     - `ChangePassword` answers `1446,5001`, where the second text is the routine's sentence. A wrong current password answers `1446,952` first; a pattern failure answers `1446,845`.
     - `$SYSTEM.Security.ValidatePassword(new, user)`, called by a principal holding only `%DB_HSCUSTOM:RW`, answers `5001` with the routine's sentence, `845` for a pattern failure, and OK otherwise.
@@ -141,7 +141,7 @@ deferred: []
     - Teardown restores the setting, deletes the routine, and reads both back.
   - Files: `Api/Account.cls` (its doc comments at :34-37 and :44-48), `Test/AccountPasswordWire.cls`. ADs: AD-39 (amended below), AD-49, AD-35, AD-12, AD-8.
   - AC: Given a configured routine that refuses the new password, when users change their own password, then New password shows the routine's sentence with a 422. Given a refusal the validator does not confirm, when the change is refused, then the answer stays 500.
-- [ ] **DW-1210** — `GuardedFinishTool` stores each tool result up to 131,072 characters, and `GuardedRows` projects every step's text on every 1 s poll.
+- [x] **DW-1210** — `GuardedFinishTool` stores each tool result up to 131,072 characters, and `GuardedRows` projects every step's text on every 1 s poll.
   - **Measured:** `%ToJSON()` over 60 steps of 65,536 characters each raises `<MAXSTRING>` (`MaxLocalLength` is 3,641,144), so a long turn's poll fails.
   - **Fix:** add `Limits.TOOLSTEPTEXTMAXLENGTH = 4096`. `GuardedFinishTool` cuts a tool step's text to that length, ending in U+2026, and sets `Truncated`.
     - No wire key is added, and the announce steps are not cut.
@@ -156,7 +156,7 @@ deferred: []
     - the cap leg at :118-129 moves to the new parameter.
   - Files: `Kernel/Agent/Limits.cls`, `Kernel/State/Step.cls` (comments at :160-163), `Kernel/Agent/Loop.cls` (comment at :562-565), `Test/LedgerStep.cls` (comment at :85-88), and EXPERIENCE.md :612 (in place). ADs: AD-33 (amended below), AD-31, AD-24, AD-11, AD-36.
   - AC: Given a turn of 60 tool steps each returning 65,536 characters, when the panel polls progress, then the poll answers 200 and each tool step's text is 4,096 characters ending in "…".
-- [ ] **DW-1669** — `pollUntilTerminal` stops when the turn ends, so a live card's privilege line keeps its last answer. `WireRow` evaluates the line on each read, but only the progress poll and conversation restore carry it.
+- [x] **DW-1669** — `pollUntilTerminal` stops when the turn ends, so a live card's privilege line keeps its last answer. `WireRow` evaluates the line on each read, but only the progress poll and conversation restore carry it.
   - **Fix, in `ui/src/app/core/turn.ts`:**
     - Once the turn has ended, re-read `GET /turn/:id/progress` every 15 s (an injectable `rereadMs`, default 15,000) while at least one of its proposals is live and unexpired on the panel.
     - Keep a proposal-id-to-turn-id map, filled in `pollOnce`.
@@ -168,7 +168,7 @@ deferred: []
     - A new case (c) in `ui/browser/proposal-privilege.browser-spec.mjs`: the turn completes, the pair is revoked, and the line warns.
   - Files: `ui/src/app/core/turn.ts` (comments at :1356-1360 and :1575-1590), `ui/tools/turn.test.mjs`, `ui/browser/proposal-privilege.browser-spec.mjs`. ADs: AD-8, AD-6, AD-7, AD-19, AD-33, AD-43.
   - AC: Given a turn that has ended with a live proposal whose pair is then revoked, when 15 s pass, then the card's privilege line warns and names the pair.
-- [ ] **DW-1440** — `CodeDatabaseResource` derives the floor role's grant from the routines database. `%CSP.REST` `AccessCheck` tests the default globals database's resource, `$Piece($zu(90,21,$namespace),"^",4)`, and answers a bodyless 403 when it fails.
+- [x] **DW-1440** — `CodeDatabaseResource` derives the floor role's grant from the routines database. `%CSP.REST` `AccessCheck` tests the default globals database's resource, `$Piece($zu(90,21,$namespace),"^",4)`, and answers a bodyless 403 when it fails.
   - **Reproduce first** (implement stage, on `ocupilot-b-ci`, removed afterwards):
     - Create namespace `OCUPSPLIT` with Routines `HSCUSTOM` and Globals set to a database whose resource carries no public permission. If `%DB_USER` is public, create `OCUPSPLITG` in its own directory, `/durable/iris/mgr/ocupsplitg/`.
     - Create an unauthenticated app `/ocupsplit` that dispatches to `OcuPilot.Api.Readiness`.
@@ -316,6 +316,38 @@ Rejected:
 - `[low]` `[patch]` ×4, mechanical (blind-hunter): a dead wrap line, a message twin, and the `Hold` and class-header docs.
 - Rules: no AD mismatch (Conventions › Tests, AD-27, and AD-12 for the fixture). Rule 3 exempt: test-only flake fixes, run under their reproducing conditions on `ocupilot-b-ci`. No NFR touched.
 
+### 2026-09-30 — Review pass (batch b)
+
+- verdicts: 27 findings — high 1, medium 7, low 15, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The grants the installer builds for a split namespace, and their stored order, were unpinned (verification-gap) — `CodeDatabaseResource` now answers the grants too; the split leg asserts `%DB_HSCUSTOM:R,%DB_USER:R` and a probe role reads it back unchanged (run 145; red alone in run 143).
+  - `[medium]` `[patch]` No test took a warning line back to held (verification-gap) — added the `turn.test.mjs` clearing case; red under a warn-only merge.
+  - `[low]` `[patch]` The validator-OK leg of DW-1289's second AC had no `mutation:` line (verification-gap) — recorded (run 141).
+  - `[medium]` `[patch]` DW-1440's "grants read on both" half had no pin (verification-gap, Rule 19) — same root as the first row.
+  - `[low]` `[patch]` The fallback row's Quote and Empty legs had no `mutation:` line (verification-gap) — recorded (run 142).
+  - `[low]` `[patch]` The current-password half of the fallback had no assertion (verification-gap) — added a classifier leg; red alone in run 140.
+  - `[low]` `[reject]` `AccountPasswordWire` asserts a constructed status's codes (verification-gap) — a fixture precondition that reddens if the vendor's status encoding moves; the AC's pins are the assertions after it.
+  - `[medium]` `[patch]` A refused send (409, the hourly limit) stopped the ended turn's re-read though the instance closed nothing (verification-gap) — the re-read now stops only once the turn request is accepted; the new case goes red when the stop moves back before the request.
+  - `[low]` `[reject]` The unconfirmed and 838 legs run on the classifier, not the wire (intent-alignment) — the spec's Red names classifier legs over constructed statuses; the 500 renders through the unchanged `RenderInternal`, and the raising-routine leg now drives a wire 500.
+  - `[false]` `[reject]` The reason is the validator's re-derived text, not the change's (intent-alignment) — the spec's Fix chooses it ("No text from the change's own 5001 is ever rendered"), as the AD-39 amendment words it.
+  - `[high]` `[patch]` Any validator error counted as a refusal, so a routine that raised showed its error text (intent-alignment) — measured on `ocupilot-b-ci`: `ValidatePassword` answers 5002 "ObjectScript error: <DIVIDE>Boom+1^..." and the wire answered 422 with it (run 139, AD-39); only 5001, 845 and 958 now count, and a raising-routine leg pins the 500.
+  - `[low]` `[reject]` The validator is consulted for every code outside 952/845/958/838, wider than the matrix's 5001 (intent-alignment) — the spec's Fix names exactly that arm.
+  - `[low]` `[patch]` The current-password half of the fallback is untested (intent-alignment) — same root as the classifier-leg row.
+  - `[low]` `[reject]` The password match is case-sensitive and whole-password (intent-alignment) — a sentence that quotes a password quotes it as given; a looser match adds a branch for no reachable leak.
+  - `[false]` `[reject]` The logged-status redaction goes beyond the plan (intent-alignment) — AD-35 keeps a password out of every log line, and a routine sentence quoting it is the case this batch adds.
+  - `[low]` `[reject]` "Poll answers 200" is observed on `GuardedView` and `%ToJSON()`, not the handler (intent-alignment) — the spec's Red names `GuardedView`, which `Api/Turn.cls` serializes.
+  - `[low]` `[reject]` A cut inside a surrogate pair stores 4,095 characters (intent-alignment) — cosmetic; the surrogate-safe cut is correct.
+  - `[low]` `[reject]` Only the tool step's text takes the new bound (intent-alignment) — the spec leaves model-step text to AD-31 and names the announce steps out of the cut.
+  - `[low]` `[reject]` "Confirm still refuses by name" is pinned only while the turn runs (intent-alignment) — no server path changed; case (b) pins the refusal.
+  - `[medium]` `[patch]` The clearing direction is untested (intent-alignment) — same root as the clearing-case row.
+  - `[low]` `[patch]` `core/turn.ts` read `globalThis.document` for its hidden default (intent-alignment, AD-19) — `main.ts` now passes the probe, as it passes the document to `theme.ts` and `csv.ts`; the default is never hidden.
+  - `[medium]` `[patch]` DW-1440's AC is checked only at the derivation (intent-alignment) — same root as the first row; the 403 half rests on the reproduction (200 with both grants).
+  - `[medium]` `[patch]` No test covers a two-resource role (intent-alignment) — same root as the first row.
+  - `[false]` `[reject]` Two sources for the globals database (intent-alignment) — both read the same configuration, and the split leg asserts they agree.
+  - `[low]` `[patch]` "No data privilege beyond it" is untrue on a split namespace (intent-alignment) — corrected in place in `Installer.cls` and `docs/DEVELOPMENT.md`; the spine's AD-21 carries the sentence too (lead's).
+  - `[low]` `[reject]` Batch b's Verification does not record EXPERIENCE.md's `wc -l` (intent-alignment) — the fix is a spec edit; 993 before and after is in the Auto Run Result.
+  - `[false]` `[reject]` `## Auto Run Result` describes only batch a (intent-alignment) — it is written at finalize.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -424,13 +456,26 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 **Batch b (loop):**
 
-- Classes: `AccountPasswordWire`, `LedgerStep`, `TurnStream`, `WebApp`, `Smoke`.
+- Classes: `AccountPasswordWire`, `LedgerStep`, `TurnStream`, `TurnTools`, `WebApp`, `Smoke`.
 - Tiers: `npm run test:tools` (`turn.test.mjs` and EXPERIENCE.md's citations), `npm run test:components`. Spec: `proposal-privilege`.
-- Before the fix: the DW-1440 reproduction output is recorded.
-- `mutation:` delete the `ValidatePassword` arm → the routine leg answers 500 (red).
-- `mutation:` cut at `TEXTMAXLENGTH` again → the `LedgerStep` cap and `<MAXSTRING>` legs go red.
-- `mutation:` never arm the re-read → the `turn.test.mjs` re-read case goes red.
-- `mutation:` derive the routines database only → the `WebApp` split-namespace leg goes red.
+- DW-1440 reproduction, before the fix (measured on `ocupilot-b-ci`, then removed):
+  - `%DB_USER` carries no public permission, so namespace `OCUPSPLIT` took Globals `USER` and Routines `HSCUSTOM`, and no database was created. `$zu(90,21,"OCUPSPLIT")` read `11^^/durable/iris/mgr/user/^%DB_USER^8194`.
+  - Unauthenticated `/ocupsplit` dispatching to `OcuPilot.Api.Readiness`, `MatchRoles` `:OcuPilotSplitProbe`. With the role granting `%DB_HSCUSTOM:R` only: `HTTP/1.1 403 Forbidden`, `CONTENT-LENGTH: 0`, no body. With `%DB_HSCUSTOM:R,%DB_USER:R`: `HTTP/1.1 200 OK`, `{"installed":false,"version":"","state":"unreadable"}`.
+  - `Security.Roles` stored `%DB_USER:R,%DB_HSCUSTOM:R` as `%DB_HSCUSTOM:R,%DB_USER:R`, and a six-resource set in `$Order` collation order.
+  - The application, the role and the namespace were deleted and each read back absent; `/ocupsplit` then answered 404.
+- `mutation:` delete the `ValidatePassword` arm → run 122 red on `TestAValidationRoutineRefusalCarriesTheRoutinesSentence` alone (neither refusal answered 422; the setting and the routine still read back removed); reverted byte-identical, run 124 6/6.
+- `mutation:` drop the `NOSUCHUSERCODE` test → run 123 red on `TestAnUnconfirmedRefusalStaysAnInternalError` alone (the `1446,838` leg answered 422); reverted byte-identical, run 124 6/6.
+- `mutation:` cut at `TEXTMAXLENGTH` again → run 119 red on `TestALongTurnsProgressStillSerializes` (`<MAXSTRING>` from `%ToJSON()`) and on the cap leg of `TestAToolStepStoresTheResultContentTheModelWasHanded`; reverted byte-identical, run 120 4/4.
+- `mutation:` hand the model the step's cut text in `Loop.AnswerTools` → run 135 red on `TurnTools.TestALongToolResultReachesTheModelWhole` (and on `TestAReplysToolResultsShareOneBudget`); reverted byte-identical, run 136 13/13.
+- `mutation:` never arm the re-read → `turn.test.mjs` 72/76, four re-read cases red (the nothing-armed case asserts absence and stays green), and on the rebuilt bundle `proposal-privilege` (c) red at its 20 s re-read wait while (a) and (b) passed; reverted byte-identical, `turn.test.mjs` 76/76 and the rebuilt bundle's spec 3/3.
+- `mutation:` derive the routines database only → run 126 red on `TestTheFloorCoversASplitNamespacesTwoDatabases` alone (derived `%DB_HSCUSTOM` only); reverted byte-identical, run 127 26/26.
+- `mutation:` grant only the first floor resource → run 143 red on `TestTheFloorCoversASplitNamespacesTwoDatabases` alone ("granted read on both, in collation order"); reverted byte-identical, run 145 26/26.
+- `mutation:` count any validator error as a refusal → run 139 red on the routine leg's raising-routine assertions (the wire answered 422 carrying `<DIVIDE>Boom+1^OcuPilotPwProbe`); reverted byte-identical, run 144 6/6.
+- `mutation:` answer 422 whenever the validator is consulted → run 141 red on `TestAnUnconfirmedRefusalStaysAnInternalError` ("a 5001 the validator does not confirm stays a 500") and the raising-routine assertions; reverted byte-identical, run 144 6/6.
+- `mutation:` drop the quoted-sentence fallback → run 142 red on the Quote leg and the current-password leg; reverted byte-identical, run 144 6/6.
+- `mutation:` ignore the current password in `QuotesPassword` → run 140 red on the current-password leg alone; reverted byte-identical, run 144 6/6.
+- `mutation:` merge a re-read's line only when it warns → `turn.test.mjs` 77/78, the clearing case red; reverted byte-identical, 78/78.
+- `mutation:` stop the re-read before the turn request → `turn.test.mjs` 77/78, the refused-send case red; reverted byte-identical, 78/78.
 
 **Batch c (loop):**
 
@@ -466,27 +511,31 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch a pass (DW-1829, DW-1831).** Batches b, c, e and d are untouched and stay unchecked.
+**Batch b pass (DW-1289, DW-1210, DW-1669, DW-1440).** Batches c, e and d are untouched and stay unchecked.
 
 - **Change:**
-  - DW-1829: the agent leg holds its seeded compact's lock before the resume, waits 3 s, then mints and confirms. It asserts the confirm applies, the vendor records the pause request, and the ledger row and marker land. The retry loop is gone.
-  - DW-1831: the issuer fixture listens once and answers each connection on a forked device, flushed, lingering, then closed. The new leg runs the four document cases back to back at a 0.3 s linger and asserts the linger was in effect.
+  - DW-1289: a change refused outside 952, 845, 958 and 838 is put to `ValidatePassword` in the caller's process. A refusal it confirms (5001, 845 or 958) is a 422 on `newPassword` with its first error text, or the published sentence when that text is empty or contains either password. Anything else, a raising routine's 5002 included, stays 500. `ClassifyRefusal` holds the classification.
+  - DW-1210: `Limits.TOOLSTEPTEXTMAXLENGTH` is 4,096. A finished tool step keeps 4,095 characters plus U+2026 and is marked truncated; the model's `tool_result` is not cut.
+  - DW-1669: once a turn ends, `TurnStore` re-reads its progress every 15 s while one of its proposals is live and unexpired, and copies only `privilege` onto rows with nothing in flight. It stops when none is live, on a 404, on an accepted send, on New conversation and at sign-out, and skips a tick while the page is hidden (`main.ts` passes the probe).
+  - DW-1440: `CodeDatabaseResource` answers the routine and default globals databases' resources and their `:R` grants, once each in collation order, and both matching roles take the grants.
 - **Files:**
-  - `src/OcuPilot/Test/BackgroundSeed.cls`: `Hold`, `RequestOf`, a shared `Read`; `Remove` cancels a held task before releasing it.
-  - `src/OcuPilot/Test/BackgroundTasksLive.cls`: the held agent leg; `AGENTATTEMPTS` and its helpers deleted.
-  - `src/OcuPilot/Test/OAuthIssuerFixture.cls`: one listening port, `Select`/`Fork` per connection, `Converse`, a `pLinger` argument on `Start`.
-  - `src/OcuPilot/Test/OAuthServerDiscover.cls`: `TestTheDocumentCasesHoldAgainstALingeringIssuer`, with shared `DocumentCases` and `AssertCauses`.
-- **Review:** 10 findings. Three were patched (1 medium, 2 low): the linger timing assertion, `Hold`'s lock-timeout bound, and the class header. Seven were rejected, each with its reason in the triage log. Nothing was deferred.
-- **Follow-up review:** not recommended; no high was patched, and only one medium.
-- **Verification on `ocupilot-b-ci`:**
-  - The loader printed `OCUPILOT-LOAD:OK:errors=0` after the last edit.
-  - The eight batch a classes read 0 failed in `%UnitTest_Result`: runs 100-107, then 110 (`OAuthServerDiscover`) and 111 (`BackgroundTasksLive`) on the patched tree.
-  - The four browser specs passed against the bundle rebuilt from this tree (`index.html` checksum equal in `dist/` and in the container): background-tasks 2/2, local-databases 6/6, oauth-server-description-editor 4/4, oauth-client-editor 5/5.
-  - `check-objectscript.py` reported 0 problems, and `lint-docs.sh` reported 0 issues.
-  - Mutations: runs 98/99 and 89/90 (implement) and 109/110 (review), as listed under Verification.
+  - `src/OcuPilot/Api/Account.cls`: `ClassifyRefusal`, `QuotesPassword`, `NOSUCHUSERCODE`, `ROUTINEREFUSALCODE`.
+  - `src/OcuPilot/Kernel/Agent/Limits.cls`, `Kernel/State/Step.cls`, `Kernel/Agent/Loop.cls` (comment): the tool-step cut.
+  - `src/OcuPilot/Install/Installer.cls`, `Install/Roster.cls` and `Api/Readiness.cls` (docs): the two-database floor.
+  - `ui/src/app/core/turn.ts`, `ui/src/main.ts`: the ended turn's re-read.
+  - Tests: `Test/AccountPasswordWire.cls` (the routine leg over four entry points, and the classifier leg), `Test/LedgerStep.cls` (the cap and 60-step legs), `Test/TurnTools.cls` (the model receives the whole result), `Test/WebApp.cls` (the split-namespace leg with its grants and a probe role), `ui/tools/turn.test.mjs` (seven re-read cases), `ui/browser/proposal-privilege.browser-spec.mjs` (case (c)).
+  - Docs: EXPERIENCE.md :612 in place (993 lines before and after); `docs/DEVELOPMENT.md` :293-301 and :310.
+- **Review:** 27 findings (high 1, medium 7, low 15, false 4). Patched entries: 1 high (a raising validation routine's error text reached the screen), 3 medium (the split-namespace grants unpinned, the clearing direction untested, a refused send stopping the re-read), 5 low. 13 findings were rejected, each with its reason in the triage log. Nothing was deferred.
+- **Follow-up review:** recommended, because a high was patched. The unverified risk: only 5001, 845 and 958 now count as a validator refusal, so a routine that refuses with another code is answered 500, and which codes routines use in the field is unmeasured.
+- **Verification on `ocupilot-b-ci`** (the loader printed `OCUPILOT-LOAD:OK:errors=0` after the last edit):
+  - 0 failed in `%UnitTest_Result`: `AccountPasswordWire` run 144 (6/6), `WebApp` 145 (26/26), `Smoke` 146 (40/40), `TurnTools` 136 (13/13), `LedgerStep` 120 (4/4), `TurnStream` 128 (6/6).
+  - `npm run test:tools` 1,729/1,729; `npm run test:components` 145 files, 1,958 tests; `proposal-privilege` 3/3 on the bundle rebuilt from this tree and redeployed (`index.html` checksums equal). Bundle initial total 2.31 MB.
+  - `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues.
+  - The DW-1440 reproduction is recorded under Verification. Every probe object read back absent afterwards: `OCUPSPLIT`, `/ocupsplit`, both probe roles, `OCUPILOTSPLITPROBE`, the validation routines and the setting.
+  - Mutations: runs 119/120, 122-124, 126/127, 135/136 and 139-145, and the `turn.test.mjs` pairs, as listed under Verification.
 - **Residual risks:**
-  - The screen and admin-API legs keep the resume-then-pause window (spec residual).
-  - The hold outlasts the compact's work only by the 10 s lock timeout.
+  - The 403 half of DW-1440's AC rests on the reproduction (200 with both grants), not on a test.
+  - The spine's AD-21 still says the floor role buys "no data privilege beyond it"; on a split namespace it also reads the globals database, which the lead's AD-21 amendment may want to say.
 
 Status: done
 Blocking condition: none

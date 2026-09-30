@@ -33,9 +33,19 @@ Parameter WRONGPASSWORDCODE = 952;
 
 /// <p>The two embedded codes whose own text is passed through as a policy refusal's
 /// <code>reason</code>: <code>$$$UserPasswordInvalidFormat</code> and
-/// <code>$$$InvalidPasswordPattern</code>. The allow-list is closed -- vendor text outside it is
-/// never rendered (AD-39).</p>
+/// <code>$$$InvalidPasswordPattern</code>. The change's text for any other code is never rendered
+/// (AD-39); a refusal the password validator confirms carries the validator's own text instead
+/// (<method>ClassifyRefusal</method>).</p>
 Parameter POLICYCODES = "845,958";
+
+/// <p>The embedded code for an account the change could not find
+/// (<code>$$$UserDoesNotExist</code>). A refusal carrying it is answered 500 without consulting the
+/// password validator.</p>
+Parameter NOSUCHUSERCODE = 838;
+
+/// <p>The code a password validation routine's refusal carries, with the routine's own sentence as
+/// its text (<code>$$$GeneralError</code>).</p>
+Parameter ROUTINEREFUSALCODE = 5001;
 
 /// <p>Answer <code>POST /account/password {"currentPassword","newPassword"}</code>: change the
 /// calling user's own password and answer <code>200 {}</code>.</p>
@@ -44,8 +54,9 @@ Parameter POLICYCODES = "845,958";
 /// a body the server could not read or decode answers 500 <code>INTERNAL</code>. A refused change
 /// is one 422 <parameter>OcuPilot.Api.Error.ACCOUNTVALIDATION</parameter> carrying one violation --
 /// on <code>currentPassword</code> when the old password was wrong, on <code>newPassword</code> when
-/// the instance's policy refused the new one, with the instance's own sentence as that violation's
-/// <code>reason</code>. Any other outcome is a 500 whose detail reaches the log alone.</p>
+/// the instance's policy or its password validation routine refused the new one, with the
+/// instance's own sentence as that violation's <code>reason</code>. Any other outcome is a 500
+/// whose detail reaches the log alone (<method>ClassifyRefusal</method>).</p>
 ClassMethod HandlePasswordChange() As %Status
 {
     Set tSC = $$$OK
@@ -81,15 +92,18 @@ ClassMethod HandlePasswordChange() As %Status
         Set tNew = tRequestBody.%Get("newPassword")
         Set tRequestBody = ""
         Set tChanged = $System.Security.ChangePassword(..CallerUsername(), tNew, tCurrent, .tChangeSC)
+        If tChanged {
+            Set tCurrent = ""
+            Set tNew = ""
+            Set tSC = ##class(OcuPilot.Api.Response).JSON({})
+            Quit
+        }
+        Set tHttpStatus = ..ClassifyRefusal($Get(tChangeSC, $$$OK), tCurrent, tNew, ..CallerUsername(), .tField, .tCode, .tReason, .tLogged)
         ; Cleared here rather than after the render: nothing below this line needs either value,
         ; and the renders can raise.
         Set tCurrent = ""
         Set tNew = ""
-        If tChanged {
-            Set tSC = ##class(OcuPilot.Api.Response).JSON({})
-            Quit
-        }
-        Set tSC = ..RenderChangeRefusal($Get(tChangeSC, $$$OK))
+        Set tSC = ..RenderChangeRefusal(tHttpStatus, tField, tCode, tReason, tLogged)
     } Catch ex {
         Set tCurrent = ""
         Set tNew = ""
@@ -125,26 +139,85 @@ ClassMethod RenderBodyRefusal(pStage As %String) As %Status [ Private ]
     Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONACCOUNTPASSWORDBODY, ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDBODY)
 }
 
-/// <p>Map a refused change onto one violation, or onto a 500.</p>
-/// <p>The wrong-old-password arm is tested first and is the only one that can answer on
-/// <code>currentPassword</code>; a code outside both allow-lists renders
-/// <method>OcuPilot.Api.Error.RenderInternal</method>'s generic reason, with <var>pStatus</var>
-/// reaching <class>OcuPilot.Kernel.Audit.Log</class> alone (AD-39).</p>
-ClassMethod RenderChangeRefusal(pStatus As %Status) As %Status [ Private ]
+/// <p>Classify the refused change <var>pStatus</var>: answer 422 with the one violation's
+/// <var>pField</var>, <var>pCode</var> and <var>pReason</var> (<code>""</code> for the code's
+/// published sentence), or 500 with <var>pLogged</var>, the status the log receives.</p>
+/// <p>In order: a wrong current password is a violation on <code>currentPassword</code>; an
+/// allow-listed policy code is one on <code>newPassword</code> carrying that code's own text; an
+/// account the change could not find is a 500. Any other refusal is put to
+/// <method>%SYSTEM.Security.ValidatePassword</method> for <var>pNew</var> and
+/// <var>pUsername</var>, in the caller's process (AD-49): when it refuses -- its status carries
+/// <parameter>ROUTINEREFUSALCODE</parameter> or a <parameter>POLICYCODES</parameter> code -- the
+/// violation is on <code>newPassword</code> with the validator's first error text; when it answers
+/// OK, or fails any other way (a routine that raises an error answers 5002, naming its own line),
+/// the refusal is unconfirmed and stays a 500. The change's own text is never rendered.</p>
+/// <p>Neither password leaves through the validator's text or the logged status: the first is
+/// replaced by the published sentence when it is empty or contains <var>pCurrent</var> or
+/// <var>pNew</var>, and a logged status whose text contains either is replaced by one naming the
+/// codes alone (AD-35).</p>
+ClassMethod ClassifyRefusal(pStatus As %Status, pCurrent As %String, pNew As %String, pUsername As %String, Output pField As %String, Output pCode As %String, Output pReason As %String, Output pLogged As %Status) As %Integer
 {
+    Set pField = ""
+    Set pCode = ""
+    Set pReason = ""
+    Set pLogged = $$$OK
     Set tCodes = $System.Status.GetErrorCodes(pStatus)
     If ("," _ tCodes _ ",") [ ("," _ ..#WRONGPASSWORDCODE _ ",") {
-        Set tViolations = 1
-        Set tViolations(1) = $ListBuild("currentPassword", ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDCURRENT, "")
-        Quit ..RenderViolations(.tViolations)
+        Set pField = "currentPassword"
+        Set pCode = ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDCURRENT
+        Quit 422
     }
     Set tPolicyText = ..PolicyText(pStatus, tCodes, .tIsPolicy)
     If tIsPolicy {
+        Set pField = "newPassword"
+        Set pCode = ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDPOLICY
+        Set pReason = tPolicyText
+        Quit 422
+    }
+    If '(("," _ tCodes _ ",") [ ("," _ ..#NOSUCHUSERCODE _ ",")) {
+        Set tValidSC = $System.Security.ValidatePassword(pNew, pUsername)
+        Set tValidCodes = "," _ $System.Status.GetErrorCodes(tValidSC) _ ","
+        Set tRefusalCodes = ..#ROUTINEREFUSALCODE _ "," _ ..#POLICYCODES
+        Set tRefused = 0
+        For tI = 1:1:$Length(tRefusalCodes, ",") {
+            If tValidCodes [ ("," _ $Piece(tRefusalCodes, ",", tI) _ ",") Set tRefused = 1
+        }
+        If tRefused {
+            Set pField = "newPassword"
+            Set pCode = ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDPOLICY
+            Set pReason = $System.Status.GetOneStatusText(tValidSC, 1)
+            Set tValidSC = ""
+            If ..QuotesPassword(pReason, pCurrent, pNew) Set pReason = ""
+            Quit 422
+        }
+    }
+    Set pLogged = pStatus
+    If ..QuotesPassword($System.Status.GetErrorText(pStatus), pCurrent, pNew) {
+        Set pLogged = $$$ERROR($$$GeneralError, "the password change was refused with codes " _ tCodes)
+    }
+    Quit 500
+}
+
+/// <p>Whether <var>pText</var> contains <var>pCurrent</var> or <var>pNew</var>, ignoring either
+/// when it is empty.</p>
+ClassMethod QuotesPassword(pText As %String, pCurrent As %String, pNew As %String) As %Boolean [ Private ]
+{
+    If (pCurrent '= "") && (pText [ pCurrent) Quit 1
+    If (pNew '= "") && (pText [ pNew) Quit 1
+    Quit 0
+}
+
+/// <p>Render <method>ClassifyRefusal</method>'s answer: one violation for a 422, and otherwise
+/// <method>OcuPilot.Api.Error.RenderInternal</method>'s generic reason, with <var>pLogged</var>
+/// reaching <class>OcuPilot.Kernel.Audit.Log</class> alone (AD-39).</p>
+ClassMethod RenderChangeRefusal(pHttpStatus As %Integer, pField As %String, pCode As %String, pReason As %String, pLogged As %Status) As %Status [ Private ]
+{
+    If pHttpStatus = 422 {
         Set tViolations = 1
-        Set tViolations(1) = $ListBuild("newPassword", ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDPOLICY, tPolicyText)
+        Set tViolations(1) = $ListBuild(pField, pCode, pReason)
         Quit ..RenderViolations(.tViolations)
     }
-    Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pStatus))
+    Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pLogged))
 }
 
 /// <p>The instance's own sentence for the first allow-listed policy code in <var>pCodes</var>, and

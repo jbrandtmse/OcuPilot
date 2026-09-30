@@ -2245,61 +2245,89 @@ ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef
     Quit tSC
 }
 
-/// <p>The guarding resource of <var>pInstallNs</var>'s <b>routine</b> database -- the
-/// database OcuPilot's own code is compiled into (AD-9) -- read from
-/// <class>SYS.Database</class> rather than assembled from the <code>%DB_&lt;NAME&gt;</code>
+/// <p>The guarding resources of <var>pInstallNs</var>'s <b>routine</b> database -- the database
+/// OcuPilot's own code is compiled into (AD-9) -- and of its <b>default globals</b> database, the
+/// one <method>%CSP.REST.AccessCheck</method> tests before any dispatch class runs (AD-21), as
+/// <var>pResources</var>, a comma-separated list with each resource once, in the order
+/// <class>Security.Roles</class> stores a role's resources (collation order, measured on this
+/// build). One resource where the two databases coincide. <var>pGrants</var> is the same list with
+/// each resource granted <code>:R</code>, the resource set every matching role carries. Each is read
+/// from <class>SYS.Database</class> rather than assembled from the <code>%DB_&lt;NAME&gt;</code>
 /// convention, so a database whose resource was named some other way is still described
-/// correctly. <b>Caller contract:</b> <code>$NAMESPACE</code> must already be
-/// <code>%SYS</code>.</p>
-ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResource As %String) As %Status [ Private ]
+/// correctly. It reads in <code>%SYS</code> and restores the caller's namespace (AD-16).</p>
+ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResources As %String, Output pGrants As %String) As %Status
 {
-    Set pResource = ""
+    Set pResources = ""
+    Set pGrants = ""
     Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
     Try {
+        Set $NAMESPACE = "%SYS"
         Set tNsObj = ##class(Config.Namespaces).Open(pInstallNs)
         If '$IsObject(tNsObj) {
             Set tSC = $$$ERROR($$$GeneralError, "Could not open namespace configuration for " _ pInstallNs)
             Quit
         }
-        If tNsObj.Routines = "" {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the routine database for namespace " _ pInstallNs)
-            Quit
+        Kill tByName
+        For tRole = "routine", "globals" {
+            Set tDbName = $Select(tRole = "routine": tNsObj.Routines, 1: tNsObj.Globals)
+            If tDbName = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the " _ tRole _ " database for namespace " _ pInstallNs)
+                Quit
+            }
+            Kill tDbProps
+            Set tSC = ##class(Config.Databases).Get(tDbName, .tDbProps)
+            If $$$ISERR(tSC) Quit
+            Set tDbObj = ##class(SYS.Database).%OpenId($Get(tDbProps("Directory")))
+            If '$IsObject(tDbObj) {
+                Set tSC = $$$ERROR($$$GeneralError, "Could not open SYS.Database for the " _ tRole _ " database of " _ pInstallNs)
+                Quit
+            }
+            Set tResource = tDbObj.ResourceName
+            Set tDbObj = ""
+            If tResource = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "The " _ tRole _ " database of " _ pInstallNs _ " carries no guarding resource")
+                Quit
+            }
+            Set tByName(tResource) = ""
         }
-        Set tSC = ##class(Config.Databases).Get(tNsObj.Routines, .tDbProps)
         If $$$ISERR(tSC) Quit
-        Set tDbObj = ##class(SYS.Database).%OpenId($Get(tDbProps("Directory")))
-        If '$IsObject(tDbObj) {
-            Set tSC = $$$ERROR($$$GeneralError, "Could not open SYS.Database for the routine database of " _ pInstallNs)
-            Quit
-        }
-        Set pResource = tDbObj.ResourceName
-        If pResource = "" {
-            Set tSC = $$$ERROR($$$GeneralError, "The routine database of " _ pInstallNs _ " carries no guarding resource")
+        Set tResource = ""
+        For {
+            Set tResource = $Order(tByName(tResource))
+            If tResource = "" Quit
+            Set pResources = pResources _ $Select(pResources = "": "", 1: ",") _ tResource
+            Set pGrants = pGrants _ $Select(pGrants = "": "", 1: ",") _ tResource _ ":R"
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    Set $NAMESPACE = tOrigNS
     Quit tSC
 }
 
 /// <p>Ensure every roster application's <b>one</b> declared matching role exists and grants
-/// <b>read on the install namespace's routine database and nothing else</b> (AC1, AD-21 as
-/// amended 2026-09-11). An application whose roster entry declares <code>""</code> carries no
-/// matching role at all and no role is created for it.</p>
+/// <b>read on the install namespace's routine and default globals databases and nothing
+/// else</b>, one grant where they coincide (AC1, AD-21). An application whose roster entry declares
+/// <code>""</code> carries no matching role at all and no role is created for it.</p>
 /// <p><b>Why these roles exist at all.</b> Database READ is routine-execution permission
 /// (AD-9), so an <b>anonymous</b> request cannot load
 /// <class>OcuPilot.Api.StaticHandler</class> or <class>OcuPilot.Api.Readiness</class> from the
-/// install namespace's database unless the application grants read on it: without the role IRIS
-/// refuses the same request 403 with an empty body before the dispatch class runs (measured on
-/// the readiness application). The role buys the right to execute OcuPilot's own code
-/// and no data privilege beyond it -- OcuPilot's state lives in the separate protected database
-/// (AD-9), which these roles do not reach.</p>
+/// install namespace's routine database unless the application grants read on it, and
+/// <method>%CSP.REST.AccessCheck</method> refuses it unless the application grants read on the
+/// default globals database: lacking either grant, IRIS refuses the request 403 with an empty body
+/// before the dispatch class runs (measured on the readiness application, and on a namespace whose
+/// two databases differ). The role buys the right to execute OcuPilot's own code and to pass that
+/// check, and no privilege over OcuPilot's state, which lives in the separate protected database
+/// (AD-9) these roles do not reach.</p>
 /// <p><b>One role per application, not one shared role</b> (Story 1.17, the owner's overnight
 /// decision). Reusing the shell's role for the readiness application would be one fewer object
 /// but leaves a role named for one application matched by another, and keeps the role list a
 /// literal; declaring it per application in the roster makes the floor data and makes the
-/// install-time assertion generic. Every role's resource set is byte-identical: read on the
-/// install namespace's code database and nothing else.</p>
+/// install-time assertion generic. Every role's resource set is byte-identical, listed in the
+/// order <class>Security.Roles</class> stores it so the comparison below reads an unchanged role
+/// as correct.</p>
 /// <p>Guard-then-act with drift repair, like every other ensure step: an existing role whose
 /// resource set has moved, or which has acquired a granted role (AD-10's "granting privilege
 /// through any path"), is repaired back and the repair reported.</p>
@@ -2307,9 +2335,8 @@ ClassMethod EnsureApplicationRoles(ByRef pNames, pInstallNs As %String, ByRef pR
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ..CodeDatabaseResource(pInstallNs, .tCodeResource)
+        Set tSC = ..CodeDatabaseResource(pInstallNs, .tCodeResources, .tWantResources)
         If $$$ISERR(tSC) Quit
-        Set tWantResources = tCodeResource _ ":R"
 
         For tI = 1:1:$Length(pNames("appKeys"), ",") {
             Set tKey = $Piece(pNames("appKeys"), ",", tI)
@@ -2330,7 +2357,7 @@ ClassMethod EnsureApplicationRoles(ByRef pNames, pInstallNs As %String, ByRef pR
                     Do ..Report(.pReports, "info", "OcuPilot web application matching role already correct", {"role": (tName), "application": ($Get(pNames("appName", tKey)))})
                 }
             } Else {
-                Set tSC = ##class(Security.Roles).Create(tName, "OcuPilot: read-only on the install namespace's code database", tWantResources, "")
+                Set tSC = ##class(Security.Roles).Create(tName, "OcuPilot: read-only on the install namespace's routine and default globals databases", tWantResources, "")
                 If $$$ISERR(tSC) Quit
                 Do ..Report(.pReports, "info", "Created an OcuPilot web application matching role", {"role": (tName), "application": ($Get(pNames("appName", tKey))), "resources": (tWantResources)})
             }

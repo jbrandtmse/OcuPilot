@@ -485,4 +485,31 @@ Method TestAJobWhoseLoopThrowsStillAppendsAndReleases()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tConvKey), "the conversation is removed")
 }
 
+/// <p>A tool result longer than <code>TOOLSTEPTEXTMAXLENGTH</code> reaches the model whole, while
+/// the tool step the progress poll projects keeps its first 4,096 characters ending in U+2026
+/// (AD-33).</p>
+/// <p>Mutation (Rule 19): hand the model the step's cut text in
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> -&gt; the model's copy loses the
+/// result's tail and this goes red.</p>
+Method TestALongToolResultReachesTheModelWhole()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Set tBlob = 10000
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("", [{"id": "toolu_1", "name": "probe_counter_read", "input": {"blob": (tBlob)}}]))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Set tSent = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#STUB, "Recorded", "body", 2))
+    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tSent.messages.%Get(2).content.%Get(0).content, .tWrapped)
+    Do $$$AssertTrue(tBody [ $Translate($Justify("", tBlob), " ", "b"), "the model's tool_result carries all " _ tBlob _ " characters of the result: " _ $Length(tBody))
+
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Set tText = ""
+    For tI = 0:1:tView.steps.%Size() - 1 {
+        If tView.steps.%Get(tI).kind = "tool" Set tText = tView.steps.%Get(tI).text
+    }
+    Do $$$AssertEquals($Length(tText) _ "|" _ $Extract(tText, *), "4096|" _ $Char(8230), "while the tool step keeps 4,096 characters ending in U+2026")
+}
+
 }

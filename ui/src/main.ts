@@ -176,6 +176,7 @@ const turn = new TurnStore({
   storage: readSessionStorage(),
   navigationType: readNavigationKind,
   bus,
+  hidden: () => document.visibilityState === 'hidden',
 });
 void turn.restore();
 const screenStores = new ScreenStores({ account: accountPreferences });
