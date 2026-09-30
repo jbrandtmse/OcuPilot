@@ -6094,6 +6094,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a PermittedFields-aware settable set in Registry and screen-mirror; reachable only by a descriptor author
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=68f76262+2b3e4ffd: secret must be the tool's own secret row, confirm+action narrowed; CI 36756449702
 
 ### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
@@ -7414,6 +7415,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=flag a customization role by its privileges (a role read), not its name; high fix-risk, post-release
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=68f76262+2b3e4ffd: roles judged by grants, read failure privileged; CI 36756449702; merged 8baea9cd
 
 ### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -8573,6 +8575,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
 - evidence: reproduced on Linux with git -c core.autocrlf=true clone: durable-init exit 2; with only the .sh files LF the CRLF .cls files compile and install (healthy in 132 s, STARTPATH-OK); '*.sh text eol=lf' in .gitattributes gives 12/12 LF under autocrlf=true; the index is already LF
 - 2026-09-30T17:02:04Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=owner note=owner-approved for 1.0.4, before the 14:00 cut: add '*.sh text eol=lf' to .gitattributes and a test that pins every tracked *.sh to eol=lf (git check-attr); its own commit, ahead of 23.2's remaining batches; outside 23.2's cap of 12 by owner instruction
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=731bf63e+5094abee: *.sh and .githooks/** eol=lf, line-endings test; CI 36756449702; merged 8baea9cd
 
 ### DW-1871: With no agent definition, every full load of /ocupilot/ (sign-in, reload, new tab) redirects to /agent/definitions/edit, and Cancel lands on the empty Definitions list rather than Home
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
@@ -8589,3 +8592,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-1870 verification-gap layer, scratch repo: a pre-rule clone fast-forwarded onto 731bf63e kept 16/16 scripts with CR; deleting and re-checking out the scripts gave 0/16
 - 2026-09-30T17:49:33Z status=decision-pending owner=burndown by=harvest note=human=decide whether the 1.0.4 release notes or README tell existing Windows clones to re-check out scripts/
 - 2026-09-30T18:10:26Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=notes+README; verified: git checkout HEAD -- scripts .githooks _bmad/scripts (17/17 CR to 0; not git rm --cached)
+
+### DW-1876: The background seed writes about 1.2 GB per fill, and on a CI runner the instance suspended updates for 30 s (low WIJ space) while those fills ran, stalling whatever else the shard runs
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Run 36741141564 attempt 1 shard 2/3 messages.log: WIJ expansions during seed fills, updates suspended 16:12:17 to 16:12:47; cause is (inference)
+- 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=a CI shard's messages.log shows updates suspended for low WIJ space again, or a class fails during it
+
+### DW-1877: Whether BackgroundSeed's 60 s teardown wait (ENDSECONDS) covers every write stall a CI runner produces is unverified: the committed stand-in is a stopped job, not a write suspension
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: DW-1829 follow-up 398c0190: TestTheTeardownOutlastsAStalledCompact stops the job for 35 s; CI's measured stall was 30 s
+- 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=BackgroundTasksLive teardown fails on CI again with 398c0190 in place (seed left, task over seed)
