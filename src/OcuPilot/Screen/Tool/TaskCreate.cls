@@ -192,6 +192,14 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
+/// <p>The task type's privilege judged again at the agent's confirm (AD-6, AD-40), over the type the
+/// stored arguments name (<method>OcuPilot.Area.Task.TaskRules.TypeProblem</method>), so a caller who
+/// lost it since the mint is refused.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TypeProblem(pArgs, .pProblem)
+}
+
 /// <p>The output directory, derived at the write (AD-21): the manager directory when the body names
 /// an output file, and empty otherwise. Computed on each call, never cached.</p>
 ClassMethod DerivedFields(pPayload As %DynamicObject)

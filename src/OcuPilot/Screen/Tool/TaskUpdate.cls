@@ -14,6 +14,9 @@
 /// runs as is ordinary, and one that moves it to an account neither stored nor the caller's needs
 /// <code>%Admin_Secure:USE</code> and is minted destructive with
 /// <parameter>CONSEQUENCERUNSASOTHER</parameter>.</p>
+/// <p><b>The task type's privilege is judged again at the confirm</b> by
+/// <method>OcuPilot.Area.Task.TaskRules.TargetProblem</method>, which reads the task's own type fresh
+/// as the edit's rules do for any change, and a proposed edit always changes something.</p>
 Class OcuPilot.Screen.Tool.TaskUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -242,6 +245,13 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     If $$$ISERR(tSC) Quit tSC
     Set pProblem = $ClassMethod(..#RULES, "Problem", .tViolations)
     Quit $$$OK
+}
+
+/// <p>The task type's privilege judged again at the agent's confirm (AD-6, AD-40), so a caller who
+/// lost it since the mint is refused.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(pIdValue, .pProblem)
 }
 
 /// <p><parameter>CONSEQUENCERUNSASOTHER</parameter> when the edit moves the task to run as another
