@@ -7893,6 +7893,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci 2026-09-28 by Story 18.2's plan; the eight are listed under the spec's Design Notes > Vendor defect candidates; OcuPilot guards each on its own side (pairs refused before any call, no maxRows on DELETE)
 - 2026-09-28T10:34:45Z status=decision-pending owner=burndown by=runner note=human=report the eight to intersystems-community/sysadmin-api-specification as candidate defects, as DW-1527 was
+- 2026-09-30T02:57:24Z status=wontfix-accepted by=merge_gate note=by analogy with the owner's DW-1820 decision (2026-09-29): well-known vendor behaviour, no upstream report; OcuPilot designs around each; reopen_if=a 2027.1 image answers any of the eight differently
 
 ### DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: med | fix-risk: med | footprint: in-epic
@@ -8332,16 +8333,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: in-story
 - evidence: Spec Tasks fix DatabaseIntegrityLog at sideBarPosition 0 and name only the flow's Open the integrity log; its doc comment claimed Databases opens it (corrected in review). The command box offers listed screens only (Conventions, screens with no side-bar position).
 - 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=product call: list the Integrity log under OS management after Databases, or give Databases a link; recommended: list it
+- 2026-09-30T02:57:24Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=approved as recommended (orchestrator 2026-09-30): the Integrity log gets an OS management side-bar position right after Databases; a small item in 18.15
 
 ### DW-1859: A caller that cannot write the admin API's async-task rows (the disk tools' least-privileged pairs) leaves one finished row per queued call, each STATE read's INFO poll included, and AD-37's sweep deletes them by SQL, which logs ERROR #7846 per row (inference for the sweep)
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: 18.4 Auto Run Result: DatabaseActionsGate's principals left 773 rows ForgetTask could not delete; rework 1 deleted 282 such rows by SQL and messages.log gained one #7846 per row (measured). AdminPort.SweepOwnTasks is an SQL DELETE on the same table (read at review).
 - 2026-09-30T02:04:14Z status=escalated owner=burndown by=cr note=decide: let a caller remove its own finished rows, or sweep without the vendor trigger; measure the sweep's #7846 first
+- 2026-09-30T02:57:24Z status=routed owner=burndown by=merge_gate note=approved as recommended and the priority (orchestrator 2026-09-30): measure the retention sweep on ocupilot-b-ci first (seed a least-privileged caller's finished rows, run the task, read Monitor.State and alerts.log); if it reproduces, a caller removes its own finished rows through the port at read-once time and the sweep never raises the state; own fix commit, next dispatch
 
 ### DW-1860: IRISSYS's NewVolumeThreshold can be set through 18.3's file update (AD-10 protects only its directory, resource and read-only setting), after which the instance's own expansion could place volume files in the manager directory, against the owner's database-directory rule (inference: auto-expansion unmeasured)
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: IRISSYS's NewVolumeDirectory is the manager directory with threshold 0 (measured, rework 1); a threshold above 0 lets a grow or defragment add volume files there (measured on a probe); 18.4's refusal covers only its own grow, defragment and Add a volume.
 - 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=owner call on the rule's scope: refuse a non-zero threshold for a database whose new volume directory is the manager directory
+- 2026-09-30T02:57:24Z status=routed owner=burndown by=merge_gate note=approved (orchestrator 2026-09-30): refuse a non-zero NewVolumeThreshold for a database whose new-volume directory is the manager directory, under the owner's directory rule; state it at AD-21; small fix after DW-1859, next dispatch
 ### DW-1845: Try-it's redirect sentence says the request did not reach the application, which is false when the application itself answers a 3xx (e.g. a POST answered 303 after creating something); a resend would then duplicate the write
 - source: DW-1836 review | severity: med | fix-risk: low | footprint: in-epic
 - evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
