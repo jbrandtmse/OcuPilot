@@ -8335,6 +8335,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
+- 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8544,3 +8545,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.AddressGrantsPrivilege (Prohibited.cls:4021) still calls name-only IsPrivilegedRole; batch c (68f76262) replaced it with RoleGrantsAdministrativePrivilege for customization roles only
 - 2026-09-30T16:42:53Z status=routed owner=burndown by=harvest note=Same defect as DW-1663 in the service arm; reuse RoleGrantsAdministrativePrivilege. Prohibited.cls contended with Epic 16
 - 2026-09-30T17:25:28Z occurrence=23-2-the-range-end-cleanup-part-2
+
+### DW-1873: web-sessions AC1's structural check can catch a rail tooltip revealed mid-capture (app-rail span.ocu-rail-tooltip 406px past its slot at 720px), a CI flake unrelated to the screen under test
+- source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36746183320 browser shard 1/3 on 68f76262 (batch c changed no shell or rail code): web-sessions.browser-spec.mjs:234 overflow on the rail tooltip; the same spec was green on the prior two runs
+- 2026-09-30T17:29:36Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: move the pointer off the rail or exclude a hover-revealed tooltip before the structural capture (23.3)

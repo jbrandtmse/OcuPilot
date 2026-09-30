@@ -120,3 +120,6 @@
 2026-09-30T16:43:06Z	Story 23.2	qa_complete	batch=c result=skipped reason=pinning_tests_and_mutations_written_by_implement(Rule19)
 2026-09-30T16:43:06Z	Story 23.2	pushed	batch=c head=68f76262 ci=pending run=36746183320
 2026-09-30T16:43:06Z	Story 23.2	stage_spawned	stage=code-review batch=c spawn_at=2026-09-30T16:43:06Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-code-review-c cycle_iteration=4 scope=f8e55fb2..68f76262
+2026-09-30T17:30:19Z	Story 23.2	cr_complete	batch=c spawn_at=2026-09-30T16:43:06Z model=opus batch_verdict=clean resolved=11 fixed_at_source=11 deferred=1(DW-1869_occurrence) dismissed=22 high=0 med=3 low=30 rows=39 unresolved_high_med=1(DW-1869,routed_burndown) closing_sections_present=true layers=blind-hunter,edge-case-hunter,verification-gap,acceptance-auditor agent=aa98052315be1d20f subagent_tokens=597880
+2026-09-30T17:30:19Z	Story 23.2	committed	batch=c sha=2b3e4ffd code=68f76262,2b3e4ffd ci=pending run=36751724771 amendments=none prior_run_on_68f76262=36746183320(failure:web-sessions_rail_tooltip_flake,DW-1873)
+2026-09-30T17:30:19Z	Story 23.2	ledger_reopened	entry=DW-1829 by=lead source=orchestrator(staging_run_36741141564_shard_2/3,agent_leg_cleanup_found_held_compact_running)
