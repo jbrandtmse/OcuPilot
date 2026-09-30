@@ -8582,3 +8582,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
 - evidence: on ocupilot-c-ci after the 1.0.3 to 1.0.4 upgrade: a hand-made request without dir took Monitor.State to 2; the details and activity reads refuse a missing parameter with 400 before the admin call and log nothing; the UI always sends dir
 - 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
+
+### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: DW-1870 verification-gap layer, scratch repo: a pre-rule clone fast-forwarded onto 731bf63e kept 16/16 scripts with CR; deleting and re-checking out the scripts gave 0/16
+- 2026-09-30T17:49:33Z status=decision-pending owner=burndown by=harvest note=human=decide whether the 1.0.4 release notes or README tell existing Windows clones to re-check out scripts/
