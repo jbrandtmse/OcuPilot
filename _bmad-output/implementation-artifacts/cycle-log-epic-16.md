@@ -627,3 +627,5 @@
 2026-09-30T21:19:33Z	Epic 16	runner_resumed	by=orchestrator after=account_switch release=1.0.4_cut_2e90c5a9(carries_16.11,DW-1861,16.12,DW-1871)
 2026-09-30T21:19:33Z	Epic 16	ci_resolved	story=owner_fix_DW-1871 run=36758817996 result=success head=6c893da1 note=orchestrator_resolved_DW-1871_by=merge_gate
 2026-09-30T21:19:33Z	Epic 16	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp(802d83dc:23.2_batches_a/b/c,DW-1870,1.0.4_bookkeeping) merge=e6273c50 conflicts=0 rule22=22_merged_classes_synced_and_compiled_on_ocupilot-ci(all_OK) ledger=intact(DW-1868_routed_16-13_by_merge_gate;DW-1871_resolved) spine=60_ADs tracker=valid experience=993
+2026-09-30T21:19:48Z	Epic 16	spine_updated	ad=AD-52(re-list_before_each_lock_DELETE),Deferred(DW-1868_decided) reason=decision_sheet(DW-1868,by=merge_gate) by=runner story=none lint=ok(pre-existing_low_placeholder)
+2026-09-30T21:19:48Z	Epic 16	stage_spawned	stage=owner_fix(implement) item=DW-1868(by=merge_gate) spawn_at=2026-09-30T21:19:48Z model=opus agent_name=dw1868-lock-relist-implement-1 cycle_iteration=1
