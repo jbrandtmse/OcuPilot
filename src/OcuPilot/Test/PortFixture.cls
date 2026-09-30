@@ -192,8 +192,9 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// <p>Save one async task row of the vendor's own class (<parameter>ASYNCTASKCLASS</parameter>,
 /// AD-27) with GUID <var>pGuid</var>, task name <var>pTaskName</var>, state <var>pState</var> and
 /// <code>TimeQueued</code> <var>pQueued</var> (<code>YYYY-MM-DD HH:MM:SS</code>), owned by
-/// <var>pUsername</var>, or by the caller when it is empty. Nothing queues it.</p>
-ClassMethod SeedTaskRow(pGuid As %String, pTaskName As %String, pState As %String, pQueued As %String, pUsername As %String = "") As %Status
+/// <var>pUsername</var>, or by the caller when it is empty, carrying work-queue token
+/// <var>pToken</var>. Nothing queues it, so a non-empty token names no queue.</p>
+ClassMethod SeedTaskRow(pGuid As %String, pTaskName As %String, pState As %String, pQueued As %String, pUsername As %String = "", pToken As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -203,6 +204,7 @@ ClassMethod SeedTaskRow(pGuid As %String, pTaskName As %String, pState As %Strin
         Set tRow.State = pState
         Set tRow.Username = $Select(pUsername = "": $Username, 1: pUsername)
         Set tRow.TimeQueued = pQueued
+        Set tRow.WQMToken = pToken
         Set tSC = tRow.%Save()
         Set tRow = ""
     } Catch ex {
