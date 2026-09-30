@@ -578,6 +578,38 @@ test('Story 16.11 AC1: Cancel on the Suspend Task Manager warning sends nothing'
   }
 });
 
+// Story 16.11 AC2's tick. Mutation (Rule 19): make `RefreshService`'s tick pass `''` for the banner,
+// then rebuild and redeploy -> the suspended banner never rises and its wait goes red.
+test('Story 16.11 AC2: with auto-refresh on, a tick raises the banner for a suspend made elsewhere and clears it for the resume, with no refresh asked for', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.equal(await describeBanner(page), null, 'no strip stands while the Task Manager runs');
+    const chip = await page.waitForSelector('.ocu-command-bar-refresh', { visible: true, timeout: config.navigationTimeoutMs });
+    await chip.click();
+    await page.waitForFunction(
+      () => document.querySelector('.ocu-command-bar-refresh').textContent.trim() === 'Auto-refresh: every 5 s',
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(setTaskManagerSuspended(true), SUSPENDED, 'the throwaway Task Manager is suspended out of band');
+    await page.waitForFunction(
+      (text) => document.querySelector('app-list-page .ocu-banner .ocu-banner-message')?.textContent?.trim() === text,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.taskManagerSuspendedBanner
+    );
+    assert.deepEqual((await describeBanner(page))?.actions, [STRINGS.taskManagerResumeAction], 'a tick raised the suspended banner with its Resume Task Manager');
+    assert.equal(setTaskManagerSuspended(false), RUNNING, 'the throwaway Task Manager is resumed out of band');
+    await page.waitForFunction(() => document.querySelector('app-list-page .ocu-banner') === null, { timeout: config.navigationTimeoutMs });
+  } finally {
+    try {
+      setTaskManagerSuspended(false);
+    } catch {
+      /* reported by `after`, which resumes and asserts once more */
+    }
+    await context.close();
+  }
+});
+
 test('AC3: the demo fixture\'s task appears among the scheduled tasks', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {

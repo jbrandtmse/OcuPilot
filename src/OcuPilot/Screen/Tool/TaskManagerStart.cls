@@ -6,7 +6,9 @@
 /// The vendor starts the Task Manager as a job with the caller's roles and switches its user to
 /// <code>TASKMGR</code> only when the caller holds that pair; without it the new Task Manager runs as
 /// the caller and a due task fails. A caller without it is refused by name before any port call. The
-/// port call runs in no escalated frame, so the job takes the caller's own roles (AD-9).</p>
+/// port call runs in no escalated frame, so the job takes the caller's own roles (AD-9): even with the
+/// pair, the new Task Manager runs as <code>TASKMGR</code> with the caller's roles, not
+/// <code>%All</code>.</p>
 /// <p>The vendor answers 409 for a start while the process is alive, suspended included, and never
 /// resumes, so a suspended Task Manager is refused with the sentence that says to resume it. A start
 /// records no audit event (AD-15 and AD-53's ninth named case). It carries no consequence.</p>

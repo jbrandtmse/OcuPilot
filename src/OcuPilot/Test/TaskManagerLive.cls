@@ -446,6 +446,10 @@ ClassMethod Restore() As %Status
         }
         Set tStatus = ..Status()
         If tStatus = 2 Set tSC = ##class(%SYS.Task).SuspendSet(0)
+        ; A stopped Task Manager keeps its suspend flag, and a start then comes up suspended
+        ; (measured), so the flag is cleared first.
+        If tStatus = 0 Set tSC = ##class(%SYS.Task).SuspendSet(0)
+        If $$$ISERR(tSC) Quit
         If tStatus = 0 Set tSC = ##class(%SYS.Task).StartTASKMGR()
         If $$$ISERR(tSC) Quit
         If ..WaitFor(1) '= 1 {

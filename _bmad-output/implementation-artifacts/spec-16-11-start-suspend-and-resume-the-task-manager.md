@@ -54,7 +54,7 @@ deferred: []
   - The screen read answer carries `bannerRequires` beside `banner`: the first pair the caller lacks for the raised case's action tool, as `resource:permission`, or `""`.
   - The list page draws the action's button inside the strip. It is `aria-disabled` with "Requires <pair>" while `bannerRequires` is non-empty (EXPERIENCE.md Privilege Gating).
 - **The banner is recomputed from the read.** It follows an auto-refresh tick and a change event (AD-14, AD-43). No client code sets it from a write's response.
-- **DW-1638.** `TaskResume` (and through it `TaskSuspend`), `TaskRun` (and through it `TaskScheduleRun`, which keeps no methods of its own) and `TaskDelete` judge the task type's privilege on both callers: `ArgumentProblem` for the agent's mint and `ScreenActionDelta` for the screen route. Both go through one new public `TaskRules` method. The problem text is the existing `Api.Error.#REASONTASKTASKCLASSPERMISSION` sentence, now published. A task the check's read cannot find (404) is left to the fresh read to refuse.
+- **DW-1638.** `TaskResume` (and through it `TaskSuspend`), `TaskRun` (and through it `TaskScheduleRun`, which keeps no methods of its own) and `TaskDelete` judge the task type's privilege on both callers: `ArgumentProblem` for the agent's mint, `ScreenActionDelta` for the screen route, and `ConfirmProblem` at Confirm (AD-40). All go through one new public `TaskRules` method. The problem text is the existing `Api.Error.#REASONTASKTASKCLASSPERMISSION` sentence, now published. A 404 from the check's read answers no problem; any other fault, or an answer that is not an object, refuses.
 - **Test hygiene.**
   - Every test leaves the Task Manager running and restored by a teardown that also runs on failure. No test depends on another's state (Consistency Conventions › Tests).
   - A test stops the Task Manager only on the throwaway, by terminating its process from a `%SYS` step of its own, never through OcuPilot.
@@ -305,7 +305,35 @@ Anchors are as of `9a874a14`. Measured vendor facts are under Design Notes.
 - **AC8 (DW-1638).** Given a task whose type declares a resource the caller lacks, when that caller suspends, resumes, runs, schedule-runs or deletes it, from the screen or through the agent, then the request is refused with "This task type needs a privilege you do not hold." and nothing is sent. Pinned by `TaskRowWire`.
 - **AC9.** Given any test in this story's classes or specs, when it ends, whether it passed or failed, then the Task Manager on the instance reads `Running` as `TASKMGR`.
 
+### Review Findings
+
+Code review 2026-09-30 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 48 rows, 15 entries (2 high, 1 medium, 12 low), 25 rejected.
+
+- [x] [Review][Patch] (high, Rule 6) Confirm never re-judged DW-1638's task-type privilege (AD-6, AD-40): a holder who lost `%Ens_PurgeSchedule:USE` after the mint confirmed the suspend. Fixed with `Write.ConfirmProblem`, asked by `Confirm.Transition` after the fingerprint and before the claim, overridden by `TaskResume`, `TaskRun` and `TaskDelete` with `TaskRules.TargetProblem`. This supersedes Design Notes' "not again at Confirm". [src/OcuPilot/Kernel/Proposal/Confirm.cls:374]
+- [x] [Review][Patch] (medium) AC2's tick bullet was pinned only in jsdom and the tools tier; a browser leg now turns auto-refresh on and follows an out-of-band suspend and resume. [ui/browser/tasks.browser-spec.mjs:583]
+- [x] [Review][Patch] Home's browser spec now asserts AC9 in `after`: the status the legs left, then the resume. [ui/browser/home-findings.browser-spec.mjs:142]
+- [x] [Review][Patch] `TargetProblem` failed open on a 2xx answer that is not an object; it now fails closed, as its contract says. [src/OcuPilot/Area/Task/TaskRules.cls:1018]
+- [x] [Review][Patch] `TargetProblem`'s 404 sentence said the caller's fresh read follows it; both callers read first. [src/OcuPilot/Area/Task/TaskRules.cls:1002]
+- [x] [Review][Patch] `ScreenRead`'s `bannerRequires` message named a cause it cannot observe. [src/OcuPilot/Test/ScreenRead.cls:704]
+- [x] [Review][Patch] `TaskRowWire`'s "and not run" compared two reads that fail to `""`; the first is now asserted non-empty. [src/OcuPilot/Test/TaskRowWire.cls:123]
+- [x] [Review][Patch] `TaskManagerLive.Restore` could not recover a stopped Task Manager whose suspend flag was set, which a start brings up suspended (measured); it clears the flag first. [src/OcuPilot/Test/TaskManagerLive.cls:449]
+- [x] [Review][Patch] `Read.Execute`'s caller contract did not list `bannerRequires`. [src/OcuPilot/Screen/Read.cls:264]
+- [x] [Review][Patch] `TaskManagerStart`'s doc did not say the new Task Manager keeps the starter's roles. [src/OcuPilot/Screen/Tool/TaskManagerStart.cls:10]
+- [x] [Review][Patch] AC1's recorded red was the handler spec only; the browser red is now demonstrated (Verification). [ui/browser/tasks.browser-spec.mjs:502]
+- [x] [Review][Defer] The create and the 9.8 edit carry the same mint-only task-type check — deferred: DW-1861, routed burndown (out-of-footprint).
+- [x] [Review][Defer] The gated banner action is never rendered in a browser — deferred: DW-1862, wontfix-accepted.
+- [x] [Review][Defer] EXPERIENCE.md's command-bar and Privilege Gating rows omit Suspend Task Manager and the banner action — deferred: DW-1863, wontfix-accepted (Epic 23 holds EXPERIENCE.md).
+- [x] [Review][Defer] The Task Manager's card and change sentence name it "manager" — deferred: occurrence on DW-1465.
+
+Rejected:
+
+- `false`: a stale stopped banner after Start (measured on `ocupilot-ci`: status reads `Running` 2 ms after `StartTASKMGR` returns); `MANAGER` keying a second target (the `task` rule folds a non-integer id to lower case); `bannerRequires` judged by process rather than user (the API application grants no pair, AD-21; screen gates are process-evaluated, AD-8); AC8 needing a mutation per assertion (Rule 19 is one per AC).
+- spec-bound: one Fix it constant for both states; the command box listing Start while no case is raised; the task-type refusal as a 400 sentence rather than a named pair; the Auto Run Result's triage counts.
+- `low`: Fix it offered on a stopped Task Manager to a non-holder of `%Admin_Secure:USE` (the mint names the pair); the start's audit assertion checks only `Modify Task Config.Suspend`; `Restore` keeping a `TASKMGR` without `%All` (no test starts one); a `messageKey` shared by cases naming different actions; `applyTick`'s default dropping the gate on screens with no banner action; the banner action's inherited color; duplicated reveal CSS, walk helpers and screen-level action wiring; Run accepted while suspended; a non-404 fault answered 500; a task in a deleted namespace refused (as the classic `TaskInfo` page does); a double click sending twice (every immediate action); a stopped Task Manager with its suspend flag set starting suspended (measured; the re-read shows it); a banner action naming the primary or multi-select action; AD-9's start observed only by `%All` callers (no escalated frame on the write path); `bannerRequires` omitting `ArgumentPairs` (none of the three declares any).
+
 ## Spec Change Log
+
+- 2026-09-30, lead, after code review (tier 1, Rule 5): the DW-1638 bullet under Always and its Design Notes decision now say the task-type check also runs at Confirm (`Write.ConfirmProblem`, added by the review's HIGH) and what a 404 answers; both sentences had said the opposite.
 
 ## Review Triage Log
 
@@ -359,7 +387,7 @@ Anchors are as of `9a874a14`. Measured vendor facts are under Design Notes.
   - With `task`, the Task schedule re-reads on the change event, and Home already reloads findings on `task` changes.
   - `Prohibited`'s `task` arm skips the tool's `STATEFIELD`, so it needs no change.
 - **The banner action is a declaration** (AD-5, the `multiSelect.action` idiom). The gate is computed by the instance, like a proposal's first missing pair (AD-8), because the client holds no pair map.
-- **DW-1638** goes through `ArgumentProblem` plus `ScreenActionDelta` (the two-caller refusal idiom), not `ArgumentPairs`. The type's resource is private to the vendor (`GetResource` is `[Private]`), and reading `$Parameter` in the task's namespace would refuse callers who cannot read that namespace, a regression. As the 9.8 edit does, the check runs at the mint and on the route, and not again at Confirm.
+- **DW-1638** goes through `ArgumentProblem` plus `ScreenActionDelta` (the two-caller refusal idiom), not `ArgumentPairs`. The type's resource is private to the vendor (`GetResource` is `[Private]`), and reading `$Parameter` in the task's namespace would refuse callers who cannot read that namespace, a regression. The check runs at the mint, on the route and again at Confirm, through `Write.ConfirmProblem` inside the confirm transition (AD-40).
 - **Fix it** uses one constant for the check, which keeps "one constant per fixable check". The agent cannot see the Task Manager state, because the read tool's view has no banner. A wrong-verb proposal is refused with a sentence naming the right verb.
 - **Where the controls live.** Suspend is always on the command bar, and a Suspend in the wrong state is refused by the server after the dialog (the 16.10 precedent). Resume and Start live only on the banner and in the command box.
 
@@ -467,6 +495,13 @@ Mutations demonstrated (implement stage, each reverted with the tree unchanged a
 - mutation (AC3, `readNow` path): `RefreshService.readNow` passes `''` instead of `result.bannerRequires` -> `refresh.test.mjs` "readNow carries the bannerRequires pair ..." went red alone.
 - mutation (AC5, agent path): `TaskManagerStart.WRITETYPE` set to `RESUME`, recompiled -> `OcuPilot.Test.TaskManagerLive.TestTheAgentsStartOfAStoppedTaskManagerIsConfirmed` and the route start leg went red (run 21864).
 - mutation (AC9): `TaskManagerLive.Restore` no longer resumes a suspended Task Manager, recompiled -> `OnAfterOneTest`'s "the Task Manager is restored" went red after `TestTheAgentsSuspendAndResumeAreConfirmed`, and every later test's setup refused (run 21863).
+
+Mutations demonstrated (code review, each reverted with the tree unchanged after):
+
+- mutation (AC1, browser): the Task schedule's entry dropped from `WARNING_CONSEQUENCES`, rebuilt and redeployed -> `tasks.browser-spec.mjs` "Story 16.11 AC1, AC2: ..." went red at the warning dialog wait.
+- mutation (AC2, tick): `RefreshService.tick` passes `''` for the banner, rebuilt and redeployed -> `tasks.browser-spec.mjs` "Story 16.11 AC2: with auto-refresh on, ..." went red at the banner wait.
+- mutation (AC8, confirm): `TaskResume.ConfirmProblem` removed, recompiled with `TaskSuspend` -> `OcuPilot.Test.TaskRowWire.TestAConfirmRefusesAHolderWhoLostTheTypesPair` went red alone (run 21873).
+- mutation (AC9, Home spec): the AC7 leg's `finally` resume removed -> `home-findings.browser-spec.mjs`'s `after` went red on "the legs left the Task Manager running".
 
 ## Auto Run Result
 

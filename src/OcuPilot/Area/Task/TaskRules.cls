@@ -997,9 +997,11 @@ ClassMethod TypeSettings(pClass As %String, pNamespace As %String, Output pSetti
 /// as the create and the edit judge it. The task is read through <code>Task.CRUD</code>'s
 /// <code>GET</code>, the one type that answers its <code>TaskClass</code> and <code>NameSpace</code>.</p>
 /// <p><b>Caller contract:</b> the task row tools call it from <code>ArgumentProblem</code> for the
-/// agent's mint and from <code>ScreenActionDelta</code> for the screen route, before anything is
-/// sent. A task the read cannot find (404) answers no problem, and the caller's own fresh read refuses
-/// it; any other fault is an error status.</p>
+/// agent's mint, from <code>ConfirmProblem</code> at the agent's confirm and from
+/// <code>ScreenActionDelta</code> for the screen route, each after its fresh read and before anything
+/// is sent. A task the read cannot find (404) answers no problem: it went after that fresh read, and
+/// the write then meets the vendor's own 404. Any other fault, and an answer that is not an object,
+/// is an error status.</p>
 ClassMethod TargetProblem(pId As %String, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
@@ -1012,7 +1014,10 @@ ClassMethod TargetProblem(pId As %String, Output pProblem As %String) As %Status
             If +$Get(tHttp) = 404 Set tSC = $$$OK
             Quit
         }
-        If '$IsObject($Get(tTask)) || 'tTask.%IsA("%Library.DynamicObject") Quit
+        If '$IsObject($Get(tTask)) || 'tTask.%IsA("%Library.DynamicObject") {
+            Set tSC = $$$ERROR($$$GeneralError, "the task's read answered no object, so its type's privilege could not be judged")
+            Quit
+        }
         If '..Permitted(..Text(tTask, "TaskClass"), ..Text(tTask, "NameSpace")) Set pProblem = ##class(OcuPilot.Api.Error).#REASONTASKTASKCLASSPERMISSION
     } Catch ex {
         Set pProblem = ""

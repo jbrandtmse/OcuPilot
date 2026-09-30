@@ -261,7 +261,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 }
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
-/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
+/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner, bannerRequires}</code>
+/// (<method>BannerKey</method>), plus
 /// <code>criteria</code> when the read declares criteria, <code>document</code> when a
 /// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
 /// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and

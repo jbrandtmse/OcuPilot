@@ -3,7 +3,7 @@
 /// the edit do. A principal holding the screen's two pairs and not the probe purge task's
 /// <code>%Ens_PurgeSchedule:USE</code> is refused each on the route and at the agent's mint with
 /// the published sentence, and the task is unchanged; a holder of that pair suspends, resumes and
-/// deletes it.</p>
+/// deletes it, and a holder who loses it after the mint is refused at the confirm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>TASKVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes two users, two roles and a probe
@@ -39,11 +39,15 @@ Parameter REFUSAL = "This task type needs a privilege you do not hold.";
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
 
+/// <p>Whether a test revoked the holder's purge pair, so its teardown re-creates the principals.</p>
+Property RevokedPair As %Boolean [ InitialExpression = 0 ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPassword = ""
+    Set ..RevokedPair = 0
     Quit $$$OK
 }
 
@@ -96,6 +100,11 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(tSC, "the probe task is removed")
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    If ..RevokedPair {
+        Set tEnsureSC = ..EnsurePrincipals()
+        Do $$$AssertStatusOK(tEnsureSC, "the principals are re-created with their grants")
+        Set ..RevokedPair = 0
+    }
     Quit tSC
 }
 
@@ -111,6 +120,7 @@ Method TestTheRouteRefusesACallerWithoutTheTypesPair()
     Do $$$AssertNotEquals(tId, "", "the probe purge task is created")
     If tId = "" Quit
     Set tNext = ##class(OcuPilot.Test.TaskEditProbe).Info(tId, "NextScheduled")
+    Do $$$AssertNotEquals(tNext, "", "the probe's next run reads, so the unchanged comparison below is a real one")
     For tAction = "suspend", "resume", "run", "delete" {
         Set tSC = ..Act(tAction, tId, ..#NOPAIRUSER, .tStatus, .tBody)
         Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..Problem(tBody), "400 TOOL.ARGUMENTS " _ ..#REFUSAL, "its " _ tAction _ " is refused with the published sentence")
@@ -156,6 +166,65 @@ Method TestAHolderOfTheTypesPairActsOnIt()
     Set tSC = ..Act("delete", tId, ..#HOLDERUSER, .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the holder deletes it: " _ ..Shown(tBody))
     Do $$$AssertEquals(##class(OcuPilot.Test.TaskEditProbe).IdOf(..#PROBE), "", "and it is gone")
+}
+
+/// <p>AC8 at the agent's confirm (AD-6, AD-40): the holder's suspend of the probe is minted, the
+/// purge type's pair is then revoked from its role, and the holder's confirm over the wire is refused
+/// 400 with the published sentence, leaving the task unsuspended.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.TaskResume.ConfirmProblem</method> and
+/// recompile it with <class>OcuPilot.Screen.Tool.TaskSuspend</class> -- the confirm suspends the task
+/// and this goes red.</p>
+Method TestAConfirmRefusesAHolderWhoLostTheTypesPair()
+{
+    Set tId = ..CreateProbe()
+    Do $$$AssertNotEquals(tId, "", "the probe purge task is created")
+    If tId = "" Quit
+    Set tTool = "OcuPilot.Screen.Tool.TaskSuspend"
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#HOLDERUSER, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded for the holder")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("Id", tId, "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), ..#HOLDERUSER, "", tTurn, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusOK(tSC, "the holder's suspend is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set ..RevokedPair = 1
+    Set tSC = ..RevokePurgePair()
+    Do $$$AssertStatusOK(tSC, "the purge type's pair is revoked from the holder's role: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ tProposal.%Get("proposalId") _ "/confirm", ..#HOLDERUSER, ..PreparedPassword, .tStatus, .tRaw, .tHeaders, "", "application/json")
+    Set tBody = ""
+    Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tBody = $Get(tRaw) }
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..Problem(tBody), "400 TOOL.ARGUMENTS " _ ..#REFUSAL, "the confirm is refused at the write with the published sentence: " _ ..Shown(tBody))
+    Do $$$AssertEquals(..Suspended(tId), "false", "and the task is not suspended")
+}
+
+/// <p>Revoke <code>%Ens_PurgeSchedule</code> from the holder's role, keeping its other grants, and
+/// read the grant back.</p>
+Method RevokePurgePair() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.Roles).Get(..#HOLDERROLE, .tProperties)
+        If $$$ISERR(tSC) Quit
+        Set tKept = ""
+        For tI = 1:1:$Length($Get(tProperties("Resources")), ",") {
+            Set tPair = $Piece(tProperties("Resources"), ",", tI)
+            If (tPair = "") || ($Piece(tPair, ":", 1) = "%Ens_PurgeSchedule") Continue
+            Set tKept = tKept _ $Select(tKept = "": "", 1: ",") _ tPair
+        }
+        Kill tModify
+        Set tModify("Resources") = tKept
+        Set tSC = ##class(Security.Roles).Modify(..#HOLDERROLE, .tModify)
+        If $$$ISERR(tSC) Quit
+        If $SYSTEM.Security.CheckUserPermission(..#HOLDERUSER, "%Ens_PurgeSchedule", "USE") = 1 Set tSC = $$$ERROR($$$GeneralError, "the holder still holds %Ens_PurgeSchedule:USE")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>The probe purge task, created through the wizard's own Save: <code>Ens.Util.Tasks.Purge</code>

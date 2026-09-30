@@ -138,7 +138,12 @@ after(async () => {
   disarmProbeDefinition(probe, priorDefault);
   const { values, output } = removeSeeds();
   await resetRememberedState();
+  // Story 16.11 AC9: the legs leave the throwaway's Task Manager running, and it is resumed here either way.
+  const { values: left } = inSys([mark('FTMLEFT', '##class(%SYS.Task).TASKMGRStatus()')], ['FTMLEFT']);
+  const taskManager = setTaskManagerSuspended(false);
   assert.equal(values.FCLEAN, '1', `the probe application, principal and role are gone:\n${output}`);
+  assert.equal(left.FTMLEFT, '1', 'the legs left the Task Manager running');
+  assert.equal(taskManager, '1', 'and it runs once resumed here');
 });
 
 function dropProposals() {
@@ -414,7 +419,7 @@ test('Story 16.11 AC7: a suspended Task Manager\u2019s finding offers Fix it, wh
     try {
       setTaskManagerSuspended(false);
     } catch {
-      /* the next leg's own reads report a Task Manager left suspended */
+      /* reported by `after`, which resumes and asserts once more */
     }
     if (context !== null) await context.close();
     forgetTag(probe, tag);

@@ -118,6 +118,13 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(pIdValue, .pProblem)
 }
 
+/// <p>The task type's privilege judged again at the agent's confirm (DW-1638, AD-6, AD-40), so a
+/// caller who lost it since the mint is refused.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(pIdValue, .pProblem)
+}
+
 /// <p>The task type's privilege judged for the screen route, after the default arguments
 /// (DW-1638). The route passes the target as <method>IdArgument</method> in <var>pValues</var>.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
