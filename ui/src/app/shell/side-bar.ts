@@ -15,6 +15,7 @@ import {
   areaByKey,
   formatArea,
   formatRequires,
+  openableEntry,
   screenForUrl,
   tabGroupFor,
   withQuery,
@@ -31,6 +32,8 @@ export const SIDE_BAR_OVERLAY_ID = 'side-bar';
 /** One side-bar entry, resolved for rendering. */
 interface SideBarEntry {
   readonly route: string;
+  /** The route the entry opens: its own, or a tab of the group it heads (`openableEntry`). */
+  readonly target: string;
   readonly label: string;
   readonly reason: string;
   readonly reasonId: string;
@@ -74,6 +77,10 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
  * `(resource, permission)` pair **inline after the label**, which is what the side bar does
  * instead of relying on a tooltip (EXPERIENCE.md "Fixed at `{spacing.side-bar-width}`"); the same element is the entry's
  * `aria-describedby`, so the reason is announced on focus as well as read on screen.
+ *
+ * **A tab group's one entry opens when any of its tabs does** (AD-8 as amended for DW-1852), and
+ * opens on the first of them in strip order (`openableEntry`); it is gated, naming its own tab's
+ * failed pair, only when none does.
  *
  * **Keyboard.** Arrow keys move between entries and Enter opens, through the same roving
  * tabindex the rail uses. Ctrl/Cmd+B toggles the side bar from anywhere, and with focus already
@@ -155,16 +162,18 @@ export class SideBar {
     const groupRoute = current === null ? '' : tabGroupFor(current)?.route ?? '';
     return screens.map((screen, index) => {
       const verdict = this.navigation.screenVerdict(screen.route);
+      const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
       const isCurrent = areaKey === active && (screen.route === this.currentRoute() || (groupRoute !== '' && screen.route === groupRoute));
       const reasonId = `ocu-side-bar-reason-${screen.route.replace(/\//g, '-')}`;
       return {
         route: screen.route,
+        target: opens?.route ?? screen.route,
         label: stringFor(screen.labelKey),
         reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
         reasonId,
-        describedBy: verdict.allowed ? null : reasonId,
-        gated: !verdict.allowed,
-        ariaDisabled: verdict.allowed ? null : 'true',
+        describedBy: opens !== null ? null : reasonId,
+        gated: opens === null,
+        ariaDisabled: opens !== null ? null : 'true',
         ariaCurrent: isCurrent ? 'page' : null,
         tabIndex: index === focused ? 0 : -1,
       };
@@ -234,7 +243,7 @@ export class SideBar {
     if (index >= 0) this.focusedIndex.set(index);
     // The current query travels with the entry: `?ns=` is data scope, and opening a screen
     // from the side bar must not move the user's work to another namespace (AD-44, DW-134).
-    void this.router.navigateByUrl(withQuery(entry.route, this.router.url));
+    void this.router.navigateByUrl(withQuery(entry.target, this.router.url));
   }
 
   protected onKeydown(event: KeyboardEvent): void {

@@ -7866,6 +7866,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:20:47Z occurrence=16-3-effective-privileges-and-the-permission-check-tool
 - 2026-09-28T18:07:16Z occurrence=16-2-web-sessions-listed-and-ended
 - 2026-09-29T21:50:33Z status=routed owner=16-25-the-external-language-server-editor by=owner note=owner 2026-09-29: yes to option B - a rail item, Home tile and side bar open when ANY of the area's screens is allowed; each screen keeps its own gate (no read widens); amend AD-8's area rule at origin; Epic 16 after DW-1838/1836/1837, before 16.25, aiming at 1.0.4
+- 2026-09-29T23:51:43Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=option B: area verdict is the OR of its listed screens (Gate.EvaluateArea); own gates unchanged; AD-8 amended; follow-up DW-1852
 
 ### DW-1769: Copy as curl's note and AD-57 (5) promise every secret value is left out, but only names the credential pattern matches are masked
 - source: spec-16-24-a-try-it-request-copied-as-curl.md | severity: med | fix-risk: low | footprint: in-story
@@ -7878,6 +7879,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: audit.browser-spec.mjs:478 rows Source [%System,OcuPilot] vs [OcuPilotSeed] (shard 3); refused-tool.browser-spec.mjs:140 30s wait (shard 1); next run 36415467999 green; both green locally on ocupilot-ci
 - 2026-09-28T11:46:03Z status=routed owner=range-end-cleanup by=harvest note=likely a race between the default read and the Search answer (audit) and a slow first turn (refused-tool); make each wait on the answer it asserts
 - 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
+- 2026-09-30T00:38:19Z occurrence=16-25-the-external-language-server-editor
+- 2026-09-30T00:38:19Z note=refused-tool AC2 waited 30s for the refusal card on run 36647650086 (browser shard 1/3, head 7c721b34) after DW-1314's requireFreeSlot fix; green locally on ocupilot-ci; failed job re-run
 ### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.
@@ -8292,3 +8295,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: fetch redirect:manual hides who answered (status 0, no Location); the owner's binding wording was kept (DW-1836 implement review, 2026-09-29)
 - 2026-09-29T21:42:32Z status=decision-pending owner=burndown by=cr note=owner: keep the wording, or hedge it for writes only (e.g. '...or the application redirected after acting on it')
 - 2026-09-29T22:05:50Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=by=merge_gate hedge applied: a non-safe verb's opaque redirect reads outcome unknown, may have acted, check before resending; unit/component/browser pinned
+
+### DW-1852: Under DW-1768's any-screen rule only an area's listed tab counts, so a holder of only the OAuth 2.0 authorization-server or registration resource reads their own tab but still finds Security and secrets gated
+- source: DW-1768 implement | severity: med | fix-risk: low | footprint: in-epic
+- evidence: OAuth 2.0 is a tab group whose listed tab is the client configurations (needs %Admin_OAuth2_Client); measured on ocupilot-ci 2026-09-29
+- 2026-09-29T23:51:42Z status=decision-pending owner=burndown by=cr note=owner: should a tab group open its area when any of its tabs does?
+- 2026-09-30T00:38:19Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=a listed tab group opens its area through any of its tabs (Gate.EvaluateEntry, client openableEntry); AD-8 amended; Navigation/WireOAuthRead/oauth browser pinned
+
+### DW-1853: A listed screen with an empty or publicly granted pair set opens its area for every caller past the admin floor; the analytics log (%DeepSee_Portal:USE, public on a stock instance) opens Logs this way
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
+- 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
+
+### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
+- source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: AD-8 names the first unheld pair of the declared set (review, 2026-09-29)
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=the owner wants the shortest missing set named
+
+### DW-1855: DW-1768 test hygiene: LIVE_PAYLOAD screen-level entries stale since 6.13, canned-map client specs overlap older tests, full side-bar rosters pinned in WireAreaAnyScreen and the wallet-only leg, client arms reachable only on mirror drift
+- source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: listed by the DW-1768 review, 2026-09-29
+- 2026-09-29T23:51:43Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=an Epic 18 merge adds a listed OS management or Security screen, or screen-mirror --check fails in CI
+
+### DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses)
+- source: spec-16-25-the-external-language-server-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: orchestrator decision 2026-09-29: option A for 16.25 (shown, never set, SSL/TLS precedent); the PathPort-backed follow-up is routed here
+- 2026-09-29T23:53:28Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator: 16.25 option A; follow-up for the four single-location fields

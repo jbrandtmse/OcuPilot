@@ -353,8 +353,9 @@ ClassMethod EndedBeforeTheConfirm(pSC As %Status, pCode As %String, pTaskId As %
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its
 /// other screens, while Background tasks is shown and refused on <code>%Admin_Operate:USE</code>, and
 /// its read is refused naming that pair.</p>
-/// <p>Mutation (Rule 19): move <code>%Admin_Operate:USE</code> from the descriptor's
-/// <code>ownPrivileges</code> into the area's pairs -- the area reads denied and this goes red.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from the descriptor's
+/// <code>privileges</code> and <code>ownPrivileges</code> -- Background tasks reads open and this goes
+/// red.</p>
 Method TestATasksHolderKeepsTheAreaAndIsRefusedBackgroundTasks()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")

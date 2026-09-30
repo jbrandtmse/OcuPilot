@@ -249,6 +249,7 @@ services:
       # classes: TaskTransferLive
       # The language server class also creates, starts, stops and deletes probe Java servers.
       # classes: LanguageServerWire
+      # classes: WireAreaAnyScreen
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

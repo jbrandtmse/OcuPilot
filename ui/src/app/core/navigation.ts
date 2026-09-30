@@ -138,11 +138,12 @@ export function listedScreensForArea(areaKey: string): readonly ScreenDeclaratio
  * The first screen in `screens` the caller may actually open, or `null` when none of them is
  * (**DW-161**).
  *
- * Every surface that opens "the area's first screen" -- Home's tile, the locator's area segment
- * -- has to answer the same question, and answering it as `screens[0]` navigates a user with the
- * area but not its first screen straight into a refusal. The verdict is passed in rather than
- * read here so this stays a pure function over a roster and a lookup: the same shape
- * `formatRequires` and `withQuery` take, and executable under `node --test`.
+ * Answering "the first screen" as `screens[0]` navigates a user who may not open it straight into
+ * a refusal. The verdict is passed in rather than read here so this stays a pure function over a
+ * roster and a lookup: the same shape `formatRequires` and `withQuery` take, and executable under
+ * `node --test`. `firstOpenableEntry` is the same search over an area's side-bar entries, for Home's
+ * tile and the locator's area segment; it lands a tab group's entry on a tab that may not be in the
+ * roster, while this answers a member of `screens` or nothing.
  *
  * An empty roster answers `null` as well, which is the same answer for a different reason -- an
  * area with nothing built has nowhere to go either. Callers that must tell "nowhere to go" from
@@ -153,6 +154,40 @@ export function firstAllowedScreen(
   verdictFor: (route: string) => Verdict
 ): ScreenDeclaration | null {
   return screens.find((screen) => verdictFor(screen.route).allowed) ?? null;
+}
+
+/**
+ * Where the first of an area's side-bar entries `screens` the caller may open lands, or `null` when
+ * none opens: the first non-`null` `openableEntry`, which for a tab group is the first of its tabs
+ * the caller may open (AD-8 as amended for DW-1852). Home's tile and the locator's area segment open
+ * an area here, so they land where its side bar would.
+ */
+export function firstOpenableEntry(
+  screens: readonly ScreenDeclaration[],
+  verdictFor: (route: string) => Verdict
+): ScreenDeclaration | null {
+  for (const screen of screens) {
+    const opens = openableEntry(screen, verdictFor);
+    if (opens !== null) return opens;
+  }
+  return null;
+}
+
+/**
+ * The screen a side-bar entry opens, or `null` when the caller may open none (AD-5, AD-8 as amended
+ * for DW-1852): `screen` itself when its own verdict allows it, and otherwise, when `screen` heads a
+ * tab group, the first tab of that group in strip order whose own verdict allows it. The same rule
+ * `OcuPilot.Screen.Gate.EvaluateEntry` applies to the area's verdict, over the per-screen verdicts the
+ * navigation map carries, so an area the map opens always has an entry that opens. Each tab keeps its
+ * own gate: this only chooses among routes the map already allows.
+ */
+export function openableEntry(
+  screen: ScreenDeclaration,
+  verdictFor: (route: string) => Verdict
+): ScreenDeclaration | null {
+  if (verdictFor(screen.route).allowed) return screen;
+  if (tabGroupFor(screen)?.route !== screen.route) return null;
+  return tabMembersFor(screen).find((member) => verdictFor(member.route).allowed) ?? null;
 }
 
 /**
