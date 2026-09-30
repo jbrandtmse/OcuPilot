@@ -3583,8 +3583,9 @@ ClassMethod ParentScopeResolutionProblem(pRoster As %DynamicArray) As %String [ 
     Quit tProblem
 }
 
-/// <p>The keys a declared <code>rowTarget</code> may carry (AD-5, Story 6.10).</p>
-Parameter ROWTARGETKEYS = "route,field";
+/// <p>The keys a declared <code>rowTarget</code> may carry (AD-5, Story 6.10; <code>unless</code>,
+/// Story 16.12).</p>
+Parameter ROWTARGETKEYS = "route,field,unless";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s declared <code>rowTarget</code>, or
 /// <code>""</code> when nothing is, including when none is declared (AD-5, Story 6.10). A row
@@ -3599,7 +3600,9 @@ Parameter ROWTARGETKEYS = "route,field";
 /// link to. Its <code>route</code> is a non-empty string other than the declaring screen's own
 /// route -- a row already reaches its own route through the id chain -- and its <code>field</code>
 /// is a non-empty string that is one of <code>read.fields</code>, since
-/// <file>data-table.ts</file> reads it off the row.</p>
+/// <file>data-table.ts</file> reads it off the row. Its optional <code>unless</code>, where declared,
+/// is a non-empty string that is one of <code>read.fields</code> too: a row where that field reads
+/// <code>true</code> renders its name cell as text (Story 16.12, DW-1074).</p>
 /// <p>Whether the named route resolves to a built, id-keyed screen that does not already pair
 /// its own surface is <method>RowTargetResolutionProblem</method>'s question, checked over the
 /// whole roster once every declaration's own shape is sound.
@@ -3650,6 +3653,15 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
         }
         If '$ListFind(tFields, tTarget.%Get("field")) {
             Set tProblem = "rowTarget.field '" _ tTarget.%Get("field") _ "' is not one of read.fields"
+            Quit
+        }
+        If tTarget.%GetTypeOf("unless") = "unassigned" Quit
+        If (tTarget.%GetTypeOf("unless") '= "string") || (tTarget.%Get("unless") = "") {
+            Set tProblem = "rowTarget.unless is empty, and an unless names the read field that withholds a row's link"
+            Quit
+        }
+        If '$ListFind(tFields, tTarget.%Get("unless")) {
+            Set tProblem = "rowTarget.unless '" _ tTarget.%Get("unless") _ "' is not one of read.fields"
             Quit
         }
     } Catch ex {

@@ -745,7 +745,7 @@ Method TestTheLocksListPairSetIsEnforcedForARealPrincipal()
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "at least one row -- this instance always holds at least a system lock")
-    Do $$$AssertEquals(tAnswer.fields.%Size(), 8, "all eight declared fields")
+    Do $$$AssertEquals(tAnswer.fields.%Size(), 9, "all nine declared fields")
 }
 
 /// <p>AC4, Story 6.12 -- the Devices list declares the same two pairs as the Databases General

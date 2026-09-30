@@ -203,6 +203,9 @@ export const CONSEQUENCE_PYTHONCUSTOM = 'LANGUAGESERVER.PYTHONCUSTOM';
 /** Story 16.11: suspending the Task Manager, after which no scheduled task runs until it is resumed. */
 export const CONSEQUENCE_TASKMANAGERSUSPEND = 'TASK.MANAGER.SUSPEND';
 
+/** Story 16.12: removing a lock whose owner is in an open transaction, which it leaves running without it. */
+export const CONSEQUENCE_LOCKINTRANSACTION = 'LOCK.INTRANSACTION';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -237,6 +240,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_PYTHONCUSTOM) return STRINGS.languageServerPythonConsequence;
   // The warning dialog's own consequence sentence, published once.
   if (code === CONSEQUENCE_TASKMANAGERSUSPEND) return STRINGS.taskManagerSuspendConsequence;
+  // The Remove locks dialog's own warning, published once (DW-1073).
+  if (code === CONSEQUENCE_LOCKINTRANSACTION) return STRINGS.lockRemoveInTransaction;
   return '';
 }
 

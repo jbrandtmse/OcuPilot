@@ -923,7 +923,14 @@ test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuP
 
   const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
   const emittedLocks = emitted.find((screen) => screen.route === 'os-management/locks');
-  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid' });
+  // Story 16.12 (DW-1074): the Locks list withholds a remote owner's link.
+  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid', unless: 'RemoteOwner' });
+  const unlessHostile = structuredClone(locks.declaration);
+  unlessHostile.rowTarget = { ...unlessHostile.rowTarget, unless: 'Bogus' };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(unlessHostile) }),
+    /rowTarget\.unless 'Bogus' is not one of read\.fields/
+  );
   assert.ok(emitted.every((screen) => 'rowTarget' in screen), 'every screen emits rowTarget, null when it declares none');
 });
 

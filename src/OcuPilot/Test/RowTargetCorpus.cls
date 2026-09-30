@@ -31,7 +31,7 @@ XData Cases
     "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
     "read": {
       "source": {"port": "admin", "endpoint": "Lock", "type": "LIST"},
-      "fields": ["Pid", "DeleteID"],
+      "fields": ["Pid", "DeleteID", "RemoteOwner"],
       "filter": ["Pid"],
       "sort": {"fields": ["Pid"], "default": "Pid", "direction": "asc"},
       "paging": "cap"
@@ -40,7 +40,7 @@ XData Cases
       "columns": [{"field": "Pid", "labelKey": "processColumnPid", "kind": "name"}],
       "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""
     },
-    "rowTarget": {"route": "os-management/processes/details", "field": "Pid"},
+    "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "unless": "RemoteOwner"},
     "toolIdentifier": "osmgmt.rowtargetcorpus"
   },
   "cases": [
@@ -53,7 +53,11 @@ XData Cases
     {"name": "an empty route", "rowTarget": {"route": "", "field": "Pid"}, "expected": "rowTarget.route is empty, and a row target names the route it opens"},
     {"name": "a route equal to this screen's own", "rowTarget": {"route": "os-management/row-target-corpus", "field": "Pid"}, "expected": "rowTarget.route 'os-management/row-target-corpus' is this screen's own route, and a row already reaches it through its own id (AD-5)"},
     {"name": "an empty field", "rowTarget": {"route": "os-management/processes/details", "field": ""}, "expected": "rowTarget.field is empty, and a row target names the field its link encodes"},
-    {"name": "a field outside read.fields", "rowTarget": {"route": "os-management/processes/details", "field": "Bogus"}, "expected": "rowTarget.field 'Bogus' is not one of read.fields"}
+    {"name": "a field outside read.fields", "rowTarget": {"route": "os-management/processes/details", "field": "Bogus"}, "expected": "rowTarget.field 'Bogus' is not one of read.fields"},
+    {"name": "no unless declared is sound", "rowTarget": {"route": "os-management/processes/details", "field": "Pid"}, "expected": null},
+    {"name": "an empty unless", "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "unless": ""}, "expected": "rowTarget.unless is empty, and an unless names the read field that withholds a row's link"},
+    {"name": "an unless that is not a string", "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "unless": true}, "expected": "rowTarget.unless is empty, and an unless names the read field that withholds a row's link"},
+    {"name": "an unless outside read.fields", "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "unless": "Bogus"}, "expected": "rowTarget.unless 'Bogus' is not one of read.fields"}
   ]
 }
 }

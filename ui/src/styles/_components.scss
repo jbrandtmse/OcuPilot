@@ -7517,3 +7517,31 @@ app-log-hub-page {
   color: var(--ocu-error);
   overflow-wrap: anywhere;
 }
+
+// The Remove locks dialog (Story 16.12): its three scopes, a refused scope drawn unavailable with its
+// reason under it, and the refusal line. A lock reference can be long, so it wraps rather than
+// widening the dialog (DW-1337).
+.ocu-lock-remove-scopes {
+  margin: 0 0 var(--ocu-space-4);
+}
+
+.ocu-lock-remove-scope-label {
+  overflow-wrap: anywhere;
+}
+
+.ocu-lock-remove-scope input[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.ocu-lock-remove-scope-reason {
+  margin: 0 0 var(--ocu-space-2) calc(var(--ocu-space-6) + var(--ocu-space-2));
+}
+
+.ocu-lock-remove-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-error);
+  overflow-wrap: anywhere;
+}

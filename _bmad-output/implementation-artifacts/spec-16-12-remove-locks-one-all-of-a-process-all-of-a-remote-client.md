@@ -2,7 +2,8 @@
 title: 'Story 16.12: Remove locks - one, all of a process, all of a remote client'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '7e8cd3ceab5c88138aeda1f1f664f391079ab7bf'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -322,6 +323,34 @@ Anchors are as of `eb6ed8f4`. Paths are relative to `src/OcuPilot/` unless they 
 
 ## Review Triage Log
 
+### 2026-09-30 — Review pass
+
+- verdicts: 23 findings — high 0, medium 6, low 8, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) No test reaches `LockPort`'s fresh-listing guard, its `REMOVE`-skip 404 or its remote-owner `checkTxn` 0 — added `Test/LockRecordPort` (canned `LIST`, recorded `DELETE`s, nothing sent) and `LockRemoveTools.TestThePortSendsOnlyWhatItsFreshListingHolds`, which also pins the 409 stop.
+  - `[medium]` `[patch]` (verification-gap) The owner read's `maxRows` 201, on which the 200-lock refusal depends, is never exercised — added `LockRemoveTools.TestAnOwnerBeyondTheCapIsRefused` over 250 canned rows; the record port answers at most `maxRows` rows, as the vendor does.
+  - `[medium]` `[patch]` (verification-gap) The client's `LOCK.INTRANSACTION` consequence sentence is untested — added the `proposal-view.test.mjs` test on the Task Manager pattern, reading the code from `LockRemove.cls`.
+  - `[medium]` `[patch]` (verification-gap) `LockRemoveLive`'s residue check reads a failed lock list as zero locks — `ProbeRows` reports readability; `ProbeLockCount`, `CountOf` and `Listed` answer -1 on a failed read.
+  - `[false]` `[reject]` (verification-gap) AC6 has no `mutation:` line for its key, script form, read-back or audit legs — Rule 19 asks one demonstrated mutation per AC, and AC6's fingerprint line is recorded.
+  - `[false]` `[reject]` (verification-gap) AC8's two-engine refusal has no `mutation:` line — one per AC; AC8's `data-table.ts` line is recorded, and both engines read the one corpus.
+  - `[false]` `[reject]` (verification-gap) AC2's client half has no `mutation:` line — one per AC; AC2's `checkTxn` line is recorded, and the page and dialog specs carry their own mutation notes.
+  - `[low]` `[patch]` (verification-gap) `LockRemoveLive`'s `removeprocess` leg removed a set of one — P1 now holds three locks, so `removeprocess` removes two, asserted by `CountOf` before and after.
+  - `[low]` `[patch]` (verification-gap) The crafted-id mint leg accepted any mint failure — it now asserts 400 `TOOL.ARGUMENTS` with the "is not present on this instance" problem.
+  - `[low]` `[reject]` (verification-gap) Rows of other owners whose text carries `,P<pid>,` count against the 201-row budget, so a near-cap owner can be listed short without the refusal — needs about 200 such rows; the card enumerates the exact set, so nothing unreviewed is removed; the fix adds a truncation branch.
+  - `[medium]` `[patch]` (intent-alignment) Most of the port's composed paths never run — same root cause as the first two rows; closed by the same two tests.
+  - `[low]` `[reject]` (intent-alignment) The agent's pair refusal is pinned on `Registry.RequiredPairs` and `Operation.MissingPair`, not a full dispatch — dispatch reads that same `RequiredPairs`; its gate is pinned by the dispatch suites; a full dispatch needs an agent-capable principal.
+  - `[false]` `[reject]` (intent-alignment) "Card shows the sentence" is asserted on `ReasonForToolCode`, not the rendered envelope — `Api/Confirm` renders a write-failure code through that same method (Code Map, `Api/Confirm.cls:146-151`).
+  - `[medium]` `[patch]` (intent-alignment) The client consequence mapping is untested — same root cause as the third row; closed by the same test.
+  - `[low]` `[patch]` (intent-alignment) A multi-lock owner removal ran only in the browser — same root cause as the eighth row; closed there.
+  - `[false]` `[reject]` (intent-alignment) The remote-client scope never runs end to end — the intent itself scopes it to canned rows ("Unobservable without ECP"); the canned port now also pins its `checkTxn` 0.
+  - `[low]` `[reject]` (intent-alignment) Least privilege runs live only for `remove` — the owner tools inherit `LockRemove.PrivilegePairs` unchanged, pinned per tool by `TestEachToolRequiresTheWritePairAndTheClassicPage`.
+  - `[low]` `[reject]` (intent-alignment) OcuPilot's own lock is refused at Confirm only for a single lock — Confirm and the route call the one `Prohibited.Prohibits`; the set case is pinned on the route and on canned sets.
+  - `[false]` `[reject]` (intent-alignment) No "no Enter navigation" assertion on a withheld row — `data-table.ts:1111-1122` navigates on Enter only for a non-empty `url`, which a withheld row never has.
+  - `[false]` `[reject]` (intent-alignment) After a warning, a changed scope sends `'true'` — every enabled scope on a local row acts on the one owner whose transaction was warned about, and the spec says the next submit sends `'true'`.
+  - `[false]` `[reject]` (intent-alignment) Edits beyond the Tasks (`Lock/REMOVE` and `Lock/REMOVEOWNER` in `MUTATINGTYPES`, `Fail`'s `pType`, a `PATH.ROOT` expectation, `Prohibited`'s uncovered probe) — each is additive and required by `ToolWrite`'s roster, `UNLOGGEDREFUSALS`, `ActionRefusal.code` and `lock` being covered.
+  - `[false]` `[reject]` (intent-alignment) The diff cannot show `screens.generated.ts` was regenerated — `screen-mirror.mjs --check` in `prebuild` and the tools suite fail on any generated file that differs from the generator's output; both pass.
+  - `[low]` `[reject]` (intent-alignment) Principals are deleted once per class, not per test — `OnAfterAllTests` runs on failure too, so AC9 holds when the class ends; per-test re-creation adds cost and no protection.
+
 ## Design Notes
 
 **Measured on `ocupilot-ci`, 2026-09-30.** The transcript is in the session scratchpad, `epic-16/16-12/`. The vendor source was read on `ocupilot` with `iris_doc_get`.
@@ -457,12 +486,41 @@ Everything that takes or removes a lock, or creates a principal, runs on `ocupil
 - **AC8:** `data-table.ts` ignores `unless`. `data-table.spec.ts` goes red.
 - **AC9:** `OnAfterOneTest` skips the holder stop. The class's own residue check goes red.
 
+**Demonstrated (each reverted, tree unchanged afterward):**
+
+- mutation: `LockPort.Invoke` sends `checkTxn` 0 always → `LockRemoveLive.TestAnOwnerInATransactionIsRefusedThenOverridden` and `TestTheAgentsConfirmWarnsThenOverrides` red (run 21917).
+- mutation: `LockPort.Listing` keeps owner-scope rows without the exact owner compare → `LockRemoveLive.TestEachScopeRemovesExactlyItsLocks` red, P2's decoy lock (reference carrying `,P<P1>,`) removed with P1's (run 21918).
+- mutation: `LockRemove.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `LockRemoveLive.TestAPrincipalWithoutTheWritePairIsRefusedByName` red on the route, dispatch and Confirm legs (run 21919).
+- mutation: `LockRemoveProcess` subject drops `DeleteIDs` (precondition moved to `Owner` so it registers) → `LockRemoveLive.TestAnOwnerThatTookALockSinceTheMintRefusesTheConfirm` red (run 21922).
+- mutation: the `lock` branch of `Prohibited.Prohibits` skips the arm → `LockRemoveLive.TestOcuPilotsOwnLockIsRefusedOnBothCallers` red (run 21923).
+- mutation: `LockRemove.SENDSBODY` 1 → `LockRemoveTools.TestEachToolIsAnActionWriteOverTheLockPort` red for all three tools (run 21924).
+- mutation: `LockRemoveLive.OnAfterOneTest` skips the holder stop → the residue assertion red in all eight tests; `OnAfterAllTests` swept the holders, probe locks 0 afterward (run 21925).
+- mutation: `lock-remove-dialog.ts` draws every scope enabled (`refused` false) → `lock-remove-dialog.spec.ts` AC1 and selection tests red.
+- mutation: `data-table.ts` ignores `rowTarget.unless` → `data-table.spec.ts` "a rowTarget's unless withholds the link" red.
+- mutation: `LockPort.Invoke`'s fresh-listing guard treats an unlisted id as listed → `LockRemoveTools.TestThePortSendsOnlyWhatItsFreshListingHolds` red on its 404, no-`DELETE` and sent-ids assertions (run 22339).
+- mutation: `LockPort.Listing` asks `maxRows` `MAXOWNERLOCKS` rather than one more → `LockRemoveTools.TestAnOwnerBeyondTheCapIsRefused` red, the owner reading 200 locks and no refusal (run 22340).
+- mutation: `consequenceSentence` drops its `LOCK.INTRANSACTION` branch → `proposal-view.test.mjs` "the lock removal's in-transaction consequence code…" red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Planned only; no code changed.** The spec is uncommitted, for the lead's validation gate.
-- **Measured on `ocupilot-ci`.** The measurement created three probe principals and seven probe lock holders, and removed only its own probe locks. All of them are gone, and the 57 daemon rows are intact (verified).
-- **Residue.** A crafted-id probe left seven signal-7 lines in `ocupilot-ci`'s `messages.log` (13:07Z).
-- **Spine amendments.** Seven are written for the lead under Design Notes (AD-2, AD-5, AD-8, AD-10, AD-44, AD-51, AD-52). The AD-10 system-process call is flagged for the lead.
+- **Implemented.** Three action-style lock removals (`LockRemove`, `LockRemoveProcess`, `LockRemoveClient`) over a new `Port/LockPort` that re-lists and sends one vendor `Lock` `DELETE` per freshly listed id, the vendor's in-transaction 409 as `LOCK.INTRANSACTION` (new `Api/LockError`, unlogged via `AdminPort.UNLOGGEDREFUSALS`), the `PROHIBITED.OCUPILOTLOCK` arm, `rowTarget.unless` in both engines, the Locks page and its Remove locks dialog, 14 strings, and EXPERIENCE.md `:376` rewritten in place (993 lines).
+- **Files.**
+  - New: `Api/LockError.cls`, `Port/LockPort.cls`, the three `Screen/Tool/LockRemove*.cls`, `Test/LockRemoveTools.cls`, `Test/LockRemoveLive.cls` (armed), `Test/LockRecordPort.cls`, `lock-list.page.ts` and `lock-remove-dialog.ts` with their specs.
+  - Changed: `Api/Error`, `AdminPort` (`Lock/DELETE`, `Lock/REMOVE`, `Lock/REMOVEOWNER`; `Fail`'s `pType`), `Prohibited`, `Baseline`, `Registry`, `Descriptor/Base`, `LockList`, the client handler, table, outlet, labels, consequence map and strings, `screens.generated.ts` (regenerated), and the roster tests the Code Map names.
+  - Outside the Code Map: `Test/ClassicPageGate`, `Test/MappingDescriptor`, `Test/PortGate` (LockPort's roster row, which the sweep reddened), `Test/LockRecordPort`, `ui/src/styles/_components.scss` (appended) and `ui/tools/proposal-view.test.mjs`. Epic 23 touches none of them.
+  - Footprint: every file was uncontended when edited (checked 14:52Z). At finalize, Epic 23's uncommitted batch also edits `Prohibited`, `Screen/Registry`, `Test/Descriptor`, `screen-mirror.mjs` and its test, in hunks that do not overlap this story's (compared by range).
+- **Review** (Review Triage Log, 23 findings): patched 4 medium and 2 low entries, all test-only; rejected 9 false and 5 low with reasons; deferred none.
+- **Follow-up review recommendation: `false`.** Patched: medium 4, low 2. The patches add tests and a test port only, each red demonstrated by mutation, so no unverified risk can be named.
+- **Verification (slot A, `ocupilot-ci`, one run at a time).**
+  - `npm test` green (1,730 tools, then 1,731 after the patch; 1,979 components); `check-objectscript` 0 problems; `lint-docs` 0 issues; bundle 2.32 MB.
+  - Full sweep: 384 classes, 2,972 tests, 7 failed. `PortGate` 1 was this story's, fixed and green (run 22337). The rest is named residue: `PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` task history 1; 22 classes did not run for arming variables outside the shim's four.
+  - After the patch: `LockRemoveTools` 11/11 (run 22341), `LockRemoveLive` 8/8 (run 22336), `PortGate` 4/4; `locks.browser-spec.mjs` 6/6 on a rebuilt, redeployed bundle, DW-1337 in both themes.
+  - Twelve mutations are recorded under Verification, one or more per AC; each reverted, the tree byte-identical.
+  - No probe lock, holder or principal remains on `ocupilot-ci` (checked after the last run); nothing ran against `ocupilot`.
+- **Residual risks.**
+  - A process that takes a lock under the same first subscript as one it holds gives that lock a new `DeleteID` (measured), so an open dialog or proposal against it answers "no longer present" or `PROPOSAL.TARGETCHANGED` and must be reopened; a stale id is still never sent. Candidate wording for AD-52's limits.
+  - Remote-owner behavior (the client scope, `checkTxn` 0) is pinned on canned rows only, as the spec accepts.
+  - `ocupilot-ci`'s `messages.log` holds the planning probe's seven signal-7 lines and a few `#921` lines from the AC5 mutation runs.

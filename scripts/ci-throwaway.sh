@@ -256,6 +256,8 @@ services:
       # The Task Manager classes also suspend, resume, stop and start the Task Manager and act on a
       # probe purge task as their principals.
       # classes: TaskManagerLive, TaskRowWire
+      # The lock removal class also starts processes that hold probe locks and removes those locks.
+      # classes: LockRemoveLive
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
