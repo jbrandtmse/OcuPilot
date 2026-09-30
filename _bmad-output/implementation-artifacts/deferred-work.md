@@ -8067,6 +8067,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T13:44:39Z occurrence=16-16-the-agent-audit-viewer note=the agent panel's tool-call card can show the same step target (review inference)
 - 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: store the redaction mark on the progress step's target when written, as the ledger does
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
+- 2026-09-30T07:53:11Z status=routed owner=range-end-cleanup by=owner note=owner 2026-09-30 via the Planner: leave it where it is - top of the 23.3 queue (p2 security); 23.2 stays at its 12
 
 ### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
