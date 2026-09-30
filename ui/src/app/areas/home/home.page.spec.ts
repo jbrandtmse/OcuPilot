@@ -344,6 +344,8 @@ describe('Home', () => {
           { path: 'web-applications/list/:id', children: [] },
           { path: 'permissions/users/:id', children: [] },
           { path: 'security/auditing', children: [] },
+          // Story 16.11: the Task Manager finding's Fix it opens the Task schedule itself.
+          { path: 'tasks/schedule', children: [] },
           // DW-1852: the Security tile's target for a holder of only the authorization-server tab.
           { path: 'security/oauth/server', children: [] },
         ]),
@@ -1648,6 +1650,8 @@ describe('Home', () => {
       { finding: { check: 'monitor-open', group: 'security', name: '/api/monitor', id: '/api/monitor', route: 'web-applications/list', scope: 'instance', fix: 'agent' }, sentence: 'The monitoring API, /api/monitor, answers without signing in.', url: '/web-applications/list/%252Fapi%252Fmonitor', key: 'findingFixMonitorOpen' },
       { finding: { check: 'all-holder', group: 'security', name: 'SuperUser', id: 'SuperUser', route: 'permissions/users', scope: 'instance', fix: 'agent' }, sentence: 'SuperUser holds %All.', url: '/permissions/users/SuperUser', key: 'findingFixAllHolder' },
       { finding: { check: 'auditing-off', group: 'security', name: '', id: '', route: 'security/auditing', scope: 'instance', fix: 'agent' }, sentence: STRINGS.auditingStatusOff, url: '/security/auditing', key: 'findingFixAuditingOff' },
+      // Story 16.11: a suspended or stopped Task Manager is fixed by the agent, on the Task schedule.
+      { finding: { check: 'task-manager', group: 'operations', name: '', id: '', route: 'tasks/schedule', scope: 'instance', detail: 'taskManagerStoppedBanner', fix: 'agent' }, sentence: STRINGS.taskManagerStoppedBanner, url: '/tasks/schedule', key: 'findingFixTaskManager' },
     ];
     for (const { finding, sentence, url, key } of cases) {
       await router.navigateByUrl('/');

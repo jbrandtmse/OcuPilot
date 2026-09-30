@@ -210,6 +210,25 @@ test('the screen read carries the banner key the instance answered, and anything
   assert.equal((await read({ maxRows: 5 })).banner, '', 'and so is one that is not a string');
 });
 
+// Story 16.11: beside the banner the instance answers `bannerRequires`, the first pair the caller
+// lacks for the raised case's action. Additive like the banner, so an absent or non-string one reads
+// as no requirement.
+//
+// Mutation (Rule 19): drop the `bannerRequires` key from `createScreenRead`'s ok result -> the first
+// assertion goes red.
+test('the screen read carries the bannerRequires pair the instance answered, and anything but a string reads as none', async () => {
+  const bodies = [
+    { fields: READ.fields, rows: [], truncated: false, banner: 'taskManagerStoppedBanner', bannerRequires: '%Admin_Secure:USE' },
+    { fields: READ.fields, rows: [], truncated: false, banner: 'taskManagerStoppedBanner' },
+    { fields: READ.fields, rows: [], truncated: false, banner: 'taskManagerStoppedBanner', bannerRequires: 7 },
+  ];
+  const harness = wired(() => ({ status: 200, body: bodies.shift() }));
+  const read = createScreenRead(harness.api, screen());
+  assert.equal((await read({ maxRows: 5 })).bannerRequires, '%Admin_Secure:USE');
+  assert.equal((await read({ maxRows: 5 })).bannerRequires, '', 'an absent one requires nothing');
+  assert.equal((await read({ maxRows: 5 })).bannerRequires, '', 'and so does one that is not a string');
+});
+
 test('a refused read is a classified fault: the store keeps its rows and the timer parks', async () => {
   const refused = {
     status: 403,

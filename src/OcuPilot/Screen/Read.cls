@@ -261,7 +261,8 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 }
 
 /// <p>Run <var>pDescriptor</var>'s declared read, bounded by <var>pMaxRows</var>.</p>
-/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner}</code>, plus
+/// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner, bannerRequires}</code>
+/// (<method>BannerKey</method>), plus
 /// <code>criteria</code> when the read declares criteria, <code>document</code> when a
 /// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
 /// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and
@@ -558,7 +559,8 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", tTruncated, "boolean")
-        Do pResult.%Set("banner", ..BannerKey(pDescriptor))
+        Do pResult.%Set("banner", ..BannerKey(pDescriptor, .tBannerRequires))
+        Do pResult.%Set("bannerRequires", tBannerRequires, "string")
         If $IsObject(tApplied) Do pResult.%Set("criteria", tApplied)
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
         If $IsObject(tSources) Do pResult.%Set("sources", tSources)
@@ -1033,9 +1035,13 @@ ClassMethod AtOrAfter(pRows As %DynamicArray, ByRef pCutoffs) As %DynamicArray [
 /// The declaration's own shape is refused at install instead
 /// (<method>OcuPilot.Screen.Registry.BannerProblem</method>), which is what keeps that silence from
 /// hiding a misdeclared banner.</p>
-ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
+/// <p><var>pRequires</var> is <method>BannerRequires</method>'s verdict for the raised case's
+/// <code>action</code>, and <code>""</code> for no raised case or no action.</p>
+ClassMethod BannerKey(pDescriptor As %String, Output pRequires As %String) As %String [ Private ]
 {
     Set tKey = ""
+    Set pRequires = ""
+    Set tAction = ""
     Try {
         Set tBanner = $ClassMethod(pDescriptor, "Banner")
         If '$IsObject(tBanner) Quit
@@ -1053,12 +1059,50 @@ ClassMethod BannerKey(pDescriptor As %String) As %String [ Private ]
             If '$IsObject(tCase) Continue
             If tCase.%Get("equals") '= tValue Continue
             Set tKey = tCase.%Get("messageKey")
+            If tCase.%GetTypeOf("action") = "string" Set tAction = tCase.%Get("action")
             Quit
         }
     } Catch {
         Set tKey = ""
+        Set tAction = ""
     }
+    If (tKey '= "") && (tAction '= "") Set pRequires = ..BannerRequires(pDescriptor, tAction)
     Quit tKey
+}
+
+/// <p>The first pair the calling process lacks for the write tool that carries screen action
+/// <var>pAction</var> of <var>pDescriptor</var>, as <code>resource:permission</code>, or
+/// <code>""</code> (AD-5, AD-8). The tool is the one registered write tool whose descriptor is
+/// <var>pDescriptor</var> and whose screen actions include <var>pAction</var>; its declared pairs are
+/// evaluated in the caller's process at each read.</p>
+/// <p><b>Screen chrome, never the tool's view</b> (AD-36). Every fault, and an action no tool carries,
+/// answers <code>""</code> and never fails the read: the route and the mint still refuse a caller
+/// short of a pair by name.</p>
+ClassMethod BannerRequires(pDescriptor As %String, pAction As %String) As %String [ Private ]
+{
+    Set tRequires = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+        If $$$ISERR(tSC) Quit
+        Set tTool = ""
+        Set tIterator = tTools.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) || (tEntry.%Get("kind") '= "write") Continue
+            Set tClass = tEntry.%Get("class")
+            If tClass = "" Continue
+            If $Parameter(tClass, "DESCRIPTORCLASS") '= pDescriptor Continue
+            If '$ListFind($ClassMethod(tClass, "ScreenActionIds"), pAction) Continue
+            Set tTool = tEntry
+            Quit
+        }
+        If '$IsObject(tTool) Quit
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
+        If 'tResolved Quit
+        If '##class(OcuPilot.Screen.Gate).EvaluatePairs(tPairs, .tFailed) Set tRequires = tFailed
+    } Catch {
+        Set tRequires = ""
+    }
+    Quit tRequires
 }
 
 /// <p>One surviving list row with its detail merged, as <var>pOut</var>, or <var>pOut</var>

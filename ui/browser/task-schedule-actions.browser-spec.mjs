@@ -57,10 +57,11 @@ const ACTIONS = [STRINGS.actionRun, STRINGS.actionSuspend, STRINGS.actionResume,
 /**
  * Story 16.4's two beside them: Export, a row action on the selected task declared before Delete,
  * and Import, which the command bar draws after the row actions as a screen-level action and the row
- * menu never offers.
+ * menu never offers. Story 16.11's Suspend Task Manager follows Import on the bar, and the row menu
+ * never offers it.
  */
 const MENU_ACTIONS = [STRINGS.actionRun, STRINGS.actionSuspend, STRINGS.actionResume, STRINGS.taskExportAction, STRINGS.actionDelete];
-const BAR_ACTIONS = [...MENU_ACTIONS, STRINGS.actionImport];
+const BAR_ACTIONS = [...MENU_ACTIONS, STRINGS.actionImport, STRINGS.taskManagerSuspendAction];
 
 let browser = null;
 let taskId = '';
@@ -274,7 +275,7 @@ test('AC1: the row menu and the command bar offer all four actions, and Run send
   const { context, page, posts, browserDialogs } = await signedInAtList();
   try {
     await select(page, taskName, taskName);
-    assert.deepEqual(await commandBar(page), BAR_ACTIONS, 'the command bar offers Run, Suspend, Resume, Export and Delete, then Import');
+    assert.deepEqual(await commandBar(page), BAR_ACTIONS, 'the command bar offers Run, Suspend, Resume, Export and Delete, then Import and Suspend Task Manager');
     assert.deepEqual(await openRowMenu(page), MENU_ACTIONS, 'and the row menu the four and Export, destructive last');
 
     const before = await rowNamed(page, taskName);

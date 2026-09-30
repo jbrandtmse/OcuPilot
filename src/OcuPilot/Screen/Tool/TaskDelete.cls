@@ -111,6 +111,31 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit tPairs _ $ListBuild(tOwn)
 }
 
+/// <p>The task type's privilege judged for the agent's mint (DW-1638,
+/// <method>OcuPilot.Area.Task.TaskRules.TargetProblem</method>).</p>
+ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(pIdValue, .pProblem)
+}
+
+/// <p>The task type's privilege judged again at the agent's confirm (DW-1638, AD-6, AD-40), so a
+/// caller who lost it since the mint is refused.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(pIdValue, .pProblem)
+}
+
+/// <p>The task type's privilege judged for the screen route, after the default arguments
+/// (DW-1638). The route passes the target as <method>IdArgument</method> in <var>pValues</var>.</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
+    If $$$ISERR(tSC) || (pProblem '= "") Quit tSC
+    Set tId = ""
+    If $IsObject(pValues) && (pValues.%GetTypeOf(..IdArgument()) = "string") Set tId = pValues.%Get(..IdArgument())
+    Quit ##class(OcuPilot.Area.Task.TaskRules).TargetProblem(tId, .pProblem)
+}
+
 /// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: one per
 /// subject field, carrying the value the instance holds and no after-state.</p>
 /// <p>A read that answered no <code>Name</code>, or no <code>Type</code>, is <var>pProblem</var>:

@@ -430,3 +430,26 @@ test('Story 16.25: the running refusal, the Python consequence, the name check a
   const description = /Parameter DESCRIPTION = "([^"]+)";/.exec(readFileSync(LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'utf8'));
   assert.ok(description !== null && description[1].includes(stringValue('languageServerPythonConsequence')), 'the update tool describes the Python consequence in its published words');
 });
+
+/** Story 16.11's suspend tool, which declares the four state refusals its resume and start inherit. */
+const TASK_MANAGER_SUSPEND = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'TaskManagerSuspend.cls');
+
+/** Story 16.11's five published refusals: `[file, parameter, strings.ts key]`. */
+const TASK_MANAGER_REFUSALS = [
+  [TASK_MANAGER_SUSPEND, 'RUNNINGREASON', 'taskManagerRefusalRunning'],
+  [TASK_MANAGER_SUSPEND, 'SUSPENDEDREASON', 'taskManagerRefusalSuspended'],
+  [TASK_MANAGER_SUSPEND, 'SUSPENDEDSTARTREASON', 'taskManagerRefusalSuspendedStart'],
+  [TASK_MANAGER_SUSPEND, 'STOPPEDREASON', 'taskManagerRefusalStopped'],
+  [ERROR, 'REASONTASKTASKCLASSPERMISSION', 'taskTypePrivilegeRefusal'],
+];
+
+test('Story 16.11: the four Task Manager state refusals and the task type privilege refusal are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of SUSPENDEDREASON in TaskManagerSuspend.cls -> this goes red naming both.
+  for (const [file, parameter, key] of TASK_MANAGER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});

@@ -260,6 +260,9 @@ XData Coverage
 <tool name="osmgmt.languageservers.create" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
 <tool name="osmgmt.languageservers.update" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
 <tool name="osmgmt.languageservers.delete" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
+<tool name="tasks.schedule.suspendmanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
+<tool name="tasks.schedule.resumemanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
+<tool name="tasks.schedule.startmanager" class="OcuPilot.Test.TaskManagerTools" method="TestEachToolIsAnActionWriteOverTheTaskManager" corpus="the three Task Manager tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

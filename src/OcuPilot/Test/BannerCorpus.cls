@@ -11,6 +11,8 @@
 /// boolean into a refusal sentence differently (<code>%Get</code> answers <code>1</code> where
 /// <code>String</code> answers <code>true</code>). The shapes a descriptor can plausibly be
 /// misauthored into are all covered by string values.</p>
+/// <p>A case may name the row action its strip offers (Story 16.11), so the declaration carries one
+/// row action for the sound case to name.</p>
 /// <p>One case names the shape the grammar <b>used</b> to have -- <code>equals</code>,
 /// <code>messageKey</code> and <code>severity</code> on the banner itself -- so a descriptor left
 /// on the old shape is refused by name rather than validating as a banner with no cases.</p>
@@ -26,7 +28,7 @@ XData Cases
     "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
     "entityType": "task", "secondaryEntityTypes": [],
     "scope": "instance", "parentScope": "", "id": {"kind": "single", "parts": []},
-    "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],
+    "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "resumemanager", "selfProtection": ""}],
     "context": {"fields": ["Name", "Namespace"], "secretFields": []},
     "emptyStateKey": "taskListEmpty", "commandAliases": [], "classicPage": "",
     "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
@@ -68,7 +70,10 @@ XData Cases
     {"name": "no cases at all", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status"}, "expected": "banner.cases is not an array of banner cases"},
     {"name": "an empty case list", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": []}, "expected": "banner.cases is empty, and a declared banner raises at least one sentence"},
     {"name": "a case that is not an object", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": ["Suspended"]}, "expected": "banner.cases entry #1 is not an object declaring its equals, messageKey and severity"},
-    {"name": "an unknown key on a case", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": "Resume"}]}, "expected": "banner.cases entry #1 declares the unknown key 'action'"},
+    {"name": "an unknown key on a case", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "label": "Resume"}]}, "expected": "banner.cases entry #1 declares the unknown key 'label'"},
+    {"name": "a case names one of the screen's row actions", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": "resumemanager"}, {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning"}]}, "expected": null},
+    {"name": "an action naming no declared row action", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": "Resume"}]}, "expected": "banner.cases entry #1 action 'Resume' is not one of rowActions"},
+    {"name": "an action that is not a string", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": ["resumemanager"]}]}, "expected": "banner.cases entry #1 action is not a string naming one of rowActions"},
     {"name": "an empty equals", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"}]}, "expected": "banner.cases entry #1 equals is empty, and a case names the one value it raises on and the string key it raises"},
     {"name": "an empty messageKey", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "", "severity": "warning"}]}, "expected": "banner.cases entry #1 messageKey is empty, and a case names the one value it raises on and the string key it raises"},
     {"name": "the second case is the one at fault", "readless": false, "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"}, {"equals": "Not running", "messageKey": "", "severity": "warning"}]}, "expected": "banner.cases entry #2 messageKey is empty, and a case names the one value it raises on and the string key it raises"},

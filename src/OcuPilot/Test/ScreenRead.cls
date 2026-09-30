@@ -701,6 +701,7 @@ Method TestTheStoppedTaskManagerRaisesItsOwnSentence()
         If $IsObject(tResult) {
             Do $$$AssertTrue(tResult.rows.%Size() > 0, "with its rows listed, whatever the banner says")
             Do $$$AssertEquals(tResult.banner, tExpected(tStatus), "Status '" _ tStatus _ "' raises the sentence the shipped descriptor declares for it")
+            Do $$$AssertEquals(tResult.%GetTypeOf("bannerRequires") _ " " _ tResult.bannerRequires, "string ", "beside it bannerRequires, a string (AD-5), empty here because no tool carries this fixture's banner actions")
         }
     }
 

@@ -6194,6 +6194,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T06:52:30Z status=routed owner=range-end-cleanup by=merge_gate note=ORCHESTRATOR-DECIDED_WITH_A_STANDING_OFFER_RATHER_THAN_A_PLAIN_DEFERRAL:_it_sits_on_the_PROPOSAL_CARD,_which_is_the_demos_centrepiece,_so_if_5.13_or_the_burn-down_can_take_it_in_a_line_they_take_it_and_say_so_-_but_no_work_is_opened_for_it
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a server-recorded display name for integer-keyed targets (task, process) on the card
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
+- 2026-09-30T12:44:42Z occurrence=16-11-start-suspend-and-resume-the-task-manager
 
 ### DW-1466: Eight descriptors declare refreshes true against AD-43's roster of seven; DatabaseFreeSpace is in the descriptor half of the rule and not in the EXPERIENCE.md half
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7268,6 +7269,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T21:48:21Z status=routed owner=burndown by=cr note=judge TaskRules.Permitted in each tool's ArgumentProblem, as the 9.8 edit now does
 - 2026-09-25T03:28:21Z owner=16-5-background-tasks by=burndown note=overflow: not charterable in Epic 9 (1 entry, under cap, one occurrence); the task row actions' home is Story 16.5's task work - judge TaskRules.Permitted in TaskDelete/Suspend/Resume/Run/ScheduleRun ArgumentProblem as the 9.8 edit does
 - 2026-09-28T20:51:25Z status=routed owner=16-11-start-suspend-and-resume-the-task-manager by=spec_gate note=scheduled-task row tools, not background tasks; 16.11 builds the Task schedule's next actions
+- 2026-09-30T12:48:30Z status=resolved-by:16-11-start-suspend-and-resume-the-task-manager by=adjudication note=8b5ee360+review: TaskRules.TargetProblem judged at mint, route and Confirm (ConfirmProblem); TaskRowWire pins all three
 
 ### DW-1639: The LDAP / Kerberos list's Enabled column reads No for an enabled LDAP configuration: the vendor's Security.LDAP LIST answers Enabled false where Security.LDAPConfigs:List reads Yes
 - source: spec-9-9-a-cut-editor-ships-reduced-never-half-working.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8522,3 +8524,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (CI run 36727128251) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36727128251 attempt 1 browser shard 2/3: proposal-demo.browser-spec.mjs:355 read running; same product code green in run 36720188412 and 3/3 locally on ocupilot-b-ci
 - 2026-09-30T14:50:03Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: wait for the status word done before reading; next standing cleanup (23.3)
+### DW-1861: The task create and the 9.8 edit judge the task type's privilege (TaskRules.Permitted) only at the mint, never at Confirm, so a caller who lost it since the mint still confirms (AD-6, AD-40)
+- source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
+- 2026-09-30T12:44:42Z status=routed owner=burndown by=cr note=override ConfirmProblem in TaskCreate/TaskUpdate with the Permitted half only, not all of Validate
+
+### DW-1862: Task schedule's gated banner action (aria-disabled, Requires <pair> tooltip) is never rendered in a browser: every browser leg runs as the %All account
+- source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: tasks.browser-spec.mjs asserts only gated===null; the reveal CSS (.ocu-banner-action-reason, _components.scss) is pinned in jsdom, which computes no style; the state needs a non-%Admin_Secure principal and a stopped Task Manager
+- 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=a browser leg or report shows the gated banner action's Requires reason unrevealed on hover or focus
+
+### DW-1863: EXPERIENCE.md's command-bar row and Privilege Gating table name neither Task schedule's Suspend Task Manager nor the banner's gated action
+- source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
+- 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager

@@ -5,12 +5,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { OverlayStack } from '../../core/overlay-stack';
-import { ScreenActions, TASK_IMPORT_ACTION_ID } from '../../core/screen-actions';
+import { ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
-import { TASK_EXPORT, TASK_SCHEDULE } from '../../shell/screen-action-handler';
+import {
+  ScreenActionHandler,
+  TASK_EXPORT,
+  TASK_MANAGER_RESUME,
+  TASK_MANAGER_START,
+  TASK_MANAGER_SUSPEND,
+  TASK_MANAGER_TARGET,
+  TASK_SCHEDULE,
+} from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { TaskSchedulePage } from './task-schedule.page';
 
@@ -106,6 +114,47 @@ afterEach(() => {
 });
 
 describe('the Task schedule page', () => {
+  // Story 16.11: the page registers the Task Manager's three actions -- Suspend at screen level,
+  // Resume and Start under the ids the banner names -- each on the literal target, reporting to the
+  // list's store; Suspend waits on its warning, the other two are sent at once, and none starts over
+  // one of this page's own dialogs.
+  //
+  // Mutation (Rule 19): drop this page's registration of TASK_MANAGER_SUSPEND_ACTION_ID -> the first
+  // assertion goes red, and the command bar draws no Suspend Task Manager.
+  it('Story 16.11: registers the Task Manager\u2019s three actions on the literal target', async () => {
+    const { fixture, host, actions, calls } = mount([]);
+    const handler = TestBed.inject(ScreenActionHandler);
+    expect(actions.has(TASK_SCHEDULE, TASK_MANAGER_SUSPEND_ACTION_ID)).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_MANAGER_RESUME)).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_MANAGER_START)).toBe(true);
+    expect(actions.has(TASK_SCHEDULE, TASK_MANAGER_SUSPEND)).toBe(false);
+
+    actions.run(TASK_SCHEDULE, TASK_MANAGER_SUSPEND_ACTION_ID);
+    await settle(fixture);
+    expect(handler.pending()?.kind).toBe('warning');
+    expect(handler.pending()?.actionId).toBe(TASK_MANAGER_SUSPEND);
+    expect(handler.pending()?.target).toBe(TASK_MANAGER_TARGET);
+    expect(calls).toHaveLength(0);
+    handler.cancelPending();
+
+    actions.run(TASK_SCHEDULE, TASK_MANAGER_RESUME);
+    await settle(fixture);
+    actions.run(TASK_SCHEDULE, TASK_MANAGER_START);
+    await settle(fixture);
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([
+      { action: TASK_MANAGER_RESUME, id: TASK_MANAGER_TARGET },
+      { action: TASK_MANAGER_START, id: TASK_MANAGER_TARGET },
+    ]);
+
+    // Over the import dialog nothing starts.
+    actions.run(TASK_SCHEDULE, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.taskImportTitle);
+    actions.run(TASK_SCHEDULE, TASK_MANAGER_START);
+    await settle(fixture);
+    expect(calls).toHaveLength(2);
+  });
+
   it('registers Export on the selected task and a screen-level Import, and opens one dialog at a time', async () => {
     // Mutation (Rule 19): drop this page's `actions.register` of TASK_IMPORT_ACTION_ID -> the first
     // assertion goes red, and no surface offers Import.

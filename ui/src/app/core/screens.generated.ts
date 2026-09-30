@@ -294,11 +294,15 @@ export interface BannerSource {
 /** The `.ocu-banner-*` variants a declared banner may take (DESIGN.md `:1203`). */
 export type BannerSeverity = 'info' | 'warning' | 'restrained';
 
-/** One value a banner's field may take, and the sentence it raises (DW-270). */
+/**
+ * One value a banner's field may take, and the sentence it raises (DW-270); `action`, where
+ * declared, is the id of the screen's row action the strip offers (Story 16.11, AD-5).
+ */
 export interface BannerCase {
   readonly equals: string;
   readonly messageKey: string;
   readonly severity: BannerSeverity;
+  readonly action?: string;
 }
 
 /**
@@ -11780,6 +11784,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "suspendmanager",
+        "selfProtection": ""
+      },
+      {
+        "id": "resumemanager",
+        "selfProtection": ""
+      },
+      {
+        "id": "startmanager",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -11811,6 +11827,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupTroubleshooting",
         "textKey": "taskScheduleListPrompt3"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskScheduleListPrompt4"
       }
     ],
     "classicPage": "%CSP.UI.Portal.TaskSchedule",
@@ -11912,12 +11932,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "equals": "Suspended",
           "messageKey": "taskManagerSuspendedBanner",
-          "severity": "warning"
+          "severity": "warning",
+          "action": "resumemanager"
         },
         {
           "equals": "Not running",
           "messageKey": "taskManagerStoppedBanner",
-          "severity": "warning"
+          "severity": "warning",
+          "action": "startmanager"
         }
       ]
     },

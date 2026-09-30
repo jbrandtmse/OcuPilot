@@ -426,7 +426,7 @@ ClassMethod Databases(pCheck As %String, pOut As %DynamicObject, ByRef pContext)
 /// <p><code>task-manager</code>: the Task schedule read's declared banner reads
 /// <parameter>SUSPENDEDBANNER</parameter> or <parameter>STOPPEDBANNER</parameter>, which
 /// <code>detail</code> carries. The banner does not depend on the row cap, so a cut read is still
-/// checked.</p>
+/// checked. The agent fixes it, proposing the Task Manager's resume or start (Story 16.11).</p>
 ClassMethod TaskManager(pOut As %DynamicObject, ByRef pContext) As %Status
 {
     Set tSC = ..Rows(..#TASKDESCRIPTOR, pOut, .pContext, .tResult)
@@ -434,7 +434,7 @@ ClassMethod TaskManager(pOut As %DynamicObject, ByRef pContext) As %Status
     Do pOut.%Set("status", ..#STATUSCHECKED, "string")
     Set tBanner = tResult.%Get("banner")
     If (tBanner '= ..#SUSPENDEDBANNER) && (tBanner '= ..#STOPPEDBANNER) Quit $$$OK
-    Set tFinding = ..Add(pOut, "task-manager", "", "", $ClassMethod(..#TASKDESCRIPTOR, "Route"), ..#FIXLINK)
+    Set tFinding = ..Add(pOut, "task-manager", "", "", $ClassMethod(..#TASKDESCRIPTOR, "Route"), ..#FIXAGENT)
     Do tFinding.%Set("detail", tBanner, "string")
     Quit $$$OK
 }
