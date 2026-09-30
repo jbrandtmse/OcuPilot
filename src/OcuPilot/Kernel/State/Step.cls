@@ -4,7 +4,8 @@
 /// <p><b>Everything a step carries that came from the model is untrusted content</b> (AD-11): the
 /// panel renders it as data. <b>The caps are applied here, on write</b>: at most the step cap per
 /// turn, with later steps counted on the turn row; a name or summary cut at the summary cap and a
-/// text cut at the text cap, with <property>Truncated</property> set when either was cut.</p>
+/// text cut at the text cap, a finished tool step's at the tighter tool step cap, with
+/// <property>Truncated</property> set when either was cut.</p>
 Class OcuPilot.Kernel.State.Step Extends OcuPilot.Kernel.State.Base
 {
 
@@ -157,10 +158,11 @@ ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %Str
 /// <var>pName</var> dispatch resolved, and the tool-step fields as
 /// <method>GuardedAppend</method> takes them. A step that was dropped past the cap has no row, and
 /// nothing is written.</p>
-/// <p><var>pText</var> is the bounded result content the model was handed for this call, stored on
-/// <property>Text</property> and cut at the text cap like any other step text. It is untrusted
-/// content (AD-11, AD-33) and trailing, so a caller with nothing to record calls this unchanged and
-/// the step reads <code>""</code> as it did before.</p>
+/// <p><var>pText</var> is the result content the model was handed for this call, stored on
+/// <property>Text</property> cut at the limits class's <code>TOOLSTEPTEXTMAXLENGTH</code>, the cut
+/// value ending in U+2026 and the step marked <property>Truncated</property> (AD-33). It is
+/// untrusted content (AD-11) and trailing, so a caller with nothing to record calls this unchanged
+/// and the step reads <code>""</code>.</p>
 ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pText As %String = "") As %Status
 {
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
@@ -172,8 +174,13 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
     Set tRow.Result = pResult
     Set tRow.Reason = pReason
     Set tRow.FailedPair = pFailedPair
-    Do ..ApplyContent(tRow, pName, "", pText, pLimitsClass)
-    If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
+    Set tText = pText
+    Set tTextMax = +$Parameter(pLimitsClass, "TOOLSTEPTEXTMAXLENGTH")
+    If $Length(tText) > tTextMax {
+        Set tText = ##class(OcuPilot.Kernel.State.Turn).Cap(tText, tTextMax - 1, .tTextCut) _ $Char(8230)
+    }
+    Do ..ApplyContent(tRow, pName, "", tText, pLimitsClass)
+    If pArgumentsTruncated || $Get(tTargetCut) || $Get(tTextCut) Set tRow.Truncated = 1
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC

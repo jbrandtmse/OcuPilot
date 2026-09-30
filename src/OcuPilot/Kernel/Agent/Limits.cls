@@ -43,8 +43,15 @@ Parameter MAXSTEPS As %Integer = 100;
 /// <p>Characters a step's name or summary is cut at.</p>
 Parameter SUMMARYMAXLENGTH As %Integer = 1000;
 
-/// <p>Characters a step's text, or a turn's reply, is cut at.</p>
+/// <p>Characters a step's text, or a turn's reply, is cut at. A finished tool step's text is cut
+/// shorter, at <code>TOOLSTEPTEXTMAXLENGTH</code>.</p>
 Parameter TEXTMAXLENGTH As %Integer = 131072;
+
+/// <p>Characters a finished tool step's text -- the result the model was handed -- is cut at, the
+/// cut value ending in U+2026 (AD-33). The progress poll projects every step's text, so this is
+/// what keeps a turn of many long results under the instance's string limit; the model's own
+/// <code>tool_result</code> is not cut by it.</p>
+Parameter TOOLSTEPTEXTMAXLENGTH As %Integer = 4096;
 
 /// <p>Seconds a turn may stay queued before a reserve or a poll with the slot free reads its job as
 /// lost; also how long a starting job waits for the slot.</p>

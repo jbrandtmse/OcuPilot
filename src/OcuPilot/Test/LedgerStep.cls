@@ -1,7 +1,7 @@
 /// <p>Three seams <class>OcuPilot.Test.Ledger</class> has no room for: the tool step's argument
 /// string, which must run the same two redaction layers a ledger row's does (AD-3), the result
-/// content a finished tool step stores (DW-1052), and the store's answer for a row that is gone by
-/// the time it is read (AD-9, AD-24).</p>
+/// content a finished tool step stores and its bound (AD-33), and the store's answer for a row that
+/// is gone by the time it is read (AD-9, AD-24).</p>
 /// <p><b>Live-safe.</b> It spawns nothing, creates no principal and touches no registration. Every
 /// turn it reserves names a user starting with
 /// <parameter>OcuPilot.Test.TurnFixture.PROBEPREFIX</parameter>, and
@@ -83,15 +83,15 @@ Method TestAToolStepsPreDispatchArgumentsAreDeclarationRedacted()
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }
 
-/// <p>DW-1052 -- a finished tool step stores the bounded result content the model was handed, so
-/// the panel's card can show what the model actually read. The content is the
-/// <code>tool_result</code> content itself, already cut to the per-call budget by the dispatcher,
-/// and it is untrusted content (AD-11, AD-33) like every other step field.</p>
+/// <p>A finished tool step stores the result content the model was handed, so the panel's card can
+/// show what the model actually read: the <code>tool_result</code> content itself, cut to
+/// <code>TOOLSTEPTEXTMAXLENGTH</code> characters ending in U+2026 when it is longer, and kept whole
+/// at that length or less (AD-33). It is untrusted content (AD-11) like every other step field.</p>
 /// <p>Mutation (Rule 19): revert <method>OcuPilot.Kernel.State.Step.GuardedFinishTool</method>'s
 /// text to the literal <code>""</code>, or drop the <code>content</code> argument from
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>'s success finish -- either goes red
-/// here. Pass the text past <method>ApplyContent</method> instead of through it and the cap leg
-/// goes red.</p>
+/// here. Cut at <code>TEXTMAXLENGTH</code> again and the cap leg goes red; cut a result of exactly
+/// the cap and the edge leg goes red.</p>
 Method TestAToolStepStoresTheResultContentTheModelWasHanded()
 {
     Set tUser = ..#PROBEUSER
@@ -113,19 +113,85 @@ Method TestAToolStepStoresTheResultContentTheModelWasHanded()
     Do $$$AssertStatusOK(tSourceSC, "the loop's source is readable")
     Do $$$AssertTrue(tSource [ "tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get(""content""), 1: """")", "and the loop's own success finish is what passes it")
 
-    ; The bound the content arrives under. Before this story a tool step's text was always "", so
-    ; nothing model-sized reached the column; now it does, and the cap is what keeps a progress
-    ; record finite.
-    Set tMax = +$Parameter(..#LIMITS, "TEXTMAXLENGTH")
-    Set tOversized = $Translate($Justify("", tMax + 1), " ", "x")
+    ; The bound the content arrives under: the poll projects every step's text, so a tool step's
+    ; text is cut to TOOLSTEPTEXTMAXLENGTH characters, the last of them U+2026.
+    Set tMax = +$Parameter(..#LIMITS, "TOOLSTEPTEXTMAXLENGTH")
+    Do $$$AssertEquals(tMax, 4096, "the shipped tool step cap is 4,096 characters")
+    Set tOversized = $Translate($Justify("", 65536), " ", "x")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "tool", "probe.ledger.big", "running", "", "", "", ..#LIMITS, .tBigSeq, .tBigStored), "a second running tool step is appended")
     Do $$$AssertEquals(tBigStored, 1, "and stored")
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(tKey, tBigSeq, "probe.ledger.big", "ok", "", ..#LIMITS, "", "", "", "", "", 0, tOversized), "and finished with a result longer than the cap")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(tKey, tBigSeq, "probe.ledger.big", "ok", "", ..#LIMITS, "", "", "", "", "", 0, tOversized), "and finished with a 65,536-character result")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tBigRows), "the turn's steps read back again")
     Do $$$AssertEquals(tBigRows.%Size(), 2, "as two steps")
     If tBigRows.%Size() '= 2 Quit
-    Do $$$AssertEquals($Length(tBigRows.%Get(1).%Get("text")), tMax, "the oversized result is cut to TEXTMAXLENGTH")
+    Set tBigText = tBigRows.%Get(1).%Get("text")
+    Do $$$AssertEquals($Length(tBigText), tMax, "the long result is cut to TOOLSTEPTEXTMAXLENGTH")
+    Do $$$AssertEquals($Extract(tBigText, *), $Char(8230), "ending in U+2026")
+    Do $$$AssertEquals($Extract(tBigText, 1, tMax - 1), $Extract(tOversized, 1, tMax - 1), "after the result's own first characters")
     Do $$$AssertEquals(tBigRows.%Get(1).%Get("truncated"), 1, "and the step says it was cut")
+
+    ; The edge: a result of exactly the cap is kept whole, and one character more is cut.
+    Set tExact = $Extract(tOversized, 1, tMax)
+    For tI = 0, 1 {
+        Set tName = "probe.ledger.edge" _ tI
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "tool", tName, "running", "", "", "", ..#LIMITS, .tEdgeSeq, .tEdgeStored), "an edge tool step is appended")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(tKey, tEdgeSeq, tName, "ok", "", ..#LIMITS, "", "", "", "", "", 0, tExact _ $Select(tI: "y", 1: "")), "and finished with a result of the cap plus " _ tI)
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tEdgeRows), "the turn's steps read back once more")
+    Do $$$AssertEquals(tEdgeRows.%Size(), 4, "as four steps")
+    If tEdgeRows.%Size() '= 4 Quit
+    Set tWhole = tEdgeRows.%Get(2)
+    Do $$$AssertEquals($Length(tWhole.text) _ "|" _ (tWhole.text = tExact) _ "|" _ tWhole.truncated, tMax _ "|1|0", "a result of exactly the cap is kept whole and not marked cut")
+    Set tOver = tEdgeRows.%Get(3)
+    Do $$$AssertEquals($Length(tOver.text) _ "|" _ ($Extract(tOver.text, *) = $Char(8230)) _ "|" _ tOver.truncated, tMax _ "|1|1", "one character more is cut to the cap, ending in U+2026, and marked cut")
+
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+}
+
+/// <p>A turn of 60 tool steps, each finished with a 65,536-character result, still serializes
+/// through <method>OcuPilot.Kernel.State.Turn.GuardedView</method>, the progress poll's view: each
+/// tool step's text is 4,096 characters ending in U+2026. Uncut, the 60 results total 3,932,160
+/// characters, past this build's string limit, and <code>%ToJSON()</code> raises
+/// <code>&lt;MAXSTRING&gt;</code>.</p>
+/// <p>Mutation (Rule 19): cut at <code>TEXTMAXLENGTH</code> again in
+/// <method>OcuPilot.Kernel.State.Step.GuardedFinishTool</method> -&gt; the view no longer serializes
+/// and this goes red, with the cap leg above.</p>
+Method TestALongTurnsProgressStillSerializes()
+{
+    Set tUser = ..#PROBEUSER
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
+    If $Get(tKey) = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), "and begun")
+
+    Set tResult = $Translate($Justify("", 65536), " ", "x")
+    Set tFinished = 0
+    For tI = 1:1:60 {
+        Set tAppendSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "tool", "probe.ledger.long", "running", "", "", "", ..#LIMITS, .tSeq, .tStored)
+        If $$$ISERR(tAppendSC) || 'tStored Quit
+        Set tFinishSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(tKey, tSeq, "probe.ledger.long", "ok", "", ..#LIMITS, "", "", "", "", "", 0, tResult)
+        If $$$ISERR(tFinishSC) Quit
+        Set tFinished = tFinished + 1
+    }
+    Do $$$AssertEquals(tFinished, 60, "sixty tool steps are finished with a 65,536-character result each")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, tUser, .tFound, .tView), "the progress view reads")
+    Do $$$AssertEquals(tFound, 1, "for the turn's owner")
+    If '$IsObject(tView) Quit
+    Set tJson = ""
+    Try {
+        Set tJson = tView.%ToJSON()
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the view serializes to one JSON string")
+    }
+    Do $$$AssertTrue(tJson '= "", "the view serialized")
+    Set tSteps = tView.%Get("steps")
+    Do $$$AssertEquals(tSteps.%Size(), 60, "carrying the sixty steps")
+    Set tCut = 0
+    For tI = 0:1:tSteps.%Size() - 1 {
+        Set tText = tSteps.%Get(tI).%Get("text")
+        If ($Length(tText) = 4096) && ($Extract(tText, *) = $Char(8230)) Set tCut = tCut + 1
+    }
+    Do $$$AssertEquals(tCut, 60, "each tool step's text is 4,096 characters ending in U+2026")
 
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }

@@ -844,6 +844,28 @@ export interface TurnStoreOptions {
    * `AgentStatus` already takes, so every existing caller and every existing test is unchanged.
    */
   readonly bus?: ChangeBus;
+  /**
+   * How often, in ms, a turn that has ended re-reads its progress while one of its proposals is
+   * still live here, so each card's privilege line follows a change in the user's grants (AD-8).
+   * Defaults to 15,000.
+   */
+  readonly rereadMs?: number;
+  /**
+   * Whether the document is hidden; a re-read tick is skipped while it is. `main.ts` passes the
+   * document's own `visibilityState`, so `core/` reads no browser global (AD-19); defaults to never
+   * hidden.
+   */
+  readonly hidden?: () => boolean;
+}
+
+/** Whether a row's current `privilege` already reads `fresh`. */
+function samePrivilege(current: TurnProposalPrivilege | null, fresh: TurnProposalPrivilege): boolean {
+  return (
+    current !== null &&
+    current.missing === fresh.missing &&
+    current.requires.length === fresh.requires.length &&
+    current.requires.every((pair, index) => pair === fresh.requires[index])
+  );
 }
 
 export class TurnStore {
@@ -853,9 +875,20 @@ export class TurnStore {
   private readonly pollMs: number;
   private readonly now: () => number;
   private readonly bus: ChangeBus | null;
+  private readonly rereadMs: number;
+  private readonly hidden: () => boolean;
 
   /** The proposals this store has published `proposal-open` for and not yet closed, by id. */
   private readonly openProposals = new Map<string, TurnProposal>();
+
+  /** The turn each proposal a poll carried belongs to, by proposal id. */
+  private readonly proposalTurns = new Map<string, string>();
+
+  /** The proposals a confirm, a cancel or a draft is in flight for. */
+  private readonly decidingProposals = new Set<string>();
+
+  /** Bumped on every accepted `send()`, `newConversation()` and `endSession()`, so a stale re-read is inert. */
+  private rereadGeneration = 0;
 
   private conversationIdValue: string | null = null;
   private entriesValue: TurnEntry[] = [];
@@ -916,6 +949,8 @@ export class TurnStore {
     this.pollMs = options.pollMs ?? 1000;
     this.now = options.now ?? (() => Date.now());
     this.bus = options.bus ?? null;
+    this.rereadMs = options.rereadMs ?? 15000;
+    this.hidden = options.hidden ?? (() => false);
 
     const kind = options.navigationType();
     const continuesThisTab = kind === 'reload' || kind === 'back_forward';
@@ -1137,6 +1172,9 @@ export class TurnStore {
       this.notify();
       return 'error';
     }
+    // An accepted turn closes the conversation's live proposals on the instance, so the ended
+    // turn's re-read stops here; a refused send closed nothing and leaves it running.
+    this.rereadGeneration += 1;
     this.currentTurnId = started.body.turnId;
     this.liveEntryValue = {
       seq: -1,
@@ -1151,12 +1189,14 @@ export class TurnStore {
       live: true,
     };
     this.notify();
+    const turnId = started.body.turnId;
     void this.pollUntilTerminal(generation).then(() => {
       if (generation !== this.pollGeneration) return;
       this.busyValue = false;
       this.lockedValue = false;
       this.currentTurnId = null;
       this.notify();
+      this.startReread(turnId);
     });
     return 'sent';
   }
@@ -1205,7 +1245,13 @@ export class TurnStore {
    * the draft sends nothing. The script itself is returned and never stored here.
    */
   async draftProposal(id: string): Promise<DraftOutcome> {
-    const outcome = await requestDraft(this.api, id);
+    this.decidingProposals.add(id);
+    let outcome: DraftOutcome;
+    try {
+      outcome = await requestDraft(this.api, id);
+    } finally {
+      this.decidingProposals.delete(id);
+    }
     const state = { ...NO_OUTCOME, state: outcome.state, closedReason: outcome.closedReason, confirmedAt: outcome.confirmedAt };
     if (outcome.ok) {
       this.recordProposalState(id, state);
@@ -1242,10 +1288,16 @@ export class TurnStore {
     decision: 'confirm' | 'cancel'
   ): Promise<ProposalOutcome> {
     if (id === '') return NO_OUTCOME;
-    const result = await this.api.requestJson<Record<string, unknown>>(path, {
-      method: 'POST',
-      body,
-    });
+    this.decidingProposals.add(id);
+    let result: JsonResult<Record<string, unknown>>;
+    try {
+      result = await this.api.requestJson<Record<string, unknown>>(path, {
+        method: 'POST',
+        body,
+      });
+    } finally {
+      this.decidingProposals.delete(id);
+    }
     if (result.kind === 'ok') {
       const outcome: ProposalOutcome = {
         changeAction: confirmedAction(result.body),
@@ -1355,8 +1407,8 @@ export class TurnStore {
 
   /**
    * Record on proposal `id`'s privilege line the pair Confirm's own gate refused it for (AD-8), so
-   * a card whose turn no longer polls stops saying the set is held. A proposal with no line is left
-   * alone.
+   * the card stops saying the set is held at once rather than at the next re-read
+   * (`startReread`). A proposal with no line is left alone.
    */
   private recordProposalMissingPair(id: string, failedPair: string): void {
     const apply = (proposals: readonly TurnProposal[]): readonly TurnProposal[] =>
@@ -1414,6 +1466,8 @@ export class TurnStore {
     }
     this.entriesValue = [];
     this.lockedValue = false;
+    this.rereadGeneration += 1;
+    this.proposalTurns.clear();
     // The instance closed every live proposal of this caller when it minted the conversation, and
     // the transcript that explained them is gone -- so every pause this store opened is lifted
     // here, through the store's one publisher (DW-1243).
@@ -1434,6 +1488,8 @@ export class TurnStore {
   endSession(): void {
     this.publishProposals([]);
     this.pollGeneration += 1;
+    this.rereadGeneration += 1;
+    this.proposalTurns.clear();
     this.busyValue = false;
     this.lockedValue = false;
     this.sendErrorValue = null;
@@ -1531,9 +1587,8 @@ export class TurnStore {
   /** One poll. Answers `true` once the turn is done (terminal, not found, or unreadable). */
   private async pollOnce(generation: number): Promise<boolean> {
     if (generation !== this.pollGeneration || this.currentTurnId === null) return true;
-    const result: JsonResult<Record<string, unknown>> = await this.api.requestJson(
-      turnProgressPath(this.currentTurnId)
-    );
+    const turnId = this.currentTurnId;
+    const result: JsonResult<Record<string, unknown>> = await this.api.requestJson(turnProgressPath(turnId));
     if (generation !== this.pollGeneration) return true;
     if (result.kind === 'installing' || (result.kind === 'error' && (result.status === 0 || result.status >= 500))) {
       // A transport fault or a server error is transient: keep polling, which also keeps the
@@ -1559,6 +1614,7 @@ export class TurnStore {
     // directive for a turn that has already ended.
     this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
     const proposals = parseProposals(body['proposals']);
+    for (const proposal of proposals) this.proposalTurns.set(proposal.proposalId, turnId);
     const citations = parseCitations(body['citations']);
     if (this.liveEntryValue !== null) {
       this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals, citations };
@@ -1573,6 +1629,89 @@ export class TurnStore {
   }
 
   /**
+   * Once turn `turnId` has ended, re-read its progress every `rereadMs` while one of its proposals
+   * is live here and unexpired, and take each live row's `privilege` from the read (AD-8): the
+   * instance evaluates the line at every read of the row, and a card whose turn no longer polls
+   * would otherwise keep the last poll's answer. A terminal turn's read renews no lease, and nothing
+   * is published. It stops when no such proposal remains, on a refusal (a 404, 401 or 403), and at
+   * the next accepted `send()`, `newConversation()` or `endSession()`; a tick is skipped while the
+   * document is hidden, and a transport fault or a server error keeps it armed.
+   */
+  private startReread(turnId: string): void {
+    const generation = (this.rereadGeneration += 1);
+    const arm = (): void => {
+      if (generation !== this.rereadGeneration || !this.hasLiveProposal(turnId)) return;
+      this.schedule(() => {
+        void this.rereadOnce(turnId, generation).then((again) => {
+          if (again) arm();
+        });
+      }, this.rereadMs);
+    };
+    arm();
+  }
+
+  /** One re-read of ended turn `turnId`. Answers whether to arm the next. */
+  private async rereadOnce(turnId: string, generation: number): Promise<boolean> {
+    if (generation !== this.rereadGeneration || !this.hasLiveProposal(turnId)) return false;
+    if (this.hidden()) return true;
+    const result: JsonResult<Record<string, unknown>> = await this.api.requestJson(turnProgressPath(turnId));
+    if (generation !== this.rereadGeneration) return false;
+    // Transient and refused are told apart as `pollOnce` tells them apart.
+    if (result.kind === 'installing' || (result.kind === 'error' && (result.status === 0 || result.status >= 500))) {
+      return true;
+    }
+    if (result.kind !== 'ok') return false;
+    this.mergePrivileges(turnId, parseProposals(result.body['proposals']));
+    return true;
+  }
+
+  /** Whether a proposal of turn `turnId` is live here and unexpired. */
+  private hasLiveProposal(turnId: string): boolean {
+    const nowMs = this.now();
+    return proposalsOf(this.entriesValue).some(
+      (proposal) =>
+        this.proposalTurns.get(proposal.proposalId) === turnId &&
+        proposal.state === PROPOSAL_LIVE_STATE &&
+        proposal.expiresAt > nowMs
+    );
+  }
+
+  /**
+   * Take each of `fresh`'s `privilege` onto the same proposal of turn `turnId` where that row is
+   * live here and no confirm, cancel or draft is in flight for it. Nothing else on a row changes.
+   */
+  private mergePrivileges(turnId: string, fresh: readonly TurnProposal[]): void {
+    const privileges = new Map<string, TurnProposalPrivilege>();
+    for (const proposal of fresh) {
+      if (proposal.privilege) privileges.set(proposal.proposalId, proposal.privilege);
+    }
+    let changed = false;
+    const entries = this.entriesValue.map((entry) => {
+      let entryChanged = false;
+      const proposals = entry.proposals.map((proposal) => {
+        const privilege = privileges.get(proposal.proposalId);
+        if (
+          privilege === undefined ||
+          proposal.state !== PROPOSAL_LIVE_STATE ||
+          this.proposalTurns.get(proposal.proposalId) !== turnId ||
+          this.decidingProposals.has(proposal.proposalId) ||
+          samePrivilege(proposal.privilege ?? null, privilege)
+        ) {
+          return proposal;
+        }
+        entryChanged = true;
+        return { ...proposal, privilege };
+      });
+      if (!entryChanged) return entry;
+      changed = true;
+      return { ...entry, proposals };
+    });
+    if (!changed) return;
+    this.entriesValue = entries;
+    this.notify();
+  }
+
+  /**
    * Publish what changed about this turn's proposals since the last poll.
    *
    * **A proposal opens once and closes once.** The first poll carrying a live proposal publishes
@@ -1582,7 +1721,8 @@ export class TurnStore {
    * one close could not lift.
    *
    * **A turn that ends closes nothing.** A proposal outlives its turn by design (AD-6): it stays
-   * confirmable until it expires or the user decides, and polling simply stops. The pause is
+   * confirmable until it expires or the user decides, and the turn's poll gives way to the
+   * privilege re-read (`startReread`), which publishes nothing. The pause is
    * lifted by the expiry deadline `RefreshService` already arms, by Story 5.3's confirm, or by
    * the first poll of the next turn -- which carries none of the previous turn's ids, and so
    * closes them all, which is the "a typed message cancels every live proposal" rule arriving

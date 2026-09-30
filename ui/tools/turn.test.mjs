@@ -1967,3 +1967,203 @@ test('a restored entry carries its citations, and an entry stored without any re
   assert.deepEqual(older.citations, []);
   assert.deepEqual(newer.citations, [CITED]);
 });
+
+// --- An ended turn's privilege re-read ---------------------------------------------------------
+//
+// Mutation (Rule 19): never arm the re-read (drop the `startReread` call from `send()`'s
+// settlement) -> "an ended turn re-reads its progress at 15,000 ms" goes red.
+
+const HELD_PRIVILEGE = { requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' };
+const LOST_PRIVILEGE = { requires: HELD_PRIVILEGE.requires, missing: '%Admin_Secure:USE' };
+
+/** A progress body for turn-1, ended, carrying `proposals`. */
+function endedBody(proposals) {
+  return ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals });
+}
+
+/**
+ * A store whose one turn ends on its first poll carrying `proposals`, with `rereads` queued as the
+ * progress answers that follow; answers once that poll has settled.
+ */
+async function endedTurnWith(proposals, rereads, options = {}) {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [endedBody(proposals), ...rereads],
+    ...(options.responses ?? {}),
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: options.now ?? (() => NOW_MS),
+    ...(options.hidden ? { hidden: options.hidden } : {}),
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  return { turn, api, scheduled };
+}
+
+test('an ended turn re-reads its progress at 15,000 ms while a proposal is live, and takes its privilege', async () => {
+  const { turn, api, scheduled } = await endedTurnWith(
+    [wireProposal({ privilege: HELD_PRIVILEGE })],
+    [endedBody([wireProposal({ privilege: LOST_PRIVILEGE, rationale: 'changed on the instance' })])]
+  );
+  assert.equal(turn.busy(), false, 'the turn has ended');
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, HELD_PRIVILEGE);
+  assert.equal(scheduled.length, 1, 'one re-read is armed');
+  assert.equal(scheduled[0].delayMs, 15000, 'at 15,000 ms');
+
+  const before = api.calls.length;
+  scheduled.shift().run();
+  await settle();
+  assert.equal(api.calls.length, before + 1, 'the tick reads once');
+  assert.equal(api.calls.at(-1).path, turnProgressPath('turn-1'), "the ended turn's own progress");
+  const proposal = turn.entries()[0].proposals[0];
+  assert.deepEqual(proposal.privilege, LOST_PRIVILEGE, "the line takes the read's missing pair");
+  assert.equal(proposal.rationale, 'because', 'and nothing else on the row changes');
+  assert.equal(scheduled.length, 1, 'the next re-read is armed while the proposal stays live');
+});
+
+test('no re-read is armed when the ended turn left no live proposal', async () => {
+  const none = await endedTurnWith([], []);
+  assert.equal(none.scheduled.length, 0, 'a turn that proposed nothing arms nothing');
+  const closed = await endedTurnWith([wireProposal({ state: 'canceled', closedReason: 'you', privilege: HELD_PRIVILEGE })], []);
+  assert.equal(closed.scheduled.length, 0, 'nor does one whose proposal is already closed');
+});
+
+test('a re-read leaves a row alone while its confirm is in flight', async () => {
+  const { turn, api, scheduled } = await endedTurnWith(
+    [wireProposal({ privilege: HELD_PRIVILEGE })],
+    [endedBody([wireProposal({ privilege: LOST_PRIVILEGE })])]
+  );
+  let answer = () => {};
+  const pending = new Promise((resolve) => {
+    answer = resolve;
+  });
+  const base = api.requestJson;
+  api.requestJson = (path, init) => (path === proposalConfirmPath('p1') ? pending : base(path, init));
+
+  const confirming = turn.confirmProposal('p1');
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, HELD_PRIVILEGE, 'the in-flight confirm owns the row');
+
+  answer(ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' }));
+  await confirming;
+  assert.equal(turn.entries()[0].proposals[0].state, 'confirmed');
+  const before = api.calls.length;
+  scheduled.shift()?.run();
+  await settle();
+  assert.equal(api.calls.length, before, 'a confirmed row is not re-read for');
+  assert.equal(scheduled.length, 0, 'and ends the re-read');
+});
+
+test('the re-read stops once the proposal has expired', async () => {
+  let nowMs = NOW_MS;
+  const { api, scheduled } = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [], { now: () => nowMs });
+  assert.equal(scheduled.length, 1, 'armed while the proposal is live');
+  nowMs = Date.parse('2026-09-19T10:05:01Z');
+  const before = api.calls.length;
+  scheduled.shift().run();
+  await settle();
+  assert.equal(api.calls.length, before, 'an expired proposal is not re-read for');
+  assert.equal(scheduled.length, 0, 'and nothing is armed again');
+});
+
+test('a hidden document skips a tick without reading, and a 404 ends the re-read', async () => {
+  let hidden = true;
+  const { api, scheduled } = await endedTurnWith(
+    [wireProposal({ privilege: HELD_PRIVILEGE })],
+    [err(404, 'ROUTE.NOTFOUND')],
+    { hidden: () => hidden }
+  );
+  const before = api.calls.length;
+  scheduled.shift().run();
+  await settle();
+  assert.equal(api.calls.length, before, 'a hidden tick reads nothing');
+  assert.equal(scheduled.length, 1, 'and arms the next');
+  hidden = false;
+  scheduled.shift().run();
+  await settle();
+  assert.equal(api.calls.length, before + 1, 'a visible tick reads');
+  assert.equal(scheduled.length, 0, 'and a 404 ends the re-read');
+});
+
+// Mutation (Rule 19): stop the re-read on a 404 only -> "a refusal ends the re-read, and a server
+// error keeps it armed" goes red.
+test('a refusal ends the re-read, and a server error keeps it armed', async () => {
+  const refused = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [err(403, 'AUTH.FORBIDDEN')]);
+  refused.scheduled.shift().run();
+  await settle();
+  assert.equal(refused.scheduled.length, 0, 'a 403 ends the re-read, as it ends a poll');
+  const failing = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [err(503, 'INTERNAL')]);
+  failing.scheduled.shift().run();
+  await settle();
+  assert.equal(failing.scheduled.length, 1, 'a 503 is transient, and the next re-read is armed');
+});
+
+// Mutation (Rule 19): drop the turn check from `hasLiveProposal` -> "a later turn with no
+// proposal of its own arms no re-read for an earlier turn's card" goes red.
+test("a later turn with no proposal of its own arms no re-read for an earlier turn's card", async () => {
+  const { turn, api, scheduled } = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [], {
+    responses: {
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202)],
+      [turnProgressPath('turn-2')]: [ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [] })],
+    },
+  });
+  assert.equal(await turn.send('next'), 'sent', 'the instance accepts a second turn');
+  await settle();
+  scheduled.splice(scheduled.findIndex((entry) => entry.delayMs === 1000), 1)[0].run();
+  await settle();
+  assert.equal(turn.busy(), false, 'the second turn has ended');
+  assert.equal(scheduled.filter((entry) => entry.delayMs === 15000).length, 1, "only the first turn's re-read, armed before the send, is queued");
+  const before = api.calls.length;
+  scheduled.find((entry) => entry.delayMs === 15000).run();
+  await settle();
+  assert.equal(api.calls.length, before, 'and the accepted send left it inert');
+});
+
+// Mutation (Rule 19): merge a re-read's line only when it warns (skip `missing === ''`) -> "a
+// re-read clears the line again once the pair is held again" goes red.
+test('a re-read clears the line again once the pair is held again', async () => {
+  const { turn, scheduled } = await endedTurnWith(
+    [wireProposal({ privilege: LOST_PRIVILEGE })],
+    [endedBody([wireProposal({ privilege: HELD_PRIVILEGE })])]
+  );
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, LOST_PRIVILEGE, 'the turn ended with the line warning');
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, HELD_PRIVILEGE, 'the read that finds the pair held clears it');
+});
+
+// Mutation (Rule 19): stop the re-read before the turn request instead of once it is accepted ->
+// "a refused send leaves the ended turn's re-read running, and an accepted one stops it" goes red.
+test("a refused send leaves the ended turn's re-read running, and an accepted one stops it", async () => {
+  const { turn, api, scheduled } = await endedTurnWith(
+    [wireProposal({ privilege: HELD_PRIVILEGE })],
+    [endedBody([wireProposal({ privilege: LOST_PRIVILEGE })])]
+  );
+  const base = api.requestJson;
+  api.requestJson = (path, init) => (path === TURN_PATH ? Promise.resolve(err(409, 'TURN.BUSY')) : base(path, init));
+  assert.equal(await turn.send('again'), 'locked', 'the instance refuses the send and closes nothing');
+  const beforeTick = api.calls.length;
+  scheduled.shift().run();
+  await settle();
+  assert.equal(api.calls.length, beforeTick + 1, 'the re-read still reads');
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, LOST_PRIVILEGE, 'and still takes the line');
+
+  api.requestJson = base;
+  assert.equal(await turn.send('once more'), 'sent', 'the instance accepts the next send');
+  await settle();
+  const reread = scheduled.find((entry) => entry.delayMs === 15000);
+  assert.ok(reread, 'the re-read armed before the accepted send is still queued');
+  const beforeAccepted = api.calls.length;
+  reread.run();
+  await settle();
+  assert.equal(api.calls.length, beforeAccepted, "the accepted send ends the earlier turn's re-read");
+});
