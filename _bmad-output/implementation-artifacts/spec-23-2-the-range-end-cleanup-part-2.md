@@ -2,11 +2,11 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: 'f101494cfb7b26aaaa393cfec57ede3f5fdb19e9'
+status: 'done'
+baseline_revision: '1617332dfc6287bff9ec32caa70f3bc702ee39f4'
 baseline_commit: 'f101494cfb7b26aaaa393cfec57ede3f5fdb19e9'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
@@ -180,7 +180,7 @@ deferred: []
   - Files: `Install/Installer.cls` (comments at :2248-2253, :2285-2305 and :2333), `Install/Roster.cls:30`, `Test/WebApp.cls` (:77, :536, :563), `docs/DEVELOPMENT.md:293-294`. ADs: AD-21 (amended below), AD-9, AD-17, AD-45.
   - AC: Given a namespace whose globals and routines databases differ, when the installer derives the anonymous floor, then it grants read on both resources and the anonymous request is not refused 403.
 
-- [ ] [CI] browser shard 1/3 (run 36720188412, job 109903017094): `seeded-injection.browser-spec.mjs:212` "channels" leg is red on 323948ad. It expands the roles read's tool card and requires the seeded role's marker in the card text; DW-1210 now cuts that text at 4,095 characters and the seed's row lies past the cut. Keep the spec's intent (the seed reaches the model only as tool-result text: no proposal, no navigation, nothing off the origin) and DW-1210's cut; make the leg read the seed within the cut (for example by narrowing the scripted read to the seeded role with the read's own criteria) or assert on what the model received, and sweep every other browser spec that asserts on a tool card's result text for the same dependency — https://github.com/jbrandtmse/OcuPilot/actions/runs/36720188412/job/109903017094
+- [x] [CI] browser shard 1/3 (run 36720188412, job 109903017094): `seeded-injection.browser-spec.mjs:212` "channels" leg is red on 323948ad. It expands the roles read's tool card and requires the seeded role's marker in the card text; DW-1210 now cuts that text at 4,095 characters and the seed's row lies past the cut. Keep the spec's intent (the seed reaches the model only as tool-result text: no proposal, no navigation, nothing off the origin) and DW-1210's cut; make the leg read the seed within the cut (for example by narrowing the scripted read to the seeded role with the read's own criteria) or assert on what the model received, and sweep every other browser spec that asserts on a tool card's result text for the same dependency — https://github.com/jbrandtmse/OcuPilot/actions/runs/36720188412/job/109903017094
 
 ### Batch c: security
 
@@ -398,6 +398,20 @@ Rejected:
 - Measured on `ocupilot-b-ci`: with a split namespace's globals grant and no routine grant, `/ocupsplitm` answered a server error page (`#5924`), not a 403. The probe objects read back absent.
 - Rules: AD-39, AD-35, AD-49, AD-12, AD-33, AD-19, AD-8 and AD-21 (as the proposed amendments word them) match after the patches; the lead's amendment wording is in the stage report. Rule 3 is met: wire legs cover DW-1289, the new anonymous-request leg DW-1440, and `proposal-privilege` (c) DW-1669. No NFR touched.
 
+### 2026-09-30 — Review pass (batch b, CI rework)
+
+- verdicts: 9 findings — high 0, medium 0, low 6, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The `seeded-injection` header said the filtered read carries the seed "whatever roles the instance has", but `View` filters the rows fetched at the read cap, by substring (verification-gap; `Screen/Tool/Read.cls:222-224`) — reworded to "the rows that name matches rather than every role"; the spec 2/2 after.
+  - `[low]` `[reject]` The sweep's outcome is not recorded (verification-gap) — the fix is a spec edit; `## Auto Run Result` records the sweep's method and result.
+  - `[false]` `[reject]` The leg ties the seed to the model only through the card text (intent-alignment) — the `[CI]` item names this narrowing; a one-row result is under the cut, so the card shows the result the dispatcher handed the model, and `InjectionChannels.TestEntityComment` pins the provider request.
+  - `[low]` `[reject]` No browser leg now shows the model receiving a result longer than the card's cut (intent-alignment) — that was the `anywhere` leg's incidental coverage; DW-1210's "the model still receives the full result" is pinned by `TurnTools.TestALongToolResultReachesTheModelWhole` and the unfiltered `InjectionChannels.TestEntityComment` in CI's instance shards, and keeping `anywhere` unfiltered adds a branch to `scriptTurn`.
+  - `[low]` `[reject]` The filter sits in the shared `scriptTurn`, so the `anywhere` leg's input changed too (intent-alignment) — same root as the previous row; `anywhere` asserts nothing on the tool card and passed.
+  - `[false]` `[reject]` The seed now arrives through a read narrowed by name (intent-alignment) — it still enters only as that read's tool result, which is what AD-11 rule 5 pins.
+  - `[low]` `[patch]` The header overstates, since the filter is a substring match (intent-alignment) — same root and patch as the first row.
+  - `[low]` `[reject]` The sweep's result is not recorded (intent-alignment) — same root as the second row.
+  - `[false]` `[reject]` The green result rests on the implementer's report (intent-alignment) — the stage agent re-ran the spec on `ocupilot-b-ci` before and after the patch: 2/2 both times, the deployed `index.html` equal to the build's.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -533,6 +547,7 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` cut at `>=` the cap → run 156 red on the edge leg alone; reverted byte-identical, run 159 4/4.
 - `mutation:` stop the re-read on a 404 only → `turn.test.mjs` 79/80, the refusal case red; reverted byte-identical, 80/80.
 - `mutation:` drop the turn check from `hasLiveProposal` → `turn.test.mjs` 79/80, the later-turn case red; reverted byte-identical, 80/80.
+- `mutation:` send `seeded-injection`'s scripted roles read with no `filter` (the CI red's form, reproduced before the edit) → the `channels` leg alone red at "the tool card shows the seed's marker as text" (the card held every role's row, cut before the probe role's); reverted byte-identical, the spec 2/2 on the redeployed bundle.
 - Code review pass: green on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`): `AccountPasswordWire` run 157 (6/6), `WebApp` 158 (26/26), `LedgerStep` 159 (4/4), `TurnTools` 160 (13/13) and `Smoke` 161 (40/40). Also `npm run test:tools` 1,731/1,731, `npm run test:components` 1,958 tests in 145 files, and `proposal-privilege` 3/3 on a rebuilt, redeployed bundle (initial total 2.31 MB). `check-objectscript.py` and `lint-docs.sh` report no problems.
 
 **Batch c (loop):**
@@ -569,31 +584,19 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch b pass (DW-1289, DW-1210, DW-1669, DW-1440).** Batches c, e and d are untouched and stay unchecked.
+**Batch b CI rework (the `[CI]` item: `seeded-injection` channels leg).** Batches c, e and d are untouched and stay unchecked.
 
-- **Change:**
-  - DW-1289: a change refused outside 952, 845, 958 and 838 is put to `ValidatePassword` in the caller's process. A refusal it confirms (5001, 845 or 958) is a 422 on `newPassword` with its first error text, or the published sentence when that text is empty or contains either password. Anything else, a raising routine's 5002 included, stays 500. `ClassifyRefusal` holds the classification.
-  - DW-1210: `Limits.TOOLSTEPTEXTMAXLENGTH` is 4,096. A finished tool step keeps 4,095 characters plus U+2026 and is marked truncated; the model's `tool_result` is not cut.
-  - DW-1669: once a turn ends, `TurnStore` re-reads its progress every 15 s while one of its proposals is live and unexpired, and copies only `privilege` onto rows with nothing in flight. It stops when none is live, on a 404, on an accepted send, on New conversation and at sign-out, and skips a tick while the page is hidden (`main.ts` passes the probe).
-  - DW-1440: `CodeDatabaseResource` answers the routine and default globals databases' resources and their `:R` grants, once each in collation order, and both matching roles take the grants.
-- **Files:**
-  - `src/OcuPilot/Api/Account.cls`: `ClassifyRefusal`, `QuotesPassword`, `NOSUCHUSERCODE`, `ROUTINEREFUSALCODE`.
-  - `src/OcuPilot/Kernel/Agent/Limits.cls`, `Kernel/State/Step.cls`, `Kernel/Agent/Loop.cls` (comment): the tool-step cut.
-  - `src/OcuPilot/Install/Installer.cls`, `Install/Roster.cls` and `Api/Readiness.cls` (docs): the two-database floor.
-  - `ui/src/app/core/turn.ts`, `ui/src/main.ts`: the ended turn's re-read.
-  - Tests: `Test/AccountPasswordWire.cls` (the routine leg over four entry points, and the classifier leg), `Test/LedgerStep.cls` (the cap and 60-step legs), `Test/TurnTools.cls` (the model receives the whole result), `Test/WebApp.cls` (the split-namespace leg with its grants and a probe role), `ui/tools/turn.test.mjs` (seven re-read cases), `ui/browser/proposal-privilege.browser-spec.mjs` (case (c)).
-  - Docs: EXPERIENCE.md :612 in place (993 lines before and after); `docs/DEVELOPMENT.md` :293-301 and :310.
-- **Review:** 27 findings (high 1, medium 7, low 15, false 4). Patched entries: 1 high (a raising validation routine's error text reached the screen), 3 medium (the split-namespace grants unpinned, the clearing direction untested, a refused send stopping the re-read), 5 low. 13 findings were rejected, each with its reason in the triage log. Nothing was deferred.
-- **Follow-up review:** recommended, because a high was patched. The unverified risk: only 5001, 845 and 958 now count as a validator refusal, so a routine that refuses with another code is answered 500, and which codes routines use in the field is unmeasured.
-- **Verification on `ocupilot-b-ci`** (the loader printed `OCUPILOT-LOAD:OK:errors=0` after the last edit):
-  - 0 failed in `%UnitTest_Result`: `AccountPasswordWire` run 144 (6/6), `WebApp` 145 (26/26), `Smoke` 146 (40/40), `TurnTools` 136 (13/13), `LedgerStep` 120 (4/4), `TurnStream` 128 (6/6).
-  - `npm run test:tools` 1,729/1,729; `npm run test:components` 145 files, 1,958 tests; `proposal-privilege` 3/3 on the bundle rebuilt from this tree and redeployed (`index.html` checksums equal). Bundle initial total 2.31 MB.
-  - `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues.
-  - The DW-1440 reproduction is recorded under Verification. Every probe object read back absent afterwards: `OCUPSPLIT`, `/ocupsplit`, both probe roles, `OCUPILOTSPLITPROBE`, the validation routines and the setting.
-  - Mutations: runs 119/120, 122-124, 126/127, 135/136 and 139-145, and the `turn.test.mjs` pairs, as listed under Verification.
-- **Residual risks:**
-  - The 403 half of DW-1440's AC rests on the reproduction (200 with both grants), not on a test.
-  - The spine's AD-21 still says the floor role buys "no data privilege beyond it"; on a split namespace it also reads the globals database, which the lead's AD-21 amendment may want to say.
+- **Change:** the scripted turn's `permissions_roles_read` call passes `{"filter": InjectionSeed.Target()}`, the read's own declared argument, so the result is the probe role's row rather than every role and the seed's marker lies inside DW-1210's 4,095-character cut. The card-text assertion and every AD-11 rule 5 assertion are unchanged; no product code and no `TOOLSTEPTEXTMAXLENGTH` change. Chosen over asserting on the model's input because the read declares a narrowing argument, so the user-visible assertion stays.
+- **Files:** `ui/browser/seeded-injection.browser-spec.mjs` (the scripted read's input, the header and `scriptTurn` doc comments); this spec (the `[CI]` box, one `mutation:` line, the triage entry).
+- **Sweep:** every `ui/browser/*.browser-spec.mjs` was searched for `.ocu-tool-call-result`, tool-card and step-text reads, and model-input reads. Only `seeded-injection` asserts on a tool card's result text. `auditing-write`, `proposal-demo`, `users-write`, `refused-tool`, `proposal-privilege`, `task-resume` and `turn` read the card's status word, tool name or rows line; `process-control` and `task-resume` read card text only for a failure message; `transcripts` reads a screen-context payload sharing the class; model-input reads see the uncut result. No other spec changed, and none of Epic 16's three browser specs is involved.
+- **Review:** 9 findings (low 6, false 3). One low patched (two rows, one root): the header overstated what the filter guarantees. 6 rejected, each with its reason in the triage log. Nothing deferred.
+- **Follow-up review:** not recommended; a follow-up pass that patched no high (patched: high 0, medium 0, low 1).
+- **Verification on `ocupilot-b-ci`:**
+  - Red first: before any edit, `seeded-injection` on the bundle built from 323948ad failed the channels leg at "the tool card shows the seed's marker as text", as in CI; `anywhere` passed.
+  - Green: 2/2 after the fix, and 2/2 again after the review patch. `npm run build` passed its prebuild checks; initial total 2.31 MB; the deployed `index.html` equals the build's (no client code changed).
+  - Mutation: as recorded under Batch b's Verification.
+  - The probe role reads back absent; `lint-docs.sh` 0 issues; the browser spec is ASCII. `npm run test:tools` not run (no `ui/tools` file changed). Matrix Test Audit: no matrix row's behavior changed in this pass.
+- **Residual risk:** on an instance with more roles than the read cap (1,000) the filter could miss the probe role; not reachable on a throwaway.
 
 Status: done
 Blocking condition: none
