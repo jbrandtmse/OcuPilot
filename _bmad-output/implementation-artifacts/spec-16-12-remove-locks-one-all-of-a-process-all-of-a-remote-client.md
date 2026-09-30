@@ -2,7 +2,7 @@
 title: 'Story 16.12: Remove locks - one, all of a process, all of a remote client'
 type: 'feature'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '7e8cd3ceab5c88138aeda1f1f664f391079ab7bf'
 baseline_commit: '7e8cd3ceab5c88138aeda1f1f664f391079ab7bf'
 review_loop_iteration: 0
@@ -297,6 +297,8 @@ Anchors are as of `eb6ed8f4`. Paths are relative to `src/OcuPilot/` unless they 
   3. A transaction holder: the warning appears, then "Remove anyway" → the row leaves the list.
   4. The DW-1337 structural walk of the dialog, in both themes.
 
+- [ ] [CI] instance shard 1/3 (run 36745076438, head 4d7a5aa1): `OcuPilot.Test.AuditingUpdate.TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField` pins `$ListLength(Prohibited.Codes())` at 23 (`src/OcuPilot/Test/AuditingUpdate.cls:505`); this story's `PROHIBITED.OCUPILOTLOCK` makes 24. Bump the count and add this story's lock code to the assertion's message, then run `AuditingUpdate` through the shim armed with `OCUPILOT_ALLOW_AUDIT_TOGGLE` (it did not run locally: the shim's four names left it unarmed), and grep `src/OcuPilot/Test/` and `ui/tools/` for any other pin of the code count.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given a lock row, when the user chooses Remove locks, then the dialog offers this lock, every lock of the owning process and every lock of the remote client, each naming what it removes. The scope that does not fit the owner is drawn `aria-disabled` with its reason. Pinned in the browser and by `lock-remove-dialog.spec.ts`.
@@ -363,6 +365,7 @@ Code review 2026-09-30, full-opus tier: blind-hunter, edge-case-hunter, verifica
 
 ## Spec Change Log
 
+- 2026-09-30, lead, rework iteration 1 (trigger: CI red, run 36745076438): re-opened for the one `[CI]` item under Tasks & Acceptance; nothing else changes.
 - 2026-09-30, lead, after code review (tier 1, Rule 5): the I/O row "Remote-owner row" said only the client scope is enabled; Boundaries, AC1 and the code withhold only the scope that does not fit, so the row now says the process scope is drawn `aria-disabled`.
 
 ## Review Triage Log
