@@ -8558,3 +8558,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
 - evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
 - 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
+
+### DW-1874: AuditingUpdate pins the prohibited-code count as a literal repeating Test/Prohibited's, so a story adding a prohibited code must bump both
+- source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AuditingUpdate.cls:505 and Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()); 16.12 bumped only the second and CI run 36745076438 went red
+- 2026-09-30T17:35:12Z status=wontfix-accepted owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=harvest note=reopen_if=a later story's CI reddens on AuditingUpdate's code count again
