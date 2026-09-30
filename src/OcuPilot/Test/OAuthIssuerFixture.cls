@@ -1,7 +1,10 @@
 /// <p>A test-only OAuth 2.0 issuer inside the instance: <method>Start</method> JOBs a TCP responder
 /// bound to <code>localhost:&lt;port&gt;</code>, so the instance's own discovery and JWKS fetches
 /// reach it with no internet and no web application. <method>Stop</method> ends it.</p>
-/// <p>It answers these paths, each once per connection and then closes it:</p>
+/// <p>Its port listens from <method>Start</method> to <method>Stop</method>. It answers one request
+/// per connection, waits the linger <method>Start</method> was given, then ends that connection and
+/// accepts the next, so a client that connects while an earlier one is being answered waits its
+/// turn. It answers these paths:</p>
 /// <ul>
 /// <li><code>/.well-known/openid-configuration</code>: 200 JSON naming issuer
 /// <code>http://localhost:&lt;port&gt;</code>, both required endpoints, the userinfo endpoint,
@@ -53,14 +56,15 @@ ClassMethod Issuer(pPort As %Integer = {..#DEFAULTPORT}) As %String
 }
 
 /// <p>Start the responder on <var>pPort</var>, stopping any one already there, and answer its issuer
-/// in <var>pIssuer</var>. An error status means nothing is listening.</p>
-ClassMethod Start(pPort As %Integer = {..#DEFAULTPORT}, Output pIssuer As %String) As %Status
+/// in <var>pIssuer</var>. <var>pLinger</var> is how many seconds it waits after writing each answer
+/// before it ends that connection. An error status means nothing is listening.</p>
+ClassMethod Start(pPort As %Integer = {..#DEFAULTPORT}, Output pIssuer As %String, pLinger As %Numeric = 0) As %Status
 {
     Set pIssuer = ""
     Set tSC = ..Stop(pPort)
     If $$$ISERR(tSC) Quit tSC
     Kill @..#STATEGLOBAL@(pPort)
-    Job ..Serve(pPort)::10
+    Job ..Serve(pPort, +pLinger)::10
     If '$Test Quit $$$ERROR($$$GeneralError, "the issuer fixture could not be started")
     Set tDeadline = $ZHorolog + 5
     While ($Get(@..#STATEGLOBAL@(pPort, "ready")) = "") && ($ZHorolog < tDeadline) {
@@ -95,72 +99,42 @@ ClassMethod Running(pPort As %Integer = {..#DEFAULTPORT}) As %Boolean
     Quit ($Get(@..#STATEGLOBAL@(pPort, "ready")) = 1)
 }
 
-/// <p>The responder's loop: listen, read one request, answer it, close and listen again, until
-/// <method>Stop</method> asks it to end. Runs in its own job. The answer is written to the connection
-/// by a stream, and closing the device ends the connection.</p>
-ClassMethod Serve(pPort As %Integer)
+/// <p>The responder's loop: open the listening port once, then, until <method>Stop</method> asks it
+/// to end, hand each connection the port accepts to a device of its own
+/// (<code>$SYSTEM.Socket.Fork</code>), answer one request there, wait <var>pLinger</var> seconds and
+/// close that device. The listening port stays open throughout and closes only when the loop ends.
+/// Runs in its own job.</p>
+ClassMethod Serve(pPort As %Integer, pLinger As %Numeric = 0)
 {
     Set tDevice = "|TCP|" _ pPort
+    Set tConnection = "|TCP|1"
     Set tGlobal = ..#STATEGLOBAL
-    Set tListening = 0
     Try {
+        Open tDevice:(:pPort:"SA":$Char(10)):5
+        If '$Test {
+            Set @tGlobal@(pPort, "ready") = "the port could not be opened"
+            Quit
+        }
+        Set @tGlobal@(pPort) = $Job
+        Set @tGlobal@(pPort, "ready") = 1
         For {
             If $Get(@tGlobal@(pPort, "stop")) Quit
-            Open tDevice:(:pPort:"S":$Char(10)):5
-            If '$Test {
-                If 'tListening Set @tGlobal@(pPort, "ready") = "the port could not be opened"
-                Quit
+            ; Wait at most a second for a connection, so a stop request is seen within one.
+            Set tReady = $SYSTEM.Socket.Select($ListBuild(tDevice), 1)
+            If (tReady = "") || (tReady = -1) Continue
+            If '$SYSTEM.Socket.Fork(tDevice, tConnection) Continue
+            Try {
+                Use tConnection:(::"S":$Char(10))
+                Do ..Converse(pPort)
+                If pLinger > 0 Hang pLinger
+            } Catch {
             }
-            If 'tListening {
-                Set @tGlobal@(pPort) = $Job
-                Set @tGlobal@(pPort, "ready") = 1
-                Set tListening = 1
-            }
-            Use tDevice
-            ; Wait for a request line, keeping the port listening across idle seconds so a client
-            ; that connects between two of them is not dropped.
-            Set tLine = ""
-            Set tRead = 0
-            For {
-                Read tPart:1
-                Set tRead = $Test
-                Set tLine = tLine _ tPart
-                If tRead || $Get(@tGlobal@(pPort, "stop")) Quit
-            }
-            If 'tRead Quit
-            Set tPath = $Piece($ZStrip(tLine, ">", $Char(13)), " ", 2)
-            ; The headers, up to the blank line: the body's length and the registration's bearer.
-            Set tLength = 0
-            Set tAuthorization = ""
-            For tI = 1:1:100 {
-                Read tHeader:2
-                If '$Test Quit
-                Set tHeader = $ZStrip(tHeader, ">", $Char(13))
-                If tHeader = "" Quit
-                Set tName = $ZConvert($ZStrip($Piece(tHeader, ":", 1), "<>W"), "L")
-                If tName = "content-length" Set tLength = +$ZStrip($Piece(tHeader, ":", 2, *), "<>W")
-                If tName = "authorization" Set tAuthorization = $ZStrip($Piece(tHeader, ":", 2, *), "<>W")
-            }
-            ; The body is drained so the client's write completes; its content is not read.
-            Set tDrained = 0
-            While (tDrained < tLength) {
-                Read tChunk#(tLength - tDrained):2
-                Set tEnded = $Test
-                ; A line feed ends the read and is not in the chunk, but it was one byte of the body.
-                Set tDrained = tDrained + $Length(tChunk) + ($ZB = $Char(10))
-                If 'tEnded && (tChunk = "") Quit
-            }
-            If tPath = "/register" Set @tGlobal@(pPort, "auth") = $System.Encryption.Base64Encode($System.Encryption.SHAHash(256, tAuthorization))
-            Set tAuthorization = ""
-            Do ..Answer(pPort, tPath, .tStatus, .tType, .tBody)
-            Set tResponse = ##class(%Stream.TmpCharacter).%New()
-            Do tResponse.Write("HTTP/1.1 " _ tStatus _ $Char(13, 10) _ "Content-Type: " _ tType _ $Char(13, 10))
-            Do tResponse.Write("Content-Length: " _ $Length(tBody) _ $Char(13, 10) _ "Connection: close" _ $Char(13, 10, 13, 10))
-            Do tResponse.Write(tBody)
-            Do tResponse.OutputToDevice()
-            Set tResponse = ""
-            Close tDevice
+            Close tConnection
         }
+    } Catch {
+    }
+    Try {
+        Close tConnection
     } Catch {
     }
     Try {
@@ -168,6 +142,49 @@ ClassMethod Serve(pPort As %Integer)
     } Catch {
     }
     Kill @tGlobal@(pPort)
+}
+
+/// <p>Read one request from the current device, a connection of the responder on <var>pPort</var>,
+/// and write its answer there by a stream, flushed so the client has the whole answer before the
+/// connection ends. A connection that sends no request line within five seconds is answered
+/// nothing.</p>
+ClassMethod Converse(pPort As %Integer)
+{
+    Set tGlobal = ..#STATEGLOBAL
+    Read tLine:5
+    If '$Test Quit
+    Set tPath = $Piece($ZStrip(tLine, ">", $Char(13)), " ", 2)
+    ; The headers, up to the blank line: the body's length and the registration's bearer.
+    Set tLength = 0
+    Set tAuthorization = ""
+    For tI = 1:1:100 {
+        Read tHeader:2
+        If '$Test Quit
+        Set tHeader = $ZStrip(tHeader, ">", $Char(13))
+        If tHeader = "" Quit
+        Set tName = $ZConvert($ZStrip($Piece(tHeader, ":", 1), "<>W"), "L")
+        If tName = "content-length" Set tLength = +$ZStrip($Piece(tHeader, ":", 2, *), "<>W")
+        If tName = "authorization" Set tAuthorization = $ZStrip($Piece(tHeader, ":", 2, *), "<>W")
+    }
+    ; The body is drained so the client's write completes; its content is not read.
+    Set tDrained = 0
+    While (tDrained < tLength) {
+        Read tChunk#(tLength - tDrained):2
+        Set tEnded = $Test
+        ; A line feed ends the read and is not in the chunk, but it was one byte of the body.
+        Set tDrained = tDrained + $Length(tChunk) + ($ZB = $Char(10))
+        If 'tEnded && (tChunk = "") Quit
+    }
+    If tPath = "/register" Set @tGlobal@(pPort, "auth") = $System.Encryption.Base64Encode($System.Encryption.SHAHash(256, tAuthorization))
+    Set tAuthorization = ""
+    Do ..Answer(pPort, tPath, .tStatus, .tType, .tBody)
+    Set tResponse = ##class(%Stream.TmpCharacter).%New()
+    Do tResponse.Write("HTTP/1.1 " _ tStatus _ $Char(13, 10) _ "Content-Type: " _ tType _ $Char(13, 10))
+    Do tResponse.Write("Content-Length: " _ $Length(tBody) _ $Char(13, 10) _ "Connection: close" _ $Char(13, 10, 13, 10))
+    Do tResponse.Write(tBody)
+    Do tResponse.OutputToDevice()
+    Set tResponse = ""
+    Do ##class(%IO.DeviceStream).AttachNew($IO).Flush()
 }
 
 /// <p>What the fixture on <var>pPort</var> answers for <var>pPath</var>: the HTTP status line's

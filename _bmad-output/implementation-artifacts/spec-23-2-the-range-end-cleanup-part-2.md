@@ -2,7 +2,8 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1a409d00a3083e6a604087af7dfd371e6dd4aa03'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -103,7 +104,7 @@ deferred: []
 
 ### Batch a: CI flakes (merge first)
 
-- [ ] **DW-1829** — `BackgroundTasksLive`'s agent leg resumes a seeded compact, then mints and confirms a pause. The compact can reach `End()` in between, and the confirm is refused (409 `TASK.BACKGROUND.STATE`). The trailer's 30 s half is void (DW-1819, fixed by 6bcc6d3b); the open cause is the DW-1802 race.
+- [x] **DW-1829** — `BackgroundTasksLive`'s agent leg resumes a seeded compact, then mints and confirms a pause. The compact can reach `End()` in between, and the confirm is refused (409 `TASK.BACKGROUND.STATE`). The trailer's 30 s half is void (DW-1819, fixed by 6bcc6d3b); the open cause is the DW-1802 race.
   - **Reproduced** (measured on `ocupilot-b-ci`): a seeded compact reads Done 1.90 s after resume (2/2). Resume, wait 3 s, then pause through the port answers 409 (2/2).
   - **Fix:** `Test/BackgroundSeed.cls` gains an opt-in `Hold(pTaskId)`. In `%SYS` it takes `%SYS.BackgroundTask.%LockId(task)` before the resume, which blocks `End()`. The task then reads Running, and an in-process pause answers 200 (measured 3/3).
   - **Teardown:** `Remove()` cancels under the hold, then calls `%UnlockId` (measured clean 2/2). Releasing first strands the task.
@@ -113,11 +114,11 @@ deferred: []
   - `PausedCompact` is unchanged; the background-tasks and local-databases specs never resume.
   - Files: `Test/BackgroundSeed.cls`, `Test/BackgroundTasksLive.cls`. ADs: Conventions › Tests, AD-27 (the Story 16.5 case).
   - AC: Given a held seeded compact and a 3 s wait between resume and mint, when the agent's pause is minted and confirmed, then the confirm applies and the vendor records the pause request.
-- [ ] **DW-1831** — `OAuthIssuerFixture.Serve` opens its listening socket for each connection and closes it after answering. A client that reconnects before that close is reset. The vendor's `GetServerMetadata` then fails with #6097 `<READ>`, and `DiscoveryCause` answers "unreachable" instead of 422 `OAUTH.DISCOVERY.CONTENT`.
+- [x] **DW-1831** — `OAuthIssuerFixture.Serve` opens its listening socket for each connection and closes it after answering. A client that reconnects before that close is reset. The vendor's `GetServerMetadata` then fails with #6097 `<READ>`, and `DiscoveryCause` answers "unreachable" instead of 422 `OAUTH.DISCOVERY.CONTENT`.
   - **Reproduced** (measured on `ocupilot-b-ci`, using a stand-in fixture that lingers 0.3 s before closing): 10/20 raw GETs failed with #6097, and the case after `/status` answered "unreachable" 5/5.
     - The unmodified fixture held up locally for 300 GETs and 200 discoveries.
     - That a CI runner delays the close enough to open the window is `(inference)`.
-  - **Fix:** open the listening socket once. After each answer, end the connection with `Write *-3` then `Write *-2` and keep listening; close the socket only on stop (measured 20/20 raw and 20/20 discoveries with the 0.3 s linger). Add a `Linger` setting (seconds to wait after answering, default 0).
+  - **Fix:** open the listening socket once. Hand each accepted connection to its own device (`$SYSTEM.Socket.Select` and `Fork`), flush the answer (`%IO.DeviceStream.Flush()`), wait the linger, and close that device; close the listening socket only on stop. `check-objectscript.py` refuses a bare `Write *-3`/`Write *-2` outside the response writer. Measured on `ocupilot-b-ci`: 20/20 raw GETs and 20/20 discoveries with the 0.3 s linger, the first answer arriving in 2 ms. Add a `Linger` setting (seconds to wait after answering, default 0).
   - Files: `Test/OAuthIssuerFixture.cls`, and `Test/OAuthServerDiscover.cls` (a new method that runs the four cases back to back with linger 0.3). ADs: Conventions › Tests, AD-27 (the Story 12.4 case).
   - AC: Given the fixture lingering 0.3 s after each answer, when the four discovery cases run back to back, then each answers 422 with its own cause code.
 
@@ -265,6 +266,21 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-30 — Review pass (batch a)
+
+- verdicts: 10 findings — high 0, medium 1, low 5, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The linger leg never checked that the issuer lingered, so losing the linger on its way to `Serve` left the DW-1831 pin vacuous (verification-gap) — added an elapsed-time assertion (at least two lingers; 0.919 s in run 108); dropping the linger turned it red alone (run 109, 0.011 s); reverted, run 110 6/6.
+  - `[low]` `[patch]` `BackgroundSeed.Hold`'s doc comment did not state that the vendor's `End()` waits only the lock timeout (`$zu(115,4)`, 10 s, read on `ocupilot-b-ci`; the timeout is caught at `irissys/%SYS/BackgroundTask.cls:631`) (verification-gap) — the bound is now in the comment; the leg releases at about 5 s after the work ends at 1.9 s.
+  - `[low]` `[patch]` The `BackgroundTasksLive` header said the agent's confirm pauses a compact, while the leg asserts the vendor's pause request (verification-gap) — reworded to "the agent's confirmed pause of a compact, as the request the vendor records".
+  - `[low]` `[reject]` The screen and admin-API legs still resume and pause back to back over HTTP (intent-alignment, S2 reading) — pre-existing DW-1802 window, not DW-1829's mint-and-confirm race; no CI sighting, and the hold cannot reach an HTTP pause, so the fix is more than a direct correction; the spec's residual has the lead name it in the trailer.
+  - `[false]` `[reject]` The agent leg proves the vendor's request field, not Paused, under a same-process lock (intent-alignment) — the leg asserts the AC as worded; `RequestOf` reads 0 after the resume, so it fails without a pause; Confirm reaches the production `PortalControl` path, and the screen leg still pins Paused through it.
+  - `[false]` `[reject]` The reds come from undoing the new code, with a delay the fix adds (intent-alignment) — the intent defines a flake's red as its reproducing condition, which both legs carry; the CI mechanism is marked `(inference)` in the task.
+  - `[low]` `[reject]` The planned `Write *-3`/`Write *-2` became `Select`/`Fork`, recorded only in the rewritten Fix line (intent-alignment) — the planned form fails `check_write_discipline` (`scripts/check-objectscript.py:585-599`, verified), which the spec requires clean; this row records the deviation, and the only fix left is a spec edit.
+  - `[false]` `[reject]` `TestEachCauseIsRefusedByName` was refactored and its message now names the URL (intent-alignment) — the shared helpers serve the new leg, and the URL tells `/not-json` from `/bad-json`, which the shared cause "content" could not.
+  - `[low]` `[reject]` A connected client that stays silent holds the fixture 5 s, which can outlast `Stop`'s 5 s wait (intent-alignment) — no caller in the suite connects without sending a request line, and a closed connection ends the read; the fix adds a branch.
+  - `[false]` `[reject]` Frontmatter and `## Auto Run Result` disagree, and the checkboxes are ticked before CI (intent-alignment) — the result is written at finalize, and the Execution section has the lead write `resolved-by` once CI is green.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -364,8 +380,10 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 - Classes: `BackgroundTasksLive`, `OAuthServerDiscover`, `OAuthServerJwks`, `OAuthServerWire`, `OAuthClientRegister`, `OAuthClientUpdate`, `OAuthClientWire`, `InjectionEgress`.
 - Specs: `background-tasks`, `local-databases`, `oauth-server-description-editor`, `oauth-client-editor`.
-- `mutation:` drop the `Hold` call → the agent leg goes red (the compact is Done at about 1.9 s and the confirm is refused).
-- `mutation:` restore close-and-reopen per connection → the linger leg goes red (two cases answer "unreachable").
+- `mutation:` drop the `Hold` call → the agent leg goes red (the compact is Done at about 1.9 s and the confirm is refused). Observed: run 98 red on `TestTheAgentsConfirmPausesACompact` alone (the mint read Done, the confirm answered 409 `TASK.BACKGROUND.STATE`, no pause request recorded); reverted, run 99 7/7.
+- `mutation:` restore close-and-reopen per connection → the linger leg goes red (two cases answer "unreachable"). Observed: run 89 red on `TestTheDocumentCasesHoldAgainstALingeringIssuer` alone (`/not-json` and `/wrong-issuer` answered 422 `OAUTH.DISCOVERY.UNREACHABLE`); reverted, run 90 6/6.
+- `mutation:` drop the linger `Start` passes to `Serve` → the linger leg's elapsed-time assertion goes red alone. Observed: run 109 red (the four cases took 0.011 s, against 0.919 s in run 108); reverted byte-identical, run 110 6/6.
+- Observed: all eight classes green on the reverted tree (runs 90-97, 99), and the four specs pass on a rebuilt and redeployed bundle.
 
 **Batch b (loop):**
 
@@ -411,5 +429,27 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Batch a pass (DW-1829, DW-1831).** Batches b, c, e and d are untouched and stay unchecked.
+
+- **Change:**
+  - DW-1829: the agent leg holds its seeded compact's lock before the resume, waits 3 s, then mints and confirms. It asserts the confirm applies, the vendor records the pause request, and the ledger row and marker land. The retry loop is gone.
+  - DW-1831: the issuer fixture listens once and answers each connection on a forked device, flushed, lingering, then closed. The new leg runs the four document cases back to back at a 0.3 s linger and asserts the linger was in effect.
+- **Files:**
+  - `src/OcuPilot/Test/BackgroundSeed.cls`: `Hold`, `RequestOf`, a shared `Read`; `Remove` cancels a held task before releasing it.
+  - `src/OcuPilot/Test/BackgroundTasksLive.cls`: the held agent leg; `AGENTATTEMPTS` and its helpers deleted.
+  - `src/OcuPilot/Test/OAuthIssuerFixture.cls`: one listening port, `Select`/`Fork` per connection, `Converse`, a `pLinger` argument on `Start`.
+  - `src/OcuPilot/Test/OAuthServerDiscover.cls`: `TestTheDocumentCasesHoldAgainstALingeringIssuer`, with shared `DocumentCases` and `AssertCauses`.
+- **Review:** 10 findings. Three were patched (1 medium, 2 low): the linger timing assertion, `Hold`'s lock-timeout bound, and the class header. Seven were rejected, each with its reason in the triage log. Nothing was deferred.
+- **Follow-up review:** not recommended; no high was patched, and only one medium.
+- **Verification on `ocupilot-b-ci`:**
+  - The loader printed `OCUPILOT-LOAD:OK:errors=0` after the last edit.
+  - The eight batch a classes read 0 failed in `%UnitTest_Result`: runs 100-107, then 110 (`OAuthServerDiscover`) and 111 (`BackgroundTasksLive`) on the patched tree.
+  - The four browser specs passed against the bundle rebuilt from this tree (`index.html` checksum equal in `dist/` and in the container): background-tasks 2/2, local-databases 6/6, oauth-server-description-editor 4/4, oauth-client-editor 5/5.
+  - `check-objectscript.py` reported 0 problems, and `lint-docs.sh` reported 0 issues.
+  - Mutations: runs 98/99 and 89/90 (implement) and 109/110 (review), as listed under Verification.
+- **Residual risks:**
+  - The screen and admin-API legs keep the resume-then-pause window (spec residual).
+  - The hold outlasts the compact's work only by the 10 s lock timeout.
+
+Status: done
 Blocking condition: none

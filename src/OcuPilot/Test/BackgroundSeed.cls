@@ -6,7 +6,8 @@
 /// <p><b>It creates a database, its resource and a running job</b>, so every method refuses unless
 /// <parameter>ARMINGVARIABLE</parameter> reads 1, which only <file>scripts/ci-throwaway.sh</file>
 /// sets. The jobs it started are kept in <code>^IRIS.Temp.OcuPilotBackgroundSeed</code>, so the
-/// removal may run in another process than the seed.</p>
+/// removal may run in another process than the seed. A task <method>Hold</method> holds is released
+/// only by a <method>Remove</method> in the process that holds it.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.BackgroundSeed Extends %RegisteredObject
 {
@@ -183,19 +184,78 @@ ClassMethod Settled(pTaskId As %String, pFrom As %String = "Running") As %String
 /// <p>The state background task <var>pTaskId</var> reads now, opened afresh, or <code>""</code>.</p>
 ClassMethod State(pTaskId As %String) As %String
 {
-    Set tState = ""
+    Quit ..Read(pTaskId, "RunningState")
+}
+
+/// <p>The request background task <var>pTaskId</var> records now -- 1 a pause, 2 a cancel, 0 none or
+/// a resume -- opened afresh, or <code>""</code>.</p>
+ClassMethod RequestOf(pTaskId As %String) As %String
+{
+    Quit ..Read(pTaskId, "Request")
+}
+
+/// <p>Property <var>pName</var> of background task <var>pTaskId</var>, opened afresh in
+/// <code>%SYS</code>, or <code>""</code> when it does not open.</p>
+ClassMethod Read(pTaskId As %String, pName As %String) As %String [ Private ]
+{
+    Set tValue = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
         Set tTask = ##class(%SYS.BackgroundTask).%OpenId(pTaskId)
-        If $IsObject(tTask) Set tState = tTask.RunningState
+        If $IsObject(tTask) Set tValue = $Property(tTask, pName)
         Set tTask = ""
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS
-        Set tState = ""
+        Set tValue = ""
     }
-    Quit tState
+    Quit tValue
+}
+
+/// <p>Hold background task <var>pTaskId</var>'s lock in this process, so the task cannot record its
+/// end: once its work is done its job waits in the vendor's <code>End()</code>, and the task reads
+/// Running. That wait lasts the instance's lock timeout (<code>$zu(115,4)</code>, 10 s on this
+/// build); past it <code>End()</code> gives up and the job exits unrecorded (inference from the
+/// vendor source), so a caller finishes with the task within that time of its work ending. A pause,
+/// resume or cancel sent from this process still acts on it, because the lock is
+/// this process's own; one sent from any other process waits for the lock. <method>Remove</method>,
+/// called in this process, cancels a held task before it releases it.</p>
+ClassMethod Hold(pTaskId As %String) As %Status
+{
+    Set tSC = ..Armed()
+    If $$$ISERR(tSC) Quit tSC
+    If $Data(^||OcuPilotBackgroundSeedHold(pTaskId)) Quit $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(%SYS.BackgroundTask).%LockId(pTaskId, 0, 5)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISOK(tSC) Set ^||OcuPilotBackgroundSeedHold(pTaskId) = ""
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release this process's <method>Hold</method> on background task <var>pTaskId</var>, if it
+/// holds one.</p>
+ClassMethod Release(pTaskId As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If '$Data(^||OcuPilotBackgroundSeedHold(pTaskId)) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(%SYS.BackgroundTask).%UnlockId(pTaskId)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Kill ^||OcuPilotBackgroundSeedHold(pTaskId)
+    Quit tSC
 }
 
 /// <p>The ids of the background tasks over the scratch database, as a <class>%List</class>: every
@@ -226,9 +286,11 @@ ClassMethod Tasks(pRunning As %Boolean = 0) As %List
 }
 
 /// <p>Remove everything the seed made: every background task over the scratch database, canceled
-/// first when it has not ended, then deleted; the portal job log entry of every job it started; and
-/// the database, its configuration, its directory and its resource. The first failure is answered,
-/// after every step has been tried.</p>
+/// first when it has not ended and then released when this process holds it, then deleted; the
+/// portal job log entry of every job it started; and the database, its configuration, its directory
+/// and its resource. A held task is canceled under the hold and only then released, because a held
+/// task released first is stranded. The first failure is answered, after every step has been
+/// tried.</p>
 ClassMethod Remove() As %Status
 {
     Set tSC = ..Armed()
@@ -244,6 +306,8 @@ ClassMethod Remove() As %Status
             Set tTask = ##class(%SYS.BackgroundTask).%OpenId(tId)
             If $IsObject(tTask) && 'tTask.HasEnded Do tTask.Cancel()
             Set tTask = ""
+            Set tStepSC = ..Release(tId)
+            If $$$ISERR(tStepSC) && $$$ISOK(tFirst) Set tFirst = tStepSC
             For tJ = 1:1:500 {
                 Set tTask = ##class(%SYS.BackgroundTask).%OpenId(tId)
                 Set tEnded = ('$IsObject(tTask)) || tTask.HasEnded
@@ -253,6 +317,13 @@ ClassMethod Remove() As %Status
             }
             Set tDeleteSC = ##class(%SYS.BackgroundTask).%DeleteId(tId)
             If $$$ISERR(tDeleteSC) && $$$ISOK(tFirst) Set tFirst = tDeleteSC
+        }
+        Set tId = ""
+        For {
+            Set tId = $Order(^||OcuPilotBackgroundSeedHold(tId))
+            If tId = "" Quit
+            Set tStepSC = ..Release(tId)
+            If $$$ISERR(tStepSC) && $$$ISOK(tFirst) Set tFirst = tStepSC
         }
         Set tJob = ""
         For {
