@@ -1685,6 +1685,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: FieldLists.cls LanguageServer Custom is an object with no members; the vendor template builds Custom per type argument; AD-3 fixes no-argument evaluation except SSLConfig
 - 2026-09-14T08:16:26Z status=routed owner=16-10-external-language-servers by=harvest note=decided 2026-09-14 (owner-delegated): derive one list per language-server type as Wallet.Secret does, amending AD-3 in that story
 - 2026-09-29T06:26:25Z status=routed owner=16-25-the-external-language-server-editor by=merge_gate note=16.10 split for size (orchestrator): the editor and its per-type field lists moved to 16.25
+- 2026-09-30T06:58:16Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=fdec5886: one field list per Config.Gateways type (LanguageServer:<Type>); AC7 DerivedFields pinned; AD-3 amended
 
 ### DW-254: The credential pattern missed string secrets (wallet Secret64, License.Key Key) and refuses ordinary on the string OAuth2 ReturnRefreshToken
 - source: spec-2-2-write-tool-field-lists-are-derived-at-build-time-and-pinned.md | severity: med | fix-risk: low | footprint: in-story
@@ -5703,6 +5704,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one announcement sentence per action (the toast's three).
 - 2026-09-26T09:53:53Z status=routed owner=16-17-the-read-back-line by=spec_gate note=16.17 AC1 marks the changed row; its polite announcement should name the action (strings.ts is append-only)
 - 2026-09-30T03:32:47Z status=routed owner=16-25-the-external-language-server-editor by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: fix the 'Updated: <id> created' prefix with 16.25
+- 2026-09-30T06:58:16Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=fix pack: the table announces the toast's own sentence per action (was 'Updated: <id> <action>'); data-table.spec + read-back browser pinned
 
 ### DW-1424: ToastEntry.entityLabel is computed on every publish and rendered nowhere
 - source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story

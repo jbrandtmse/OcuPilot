@@ -1436,10 +1436,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:388 */
   proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
 
-  // Story 5.7's six. The first three are AD-14's closed action set as published sentences: the
+  // Story 5.7's five. The first three are AD-14's closed action set as published sentences: the
   // off-screen toast renders one, and the panel appends the same one to a confirmed write's reply
   // so the record outlives a toast that expired or was never raised. `<entity>` resolves to the
-  // entity's own id; the noun is on the toast's own link, which names the screen.
+  // entity's own id; the noun is on the toast's own link, which names the screen. A data table
+  // announces the same sentence when a change marks one of its rows.
   /** EXPERIENCE.md:390 */
   tableChangeCreated: '<entity> was created',
   /** EXPERIENCE.md:390 */
@@ -1450,8 +1451,6 @@ export const STRINGS = {
   tableChangeToastRegion: 'Changes',
   /** EXPERIENCE.md:391 */
   tableChangeToastDismiss: 'Dismiss',
-  /** EXPERIENCE.md:392 */
-  tableChangeAnnouncement: 'Updated: <entity> <action>',
 
   // Story 5.8's one. The direction word completes the pair "was"/"now" carries on a changed row:
   // an unchanged row has one value and no arrow, so the word is what says the payload sends the

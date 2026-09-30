@@ -743,17 +743,52 @@ describe('the data table', () => {
 
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+    expect(slot().textContent?.trim()).toBe('/csp/app01 was updated');
 
     // A tick that marks nothing leaves the slot exactly as it was, which is what "the refresh
     // stamp and refresh ticks stay unannounced" means at this tier.
     await wired.refresh.readNow();
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+    expect(slot().textContent?.trim()).toBe('/csp/app01 was updated');
 
     wired.store.markChanged('/csp/app02', 'deleted');
     await settle(wired.fixture);
-    expect(slot().textContent?.trim()).toBe('Updated: /csp/app02 deleted');
+    expect(slot().textContent?.trim()).toBe('/csp/app02 was deleted');
+  });
+
+  it('DW-1423: each action announces its own sentence, the change toast\'s', async () => {
+    // Mutation (Rule 19): announce `STRINGS.tableChangeUpdated` whatever the action -> the created
+    // and deleted assertions go red, and a screen reader hears "was updated" for a row that was
+    // created or deleted.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    for (const [key, action, sentence] of [
+      ['/csp/app00', 'created', '/csp/app00 was created'],
+      ['/csp/app01', 'updated', '/csp/app01 was updated'],
+      ['/csp/app02', 'deleted', '/csp/app02 was deleted'],
+    ] as const) {
+      wired.store.markChanged(key, action);
+      await settle(wired.fixture);
+      expect(slot()).toBe(sentence);
+    }
+  });
+
+  it('DW-1423: a composite row key is announced as its breadcrumb, never with the control character', async () => {
+    // Mutation (Rule 19): resolve the sentence with the raw row key rather than through
+    // `formatChangeSentence` -> the assertion goes red on the \u0001 the key carries.
+    const wired = await wire(tableDeclaration({ id: { kind: 'composite', parts: ['Name', 'NameSpace'] } }), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    wired.store.markChanged('/csp/app01\u0001USER', 'created');
+    await settle(wired.fixture);
+    expect(
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
+    ).toBe('/csp/app01 \u203a USER was created');
   });
 
   it('Story 5.7: a second change to a row that is still marked is announced too', async () => {
@@ -768,20 +803,20 @@ describe('the data table', () => {
 
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 updated');
+    expect(slot()).toBe('/csp/app01 was updated');
 
     // An identical re-mark says nothing again: the store swallows it and never notifies.
     wired.store.markChanged('/csp/app02', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app02 updated');
+    expect(slot()).toBe('/csp/app02 was updated');
     wired.store.markChanged('/csp/app01', 'updated');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app02 updated');
+    expect(slot()).toBe('/csp/app02 was updated');
 
     // A second write to app01, which the user never moved onto, so its mark is still standing.
     wired.store.markChanged('/csp/app01', 'deleted');
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 deleted');
+    expect(slot()).toBe('/csp/app01 was deleted');
     expect(wired.store.changed().has('/csp/app01')).toBe(true);
   });
 
@@ -804,7 +839,7 @@ describe('the data table', () => {
     // The line is clipped with an ellipsis in a narrow cell, so its whole text is its title.
     expect(line.getAttribute('title')).toBe('Read back: differs in Description');
     expect(tag.nextElementSibling).toBe(line);
-    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: differs in Description');
+    expect(slot()).toBe('/csp/app01 was updated \u00b7 Read back: differs in Description');
 
     // A mark with no read-back draws no line, and a second write under the same action whose
     // read-back differs is announced again.
@@ -813,7 +848,7 @@ describe('the data table', () => {
     expect((wired.host().querySelector('[aria-rowindex="4"]') as HTMLElement).querySelector('.ocu-data-table-read-back')).toBeNull();
     wired.store.markChanged('/csp/app01', 'updated', readBackOf({ verdict: 'matches', fields: [], written: [] }));
     await settle(wired.fixture);
-    expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: matches');
+    expect(slot()).toBe('/csp/app01 was updated \u00b7 Read back: matches');
   });
 
   it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {
@@ -841,7 +876,7 @@ describe('the data table', () => {
     expect(wired.store.active()).toBe('/csp/App01');
     expect(
       (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
-    ).toBe('Updated: /csp/App01 created');
+    ).toBe('/csp/App01 was created');
   });
 
   it('Story 5.7: a pending selection is taken up when the read brings the row, and keeps its mark', async () => {
