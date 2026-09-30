@@ -14,18 +14,21 @@
 /// <code>null</code>, so the tools' one argument merges into a diff row, and both answer 404, logging
 /// nothing, when the id names no listed lock.</p>
 /// <p><b>The writes.</b> <parameter>REMOVETYPE</parameter> and <parameter>REMOVEOWNERTYPE</parameter>
-/// re-list first and then send one <code>Lock</code> <code>DELETE</code>
-/// <code>?id=&lt;DeleteID&gt;&amp;checkTxn=&lt;c&gt;</code> per id the <parameter>IDSQUERY</parameter>
-/// query parameter names, in its order, and only for an id found verbatim in that fresh listing: a
-/// <code>DeleteID</code> naming no listed lock crashed the serving process in measurement. A target
-/// id the listing no longer holds is 404 <code>PORT.NOTFOUND</code> with nothing sent, for either
-/// write; any other stored id no longer listed is skipped, since its owner has released it. The
-/// listing is taken once, before the first <code>DELETE</code>. <code>c</code> is the
+/// send one <code>Lock</code> <code>DELETE</code> <code>?id=&lt;DeleteID&gt;&amp;checkTxn=&lt;c&gt;</code>
+/// per id the <parameter>IDSQUERY</parameter> query parameter names, in its order, and only for an id
+/// found verbatim in a listing taken since the previous <code>DELETE</code>: a <code>DeleteID</code>
+/// naming no listed lock crashed the serving process in measurement, and an owner that takes a lock
+/// under the same first subscript as one it holds changes the held lock's <code>DeleteID</code>. The
+/// first listing is taken before any <code>DELETE</code>, and a target id it does not hold is 404
+/// <code>PORT.NOTFOUND</code> with nothing sent, for either write. After each <code>DELETE</code> the
+/// owner's locks are listed again before the next id is judged, and a stored id the latest listing
+/// does not hold is skipped, whether its owner released it or renumbered it. <code>c</code> is the
 /// <parameter>CHECKTXNQUERY</parameter> query parameter, <code>1</code> unless it reads
-/// <code>0</code>, and <code>0</code> for a lock the listing reports held by a remote owner. The
-/// vendor's 409 answers <parameter>OcuPilot.Api.LockError.INTRANSACTION</parameter> and the port sends
-/// nothing further; an owner scope is not atomic, so the removals before it stand. A caller body is
-/// refused.</p>
+/// <code>0</code>, and <code>0</code> for a lock the latest listing reports held by a remote owner.
+/// The vendor's 409 answers <parameter>OcuPilot.Api.LockError.INTRANSACTION</parameter> and the port
+/// sends nothing further, as it does when a listing fails; an owner scope is not atomic, so the
+/// removals before either stand. A caller body is refused. <method>Snippet</method> is unchanged by
+/// the re-listing: it renders one <code>DELETE</code> per stored id and, as before, no listing.</p>
 /// <p><b>It names no administration API class</b> (AD-2, AD-27): every vendor call goes through
 /// <method>OcuPilot.Port.AdminPort.Invoke</method>, so the gate, the stubs, the namespace switch and
 /// the fault mapping are the admin port's.</p>
@@ -119,15 +122,24 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set tIds = $Select(pType = ..#REMOVETYPE: $ListBuild(tId), 1: ..IdsOf(.pQuery))
     Set tCheck = ..CheckTxnOf(.pQuery)
     Set tRemoved = 0
+    Set tFresh = 1
     Set tSC = $$$OK
     For tI = 1:1:$ListLength(tIds) {
         Set tDeleteID = $List(tIds, tI)
-        ; Only an id this listing holds verbatim is ever sent (AD-52 as amended 2026-09-30).
+        ; The owner can have renumbered its other locks since the last listing (AD-52), so after each
+        ; DELETE they are listed again before the next id is judged.
+        If 'tFresh {
+            Set tSC = ..Listing(tId, tScoped, .tByDeleteID, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tFresh = 1
+        }
+        ; Only an id the latest listing holds verbatim is ever sent (AD-52).
         If '$Data(tByDeleteID(tDeleteID)) Continue
         Kill tQuery
         Set tQuery(..#IDPARAM) = tDeleteID
         Set tQuery(..#CHECKTXNQUERY) = $Select(''tByDeleteID(tDeleteID).%Get("RemoteOwner"): 0, 1: tCheck)
         Set tSC = ..Call(..#LOCKENDPOINT, ..#DELETETYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+        Set tFresh = 0
         If $$$ISERR(tSC) {
             If +pHttpStatus = 409 Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.LockError).#INTRANSACTION, ##class(OcuPilot.Api.LockError).#REASONINTRANSACTION, .pHttpStatus, .pFault)
             Quit

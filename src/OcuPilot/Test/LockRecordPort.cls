@@ -1,6 +1,7 @@
 /// <p>Test-only <class>OcuPilot.Port.LockPort</class> subclass whose one replaced seam is
 /// <method>Call</method>: nothing reaches the vendor. A <code>Lock</code> <code>LIST</code> answers the
-/// rows a test armed with <method>Arm</method>, at most its <code>maxRows</code>, and a <code>Lock</code> <code>DELETE</code> answers 200,
+/// rows a test armed for its ordinal with <method>ArmListing</method>, else those armed with
+/// <method>Arm</method>, at most its <code>maxRows</code>, and a <code>Lock</code> <code>DELETE</code> answers 200,
 /// or the status <method>ArmStatus</method> names for its id; each call's query is recorded
 /// (<method>Calls</method>), so a test reads what the port would have sent (Story 16.12).</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -15,7 +16,8 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
     Set ^||OcuPilotLockCalls(tIndex) = $ListBuild(pEndpoint _ "/" _ pType, $Get(pQuery("id")), $Get(pQuery("checkTxn")), $Get(pQuery("filter")), $Get(pQuery("maxRows")))
     If pType = "LIST" {
         ; As the vendor does, answer at most maxRows rows where the query names it.
-        Set tRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotLockRows, "[]"))
+        Set tList = $Increment(^||OcuPilotLockLists)
+        Set tRows = ##class(%DynamicArray).%FromJSON($Get(^||OcuPilotLockRows(tList), $Get(^||OcuPilotLockRows, "[]")))
         Set tMax = +$Get(pQuery("maxRows"))
         Set pResult = []
         Set tIterator = tRows.%GetIterator()
@@ -38,13 +40,20 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
 /// <p>Forget every armed row, status and recorded call.</p>
 ClassMethod Reset()
 {
-    Kill ^||OcuPilotLockCalls, ^||OcuPilotLockRows, ^||OcuPilotLockStatus
+    Kill ^||OcuPilotLockCalls, ^||OcuPilotLockRows, ^||OcuPilotLockStatus, ^||OcuPilotLockLists
 }
 
 /// <p>Answer every <code>Lock</code> <code>LIST</code> with the rows in <var>pRows</var>.</p>
 ClassMethod Arm(pRows As %DynamicArray)
 {
     Set ^||OcuPilotLockRows = pRows.%ToJSON()
+}
+
+/// <p>Answer the <var>pNumber</var>th <code>Lock</code> <code>LIST</code> since <method>Reset</method>
+/// with the rows in <var>pRows</var>, in place of those <method>Arm</method> armed.</p>
+ClassMethod ArmListing(pNumber As %Integer, pRows As %DynamicArray)
+{
+    Set ^||OcuPilotLockRows(pNumber) = pRows.%ToJSON()
 }
 
 /// <p>Answer a <code>Lock</code> <code>DELETE</code> of <var>pId</var> with HTTP <var>pStatus</var>.</p>
