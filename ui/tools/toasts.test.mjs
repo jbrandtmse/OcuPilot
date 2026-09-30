@@ -38,7 +38,6 @@ const {
   TOAST_STACK_MAX,
   ToastStore,
   changeSentenceTemplate,
-  formatChangeAnnouncement,
   formatChangeSentence,
   formatChangeToastLink,
 } = await import(corePath('toasts.ts'));
@@ -344,6 +343,8 @@ test('the published copy resolves its placeholders, and each action has its own 
   assert.equal(changeSentenceTemplate('created'), STRINGS.tableChangeCreated);
   assert.equal(changeSentenceTemplate('updated'), STRINGS.tableChangeUpdated);
   assert.equal(changeSentenceTemplate('deleted'), STRINGS.tableChangeDeleted);
+  // A data table's row mark that carried no action word reads as updated.
+  assert.equal(changeSentenceTemplate(''), STRINGS.tableChangeUpdated);
 
   assert.equal(formatChangeSentence(STRINGS.tableChangeDeleted, '/csp/myapp'), '/csp/myapp was deleted');
   // Story 7.10: a composite id reads as its breadcrumb, never with the control character.
@@ -355,17 +356,12 @@ test('the published copy resolves its placeholders, and each action has its own 
     formatChangeToastLink(STRINGS.tableChangeToastLink, 'Web applications'),
     'Open in Web applications'
   );
-  assert.equal(
-    formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, '/csp/myapp', 'updated'),
-    'Updated: /csp/myapp updated'
-  );
 
   // No placeholder survives: shipping `<entity>` to a user is exactly what a formatter exists to
   // prevent, and a source-text pin cannot see it.
   for (const value of [
     formatChangeSentence(STRINGS.tableChangeCreated, 'x'),
     formatChangeToastLink(STRINGS.tableChangeToastLink, 'x'),
-    formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, 'x', 'created'),
   ]) {
     assert.ok(!value.includes('<'), value);
   }

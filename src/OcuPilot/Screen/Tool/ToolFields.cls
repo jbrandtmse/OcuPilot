@@ -40,6 +40,34 @@ XData Tools
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Collation","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.languageservers.create": {"fieldList":"LanguageServer","fields":[
+  {"path":"BindToIPAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ConnectionTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"InitializationTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LogFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"UseSharedMemory","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"SSLConfigurationServer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfigurationClient","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"VerifySSLHostName","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Custom","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"members"}
+]},
+"osmgmt.languageservers.update": {"fieldList":"LanguageServer","fields":[
+  {"path":"BindToIPAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ConnectionTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"InitializationTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LogFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"UseSharedMemory","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"SSLConfigurationServer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfigurationClient","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"VerifySSLHostName","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Custom","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"members"}
+]},
 "osmgmt.localdatabases.create": {"fieldList":"Database.ConfigCRUD","fields":[
   {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},

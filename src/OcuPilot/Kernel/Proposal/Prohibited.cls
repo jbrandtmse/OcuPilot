@@ -405,8 +405,9 @@ Parameter TYPEWEBSESSION = "web-session";
 /// judges (<method>ReviewedFewOnly</method>).</p>
 Parameter TYPEBACKGROUNDTASK = "background-task";
 
-/// <p>An external language server (Story 16.10), whose start and stop the reviewed-few sweep alone
-/// judges (<method>ReviewedFewOnly</method>): OcuPilot runs in no language server (AD-10).</p>
+/// <p>An external language server (Story 16.10), whose start, stop, create, change and delete the
+/// reviewed-few sweep alone judges (<method>LanguageServer</method>): OcuPilot runs in no language
+/// server (AD-10).</p>
 Parameter TYPELANGUAGESERVER = "language-server";
 
 /// <p>The write would end a web session OcuPilot is itself running in
@@ -590,6 +591,11 @@ Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 /// rows are judged as it (Story 9.8).</p>
 Parameter SETTINGSFIELD = "Settings";
 
+/// <p>The object an external language server's type-specific settings travel under, whose
+/// <code>Custom.&lt;member&gt;</code> diff rows are judged as it, as <parameter>SETTINGSFIELD</parameter>'s
+/// are (Story 16.25).</p>
+Parameter CUSTOMFIELD = "Custom";
+
 /// <p>The account's last usable date. The vendor refuses a sign-in after it and disables the account
 /// at that refusal (measured on this build), so a date before today is a disable by effect.</p>
 Parameter FIELDEXPIRATIONDATE = "ExpirationDate";
@@ -769,6 +775,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseChangeFields()
+    If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields()
     ; A disk operation moves no field (Story 18.4): its one argument is its fingerprint subject's.
     If pType = ..#TYPEDATABASE Quit ""
     Quit ""
@@ -880,6 +887,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPENAMESPACE Quit ..NamespaceFields()
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
+    If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields() _ $ListBuild("Type")
     Quit ""
 }
 
@@ -1102,10 +1110,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(..#TYPEBACKGROUNDTASK, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        ; An external language server's start and stop set no field (AD-51) and AD-10 names no effect
-        ; on one: the reviewed-few sweep over an empty permitted list, and nothing else (Story 16.10).
+        ; An external language server: AD-10 names no effect on one, so its writes pass the
+        ; reviewed-few sweep and nothing else (Stories 16.10 and 16.25).
         If tType = ..#TYPELANGUAGESERVER {
-            Set tSC = ..ReviewedFewOnly(..#TYPELANGUAGESERVER, .tChanged, .pProhibits, .pCode)
+            Set tSC = ..LanguageServer($Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1798,6 +1806,27 @@ ClassMethod Device(pToolClass As %String, ByRef pChanged, Output pProhibits As %
 ClassMethod DeviceFields() As %List [ Private ]
 {
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
+}
+
+/// <p>The external language server predicates (Stories 16.10 and 16.25): the reviewed-few sweep and
+/// nothing else, as a device's. OcuPilot runs in no language server, so none is its own and AD-10
+/// names no effect on one. A start, a stop and a delete send no body (AD-51), and their card rows
+/// are the state or the removal read from the fresh read, so they reach the sweep with nothing
+/// changed. <var>pToolClass</var> is the proposal's tool.</p>
+ClassMethod LanguageServer(pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    If ..WriteTypeOf(pToolClass) = "DELETE" Kill pChanged
+    Quit ..ReviewedFewOnly(..#TYPELANGUAGESERVER, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>An external language server's settable fields on a change (Story 16.25): its port, its two
+/// timeouts, its bind address, its resource, its two TLS configuration names and the flags beside
+/// them, and <parameter>CUSTOMFIELD</parameter>, whose members its type takes. A create sets its
+/// <code>Type</code> as well (<method>PermittedCreateFields</method>). Its file locations are not
+/// among them: no caller names a path (AD-21).</p>
+ClassMethod LanguageServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("Port", "ConnectionTimeout", "InitializationTimeout", "BindToIPAddress", "Resource", "UseSharedMemory", "SSLConfigurationServer", "SSLConfigurationClient", "VerifySSLHostName", ..#CUSTOMFIELD)
 }
 
 /// <p>The namespace predicates, in declared order, first hit wins: for an own namespace
@@ -3542,6 +3571,16 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             If $Piece(tField, ".", 1) = ..#SETTINGSFIELD, $Length(tField, ".") > 1 {
                 Set tMember = $Piece(tField, ".", 2, *)
                 Set tField = ..#SETTINGSFIELD
+                If $Data(pChanged(tField)) Continue
+                If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
+                Set pChanged(tField) = ""
+                Set pChanged = pChanged + 1
+                Continue
+            }
+            ; A language server's Custom.<member> row is judged the same way (Story 16.25).
+            If $Piece(tField, ".", 1) = ..#CUSTOMFIELD, $Length(tField, ".") > 1 {
+                Set tMember = $Piece(tField, ".", 2, *)
+                Set tField = ..#CUSTOMFIELD
                 If $Data(pChanged(tField)) Continue
                 If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
                 Set pChanged(tField) = ""

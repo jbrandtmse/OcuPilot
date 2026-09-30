@@ -24,6 +24,7 @@ import { OAuthServerForm } from './areas/security/oauth-server-form.store';
 import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { LanguageServerForm } from './areas/os-management/language-server-form.store';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
@@ -1241,6 +1242,12 @@ describe('the shell frame', () => {
     mappingForm.setValue('Name', 'AMappingThisPrincipalTyped');
     expect(mappingForm.value('Name')).not.toBe('');
 
+    // The same answer for the external language server editor (Story 16.25): a server THIS principal
+    // typed and has not saved, in a root-provided store. A create takes input before its form read.
+    const languageServerForm = TestBed.inject(LanguageServerForm);
+    languageServerForm.setValue('Name', 'AServerThisPrincipalTyped');
+    expect(languageServerForm.value('Name')).not.toBe('');
+
     // The same answer for the database wizard and editor (Story 18.3): a database THIS principal
     // typed or opened and has not saved, in two root-provided stores. The wizard takes input before
     // its form read is made; the editor takes input once its form read has answered.
@@ -1370,6 +1377,10 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.mappingForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's mapping editor holds the previous one's typed name.
     expect(mappingForm.value('Name')).toBe('');
+
+    // Mutation (Rule 19): delete `this.languageServerForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's language server editor holds the previous one's typed name.
+    expect(languageServerForm.value('Name')).toBe('');
 
     // Mutation (Rule 19): delete `this.databaseWizard.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's wizard holds the previous one's typed name.

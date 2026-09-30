@@ -41,7 +41,7 @@ import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatChangeAnnouncement } from '../core/toasts';
+import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
 import {
   COLUMN_DEFAULT_PX,
   COLUMN_RESIZE_STEP_PX,
@@ -1728,7 +1728,8 @@ export class DataTable implements OnInit {
    * would announce the first and silence the second. An identical re-mark announces nothing,
    * because the store itself swallows one and never notifies.
    *
-   * The sentence names the key the view carries, which is the spelling on screen.
+   * The sentence is the change toast's own for the action, and it names the key the view carries,
+   * which is the spelling on screen.
    */
   private announceChanged(): void {
     const store = this.store();
@@ -1746,7 +1747,7 @@ export class DataTable implements OnInit {
       const row = this.viewKeyFor(key);
       if (row === '') continue;
       this.announcedChanged.set(key, said);
-      this.announcement.set(withReadBack(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action), readBack));
+      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), row), readBack));
     }
   }
 

@@ -2209,13 +2209,15 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Story 18.1's Allowed directories owns %Admin_FileSystemAccess the same way, and Story 16.2's
   // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
   // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
-  // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read.
+  // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
+  // Story 16.25's editor owns it the same way.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
+      'OcuPilot.Screen.Descriptor.LanguageServerForm',
       'OcuPilot.Screen.Descriptor.LanguageServerList',
       'OcuPilot.Screen.Descriptor.LogAnalyticsViewer',
       'OcuPilot.Screen.Descriptor.LogEventViewer',

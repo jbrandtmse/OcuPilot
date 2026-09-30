@@ -1481,6 +1481,41 @@ describe('External language servers\u2019 Start and Stop (Story 16.10)', () => {
     expect(store.refusal()).toBe(STRINGS.languageServerStartFailed);
     expect(events).toEqual([]);
   });
+
+  // Story 16.25: Delete types the server's name under its consequence, and a running server's
+  // refusal is the published sentence, not the envelope's generic reason.
+  it('opens Delete\u2019s typed-name dialog with its consequence, sends nothing on Cancel, and sends the name once confirmed', async () => {
+    // Mutation (Rule 19): drop the LanguageServerList entry from DESTRUCTIVE_CONSEQUENCES -> no dialog
+    // opens and the typed-name assertions go red.
+    const deleted = { action: 'deleted', target: TARGET };
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: deleted }, SERVERS);
+    expect(actions.has(SERVERS, 'delete')).toBe(true);
+    handler.startFor(SERVERS, 'delete', NAME, ROW, store);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(pending?.name).toBe(NAME);
+    expect(pending?.consequence).toBe(STRINGS.languageServerDeleteConsequence);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    handler.startFor(SERVERS, 'delete', NAME, ROW, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'delete', id: NAME }]);
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted language-server ${NAME}`]);
+  });
+
+  it('shows a running server\u2019s delete refusal in its published sentence', async () => {
+    // Mutation (Rule 19): drop languageServerRefusalRunningEdit from PUBLISHED_PROBLEMS -> the store
+    // shows the generic reason and this goes red.
+    const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem: STRINGS.languageServerRefusalRunningEdit } } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, SERVERS);
+    handler.startFor(SERVERS, 'delete', NAME, { ...ROW, CurrentlyRunning: true }, store);
+    handler.confirmPending();
+    await settle();
+    expect(store.refusal()).toBe(STRINGS.languageServerRefusalRunningEdit);
+    expect(events).toEqual([]);
+  });
 });
 
 /**

@@ -1436,10 +1436,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:388 */
   proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
 
-  // Story 5.7's six. The first three are AD-14's closed action set as published sentences: the
+  // Story 5.7's five. The first three are AD-14's closed action set as published sentences: the
   // off-screen toast renders one, and the panel appends the same one to a confirmed write's reply
   // so the record outlives a toast that expired or was never raised. `<entity>` resolves to the
-  // entity's own id; the noun is on the toast's own link, which names the screen.
+  // entity's own id; the noun is on the toast's own link, which names the screen. A data table
+  // announces the same sentence when a change marks one of its rows.
   /** EXPERIENCE.md:390 */
   tableChangeCreated: '<entity> was created',
   /** EXPERIENCE.md:390 */
@@ -1450,8 +1451,6 @@ export const STRINGS = {
   tableChangeToastRegion: 'Changes',
   /** EXPERIENCE.md:391 */
   tableChangeToastDismiss: 'Dismiss',
-  /** EXPERIENCE.md:392 */
-  tableChangeAnnouncement: 'Updated: <entity> <action>',
 
   // Story 5.8's one. The direction word completes the pair "was"/"now" carries on a changed row:
   // an unchanged row has one value and no arrow, so the word is what says the payload sends the
@@ -3832,6 +3831,60 @@ export const STRINGS = {
   languageServerActivityPrompt2: 'Did this server log any errors?',
   /** EXPERIENCE.md:585 */
   languageServerActivityPrompt3: 'When was this server last started or stopped?',
+  /** EXPERIENCE.md:584 */
+  languageServerFormLabel: 'External language server',
+  /** EXPERIENCE.md:584 */
+  languageServerFormNew: 'New external language server',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldBindAddress: 'Bind address',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldConnectionTimeout: 'Connection timeout (seconds)',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldInitializationTimeout: 'Initialization timeout (seconds)',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldSharedMemory: 'Use shared memory',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldServerTls: 'Server TLS configuration',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldClientTls: 'Client TLS configuration',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldVerifyHostName: 'Verify the server\'s host name',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldLogFile: 'Log file',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldClassPath: 'Class path',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldJavaHome: 'Java home',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldFilePath: 'File path',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldPythonPath: 'Python executable',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldJvmArgs: 'JVM arguments',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldDotNetVersion: '.NET version',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldExec32: 'Run as 32-bit',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldPythonOptions: 'Python options',
+  /** EXPERIENCE.md:584 */
+  languageServerFieldAddress: 'Address',
+  /** EXPERIENCE.md:584 */
+  languageServerPathClassicOnly: 'File locations are set on the classic portal\'s External Language Server page.',
+  /** EXPERIENCE.md:584 */
+  languageServerRefusalRunningEdit: 'This server is running. Stop it before changing or deleting it.',
+  /** EXPERIENCE.md:584 */
+  languageServerPythonConsequence: 'Saving this also turns the server\'s virtual environment back on and clears its PYTHONPATH, which only the classic portal shows.',
+  /** EXPERIENCE.md:584 */
+  languageServerNameTaken: 'A server with this name already exists.',
+  /** EXPERIENCE.md:479 */
+  languageServerDeleteConsequence: 'Deleting it removes this server\'s definition from the instance.',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt1: 'What does each setting on this server do?',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt2: 'Why might this server fail to start?',
+  /** EXPERIENCE.md:585 */
+  languageServerFormPrompt3: 'Which resource should protect this server?',
   // Story 18.4: the disk operations on Database details, the editor's size and Add a volume, the
   // Check integrity flow and the Integrity log. The flow's Databases and Globals steps reuse
   // `databaseListLabel` and `processColumnGlobals`, Add a volume's field `databaseInitialSize`, and a

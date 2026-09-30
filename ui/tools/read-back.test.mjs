@@ -71,6 +71,6 @@ test('a form reads "Saved" with its line, and a row announcement gains the line'
   const matches = readBackOf({ verdict: 'matches', fields: [], written: [] });
   assert.equal(savedLine(matches), `Saved${DOT}Read back: matches`);
   assert.equal(savedLine(null), 'Saved', 'a Save that answered none reads Saved alone');
-  assert.equal(withReadBack('Updated: /csp/a updated', matches), `Updated: /csp/a updated${DOT}Read back: matches`);
-  assert.equal(withReadBack('Updated: /csp/a updated', null), 'Updated: /csp/a updated');
+  assert.equal(withReadBack('/csp/a was updated', matches), `/csp/a was updated${DOT}Read back: matches`);
+  assert.equal(withReadBack('/csp/a was updated', null), '/csp/a was updated');
 });

@@ -99,7 +99,8 @@ const LIVE_PAYLOAD = {
       // Story 16.7 License usage's three unlisted tabs among them and License usage and the
       // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
       // language servers after the Dashboard, refused on its own pair; and Story 18.3 the local
-      // database form among the unlisted ones and Local databases last.
+      // database form among the unlisted ones and Local databases last; Story 16.25 the language
+      // server editor among the unlisted ones, refused on the list's own pair.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -153,6 +154,13 @@ const LIVE_PAYLOAD = {
         {
           route: 'os-management/language-servers/activity',
           labelKey: 'languageServerActivityLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_ExternalLanguageServerEdit:USE',
+        },
+        {
+          route: 'os-management/language-servers/edit',
+          labelKey: 'languageServerFormLabel',
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_ExternalLanguageServerEdit:USE',
@@ -598,12 +606,13 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     expect(navigation.screenVerdict('tasks/background')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
-  it('Story 16.10: reads both External language servers verdicts the live payload carries', () => {
-    // Both declare their own `%Admin_ExternalLanguageServerEdit:USE` first, which this principal does
-    // not hold, so each is denied on it. The payload's two entries are what OcuPilot.Test.Wire pins
-    // the instance to answer; this pins only that the navigation service reads them.
+  it('Story 16.10: reads the External language servers verdicts the live payload carries', () => {
+    // Each declares its own `%Admin_ExternalLanguageServerEdit:USE` first, which this principal does
+    // not hold, so each is denied on it; Story 16.25's editor joined the list and its Activity log.
+    // The payload's entries are what OcuPilot.Test.Wire pins the instance to answer; this pins only
+    // that the navigation service reads them.
     const navigation = TestBed.inject(NavigationService);
-    for (const route of ['os-management/language-servers', 'os-management/language-servers/activity']) {
+    for (const route of ['os-management/language-servers', 'os-management/language-servers/activity', 'os-management/language-servers/edit']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_ExternalLanguageServerEdit:USE' });
     }
   });

@@ -200,7 +200,11 @@ test('AC5: a row action marks the row with the instance\u2019s read-back line, i
     assert.equal(light?.tag, STRINGS.tableChangedTag, 'the enabled row is marked Changed');
     assert.equal(light?.line, STRINGS.readBackMatches, 'with the instance\u2019s read-back line after the tag');
     assert.ok(light?.lineShown, 'and the line is drawn, not collapsed');
-    assert.ok(light?.announcement.endsWith(` \u00b7 ${STRINGS.readBackMatches}`), `the row's announcement says it too: ${light?.announcement}`);
+    assert.equal(
+      light?.announcement,
+      `${STRINGS.tableChangeUpdated.split('<entity>').join(PROBE)} \u00b7 ${STRINGS.readBackMatches}`,
+      'the row\u2019s announcement is the change toast\u2019s sentence for the action, and carries the line too'
+    );
 
     await page.evaluate(() => document.documentElement.classList.add('ocu-theme-dark'));
     await settled(page);

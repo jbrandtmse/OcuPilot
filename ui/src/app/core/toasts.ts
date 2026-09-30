@@ -31,7 +31,6 @@
 
 import type { ChangeAction, ChangeBus, ChangeEvent } from './change-bus';
 import {
-  ACTION_PLACEHOLDER,
   ENTITY_PLACEHOLDER,
   SCREEN_PLACEHOLDER,
   screenForChange,
@@ -85,8 +84,11 @@ export interface ToastStoreOptions {
   readonly namespace?: () => string;
 }
 
-/** The published sentence for one action. */
-export function changeSentenceTemplate(action: ChangeAction): string {
+/**
+ * The published sentence for one action. A word outside AD-14's set -- a row mark that carried
+ * none -- reads as `updated`.
+ */
+export function changeSentenceTemplate(action: string): string {
   if (action === 'created') return STRINGS.tableChangeCreated;
   if (action === 'deleted') return STRINGS.tableChangeDeleted;
   return STRINGS.tableChangeUpdated;
@@ -105,16 +107,6 @@ export function formatChangeSentence(template: string, entity: string): string {
 /** `Open in <screen>` resolved to the screen the action opens. */
 export function formatChangeToastLink(template: string, screenTitle: string): string {
   return template.split(SCREEN_PLACEHOLDER).join(screenTitle);
-}
-
-/**
- * `Updated: <entity> <action>` resolved to the changed row's id and AD-14's own action word.
- *
- * The action word is machine vocabulary rendered as reported, not translated copy -- the same
- * treatment the System usage meters give the vendor's own state words.
- */
-export function formatChangeAnnouncement(template: string, entity: string, action: string): string {
-  return template.split(ENTITY_PLACEHOLDER).join(entity).split(ACTION_PLACEHOLDER).join(action);
 }
 
 export class ToastStore {

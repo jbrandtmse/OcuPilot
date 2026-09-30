@@ -1411,6 +1411,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "MAPPING." Quit ..ReasonForMapping(pCode)
     If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
     If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
+    If $Extract(pCode, 1, 15) = "LANGUAGESERVER." Quit ..ReasonForLanguageServer(pCode)
     Quit ""
 }
 
@@ -1511,6 +1512,25 @@ ClassMethod DatabaseViolationCodes() As %List
 ClassMethod ReasonForDatabase(pCode As %String) As %String
 {
     Quit ##class(OcuPilot.Api.DatabaseError).ReasonFor(pCode)
+}
+
+/// <p>Every <code>LANGUAGESERVER.*</code> field-level violation code (Story 16.25), as a
+/// <class>%List</class>, for the reason <method>WebAppViolationCodes</method> exists. The codes and
+/// their sentences are <class>OcuPilot.Api.LanguageServerError</class>'s, because this class is at
+/// the compiler's limit of parameters; <parameter>LANGUAGESERVERSTART</parameter> is no violation and
+/// is not among them.</p>
+ClassMethod LanguageServerViolationCodes() As %List
+{
+    Quit ##class(OcuPilot.Api.LanguageServerError).ViolationCodes()
+}
+
+/// <p>The sentence a <code>LANGUAGESERVER.*</code> violation code carries, or <code>""</code>
+/// (<method>OcuPilot.Api.LanguageServerError.ReasonFor</method>), which answers no sentence for
+/// <parameter>LANGUAGESERVERSTART</parameter>: that code's own sentence is this class's
+/// <parameter>REASONLANGUAGESERVERSTART</parameter>, read by the port that answers it.</p>
+ClassMethod ReasonForLanguageServer(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.LanguageServerError).ReasonFor(pCode)
 }
 
 /// <p>The sentence a <code>PATH.*</code> code carries, or <code>""</code>: the sentence

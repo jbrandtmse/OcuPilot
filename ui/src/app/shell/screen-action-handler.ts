@@ -54,11 +54,11 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * global, routine and package mapping lists (Story 18.14), whose Delete types the mapping's name,
  * Processes' Broadcast (Story 16.6), which acts on the checked rows and opens the broadcast
  * dialog, External language servers (Story 16.10), whose Start is sent at once and whose Stop
- * warns first, the Local databases list (Story 18.3), whose Delete types the name, states the
- * removal's impact and offers to delete the file too, and Database details (Story 18.4), whose five
- * disk operations each warn first -- the mount carrying its read-only flag, the truncate and the
- * compact a size -- and whose Dismount states the prohibited set's refusal of a protected database
- * when its dialog opens.
+ * warns first -- and whose Delete types the server's name (Story 16.25) -- the Local databases
+ * list (Story 18.3), whose Delete types the name, states the removal's impact and offers to delete
+ * the file too, and Database details (Story 18.4), whose five disk operations each warn first -- the
+ * mount carrying its read-only flag, the truncate and the compact a size -- and whose Dismount states
+ * the prohibited set's refusal of a protected database when its dialog opens.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -329,6 +329,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [ROUTINE_MAPPING_LIST]: { delete: STRINGS.routineMappingDeleteConsequence },
   [PACKAGE_MAPPING_LIST]: { delete: STRINGS.packageMappingDeleteConsequence },
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
+  // Story 16.25: the language server's Delete types the server's name.
+  'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
 };
 
 /**
@@ -431,7 +433,12 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
  * the envelope's generic reason. Any other problem keeps the envelope's reason. Each is pinned equal
  * to its server copy by `ui/tools/self-protection.test.mjs`.
  */
-const PUBLISHED_PROBLEMS: readonly string[] = [STRINGS.languageServerRefusalRunning, STRINGS.languageServerRefusalStopped];
+const PUBLISHED_PROBLEMS: readonly string[] = [
+  STRINGS.languageServerRefusalRunning,
+  STRINGS.languageServerRefusalStopped,
+  // Story 16.25: a running server's delete.
+  STRINGS.languageServerRefusalRunningEdit,
+];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
 function refusalReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {

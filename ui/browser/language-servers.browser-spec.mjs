@@ -3,9 +3,9 @@
  * Start and Stop row actions and the Activity log (AD-5, AD-8, AD-36, AD-53).
  *
  * What it pins: a probe Java server this spec seeds is listed reading Running "No"; Start sends one
- * request and the row then reads "Yes" with the Changed tag; the server's name opens its Activity
- * log in the shared log viewer, whose rows carry the time, pid, severity chip and text with "Explain
- * this entry" beside each; back on the list, Stop opens the warning dialog stating the published
+ * request and the row then reads "Yes" with the Changed tag; the server's name opens its editor
+ * (Story 16.25), whose link opens its Activity log in the shared log viewer, whose rows carry the
+ * time, pid, severity chip and text with "Explain this entry" beside each; back on the list, Stop opens the warning dialog stating the published
  * consequence, whose Proceed sends one request after which the row reads "No"; a second Stop is
  * refused with the published sentence. A principal holding OS management's pairs but not
  * `%Admin_ExternalLanguageServerEdit:USE` sees this entry alone unavailable, naming that pair. Both
@@ -38,6 +38,7 @@ const STRINGS = loadStrings();
 const probe = { container: config.container, marker: 'LANGSRV' };
 const ROUTE = 'os-management/language-servers';
 const ACTIVITY_ROUTE = 'os-management/language-servers/activity';
+const FORM_ROUTE = 'os-management/language-servers/edit';
 const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/osmgmt.languageservers/action';
 const SERVER = 'OcuPilotProbeELSBrowser';
@@ -156,7 +157,7 @@ async function selectServer(page) {
     FILTER_SELECTOR,
     SERVER
   );
-  // The first cell is the name, whose link opens the Activity log, so the row is selected by its Type cell.
+  // The first cell is the name, whose link opens the editor, so the row is selected by its Type cell.
   await clickRowCentre(page, { index: 0, cell: 2 });
   await page.waitForFunction(
     (rowSelector) => document.querySelector(rowSelector)?.getAttribute('aria-selected') === 'true',
@@ -234,10 +235,9 @@ after(async () => {
   }
 });
 
-// AC1, AC2, AC3, AC7. Mutation (Rule 19): drop `childListFor` from the name cell's link chain in
-// `data-table.ts`, then rebuild and redeploy -> the name cell opens no Activity log and the log wait
-// goes red.
-test('AC1-AC3: Start reads Running "Yes" changed; the name opens the Activity log; Stop warns and reads "No"; a second Stop is refused; both screens pass DW-1337', async () => {
+// AC1, AC2, AC3, AC7. Mutation (Rule 19): drop the Activity link from the language server editor's
+// template, then rebuild and redeploy -> the editor offers no Activity log and the link wait goes red.
+test('AC1-AC3: Start reads Running "Yes" changed; the name opens the editor, which links the Activity log; Stop warns and reads "No"; a second Stop is refused; both screens pass DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   const posts = [];
   page.on('request', (request) => {
@@ -261,6 +261,8 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the Activity lo
     assert.deepEqual(posts.map((post) => JSON.parse(post.body)), [{ action: 'start', id: SERVER }], 'Start sent one request, with no dialog');
 
     await clickRowCentre(page, { index: 0, link: true });
+    await page.waitForFunction((route) => location.pathname.startsWith(`/ocupilot/${route}/`), { timeout: config.navigationTimeoutMs }, FORM_ROUTE);
+    await (await page.waitForSelector('[data-activity-log] a', { visible: true, timeout: config.navigationTimeoutMs })).click();
     await page.waitForFunction((route) => location.pathname.startsWith(`/ocupilot/${route}/`), { timeout: config.navigationTimeoutMs }, ACTIVITY_ROUTE);
     await page.waitForSelector('.ocu-log-row', { timeout: config.navigationTimeoutMs });
     const lines = await page.$$eval('.ocu-log-row', (rows) =>
@@ -277,6 +279,9 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the Activity lo
     assert.ok((await page.$('[data-ocu-log="load-newer"]')) !== null, 'and Load newer is offered');
     assert.deepEqual(await structural(page, ACTIVITY_ROUTE), [], 'the Activity log: no violation beyond the baseline\'s entries');
 
+    // Back through the editor to the list.
+    await page.goBack();
+    await page.waitForFunction((route) => location.pathname.startsWith(`/ocupilot/${route}/`), { timeout: config.navigationTimeoutMs }, FORM_ROUTE);
     await page.goBack();
     await waitForRows(page, config.navigationTimeoutMs);
     await selectServer(page);

@@ -254,7 +254,7 @@ describe('the list page', () => {
     // silent (EXPERIENCE.md's accessibility floor).
     const announcement = page.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
     expect(announcement.getAttribute('role')).toBe('status');
-    expect(announcement.textContent?.trim()).toBe('Updated: B updated');
+    expect(announcement.textContent?.trim()).toBe('B was updated');
   });
 
   it('Story 5.7: a created row arrives highlighted and selected, and an updated one leaves the caret alone', async () => {

@@ -202,6 +202,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
   <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
   <Route Url="/permissions/check" Method="GET" Call="PermissionCheck"/>
+  <Route Url="/language-server/form" Method="GET" Call="LanguageServerFormRead"/>
+  <Route Url="/language-server/name" Method="GET" Call="LanguageServerNameCheck"/>
+  <Route Url="/language-server/:id" Method="PUT" Call="LanguageServerUpdate"/>
+  <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
 </Routes>
 }
 
@@ -1526,6 +1530,36 @@ ClassMethod AuditEventUpdate(pId As %String) As %Status
 ClassMethod AuditEventCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /language-server/form</code> (Story 16.25): the
+/// external language server editor's read, delegating to
+/// <class>OcuPilot.Area.OsMgmt.LanguageServerRules</class>. The two sub-resources precede
+/// <code>/language-server/:id</code>.</p>
+ClassMethod LanguageServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /language-server/name</code>: the editor's blur
+/// check of whether a name is taken.</p>
+ClassMethod LanguageServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /language-server</code>: the editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LanguageServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /language-server/:id</code>: the editor's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LanguageServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerSave).HandleUpdate(pId)
 }
 
 }
