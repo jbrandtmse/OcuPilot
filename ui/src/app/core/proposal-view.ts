@@ -200,6 +200,9 @@ export const CONSEQUENCE_TASKEXPORTREPLACES = 'TASK.EXPORT.REPLACES';
 /** Story 16.25, AD-4: a change to a Python language server's own settings, which resets two the read never shows. */
 export const CONSEQUENCE_PYTHONCUSTOM = 'LANGUAGESERVER.PYTHONCUSTOM';
 
+/** Story 16.11: suspending the Task Manager, after which no scheduled task runs until it is resumed. */
+export const CONSEQUENCE_TASKMANAGERSUSPEND = 'TASK.MANAGER.SUSPEND';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -232,6 +235,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_TASKEXPORTREPLACES) return STRINGS.taskExportReplaces;
   // The editor's own consequence line, published once.
   if (code === CONSEQUENCE_PYTHONCUSTOM) return STRINGS.languageServerPythonConsequence;
+  // The warning dialog's own consequence sentence, published once.
+  if (code === CONSEQUENCE_TASKMANAGERSUSPEND) return STRINGS.taskManagerSuspendConsequence;
   return '';
 }
 

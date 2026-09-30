@@ -35,8 +35,9 @@
 /// <code>Status</code> raises a warning strip above the table -- the one fact that decides whether
 /// any of the schedule means anything. It rides in the read's own
 /// response, so an auto-refresh tick re-evaluates it and the strip is gone the moment the condition
-/// clears; a fault in it suppresses the strip and never fails the list. The Resume control beside it
-/// is Epic 7's (FR-51): Epic 2 has no write path at all.</p>
+/// clears; a fault in it suppresses the strip and never fails the list. Each case names the action it
+/// offers (AD-5): Resume Task Manager while suspended and Start Task Manager while stopped, drawn in the
+/// strip and gated by the read's <code>bannerRequires</code>.</p>
 /// <p><b>Two cases, one read</b> (DW-270). <code>RunGet</code> answers a closed set of three,
 /// read live from <code>%SYS.Task.TASKMGRStatus()</code>: <code>Running</code>,
 /// <code>Suspended</code> and <code>Not running</code>. A stopped Task Manager runs no scheduled
@@ -71,6 +72,10 @@
 /// (<class>OcuPilot.Screen.Tool.TaskExport</class>) and Import creates the tasks a server file holds
 /// (<class>OcuPilot.Screen.Tool.TaskImport</class>), which the client draws as a screen-level action
 /// because it names no row.</p>
+/// <p><b>The Task Manager's three actions</b> (Story 16.11) come last and name no row: Suspend Task
+/// Manager (<class>OcuPilot.Screen.Tool.TaskManagerSuspend</class>), drawn on the command bar behind a
+/// warning, and Resume and Start (<class>OcuPilot.Screen.Tool.TaskManagerResume</class>,
+/// <class>OcuPilot.Screen.Tool.TaskManagerStart</class>), drawn on the banner.</p>
 /// <p><b>Its primary action is Create</b> (Story 9.7), which opens the New Task wizard
 /// (<class>OcuPilot.Screen.Descriptor.TaskForm</class>); the agent's twin is
 /// <class>OcuPilot.Screen.Tool.TaskCreate</class>.</p>
@@ -101,14 +106,15 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Id"]},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
+  "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "suspendmanager", "selfProtection": ""}, {"id": "resumemanager", "selfProtection": ""}, {"id": "startmanager", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",
   "commandAliases": ["task manager"],
   "suggestedPrompts": [
     {"groupKey": "promptGroupTroubleshooting", "textKey": "taskScheduleListPrompt1"},
     {"groupKey": "taskPromptGroupSchedule", "textKey": "taskScheduleListPrompt2"},
-    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskScheduleListPrompt3"}
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskScheduleListPrompt3"},
+    {"groupKey": "taskPromptGroupSchedule", "textKey": "taskScheduleListPrompt4"}
   ],
   "classicPage": "%CSP.UI.Portal.TaskSchedule",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
@@ -140,8 +146,8 @@ XData Declaration
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},
     "field": "Status",
     "cases": [
-      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"},
-      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning"}
+      {"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning", "action": "resumemanager"},
+      {"equals": "Not running", "messageKey": "taskManagerStoppedBanner", "severity": "warning", "action": "startmanager"}
     ]
   },
   "toolIdentifier": "tasks.schedule"

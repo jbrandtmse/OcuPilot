@@ -1047,11 +1047,12 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
   // field its INFO rowGet answers, and its empty state invites the agent. Story 16.4 adds Export
-  // and Import before Delete, so the row menu lists the destructive action last.
+  // and Import before Delete, so the row menu lists the destructive action last. Story 16.11 appends
+  // the Task Manager's three actions, which no row menu draws.
   const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
   assert.deepEqual(
     schedule.declaration.rowActions.map((action) => action.id),
-    ['run', 'suspend', 'resume', 'export', 'import', 'delete']
+    ['run', 'suspend', 'resume', 'export', 'import', 'delete', 'suspendmanager', 'resumemanager', 'startmanager']
   );
   assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
   assert.deepEqual(
@@ -1303,9 +1304,10 @@ test('bannerProblem returns every sentence OcuPilot.Test.BannerCorpus declares, 
     field: 'Status',
     // Two cases over one field and one read (DW-270): the Task Manager is suspended, or it is
     // stopped -- `Not running` is the vendor's own word for status 0 -- and `Running` raises none.
+    // Each offers its remedy (Story 16.11): the resume, or the start.
     cases: [
-      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' },
-      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning' },
+      { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning', action: 'resumemanager' },
+      { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning', action: 'startmanager' },
     ],
   });
   for (const screen of emittedScreens) {

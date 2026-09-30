@@ -96,7 +96,7 @@ Method TestTheFourToolsAndTheListDeclareTheActions()
     Set tSC = $ClassMethod(..#SCREEN, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the list's declaration parses")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), "[{""id"":""run"",""selfProtection"":""""},{""id"":""suspend"",""selfProtection"":""""},{""id"":""resume"",""selfProtection"":""""},{""id"":""export"",""selfProtection"":""""},{""id"":""import"",""selfProtection"":""""},{""id"":""delete"",""selfProtection"":""""}]", "the list declares Run, Suspend, Resume, Export, Import and Delete, none self-protected and the destructive one last")
+    Do $$$AssertEquals(tDeclaration.rowActions.%ToJSON(), "[{""id"":""run"",""selfProtection"":""""},{""id"":""suspend"",""selfProtection"":""""},{""id"":""resume"",""selfProtection"":""""},{""id"":""export"",""selfProtection"":""""},{""id"":""import"",""selfProtection"":""""},{""id"":""delete"",""selfProtection"":""""},{""id"":""suspendmanager"",""selfProtection"":""""},{""id"":""resumemanager"",""selfProtection"":""""},{""id"":""startmanager"",""selfProtection"":""""}]", "the list declares Run, Suspend, Resume, Export, Import and Delete, then the Task Manager's three actions, none self-protected and the destructive row action last among the row menu's")
     Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "taskScheduleEmptyAgent", "its empty state invites the agent")
     Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "", "and names no read-only next step")
     Do $$$AssertEquals(tDeclaration.entityLabelKey, "proposalEntityTask", "and names its entity's noun")

@@ -22,6 +22,7 @@ const SENTENCE_KEYS = {
   'all-holder': 'findingFixAllHolder',
   'auditing-off': 'findingFixAuditingOff',
   'task-error': 'findingFixTaskError',
+  'task-manager': 'findingFixTaskManager',
 } as const;
 
 export type FixableCheck = keyof typeof SENTENCE_KEYS;

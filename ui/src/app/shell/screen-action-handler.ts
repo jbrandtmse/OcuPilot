@@ -161,6 +161,17 @@ export const TASK_EXPORT = 'export';
 export const TASK_IMPORT = 'import';
 export const TASK_IMPORT_TARGET = 'import';
 
+/**
+ * The Task schedule's three Task Manager actions (Story 16.11): declared, and registered by the
+ * list's own page (`areas/tasks/task-schedule.page.ts`) -- Suspend at screen level, Resume and Start
+ * where the banner offers them. Each is sent with the one target the tools read,
+ * `TASK_MANAGER_TARGET`; Suspend opens its warning dialog first, and the other two are sent at once.
+ */
+export const TASK_MANAGER_SUSPEND = 'suspendmanager';
+export const TASK_MANAGER_RESUME = 'resumemanager';
+export const TASK_MANAGER_START = 'startmanager';
+export const TASK_MANAGER_TARGET = 'manager';
+
 /** The processes list and Process details, whose Terminate carries the error-to-job flag. */
 const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
 const PROCESS_DETAILS = 'OcuPilot.Screen.Descriptor.ProcessDetails';
@@ -230,8 +241,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [NAMESPACE_LIST]: [COPY_MAPPINGS],
   // The database editor draws Add a volume beside its volume files, for the database it shows.
   [LOCAL_DATABASE_LIST]: [EXPAND_VOLUME],
-  // The Task schedule's page registers Export itself and draws Import as a screen-level action.
-  [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT],
+  // The Task schedule's page registers Export itself and draws Import as a screen-level action, and
+  // registers the Task Manager's three actions itself (Story 16.11).
+  [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT, TASK_MANAGER_SUSPEND, TASK_MANAGER_RESUME, TASK_MANAGER_START],
 };
 
 /**
@@ -401,6 +413,8 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     defragment: STRINGS.databaseDefragmentConsequence,
   },
   [LOCAL_DATABASE_LIST]: { [EXPAND_VOLUME]: STRINGS.databaseExpandConsequence },
+  // Story 16.11: no scheduled task runs while the Task Manager is suspended.
+  [TASK_SCHEDULE]: { [TASK_MANAGER_SUSPEND]: STRINGS.taskManagerSuspendConsequence },
 };
 
 /**
@@ -438,6 +452,13 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.languageServerRefusalStopped,
   // Story 16.25: a running server's delete.
   STRINGS.languageServerRefusalRunningEdit,
+  // Story 16.11: a Task Manager action in a state it does not act from, and a task row action whose
+  // type needs a privilege the caller lacks (DW-1638).
+  STRINGS.taskManagerRefusalRunning,
+  STRINGS.taskManagerRefusalSuspended,
+  STRINGS.taskManagerRefusalSuspendedStart,
+  STRINGS.taskManagerRefusalStopped,
+  STRINGS.taskTypePrivilegeRefusal,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */

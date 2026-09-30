@@ -58,6 +58,7 @@ async function mount(
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   let answerBanner = '';
+  let answerBannerRequires = '';
   let actionAnswer: unknown = {};
   const paths: string[] = [];
   const bodies: string[] = [];
@@ -67,7 +68,11 @@ async function mount(
       if (path.endsWith('/action')) bodies.push(init.body ?? '');
       // A row action's POST answers the verb and the triple (AD-14); every other path is a read.
       if (path.endsWith('/action')) return { kind: 'ok', status: 200, body: actionAnswer as T };
-      return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner } as T };
+      return {
+        kind: 'ok',
+        status: 200,
+        body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner, bannerRequires: answerBannerRequires } as T,
+      };
     },
   };
   const scheduled: (() => void)[] = [];
@@ -113,6 +118,7 @@ async function mount(
     declaration,
     setRows: (next: unknown[]) => (answerRows = next),
     setBanner: (next: string) => (answerBanner = next),
+    setBannerRequires: (next: string) => (answerBannerRequires = next),
     setActionAnswer: (next: unknown) => (actionAnswer = next),
     fireTick: async () => {
       scheduled[scheduled.length - 1]();
@@ -606,6 +612,71 @@ describe('the list page', () => {
     page.setBanner('');
     await page.fireTick();
     expect(strip()).toBeNull();
+  });
+
+  // Story 16.11, AD-5: a raised case may name the action its strip offers. The strip draws it once a
+  // handler is registered, labelled through `actionLabel`; while the read's `bannerRequires` names a
+  // pair the control is `aria-disabled`, described by "Requires <pair>", and a click runs nothing.
+  //
+  // Mutation (Rule 19): make `ListPage.bannerAction` ignore `bannerRequires` -> the gated leg goes red.
+  it('Story 16.11: the raised case\u2019s action is drawn in the strip, gated while bannerRequires names a pair, and a click runs it', async () => {
+    const banner = {
+      source: { port: 'admin' as const, endpoint: 'Task.Manager', type: 'GET' as const },
+      field: 'Status',
+      cases: [
+        { equals: 'Suspended', messageKey: 'taskManagerSuspendedBanner', severity: 'warning' as const, action: 'resumemanager' },
+        { equals: 'Not running', messageKey: 'taskManagerStoppedBanner', severity: 'warning' as const, action: 'startmanager' },
+      ],
+    };
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.TaskScheduleList',
+      banner,
+      refreshes: true,
+      refreshRates: [10],
+    });
+    const page = await mount(declaration, named('A'));
+    const ran: string[] = [];
+    page.refresh.setRate(10);
+    const button = () => page.host().querySelector('.ocu-banner .ocu-banner-action') as HTMLButtonElement | null;
+
+    // No handler registered yet: the strip stands and draws no control nothing can act on.
+    page.setBanner('taskManagerSuspendedBanner');
+    await page.fireTick();
+    expect(page.host().querySelector('.ocu-banner')).not.toBeNull();
+    expect(button()).toBeNull();
+
+    page.actions.register(declaration.descriptor, 'resumemanager', () => ran.push('resumemanager'));
+    page.actions.register(declaration.descriptor, 'startmanager', () => ran.push('startmanager'));
+    await settle(page.fixture);
+    expect(button()?.textContent?.trim()).toBe(STRINGS.taskManagerResumeAction);
+    expect(button()?.getAttribute('aria-disabled')).toBeNull();
+    expect(button()?.getAttribute('aria-describedby')).toBeNull();
+    button()?.click();
+    expect(ran).toEqual(['resumemanager']);
+
+    const pair = '%Admin_Secure:USE';
+    page.setBanner('taskManagerStoppedBanner');
+    page.setBannerRequires(pair);
+    await page.fireTick();
+    expect(button()?.textContent?.trim()).toBe(STRINGS.taskManagerStartAction);
+    expect(button()?.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = button()?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).not.toBe('');
+    expect(page.host().querySelector(`#${describedBy}`)?.textContent?.trim()).toBe(
+      STRINGS.privilegeRequiresResource.replace('<resource>', pair)
+    );
+    button()?.click();
+    expect(ran).toEqual(['resumemanager']);
+
+    page.setBannerRequires('');
+    await page.fireTick();
+    expect(button()?.getAttribute('aria-disabled')).toBeNull();
+    button()?.click();
+    expect(ran).toEqual(['resumemanager', 'startmanager']);
+
+    page.setBanner('');
+    await page.fireTick();
+    expect(button()).toBeNull();
   });
 
   it('Story 2.8: a screen that declares no banner renders no strip, whatever the read answers', async () => {

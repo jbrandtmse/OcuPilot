@@ -107,6 +107,22 @@ test('a tick writes the banner the instance answered, and the next one clears it
   assert.equal(store.banner(), '', 'the condition cleared, so the strip goes with the next read');
 });
 
+// Story 16.11: `bannerRequires` rides beside the banner, written by the same tick and dropped by
+// `clearAnswers`, so a gated action never outlives the read that gated it.
+//
+// Mutation (Rule 19): leave `bannerRequiresPair` alone in `applyTick` -> the clearing assertion goes red.
+test('a tick writes the bannerRequires pair beside the banner, the next one clears it, and so does clearAnswers', () => {
+  const store = new ScreenStores({ account: stubAccountPreferences() }).for(ONE, []);
+  assert.equal(store.bannerRequires(), '', 'a store that has never read requires nothing');
+  store.applyTick([{ Name: 'A' }], false, 'taskManagerStoppedBanner', new Date(0), '%Admin_Secure:USE');
+  assert.equal(store.bannerRequires(), '%Admin_Secure:USE');
+  store.applyTick([{ Name: 'A' }], false, 'taskManagerStoppedBanner', new Date(1));
+  assert.equal(store.bannerRequires(), '', 'a tick answering none clears it');
+  store.applyTick([{ Name: 'A' }], false, 'taskManagerStoppedBanner', new Date(2), '%Admin_Secure:USE');
+  store.clearAnswers();
+  assert.equal(store.bannerRequires(), '', 'and clearAnswers drops it with the strip');
+});
+
 // Story 2.8 QA follow-up, widened by Story 2.9. `refresh.test.mjs`'s tick test moves sort, filter,
 // selection, scroll and max rows off default; `direction` is the one slot it does not carry, and
 // all five are set away from default here so the whole set is pinned in one place. `applyTick`'s

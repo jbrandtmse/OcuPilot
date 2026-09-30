@@ -3969,6 +3969,31 @@ export const STRINGS = {
   databaseIntegrityLogPrompt3: 'When did the last integrity check run?',
   /** EXPERIENCE.md:377 */
   databaseInitialSizeHint: 'Enter a number of 1 or more, up to the new volume threshold when one is set.',
+  // Story 16.11: the Task Manager's three actions, the suspend's warning, the refusals of a Task Manager
+  // action in the wrong state and of a task row action whose type needs a privilege (DW-1638), the
+  // Task schedule's fourth prompt and Home's Fix it sentence.
+  /** EXPERIENCE.md:269 */
+  taskManagerSuspendAction: 'Suspend Task Manager',
+  /** EXPERIENCE.md:269 */
+  taskManagerResumeAction: 'Resume Task Manager',
+  /** EXPERIENCE.md:269 */
+  taskManagerStartAction: 'Start Task Manager',
+  /** EXPERIENCE.md:304 */
+  taskManagerSuspendConsequence: 'No scheduled task will run until it is resumed.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalRunning: 'The Task Manager is already running.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalSuspended: 'The Task Manager is already suspended.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalSuspendedStart: 'The Task Manager is suspended. Resume it instead.',
+  /** EXPERIENCE.md:304 */
+  taskManagerRefusalStopped: 'The Task Manager is not running. Start it first.',
+  /** EXPERIENCE.md:304 */
+  taskTypePrivilegeRefusal: 'This task type needs a privilege you do not hold.',
+  /** EXPERIENCE.md:562 */
+  taskScheduleListPrompt4: 'What would stop running while the Task Manager is suspended?',
+  /** EXPERIENCE.md:582 */
+  findingFixTaskManager: 'The Task Manager is not running scheduled tasks. Propose resuming it, or starting it if it is stopped.',
 } as const;
 
 /**

@@ -4,8 +4,9 @@
  * `createScreenRead` is the `RefreshRead` a list screen registers with the auto-refresh framework
  * (AD-43): one `GET /api/ocupilot/screens/<toolIdentifier>/read?maxRows=<n>`, issued through the
  * API service so the Bearer and the `?ns=` scope are attached where every other call gets them
- * (AD-20, AD-44). The server answers `{fields, rows, truncated, banner}`, bounded by the cap;
- * `banner` is the string key of the strip the answer raises above the table, `''` for none.
+ * (AD-20, AD-44). The server answers `{fields, rows, truncated, banner, bannerRequires}`, bounded by
+ * the cap; `banner` is the string key of the strip the answer raises above the table, `''` for none,
+ * and `bannerRequires` the first pair the caller lacks for the raised case's action, `''` for none.
  *
  * `applyView` is the view rule the screen filters and sorts by (EXPERIENCE.md "*Every list.* CDK virtual scroll over rows"), and the
  * same rule `OcuPilot.Screen.Read.ApplyView` applies for the read tool on the server. The two
@@ -42,6 +43,7 @@ interface ReadBody {
   readonly rows?: unknown;
   readonly truncated?: unknown;
   readonly banner?: unknown;
+  readonly bannerRequires?: unknown;
   readonly criteria?: unknown;
 }
 
@@ -222,6 +224,7 @@ export function createScreenRead(
         rows: body.rows as readonly unknown[],
         truncated: body.truncated === true,
         banner: typeof body.banner === 'string' ? body.banner : '',
+        bannerRequires: typeof body.bannerRequires === 'string' ? body.bannerRequires : '',
       };
     }
     // An answer that arrived but is not the read's shape falls through the taxonomy's last branch,

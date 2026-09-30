@@ -73,10 +73,17 @@ export const REFRESH_PARK_KEY = 'ocupilot.refresh';
  * the moment the condition clears (EXPERIENCE.md "panel (top), form-pages, Task"). It is optional, and an omitted one reads
  * as no strip -- the key is additive, a screen that declares no banner never carries it, and a read
  * that could not resolve one answers `''` for the same reason `OcuPilot.Screen.Read.BannerKey`
- * does: a strip is chrome over rows, and the rows are what the screen is for.
+ * does: a strip is chrome over rows, and the rows are what the screen is for. `bannerRequires` is
+ * the first pair the caller lacks for the raised case's action (Story 16.11), optional the same way.
  */
 export type RefreshReadResult =
-  | { readonly kind: 'ok'; readonly rows: readonly unknown[]; readonly truncated: boolean; readonly banner?: string }
+  | {
+      readonly kind: 'ok';
+      readonly rows: readonly unknown[];
+      readonly truncated: boolean;
+      readonly banner?: string;
+      readonly bannerRequires?: string;
+    }
   | { readonly kind: 'fault'; readonly fault: Fault };
 
 /**
@@ -435,7 +442,7 @@ export class RefreshService {
     this.lastFault = null;
     this.loadedOnce = true;
     this.suspended = false;
-    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now());
+    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now(), result.bannerRequires ?? '');
     this.transition();
     this.notify();
   }
@@ -573,7 +580,7 @@ export class RefreshService {
 
     this.lastFault = null;
     this.loadedOnce = true;
-    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now());
+    bound.store.applyTick(result.rows, result.truncated, result.banner ?? '', this.now(), result.bannerRequires ?? '');
     this.notify();
     if (generation !== this.generation) return;
     this.transition();

@@ -20,7 +20,15 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PERMISSION_CHECK_ACTION_ID, REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, actionLabel } from '../core/screen-actions';
+import {
+  PERMISSION_CHECK_ACTION_ID,
+  REFRESH_ACTION_ID,
+  ScreenActions,
+  TASK_IMPORT_ACTION_ID,
+  TASK_MANAGER_SUSPEND_ACTION_ID,
+  actionLabel,
+  bannerActionIds,
+} from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { checkedSetReason, isCheckedSetAction } from '../core/multi-select';
@@ -509,6 +517,10 @@ export class CommandBox {
     if (this.actions.has(screen.descriptor, TASK_IMPORT_ACTION_ID)) {
       declared.push({ id: TASK_IMPORT_ACTION_ID, rowScoped: false });
     }
+    // Suspend Task Manager on Task schedule (Story 16.11), by the same test: screen-level too.
+    if (this.actions.has(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID)) {
+      declared.push({ id: TASK_MANAGER_SUSPEND_ACTION_ID, rowScoped: false });
+    }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
     }
@@ -520,8 +532,15 @@ export class CommandBox {
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
+    const onBanner = bannerActionIds(screen);
     for (const action of screen.rowActions) {
       if (action.id === screen.primaryAction.id) continue;
+      // An action a banner case offers names no row (Story 16.11): listed at screen level, held by
+      // "Requires <pair>" while it is the raised case's and the read says the caller lacks one.
+      if (onBanner.includes(action.id) && this.actions.has(screen.descriptor, action.id)) {
+        declared.push({ id: action.id, rowScoped: false, reason: this.bannerActionReason(screen, action.id) });
+        continue;
+      }
       // DW-389: the same test the primary action above already applies -- a declared action with
       // no registered handler is a control nothing can act on, so no surface offers it.
       if (action.id !== '' && this.actions.has(screen.descriptor, action.id)) {
@@ -560,6 +579,18 @@ export class CommandBox {
         actionId: action.id,
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
+  }
+
+  /**
+   * `Requires <pair>` for banner action `actionId` while it is the raised case's action and the
+   * screen's last read answered a `bannerRequires`, else `''` (Story 16.11, AD-5). The pair is the
+   * instance's verdict; the client holds no map of what a tool requires.
+   */
+  private bannerActionReason(screen: ScreenDeclaration, actionId: string): string {
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    const raised = screen.banner?.cases.find((entry) => entry.messageKey === store.banner());
+    if (raised?.action !== actionId || store.bannerRequires() === '') return '';
+    return formatRequires(STRINGS.privilegeRequiresResource, store.bannerRequires());
   }
 
   /**

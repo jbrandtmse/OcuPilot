@@ -84,15 +84,16 @@ test('the gate stores notify a subscriber, and unsubscribing stops both', () => 
   assert.equal(notified, 1);
 });
 
-test('the map is closed: five fixable checks, each a constant sentence with no placeholder, and anything else throws', () => {
-  const fixable = ['webapp-open', 'monitor-open', 'all-holder', 'auditing-off', 'task-error'];
+// Story 16.11 makes the Task Manager's check fixable: the agent proposes its resume, or its start.
+test('the map is closed: six fixable checks, each a constant sentence with no placeholder, and anything else throws', () => {
+  const fixable = ['webapp-open', 'monitor-open', 'all-holder', 'auditing-off', 'task-error', 'task-manager'];
   for (const check of fixable) {
     assert.equal(isFixable(check), true, check);
     const sentence = STRINGS[fixSentenceKey(check)];
     assert.equal(typeof sentence, 'string', `${check}'s sentence is published`);
     assert.doesNotMatch(sentence, /<[a-z]+>/, `${check}'s sentence carries no instance text`);
   }
-  for (const check of ['certificate', 'database-dismounted', 'database-full', 'task-manager', 'constructor', 'toString', '']) {
+  for (const check of ['certificate', 'database-dismounted', 'database-full', 'constructor', 'toString', '']) {
     assert.equal(isFixable(check), false, check);
     assert.throws(() => fixSentenceKey(check), new RegExp(`'${check}'`));
     assert.throws(() => gate().fix.request(check));

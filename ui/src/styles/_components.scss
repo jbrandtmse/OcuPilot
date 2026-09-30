@@ -2246,6 +2246,50 @@ app-data-table {
   margin: 0 0 var(--ocu-space-2);
 }
 
+// The action a raised banner case offers (Story 16.11), at the strip's end. It takes the strip's own
+// color, which already meets contrast on its container, and while gated it keeps its place in the Tab
+// order and shows "Requires <pair>" on hover and keyboard focus (EXPERIENCE.md Privilege Gating).
+.ocu-banner-action-slot {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.ocu-banner-action {
+  color: inherit;
+}
+
+.ocu-banner-action[aria-disabled='true'] {
+  cursor: default;
+}
+
+.ocu-banner-action-reason {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-banner-action-slot:hover .ocu-banner-action-reason,
+.ocu-banner-action:focus-visible + .ocu-banner-action-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
+}
+
 .ocu-data-table-frame {
   position: relative;
   display: flex;
