@@ -322,6 +322,30 @@ Method TestTheLogsShapesOverArmedChecks()
     Do $$$AssertEquals($Select($IsObject($Get(tFiles)): tFiles.files.%Size() _ " " _ tFiles.%Get("truncated") _ " " _ tFiles.files.%Get(0).%Get("name"), 1: ""), "50 1 60", "the list stops at fifty, in the order held, truncated")
 }
 
+/// <p>A report pages from its heading (AC7): with no cursor the first page opens on the report's verdict
+/// and says more follows, its cursor reads on into the listing, and that cursor sent for another check
+/// restarts at that check's own heading.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.LogSourcePort.IntegrityPage</method> starts a page with
+/// no cursor at the report's tail -> the first page opens mid-listing and this goes red; its identity
+/// leaves out the check -> the other check's page carries on from the cursor and this goes red.</p>
+Method TestAReportPagesFromItsHeading()
+{
+    Set tLines = $ListBuild("No Errors were found.", "", "", "Full Listing of Databases Checked")
+    For tI = 1:1:40 {
+        Set tLines = tLines _ $ListBuild("Global: OcuProbe" _ tI _ "    Top/Bottom Pnt Level: # of blocks=1")
+    }
+    Do $ClassMethod(..#FIXTURE, "ArmIntegrityChecks", [{"ID": "9", "StartTime": "2026-09-29 11:00:00", "RunningState": "Done", "HasEnded": true}, {"ID": "8", "StartTime": "2026-09-29 10:00:00", "RunningState": "Done", "HasEnded": true}].%ToJSON())
+    Do $ClassMethod(..#FIXTURE, "ArmIntegrityReport", "9", tLines)
+    Do $ClassMethod(..#FIXTURE, "ArmIntegrityReport", "8", tLines)
+    Set tSC = $ClassMethod(..#FIXTURE, "Page", ..#SOURCE, "", 400, "", .tPage, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the newest check pages")
+    Do $$$AssertEquals($Select($IsObject($Get(tPage)): tPage.lines.%Get(0) _ "|" _ tPage.%Get("truncated"), 1: tHttp), "No Errors were found.|1", "its first page opens on the verdict, and more follows")
+    Set tSC = $ClassMethod(..#FIXTURE, "Page", ..#SOURCE, tPage.%Get("offset"), 400, tPage.%Get("identity"), .tNext, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tNext)): tNext.%Get("restarted") _ "|" _ $Extract(tNext.lines.%Get(0), 1, 16), 1: tHttp), "0|Global: OcuProbe", "its cursor reads on into the listing")
+    Set tSC = $ClassMethod(..#FIXTURE, "Page", ..#SOURCE, tPage.%Get("offset"), 400, tPage.%Get("identity"), .tOther, .tHttp, .tFault, "8")
+    Do $$$AssertEquals($Select($IsObject($Get(tOther)): tOther.%Get("restarted") _ "|" _ tOther.lines.%Get(0), 1: tHttp), "1|No Errors were found.", "and the same cursor for another check restarts at its heading")
+}
+
 /// <p>DW-1848 (AC7): a check over a probe database with a damaged data block
 /// (<method>OcuPilot.Test.DatabaseActionProbe.DamageBlock</method>) ends in state <code>Error</code>, and
 /// the Integrity log renders its report through <code>Display^Integrity</code>'s own capture: the errors'

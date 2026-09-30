@@ -480,16 +480,19 @@ describe('Database details', () => {
       expect(host.querySelector('[data-database="operation"]')?.textContent?.trim()).toBe('');
     });
 
-    it('reads the Background tasks again on a database change for its own directory, and not for another', async () => {
-      // Mutation (Rule 19): drop the change-bus subscription -> the second read goes red.
+    it('reads the Background tasks and the volume files again on a database change for its own directory, and not for another', async () => {
+      // Mutation (Rule 19): drop the change-bus subscription -> the second read goes red; drop its
+      // volume files read -> the volumes count goes red.
       const { fixture, paths } = await mount([row()], [volumeRow()], undefined, false, { rows: [] });
       const bus = TestBed.inject(ChangeBus);
       bus.publish({ kind: 'changed', type: 'database', scope: 'instance', id: '/durable/iris/mgr/user/', action: 'updated' });
       await settle(fixture);
       expect(paths.filter((path) => path.includes('/tasks.background/')).length).toBe(1);
+      expect(paths.filter((path) => path.includes('osmgmt.databasevolumes')).length).toBe(1);
       bus.publish({ kind: 'changed', type: 'database', scope: 'instance', id: '/DURABLE/IRIS/MGR', action: 'updated' });
       await settle(fixture);
       expect(paths.filter((path) => path.includes('/tasks.background/')).length).toBe(2);
+      expect(paths.filter((path) => path.includes('osmgmt.databasevolumes')).length).toBe(2);
     });
   });
 });

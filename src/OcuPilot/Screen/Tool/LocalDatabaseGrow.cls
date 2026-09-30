@@ -26,7 +26,7 @@ Parameter ARGUMENTDESCRIPTION = "The new size of the database's file, in whole m
 
 Parameter PRECONDITIONFIELD = "Size";
 
-Parameter FINGERPRINTSUBJECT = "Directory,Mounted,Size,MaxSize";
+Parameter FINGERPRINTSUBJECT = "Directory,Mounted,Size,MaxSize,NewVolumeDirectory,NewVolumeThreshold";
 
 Parameter POLLRESOURCE = "%Admin_Operate";
 

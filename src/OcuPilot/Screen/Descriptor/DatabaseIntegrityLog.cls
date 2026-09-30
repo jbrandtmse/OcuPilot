@@ -12,7 +12,7 @@
 /// <p><b>The privilege set is <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code></b>,
 /// the port's own for this source: a principal holding exactly these read the checks and their reports
 /// (measured on <code>ocupilot-b-ci</code>, Story 18.4 Task 0). It takes no side-bar position: the
-/// Check integrity flow and Databases open it. Its id is <code>none</code>, it has no action and it
+/// Check integrity flow opens it. Its id is <code>none</code>, it has no action and it
 /// never refreshes on its own (AD-13, AD-43); its classic equivalent is
 /// <code>%CSP.UI.Portal.Dialog.IntegLog</code> (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.DatabaseIntegrityLog Extends OcuPilot.Screen.Descriptor.Base

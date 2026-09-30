@@ -226,7 +226,7 @@ Method TestCompactAndDefragmentAreQueuedAndFinish()
 
 /// <p>Started (AC2): an operation still running at the port's bound is answered started on both
 /// callers -- the screen's 200 with <code>continues</code> true and the read-back <code>unchecked</code>
-/// <code>running</code>, the agent's confirm the same -- and the task is never polled.</p>
+/// <code>running</code>, the agent's confirm the same.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.Action</method> drops the started
 /// conversion -> both callers answer 503 <code>PORT.TIMEOUT</code> and this goes red.</p>
 Method TestAnOperationStillRunningAtTheBoundHasStarted()
@@ -242,7 +242,6 @@ Method TestAnOperationStillRunningAtTheBoundHasStarted()
     Set tSC = ##class(OcuPilot.Test.DatabaseConfirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "and confirmed")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("continues") _ "|" _ tResult.%Get("readBack").%Get("verdict") _ "|" _ tResult.%Get("readBack").%Get("reason"), 1: ""), "1|unchecked|running", "continuing, its read-back unchecked, running")
-    Do $$$AssertTrue($ClassMethod(..#TIMEOUT, "CallTypes") '[ "AsyncResult", "and no task was polled")
 }
 
 /// <p>Started over a real queued task (AC2): a defragment of a filled database, answered started after

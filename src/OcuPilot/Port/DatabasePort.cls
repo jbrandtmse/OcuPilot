@@ -376,13 +376,17 @@ ClassMethod State(ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, 
 /// <p>The state of the database in directory <var>pDirectory</var>, <parameter>STATEFIELDS</parameter>
 /// in <var>pResult</var>, from one <parameter>FILEENDPOINT</parameter> <code>GET</code> and one
 /// <code>INFO</code>, which the admin port reads once and deletes (AD-26). A directory the instance
-/// does not configure is the <code>GET</code>'s own 404.</p>
+/// does not configure is the <code>GET</code>'s own 404, and so is a spelling that
+/// <code>%File.NormalizeDirectory</code> would change other than by a trailing separator (a relative
+/// name, <code>.</code>, <code>..</code> or a doubled separator): the vendor opens such a spelling as
+/// the database it resolves to, while the prohibited set compares directories by text (AD-10, AD-21).</p>
 ClassMethod StateOf(pDirectory As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pResult = ""
     Set pHttpStatus = 0
     Set pFault = ""
     If pDirectory = "" Quit ..Fail(..#ACTIONSENDPOINT, 404, $$$OK, .pHttpStatus, .pFault, "", "", 1)
+    If $ZStrip(##class(%File).NormalizeDirectory(pDirectory), ">", "/\") '= $ZStrip(pDirectory, ">", "/\") Quit ..Fail(..#ACTIONSENDPOINT, 404, $$$OK, .pHttpStatus, .pFault, "", "", 1)
     Kill tQuery
     Set tQuery(..#DIRPARAM) = pDirectory
     Set tSC = ..Call(..#FILEENDPOINT, "GET", .tQuery, "", .tFile, .pHttpStatus, .pFault)

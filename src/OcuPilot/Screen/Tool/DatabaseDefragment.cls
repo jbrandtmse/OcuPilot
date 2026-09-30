@@ -19,7 +19,7 @@ Parameter SCREENACTIONS = "defragment";
 
 Parameter PRECONDITIONFIELD = "Mounted";
 
-Parameter FINGERPRINTSUBJECT = "Mounted,ReadOnly";
+Parameter FINGERPRINTSUBJECT = "Mounted,ReadOnly,NewVolumeDirectory,NewVolumeThreshold";
 
 Parameter WRITERESOURCE = "%DB_IRISSYS";
 

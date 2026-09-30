@@ -390,13 +390,15 @@ export class DatabaseDetailsPage {
     const stopRefresh = this.refresh.subscribe(() => this.generation.update((value) => value + 1));
 
     // A write to this database -- an operation of this page's, or the agent's -- may start or end a
-    // background task against it, so the Background tasks section reads again (Story 18.4). The
-    // properties re-read through the refresh framework, which listens to the same event.
+    // background task against it and change its volume files, so both sections read again (Story
+    // 18.4). The properties re-read through the refresh framework, which listens to the same event.
     const stopBus = inject(ChangeBus).subscribe((event) => {
       if (event.kind !== 'changed' || event.type !== 'database') return;
       const directory = comparableDirectory(criteria()['dir'] ?? '');
       if (directory === '' || comparableDirectory(event.id) !== directory) return;
-      if (this.scope.loaded()) void this.loadTasks(criteria());
+      if (!this.scope.loaded()) return;
+      void this.loadVolumes(criteria());
+      void this.loadTasks(criteria());
     });
 
     inject(DestroyRef).onDestroy(() => {

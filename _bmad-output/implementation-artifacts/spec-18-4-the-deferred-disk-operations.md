@@ -486,6 +486,34 @@ deferred:
 - [x] [Decision] DW-1847 (option A, by=merge_gate): dismount keeps `%Admin_Manage:USE` (the intent's pair line and AD-8 are amended). Pin that an Operate-only holder (Database details' pairs without `%Admin_Manage:USE`) is refused with the missing pair named (the declared-pairs refusal, e.g. 403 naming `%Admin_Manage:USE`) before any port call, on both callers, and never `PROHIBITED.OCUPILOTDATABASE`; mutation recorded.
 - [x] [Ledger] DW-1848: the Integrity log's error branch -- render a report that found errors through the real `Display^Integrity` capture (a hand-built vendor output row or a deliberately damaged probe block, on `ocupilot-b-ci` only, removed afterwards), and pin the error lines; if it cannot be produced on 2026.2, say so with evidence under Design Notes and close it there.
 
+### Review Findings
+
+Code review 2026-09-29, `review_tier: full-opus`, all four layers: 63 entries after grouping (2 high, 7 medium, 50 low, 3 false, 1 maybe-false); 11 patched, 3 to the ledger, 49 rejected.
+
+- [x] [Review][Patch] High (AD-10, AC5): a protected database could be dismounted under another spelling of its directory (`/./`, `//`, `/../<name>/`), which the vendor opens as that database while the dismount arm compared text; `StateOf` now answers 404 for a spelling normalization changes [src/OcuPilot/Port/DatabasePort.cls:390]
+- [x] [Review][Patch] High (AD-51, Rule 6): the grow's and the defragment's fingerprint subjects left out `NewVolumeDirectory` and `NewVolumeThreshold`, which their precondition reads since rework 1 [src/OcuPilot/Screen/Tool/LocalDatabaseGrow.cls:29, DatabaseDefragment.cls:22]
+- [x] [Review][Patch] Medium (AC7): a report longer than one page hid its verdict, the first page being its tail; a page now starts at the heading and its identity names the check [src/OcuPilot/Port/LogSourcePort.cls IntegrityPage]
+- [x] [Review][Patch] Medium (AC6): a refused check left Check integrity `aria-disabled` until the page was left [ui/src/app/areas/os-management/database-integrity.page.ts:318]
+- [x] [Review][Patch] Medium (AC2): no server test produced the Save's `continues` [src/OcuPilot/Test/DatabaseGrowExpand.cls]
+- [x] [Review][Patch] Medium (AC10, Integration AC): the browser spec had no AC10 leg [ui/browser/database-operations.browser-spec.mjs]
+- [x] [Review][Patch] Low (rework 1 owner item): the agent's mint of a grow or defragment past a threshold was unpinned; new seams `SeamVolumeLocalDatabaseGrow` and `SeamVolumeDatabaseDefragment` [src/OcuPilot/Test/DatabaseGrowExpand.cls]
+- [x] [Review][Patch] Low: Database details re-read Background tasks but not Volume files on a change to its database [ui/src/app/areas/os-management/database-details.page.ts:395]
+- [x] [Review][Patch] Low: Open the integrity log was never clicked [ui/src/app/areas/os-management/database-integrity.page.spec.ts]
+- [x] [Review][Patch] Low (Rule 19): `CallTypes '[ "AsyncResult"` behind `DatabaseTimeoutPort` could not fail; removed [src/OcuPilot/Test/DatabaseActions.cls:245]
+- [x] [Review][Patch] Low: two doc comments said what the code does not do (Databases opening the Integrity log; the port refusing a malformed boolean) [DatabaseIntegrityLog.cls, DatabaseAction.cls ScreenActionDelta]
+- [x] [Review][Defer] Databases has no way into the Integrity log [DatabaseIntegrityLog.cls] -- deferred: DW-1858, decision-pending, spec-bound (side-bar position 0)
+- [x] [Review][Defer] Least-privileged callers leave async rows, and the SQL sweep logs #7846 per row [Port/AdminPort.cls SweepOwnTasks] -- deferred: DW-1859, escalated, out-of-footprint, fix-risk high
+- [x] [Review][Defer] IRISSYS's new volume threshold can be set, opening the manager directory to volume files [18.3's file update] -- deferred: DW-1860, decision-pending, the owner's rule's scope
+
+Rejected:
+
+- False: the report heading taken from `ErrorCount` (the vendor's `CaptureDisplay` does the same); a still-running check that cannot be re-read (the log's Refresh re-opens it); AC12's 3800 kB unchecked (the build is 2.28 MB).
+- Maybe-false: an admin row with an empty GUID failing the Background tasks read (vendor rows carry one; low if real).
+- A spec edit, for the lead: the stale frontmatter `deferred:` (DW-1847, DW-1848); the rework triage line saying the Save's rules refuse before any group is written (each group is validated as it is written, 18.3's `applied` contract); fingerprint subjects differing from the Tasks table.
+- By design (spec, AD or adjudicated): only `****` lines are errors; the Report shows the newest check; the dialogs' hints show no figures; the globals hint; `READONLY` only for truncate, compact and defragment; the HS library databases outside AD-10's seven; Check integrity offered without its pairs (AD-8); a set keeping each first spelling (AD-13); a read-only mount of a protected database (AC5); a grow under the threshold refused only where the directory is unset or the manager directory; AC1's audit clause and AC2's #7846 pinned per AC, and the audit count's filter.
+- Low, not worth the branch: operations offered in any state; a set id sent to the other operations; no cap on a set's size; case folding in a set; a crafted `Database|` key; the other screens' re-reads; the Size field hidden when its read is refused; dismounted databases in the checklist; a not-yet-started check's order; edits after reaching Report; Add a volume's list and size baseline after `continues`; a volume location re-sent after a partial Save; the shared progress line; the flow's unrendered `reportFault`; the dismounted member named only in `detail` on the screen; `screen-action-handler.ts` edited in place (merged, CI green); the null device's open timeout and the manager directory's letter case (theoretical).
+- Low, tests and documents: `VolumeDirectoryInUse`'s own-volume and file branches (read correct); `GROUPS` order; the constant `StateDiff` rows; `DatabaseRows`' columns (the AC10 leg now reads a live row's status); the caller-body refusal; the started leg's timing (theoretical: reopen if it fails with the task ended at the first poll); CI timings; two classes over 500 lines; the gate's leftover rows (DW-1859); the stepper row's wording; two bundle byte counts; ended background task rows piling up (the log's data, and the object-delete leak already in `deferred:`); the commit's "six".
+
 ## Spec Change Log
 
 - 2026-09-29, runner, rework 1 (pre-review): feature merged forward (`d9f84f52`); three decisions arrived before code review -- the owner's directory rule, DW-1847 (dismount keeps `%Admin_Manage:USE`; intent pair line amended), and DW-1848 kept in-story. Status set to `in-progress` for one pass over those items.
@@ -771,6 +799,17 @@ Rework 1: each mutation below was applied to the throwaway's copy alone, loaded 
 - mutation: `LogSourcePort.IntegrityReport` renders every check through the no-errors branch → `DatabaseIntegrity.TestADamagedBlockIsReportedAsErrors` alone red at the heading (run 25); `IntegrityRows` marks every line info → it and `TestTheLogsShapesOverArmedChecks` red (run 26).
 - mutation: `DatabaseRules.GrowViolations` drops the state code → `TestAGrowOrDefragmentPastAThresholdKeepsTheRule` alone red on its two Save legs, which reach the port's 409 (run 36).
 - mutation: `DatabasePort.ActionViolations` compares the new volume directory unnormalized → `TestAddAVolumeNeverLeavesItsDirectoryToTheVendor` alone red on its trailing-separator leg (run 37).
+
+Code review (2026-09-29): each new pin was first run against the code before its patch, then green after it; each further mutation was applied to the throwaway's copy or, for the client, from a backup, and reverted `cmp`-identical with the worktree's `git diff --stat` unchanged.
+
+- mutation: `DatabasePort.StateOf` answering any spelling (pre-patch) → `DatabaseActionsProhibited.TestAProtectedDirectorySpelledAnotherWayIsNotDismounted` alone red, every spelling of OCUPILOT's and the install routines database's directory recorded as a dismount on both callers (run 44); green after the patch (run 47).
+- mutation: the grow's and defragment's subjects without the volume fields (pre-patch) → `DatabaseDescriptor.TestTheDiskOperationsDeclareTheirTypesArgumentsAndPairs` alone red on both (run 43), green after (run 46); `LocalDatabaseGrow.FINGERPRINTSUBJECT` without `NewVolumeDirectory` → `DatabaseGrowExpand.TestAGrowOrDefragmentPastAThresholdKeepsTheRule` red at the grow's confirm (run 51).
+- mutation: `LogSourcePort.IntegrityPage` reading the tail with an identity that leaves out the check (pre-patch) → `DatabaseIntegrity.TestAReportPagesFromItsHeading` alone red on all three legs (run 45), green after (run 48).
+- mutation: `DatabaseSave` setting no `continues` for a 202 → `DatabaseGrowExpand.TestAGrowStillRunningAtTheBoundContinuesOnTheSave` red (run 51, beside the subject mutation, each red in its own test).
+- mutation: `BackgroundTaskPort.Linked` answering no database rows → `database-operations.browser-spec`'s AC10 leg red, Database details listing no task.
+- mutation: `checkBlocked` blocking after a refusal, `onOpenLog` dropping the namespace, and Database details' change handler dropping its volume files read → the refused-retry and open-log legs of `database-integrity.page.spec` and the change-bus leg of `database-details.page.spec` red, each alone.
+- The new grow and defragment mint legs were not run under a mutation of their own; the `PlacesVolume` mutation above names the rule they pin.
+- Green: `ocupilot-b-ci` runs 46-48 and 52-56 (`DatabaseDescriptor` 8, `DatabaseActionsProhibited` 4, `DatabaseIntegrity` 10, `DatabaseActions` 11, `DatabaseActionsGate` 3, `BackgroundTasksLive` 7, `DatabaseWrite` 16, `DatabaseGrowExpand` 8), totals read from `%UnitTest_Result`; client 1714 tools and 1936 components, build 2.28 MB; `database-operations.browser-spec` 6/6.
 
 ## Auto Run Result
 

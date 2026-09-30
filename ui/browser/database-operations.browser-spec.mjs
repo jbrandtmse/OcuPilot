@@ -16,6 +16,9 @@
  *    finished check's report; the log lists both checks newest first and shows the selected one's.
  * 5. **DW-1337** (AC12): the new screens, and the dialogs with a field or an advisory open, pass the
  *    structural walk at wide light, narrow light and wide dark.
+ * 6. **An admin API compact** (AC10, DW-1821): one started through `DatabasePort` over `docker exec`,
+ *    as another user, and paused, is listed on Database details for its directory and once on
+ *    Background tasks.
  *
  * **It refuses the live and development containers.** It seeds `OCUPROBE184BO`, `OCUPROBE184BG` and
  * `OCUPROBE184BC` through OcuPilot's own create route, fills two of them with the probe global over
@@ -36,7 +39,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
-import { waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { authHeader, saveAndSettle, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
@@ -755,5 +758,56 @@ test('AC7: the Integrity log lists the two checks newest first and shows the sel
     assert.ok(older.includes(`Directory: ${checked}`), `the one-database check: ${JSON.stringify(older)}`);
   } finally {
     await context.close();
+  }
+});
+
+test('AC10: an admin API compact, paused, is listed on Database details for its directory and once on Background tasks', async () => {
+  const operated = directoryOf(OPERATED);
+  const seeded = iris(
+    'HSCUSTOM',
+    [`Set sc=##class(${PROBE}).PausedAdminCompact("${OPERATED}",.g,.t,200)`, mark('PAUSED', '$Select($System.Status.IsOK(sc):"ok",1:$System.Status.GetErrorText(sc))'), mark('GUID', 'g')],
+    ['PAUSED', 'GUID']
+  );
+  try {
+    assert.equal(seeded.values.PAUSED, 'ok', `a compact was started through DatabasePort and paused:\n${seeded.output}`);
+    const details = await signedInAt(browser, config, detailsUrl(operated), VIEWPORTS.wide);
+    try {
+      await details.page.waitForSelector('.ocu-details-tasks-table tbody tr', { visible: true, timeout: config.navigationTimeoutMs });
+      const rows = await details.page.$$eval('.ocu-details-tasks-table tbody tr', (list) => list.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent.trim())));
+      assert.equal(rows.length, 1, `Database details lists the one task running against its directory: ${JSON.stringify(rows)}`);
+      assert.ok(rows[0].some((cell) => cell.toLowerCase() === 'paused'), `the paused compact: ${JSON.stringify(rows)}`);
+    } finally {
+      await details.context.close();
+    }
+    const list = await signedInAt(browser, config, '/ocupilot/tasks/background?ns=HSCUSTOM', VIEWPORTS.wide);
+    try {
+      await waitForRows(list.page, config.navigationTimeoutMs);
+      const rows = await list.page.evaluate(
+        (rowSelector) => Array.from(document.querySelectorAll(rowSelector)).map((row) => Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim())),
+        ROW_SELECTOR
+      );
+      const listed = rows.filter((cells) => cells.includes('Database') && cells.some((cell) => cell.toLowerCase() === 'paused'));
+      assert.equal(listed.length, 1, `Background tasks lists it once: ${JSON.stringify(rows)}`);
+    } finally {
+      await list.context.close();
+    }
+  } finally {
+    // Ended through its own admin API row, as its owner, so its async task is read once and removed:
+    // ending it through %SYS.BackgroundTask alone leaves that row Running.
+    const guid = seeded.values.GUID ?? '';
+    const cancel =
+      guid === ''
+        ? []
+        : [
+            `Kill q Set q("id")=##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Admin API","${guid}")) Set sc=##class(OcuPilot.Port.BackgroundTaskPort).Invoke("BackgroundTask","CANCEL",.q,"",.r,.h,.f)`,
+            `Set st=##class(OcuPilot.Test.DatabaseQueuedPort).Settle("${guid}")`,
+          ];
+    const removed = iris(
+      'HSCUSTOM',
+      [...cancel, `Set sc=##class(${PROBE}).RemoveTasks()`, mark('TASKS', '$Select($System.Status.IsOK(sc):"ok",1:$System.Status.GetErrorText(sc))'), mark('OWN', `##class(${PROBE}).OwnTaskCount()`)],
+      ['TASKS', 'OWN']
+    );
+    assert.equal(removed.values.TASKS, 'ok', `the compact was ended and removed:\n${removed.output}`);
+    assert.equal(removed.values.OWN, '0', `and no async task of it survives:\n${removed.output}`);
   }
 });

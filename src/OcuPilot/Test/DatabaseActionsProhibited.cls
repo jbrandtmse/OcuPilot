@@ -1,7 +1,8 @@
 /// <p>Pins AD-10's dismount arm (Story 18.4): a dismount of OcuPilot's own database, of the install
 /// namespace's routines database and of <code>IRISSYS</code> is refused
 /// <code>PROHIBITED.OCUPILOTDATABASE</code> on both callers, matched by directory, with no write sent and
-/// the reason stated when the Dismount dialog opens; a failed own-set read refuses; a probe database
+/// the reason stated when the Dismount dialog opens; a protected directory spelled another way is
+/// refused too; a failed own-set read refuses; a probe database
 /// standing as an own database is refused; and a mount, truncate, compact or defragment of a protected
 /// database stays permitted.</p>
 /// <p>Every write goes to <class>OcuPilot.Test.DatabaseAcceptPort</class>, which reads the instance and
@@ -84,6 +85,32 @@ Method TestTheProtectedDatabasesAreNotDismounted()
         Do $$$AssertEquals($Select($IsObject(tImpact) && $IsObject(tImpact.refused): tImpact.kind _ "|" _ tImpact.refused.code _ "|" _ tImpact.refused.reason, 1: ""), "database-dismount|" _ ..#OWNCODE _ "|" _ ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(..#OWNCODE), tName _ ": the Dismount dialog states the refusal when it opens")
     }
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(..#OWNCODE) [ "cannot be deleted or dismounted", "the refusal's sentence names the dismount")
+}
+
+/// <p>A protected directory spelled another way (AC5): OcuPilot's own database and the install
+/// namespace's routines database, each named with a <code>.</code> segment, a doubled separator and a
+/// <code>..</code> segment -- spellings the vendor opens as that same database -- are refused on both
+/// callers with no write sent.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.StateOf</method> answers a spelling that
+/// normalization changes -> the dismount arm compares that spelling, the accept port records a
+/// dismount and this goes red.</p>
+Method TestAProtectedDirectorySpelledAnotherWayIsNotDismounted()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.DatabaseActions).Enable(..#DISMOUNTKEY), "the agent's dismount key is enabled, so only the refusals stand in the way")
+    Set ^||OcuPilotDatabaseWritePort = ..#ACCEPT
+    Set tRoutines = ##class(OcuPilot.Test.DatabaseWrite).InstallRoutines()
+    For tName = "OCUPILOT", tRoutines {
+        Set tDirectory = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored(tName, "Directory")
+        Set tBare = $ZStrip(tDirectory, ">", "/")
+        Set tLast = $Piece(tBare, "/", $Length(tBare, "/"))
+        Set tParent = $Piece(tBare, "/", 1, $Length(tBare, "/") - 1)
+        For tSpelling = tBare _ "/./", tParent _ "//" _ tLast _ "/", tBare _ "/../" _ tLast _ "/" {
+            Do $ClassMethod(..#ACCEPT, "Clear")
+            Do $$$AssertNotEquals(##class(OcuPilot.Test.DatabaseActions).Act("dismount", tSpelling), "200 ", tName _ " as " _ tSpelling _ ": the screen's dismount is refused")
+            Do $$$AssertNotEquals(##class(OcuPilot.Test.DatabaseActions).Agent(..#DISMOUNTTOOL, tSpelling, {}), "200 ", tName _ " as " _ tSpelling _ ": and the agent's")
+            Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "", tName _ " as " _ tSpelling _ ": no write reached the port")
+        }
+    }
 }
 
 /// <p>Every other operation of a protected database stays permitted (AC5): the prohibited set answers

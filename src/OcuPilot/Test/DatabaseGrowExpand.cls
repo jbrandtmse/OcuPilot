@@ -48,6 +48,11 @@ Parameter VOLUME = "OcuPilot.Test.DatabaseVolumePort";
 
 Parameter VOLUMEEXPANDTOOL = "OcuPilot.Test.SeamVolumeLocalDatabaseExpand";
 
+/// <p>The grow's and the defragment's tools reading through <parameter>VOLUME</parameter>.</p>
+Parameter VOLUMEGROWTOOL = "OcuPilot.Test.SeamVolumeLocalDatabaseGrow";
+
+Parameter VOLUMEDEFRAGMENTTOOL = "OcuPilot.Test.SeamVolumeDatabaseDefragment";
+
 Property PreparedPolicy [ MultiDimensional ];
 
 Method OnBeforeAllTests() As %Status
@@ -114,6 +119,28 @@ Method TestTheSizeGrowsOnTheSaveAndThroughTheTool()
     Do $$$AssertEquals(..StateOf(tB, "Size"), tSize, "and the file reads it")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "OwnTaskCount"), 0, "each queued grow was read once and its row deleted")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "SecondReads"), tAlerts, "and no second read of an ended task was logged")
+}
+
+/// <p>A grow still running at the port's bound (AC2): the editor's Save of the size answers 200 with
+/// <code>continues</code> true and the size group's read-back <code>unchecked</code>.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Area.OsMgmt.DatabaseSave</class> no longer sets
+/// <code>continues</code> for a 202 -> this goes red.</p>
+Method TestAGrowStillRunningAtTheBoundContinuesOnTheSave()
+{
+    Set tA = ..AddProbe("OCUPROBE184GA")
+    Set ^||OcuPilotDatabaseWritePort = "OcuPilot.Test.DatabaseTimeoutPort"
+    Set tBody = {"size": {}}
+    Do tBody.size.%Set("Size", ..StateOf(tA, "Size") + 3, "number")
+    Set tSC = ##class(OcuPilot.Test.DatabaseWriteGateProbe).Handle("update", "OCUPROBE184GA", tBody, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus, 200, "the editor's Save of the size answers 200: " _ $Extract(tAnswer, 1, 200))
+    Set tParsed = ""
+    Try {
+        Set tParsed = ##class(%DynamicObject).%FromJSON(tAnswer)
+    } Catch {
+        Set tParsed = ""
+    }
+    Set tSize = $Select($IsObject(tParsed) && $IsObject(tParsed.%Get("size")) && $IsObject(tParsed.size.%Get("readBack")): tParsed.size.readBack.%Get("verdict"), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tParsed): tParsed.%Get("continues"), 1: "") _ "|" _ tSize, "1|unchecked", "continuing on the instance, its read-back unchecked")
 }
 
 /// <p>The grow's rules (AC3): a size at or below the current size, not a whole number, or above a
@@ -282,14 +309,17 @@ Method TestAddAVolumeNeverLeavesItsDirectoryToTheVendor()
 /// manager directory (<class>OcuPilot.Test.DatabaseVolumePort</class>, read by the Save's rules and its
 /// write alike) grows on the editor's Save and defragments on Database details while its threshold is
 /// 0; once a threshold is set, the Save is refused 422 on <code>Size</code> by its rules, and Database
-/// details' defragment and the agent's confirm of a grow and of a defragment minted while the
-/// instance's own reading passed are refused 409, each naming the manager directory, and naming none
-/// when the directory reads unset. Only the two threshold-0 writes reach the port, which sends
-/// neither.</p>
+/// details' defragment 409 and the agent's mint of a grow and of a defragment, each naming the manager
+/// directory, and naming none when the directory reads unset; and the agent's grow and defragment
+/// minted while the instance's own reading passed are refused at their confirm as the target having
+/// changed, the new volume directory being in their fingerprint (AD-51). Only the two threshold-0
+/// writes reach the port, which sends neither.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.DatabasePort.PlacesVolume</method> answers 0 for the
 /// threshold types -> the threshold legs are admitted and this goes red; answering 1 for them whatever
 /// the threshold reddens the threshold-0 legs; <method>OcuPilot.Area.OsMgmt.DatabaseRules.GrowViolations</method>
-/// dropping the state code -> the Save reaches the port's 409 and this goes red.</p>
+/// dropping the state code -> the Save reaches the port's 409 and this goes red;
+/// <parameter>OcuPilot.Screen.Tool.LocalDatabaseGrow.FINGERPRINTSUBJECT</parameter> without the new
+/// volume directory -> the grow's confirm answers the rule's 409 and this goes red.</p>
 Method TestAGrowOrDefragmentPastAThresholdKeepsTheRule()
 {
     Set tA = ..AddProbe("OCUPROBE184GA")
@@ -320,8 +350,10 @@ Method TestAGrowOrDefragmentPastAThresholdKeepsTheRule()
         Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("size", "OCUPROBE184GA", tGroup, .tHttp, .tCode, .tFields)
         Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "422 Size:" _ tRuleCode, tLabel _ ": the Save's grow is refused on Size by its rules")
         Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).Act("defragment", tA), tWanted, tLabel _ ": and Database details' defragment")
-        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tGrowProposal), tWanted, tLabel _ ": and the agent's confirm of the grow")
-        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tDefragProposal), tWanted, tLabel _ ": and of the defragment")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).MintProblem(..#VOLUMEGROWTOOL, "OCUPROBE184GA", tGrow), ##class(OcuPilot.Api.DatabaseError).ReasonFor(tRuleCode), tLabel _ ": and the agent's mint of the grow, with the code's sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).MintProblem(..#VOLUMEDEFRAGMENTTOOL, tA, {}), ##class(OcuPilot.Api.DatabaseError).ReasonFor(tRuleCode), tLabel _ ": and of the defragment")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tGrowProposal), "409 PROPOSAL.TARGETCHANGED", tLabel _ ": the agent's grow minted over the instance's own reading is refused at its confirm, its reviewed directory having moved")
+        Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tDefragProposal), "409 PROPOSAL.TARGETCHANGED", tLabel _ ": and so is its defragment")
     }
     Do $$$AssertEquals($ClassMethod(..#VOLUME, "Writes"), "Database.Actions/MODIFYSIZE,Database.Actions/DEFRAGMENT", "no refused write reached the port")
 }

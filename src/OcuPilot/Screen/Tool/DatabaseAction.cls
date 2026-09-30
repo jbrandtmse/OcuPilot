@@ -144,8 +144,8 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 
 /// <p>The screen's value as this tool's argument (AD-56 (ii)): a whole number's text as a number,
 /// <code>true</code> or <code>false</code> as a boolean, and an array's JSON text as that array. A
-/// value that is none of these is carried as it came, and the port's own rules refuse it before any
-/// vendor call.</p>
+/// value that is none of these is carried as it came: the port's own rules refuse a number or an array
+/// that is not one before any vendor call, and read any boolean but <code>true</code> as false.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pArgs = {}

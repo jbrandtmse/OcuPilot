@@ -55,7 +55,7 @@ interface DatabaseView {
  * **Report.** While the check runs, the running line; once it finishes, the check's report from the
  * Integrity log's declared read, its start time above its lines on the code surface; a check still
  * running past the port's wait reads the still-running sentence. Either way the flow offers Open the
- * integrity log. A refusal is the envelope's own sentence.
+ * integrity log. A refusal is the envelope's own sentence, and a refused check may be sent again.
  *
  * **Leaving.** The page opens clean; an edit arms the unsaved-changes guard and the sent check
  * disarms it.
@@ -312,10 +312,11 @@ export class DatabaseIntegrityPage {
     return this.stepKey !== DATABASES_STEP;
   }
 
-  /** Check integrity waits while a request is in flight, and once the check has been sent. */
+  /** Check integrity waits while a request is in flight, and once the check has been sent, unless it was refused. */
   protected get checkBlocked(): 'true' | null {
     this.generation();
-    return this.store.checking() || this.store.outcome() !== 'none' ? 'true' : null;
+    const outcome = this.store.outcome();
+    return this.store.checking() || (outcome !== 'none' && outcome !== 'refused') ? 'true' : null;
   }
 
   /** The running line, the finished line, or the still-running sentence; `''` before the check. */

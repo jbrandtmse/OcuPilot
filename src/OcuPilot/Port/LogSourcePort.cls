@@ -3099,9 +3099,11 @@ rchr(time) Quit ""
 /// <parameter>INTEGRITYKEY</parameter>): the check <var>pFile</var> names by its id, or the newest when
 /// it is empty. The answer is <method>Page</method>'s, with <code>check</code>, <code>time</code>,
 /// <code>state</code> and <code>running</code> added; a check that has not ended answers no lines and
-/// <code>running</code> true. A <var>pFile</var> that is not <parameter>INTEGRITYFORM</parameter> is
-/// <code>LOG.FILE</code>; a check the instance does not hold, and none at all, is 404
-/// <code>LOG.ABSENT</code>.</p>
+/// <code>running</code> true. With no cursor the page is the report's <b>first</b> <var>pMaxBytes</var>,
+/// because a report's verdict is its head, and the identity names the check as well as the report, so
+/// a cursor from another check restarts. A <var>pFile</var> that is not
+/// <parameter>INTEGRITYFORM</parameter> is <code>LOG.FILE</code>; a check the instance does not hold,
+/// and none at all, is 404 <code>LOG.ABSENT</code>.</p>
 ClassMethod IntegrityPage(pFile As %String, pHasCursor As %Boolean, pOffset As %String, pIdentity As %String, pMaxBytes As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -3142,10 +3144,10 @@ ClassMethod IntegrityPage(pFile As %String, pHasCursor As %Boolean, pOffset As %
         Set pResult = ""
         Quit ..Unreadable(tSC, .pHttpStatus, .pFault)
     }
+    Set tIdentity = tCheck.%Get("ID") _ "." _ tIdentity
     Set tRestarted = 0
     If 'pHasCursor {
-        Set tStart = tSize - pMaxBytes + 1
-        If tStart < 1 Set tStart = 1
+        Set tStart = 1
     } Else {
         Set tStart = +pOffset
         If (pIdentity '= tIdentity) || (tStart > (tSize + 1)) {

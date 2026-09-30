@@ -297,8 +297,9 @@ Method TestTheIntegrityScreensAreBuiltUnlisted()
 /// <code>STATE</code> and sending <code>Database.Actions</code>' own request type with no body of the
 /// caller's (AD-51), neither destructive nor a create; each admitting exactly its one argument, or none;
 /// each requiring its screen's pairs and then its own (AD-8); each naming the classic pages it replaces,
-/// compiled classes spelled exactly (AD-44); the compact and defragment adding read on the target's own
-/// resource.</p>
+/// compiled classes spelled exactly (AD-44); each that can place a volume file fingerprinting the new
+/// volume directory and threshold its precondition reads (AD-51); the compact and defragment adding read
+/// on the target's own resource.</p>
 /// <p>Mutation (Rule 19): drop <code>%Admin_Secure</code> from
 /// <class>OcuPilot.Screen.Tool.DatabaseMount</class> -> the mount's pairs go red.</p>
 Method TestTheDiskOperationsDeclareTheirTypesArgumentsAndPairs()
@@ -338,6 +339,10 @@ Method TestTheDiskOperationsDeclareTheirTypesArgumentsAndPairs()
             Set tCompiled = ""
         }
         Do $$$AssertEquals($ClassMethod(tClass, "IdArgument") _ "/" _ $ClassMethod(tClass, "IdParam"), $List(tCase, 7), tName _ ": names its database by its screen's id")
+        If $ListFind($ListFromString($Parameter(..#PORT, "VOLUMETYPES") _ "," _ $Parameter(..#PORT, "THRESHOLDVOLUMETYPES")), $List(tCase, 3)) {
+            Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
+            Do $$$AssertTrue($ListFind(tSubject, "NewVolumeDirectory") && $ListFind(tSubject, "NewVolumeThreshold"), tName _ ": fingerprints the new volume directory and threshold its precondition reads (AD-51)")
+        }
     }
     Set tDirectory = ##class(OcuPilot.Test.DatabaseWriteProbe).Stored("IRISSYS", "Directory")
     For tName = "osmgmt.databasedetails.compact", "osmgmt.databasedetails.defragment" {

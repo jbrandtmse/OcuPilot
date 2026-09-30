@@ -168,4 +168,39 @@ describe('DatabaseIntegrityPage', () => {
     expect(host.querySelector('[data-integrity="report-lines"]')).toBeNull();
     expect(host.querySelector('[data-integrity="open-log"]')).not.toBeNull();
   });
+
+  it('shows a refused check\u2019s sentence and lets the check be sent again', async () => {
+    // Mutation (Rule 19): Check integrity stays blocked after a refusal -> the second send goes red.
+    const reason = 'This database is dismounted. Mount it first.';
+    const { host, fixture, calls } = await mount({ action: { kind: 'error', status: 409, code: 'DATABASE.DISMOUNTED', reason, detail: null } });
+    (host.querySelector('[data-integrity="databases"] label[data-directory] input') as HTMLInputElement).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe(reason);
+    expect(primary(host).getAttribute('aria-disabled')).toBeNull();
+    primary(host).click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.path.endsWith('/action'))).toHaveLength(2);
+  });
+
+  it('opens the integrity log in the same namespace', async () => {
+    // Mutation (Rule 19): Open the integrity log drops the namespace -> the address goes red.
+    const { host, fixture } = await mount();
+    (host.querySelector('[data-integrity="databases"] label[data-directory] input') as HTMLInputElement).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    primary(host).click();
+    await settle(fixture);
+    (host.querySelector('[data-integrity="open-log"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(TestBed.inject(Router).url).toBe('/os-management/databases/integrity-log?ns=USER');
+  });
 });
