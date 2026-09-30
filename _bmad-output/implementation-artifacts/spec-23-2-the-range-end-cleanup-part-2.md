@@ -2,7 +2,7 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '961d45c728646a0b6a411511e4045c5f14ddd128'
 baseline_commit: '961d45c728646a0b6a411511e4045c5f14ddd128'
 review_loop_iteration: 0
@@ -240,6 +240,14 @@ deferred:
   - **Red:** a roster-style test in `ui/tools/` that asks `git check-attr eol` for every tracked `*.sh` (`git ls-files '*.sh'`) and requires `lf` for each; it reddens without the rule. Where possible, also a fresh `git -c core.autocrlf=true clone` of the working tree showing every `*.sh` checked out without CR.
   - Files: `.gitattributes`, one new `ui/tools/*.test.mjs`. ADs: AD-17, AD-45 (the start path must run on every supported host).
   - AC: Given a clone made with `core.autocrlf=true`, when it is checked out, then every tracked `*.sh` has LF line endings.
+
+### DW-1829 follow-up (reopened)
+
+- [ ] **DW-1829 (reopened)** — staging run 36741141564, instance shard 2/3: `BackgroundTasksLive.TestTheAgentsConfirmPausesACompact`'s `OnAfterOneTest` failed "the seeded database and its tasks are removed" with ERROR #5001 "a background task still runs over the seed database, so the database is left in place", and the next test's seed failed "a background task still runs over the seed database, so it is not refilled". Intermittent: green in runs 36706426500, 36722327485 and 36735796060. The held compact, paused by the confirm, is still running when cleanup runs (inference).
+  - **Reproduce first** on `ocupilot-b-ci`: find and record the condition under which `Remove` finds the held task still running, for example the pause landing just before `Remove`'s cancel, or the task ending or resuming after `%UnlockId`.
+  - **Fix** in `Test/BackgroundSeed.cls`, touching `Test/BackgroundTasksLive.cls` only if needed: teardown waits, with a bound, for the held task to reach a terminal state before the database is removed, so the next test finds no task over the seed. The leg's assertions and the seed's refusal to remove a database a task still runs over are not weakened.
+  - **Red:** the reproducing condition turns cleanup red before the fix and green after, with a `mutation:` line.
+  - AC: Given the agent leg's held compact paused by the confirm, when `OnAfterOneTest` runs, then the seeded database and its tasks are removed and the next test's seed succeeds.
 
 ### Batch e: the rest
 

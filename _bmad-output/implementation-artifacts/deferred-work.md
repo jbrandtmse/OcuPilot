@@ -8588,3 +8588,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: DW-1870 verification-gap layer, scratch repo: a pre-rule clone fast-forwarded onto 731bf63e kept 16/16 scripts with CR; deleting and re-checking out the scripts gave 0/16
 - 2026-09-30T17:49:33Z status=decision-pending owner=burndown by=harvest note=human=decide whether the 1.0.4 release notes or README tell existing Windows clones to re-check out scripts/
+- 2026-09-30T18:10:26Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=notes+README; verified: git checkout HEAD -- scripts .githooks _bmad/scripts (17/17 CR to 0; not git rm --cached)
