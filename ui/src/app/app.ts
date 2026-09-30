@@ -31,6 +31,8 @@ import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { NamespaceActions } from './areas/os-management/namespace-actions';
 import { NamespaceForm } from './areas/os-management/namespace-form.store';
+import { LanguageServerActions } from './areas/os-management/language-server-actions';
+import { LanguageServerForm } from './areas/os-management/language-server-form.store';
 import { DatabaseActions } from './areas/os-management/database-actions';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
@@ -311,6 +313,9 @@ export class App {
   // The Namespaces list's declared Create, the same way (`areas/os-management/namespace-actions.ts`).
   private readonly namespaceActions = inject(NamespaceActions);
   private readonly namespaceForm = inject(NamespaceForm);
+  // External language servers' declared Create, the same way (`areas/os-management/language-server-actions.ts`).
+  private readonly languageServerActions = inject(LanguageServerActions);
+  private readonly languageServerForm = inject(LanguageServerForm);
   // Local databases' declared Create, the same way (`areas/os-management/database-actions.ts`),
   // with the create wizard's and the properties editor's stores.
   private readonly databaseActions = inject(DatabaseActions);
@@ -622,6 +627,8 @@ export class App {
       this.deviceForm.reset();
       // The namespace editor holds a namespace THIS principal was creating or editing and has not saved.
       this.namespaceForm.reset();
+      // The language server editor holds a server THIS principal was creating or editing and has not saved.
+      this.languageServerForm.reset();
       // The database wizard and editor hold a database THIS principal was creating or editing and has not saved.
       this.databaseWizard.reset();
       this.databaseEditor.reset();

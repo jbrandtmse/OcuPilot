@@ -48,6 +48,7 @@ import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { NamespaceFormPage } from '../areas/os-management/namespace-form.page';
+import { LanguageServerFormPage } from '../areas/os-management/language-server-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { TaskSchedulePage } from '../areas/tasks/task-schedule.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
@@ -161,6 +162,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.Dashboard': DashboardPage,
   // Story 16.4: the Task schedule with its Export and Import dialogs.
   'OcuPilot.Screen.Descriptor.TaskScheduleList': TaskSchedulePage,
+  // Story 16.25: the external language server editor, create and edit alike.
+  'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
 };
 
 /**

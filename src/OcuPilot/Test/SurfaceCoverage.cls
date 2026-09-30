@@ -144,6 +144,7 @@ XData Coverage
 <screen name="Dashboard" class="OcuPilot.Test.Dashboard" method="TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts"/>
 <screen name="LanguageServerList" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerActivity" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
+<screen name="LanguageServerForm" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -246,6 +247,9 @@ XData Coverage
 <tool name="tasks.schedule.import" class="OcuPilot.Test.TaskTransfer" method="TestTheImportToolIsAnActionWriteOverTheTransferPort"/>
 <tool name="osmgmt.languageservers.start" class="OcuPilot.Test.LanguageServer" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the start and stop tools are asserted together in one loop"/>
 <tool name="osmgmt.languageservers.stop" class="OcuPilot.Test.LanguageServer" method="TestTheToolsAreActionWritesOverTheScreensOwnPairs" corpus="the start and stop tools are asserted together in one loop"/>
+<tool name="osmgmt.languageservers.create" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
+<tool name="osmgmt.languageservers.update" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
+<tool name="osmgmt.languageservers.delete" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister" corpus="the editor's create, update and delete are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

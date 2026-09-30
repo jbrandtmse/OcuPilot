@@ -28,8 +28,9 @@ Method TestTheCommittedListsEqualAFreshDerivation()
     Do $$$AssertEquals(tDrift, "", "the committed lists and the instance agree" _ $Select(tDrift = "": "", 1: ": " _ tDrift))
 }
 
-/// <p>AC1 -- one list per template endpoint (40), three wallet lists, one audit-event list and
-/// three <code>none</code> entries, and every row carries a shape and an informational type.</p>
+/// <p>AC1 -- one list per template endpoint (40), nine typed language server template lists
+/// (Story 16.25) counted apart from them, three wallet lists, one audit-event list and three
+/// <code>none</code> entries, and every row carries a shape and an informational type.</p>
 /// <p>Mutation: empty <parameter>OcuPilot.Test.FieldDerive.WALLETTYPES</parameter> -> the wallet
 /// list count goes red.</p>
 Method TestEveryTemplateEndpointHasOneList()
@@ -49,14 +50,15 @@ Method TestEveryTemplateEndpointHasOneList()
     }
     Do $$$AssertEquals(tMissing, "", "every endpoint publishing a template has a template list" _ $Select(tMissing = "": "", 1: "; missing:" _ tMissing))
 
-    Set (tTemplate, tWallet, tAudit, tMetadata, tClientMetadata, tNone) = 0
+    Set (tTemplate, tTyped, tWallet, tAudit, tMetadata, tClientMetadata, tNone) = 0
     Set tMalformedRows = ""
     Set tKey = ""
     For {
         Set tKey = $Order(tLive(tKey))
         Quit:tKey=""
         Set tSource = $Piece(tLive(tKey), "|", 2)
-        If tSource = "template" Set tTemplate = tTemplate + 1
+        If (tSource = "template") && ($Piece(tLive(tKey), "|", 5) = "") Set tTemplate = tTemplate + 1
+        If (tSource = "template") && ($Piece(tLive(tKey), "|", 5) '= "") Set tTyped = tTyped + 1
         If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Wallet.Secret") Set tWallet = tWallet + 1
         If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Security.Audit.Event") Set tAudit = tAudit + 1
         If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Security.OAuth2.Client.ServerDefinition") Set tMetadata = tMetadata + 1
@@ -72,6 +74,7 @@ Method TestEveryTemplateEndpointHasOneList()
         }
     }
     Do $$$AssertEquals(tTemplate, 40, "40 template lists")
+    Do $$$AssertEquals(tTyped, 9, "9 typed template lists, one per language server type")
     Do $$$AssertEquals(tWallet, 3, "3 wallet secret lists, one per Type")
     Do $$$AssertEquals(tAudit, 1, "1 audit event list")
     Do $$$AssertEquals(tMetadata, 1, "1 server description metadata list")
@@ -216,6 +219,91 @@ Method TestTheClassDerivedListsAreExact()
     }
     Do $$$AssertEquals(..Row(.tLive, "Wallet.Secret:%Wallet.KeyValue", "AllowedHosts"), "array|array", "a LIST property is an array")
     Do $$$AssertEquals(..Row(.tLive, "Wallet.Secret:%Wallet.RSA", "Password"), "literal|string", "and the RSA password is a string literal")
+}
+
+/// <p>Story 16.25, AC7 (DW-253) -- the language server template is derived once per
+/// <code>Config.Gateways</code> type, keyed <code>LanguageServer:&lt;Type&gt;</code> with its type in the
+/// header, each list the untyped list's top-level rows followed by that type's <code>Custom</code>
+/// members: Java, XSLT, JDBC, ML and R <code>{ClassPath, JavaHome, JVMArgs}</code>; .NET
+/// <code>{DotNetVersion, Exec32, FilePath}</code>; Python <code>{PythonOptions, PythonPath}</code>;
+/// Remote <code>{Address}</code>; ODBC none.</p>
+/// <p>Mutation (Rule 19): delete one typed list from <file>FieldLists.cls</file> and load it -> the
+/// committed-equals-derived test goes red naming it; drop <code>.NET</code> from
+/// <parameter>OcuPilot.Test.FieldDerive.LANGUAGESERVERTYPES</parameter> -> this goes red.</p>
+Method TestTheLanguageServerListsArePerType()
+{
+    Set tSC = ##class(OcuPilot.Test.FieldDerive).Derive(.tLive)
+    Do $$$AssertStatusOK(tSC, "the lists derive from the instance")
+    Set tTop = ..Paths(.tLive, "LanguageServer")
+    Do $$$AssertEquals($Piece($Get(tLive("LanguageServer")), "|", 5), "", "the untyped list records no type")
+    Do $$$AssertTrue(tTop [ "Custom", "and ends with the member-less Custom: " _ tTop)
+    For tCase = "Java:ClassPath,JavaHome,JVMArgs", "XSLT:ClassPath,JavaHome,JVMArgs", "JDBC:ClassPath,JavaHome,JVMArgs", "ML:ClassPath,JavaHome,JVMArgs", "R:ClassPath,JavaHome,JVMArgs", ".NET:DotNetVersion,Exec32,FilePath", "Python:PythonOptions,PythonPath", "Remote:Address", "ODBC:" {
+        Set tType = $Piece(tCase, ":", 1)
+        Set tKey = "LanguageServer:" _ tType
+        Set tMembers = ""
+        Set tWanted = $Piece(tCase, ":", 2)
+        For tI = 1:1:$Length(tWanted, ",") {
+            If $Piece(tWanted, ",", tI) '= "" Set tMembers = tMembers _ ",Custom." _ $Piece(tWanted, ",", tI)
+        }
+        Do $$$AssertEquals($Piece($Get(tLive(tKey)), "|", 1, 6), "LanguageServer|template|PutRequestBodySchema||" _ tType _ "|", tKey _ " is the template called with its type")
+        Do $$$AssertEquals(..Paths(.tLive, tKey), tTop _ tMembers, tKey _ " is the untyped rows and its Custom members")
+    }
+    Set tTyped = 0
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tLive(tKey))
+        Quit:tKey=""
+        If $Piece(tKey, ":", 1) = "LanguageServer", $Length(tKey, ":") > 1 Set tTyped = tTyped + 1
+    }
+    Do $$$AssertEquals(tTyped, 9, "and there are exactly nine")
+}
+
+/// <p>Story 16.25 (DW-253) -- the declared language server types are exactly the ones
+/// <code>Config.Gateways</code> accepts: its <code>Type</code> property documents each as
+/// <code>Type = "&lt;value&gt;"</code>, its <code>TypeSet</code> keeps each as spelled and a
+/// lower-case spelling as the declared one, and it clears a value it does not know. A type the
+/// vendor adds or drops reddens here.</p>
+/// <p>Mutation (Rule 19): drop <code>R</code> from
+/// <parameter>OcuPilot.Test.FieldDerive.LANGUAGESERVERTYPES</parameter> -> the documented-set leg
+/// goes red.</p>
+Method TestTheLanguageServerTypesAreTheInstancesOwn()
+{
+    Set tDeclared = ##class(OcuPilot.Test.FieldDerive).#LANGUAGESERVERTYPES
+    Set tOrigNS = $NAMESPACE
+    Set tDocumented = ""
+    Kill tKept
+    Set tCleared = ""
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId("Config.Gateways||Type")
+        Set tDescription = $Select($IsObject(tProperty): tProperty.Description, 1: "")
+        Set tProperty = ""
+        Set tMatcher = ##class(%Regex.Matcher).%New("Type = ""([^""]+)""", tDescription)
+        While tMatcher.Locate() {
+            Set tDocumented = tDocumented _ $Select(tDocumented = "": "", 1: ",") _ tMatcher.Group(1)
+        }
+        Set tGateway = ##class(Config.Gateways).%New()
+        For tI = 1:1:$Length(tDeclared, ",") {
+            Set tType = $Piece(tDeclared, ",", tI)
+            Do tGateway.TypeSet(tType)
+            Set tKept(tType) = tGateway.Type
+            Do tGateway.TypeSet($ZConvert(tType, "L"))
+            Set tKept(tType, "lower") = tGateway.Type
+        }
+        Do tGateway.TypeSet("OcuPilotNoSuchType")
+        Set tCleared = tGateway.Type
+        Set tGateway = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertStatusOK(ex.AsStatus(), "Config.Gateways is read in %SYS")
+    }
+    Do $$$AssertEquals(tDocumented, tDeclared, "the declared types are the ones Config.Gateways' Type documents, in its order")
+    For tI = 1:1:$Length(tDeclared, ",") {
+        Set tType = $Piece(tDeclared, ",", tI)
+        Do $$$AssertEquals($Get(tKept(tType)) _ "|" _ $Get(tKept(tType, "lower")), tType _ "|" _ tType, tType _ " is kept as declared, and a lower-case spelling reads as it")
+    }
+    Do $$$AssertEquals(tCleared, "", "and a type it does not know is cleared")
 }
 
 /// <p>AC5 -- <code>Process</code>, <code>Lock</code> and <code>Task.Manager</code> are recorded as

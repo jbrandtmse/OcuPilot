@@ -258,7 +258,7 @@ describe('the data table', () => {
     expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
   });
 
-  it('Story 16.10: External language servers draws Running as Yes or No with its disc, and links each name at its Activity log', async () => {
+  it('Story 16.10: External language servers draws Running as Yes or No with its disc, and (Story 16.25) links each name at its editor', async () => {
     // Mutation (Rule 19): declare the list's CurrentlyRunning column `text` -> the disc assertions go red.
     const servers = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LanguageServerList')!;
     const wired = await wire(
@@ -277,8 +277,12 @@ describe('the data table', () => {
     const stopped = Array.from(wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')) as HTMLElement[];
     expect(stopped[3].querySelector('.ocu-data-table-disc')?.getAttribute('data-disc')).toBe('outline');
     expect(stopped[3].textContent?.trim()).toBe(STRINGS.tableStatusNo);
+    // Story 16.25: the editor is paired now, so it wins over the Activity log child list, which the
+    // editor links instead.
+    // Mutation (Rule 19): drop the `editorScreenFor(screen) ??` term from `linkTarget` -> this reads the
+    // Activity log's route and goes red.
     const link = running[0].querySelector('a') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/os-management/language-servers/activity/%2525Java%2520Server?ns=HSCUSTOM');
+    expect(link.getAttribute('href')).toBe('/os-management/language-servers/edit/%2525Java%2520Server?ns=HSCUSTOM');
     expect(wired.host().querySelector('[role="columnheader"]:nth-child(4)')?.textContent).toContain(STRINGS.languageServerColumnRunning);
   });
 

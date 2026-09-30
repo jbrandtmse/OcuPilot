@@ -2,8 +2,8 @@
 title: 'Story 16.25: The external language server editor'
 type: 'feature'
 created: '2026-09-29'
-status: 'in-progress'
-baseline_revision: '871b6fa084729193e1bf69cd05ee592911272c98'
+status: 'done'
+baseline_revision: 'faf894c04ac87cf98d5a1ef7bd9282d2697babd6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -345,6 +345,41 @@ Anchors are as of `0fa21806`.
 
 ## Review Triage Log
 
+### 2026-09-29 — Review pass
+
+- verdicts: 30 findings — high 0, medium 5, low 13, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the editor's 403 banner naming the missing pair has no client test — added the page-spec case in both modes; mutation recorded.
+  - `[medium]` `[patch]` verification-gap: the create's name check on blur has no client test — added the page-spec case (taken name on Name, the empty required field's rule, an edit asking nothing); mutation recorded.
+  - `[medium]` `[patch]` verification-gap: a 422's violations landing on their fields, `Custom.<member>` included, is untested — added the page-spec case; mutation recorded.
+  - `[low]` `[patch]` verification-gap: the dirty flag is untested — added the page-spec case; mutation recorded.
+  - `[medium]` `[patch]` verification-gap: the form read's `dotNetVersions`, `requiredFields` and `rules` are asserted nowhere against the instance — added to `LanguageServerEditorWire`'s form-read test (run 21032 green).
+  - `[low]` `[patch]` verification-gap (Rule 19): the Custom leg of `TestProhibitedCoversTheEditorsFields` stays green with `Prohibited.Changed`'s Custom branch deleted — added a leg that reddens without it (run 21034); message reworded.
+  - `[low]` `[patch]` verification-gap (Rule 19): AC9 has no `mutation:` line — `HandleForm` answering no settable member reddened the editor browser spec; line written.
+  - `[low]` `[patch]` verification-gap (Rule 19): AC1's line covers only its sub-bullet — `ComposeCreate` skipping the default reddened two wire tests (run 21036); line written.
+  - `[false]` `[reject]` verification-gap (Rule 19): AC2's Python-consequence sub-bullet has no line — Rule 19 asks one demonstrated mutation per AC, and AC2's (`changedBody`) is recorded; this pass also adds the page spec's.
+  - `[false]` `[reject]` verification-gap (Rule 19): AC3's read-only editor and confirm refusal have no line — AC3's pinning tests carry recorded mutations (`Running`, `MergeUpdate`, the mint).
+  - `[false]` `[reject]` verification-gap (Rule 19): AC5's path/Type refusal and baseline keys have no line — AC5 carries recorded mutations (`AbsenceState`, `Whole`, the present-target refusal).
+  - `[false]` `[reject]` verification-gap (Rule 19): AC6's custom-resource sub-bullet has no line — AC6 carries recorded mutations, and `ClassicPageGate` pins the classic-page pair, as the reviewer notes.
+  - `[low]` `[patch]` verification-gap: an empty Port on a create Save answers the range sentence, not the required one — `Validate` now reads an emptied port as missing on both modes; `TestTheRulesRefuseEachField` pins it (mutation run 21035).
+  - `[false]` `[reject]` intent-alignment: the Save answers 422, not the matrix's 400 — the Tasks put the Save on the Namespace shape, whose AD-39 validation envelope is 422; the 400 is the agent's, pinned by `TestAFieldOutsideItsRulesIsRefusedOnItsField`.
+  - `[low]` `[reject]` intent-alignment: a port read precedes an argument refusal — nothing is written before any refusal (pinned), the read is the kernel's shared `Mint` order for every tool, and moving it is more than a direct correction.
+  - `[false]` `[reject]` intent-alignment: a create lands on its edit URL and the list is reached by Cancel — amended AC1 asks that the list, once back on it, lists the row, which the browser spec asserts; the route replacement is the Namespace editor's.
+  - `[low]` `[reject]` intent-alignment: a running Remote is shown by fixture only — `Running` exempts `Remote` by type before it reads the running state, so a live remote adds no path; a listening remote gateway is more than a direct correction.
+  - `[low]` `[reject]` intent-alignment: exact-pairs success is shown on the screen caller only — the agent's write runs the same tool class, port and `PrivilegePairs` (AD-53), and its refusal per missing pair is pinned through `RunAs`.
+  - `[false]` `[reject]` intent-alignment: `Exec32` travels as 0 or 1 — the instance holds it so; a boolean argument is accepted and stored 1 (wire test).
+  - `[low]` `[patch]` intent-alignment: `Prohibited.Changed`'s Settings lines were rewritten in a contended file — restored, with the Custom block added beside them (Prohibited run 21033 green).
+  - `[false]` `[reject]` intent-alignment: the title "External language server" is not in the Design Notes copy — its key is in the Design Notes key list, and the value is published in Fixed strings (AC8).
+  - `[low]` `[reject]` intent-alignment: "Resource" reuses the Web applications key — the rendered word is verbatim and EXPERIENCE.md names the reuse; a second key would duplicate the string.
+  - `[low]` `[reject]` intent-alignment: a crafted create with a top-level `LogFile` answers 403 `PROHIBITED.UNCOVEREDFIELD` (inference) — the form never sends a file location, and the prohibited set before the rules is NamespaceSave's AD-10/AD-55 order; nothing reaches the port.
+  - `[false]` `[reject]` intent-alignment: the agent's create with a path field is untested — `TestTheCreateComposesItsTypesDefaults` pins the create's `ArgumentProblem` refusing `Custom.ClassPath`.
+  - `[low]` `[patch]` intent-alignment: the browser create sends no JVM arguments — the create leg now types them and asserts the body and the instance, and the edit keeping them (browser 4/4).
+  - `[low]` `[reject]` intent-alignment: the Python delete gate is not driven through the agent's confirm — the gate is in the port both callers write through, and the unit test shows the vendor delete was never constructed.
+  - `[false]` `[reject]` intent-alignment: the consequence line is tested in jsdom only — jsdom runs the real template and store; nothing about it is geometry.
+  - `[false]` `[reject]` intent-alignment: an unread running state is treated as running — it refuses rather than writes over a state nobody read, and `ACTIVITY` answers the boolean (measured).
+  - `[medium]` `[patch]` intent-alignment: the form's display of a taken name is untested — same root cause as the name-check finding; closed by that page-spec case.
+  - `[false]` `[reject]` intent-alignment: the running refusal's status differs by surface — the row asks for the sentence and nothing sent, both pinned on every caller.
+
 ## Design Notes
 
 **Measured on `ocupilot-ci`, 2026-09-29.** The transcript is `…/scratchpad/epic-16/16-25/els-16-25-transcript.txt`, and it reuses 16.10's where noted. All probes were removed.
@@ -483,20 +518,61 @@ Mutations demonstrated (implement stage, each reverted with the tree unchanged a
 - mutation: the `LanguageServer:XSLT` list deleted from `FieldLists.cls` → `OcuPilot.Test.DerivedFields.TestTheCommittedListsEqualAFreshDerivation` and `TestTheCommittedClassIsARegeneration` went red (run 20971).
 - mutation: one word of `LanguageServerUpdate.RUNNINGREASON` changed → `self-protection.test.mjs` "Story 16.25: the running refusal ..." went red.
 - mutation: the editor's Activity link hidden, rebuilt and redeployed → `language-server-editor.browser-spec.mjs` "AC1, AC2, AC4" went red at the link wait.
-
-The browser spec asserts the created row on the list (AC9), not a "Changed" mark: a form-page Save publishes while no list is bound, so the list re-reads without one (measured; reported to the lead as an intent gap).
+- mutation: `Mint.Mint` skips a create's present-target refusal (Mint and subclasses recompiled) → `LanguageServerEditorWire.TestTheAgentsWritesConfirmAndATakenNameIsRefusedAtConfirm`'s held-name mint leg went red alone (run 20985).
+- mutation: `Mint.Mint` stores a proposal whose `StateDiff` refused → `LanguageServerEditorWire.TestAStartedServerIsRefusedEditAndDelete`'s agent delete leg went red alone (run 20986).
+- mutation: `LanguageServerRules.Whole` accepts every value → `LanguageServerEditorWire.TestAFieldOutsideItsRulesIsRefusedOnItsField`'s port and timeout legs went red on the Save, the agent's call and the agent's mint, nothing reaching the instance (run 20987).
+- mutation: `%Admin_Secure:USE` added to `LanguageServerDelete.PrivilegePairs` → `LanguageServerEditorWire.TestAPythonDeleteNeedsCallOutAndAStoppedServerIsDeleted`'s Java and Remote deletes by the exact-pairs principal went red (run 20988).
+- mutation: `LanguageServerCreate.ComposeCreate` skips the type's resource default → `LanguageServerEditorWire.TestTheExactPairsPrincipalCreatesEachTypeAndReadsItsForm` and `TestTheAgentsWritesConfirmAndATakenNameIsRefusedAtConfirm` went red (run 21036; AC1).
+- mutation: `LanguageServerRules.HandleForm` answers no settable member for any type (class recompiled, bundle unchanged) → `language-server-editor.browser-spec.mjs` "AC1: Python and .NET offer their own settings" went red, with the create and walk legs (AC9).
+- mutation: the `Custom.<member>` block deleted from `Prohibited.Changed` → `LanguageServerEditor.TestProhibitedCoversTheEditorsFields`' top-level key leg went red (run 21034).
+- mutation: an emptied port no longer read as missing in `LanguageServerRules.Validate` → `LanguageServerEditor.TestTheRulesRefuseEachField` went red (run 21035).
+- mutation: the page's `AUTH.NOPRIVILEGE` branch never taken → `language-server-form.page.spec.ts` "AC6: a Save refused for a missing write pair names the pair" went red (AC6).
+- mutation: the store's `onBlur` reads the name check under another key → the page spec's "Duplicate name" case went red.
+- mutation: the page's `fieldView` looks a refusal up by its last dotted segment → the page spec's "a refused Save lands each violation on its own field" went red.
+- mutation: `setDirty(true)` dropped from the store's `change` → the page spec's dirty-flag case went red.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: AC1's "The list shows its row marked 'Changed'" and the I/O matrix row "Create Java" ("list re-fetches, row 'Changed'") cannot hold for the person's Create. A form-page Save publishes its change event while no list is bound: `ListPage` unbinds `RefreshService` when it leaves, `core/refresh.ts` marks a row only on the bound screen, and `ChangeBus` keeps no history. So no editor marks the row, and EXPERIENCE.md:726 defines "Changed" as a change event for the visible entity. Recommended amendment (restates the observable, intent unchanged): AC1 and the matrix row read "back on the list, it lists the server's row", and the Tasks bullet "then the row reads 'Changed'" is changed the same way. The agent's create, confirmed with the list open, still marks its row. Alternative, not recommended: a framework change so a list marks the events published while it was not shown (`core/refresh.ts`, every editor).
+Status: done
+Blocking condition: none
 
-This pass: the handoff subagent implemented every task (58 paths). Its report (73 min): the targeted classes green on `ocupilot-ci` (`LanguageServerEditorWire` armed, run 20972), `npm test`, `test:tools`, the six `ng test` specs and the four browser specs green, the bundle at 2,217.4 KiB, and 12 mutations recorded under Verification. This stage halted at the Matrix Test Audit, so its own Verify commands, the full ObjectScript sweep and the review layers have not run. Checked here: HEAD is unchanged, no commit or push was made, and `ocupilot-ci` holds no probe server, activity row or editor principal.
+**Summary.** External language servers gain a form-page editor, opened by the list's Create and a server's name, that links the server's Activity log. Three write tools serve both callers, `osmgmt.languageservers.create`, `.update` and `.delete`, each through `LanguageServerPort`: its `GET` is completed by `ACTIVITY` with `maxRows` 1, and a Python delete needs `%System_CallOut:USE`. `FieldDerive` derives the nine `LanguageServer:<Type>` lists (DW-253), and `LanguageServerRules` is the one rule set. The update merges `Custom` member by member and leaves an unchanged `Custom` out. A running server that is not Remote is refused edit and delete, and file locations are shown, never set.
 
-Paths outside the Code Map: `Api/LanguageServerError.cls`, because `Error.cls` is at the compiler's 1,000-parameter limit (ERROR #5290); `Test/LanguageServerSeamPort.cls`; `Test/LanguageServerEndpoint.cls`; `Test/ToolEmit.cls`. `ToolFields` carries two tools, since the delete sends no body. `ui/tools/ci.test.mjs` is unedited because it derives its roster.
+**Files.**
 
-Open for the next pass's audit:
+- Server: `Port/LanguageServerPort`, `Area/OsMgmt/LanguageServerRules` and `LanguageServerSave`, `Screen/Tool/LanguageServerCreate`, `Update` and `Delete`, and `Screen/Descriptor/LanguageServerForm`, all new. `LanguageServerList` gains Create and Delete. `Api/Router` gains four routes. `AdminPort` gains the typed template argument and admits the PUT and DELETE. `Prohibited`, `Baseline`, `Error` and `Api/LanguageServerError` gain their entries.
+- Generated: `FieldLists` (nine typed lists), `ToolFields` and `Classification`, and `screens.generated.ts`.
+- Client: the editor page, store and actions (new); `app.ts`, `screen-outlet.ts` and `screen-action-handler.ts`; `strings.ts`; `field-lists.mjs`.
+- Tests: `LanguageServerEditor`, `LanguageServerEditorWire`, `LanguageServerSeamPort`, the page spec and `language-server-editor.browser-spec.mjs` (all new), plus the bumped rosters under Code Map.
+- Docs: EXPERIENCE.md, edited in place.
 
-- "Duplicate name": no test yet that the agent's create mint refuses a taken name. The refusal at Confirm is pinned.
-- "Missing or out-of-range field": pinned in the rules and at the screen's 422, the project's validation status. No agent dispatch pins the 400.
-- The header of `LanguageServerEditorWire.TestAStartedServerIsRefusedEditAndDelete` says the agent's delete is refused at the mint, but the test mints the update.
+**Paths outside the Code Map:** `Api/LanguageServerError.cls` (`Error.cls` is at the compiler's 1,000-parameter limit, ERROR #5290), `Test/LanguageServerSeamPort.cls`, `Test/LanguageServerEndpoint.cls`, `Test/ToolEmit.cls`, and this pass's `Test/PortGate.cls` (a roster row for the new port).
+
+**This pass.**
+
+- It verified the uncommitted implementation. The handoff closed the three open audit items in `LanguageServerEditorWire` and changed no production code.
+- It ran every Verification command, then the two review layers: 30 findings, 12 patched, 6 lows rejected, 12 false, none deferred.
+- Patches:
+  - four page-spec cases: the 403 banner, the name check on blur, the 422 on each field, and the dirty flag;
+  - the form-read keys asserted in the wire test;
+  - an emptied port answers the required sentence (`Validate`, both modes);
+  - `Prohibited.Changed` made add-only again, with the Custom block pinned;
+  - the browser create sends and checks JVM arguments;
+  - `PortGate`'s roster gains `LanguageServerPort`, the sweep's one red of ours (run 21246; green at run 21411).
+
+**Verification (all on `ocupilot-ci`).**
+
+- Generators regenerate identically. `test:tools` 1,719/1,719. `npm test` 1,719 and 1,914 component tests. The six targeted specs 215/215, and the page spec 10/10 after the patches.
+- Targeted classes green: runs 21010-21030, then 21031-21033 after the patches. `WireSecurityRead`'s task-history leg fails as the known residue.
+- Browser, after a rebuild and redeploy: the editor spec 4/4, re-run after the patches; `language-servers` 2/2; `namespaces` 5/5; the structural walk 12/12. The bundle's initial total is 2.27 MB, with no budget warning.
+- `check-objectscript` 0, `lint-docs` 0, and EXPERIENCE.md at 993 lines.
+- Full armed sweep: 374 classes, 3,071 tests, 8 failed. Apart from `PortGate` (fixed), all are known residue: `PathPortInstance` 1, `ProposalPrivilege` 1, `Retention` 1, `TaskHistory` 3 and `WireSecurityRead` 1.
+- `ocupilot-ci` holds no probe server, activity row or editor principal.
+
+**Matrix Test Audit:** every row has a covering test that ran green. "400 before any port call" is read as the agent's 400 before anything is written. The Save answers the Namespace shape's 422, and the kernel's `Mint` reads before `ArgumentProblem` for every tool.
+
+**Follow-up review recommended: false.** Patched entries by verdict: medium 4, low 7. Each patch is a test whose red was observed, or a small rules fix pinned by its class and the sweep, so no unverified risk remains to name.
+
+**Protocol note:** the handoff sent five test-runner calls in one message, and this stage sent seventeen. The harness ran each batch one after another: runs 20989-20993 and 21012-21030 chain end to start, and `ci-runner` reported 0 overlaps and 0 foreign runs. No subagent committed or pushed.
+
+**Residual risks:** a running Remote server is exempt by type and shown by fixture only; exact-pair success is shown on the screen caller.

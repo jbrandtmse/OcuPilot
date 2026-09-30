@@ -15,7 +15,9 @@
 /// the client configuration's from <parameter>CLIENTMETADATACLASS</parameter>, whose rows also carry
 /// each member's <code>kind</code> and a <code>VALUELIST</code> member's <code>values</code>. The
 /// action-style endpoints in <parameter>NOTEMPLATE</parameter> are recorded with <code>source</code>
-/// <code>none</code> and no rows.</p>
+/// <code>none</code> and no rows. The language server template is also derived once per
+/// <parameter>LANGUAGESERVERTYPES</parameter> entry (keyed <code>LanguageServer:&lt;Type&gt;</code>,
+/// its <code>type</code> set), because it builds <code>Custom</code> by type (Story 16.25).</p>
 /// <p><b>Rows.</b> Each row is <code>path|shape|templateType|itemType</code>. Every node of a
 /// template is a row, in the template's own order: a literal is <code>literal</code> with its
 /// placeholder's JSON type; an object is <code>object</code> and its members follow as
@@ -89,6 +91,15 @@ Parameter CLIENTMETADATACLASS = "OAuth2.Client.Metadata";
 /// <p>The classes whose derived rows carry each member's kind and allowed values.</p>
 Parameter KINDCLASSES = "OAuth2.Client.Metadata";
 
+/// <p>The external language server endpoint, whose template builds <code>Custom</code> by the type
+/// it is called with (Story 16.25, AD-3).</p>
+Parameter LANGUAGESERVERENDPOINT = "LanguageServer";
+
+/// <p>The <code>Config.Gateways</code> types, each derived as its own template list keyed
+/// <code>LanguageServer:&lt;Type&gt;</code>. <class>OcuPilot.Test.DerivedFields</class> holds this list
+/// equal to the types <code>Config.Gateways</code> accepts.</p>
+Parameter LANGUAGESERVERTYPES = "Remote,Java,XSLT,JDBC,ODBC,ML,.NET,Python,R";
+
 /// <p>Derive every list from the running instance. <var>pLists</var> comes back subscripted by
 /// list key: <code>pLists(key)</code> is
 /// <code>endpoint|source|method|class|type|envelope</code>, and <code>pLists(key, n)</code> is
@@ -110,6 +121,20 @@ ClassMethod Derive(Output pLists) As %Status
             If $$$ISERR(tSC) Set tSC = $$$ADDSC($$$ERROR($$$GeneralError, tEndpoint _ "'s body template did not evaluate"), tSC) Quit
             Set pLists(tEndpoint) = ..Header(tEndpoint, "template", tMethod, "", "", "")
             Set tSC = ..WalkMembers(tTemplate, "", tEndpoint, .pLists)
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+
+        ; Story 16.25 (DW-253): the language server template once per type, beside its untyped list,
+        ; which keeps the top-level fields. The typed list records the type in its header.
+        Set tTypes = $ListFromString(..#LANGUAGESERVERTYPES)
+        For tI = 1:1:$ListLength(tTypes) {
+            Set tType = $ListGet(tTypes, tI)
+            Set tSC = ##class(OcuPilot.Port.AdminPort).Template(..#LANGUAGESERVERENDPOINT, .tTemplate, .tMethod, tType)
+            If $$$ISERR(tSC) Set tSC = $$$ADDSC($$$ERROR($$$GeneralError, ..#LANGUAGESERVERENDPOINT _ "'s body template did not evaluate for type " _ tType), tSC) Quit
+            Set tKey = ..#LANGUAGESERVERENDPOINT _ ":" _ tType
+            Set pLists(tKey) = ..Header(..#LANGUAGESERVERENDPOINT, "template", tMethod, "", tType, "")
+            Set tSC = ..WalkMembers(tTemplate, "", tKey, .pLists)
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit

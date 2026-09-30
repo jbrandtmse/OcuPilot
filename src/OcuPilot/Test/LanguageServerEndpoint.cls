@@ -17,6 +17,10 @@ Parameter TYPESTART As INTEGER = 11;
 
 Parameter TYPESTOP As INTEGER = 12;
 
+/// <p>Declared so <class>OcuPilot.Test.LanguageServerSeamPort</class>'s gated delete reaches this
+/// endpoint once its gate passes (Story 16.25); it answers as the parent's other types do.</p>
+Parameter TYPEDELETE As INTEGER = 3;
+
 /// <p>Arm server <var>pName</var>: whether it runs, and its activity rows as a JSON array, newest
 /// first.</p>
 ClassMethod ArmServer(pName As %String, pRunning As %Boolean, pRowsJson As %String = "[]")

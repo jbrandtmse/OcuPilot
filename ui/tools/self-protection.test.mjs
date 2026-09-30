@@ -402,3 +402,31 @@ test('Story 16.10: the two state refusals and the refused start are each one sen
     assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
   }
 });
+
+/** Story 16.25's editor tools and error codes, which declare its published sentences. */
+const LANGUAGE_SERVER_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
+const LANGUAGE_SERVER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'LanguageServerError.cls');
+
+/** Story 16.25's published sentences: `[file, parameter, strings.ts key]`. */
+const LANGUAGE_SERVER_EDITOR_SENTENCES = [
+  [LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'RUNNINGREASON', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_TOOL('LanguageServerDelete'), 'RUNNINGREASON', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_ERROR, 'REASONRUNNING', 'languageServerRefusalRunningEdit'],
+  [LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'PYTHONCONSEQUENCE', 'languageServerPythonConsequence'],
+  [LANGUAGE_SERVER_ERROR, 'REASONNAMETAKEN', 'languageServerNameTaken'],
+  [LANGUAGE_SERVER_ERROR, 'REASONPATH', 'languageServerPathClassicOnly'],
+];
+
+test('Story 16.25: the running refusal, the Python consequence, the name check and the file caption are each one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of RUNNINGREASON in LanguageServerUpdate.cls -> this goes red naming both.
+  for (const [file, parameter, key] of LANGUAGE_SERVER_EDITOR_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+  // The update tool's description carries the Python consequence, so the agent states it too (AD-4).
+  const description = /Parameter DESCRIPTION = "([^"]+)";/.exec(readFileSync(LANGUAGE_SERVER_TOOL('LanguageServerUpdate'), 'utf8'));
+  assert.ok(description !== null && description[1].includes(stringValue('languageServerPythonConsequence')), 'the update tool describes the Python consequence in its published words');
+});

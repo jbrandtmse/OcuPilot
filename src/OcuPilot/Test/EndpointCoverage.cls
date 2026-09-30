@@ -194,6 +194,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/namespace/name" path="/api/ocupilot/namespace/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/namespace/:id" path="/api/ocupilot/namespace/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/namespace" path="/api/ocupilot/namespace" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/language-server/form" path="/api/ocupilot/language-server/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/language-server/name" path="/api/ocupilot/language-server/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/language-server/:id" path="/api/ocupilot/language-server/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/language-server" path="/api/ocupilot/language-server" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/mapping/:kind/form" path="/api/ocupilot/mapping/global/form" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the path names no namespace, which the handler answers 404 before any read"/>
 <probe class="Api.Router" method="GET" url="/mapping/:kind/name" path="/api/ocupilot/mapping/global/name" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind"/>
 <probe class="Api.Router" method="PUT" url="/mapping/:kind/:id" path="/api/ocupilot/mapping/global/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the identifier segment carries the same value, which names no namespace and mapping pair, so the handler refuses before any write"/>

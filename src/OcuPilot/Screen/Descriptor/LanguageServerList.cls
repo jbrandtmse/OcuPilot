@@ -7,9 +7,11 @@
 /// as a <code>status</code> column, Yes or No with its disc.</p>
 /// <p><b>Start and Stop are action-style row actions</b> (AD-51), carried out by
 /// <class>OcuPilot.Screen.Tool.LanguageServerStart</class> and
-/// <class>OcuPilot.Screen.Tool.LanguageServerStop</class> for both callers (AD-53). A server's name
-/// opens its Activity log, <class>OcuPilot.Screen.Descriptor.LanguageServerActivity</class>, the list's
-/// one parent-scoped child.</p>
+/// <class>OcuPilot.Screen.Tool.LanguageServerStop</class> for both callers (AD-53). Its primary action
+/// Create and a server's name open the editor, <class>OcuPilot.Screen.Descriptor.LanguageServerForm</class>,
+/// which links the server's Activity log, <class>OcuPilot.Screen.Descriptor.LanguageServerActivity</class>;
+/// its row action Delete runs <class>OcuPilot.Screen.Tool.LanguageServerDelete</class> after its
+/// typed-name dialog (Story 16.25).</p>
 /// <p><b>The privilege set is <code>%Admin_ExternalLanguageServerEdit:USE</code> plus
 /// <code>%DB_IRISSYS:READ</code></b>, the first declared as the screen's own pair (AD-8 as amended):
 /// <code>LanguageServer</code>'s <code>ResourcesOR()</code> names only that resource, and a principal
@@ -39,8 +41,8 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "start", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "start", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Port", "CurrentlyRunning"], "secretFields": []},
   "secretArguments": [],
   "fingerprintExcludes": [],

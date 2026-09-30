@@ -118,7 +118,10 @@ XData Keys [ MimeType = application/json ]
   "tasks.schedule.export": true,
   "tasks.schedule.import": false,
   "osmgmt.languageservers.start": true,
-  "osmgmt.languageservers.stop": true
+  "osmgmt.languageservers.stop": true,
+  "osmgmt.languageservers.create": true,
+  "osmgmt.languageservers.update": true,
+  "osmgmt.languageservers.delete": true
 }
 }
 
