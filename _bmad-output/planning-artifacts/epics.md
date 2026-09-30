@@ -8078,7 +8078,7 @@ So that the ledger the judges' build leaves behind is honest and the code it nam
 
 ### Story 23.2: The range-end cleanup, part 2
 
-Chartered by the orchestrator on 2026-09-30 to run after the `release/1.0.4` cut, from the owner-approved burn-down decision sheet (`_bmad-output/implementation-artifacts/decision-sheet-2026-09-29-burndown.md`) under Rule 27 as the owner restated it on 2026-09-29. Story 23.1 closed as it stood. This story takes at most 12 entries, by priority: CI flakes, then security, then repeat occurrences, then the lowest fix-risk.
+Chartered by the orchestrator on 2026-09-30 from the owner-approved burn-down decision sheet (`_bmad-output/implementation-artifacts/decision-sheet-2026-09-29-burndown.md`) under Rule 27 as the owner restated it on 2026-09-29. Story 23.1 closed as it stood. This story takes at most 12 entries, by priority: CI flakes, then security, then repeat occurrences, then the lowest fix-risk. On the owner's instruction of 2026-09-30 it starts before the `release/1.0.4` cut, and each batch merges to the feature branch as soon as it is green, in this order: the CI flakes, the user-visible defects, security, then the remaining entries, with DW-48 last because it changes what the installer compiles. A batch green on the feature branch at the cut ships in 1.0.4; the rest follow.
 
 As the team keeping OcuPilot's CI and its guardrails trustworthy between releases,
 I want the twelve highest-priority deferred entries fixed, or declined with a reason,
