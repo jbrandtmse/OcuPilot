@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "25073d42a194dcd5fa1477d4ccb8ac12f2351f561f1be3e1fc31b72158d0b33c"
+epics_md_hash: "3e30bbba9e34dea1301459559f947d0f0de322363ea336ecb67be76b9d3b0f33"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -234,6 +234,8 @@ epics:
     note: >-
       One range-end cleanup story over the ledger slice owner=range-end-cleanup (178 entries at the charter).
       It spans the range, so its paths_hint is broad; a concurrent epic's files are contended-edit for it.
+      Story 23.1 closed as it stood on 2026-09-30; Story 23.2 (12 entries, owner-approved burn-down sheet
+      2026-09-29) runs on slot B after the release/1.0.4 cut, with Epic 18 paused until it merges.
   epic-14:
     depends_on: [epic-4, epic-11, epic-12]
     submodules: []
