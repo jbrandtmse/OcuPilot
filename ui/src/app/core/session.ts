@@ -395,10 +395,9 @@ export class Session {
    * sign-in and the requested route survives it.
    *
    * **In memory, never in storage.** It records that an authentication happened, never that the
-   * first-login gate was shown: what decides whether that gate fires is the instance's own
-   * definition rows, read afresh, so "never afterwards" is a consequence of the condition rather
-   * than of a remembered decision. A flag in `sessionStorage` would outlive the condition, which
-   * is the defect FR-28 names.
+   * first-login gate was shown: whether that gate fires is the instance's answer -- its definition
+   * rows, and the account's own record that the gate has opened the form once (AD-50) -- never
+   * this tab's.
    */
   private freshSignIn = false;
 

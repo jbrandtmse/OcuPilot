@@ -266,6 +266,16 @@ export class DefinitionForm {
    */
   private retainingValue = false;
 
+  /**
+   * Whether the first-login gate opened this form (FR-28), which sends Cancel to Home rather than
+   * to the Definitions list. Taken by `open()` from `arriveFromGate()`, kept across a create's own
+   * route replacement, and dropped by `reset()`.
+   */
+  private openedByGateValue = false;
+
+  /** Set by `arriveFromGate()` and taken by the next `open()`. */
+  private gateArrivalPending = false;
+
   private outcomeValue: SaveOutcome = '';
 
   private firstSaveValue = false;
@@ -451,6 +461,25 @@ export class DefinitionForm {
     this.retainingValue = true;
   }
 
+  /**
+   * The first-login gate has just moved the browser to this form (FR-28). The page that navigation
+   * mounts takes it on `open()`, so Cancel on that form goes to Home; a form the person opened
+   * themselves never carries it.
+   */
+  arriveFromGate(): void {
+    this.gateArrivalPending = true;
+  }
+
+  /** Forget an arrival no `open()` has taken; one already taken is unaffected. */
+  dropGateArrival(): void {
+    this.gateArrivalPending = false;
+  }
+
+  /** Whether the first-login gate opened this form, which is what sends Cancel to Home. */
+  openedByGate(): boolean {
+    return this.openedByGateValue;
+  }
+
   /** Forget everything, from the sign-out teardown and when the form is left. */
   reset(): void {
     this.generation += 1;
@@ -475,6 +504,8 @@ export class DefinitionForm {
     this.firstSaveValue = false;
     this.instanceWasEmpty = false;
     this.retainingValue = false;
+    this.openedByGateValue = false;
+    this.gateArrivalPending = false;
     this.keyValue = '';
     this.formDirty.reset();
     this.notify();
@@ -487,6 +518,8 @@ export class DefinitionForm {
    * like every other, and a cached copy is a second source for the values the cascade fills in.
    */
   async open(id: string): Promise<void> {
+    const fromGate = this.gateArrivalPending;
+    this.gateArrivalPending = false;
     // The route replacement a create makes is not an arrival at another form: the state on screen
     // is this definition's, already read from the create's own answer (AC3).
     if (this.retainingValue && id !== '' && id === this.idValue) {
@@ -495,6 +528,7 @@ export class DefinitionForm {
     }
     this.retainingValue = false;
     this.reset();
+    this.openedByGateValue = fromGate;
     const generation = this.generation;
     this.idValue = id;
     this.loadingValue = true;

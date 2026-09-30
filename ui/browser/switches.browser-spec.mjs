@@ -229,8 +229,8 @@ test('AC3, AC4: the kill switch reaches the panel banner and the rail dot, with 
     // the switch had been dropped.
     //
     // Navigated through the shell's own side bar rather than with a second `page.goto`: a fresh
-    // document clears the token pair and re-fires the first-login gate (shell-entry.mjs), so a
-    // deep link would land on the Definition form whatever it asked for.
+    // document clears the token pair and is a sign-in the first-login gate may act on
+    // (shell-entry.mjs), so a deep link may not land where it asked.
     await page.waitForSelector('app-side-bar .ocu-side-bar-label', { timeout: config.navigationTimeoutMs });
     const moved = await page.evaluate((label) => {
       const entry = Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-label')).find(

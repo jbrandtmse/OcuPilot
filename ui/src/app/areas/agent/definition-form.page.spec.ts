@@ -131,7 +131,7 @@ function stubNavigation(verdict: Verdict, loaded = true) {
 async function mount(
   answer: Answer,
   url = '/agent/definitions/edit',
-  options: { verdict?: Verdict; definitions?: { enabled: boolean }[]; mapLoaded?: boolean } = {}
+  options: { verdict?: Verdict; definitions?: { enabled: boolean }[]; mapLoaded?: boolean; fromGate?: boolean } = {}
 ) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
@@ -165,6 +165,8 @@ async function mount(
     ],
   });
   await TestBed.inject(Router).navigateByUrl(url);
+  // What `App.runFirstLoginGate` does once its navigation lands, before the page mounts.
+  if (options.fromGate === true) TestBed.inject(DefinitionForm).arriveFromGate();
   const fixture = TestBed.createComponent(DefinitionFormPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -1400,6 +1402,24 @@ describe('the Definition form', () => {
     await settle(fixture);
 
     expect(summary()).toEqual(['Give the definition a name of 1 to 64 characters.']);
+  });
+
+  it('FR-28: Cancel on the form the first-login gate opened goes to Home; on one the person opened, to the list', async () => {
+    // Mutation (Rule 19): make `cancel()` always go to `LIST_ROUTE` -> the first assertion goes red.
+    const cancelIn = (host: HTMLElement): HTMLButtonElement =>
+      [...host.querySelectorAll('.ocu-form-bar-actions button')].find(
+        (button) => button.textContent?.trim() === STRINGS.actionCancel
+      ) as HTMLButtonElement;
+
+    const gate = await mount(catalogOnly, '/agent/definitions/edit', { definitions: [], fromGate: true });
+    cancelIn(gate.host).click();
+    await settle(gate.fixture);
+    expect(TestBed.inject(Router).url).toBe('/');
+
+    const own = await mount(catalogOnly, '/agent/definitions/edit', { definitions: [] });
+    cancelIn(own.host).click();
+    await settle(own.fixture);
+    expect(TestBed.inject(Router).url).toBe('/agent/definitions');
   });
 
   it('the gate landing banner is above the form while nothing is enabled and the caller is allowed', async () => {

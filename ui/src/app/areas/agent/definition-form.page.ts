@@ -27,7 +27,7 @@ import {
 /** The published retention caption's placeholder, resolved from the field's own value. */
 const RETENTION_PLACEHOLDER = '<n>';
 
-/** The route the list lives at, which Cancel and the leave confirmation return to. */
+/** The route the list lives at, which Cancel returns to on a form the person opened themselves. */
 const LIST_ROUTE = 'agent/definitions';
 
 /**
@@ -48,7 +48,7 @@ const ADVANCED_FIELDS: readonly string[] = [
 /** The read-only checkbox's id, the one control whose id is not its wire name's. */
 const READ_ONLY_CONTROL_ID = 'ocu-definition-read-only';
 
-/** The application root, which the first-save offer goes to. */
+/** The application root, which the first-save offer and Cancel on a form the gate opened go to. */
 const HOME_ROUTE = '';
 
 /** One field, resolved for drawing: its control id, its refusal and its described-by wiring. */
@@ -1128,8 +1128,10 @@ export class DefinitionFormPage {
     document.getElementById(this.controlId(field))?.focus();
   }
 
+  /** Back to the list, or to Home when the first-login gate opened this form (FR-28). */
   protected cancel(): void {
-    void this.router.navigateByUrl(withQuery(LIST_ROUTE, this.router.url));
+    const target = this.store.openedByGate() ? HOME_ROUTE : LIST_ROUTE;
+    void this.router.navigateByUrl(withQuery(target, this.router.url));
   }
 
   protected goHome(): void {
