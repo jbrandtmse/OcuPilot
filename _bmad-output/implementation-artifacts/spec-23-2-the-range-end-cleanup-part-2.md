@@ -2,7 +2,7 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f8e55fb2622353b7ce4024e9888cbc1a776d440a'
 baseline_commit: 'f8e55fb2622353b7ce4024e9888cbc1a776d440a'
 review_loop_iteration: 0
@@ -218,6 +218,14 @@ deferred:
     - `Test/ProposalConfirm.cls`: confirming `permissions.users.update` with `{"Password":…}` is refused on the closed channel, and `Security.Users.CheckPassword` shows the password unchanged.
   - Files: `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `Kernel/Proposal/Confirm.cls`, `Api/ScreenAction.cls`, and the tests above. ADs: AD-6, AD-56, AD-3, AD-5, AD-10, AD-21, AD-35.
   - AC: Given a descriptor declaring a secret that its tools do not write as a secret, when the registry loads or `npm run build` runs, then both refuse it with one sentence. Given a confirm carrying a key its tool does not write as a secret, when it is sent, then it is refused on the closed channel.
+
+### DW-1870 (owner-approved for 1.0.4, before batch e)
+
+- [ ] **DW-1870** (high; owner-routed to this story outside the cap of 12) — a Windows clone with `core.autocrlf=true` checks `scripts/*.sh` out with CRLF, so `durable-init` dies at once (`set: Illegal option -`) and `docker compose up --wait` fails in 1 s. The index is already LF; the `.cls` files are unaffected.
+  - **Fix:** add `*.sh text eol=lf` to `.gitattributes`. No renormalize.
+  - **Red:** a roster-style test in `ui/tools/` that asks `git check-attr eol` for every tracked `*.sh` (`git ls-files '*.sh'`) and requires `lf` for each; it reddens without the rule. Where possible, also a fresh `git -c core.autocrlf=true clone` of the working tree showing every `*.sh` checked out without CR.
+  - Files: `.gitattributes`, one new `ui/tools/*.test.mjs`. ADs: AD-17, AD-45 (the start path must run on every supported host).
+  - AC: Given a clone made with `core.autocrlf=true`, when it is checked out, then every tracked `*.sh` has LF line endings.
 
 ### Batch e: the rest
 
