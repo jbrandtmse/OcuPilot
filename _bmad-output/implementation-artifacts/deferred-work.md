@@ -7880,6 +7880,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:46:09Z status=routed owner=range-end-cleanup by=harvest note=refused-tool half is DW-1314's root cause (occurrence appended); this entry keeps the audit AC1 half
 - 2026-09-30T00:38:19Z occurrence=16-25-the-external-language-server-editor
 - 2026-09-30T00:38:19Z note=refused-tool AC2 waited 30s for the refusal card on run 36647650086 (browser shard 1/3, head 7c721b34) after DW-1314's requireFreeSlot fix; green locally on ocupilot-ci; failed job re-run
+- 2026-09-30T01:49:57Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=refused-tool frees the principal's own slot and asserts the turn's 202; proposal-privilege's after() waits its hung turn out; audit search() waits for this Search's rows; reproduced red, fixed green x5+
 ### DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Security is pinned at oauth.browser-spec:283, ssl:228, security:242 and navigation.test.mjs:377; permissions:279 and tasks:1032 pin theirs. Rule 29 runs a story's own specs only, so 18.1 met it as CI run 36393142503's red and a rework.

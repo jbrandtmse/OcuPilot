@@ -531,3 +531,6 @@
 2026-09-30T01:02:39Z	Epic 16	ci_resolved	story=owner_fix_DW-1768 run=36647650086 result=success(attempt2) head=7c721b34
 2026-09-30T01:02:39Z	Epic 16	owner_fix_boundary	item=DW-1768 head=7c721b34 ci_run=36647650086 ci=success(attempt2) reported_to=main
 2026-09-30T01:02:39Z	Epic 16	owner_fix_pushed	item=DW-1852 sha=00711084 run=36653198545 note=carries_ef4bb312(16.25_spec_gate_bookkeeping)
+2026-09-30T01:13:19Z	Epic 16	stage_spawned	stage=owner_fix(implement,test-only) item=DW-1780 spawn_at=2026-09-30T01:13:19Z model=opus agent_name=dw1780-browser-flake-implement-1 cycle_iteration=1 note=orchestrator_request;during_DW-1852_CI_wait
+2026-09-30T01:49:58Z	Epic 16	ci_resolved	story=owner_fix_DW-1852 run=36653198545 result=success head=00711084 note=orchestrator_merges_DW-1768+DW-1852_at_00711084
+2026-09-30T01:49:58Z	Epic 16	owner_fix_implemented	item=DW-1780(test-only) agent=dw1780-browser-flake-implement-1 model=opus root_cause=refused-tool:proposal-privilege(b)_leaves_the_probe_principals_turn_slot_held(abandon_not_honoured_mid-hang)+refused-tool_checked__SYSTEMs_slot_only;audit:search()_waited_for_any_rows(opening_reads_rows) reproduced=unfixed_red(back-to-back;300KB/s_cap_3/3) fixed=refused-tool_9,proposal-privilege_8,audit_7_green tools=1717

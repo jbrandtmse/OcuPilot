@@ -49,6 +49,9 @@ const probe = { container: config.container, marker: 'REFUSED' };
 
 const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 
+/** The route a Send starts its turn on. */
+const TURN_PATH = '/api/ocupilot/turn';
+
 /** The tool the principal may not call, and the pair the instance refuses it at. */
 const REFUSED_TOOL = 'webapp_restapis_read';
 const REFUSED_PAIR = '%Admin_Secure:USE';
@@ -111,8 +114,11 @@ test('AC2: a tool the principal may not call renders a card naming the pair, and
   // Mutation (Rule 19): make `tool-call-card.ts` resolve the `<reason>` slot with `step.reason`
   // again, rebuild and redeploy -> the status word reads the generic sentence and this goes red.
   // A turn another spec left running would read the probe definition's tag and answer this
-  // spec's scripted replies, so the slot is freed before the tag is set (DW-1314).
+  // spec's scripted replies, so the slot is freed before the tag is set (DW-1314). The Send below
+  // is the principal's, and so is the slot (AD-41) it competes for: a turn an earlier file ran as
+  // this account holds it until that turn's hanging provider call returns.
   await requireFreeSlot(config);
+  await requireFreeSlot({ ...config, username: user, password });
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
   scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply("${escapeOs(REFUSED_TOOL)}")`);
@@ -139,7 +145,16 @@ test('AC2: a tool the principal may not call renders a card naming the pair, and
     });
 
     await page.type('#ocu-panel-composer', 'list the rest apis');
-    await page.click('.ocu-panel-send');
+    // The turn's own start: a Send the instance refuses fails here with its answer, rather than
+    // as a card that never renders.
+    const [started] = await Promise.all([
+      page.waitForResponse(
+        (response) => response.request().method() === 'POST' && new URL(response.url()).pathname === TURN_PATH,
+        { timeout: config.navigationTimeoutMs }
+      ),
+      page.click('.ocu-panel-send'),
+    ]);
+    assert.equal(started.status(), 202, `the instance started the turn: ${await started.text()}`);
 
     await page.waitForFunction(
       () => document.querySelector('.ocu-tool-call-status-warning') !== null,
