@@ -2,8 +2,8 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: 'f8e55fb2622353b7ce4024e9888cbc1a776d440a'
+status: 'done'
+baseline_revision: '961d45c728646a0b6a411511e4045c5f14ddd128'
 baseline_commit: 'f8e55fb2622353b7ce4024e9888cbc1a776d440a'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -18,6 +18,20 @@ deferred:
     location: >-
       src/OcuPilot/Kernel/Proposal/Prohibited.cls:4021
     severity: medium
+  - summary: >-
+      A Windows clone made with core.autocrlf=true before the `*.sh text eol=lf` rule keeps its CRLF scripts after pulling the rule, and `git status` reads clean, so it still fails `docker compose up --wait` until its scripts are checked out again.
+    evidence: |-
+      Measured by the DW-1870 verification-gap layer in a scratch repo: a pre-rule clone fast-forwarded onto the rule kept 16 of 16 scripts with CR, and `git checkout -- .` left them so; deleting the scripts and checking them out again gave 0 of 16. The remedy is a user step (a release-note or README line), outside the task's Fix.
+    location: >-
+      .gitattributes:3
+    severity: medium
+  - summary: >-
+      `.githooks/pre-commit` is a bash script with no `.sh` suffix, so the rule leaves its line endings unset and a Windows core.autocrlf=true clone checks it out with CRLF.
+    evidence: |-
+      `git check-attr eol text -- .githooks/pre-commit` answers `unspecified` for both. That Git for Windows' bash then fails on it is (inference). It is an opt-in host-side developer hook, not the container start path, and the task's Fix names `*.sh` only.
+    location: >-
+      .githooks/pre-commit:1
+    severity: low
 ---
 
 <intent-contract>
@@ -221,7 +235,7 @@ deferred:
 
 ### DW-1870 (owner-approved for 1.0.4, before batch e)
 
-- [ ] **DW-1870** (high; owner-routed to this story outside the cap of 12) — a Windows clone with `core.autocrlf=true` checks `scripts/*.sh` out with CRLF, so `durable-init` dies at once (`set: Illegal option -`) and `docker compose up --wait` fails in 1 s. The index is already LF; the `.cls` files are unaffected.
+- [x] **DW-1870** (high; owner-routed to this story outside the cap of 12) — a Windows clone with `core.autocrlf=true` checks `scripts/*.sh` out with CRLF, so `durable-init` dies at once (`set: Illegal option -`) and `docker compose up --wait` fails in 1 s. The index is already LF; the `.cls` files are unaffected.
   - **Fix:** add `*.sh text eol=lf` to `.gitattributes`. No renormalize.
   - **Red:** a roster-style test in `ui/tools/` that asks `git check-attr eol` for every tracked `*.sh` (`git ls-files '*.sh'`) and requires `lf` for each; it reddens without the rule. Where possible, also a fresh `git -c core.autocrlf=true clone` of the working tree showing every `*.sh` checked out without CR.
   - Files: `.gitattributes`, one new `ui/tools/*.test.mjs`. ADs: AD-17, AD-45 (the start path must run on every supported host).
@@ -517,6 +531,22 @@ Rejected:
 - Focus (1), measured on `ocupilot-b-ci`: the 13 declared entries (nine descriptors) are each a top-level secret row, and every write tool's channel opens to exactly the declared secrets it sends; the secret and value suites ran green (runs 232-246). Focus (2): `RoleGrantsPrivilege` restores the namespace on every path, a failed `Exists`, `Get` or `GetRecursedRoleSet` answers privileged with an OK status, 883 alone reads as absent, and `RoleGrantsAdministrativePrivilege` cannot answer an error.
 - Rules: AD-3, AD-5, AD-6, AD-8, AD-10, AD-16, AD-21, AD-35, AD-39, AD-53, AD-55 and AD-56 match after the patches. Rule 3 is met: the form read's marks over HTTP (`OAuthAuthorizationServerClients`), the line in a real browser, and the screen actions over HTTP (`UserUpdate`). No NFR touched.
 
+### 2026-09-30 — Review pass (DW-1870)
+
+- verdicts: 11 findings — high 0, medium 3, low 6, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The test read the `eol` attribute only, so a script stored with CRLF would keep it green and still check out with CRLF (verification-gap) — the checkout test now also requires `i/lf` and `w/lf` from `git ls-files --eol`; in a scratch clone it went red on a staged CRLF blob and on a CRLF working copy, each naming `scripts/durable-init.sh`; restored, 2/2.
+  - `[medium]` `[defer]` A Windows clone made before the rule keeps its CRLF scripts after pulling it, with `git status` clean (verification-gap) — pre-existing state the rule does not rewrite; the remedy is a user step; recorded in `deferred:`.
+  - `[low]` `[patch]` The header said the answer is the repository's own `.gitattributes`, but `info/attributes` is still read (verification-gap) — reworded to say a repository-local `info/attributes` still applies.
+  - `[low]` `[defer]` `.githooks/pre-commit` is a bash script with no `.sh` suffix, so its line endings stay unset (verification-gap) — pre-existing, and the intent's "do not widen a fix beyond its task" keeps it out; recorded in `deferred:`.
+  - `[medium]` `[patch]` The AC's surface is the files after an `autocrlf=true` clone, the tests read attributes only, and the clone check was neither run nor explained (intent-alignment) — same root and patch as the first row; the clone check ran after the handoff (16 of 16 with CR before, 0 of 16 after) and is recorded under `DW-1870 (loop)`.
+  - `[low]` `[reject]` No CI job starts a container from a CRLF clone, so the start path is not exercised there (intent-alignment) — the scratch clone ran `durable-init.sh` past the `set` line that stopped it before; a Windows CI leg is new infrastructure, not a direct correction.
+  - `[false]` `[reject]` The `.cls` files being unaffected was not checked (intent-alignment) — the DW-1870 ledger evidence measured it: with only the `.sh` files LF, the CRLF `.cls` files compiled and installed (healthy in 132 s, `STARTPATH-OK`).
+  - `[low]` `[patch]` The test title said "every tracked shell script" but selects by the `.sh` suffix (intent-alignment) — renamed `every tracked *.sh checks out with LF line endings`.
+  - `[low]` `[patch]` The test still reads `info/attributes` (intent-alignment) — same root and patch as the third row.
+  - `[low]` `[patch]` The failure message read "scripts .gitattributes does not check out with LF" (intent-alignment) — now "these scripts would not check out with LF".
+  - `[false]` `[reject]` The spec has no Auto Run Result for DW-1870 (intent-alignment) — finalize writes it after review, and the fix would edit this build's spec.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -673,6 +703,13 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` `HandleForm` answers the role names without `MarkedRoles` → `oauth-server-editor` AC1 red alone at `:278` (the privilege line stayed once `%Manager` was unticked); reverted byte-identical, the spec 4/4.
 - Code review pass: green on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`), one class at a time: `ProposalConfirm` run 229 (22/22), `OAuthAuthorizationServerUpdate` 230 (8/8), `SecretSpelling` 231 (2/2), and the shipped secret and value channels in runs 232-246 (`OAuthAuthorizationServerSecret`, `OAuthServerToken`, `SslSecret`, `WalletSecretUpdate`, `WalletSecretCreate`, `OAuthClientSecrets`, `OAuthRegisteredClientSecret`, `OAuthResourceServerSecret`, `X509Import`, `UserSignIn`, `UserUpdate`, `AuditPurge`, `RoleUpdate`, `RoleCreate`, `RoleSave`: 119 tests, 0 failed). A probe of all 116 write tools' `ChannelSecretNames` read every declaration and opened each to exactly the declared secrets its tool sends. `npm run test:tools` 1,738/1,738, `oauth-server-editor` 4/4 against the batch c bundle (deployed `index.html` equal to the build's), `check-objectscript.py` and `lint-docs.sh` 0 problems, EXPERIENCE.md 993 lines.
 
+**DW-1870 (loop):**
+
+- Tier: `cd ui && npm run test:tools` (`line-endings.test.mjs`).
+- `mutation:` delete the `*.sh text eol=lf` line from `.gitattributes` → `npm run test:tools` 1,739/1,740, red on the checkout test alone, naming all 16 tracked `*.sh` (`eol: unspecified`); restored byte-identical (`git diff -- .gitattributes` shows only the added line), 1,740/1,740. Repeated on the review-patched test in a scratch clone: `every tracked *.sh checks out with LF line endings` red naming all 16 (`eol: unspecified, stored: lf, checkout: lf`); restored, 2/2.
+- `mutation:` in a scratch clone carrying the fix, stage a CRLF blob as `scripts/durable-init.sh` (`git update-index --cacheinfo`, working copy LF) → the checkout test red alone, naming `scripts/durable-init.sh (eol: lf, stored: crlf, checkout: lf)`; with the working copy CRLF and the stored copy LF → red naming `checkout: crlf`; each restored, 2/2. The scratch clone was deleted.
+- Fresh-clone evidence (`git clone --config core.autocrlf=true --no-local` of the worktree into the scratchpad, deleted afterwards): at `961d45c7`, without the rule, 16 of 16 `*.sh` carried CR and `bash scripts/durable-init.sh` stopped at line 17 (`set: -: invalid option`); after a throwaway commit of this `.gitattributes`, a second such clone had 0 of 16 with CR (`i/lf w/lf attr/text eol=lf`), `README.md` still CRLF as the control, and `durable-init.sh` ran to its own check (`/durable is not a directory`).
+
 **Batch e (loop):**
 
 - Classes: `ReadBackRoute`, `ProposalSpelling`, `ProposalConfirm`, `AccountPasswordWire`.
@@ -698,19 +735,14 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch c (security: DW-1663, DW-1450).** Batches e and d are untouched and stay unchecked.
+**DW-1870 (line endings of the shell scripts).** Batches e and d are untouched and stay unchecked.
 
-- **DW-1663:** `AddsPrivilegedCustomizationRole` judges each added role with `RoleGrantsAdministrativePrivilege` (`%All`, or an `%All` or `%Admin_*` resource in its closure). `RoleEscalates` counts a failed `GetRecursedRoleSet` or per-role read as privileged with an OK status; `RoleGrantsPrivilege` tells an absent role (883, grants nothing) from one it cannot read (an error). The form read answers `roles:[{name, privileged}]` (`MarkedRoles`); the store drops `isPrivilegedRole` and counts a missing mark as privileged, so the create default `%Manager` shows the privilege line.
-- **DW-1450:** a `secretArguments` name must be a top-level secret row of the screen's write tools, with one sentence in `Registry.cls` and `screen-mirror.mjs`; `fingerprintExcludes` keeps its sources. The confirm channel and a screen action's secret values open only to the declared secrets the tool itself sends (`Write.ChannelSecretNames`: its secret rows and `SECRETBODY` names).
-- **Files:** `Kernel/Proposal/Prohibited.cls` (the classifier), `Area/Security/OAuthAuthorizationServerRules.cls` (`MarkedRoles`), `Screen/Tool/OAuthAuthorizationServerCreate.cls` (model text), `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` (the rule and the credential sentence), `Screen/Tool/Write.cls` and `Screen/Tool/Registry.cls` (`ChannelSecretNames`), `Kernel/Proposal/Confirm.cls` and `Api/ScreenAction.cls` (the narrowed channel), `ui/src/app/areas/security/oauth-server-form.store.ts` (the mark), and tests: `Test/{OAuthAuthorizationServerUpdate,OAuthAuthorizationServerClients,ProposalConfirm,Descriptor,UserCreate,SecretSpelling,Proposal,ProposalScreen,ProhibitedFixture,SecretTool/Probe}.cls`, `ui/tools/screen-mirror.test.mjs`, `oauth-server-form.store.spec.ts`, `oauth-server-form.page.spec.ts`.
-- **Review:** 20 findings (medium 3, low 12, false 5). Patched: medium 1 (the unexercised role-read branch), low 4 (the `SecretSpelling` assertion, the credential sentence, a `Confirm.cls` comment, ledger ids in two comments). Deferred 1 (medium: the service `ClientSystems` name-only judge). Rejected, reasons in the batch c triage entry: the draft and card reading the whole list (theoretical), the password-unchanged assertion (the vendor refuses), the unpinned `ScreenAction` narrowing and its non-own secret routing (theoretical), the predicate-level unreadable leg (the spec's Red), the fixture and direct-call surfaces, and five false.
-- **Follow-up review:** not recommended (a follow-up pass that patched no high; patched high 0, medium 1, low 4).
-- **Verification on `ocupilot-b-ci`** (`OCUPILOT-LOAD:OK:errors=0` after the last edit):
-  - Batch c's classes before review: runs 208-216 green (`OAuthAuthorizationServerUpdate` 8/8, `Clients` 6/6, `Wire` 7/7, `Descriptor` 60/60, `ProposalConfirm` 21/21, `ConfirmRoute` 6/6, `UserCreate` 9/9, `UserCreateWire` 5/5, `UserUpdate` 23/23). After the patches: `OAuthAuthorizationServerUpdate` run 224 8/8, `SecretSpelling` 223 2/2, `Descriptor` 225 60/60, and the fixture's other users `Prohibited` 226 13/13 and `ProhibitedByEffect` 227 8/8.
-  - `npm run test:tools` 1,738/1,738 (after the patches); `npm run test:components` 1,968/1,968; `npm run build` passed its prebuild checks, initial total 2.31 MB, no generated file changed; `oauth-server-editor` 4/4 on the redeployed bundle (deployed `index.html` equal to the build's).
-  - Mutations: as recorded under Batch c's Verification. `check-objectscript.py` 0 problems; no non-ASCII byte added. The probe principal reads back removed.
-  - Three single-class runner calls (runs 223-225) went out in one message; their `%UnitTest_Result` times show them back to back, and the runner counted 0 overlaps.
-- **Residual risks:** the deferred service `ClientSystems` judge; `ui/src/app/core/proposal-view.ts:170` and `ui/tools/proposal-view.test.mjs:312` still describe the old name rule in comments (Epic 16's contended file); the Story 8.5 spec's AC7 mutation record is stale (lead).
+- **Change:** `.gitattributes` gains `*.sh text eol=lf` (the two existing lines kept, no renormalize; the index was already LF, `git ls-files --eol` read `i/lf` for all 16). The new `ui/tools/line-endings.test.mjs` lists every tracked `*.sh`, requires at least 10 including `scripts/durable-init.sh`, and requires for each that `git check-attr eol` answers `lf` and that `git ls-files --eol` shows LF in the stored copy and in this checkout, naming each offending file. It switches off the host's global and system attributes files.
+- **Files:** `.gitattributes` (the rule); `ui/tools/line-endings.test.mjs` (new; the roster test).
+- **Review:** 11 findings (medium 3, low 6, false 2). Patched: medium 1 (the test now reads the stored and checked-out copies, grouped with the clone-surface finding), low 3 (the header's `info/attributes` claim, the test title, the failure message). Deferred 2: an existing pre-rule Windows clone stays CRLF after a pull (medium), and `.githooks/pre-commit` is outside `*.sh` (low). Rejected: no Windows CI leg (low, new infrastructure), the `.cls` claim (false, measured in the ledger evidence), the missing Auto Run Result (false, written here).
+- **Follow-up review:** not recommended (patched high 0, medium 1, low 3).
+- **Verification:** `npm run test:tools` 1,740/1,740 after the handoff and again after the review patches; `lint-docs.sh` 0 issues; no non-ASCII byte in either changed file. Mutations and the fresh-clone evidence are under `DW-1870 (loop)`: 16 of 16 scripts with CR and `durable-init.sh` stopping at its `set` line before the rule, 0 of 16 after, `README.md` CRLF as the control. Every scratch clone was deleted. No IRIS call, container or throwaway was used.
+- **Residual risks:** the two deferred items; a pre-rule Windows clone needs its scripts checked out again (release-note line, the lead's call).
 
 Status: done
 Blocking condition: none
