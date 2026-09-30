@@ -582,4 +582,4 @@
 2026-09-30T12:49:53Z	Story 16.11	ci_resolved	story=16.11(implement) run=36709804840 result=success head=8b5ee360 resolved_at=committed
 2026-09-30T12:49:53Z	Story 16.11	committed	sha=7bf7994e build_sha=8b5ee360 submodules= ci=pending run=36717279286 amendments=ARCHITECTURE-SPINE.md:AD-5,AD-8,AD-15,AD-53(Story_16.11);spec_DW-1638_sentences(tier1);EXPERIENCE.md_in_place(993) footprint_extensions=src/OcuPilot/Kernel/Proposal/Confirm.cls,src/OcuPilot/Screen/Tool/Write.cls(ConfirmProblem_hook),ui/src/app/shell/data-table.ts,ui/src/styles/_components.scss(add-only),ui/tools/strings.test.mjs,Test/Descriptor.cls,Test/ReadBanner/Stopped.cls,Test/ToolEmit.cls
 2026-09-30T12:55:10Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(spine_16.11_AD-5/8/15/53) model=claude-opus-5-5 bytes=15249
-2026-09-30T12:55:10Z	Story 16.12	stage_spawned	stage=plan spawn_at=2026-09-30T12:55:10Z model=opus agent_name=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client-plan-1 cycle_iteration=1
+2026-09-30T12:55:10Z	Story 16.12	stage_spawned	stage=plan spawn_at=2026-09-30T12:55:10Z model=opus agent_name=16-12-remove-locks-plan-1 cycle_iteration=1
