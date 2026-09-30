@@ -8342,6 +8342,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
 - 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
+- 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
