@@ -573,6 +573,54 @@ ClassMethod SecretBodyNames() As %List
     Quit tNames
 }
 
+/// <p>The top-level <code>secret</code> literal rows of this tool's own
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> entry, as a <class>%List</class> of names: the
+/// secrets its field list classifies (AD-3), which <method>ChannelSecretNames</method> opens only
+/// where this tool's <method>SecretArguments</method> also declares them. Empty for a tool with no
+/// entry, and when the entry cannot be read.</p>
+ClassMethod SecretFieldNames() As %List
+{
+    Set tNames = ""
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#TOOLFIELDSCLASS, "Tools", , .tOpenSC)
+        If '$IsObject(tXData) Quit
+        Do tXData.Data.Rewind()
+        Set tTools = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+        Set tXData = ""
+        Set tEntry = ""
+        If $IsObject(tTools) Set tEntry = tTools.%Get(..#TOOLNAME)
+        If '$IsObject(tEntry) || (tEntry.%GetTypeOf("fields") '= "array") Quit
+        Set tIterator = tEntry.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            If '$IsObject(tField) Continue
+            If (tField.%Get("class") '= "secret") || (tField.%Get("shape") '= "literal") Continue
+            Set tPath = tField.%Get("path")
+            If (tPath = "") || (tPath [ ".") || (tPath [ "[") Continue
+            If '$ListFind(tNames, tPath) Set tNames = tNames _ $ListBuild(tPath)
+        }
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
+}
+
+/// <p>The names a confirm, or a screen action's secret value, may carry for <b>this</b> tool (AD-6,
+/// AD-56): the descriptor's declared secrets (<method>SecretArguments</method>) that this tool itself
+/// sends as a secret, one of its <method>SecretFieldNames</method> or its
+/// <method>SecretBodyNames</method>. A secret another tool of the screen sends is not open to this
+/// one. <var>pDeclared</var> is <method>SecretArguments</method>'s.</p>
+ClassMethod ChannelSecretNames(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set tDeclared = ..SecretArguments(pDescriptor, .pDeclared)
+    Set tOwn = ..SecretFieldNames() _ ..SecretBodyNames()
+    Set tNames = ""
+    For tI = 1:1:$ListLength(tDeclared) {
+        Set tName = $List(tDeclared, tI)
+        If $ListFind(tOwn, tName) && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
 /// <p>The value names <parameter>SCREENVALUES</parameter> declares for screen action
 /// <var>pActionId</var>, as a <class>%List</class>; <code>""</code> for an action that admits
 /// none.</p>

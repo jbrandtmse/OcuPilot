@@ -228,6 +228,16 @@ export interface FieldRule {
   readonly reason: string;
 }
 
+/**
+ * One role the form offers, as the form read names it: `privileged` is the instance's own answer to
+ * whether adding it grants `%All` or an administrative privilege, the one the agent's proposal is
+ * marked destructive by (AD-10).
+ */
+export interface RoleOption {
+  readonly name: string;
+  readonly privileged: boolean;
+}
+
 /** One client registered with the server, as the form read names it. */
 export interface RegisteredClient {
   readonly clientId: string;
@@ -292,14 +302,19 @@ function stringsOf(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
 }
 
-function same(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+/** The form read's role entries: each `{name, privileged}` with a name; a mark that is not `false` counts as privileged. */
+function rolesOf(value: unknown): RoleOption[] {
+  const roles: RoleOption[] = [];
+  for (const entry of Array.isArray(value) ? value : []) {
+    const name = textAt(entry, 'name');
+    if (name === '' || roles.some((role) => role.name === name)) continue;
+    roles.push({ name, privileged: record(entry)?.['privileged'] !== false });
+  }
+  return roles;
 }
 
-/** Whether `role` is `%All` or an `%Admin_` role, compared without regard to case as IRIS resolves a role. */
-export function isPrivilegedRole(role: string): boolean {
-  const name = role.trim().toUpperCase();
-  return name === '%ALL' || name.startsWith('%ADMIN_');
+function same(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 /** An interval's wire value: its number when the text is a whole number, the text otherwise (the server refuses it). */
@@ -340,7 +355,7 @@ export class OAuthServerForm {
 
   private namespacesValue: readonly string[] = [];
 
-  private rolesValue: readonly string[] = [];
+  private rolesValue: readonly RoleOption[] = [];
 
   private sslValue: readonly string[] = [];
 
@@ -453,15 +468,19 @@ export class OAuthServerForm {
 
   /** The roles the form offers: the readable ones, with the stored and chosen ones kept. */
   roleChoices(): readonly string[] {
-    const choices = [...this.rolesValue];
+    const choices = this.rolesValue.map((role) => role.name);
     for (const role of [...this.opened.roles, ...this.buffer.roles]) if (!choices.includes(role)) choices.push(role);
     return choices;
   }
 
-  /** Whether the roles as edited add `%All` or an `%Admin_` role the stored configuration does not hold. */
+  /**
+   * Whether the roles as edited add one the stored configuration does not hold that the form read
+   * marks privileged. A role the read carries no mark for counts as privileged, so the line is shown
+   * rather than missed.
+   */
   addsPrivilegedRole(): boolean {
     const held = this.opened.roles.map((role) => role.toUpperCase());
-    return this.buffer.roles.some((role) => isPrivilegedRole(role) && !(this.modeValue === 'edit' && held.includes(role.toUpperCase())));
+    return this.buffer.roles.some((role) => this.privileged(role) && !(this.modeValue === 'edit' && held.includes(role.toUpperCase())));
   }
 
   sslConfigurations(): readonly string[] {
@@ -738,6 +757,12 @@ export class OAuthServerForm {
     return this.injector.get(ApiService);
   }
 
+  /** The form read's mark for `role`, compared without regard to case as IRIS resolves a role; `true` when it has none. */
+  private privileged(role: string): boolean {
+    const name = role.toUpperCase();
+    return this.rolesValue.find((option) => option.name.toUpperCase() === name)?.privileged ?? true;
+  }
+
   private change(field: string): void {
     if (this.violationList.some((entry) => entry.field === field)) {
       this.violationList = this.violationList.filter((entry) => entry.field !== field);
@@ -815,7 +840,7 @@ export class OAuthServerForm {
     this.rulesValue = rules;
     this.requiredValue = stringsOf(body?.['requiredFields']);
     this.namespacesValue = stringsOf(body?.['namespaces']);
-    this.rolesValue = stringsOf(body?.['roles']);
+    this.rolesValue = rolesOf(body?.['roles']);
     this.sslValue = stringsOf(body?.['sslConfigurations']);
     this.credentialsValue = stringsOf(body?.['credentials']);
     this.clientsHiddenValue = body?.['clientsHidden'] === true;

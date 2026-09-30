@@ -83,7 +83,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     For tField = "SessionInterval", "ClientSecretInterval" Do tTexts.%Set(tField, "A whole number of seconds, at least 0; 0 turns it off.", "string")
     Do tTexts.%Set("ReturnRefreshToken", "When a refresh token is returned: an empty string for only as OpenID Connect requires, a for always, c for a confidential client, f when the offline_access scope is requested.", "string")
     Do tTexts.%Set("DefaultScope", "The scopes a request that names none receives, separated by spaces, or an empty string.", "string")
-    Do tTexts.%Set("CustomizationRoles", "The roles the customization code runs with, at least one, each a role this instance has. It replaces the whole list. Adding %All or an %Admin_ role is confirmed as a destructive change.", "string")
+    Do tTexts.%Set("CustomizationRoles", "The roles the customization code runs with, at least one, each a role this instance has. It replaces the whole list. Adding a role that is %All, or that holds %All or an %Admin_ resource as %Manager does, is confirmed as a destructive change.", "string")
     Do tTexts.%Set("CustomizationNamespace", "The namespace the customization classes are compiled in.", "string")
     For tField = "AuthenticateClass", "SessionClass", "ValidateUserClass", "GenerateTokenClass", "RevokeTokenClass" Do tTexts.%Set(tField, "A class compiled in the customization namespace, at most 256 characters.", "string")
     Do tTexts.%Set("ServerCredentials", "The X.509 credential whose private key signs the server's tokens, or an empty string for keys this instance generates.", "string")
@@ -179,9 +179,10 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
     Do $ClassMethod(..#RULES, "Expand", pPayload)
 }
 
-/// <p>The kernel-owned consequence of this payload: the customization privilege effect when the roles
-/// it sets include <code>%All</code> or an <code>%Admin_</code> role, and <code>""</code>
-/// otherwise.</p>
+/// <p>The kernel-owned consequence of this payload: the customization privilege effect when a role it
+/// adds grants <code>%All</code> or an administrative privilege
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.AddsPrivilegedCustomizationRole</method>), and
+/// <code>""</code> otherwise.</p>
 ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Prohibited).ServerConsequence("", pPrivileged, pEffect)

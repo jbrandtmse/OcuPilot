@@ -199,14 +199,18 @@ Method TestAnExcludedPathIsOutsideTheFingerprint()
     Do $$$AssertNotEquals(tListFirst, tListWhole, "so the [] exclusion is load-bearing, not accepted and ignored")
 }
 
-/// <p>DW-1205: the fixture's own declaration is one the shipped validator accepts, so the exclusion
-/// these tests rely on is declarable rather than merely unvalidated.</p>
+/// <p>DW-1205: the fixture's own exclusion is one the shipped validator accepts, so the exclusion
+/// these tests rely on is declarable rather than merely unvalidated. Its declared secret is not: no
+/// write tool under its identifier sends <code>Password</code> as a secret (AD-6), which is harmless
+/// because the class is never registered.</p>
 /// <p>Mutation: refuse a read-declared path in
 /// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> -- this goes red.</p>
-Method TestTheFixturesOwnConfirmChannelIsSound()
+Method TestTheFixturesOwnExclusionIsDeclarable()
 {
     Set tSC = $ClassMethod(..#SCREEN, "DeclarationJson", .tDeclaration)
     Do $$$AssertStatusOK(tSC, "the fixture declaration parses")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "secretArguments names 'Password', which is not a top-level secret field of this screen's write tools (AD-6)", "its declared secret is refused, since no tool under its identifier sends it")
+    Do tDeclaration.%Remove("secretArguments")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "", "and its declared exclusion is one the validator accepts")
 }
 

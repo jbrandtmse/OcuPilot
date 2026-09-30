@@ -253,8 +253,9 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         }
         Set tToolClass = tTool.%Get("class")
 
-        ; The declared secret-typed names, re-read from the tool rather than carried in from the
-        ; channel check, so the merge below and that check read one declaration.
+        ; The descriptor's whole secret declaration, re-read from the tool: the merge below sets only
+        ; the keys the channel check admitted (this tool's own secrets), and the ledger's field list
+        ; leaves out every declared name.
         Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(tTool, .tSecretsDeclared)
         If 'tSecretsDeclared {
             Set tSC = ..Internal("the secret arguments of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
@@ -505,10 +506,13 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
 }
 
 /// <p>Whether <var>pBody</var> carries a key the confirm channel is not open to (AD-6), in
-/// <var>pProblem</var>, with the tool's declared secret-typed names in <var>pNames</var>.</p>
-/// <p>The channel is open to exactly the descriptor's <code>secretArguments</code> for
-/// <var>pToolName</var>. Every other key is a problem -- including the identifying key, which names
-/// the target and is the row's, not the request's. An empty body is always sound.</p>
+/// <var>pProblem</var>, with the names it is open to in <var>pNames</var>.</p>
+/// <p>The channel is open to exactly the descriptor's <code>secretArguments</code> that
+/// <var>pToolName</var> itself sends as a secret
+/// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>): AD-6's "for that tool". Every
+/// other key is a problem -- a secret only another tool of the screen sends, and the identifying
+/// key, which names the target and is the row's, not the request's. An empty body is sound once the
+/// tool's channel can be read.</p>
 ClassMethod ChannelProblem(pToolName As %String, pBody As %DynamicObject, Output pNames As %List, Output pProblem As %Boolean) As %Status
 {
     Set pNames = ""
@@ -519,7 +523,7 @@ ClassMethod ChannelProblem(pToolName As %String, pBody As %DynamicObject, Output
         Set pProblem = 1
         Quit $$$OK
     }
-    Set pNames = $ClassMethod(..ToolRegistryClass(), "SecretArguments", tTool, .tDeclared)
+    Set pNames = $ClassMethod(..ToolRegistryClass(), "ChannelSecretNames", tTool, .tDeclared)
     If 'tDeclared {
         Set pProblem = 1
         Quit $$$OK

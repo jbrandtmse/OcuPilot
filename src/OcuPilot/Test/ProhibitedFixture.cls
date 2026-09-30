@@ -1,15 +1,17 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with six replaced
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with seven replaced
 /// seams: the live read goes to <class>OcuPilot.Test.ProposalFixture</class>'s armed object instead
-/// of the admin port, so the <b>shipped</b> predicates run against a target a test composed; and
-/// the five census seams below can be armed.</p>
-/// <p><b>Which of the six replaces a body matters, because a seam that replaces a safety
+/// of the admin port, so the <b>shipped</b> predicates run against a target a test composed; the
+/// five census seams below can be armed; and so can the role read.</p>
+/// <p><b>Which of the seven replaces a body matters, because a seam that replaces a safety
 /// predicate makes every test through it vacuous.</b> <method>PortClass</method> redirects a read
 /// and replaces no predicate. <method>LastAllHolder</method> and
 /// <method>DeletingLeavesNoAllHolder</method> and <method>ChangingLeavesNoAllHolder</method> armed
 /// each replace a census outright. <method>HoldsAll</method> and <method>DirectRoles</method> armed
-/// replace only the census's per-account input, so the census body still runs in full. Everything else -- the covered-type refusal, the predicate order, the
-/// rendered comparison, the diff scoping, the role and resource escalation reads and the
-/// serving-path read -- is the shipped code.</p>
+/// replace only the census's per-account input, so the census body still runs in full.
+/// <method>RoleGrantsPrivilege</method> armed replaces only the escalation walk's per-role read, so
+/// the walk still runs in full. Everything else -- the covered-type refusal, the predicate order, the
+/// rendered comparison, the diff scoping, the role and resource escalation reads when disarmed and
+/// the serving-path read -- is the shipped code.</p>
 /// <p>It also holds the builders the two prohibited suites share: one web application as the
 /// vendor's <code>GET</code> shapes it, one stored diff, one target reference, the digest the
 /// shipped confirm re-computes for a target, and one direct question to the set. They are here
@@ -109,6 +111,36 @@ ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
         Quit $$$OK
     }
     Quit ##super(pUser, .pHolds)
+}
+
+/// <p>The shipped role read, except that <method>ArmRoleReadFault</method> can make it answer an
+/// error status for every role -- so the escalation walk's handling of a read it cannot get is driven
+/// by a caller who may read roles. Disarmed, the shipped <code>%SYS</code> read answers.</p>
+ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    If $Get(^||OcuPilotProhibitedFixture("rolereadfault")) {
+        Set pGrants = 0
+        Quit $$$ERROR($$$GeneralError, "the role read is armed to fail")
+    }
+    Quit ##super(pRole, .pGrants)
+}
+
+/// <p>Arm <method>RoleGrantsPrivilege</method> to fail every read, or with <var>pOn</var> 0 disarm
+/// it.</p>
+ClassMethod ArmRoleReadFault(pOn As %Boolean = 0)
+{
+    If pOn {
+        Set ^||OcuPilotProhibitedFixture("rolereadfault") = 1
+        Quit
+    }
+    Kill ^||OcuPilotProhibitedFixture("rolereadfault")
+}
+
+/// <p><method>RoleGrantsPrivilege</method>'s answer for <var>pRole</var> in the calling process:
+/// the shipped read when disarmed.</p>
+ClassMethod RoleRead(pRole As %String, Output pGrants As %Boolean) As %Status
+{
+    Quit ..RoleGrantsPrivilege(pRole, .pGrants)
 }
 
 /// <p>One user account as the vendor's own <code>Security.User</code> <code>GET</code> shapes it,

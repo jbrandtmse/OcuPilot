@@ -59,7 +59,12 @@ ClassMethod Id() As %String
 }
 
 /// <p>The port's read names each registered client as <code>{ClientId, Name}</code>, ordered by name,
-/// and says the list is not hidden; the form read answers the same list.</p>
+/// and says the list is not hidden; the form read answers the same list, and marks each role it
+/// offers with the classifier's own answer (AD-10): <code>%All</code> and <code>%Manager</code>
+/// privileged, <code>%Developer</code> not.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.HandleForm</method>
+/// answers the role names without <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.MarkedRoles</method>
+/// -- the mark assertion goes red.</p>
 Method TestTheReadNamesTheRegisteredClients()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedClient", $ClassMethod(..#PROBE, "Name", "B"), .tIdB), "a client is registered")
@@ -70,6 +75,16 @@ Method TestTheReadNamesTheRegisteredClients()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/oauth/authorization-server/form", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the form read answers")
     Do $$$AssertTrue((tRaw [ tExpected) && (tRaw [ """clientsHidden"":false"), "with the same clients")
+    Kill tMarks
+    Try {
+        Set tIterator = ##class(%DynamicObject).%FromJSON(tRaw).%Get("roles").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRole) {
+            If $IsObject(tRole) && (tRole.%GetTypeOf("privileged") = "boolean") Set tMarks(tRole.%Get("name")) = tRole.%Get("privileged")
+        }
+    } Catch {
+        Kill tMarks
+    }
+    Do $$$AssertEquals($Get(tMarks("%All")) _ " " _ $Get(tMarks("%Manager")) _ " " _ $Get(tMarks("%Developer")), "1 1 0", "and marks each role it offers as the classifier does")
 }
 
 /// <p>AC6: with a client registered, a proposal of the edit, the password, the rotation and the delete

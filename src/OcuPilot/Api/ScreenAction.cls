@@ -448,8 +448,11 @@ ClassMethod Body(pToolClass As %String, pFresh As %DynamicObject, pArgs As %Dyna
 /// <var>pValues</var> and the declared secrets into <var>pSecrets</var> (AD-56 (ii)).</p>
 /// <p>Absent is sound only for an action that declares no value. Otherwise it is an object of
 /// strings whose keys are exactly the names the action declares, each non-empty. A name the
-/// descriptor declares secret goes to <var>pSecrets</var> and nowhere else. No problem sentence
-/// names a value, so a refused request never echoes one.</p>
+/// descriptor declares secret and <var>pToolClass</var> itself sends as a secret
+/// (<method>OcuPilot.Screen.Tool.Registry.ChannelSecretNames</method>, AD-6) goes to
+/// <var>pSecrets</var> and nowhere else; one it declares secret that the tool does not send is
+/// refused, as the confirm channel refuses it, and so is every value when either list cannot be
+/// read. No problem sentence names a value, so a refused request never echoes one.</p>
 ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass As %String, pActionId As %String, Output pValues As %DynamicObject, Output pSecrets As %DynamicObject) As %String [ Private ]
 {
     Set pValues = {}
@@ -461,20 +464,32 @@ ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass 
         Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
     }
     If tType '= "object" Quit "'values' must be an object"
-    Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared)
+    Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).ChannelSecretNames(pTool, .tSecretsDeclared)
+    Set tDeclaredSecrets = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tDeclaredRead)
+    If 'tSecretsDeclared || 'tDeclaredRead Quit "'values' cannot be accepted for this action, whose secret declaration could not be read"
     Set tGiven = pBody.%Get("values")
     Set tSeen = ""
+    Set tRefused = ""
     Set tIterator = tGiven.%GetIterator()
     While tIterator.%GetNext(.tName, .tValue) {
         If '$ListFind(tDeclared, tName) Quit
         If tGiven.%GetTypeOf(tName) '= "string" Quit
         If tValue = "" Quit
+        If '$ListFind(tSecretNames, tName) && $ListFind(tDeclaredSecrets, tName) {
+            Set tRefused = tName
+            Quit
+        }
         Set tSeen = tSeen _ $ListBuild(tName)
         If $ListFind(tSecretNames, tName) {
             Do pSecrets.%Set(tName, tValue, "string")
         } Else {
             Do pValues.%Set(tName, tValue, "string")
         }
+    }
+    If tRefused '= "" {
+        Set pValues = {}
+        Set pSecrets = {}
+        Quit "'values' names '" _ tRefused _ "', a secret this action's tool does not send"
     }
     If $ListLength(tSeen) '= tGiven.%Size() {
         Set pValues = {}

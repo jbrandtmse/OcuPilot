@@ -4422,6 +4422,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:49Z status=routed owner=burndown by=spec_gate note=per-poll bound on Step.GuardedRows needs a poll-contract call (tool-card text vs incremental poll)
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+47e15e2b: tool step text cut at 4,096, model result whole; AD-33 amended; CI 36727128251
 
 ### DW-1211: The acceptance criterion that no path from a write tool's View reaches the claim gate is checked by a five-filename source scan, not by a tree rule
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py
@@ -5319,6 +5320,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:50Z status=routed owner=burndown by=spec_gate note=needs an AD-39 amendment on how a PasswordValidationRoutine's text reaches the caller, plus a system-wide fixture
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: 422 with validator's 5001/845/958 text, quote fallback; AD-39 amended; CI 36727128251
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
@@ -6029,6 +6031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=reproduce where Globals and Routines databases differ; grant both resources and amend AD-21's wording
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: floor reads routines+globals DBs; split-namespace leg 403->200; AD-21 amended
 
 ### DW-1441: OcuPilot.Test.UserUpdate is about 700 lines against task 8's under-500 guidance and the project testing rule's roughly-500
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: low | fix-risk: med | footprint: in-story
@@ -6093,6 +6096,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:53Z status=routed owner=burndown by=spec_gate note=needs a PermittedFields-aware settable set in Registry and screen-mirror; reachable only by a descriptor author
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=68f76262+2b3e4ffd: secret must be the tool's own secret row, confirm+action narrowed; CI 36756449702
 
 ### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
@@ -7371,6 +7375,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=re-read live proposals slowly after the turn ends so a revoked privilege shows; Confirm refuses today
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T15:16:24Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3658bbbc+323948ad: 15 s re-read after the turn ends; proposal-privilege (c) green; CI 36727128251
 
 ### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
 - source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
@@ -7412,6 +7417,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=flag a customization role by its privileges (a role read), not its name; high fix-risk, post-release
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=68f76262+2b3e4ffd: roles judged by grants, read failure privileged; CI 36756449702; merged 8baea9cd
 
 ### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
 - source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -7909,6 +7915,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: container log [ERROR] Status of instance IRIS is running; messages.log ends at Stopping User Jobs; next start recovered cleanly (0 blocks pending); pre-existing in 1.0.1; cause not investigated (inference: the default stop timeout is shorter than IRIS needs)
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-09-30T17:16:05Z occurrence=1.0.4 upgrade check (orchestrator) 2026-09-30 note=docker compose restart iris logged '[ERROR] Status of instance IRIS is running' at the stop signal, the next start logged 'Previous system shutdown was abnormal' at severity 2 and Monitor.State went 0 to 1; nothing lost; same as 1.0.3's check
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
@@ -8290,6 +8297,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: attempt 2 green on the same head; the same spec passed on 01e36ec7 (run 36564571344); the walk evaluates one long function per screen (inference: a slow runner exceeds puppeteer's default protocolTimeout)
 - 2026-09-29T13:27:46Z status=routed owner=range-end-cleanup by=orchestrator note=raise protocolTimeout for the walk's browser or split the per-screen evaluation
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
+- 2026-09-30T18:09:10Z occurrence=23-2-the-range-end-cleanup-part-2
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8333,6 +8341,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:47Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
 - 2026-09-30T11:05:15Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=840ab37f+9cc37242 agent leg held (r98 red/r99 green; CI 36702722757); screen/admin legs keep resume-pause gap
+- 2026-09-30T17:29:36Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=lead note=reopened: staging 36741141564 shard 2/3 agent leg OnAfterOneTest found the held compact running; seed left
+- 2026-09-30T20:28:36Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=398c0190: teardown waits 60 s, unopenable row not ended; stall leg r252 red/r255-258 green; CI 36768363028
 
 ### DW-1830: BackgroundTasksLive.cls is 537 lines after 18.3 rework 2's bounded retry, over the ~500-line test-class guideline
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: low | footprint: in-story
@@ -8513,6 +8523,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T02:01:26Z status=routed owner=16-25-the-external-language-server-editor by=lead note=orchestrator: wait for this Search's own answer, pinned under the throttled condition, before 16.25's first code push
 - 2026-09-30T02:13:03Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=AC6 waits for this Search's own answer (showsAnswer, shared with search()); the timing leg now reddens when the answer lands late
 
+### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
+- 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
+
+### DW-1865: proposal-demo AC1 reads the read tool card's status with a bare evaluate once the proposal card shows, so a card still reading running at that instant turns it red (CI flake)
+- source: cycle-log-epic-23.md (CI run 36727128251) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36727128251 attempt 1 browser shard 2/3: proposal-demo.browser-spec.mjs:355 read running; same product code green in run 36720188412 and 3/3 locally on ocupilot-b-ci
+- 2026-09-30T14:50:03Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: wait for the status word done before reading; next standing cleanup (23.3)
 ### DW-1861: The task create and the 9.8 edit judge the task type's privilege (TaskRules.Permitted) only at the mint, never at Confirm, so a caller who lost it since the mint still confirms (AD-6, AD-40)
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
@@ -8530,10 +8549,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md:603 names Import as screen-level but not Suspend Task Manager, and the Privilege Gating rows carry no banner-action entry; Epic 23 has EXPERIENCE.md edited uncommitted, so no in-place edit was made
 - 2026-09-30T12:44:42Z status=wontfix-accepted owner=16-11-start-suspend-and-resume-the-task-manager by=cr note=reopen_if=the command-bar or Privilege Gating row is next edited and still omits Suspend Task Manager
 
+### DW-1869: A service's ClientSystems role grant is judged by the role's name alone, so adding %Manager or any role whose closure holds an %Admin_ resource to an allowed address is not minted destructive
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.AddressGrantsPrivilege (Prohibited.cls:4021) still calls name-only IsPrivilegedRole; batch c (68f76262) replaced it with RoleGrantsAdministrativePrivilege for customization roles only
+- 2026-09-30T16:42:53Z status=routed owner=burndown by=harvest note=Same defect as DW-1663 in the service arm; reuse RoleGrantsAdministrativePrivilege. Prohibited.cls contended with Epic 16
+- 2026-09-30T17:25:28Z occurrence=23-2-the-range-end-cleanup-part-2
+
+### DW-1873: web-sessions AC1's structural check can catch a rail tooltip revealed mid-capture (app-rail span.ocu-rail-tooltip 406px past its slot at 720px), a CI flake unrelated to the screen under test
+- source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 36746183320 browser shard 1/3 on 68f76262 (batch c changed no shell or rail code): web-sessions.browser-spec.mjs:234 overflow on the rail tooltip; the same spec was green on the prior two runs
+- 2026-09-30T17:29:36Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: move the pointer off the rail or exclude a hover-revealed tooltip before the structural capture (23.3)
 ### DW-1868: An owner-scope lock removal lists once and then sends its DELETEs, so a lock its owner renumbers during the sequence is sent under a stale DeleteID
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
 - 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured
+- 2026-09-30T19:41:42Z status=routed owner=16-13-the-service-editor by=merge_gate note=decided (orchestrator 2026-09-30): re-list before each delete (LockPort, pinned by LockRecordPort) - a stale listed id could reach a different lock; Epic 16 fixes it as its own commit right after the 1.0.4 cut, before 16.13's implement
 ### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
@@ -8553,12 +8583,35 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
 - evidence: reproduced on Linux with git -c core.autocrlf=true clone: durable-init exit 2; with only the .sh files LF the CRLF .cls files compile and install (healthy in 132 s, STARTPATH-OK); '*.sh text eol=lf' in .gitattributes gives 12/12 LF under autocrlf=true; the index is already LF
 - 2026-09-30T17:02:04Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=owner note=owner-approved for 1.0.4, before the 14:00 cut: add '*.sh text eol=lf' to .gitattributes and a test that pins every tracked *.sh to eol=lf (git check-attr); its own commit, ahead of 23.2's remaining batches; outside 23.2's cap of 12 by owner instruction
+- 2026-09-30T19:08:35Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=731bf63e+5094abee: *.sh and .githooks/** eol=lf, line-endings test; CI 36756449702; merged 8baea9cd
 
 ### DW-1871: With no agent definition, every full load of /ocupilot/ (sign-in, reload, new tab) redirects to /agent/definitions/edit, and Cancel lands on the empty Definitions list rather than Home
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: medium | fix-risk: low | footprint: the first-run redirect, its Cancel target, and the per-user record of the first sign-in
 - evidence: every full load with no definition opens the key form; approved: auto-open only on the first sign-in, later loads land on Home with the panel's 'No agent definition is enabled' note as the pointer; Cancel on the auto-opened form goes to Home; README:196 already says 'The first time an administrator signs in'
 - 2026-09-30T17:02:04Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=owner note=owner-approved for 1.0.4 if it can start before 11:50 PDT, otherwise 1.0.5: Epic 16 takes it right after 16.12's boundary, before 16.13; its own commit
+- 2026-09-30T19:41:42Z status=resolved-by:16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=6c893da1 (run 36758817996 green; staging 8320a038 run 36762284179 green): the key form auto-opens only on the first sign-in, Cancel goes to Home, recorded per user in account preferences; edge accepted by=merge_gate: a first sign-in with a definition enabled shows the form once later, when none is
 
+### DW-1872: GET /screens/osmgmt.databasevolumes/read without its dir parameter reaches the admin API, which answers 400, and OcuPilot logs it at severity 2, raising the instance monitor state
+- source: 1.0.4 upgrade check (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: the volumes read's argument check
+- evidence: on ocupilot-c-ci after the 1.0.3 to 1.0.4 upgrade: a hand-made request without dir took Monitor.State to 2; the details and activity reads refuse a missing parameter with 400 before the admin call and log nothing; the UI always sends dir
+- 2026-09-30T17:16:05Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p4: refuse a missing dir before the admin call, as the sibling reads do
+
+### DW-1875: A Windows clone made with core.autocrlf=true before the *.sh eol=lf rule keeps its CRLF scripts after pulling the rule (git status reads clean), so compose up still fails until its scripts are checked out again
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: DW-1870 verification-gap layer, scratch repo: a pre-rule clone fast-forwarded onto 731bf63e kept 16/16 scripts with CR; deleting and re-checking out the scripts gave 0/16
+- 2026-09-30T17:49:33Z status=decision-pending owner=burndown by=harvest note=human=decide whether the 1.0.4 release notes or README tell existing Windows clones to re-check out scripts/
+- 2026-09-30T18:10:26Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=notes+README; verified: git checkout HEAD -- scripts .githooks _bmad/scripts (17/17 CR to 0; not git rm --cached)
+
+### DW-1876: The background seed writes about 1.2 GB per fill, and on a CI runner the instance suspended updates for 30 s (low WIJ space) while those fills ran, stalling whatever else the shard runs
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Run 36741141564 attempt 1 shard 2/3 messages.log: WIJ expansions during seed fills, updates suspended 16:12:17 to 16:12:47; cause is (inference)
+- 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=a CI shard's messages.log shows updates suspended for low WIJ space again, or a class fails during it
+- 2026-09-30T19:30:49Z occurrence=23-2-the-range-end-cleanup-part-2
+
+### DW-1877: Whether BackgroundSeed's 60 s teardown wait (ENDSECONDS) covers every write stall a CI runner produces is unverified: the committed stand-in is a stopped job, not a write suspension
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: DW-1829 follow-up 398c0190: TestTheTeardownOutlastsAStalledCompact stops the job for 35 s; CI's measured stall was 30 s
+- 2026-09-30T19:08:35Z status=wontfix-accepted owner=23-2-the-range-end-cleanup-part-2 by=harvest note=reopen_if=BackgroundTasksLive teardown fails on CI again with 398c0190 in place (seed left, task over seed)
 ### DW-1874: AuditingUpdate pins the prohibited-code count as a literal repeating Test/Prohibited's, so a story adding a prohibited code must bump both
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AuditingUpdate.cls:505 and Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()); 16.12 bumped only the second and CI run 36745076438 went red

@@ -5,8 +5,8 @@
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
  * 1. **Create** (AC1, AC10): the tab's Create opens the editor in five tabs on an instance with no
- *    configuration, every tab passes DW-1337, and Save replaces the route with the issuer's own and
- *    stores what was entered.
+ *    configuration, every tab passes DW-1337, the default %Manager's privilege line shows until it is
+ *    unticked, and Save replaces the route with the issuer's own and stores what was entered.
  * 2. **Edit and password** (AC2, AC4, AC9): the tab's name cell opens the editor with the key password
  *    masked and empty; a scope removed and one added, a grant type and an interval changed, and a
  *    typed password reach the instance, and every other member reads as before.
@@ -233,7 +233,8 @@ after(async () => {
 });
 
 // AC1, AC10. Mutation (Rule 19), over a rebuilt and redeployed bundle: give `.ocu-oauth-server-scopes`
-// a 1400px min-inline-size -> the structural assertion goes red.
+// a 1400px min-inline-size -> the structural assertion goes red. Have the form read answer the role
+// names without their marks -> the privilege line stays once %Manager is unticked, and this goes red.
 test('AC1, AC10: Create opens the editor in five tabs, each passes DW-1337, and Save stores what was entered', async () => {
   assert.equal(stored(), null, 'the instance holds no configuration, so this is a create');
   const { context, page } = await signedInAt(browser, config, TAB_URL, VIEWPORTS.wide);
@@ -264,7 +265,17 @@ test('AC1, AC10: Create opens the editor in five tabs, each passes DW-1337, and 
     await openTab(page, 'scopes');
     await page.click(`#${ID}-add-scope`);
     await fill(page, `${ID}-SupportedScopes-2`, 'profile');
+    // AD-10: the default %Manager holds %Admin_ resources, so the form read marks it and the line
+    // shows; unticking it leaves %DB_IRISSYS alone, and the line goes.
+    await openTabOf(page, `${ID}-CustomizationRoles--Manager`);
+    await page.waitForFunction(
+      (id, text) => document.querySelector(`#${id}`)?.textContent?.trim() === text,
+      { timeout: config.navigationTimeoutMs },
+      `${ID}-CustomizationRoles-privilege`,
+      STRINGS.oauthAuthServerCustomizationEffect
+    );
     await check(page, `${ID}-CustomizationRoles--Manager`, false);
+    await page.waitForFunction((id) => document.querySelector(`#${id}`) === null, { timeout: config.navigationTimeoutMs }, `${ID}-CustomizationRoles-privilege`);
     await saveAndSettle(page, config);
     // The save creates /oauth2 where none was (OcuPilot.Test.OAuthProbe); the delete and the removal leave it.
     oauth2Found = oauth2();
