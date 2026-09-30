@@ -280,3 +280,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-30T00:50:26Z	Epic 18	spine_updated	ad=AD-21(owner_rule_names_grow/defragment_past_threshold) reason=implement_measurement by=runner story=18-4-the-deferred-disk-operations lint=ok
 2026-09-30T00:50:26Z	Story 18.4	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-09-30T00:50:26Z	Story 18.4	stage_spawned	stage=qa spawn_at=2026-09-30T00:50:26Z model=sonnet agent_name=18-4-disk-operations-qa-1 cycle_iteration=2
+2026-09-30T00:54:06Z	Story 18.4	qa_complete	spawn_at=2026-09-30T00:50:26Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=gap_audit_none(AC1-AC12,21_matrix_rows,R1-R13,rework1_items)
+2026-09-30T00:54:06Z	Story 18.4	stage_spawned	stage=code-review spawn_at=2026-09-30T00:54:06Z model=opus agent_name=18-4-disk-operations-code-review-1 cycle_iteration=2 review_tier=full-opus scope=5b1bde51..0ba6ff66+99660232..4c50e345(merge_d9f84f52_excluded)
