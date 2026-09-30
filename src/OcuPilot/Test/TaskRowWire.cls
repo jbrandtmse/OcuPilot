@@ -3,12 +3,14 @@
 /// the edit do. A principal holding the screen's two pairs and not the probe purge task's
 /// <code>%Ens_PurgeSchedule:USE</code> is refused each on the route and at the agent's mint with
 /// the published sentence, and the task is unchanged; a holder of that pair suspends, resumes and
-/// deletes it, and a holder who loses it after the mint is refused at the confirm.</p>
+/// deletes it, and a holder who loses it after the mint is refused at the confirm of a suspend, a
+/// create or an edit, while one who keeps it confirms the create and the edit.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>TASKVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes two users, two roles and a probe
-/// <code>Ens.Util.Tasks.Purge</code> task in <code>HSCUSTOM</code>, scheduled from tomorrow and never
-/// run (<class>OcuPilot.Test.TaskEditProbe</class>). Every probe is removed by exact name.</p>
+/// <code>Ens.Util.Tasks.Purge</code> task in <code>HSCUSTOM</code>, scheduled from tomorrow or on
+/// demand and never run (<class>OcuPilot.Test.TaskEditProbe</class>). Every probe is removed by exact
+/// name.</p>
 Class OcuPilot.Test.TaskRowWire Extends %UnitTest.TestCase
 {
 
@@ -197,6 +199,102 @@ Method TestAConfirmRefusesAHolderWhoLostTheTypesPair()
     Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tBody = $Get(tRaw) }
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..Problem(tBody), "400 TOOL.ARGUMENTS " _ ..#REFUSAL, "the confirm is refused at the write with the published sentence: " _ ..Shown(tBody))
     Do $$$AssertEquals(..Suspended(tId), "false", "and the task is not suspended")
+}
+
+/// <p>AC8 at the confirm of a create (AD-6, AD-40): the holder's create of the probe purge task,
+/// confirmed over the wire while it holds the purge type's pair, creates it; a second create, minted
+/// before that pair is revoked from its role, is refused at the confirm 400 with the published
+/// sentence, and no task is created.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.TaskCreate.ConfirmProblem</method> -- the
+/// second confirm is sent, the vendor refuses it and the route answers 500 <code>INTERNAL</code>, and
+/// this goes red.</p>
+Method TestAConfirmRefusesACreateOnceTheTypesPairIsLost()
+{
+    Set tArgs = {"Name": (..#PROBE), "TaskClass": "Ens.Util.Tasks.Purge", "NameSpace": "HSCUSTOM", "Settings": {"TypesToPurge": "events"}, "TimePeriod": "On Demand"}
+    Set tSC = ..HolderMint("OcuPilot.Screen.Tool.TaskCreate", tArgs, ..#PROBE, .tProposalId)
+    Do $$$AssertStatusOK(tSC, "the holder's create is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..HolderConfirm(tProposalId, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "a holder of the pair confirms it: " _ ..Shown(tBody))
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.TaskEditProbe).IdOf(..#PROBE), "", "and the task is created")
+    Set tSC = ..RemoveProbe()
+    Do $$$AssertStatusOK(tSC, "the created task is removed")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..HolderMint("OcuPilot.Screen.Tool.TaskCreate", tArgs, ..#PROBE, .tProposalId)
+    Do $$$AssertStatusOK(tSC, "the holder's second create is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set ..RevokedPair = 1
+    Set tSC = ..RevokePurgePair()
+    Do $$$AssertStatusOK(tSC, "the purge type's pair is revoked from the holder's role: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..HolderConfirm(tProposalId, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..Problem(tBody), "400 TOOL.ARGUMENTS " _ ..#REFUSAL, "the confirm is refused at the write with the published sentence: " _ ..Shown(tBody))
+    Do $$$AssertEquals(##class(OcuPilot.Test.TaskEditProbe).IdOf(..#PROBE), "", "and no task is created")
+}
+
+/// <p>AC8 at the confirm of an edit (AD-6, AD-40): the holder's edit of the probe's Description,
+/// confirmed over the wire while it holds the purge type's pair, changes it; a second edit, minted
+/// before that pair is revoked from its role, is refused at the confirm 400 with the published
+/// sentence, and the Description is the first edit's.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.TaskUpdate.ConfirmProblem</method> -- the
+/// second confirm is sent, the vendor refuses it and the route answers 500 <code>INTERNAL</code>, and
+/// this goes red.</p>
+Method TestAConfirmRefusesAnEditOnceTheTypesPairIsLost()
+{
+    Set tId = ..CreateProbe()
+    Do $$$AssertNotEquals(tId, "", "the probe purge task is created")
+    If tId = "" Quit
+    Set tArgs = {}
+    Do tArgs.%Set("Id", tId, "string")
+    Do tArgs.%Set("Description", "OcuPilot type pair kept", "string")
+    Set tSC = ..HolderMint("OcuPilot.Screen.Tool.TaskUpdate", tArgs, tId, .tProposalId)
+    Do $$$AssertStatusOK(tSC, "the holder's edit is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..HolderConfirm(tProposalId, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "a holder of the pair confirms it: " _ ..Shown(tBody))
+    Do $$$AssertEquals(..Description(tId), "OcuPilot type pair kept", "and the Description is changed")
+    Do tArgs.%Set("Description", "OcuPilot type pair lost", "string")
+    Set tSC = ..HolderMint("OcuPilot.Screen.Tool.TaskUpdate", tArgs, tId, .tProposalId)
+    Do $$$AssertStatusOK(tSC, "the holder's second edit is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set ..RevokedPair = 1
+    Set tSC = ..RevokePurgePair()
+    Do $$$AssertStatusOK(tSC, "the purge type's pair is revoked from the holder's role: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..HolderConfirm(tProposalId, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody) _ " " _ ..Problem(tBody), "400 TOOL.ARGUMENTS " _ ..#REFUSAL, "the confirm is refused at the write with the published sentence: " _ ..Shown(tBody))
+    Do $$$AssertEquals(..Description(tId), "OcuPilot type pair kept", "and the Description is unchanged")
+}
+
+/// <p>The holder's proposal of <var>pTool</var> over <var>pArgs</var> against <var>pIdValue</var>,
+/// minted in this process under a turn seeded for it, in <var>pProposalId</var>.</p>
+Method HolderMint(pTool As %String, pArgs As %DynamicObject, pIdValue As %String, Output pProposalId As %String) As %Status
+{
+    Set pProposalId = ""
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#HOLDERUSER, "completed", .tTurn)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(pTool, "DESCRIPTORCLASS"), $Parameter(pTool, "TOOLNAME"), ..#HOLDERUSER, "", tTurn, pArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(pTool, "Endpoint"), $ClassMethod(pTool, "IdParam"), pIdValue, $ClassMethod(pTool, "IdArgument"), $ClassMethod(pTool, "SettableFields"), pTool)
+    If $$$ISERR(tSC) Quit tSC
+    Set pProposalId = tProposal.%Get("proposalId")
+    Quit $$$OK
+}
+
+/// <p>The holder's confirm of proposal <var>pProposalId</var> over the wire, answering the HTTP
+/// status and the parsed envelope.</p>
+Method HolderConfirm(pProposalId As %String, Output pStatus As %Integer, Output pBody) As %Status
+{
+    Set pBody = ""
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ pProposalId _ "/confirm", ..#HOLDERUSER, ..PreparedPassword, .pStatus, .tRaw, .tHeaders, "", "application/json")
+    Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
+    Quit tSC
+}
+
+/// <p>Task <var>pId</var>'s stored <code>Description</code>, or <code>""</code>.</p>
+ClassMethod Description(pId As %String) As %String
+{
+    Set tStored = ##class(OcuPilot.Test.TaskEditProbe).Stored(pId)
+    If '$IsObject(tStored) Quit ""
+    Quit tStored.%Get("Description")
 }
 
 /// <p>Revoke <code>%Ens_PurgeSchedule</code> from the holder's role, keeping its other grants, and
