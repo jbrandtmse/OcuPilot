@@ -39,7 +39,9 @@
 /// <parameter>VOLUMEROOTQUERY</parameter> resolves to another database's directory or volume directory,
 /// or to a directory holding a database file other than the target's own, is refused on
 /// <parameter>VOLUMEPATHQUERY</parameter> before the <code>PUT</code>
-/// (<method>VolumeDirectoryInUse</method>).</p>
+/// (<method>VolumeDirectoryInUse</method>). A file edit that leaves its new volume threshold above 0
+/// where new volumes land in the manager directory is refused on <parameter>THRESHOLDFIELD</parameter>
+/// before the <code>PUT</code> (DW-1860, <method>ThresholdRefused</method>).</p>
 /// <p><b>It names no administration API class.</b> Every vendor call goes through
 /// <method>Call</method>, which is <method>OcuPilot.Port.AdminPort.Invoke</method>, so the gate, the
 /// stubs, the namespace switch and the fault mapping are the admin port's (AD-27).</p>
@@ -73,6 +75,10 @@ Parameter CREATEARGUMENTS = "root,path,Size,GlobalJournalState,ResourceName";
 Parameter VOLUMEROOTQUERY = "volumeRoot";
 
 Parameter VOLUMEPATHQUERY = "volumePath";
+
+/// <p>The file's new volume threshold, which a file edit may not leave above 0 where new volumes land
+/// in the manager directory (DW-1860).</p>
+Parameter THRESHOLDFIELD = "NewVolumeThreshold";
 
 /// <p>The delete's one argument, and the query key it travels under.</p>
 Parameter DELETEFILEQUERY = "DeleteFile";
@@ -206,6 +212,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit tSC
         }
         Set tBody = ..Without(pBody, $ListBuild(..#DIRECTORYFIELD, ..#VOLUMEROOTQUERY, ..#VOLUMEPATHQUERY))
+        Set tVolume = ""
         If $Get(pQuery(..#VOLUMEROOTQUERY)) '= "" {
             Set tSC = ##class(OcuPilot.Port.PathPort).Resolve(pQuery(..#VOLUMEROOTQUERY), $Get(pQuery(..#VOLUMEPATHQUERY)), ##class(OcuPilot.Port.PathPort).#KINDDIRECTORY, ..#VOLUMEROOTQUERY, ..#VOLUMEPATHQUERY, .tVolume, .pHttpStatus, .pFault, 0, 1)
             If $$$ISERR(tSC) Quit tSC
@@ -214,6 +221,13 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             If $$$ISERR(tSC) Quit ..Fail(pEndpoint, 500, tSC, .pHttpStatus, .pFault)
             If tInUse Quit ..Refused(..#VOLUMEPATHQUERY, ##class(OcuPilot.Api.DatabaseError).#DIRECTORYINUSE, .pHttpStatus, .pFault)
             If $IsObject(tBody) Do tBody.%Set("NewVolumeDirectory", tVolume, "string")
+        }
+        ; DW-1860: a threshold above 0 where the instance's own expansion would add volume files in the
+        ; manager directory, whatever the caller, before the PUT.
+        If $IsObject(tBody) {
+            Set tLands = $Select(tVolume '= "": tVolume, 1: ..Text(tBody, "NewVolumeDirectory"))
+            If tLands = "" Set tLands = tDirectory
+            If ..ThresholdRefused(..Text(tBody, ..#THRESHOLDFIELD), tLands) Quit ..Refused(..#THRESHOLDFIELD, ##class(OcuPilot.Api.DatabaseError).#NEWVOLUMETHRESHOLDMANAGER, .pHttpStatus, .pFault)
         }
         Quit ..Call(pEndpoint, pType, .tQuery, tBody, .pResult, .pHttpStatus, .pFault)
     }
@@ -680,6 +694,19 @@ ClassMethod PlacesVolume(pType As %String, pState As %DynamicObject) As %Boolean
     If $ListFind($ListFromString(..#VOLUMETYPES), pType) Quit 1
     If '$ListFind($ListFromString(..#THRESHOLDVOLUMETYPES), pType) Quit 0
     Quit ($IsObject(pState) && (+pState.%Get("NewVolumeThreshold") > 0))
+}
+
+/// <p>Whether a file edit leaving new volume threshold <var>pThreshold</var> with new volume directory
+/// <var>pVolumeDirectory</var> breaks the owner's database-directory rule (AD-21's sixth case,
+/// DW-1860): a threshold above 0 lets the instance's own expansion add volume files in that
+/// directory, refused when it is the manager directory
+/// (<method>OcuPilot.Port.PathPort.IsManagerDirectory</method>), or when it is empty, which leaves the
+/// place to the vendor.</p>
+ClassMethod ThresholdRefused(pThreshold As %String, pVolumeDirectory As %String) As %Boolean
+{
+    If '(+pThreshold > 0) Quit 0
+    If pVolumeDirectory = "" Quit 1
+    Quit ##class(OcuPilot.Port.PathPort).IsManagerDirectory(##class(%File).NormalizeDirectory(pVolumeDirectory))
 }
 
 /// <p>Whether <var>pValue</var> is a whole number: a run of at most nine digits.</p>

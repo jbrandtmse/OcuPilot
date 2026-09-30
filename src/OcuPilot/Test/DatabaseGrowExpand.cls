@@ -8,7 +8,8 @@
 /// on <code>volumePath</code> at the Save, the mint and the confirm with no vendor write, and the
 /// vendor's own faults for it landing there too; and the owner's database-directory rule (AD-21's sixth
 /// case), a volume never placed where the database names no new volume directory or in the manager
-/// directory, on Add a volume and on a grow or defragment past a threshold.</p>
+/// directory, on Add a volume, on a grow or defragment past a threshold and on a threshold the file edit
+/// sets (DW-1860).</p>
 /// <p>A write that should happen goes through <class>OcuPilot.Test.DatabaseRecordPort</class>, which
 /// records and sends it; a refused leg writes through <class>OcuPilot.Test.DatabaseAcceptPort</class>,
 /// which sends no write.</p>
@@ -356,6 +357,43 @@ Method TestAGrowOrDefragmentPastAThresholdKeepsTheRule()
         Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseWrite).Confirm(tDefragProposal), "409 PROPOSAL.TARGETCHANGED", tLabel _ ": and so is its defragment")
     }
     Do $$$AssertEquals($ClassMethod(..#VOLUME, "Writes"), "Database.Actions/MODIFYSIZE,Database.Actions/DEFRAGMENT", "no refused write reached the port")
+}
+
+/// <p>The same rule on the file edit (DW-1860): a new volume threshold above 0 is refused 422
+/// <code>DATABASE.NEWVOLUMETHRESHOLD.MANAGER</code> on <code>NewVolumeThreshold</code> where the file's
+/// new volume directory is the manager directory -- IRISSYS's own, and a probe database read as naming
+/// it (<class>OcuPilot.Test.DatabaseVolumePort</class>) -- on the editor's Save, at the agent's mint
+/// with the code's sentence, and at the port's write for a body carrying it; a probe database naming
+/// its own directory keeps its threshold on the Save and at the port. The write port sends nothing.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.OsMgmt.DatabaseRules.ThresholdViolations</method> adds
+/// no violation -> the mint and the armed Save legs go red; <method>OcuPilot.Port.DatabasePort.Invoke</method>
+/// skips <method>OcuPilot.Port.DatabasePort.ThresholdRefused</method> -> the port legs go red.</p>
+Method TestANewVolumeThresholdNeverSendsVolumesToTheManagerDirectory()
+{
+    Set tManager = ##class(OcuPilot.Port.PathPort).ManagerDirectory()
+    Set tA = ..AddProbe("OCUPROBE184GA")
+    Set tCode = ##class(OcuPilot.Api.DatabaseError).#NEWVOLUMETHRESHOLDMANAGER
+    Set ^||OcuPilotDatabaseWritePort = ..#ACCEPT
+    Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("file", "IRISSYS", {"NewVolumeThreshold": 5}, .tHttp, .tHttpCode, .tFields)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "422 NewVolumeThreshold:" _ tCode, "IRISSYS's threshold is refused on the Save")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActions).MintProblem(..#UPDATETOOL, "IRISSYS", {"NewVolumeThreshold": 5}), "'NewVolumeThreshold': " _ ##class(OcuPilot.Api.DatabaseError).ReasonFor(tCode), "and at the agent's mint, with the code's sentence")
+    Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("file", "OCUPROBE184GA", {"NewVolumeThreshold": 5}, .tHttp, .tHttpCode, .tFields)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "200 ", "a database whose new volume directory is its own keeps the threshold on the Save")
+    Set ^||OcuPilotDatabaseRulesPort = ..#VOLUME
+    Do $ClassMethod(..#VOLUME, "Arm", tManager)
+    Set tSC = ##class(OcuPilot.Test.DatabaseWrite).Save("file", "OCUPROBE184GA", {"NewVolumeThreshold": 5}, .tHttp, .tHttpCode, .tFields)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "422 NewVolumeThreshold:" _ tCode, "and one read as naming the manager directory is refused by its rules")
+    Do $ClassMethod(..#ACCEPT, "Clear")
+    For tCase = $ListBuild("IRISSYS", tManager, "422 NewVolumeThreshold:" _ tCode), $ListBuild("OCUPROBE184GA", tManager, "422 NewVolumeThreshold:" _ tCode), $ListBuild("OCUPROBE184GA", tA, "200 ") {
+        Kill tQuery
+        Set tQuery("name") = $List(tCase, 1)
+        Set tBody = {}
+        Do tBody.%Set("NewVolumeThreshold", 5, "number")
+        Do tBody.%Set("NewVolumeDirectory", $List(tCase, 2), "string")
+        Set tSC = $ClassMethod(..#ACCEPT, "Invoke", "Database.SysCRUD", "PUT", .tQuery, tBody, .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ ##class(OcuPilot.Test.DatabaseRefusals).ViolationFields($Get(tFault)), $List(tCase, 3), "the port's write of " _ $List(tCase, 1) _ " with new volumes in " _ $List(tCase, 2))
+    }
+    Do $$$AssertEquals($ClassMethod(..#ACCEPT, "Writes"), "Database.SysCRUD/PUT", "only the probe naming its own directory reached the vendor call, which the port does not send")
 }
 
 /// <p>Create the probe database <var>pName</var> and answer its directory.</p>

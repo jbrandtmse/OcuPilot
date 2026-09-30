@@ -79,14 +79,17 @@ Parameter FIELDSIZE = "Size";
 
 Parameter FIELDRESOURCE = "ResourceName";
 
+Parameter FIELDTHRESHOLD = "NewVolumeThreshold";
+
 /// <p>Every rule a database write applies to <var>pArgs</var> for the configuration <var>pName</var>,
 /// in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
 /// <code>pViolations</code>.</p>
 /// <p><var>pMode</var> <code>create</code> applies the name's own rules, the initial size, a named
 /// resource, and the directory from <code>root</code> and <code>path</code>; <code>update</code> applies
-/// each whole-megabyte field, a resource (which may not be emptied) and a new volume directory from
-/// <code>volumeRoot</code> and <code>volumePath</code>, each only when <var>pArgs</var> carries it (a
-/// path without its root is refused on the root).
+/// each whole-megabyte field, a resource (which may not be emptied), a new volume directory from
+/// <code>volumeRoot</code> and <code>volumePath</code>, and a new volume threshold above 0 where the
+/// file's new volume directory is the manager directory (<method>ThresholdViolations</method>), each
+/// only when <var>pArgs</var> carries it (a path without its root is refused on the root).
 /// <var>pCheckTaken</var> 0 skips the name look-up. <var>pFields</var>, where not <code>""</code>,
 /// limits the rules to those fields (a wizard step).</p>
 /// <p>A read that cannot be made is an error status, never a pass; a path refusal that names no
@@ -134,6 +137,10 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             Set tSC = ##class(OcuPilot.Port.DatabasePort).DirectoryOf(pName, .tOwn, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
             Set tSC = ..DirectoryViolations(..Text(pArgs, "volumeRoot"), ..Text(pArgs, "volumePath"), "volumeRoot", "volumePath", 0, .pViolations, .pHttpStatus, .pFault, tOwn)
+            If $$$ISERR(tSC) Quit
+        }
+        If 'tCreates && ..Checks(pFields, ..#FIELDTHRESHOLD) && ..WholeAtLeast(pArgs, ..#FIELDTHRESHOLD, 1) && (..Text(pArgs, "volumeRoot") = "") && (..Text(pArgs, "volumePath") = "") {
+            Set tSC = ..ThresholdViolations(pName, pArgs, .pViolations, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         }
         If 'tCreates && ..Checks(pFields, ..#FIELDSIZE) && (pArgs.%GetTypeOf(..#FIELDSIZE) '= "unassigned") {
@@ -237,6 +244,28 @@ ClassMethod DirectoryViolations(pRoot As %String, pPath As %String, pRootField A
         If $$$ISERR(tSC) Quit tSC
         If tInUse Do ..Add(.pViolations, pPathField, ##class(OcuPilot.Api.DatabaseError).#DIRECTORYINUSE)
     }
+    Quit $$$OK
+}
+
+/// <p>Add the new volume threshold's violation for the configuration <var>pName</var> (DW-1860, the
+/// owner's database-directory rule): the file read through the port as the caller, and a threshold
+/// above 0 refused on <parameter>FIELDTHRESHOLD</parameter> when the file's new volume directory, or
+/// its own directory where it names none, is the manager directory
+/// (<method>OcuPilot.Port.DatabasePort.ThresholdRefused</method>). A read refused for any reason is an
+/// error status with its fault.</p>
+ClassMethod ThresholdViolations(pName As %String, pArgs As %DynamicObject, Output pViolations, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Kill tQuery
+    Set tQuery($ClassMethod(..#UPDATETOOL, "IdParam")) = pName
+    Set tSC = $ClassMethod(..PortClass(), "Invoke", $ClassMethod(..#UPDATETOOL, "Endpoint"), $ClassMethod(..#UPDATETOOL, "ReadType"), .tQuery, "", .tFile, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tLands = ..Text($Get(tFile), "NewVolumeDirectory")
+    If tLands = "" Set tLands = ..Text($Get(tFile), "Directory")
+    If ##class(OcuPilot.Port.DatabasePort).ThresholdRefused(..Text(pArgs, ..#FIELDTHRESHOLD), tLands) Do ..Add(.pViolations, ..#FIELDTHRESHOLD, ##class(OcuPilot.Api.DatabaseError).#NEWVOLUMETHRESHOLDMANAGER)
     Quit $$$OK
 }
 
