@@ -404,6 +404,29 @@ Rejected:
 - rejected (lead-owned, spec text): "All 15 shipped entries" is 13, in nine descriptors (probe on `ocupilot-b-ci`).
 - false: `EnsureUnreadPrincipal` creates principals ungated. The class's `ARMINGVARIABLE` is `OCUPILOT_ALLOW_PRINCIPALS`, `OnBeforeAllTests` refuses unarmed, and `ci-throwaway.sh` lists it (:213).
 
+### Review Findings (DW-1870)
+
+- [x] [Review][Patch] low: `.githooks/pre-commit`, a bash script with no suffix, was outside the rule and outside the test's `*.sh` population; `.githooks/** text eol=lf` covers it (the index was already `i/lf`), and the population takes in `.githooks/` and must hold every tracked file with a `sh` or `bash` shebang [.gitattributes:4]
+- [x] [Review][Patch] low: the checkout test read an empty or newline-less script (`i/none w/none`) as not LF; `none` is accepted [ui/tools/line-endings.test.mjs:73]
+- [x] [Review][Patch] low: the header said every covered script runs in a container and stops at its first line; compose runs three with `sh`, and a CRLF copy stops at its first command [ui/tools/line-endings.test.mjs:8]
+- [x] [Review][Defer] medium: a Windows clone made before the rule keeps its CRLF scripts after a pull, so the fix commit's "durable-init runs from a Windows clone" holds for a fresh clone only [.gitattributes:3] — deferred: DW-1875 (decision-pending), not re-filed
+
+Rejected:
+
+- low: the test reads attributes and `ls-files --eol`, not the bytes an `autocrlf=true` checkout writes; with `eol=lf` and an LF blob git writes LF, and two layers' fresh clones of `43362b1c` read 0 of 16 with CR.
+- low: the `.githooks/pre-commit` deferral never reached the ledger; moot, patched in this pass.
+- low: replacing the Auto Run Result dropped batch c's residual that `ui/tools/proposal-view.test.mjs:312` still describes the old name rule in a comment; recorded again here, and it stays batch c's. The Story 8.5 AC7 residual survives in the batch c review pass.
+- low: `### User-visible changes` and `### Residuals and owner actions` carry no DW-1870 line; the fix edits the spec, and a pre-rule clone's release note is DW-1875's decision.
+- low: the pre-rule clone's remedy is not written as a tested command; DW-1875's, chosen at the decision sheet.
+- low: the clone evidence does not name where its throwaway commit was made; the worktree reflog holds no reset, so a scratch clone took it.
+- low: the "after" clone ran `durable-init.sh` under host bash, not the image's `sh`; the DW-1870 ledger evidence measured the container start end to end.
+- low: nothing keeps a working copy LF when a Windows editor saves a script with CRLF; an `.editorconfig` is new surface outside the task's Fix.
+- low: the Auto Run Result repeats the loop's clone evidence; the fix edits the spec.
+- low: commit 731bf63e's subject says "every tracked shell script"; with this pass's rule and shebang roster it holds, and history is not rewritten.
+- low: a tracked `*.sh` symlink or deleted working copy reads a blank `i/` or `w/`; none is tracked, and the test fails loudly.
+- low: a `*.sh` in merge conflict is listed once per stage and fails the key-equality assertion; mid-merge only, and loud.
+- maybe-false: the test has run on macOS only; the three `gates` legs (ubuntu-24.04, one per Node band) settle it on the push, resolved under Rule 28.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -546,6 +569,14 @@ Rejected:
   - `[low]` `[patch]` The test still reads `info/attributes` (intent-alignment) — same root and patch as the third row.
   - `[low]` `[patch]` The failure message read "scripts .gitattributes does not check out with LF" (intent-alignment) — now "these scripts would not check out with LF".
   - `[false]` `[reject]` The spec has no Auto Run Result for DW-1870 (intent-alignment) — finalize writes it after review, and the fix would edit this build's spec.
+
+### 2026-09-30 — Code review (DW-1870)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 28 raw rows grouped into 17 entries: high 0, medium 1, low 15, maybe-false 1. 3 patched, 1 deferred (DW-1875, not re-filed), 13 closed; see `### Review Findings (DW-1870)`.
+- `[low]` `[patch]` `.githooks/pre-commit` was outside the rule and the population (blind-hunter, edge-case-hunter; pre-flagged by the lead): a fresh `autocrlf=true` clone of `43362b1c` has CR on 230 of its lines. Each half went red alone under its mutation; restored byte-identical.
+- `[low]` `[patch]` `i/none` read as not LF (blind-hunter, edge-case-hunter); `[low]` `[patch]` the header's claims (all four layers).
+- `[medium]` `[defer]` A pre-rule clone keeps CRLF after a pull (edge-case-hunter): DW-1875.
+- Rules: AD-17 and AD-45 match; compose's three start-path scripts are covered, and no start-path code changed. Rule 3: the real-runtime evidence is the fresh clones and the script runs under `DW-1870 (loop)`. No NFR touched. `npm run test:tools` 1,740/1,740; both changed files ASCII only.
 
 ## Design Notes
 
@@ -706,9 +737,12 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 **DW-1870 (loop):**
 
 - Tier: `cd ui && npm run test:tools` (`line-endings.test.mjs`).
-- `mutation:` delete the `*.sh text eol=lf` line from `.gitattributes` → `npm run test:tools` 1,739/1,740, red on the checkout test alone, naming all 16 tracked `*.sh` (`eol: unspecified`); restored byte-identical (`git diff -- .gitattributes` shows only the added line), 1,740/1,740. Repeated on the review-patched test in a scratch clone: `every tracked *.sh checks out with LF line endings` red naming all 16 (`eol: unspecified, stored: lf, checkout: lf`); restored, 2/2.
+- `mutation:` delete the `*.sh text eol=lf` line from `.gitattributes` → `every tracked shell script checks out with LF line endings` red alone, naming all 16 tracked `*.sh` (`eol: unspecified, stored: lf, checkout: lf`); restored byte-identical (`shasum`, `git status --short` and `git diff --stat` unchanged), 2/2.
+- `mutation:` delete the `.githooks/** text eol=lf` line → the same test red alone, naming `.githooks/pre-commit (eol: unspecified, stored: lf, checkout: lf)`; restored byte-identical, 2/2.
+- `mutation:` drop `.githooks/` from `SCRIPT_PATHSPECS` → `the population is every tracked shell script` red alone, naming `.githooks/pre-commit` as a shebang script outside the pathspecs; restored byte-identical, 2/2.
 - `mutation:` in a scratch clone carrying the fix, stage a CRLF blob as `scripts/durable-init.sh` (`git update-index --cacheinfo`, working copy LF) → the checkout test red alone, naming `scripts/durable-init.sh (eol: lf, stored: crlf, checkout: lf)`; with the working copy CRLF and the stored copy LF → red naming `checkout: crlf`; each restored, 2/2. The scratch clone was deleted.
 - Fresh-clone evidence (`git clone --config core.autocrlf=true --no-local` of the worktree into the scratchpad, deleted afterwards): at `961d45c7`, without the rule, 16 of 16 `*.sh` carried CR and `bash scripts/durable-init.sh` stopped at line 17 (`set: -: invalid option`); after a throwaway commit of this `.gitattributes`, a second such clone had 0 of 16 with CR (`i/lf w/lf attr/text eol=lf`), `README.md` still CRLF as the control, and `durable-init.sh` ran to its own check (`/durable is not a directory`).
+- `.githooks/pre-commit`, the same way: at `43362b1c` it checked out `w/crlf` with CR on 230 lines, and bash 3.2 failed its `set` line (`set: pipefail: invalid option name`); from a scratch commit of this `.gitattributes`, 0 lines with CR (`i/lf w/lf attr/text eol=lf`), `README.md` CRLF as the control. An empty tracked `.sh` (`i/none w/none`) passes this test and fails the one committed at `43362b1c`. Code review: `npm run test:tools` 1,740/1,740.
 
 **Batch e (loop):**
 
