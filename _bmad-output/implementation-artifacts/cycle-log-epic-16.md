@@ -540,3 +540,5 @@
 2026-09-30T02:26:55Z	Epic 16	ci_resolved	story=owner_fix_DW-1780 run=36657035907 result=success head=1cf407be
 2026-09-30T02:26:55Z	Epic 16	owner_fix_pushed	item=DW-1857 sha=1e5af504 run=36659874828
 2026-09-30T02:26:56Z	Story 16.25	stage_spawned	stage=implement spawn_at=2026-09-30T02:26:56Z model=opus agent_name=16-25-the-external-language-server-editor-implement-1 cycle_iteration=1 ci_prev=DW-1852_success_36653198545,DW-1780_success_36657035907 note=DW-1857_test-only_run_36659874828_resolves_at_dev_complete(implement_pushes_nothing)
+2026-09-30T03:49:20Z	Story 16.25	dev_clarification_requested	spawn_at=2026-09-30T02:26:56Z model=opus condition=intent_gap(AC1+matrix_Create_Java_Changed_mark_after_form_Save_unreachable_for_every_editor) answered_by=lead(Rule_5_tier1:back_on_the_list_it_lists_the_row) wip=58_paths_uncommitted(patch+tgz_in_scratchpad) status_reset=in-progress
+2026-09-30T03:49:20Z	Story 16.25	stage_spawned	stage=implement spawn_at=2026-09-30T03:49:20Z model=opus agent_name=16-25-the-external-language-server-editor-implement-2 cycle_iteration=2 note=re-dispatch_over_the_first_stages_uncommitted_implementation

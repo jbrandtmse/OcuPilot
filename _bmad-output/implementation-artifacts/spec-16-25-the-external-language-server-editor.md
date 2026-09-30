@@ -2,7 +2,8 @@
 title: 'Story 16.25: The external language server editor'
 type: 'feature'
 created: '2026-09-29'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '871b6fa084729193e1bf69cd05ee592911272c98'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -92,7 +93,7 @@ deferred: []
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |---|---|---|---|
-| Create Java | Create; Type Java, Name, Port, JVM arguments | server exists with them, Resource `%Gateway_Object`; list re-fetches, row "Changed" | - |
+| Create Java | Create; Type Java, Name, Port, JVM arguments | server exists with them, Resource `%Gateway_Object`; back on the list, it lists the server's row [AMENDED 2026-09-30, lead: was 'list re-fetches, row "Changed"'] | - |
 | Create per type | Type chosen on the form | Custom members per Boundaries: settable ones as inputs, path members read-only with the caption; ODBC shows none | - |
 | Create JDBC without Resource | agent or form omits it | sent `%Gateway_SQL`, shown on the card | - |
 | Duplicate name | Create with an existing name | name check answers taken; the mint refuses; a name taken between the mint and the confirm is refused at confirm (AD-54) | nothing sent |
@@ -303,7 +304,7 @@ Anchors are as of `0fa21806`.
   - `app.spec.ts`: reset;
   - `rail-wire.spec.ts` and the `ui/tools` rosters.
 - **New `ui/browser/language-server-editor.browser-spec.mjs`** (`assertThrowaway`). It:
-  - Creates a Java probe through the form, then the row reads "Changed";
+  - Creates a Java probe through the form, then, back on the list, it lists the server's row;
   - opens the name cell, changes the Port and Saves;
   - follows the Activity log link, then comes back;
   - deletes with the typed name and sees the row gone;
@@ -315,7 +316,7 @@ Anchors are as of `0fa21806`.
 
 **Acceptance Criteria:**
 
-- **AC1.** Given `ocupilot-ci`, when the person chooses Create on External language servers, picks a type and Saves a name and port, then the server exists on the instance with those values and the type's Resource default. The list shows its row marked "Changed".
+- **AC1.** Given `ocupilot-ci`, when the person chooses Create on External language servers, picks a type and Saves a name and port, then the server exists on the instance with those values and the type's Resource default. Back on the list, it lists the server's row [AMENDED 2026-09-30, lead: was "The list shows its row marked 'Changed'"].
   - The form offers exactly the type's settable `Custom` members, shows its path members read-only with "File locations are set on the classic portal's External Language Server page.", and offers no `Custom` for ODBC.
 - **AC2.** Given a stopped server, when its name is chosen, then its editor opens with Name and Type fixed and a link to its Activity log. A saved change reaches the instance while every field and `Custom` member it did not change keeps its value.
   - On a Python server, a changed `Custom` member shows the consequence line before Save.
@@ -337,6 +338,8 @@ Anchors are as of `0fa21806`.
   - the form passes the DW-1337 walk in both themes with no new allowance.
 
 ## Spec Change Log
+
+- 2026-09-30, implement halt (intent gap), lead ruling (Rule 5 tier 1, observable restated, intent unchanged): AC1, the I/O matrix row "Create Java" and the browser Tasks bullet no longer require the created row to read "Changed" after the person's form Save; they require that, back on the list, it lists the server's row. A form-page Save publishes its change event while no list is bound (`ListPage` unbinds `RefreshService`; `core/refresh.ts` marks only the bound screen; `ChangeBus` keeps no history), which holds for every editor, and EXPERIENCE.md:726 defines "Changed" for the entity on screen. The agent's create, confirmed with the list open, still marks its row. The framework alternative (a list marking events published while hidden) is not taken.
 
 - 2026-09-29, spec gate (lead): the path-field decision is option A (orchestrator, owner's recommended option): `LogFile`, `ClassPath`, `JavaHome`, `PythonPath` and `FilePath` are shown, never set, with the caption pointing at the classic page; the PathPort-backed setting of the four single-location fields is DW-1856, routed to range-end cleanup. The lead wrote the spine changes (a)-(e) at this gate (AD-3, AD-4, AD-8, AD-21 in option A's form, AD-44). Since planning, Story 16.10 merged with External language servers at OS management position 9 and Local databases (Story 18.3) at 10, and DW-1768 (option B) made an area open when any listed screen is allowed: locate code by symbol and bump rosters from what the tree holds.
 
@@ -467,9 +470,33 @@ Slot A only. Everything that creates, starts, stops, edits or deletes a server, 
   - If the bundle crosses `maximumWarning`, re-base it under DW-1166 with the `angular-json.test.mjs` literal. Stop above 3800 kB.
 - The full ObjectScript sweep on `ocupilot-ci`, one class at a time (once, before `dev_complete`) -- expected: green apart from the known residue. The full browser suite runs in CI (Rule 29).
 
+Mutations demonstrated (implement stage, each reverted with the tree unchanged after):
+
+- mutation: `field-lists.mjs`'s key rule drops the `:type` arm → `field-lists.test.mjs` "a typed template list keys as endpoint:type and checks clean beside its untyped list" went red.
+- mutation: the store's `customMembers()` answers a type's path members too → `language-server-form.page.spec.ts` AC1 (fields per type) and AC2 (edit) went red.
+- mutation: `changedBody()` sends every `Custom` member → `language-server-form.page.spec.ts` "AC2: an edit puts only what changed ..." went red.
+- mutation: the `Remote` test dropped from `LanguageServerRules.Running` → `OcuPilot.Test.LanguageServerEditor.TestTheUpdateMergesCustomByMember` and `TestTheDeleteRefusesARunningServer` went red (run 20966).
+- mutation: the running refusal dropped from `LanguageServerUpdate.MergeUpdate` → `OcuPilot.Test.LanguageServerEditorWire.TestAStartedServerIsRefusedEditAndDelete` went red (run 20967).
+- mutation: the call-out gate skipped in `LanguageServerPort.Invoke` (port and seam recompiled) → `LanguageServerEditorWire.TestAPythonDeleteNeedsCallOutAndAStoppedServerIsDeleted` went red (run 20968).
+- mutation: `Mint.AbsenceState` answers `{}` (Mint and subclasses recompiled) → `LanguageServerEditorWire.TestTheAgentsWritesConfirmAndATakenNameIsRefusedAtConfirm` went red (run 20969).
+- mutation: `%Admin_Manage:USE` dropped from `LanguageServerCreate.PrivilegePairs` → `LanguageServerEditorWire.TestEachMissingPairIsRefusedByName` went red (run 20970).
+- mutation: the `LanguageServer:XSLT` list deleted from `FieldLists.cls` → `OcuPilot.Test.DerivedFields.TestTheCommittedListsEqualAFreshDerivation` and `TestTheCommittedClassIsARegeneration` went red (run 20971).
+- mutation: one word of `LanguageServerUpdate.RUNNINGREASON` changed → `self-protection.test.mjs` "Story 16.25: the running refusal ..." went red.
+- mutation: the editor's Activity link hidden, rebuilt and redeployed → `language-server-editor.browser-spec.mjs` "AC1, AC2, AC4" went red at the link wait.
+
+The browser spec asserts the created row on the list (AC9), not a "Changed" mark: a form-page Save publishes while no list is bound, so the list re-reads without one (measured; reported to the lead as an intent gap).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: AC1's "The list shows its row marked 'Changed'" and the I/O matrix row "Create Java" ("list re-fetches, row 'Changed'") cannot hold for the person's Create. A form-page Save publishes its change event while no list is bound: `ListPage` unbinds `RefreshService` when it leaves, `core/refresh.ts` marks a row only on the bound screen, and `ChangeBus` keeps no history. So no editor marks the row, and EXPERIENCE.md:726 defines "Changed" as a change event for the visible entity. Recommended amendment (restates the observable, intent unchanged): AC1 and the matrix row read "back on the list, it lists the server's row", and the Tasks bullet "then the row reads 'Changed'" is changed the same way. The agent's create, confirmed with the list open, still marks its row. Alternative, not recommended: a framework change so a list marks the events published while it was not shown (`core/refresh.ts`, every editor).
 
-Planned only; nothing implemented. Measured on `ocupilot-ci` before choosing shapes (Design Notes), with every probe server, role, user and activity row removed afterwards. DW-253 is addressed (AC7). For the spec gate: the path-fields decision (shown, never set), the running-server refusal, and the five spine changes (a)-(e) under Design Notes.
+This pass: the handoff subagent implemented every task (58 paths). Its report (73 min): the targeted classes green on `ocupilot-ci` (`LanguageServerEditorWire` armed, run 20972), `npm test`, `test:tools`, the six `ng test` specs and the four browser specs green, the bundle at 2,217.4 KiB, and 12 mutations recorded under Verification. This stage halted at the Matrix Test Audit, so its own Verify commands, the full ObjectScript sweep and the review layers have not run. Checked here: HEAD is unchanged, no commit or push was made, and `ocupilot-ci` holds no probe server, activity row or editor principal.
+
+Paths outside the Code Map: `Api/LanguageServerError.cls`, because `Error.cls` is at the compiler's 1,000-parameter limit (ERROR #5290); `Test/LanguageServerSeamPort.cls`; `Test/LanguageServerEndpoint.cls`; `Test/ToolEmit.cls`. `ToolFields` carries two tools, since the delete sends no body. `ui/tools/ci.test.mjs` is unedited because it derives its roster.
+
+Open for the next pass's audit:
+
+- "Duplicate name": no test yet that the agent's create mint refuses a taken name. The refusal at Confirm is pinned.
+- "Missing or out-of-range field": pinned in the rules and at the screen's 422, the project's validation status. No agent dispatch pins the 400.
+- The header of `LanguageServerEditorWire.TestAStartedServerIsRefusedEditAndDelete` says the agent's delete is refused at the mint, but the test mints the update.
