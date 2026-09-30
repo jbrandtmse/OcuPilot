@@ -8564,6 +8564,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
 - 2026-09-30T16:28:39Z status=decision-pending owner=burndown by=cr note=AD-52 named limit (lead, Rule 20) or re-list before each DELETE at N more LISTs; renumbered-id answer unmeasured
 - 2026-09-30T19:41:42Z status=routed owner=16-13-the-service-editor by=merge_gate note=decided (orchestrator 2026-09-30): re-list before each delete (LockPort, pinned by LockRecordPort) - a stale listed id could reach a different lock; Epic 16 fixes it as its own commit right after the 1.0.4 cut, before 16.13's implement
+- 2026-09-30T21:33:36Z status=resolved-by:16-13-the-service-editor by=adjudication note=95fbb735: LockPort re-lists before each DELETE; LockRemoveTools re-list leg (mutations red 22360/22366, green 22367); AD-52 amended
 ### DW-1866: CI flake: AdminPortAbsence.TestAVerifiedDeletePostsNoAlert saw an alert during a verified delete and its re-read
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
@@ -8616,3 +8617,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AuditingUpdate.cls:505 and Prohibited.cls:687 both assert $ListLength(Prohibited.Codes()); 16.12 bumped only the second and CI run 36745076438 went red
 - 2026-09-30T17:35:12Z status=wontfix-accepted owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=harvest note=reopen_if=a later story's CI reddens on AuditingUpdate's code count again
+
+### DW-1878: An owner-scope lock removal matches a stored DeleteID only by id, so a vacated DeleteID the vendor reassigned to another lock of the same owner would still be sent
+- source: dw1868 owner fix review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: LockPort sends a stored id the fresh listing holds verbatim, without comparing its Reference; reuse was not observed (16.12 review: a reused slot advanced its second piece, 230006 then 230008)
+- 2026-09-30T21:33:37Z status=wontfix-theoretical owner=16-13-the-service-editor by=harvest note=real if a measurement shows the vendor reusing a vacated DeleteID for another lock of the same owner; then carry each id's Reference

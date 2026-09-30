@@ -108,7 +108,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 - FR-25: Four provider families including local models - Anthropic first, then OpenAI, Google Gemini and OpenAI-compatible (which covers local models), each an adapter behind one contract so adding a family changes no part of the loop, the tools or the screens; plain HTTP only with no credential or an explicit stored acknowledgment. Catalog: CP-04, CP-05.
 - FR-26: Credential resolution without storage - keys resolve at call time from an environment variable or an IRIS credential; the definition stores only type and name; a key entered in the form is written once and returned by no API call; per-provider shape checks catch paste errors. Catalog: CP-07.
 - FR-27: Test connection - one minimal provider call reporting the model's reply or the provider's error text, using the definition as edited before save, truncated to a bounded length, refusing link-local metadata endpoints while allowing loopback and private hosts. Catalog: CP-06.
-- FR-28: First-login gate - with no enabled definition an OcuPilot administrator is taken to agent configuration at every login and a banner persists on every screen until one is enabled; the gate is bypassable; non-administrators keep every screen with the panel in its configuration-empty state naming who can configure it. Catalog: CP-08.
+- FR-28: First-login gate - with no enabled definition an OcuPilot administrator is taken to agent configuration on their first sign-in only (later sign-ins land on Home) and a banner persists on every screen until one is enabled; the gate is bypassable; non-administrators keep every screen with the panel in its configuration-empty state naming who can configure it. Catalog: CP-08.
 - FR-29: OcuPilot administrator privilege - the installer creates the administrative resource and a role granting it; every configuration endpoint checks it server-side; every change to a definition, the kill switch, enforced read-only, the context-sharing default or the turn limits emits an audit event naming actor, target and old and new values; OcuPilot's persistent state is unreachable through SQL or direct global access to a holder of the install namespace's database rights without the resource, and a test proves it. Catalog: PK-13.
 
 #### PRD 5.5 - Web applications and REST API explorer
@@ -2498,7 +2498,7 @@ So that I reach a working agent without reading documentation to find out what i
 - **Given** no definition is enabled and the signing-in user holds the OcuPilot administrative resource
 - **When** they sign in
 - **Then** they are redirected to the Definition form under the banner "OcuPilot needs one agent definition before the panel can help. Anthropic is selected - paste a key and press Test connection. You can skip this and browse."
-- **And** the gate fires on **every** login until one definition is enabled, and never afterwards.
+- **And** the gate fires on the administrator's **first** sign-in only, recorded per user on the instance; a later sign-in, reload or new tab lands on Home with the panel banner as the pointer, and Cancel on the auto-opened form goes to Home [AMENDED 2026-09-30, owner decision DW-1871: was "fires on **every** login until one definition is enabled, and never afterwards"].
 
 - **Given** the administrator leaves the gate without enabling one
 - **When** they use any screen
