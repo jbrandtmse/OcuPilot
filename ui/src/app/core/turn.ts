@@ -1633,8 +1633,9 @@ export class TurnStore {
    * is live here and unexpired, and take each live row's `privilege` from the read (AD-8): the
    * instance evaluates the line at every read of the row, and a card whose turn no longer polls
    * would otherwise keep the last poll's answer. A terminal turn's read renews no lease, and nothing
-   * is published. It stops when no such proposal remains, on a 404, and at the next accepted
-   * `send()`, `newConversation()` or `endSession()`; a tick is skipped while the document is hidden.
+   * is published. It stops when no such proposal remains, on a refusal (a 404, 401 or 403), and at
+   * the next accepted `send()`, `newConversation()` or `endSession()`; a tick is skipped while the
+   * document is hidden, and a transport fault or a server error keeps it armed.
    */
   private startReread(turnId: string): void {
     const generation = (this.rereadGeneration += 1);
@@ -1655,8 +1656,12 @@ export class TurnStore {
     if (this.hidden()) return true;
     const result: JsonResult<Record<string, unknown>> = await this.api.requestJson(turnProgressPath(turnId));
     if (generation !== this.rereadGeneration) return false;
-    if (result.kind === 'error' && result.status === 404) return false;
-    if (result.kind === 'ok') this.mergePrivileges(turnId, parseProposals(result.body['proposals']));
+    // Transient and refused are told apart as `pollOnce` tells them apart.
+    if (result.kind === 'installing' || (result.kind === 'error' && (result.status === 0 || result.status >= 500))) {
+      return true;
+    }
+    if (result.kind !== 'ok') return false;
+    this.mergePrivileges(turnId, parseProposals(result.body['proposals']));
     return true;
   }
 

@@ -9,9 +9,11 @@
 /// <code>%Security</code> / <code>UserChange</code> for this operation itself, on failure as well
 /// as success.</p>
 /// <p><b>A password value exists only as a local on this stack.</b> Neither value enters a log
-/// line, an exception, a <class>%Status</class>, a URL or an error message (NFR-5, AD-21, AD-35,
-/// Conventions › Secrets), and they and the parsed body are cleared on every path before this
-/// class returns. The body
+/// line, an exception, a <class>%Status</class> this class composes, a URL or an error message
+/// (NFR-5, AD-21, AD-35, Conventions › Secrets), and they and the parsed body are cleared on every
+/// path before this class returns. A vendor status can quote one -- a validation routine's refusal
+/// may -- so such text is never rendered or logged as it is
+/// (<method>ClassifyRefusal</method>). The body
 /// refusal is rendered and logged from a status <b>this class composed</b>, naming the stage
 /// alone, because the read's own status can quote the document it failed to parse.</p>
 Class OcuPilot.Api.Account Extends %RegisteredObject
@@ -43,8 +45,9 @@ Parameter POLICYCODES = "845,958";
 /// password validator.</p>
 Parameter NOSUCHUSERCODE = 838;
 
-/// <p>The code a password validation routine's refusal carries, with the routine's own sentence as
-/// its text (<code>$$$GeneralError</code>).</p>
+/// <p>The code this class accepts as a password validation routine's refusal, with the routine's
+/// own sentence as its text (<code>$$$GeneralError</code>, the code the vendor's documented example
+/// routine returns). A routine refusing with any other code is answered 500.</p>
 Parameter ROUTINEREFUSALCODE = 5001;
 
 /// <p>Answer <code>POST /account/password {"currentPassword","newPassword"}</code>: change the
@@ -146,15 +149,16 @@ ClassMethod RenderBodyRefusal(pStage As %String) As %Status [ Private ]
 /// allow-listed policy code is one on <code>newPassword</code> carrying that code's own text; an
 /// account the change could not find is a 500. Any other refusal is put to
 /// <method>%SYSTEM.Security.ValidatePassword</method> for <var>pNew</var> and
-/// <var>pUsername</var>, in the caller's process (AD-49): when it refuses -- its status carries
-/// <parameter>ROUTINEREFUSALCODE</parameter> or a <parameter>POLICYCODES</parameter> code -- the
-/// violation is on <code>newPassword</code> with the validator's first error text; when it answers
-/// OK, or fails any other way (a routine that raises an error answers 5002, naming its own line),
-/// the refusal is unconfirmed and stays a 500. The change's own text is never rendered.</p>
-/// <p>Neither password leaves through the validator's text or the logged status: the first is
-/// replaced by the published sentence when it is empty or contains <var>pCurrent</var> or
-/// <var>pNew</var>, and a logged status whose text contains either is replaced by one naming the
-/// codes alone (AD-35).</p>
+/// <var>pUsername</var>, in the caller's process (AD-49), so the instance's validation routine runs a
+/// second time: when its first error is <parameter>ROUTINEREFUSALCODE</parameter> or a
+/// <parameter>POLICYCODES</parameter> code, the violation is on <code>newPassword</code> with that
+/// error's text; when it answers OK, or fails any other way (a routine that raises an error answers
+/// 5002 naming its own line, and a status a routine composes passes through whole), the refusal is
+/// unconfirmed and stays a 500. The change's own text is never rendered.</p>
+/// <p>Neither password leaves through a reason or the logged status: a reason is replaced by the
+/// published sentence when it is empty or contains <var>pCurrent</var> or <var>pNew</var> -- a
+/// routine can return an allow-listed code whose text quotes the password -- and a logged status
+/// whose text contains either is replaced by one naming the codes alone (AD-35).</p>
 ClassMethod ClassifyRefusal(pStatus As %Status, pCurrent As %String, pNew As %String, pUsername As %String, Output pField As %String, Output pCode As %String, Output pReason As %String, Output pLogged As %Status) As %Integer
 {
     Set pField = ""
@@ -172,16 +176,13 @@ ClassMethod ClassifyRefusal(pStatus As %Status, pCurrent As %String, pNew As %St
         Set pField = "newPassword"
         Set pCode = ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDPOLICY
         Set pReason = tPolicyText
+        If ..QuotesPassword(pReason, pCurrent, pNew) Set pReason = ""
         Quit 422
     }
     If '(("," _ tCodes _ ",") [ ("," _ ..#NOSUCHUSERCODE _ ",")) {
         Set tValidSC = $System.Security.ValidatePassword(pNew, pUsername)
-        Set tValidCodes = "," _ $System.Status.GetErrorCodes(tValidSC) _ ","
-        Set tRefusalCodes = ..#ROUTINEREFUSALCODE _ "," _ ..#POLICYCODES
-        Set tRefused = 0
-        For tI = 1:1:$Length(tRefusalCodes, ",") {
-            If tValidCodes [ ("," _ $Piece(tRefusalCodes, ",", tI) _ ",") Set tRefused = 1
-        }
+        Set tFirstCode = $Piece($System.Status.GetErrorCodes(tValidSC), ",", 1)
+        Set tRefused = $$$ISERR(tValidSC) && ($ListFind($ListFromString(..#ROUTINEREFUSALCODE _ "," _ ..#POLICYCODES, ","), tFirstCode) > 0)
         If tRefused {
             Set pField = "newPassword"
             Set pCode = ##class(OcuPilot.Api.Error).#ACCOUNTPASSWORDPOLICY

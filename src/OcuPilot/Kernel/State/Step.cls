@@ -4,7 +4,8 @@
 /// <p><b>Everything a step carries that came from the model is untrusted content</b> (AD-11): the
 /// panel renders it as data. <b>The caps are applied here, on write</b>: at most the step cap per
 /// turn, with later steps counted on the turn row; a name or summary cut at the summary cap and a
-/// text cut at the text cap, with <property>Truncated</property> set when either was cut.</p>
+/// text cut at the text cap, a finished tool step's at the tighter tool step cap, with
+/// <property>Truncated</property> set when either was cut.</p>
 Class OcuPilot.Kernel.State.Step Extends OcuPilot.Kernel.State.Base
 {
 

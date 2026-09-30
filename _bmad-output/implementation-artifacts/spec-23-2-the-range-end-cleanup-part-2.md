@@ -130,7 +130,7 @@ deferred: []
     - `ChangePassword` answers `1446,5001`, where the second text is the routine's sentence. A wrong current password answers `1446,952` first; a pattern failure answers `1446,845`.
     - `$SYSTEM.Security.ValidatePassword(new, user)`, called by a principal holding only `%DB_HSCUSTOM:RW`, answers `5001` with the routine's sentence, `845` for a pattern failure, and OK otherwise.
   - **Fix:** in the arm that renders 500 today (codes carry none of 952, 845, 958 or 838), call `ValidatePassword(<new>, $Username)` in the caller's process (AD-49).
-    - If it refuses, answer 422 `ACCOUNT.VALIDATION` with one `newPassword` violation (`ACCOUNTPASSWORDPOLICY`). Its reason is the validator status's first error text; an empty text, or one containing either password, is replaced by `REASONACCOUNTPASSWORDPOLICY`.
+    - If its first error is 5001, 845 or 958, answer 422 `ACCOUNT.VALIDATION` with one `newPassword` violation (`ACCOUNTPASSWORDPOLICY`). Its reason is that error's text; an empty text, or one containing either password, is replaced by `REASONACCOUNTPASSWORDPOLICY`. Any other validator answer stays 500.
     - If the validator answers OK, the 500 stays. No text from the change's own 5001 is ever rendered.
     - Clear the passwords after classification. Move the classification into a class method that can be tested on constructed statuses.
   - **Red:** a new `AccountPasswordWire` leg, under the class's existing `OCUPILOT_ALLOW_PRINCIPALS` arming.
@@ -160,7 +160,7 @@ deferred: []
   - **Fix, in `ui/src/app/core/turn.ts`:**
     - Once the turn has ended, re-read `GET /turn/:id/progress` every 15 s (an injectable `rereadMs`, default 15,000) while at least one of its proposals is live and unexpired on the panel.
     - Keep a proposal-id-to-turn-id map, filled in `pollOnce`.
-    - Stop when none is live, on a 404, on a new send, and at `endSession` or `newConversation`. Skip a tick while the document is hidden; the probe is injectable, so `core/` stays framework-free (AD-19).
+    - Stop when none is live, on a 404 or another refusal, on an accepted send, and at `endSession` or `newConversation`. Skip a tick while the document is hidden; the probe is injectable, so `core/` stays framework-free (AD-19).
     - Merge only `privilege`, and only into rows that are still live locally with no confirm, cancel or draft in flight.
   - Why this is safe: a terminal turn's poll renews no lease (`Api/Turn.cls:232-235`), and its row outlives the proposal (15 min against 10). The server does not change.
   - **Red:**
@@ -287,6 +287,43 @@ Rejected:
 - low, rejected (lead-owned): frontmatter `status: done` while batches remain, the Fix line's "`Linger` setting" where the code takes an argument, and the cycle-log `dev_complete` line counts (`git diff --numstat 1a409d00 840ab37f -- src` reads +246/-142).
 - false: two lingers do not tell a lingering issuer from a slow host. Unlingered, the four cases took 0.011 s (run 109) against the 0.6 s floor.
 
+### Review Findings (batch b)
+
+- [x] [Review][Patch] high: a validator refusal counted wherever 5001, 845 or 958 sat in the status, and the reason was error 1's text, so a routine's composed status put its 5002 text on the wire (measured: it passes through whole). A refusal now counts only when the validator's first error is one of the three [src/OcuPilot/Api/Account.cls:185]
+- [x] [Review][Patch] high: the policy arm rendered an allow-listed 958 without the quote check, and a routine's `Error(958,Password)` reaches the change as `1446,958` "Invalid password pattern '<new password>'" (measured). The quote check now covers the policy arm too (AD-35) [src/OcuPilot/Api/Account.cls:179]
+- [x] [Review][Patch] medium: DW-1440's "not refused 403" half had no automated real-runtime test (Rules 3 and 19). The split leg now creates an anonymous application over the namespace with the derived grants and asserts a 200 [src/OcuPilot/Test/WebApp.cls:735]
+- [x] [Review][Patch] medium: the account name handed to the validator was unpinned, and the vendor passes routines the lower-case name (measured, both calls). Added a `User` leg [src/OcuPilot/Test/AccountPasswordWire.cls:460]
+- [x] [Review][Patch] The split leg stayed in `%SYS` after an early `Quit`, and its cleanup saved `%SYS` as the namespace to return to [src/OcuPilot/Test/WebApp.cls:740]
+- [x] [Review][Patch] "Lacking either grant, 403" was half unmeasured. Measured: without the routine grant, a server error page. Corrected at origin, together with a clause saying the floor reads a split namespace's data database [docs/DEVELOPMENT.md:293, src/OcuPilot/Install/Installer.cls:2319]
+- [x] [Review][Patch] The 4,096/4,097 edge of the tool-step cut was unpinned [src/OcuPilot/Test/LedgerStep.cls:133]
+- [x] [Review][Patch] The re-read's scope to the ended turn's own proposals was unpinned [ui/tools/turn.test.mjs:2112]
+- [x] [Review][Patch] The re-read kept polling every 15 s on a 401 or 403 that ends a poll. It now tells a refusal from a transient fault as `pollOnce` does [ui/src/app/core/turn.ts:1659]
+- [x] [Review][Patch] A probe left by an interrupted run was detected and not removed, so the first method's teardown failed for it [src/OcuPilot/Test/AccountPasswordWire.cls:129]
+- [x] [Review][Patch] ×7 doc corrections: `Account`'s header said no `%Status` carries a password; `ROUTINEREFUSALCODE`'s doc said 5001 is what routines return; the routine's second run was undocumented; "keeps its first 4,096 characters" (4,095 plus U+2026) in three places; `TEXTMAXLENGTH` and `Step`'s header named one cap; a stale mutation note ("the last leg"); and a garbled clause in DEVELOPMENT.md :310
+
+Rejected:
+
+- false: the routine's lower-case name makes the validator answer differently for a mixed-case account. `ValidatePassword` lower-cases it too (measured on `ocupilot-b-ci`).
+- low, by-design: the validator is consulted when a change failed with no 5001, so a history-keeping routine (the vendor's documented example) runs outside a change. The spec's Fix defines the arm and chooses provenance over the code 5001.
+- low, by-design: a routine refusing with a code other than 5001, 845 or 958 answers 500. AD-39's closed allow-list; the lead's AD-39 amendment names the codes.
+- low, wontfix-theoretical: a routine sentence that quotes a password in another case, or in part, passes the quote check. It becomes real with a routine that transforms the password before quoting it.
+- medium, escalated DW-1864 (owner burndown): `GET /conversation/:id` writes every entry's steps as one `%ToJSON()` string. DW-1210 bounds the poll, not the restore.
+- low, wontfix-theoretical: `CodeDatabaseResource` opens the globals database through `SYS.Database`, which a remote (ECP) globals database may refuse. It becomes real when OcuPilot installs into such a namespace; before this change that namespace's anonymous applications answered 403 anyway.
+- low, wontfix-theoretical: the drift check compares the grant string in order. `%DB_` resources are upper case by rule (Conventions › IRIS security objects), and the collation order was measured.
+- low, rejected: a split namespace's first start after upgrading reports a repair, and the role keeps its old description. One time only, on a namespace whose floor did not work before.
+- low, rejected: `CodeDatabaseResource`, `tCodeResources` and the two `…OnTheCodeDatabase` test names now describe less than they do. Renaming churns the spec's Code Map and DEVELOPMENT.md; the doc comments state both databases.
+- low, rejected: `AccountPasswordWire` exceeds the 500-line guideline. Splitting would move the probe helpers for no behavior.
+- low, wontfix-theoretical: a re-read in flight across a confirm refusal can restore "held" for one tick. It needs a revocation inside one request's flight.
+- low, by-design: the re-read does not move a row the instance closed elsewhere. The spec merges `privilege` only.
+- low, wontfix-theoretical: a proposal with no parseable `expiresAt` arms no re-read. The server always sends it.
+- low, rejected: an unexpected 200 in the routine leg leaves the stored password stale, and a failed `GuardedView` in `TurnTools` errors rather than asserting. Both occur only in a run that is already red, and the fix adds branches.
+- low, rejected: a cut inside a surrogate pair keeps 4,094 characters plus U+2026 (the implement triage's reason).
+- low, wontfix-theoretical: a refused send after the conversation was re-minted leaves the re-read on proposals the mint closed. It needs a 404 on the conversation, then a refused turn.
+- low, wontfix-accepted (`reopen_if=` a hidden tab is observed re-reading every 15 s): `main.ts`'s hidden probe has no executed test host, by design (`ui/tools/scope.test.mjs:489`).
+- low, rejected: no test for the stops at New conversation and sign-out, or for a draft in flight. Both stops clear `entriesValue`, which `hasLiveProposal` reads before every tick; a draft closes its row.
+- low, wontfix-accepted (`reopen_if=` `EnsureApplicationRoles` transforms the grants `CodeDatabaseResource` answers): the role step is not run on a split namespace. It passes the derived grants through unchanged, and the split leg pins those.
+- rejected (lead-owned, spec text): DW-1289's Fix "If it refuses" (now: first error 5001, 845 or 958); DW-1669's "on a new send" (an accepted send); User-visible changes DW-1210 "first 4,096 characters" (4,095 plus "…").
+
 ## Spec Change Log
 
 - 2026-09-30 spec gate (lead): the six proposed amendments are applied to the spine by the lead with the batch that ships each (AD-39, AD-33, AD-21 with b; AD-34, AD-53 with e; AD-17 with d), so the spine on the feature branch never describes behavior that has not merged.
@@ -348,6 +385,17 @@ Rejected:
   - `[low]` `[reject]` Batch b's Verification does not record EXPERIENCE.md's `wc -l` (intent-alignment) — the fix is a spec edit; 993 before and after is in the Auto Run Result.
   - `[false]` `[reject]` `## Auto Run Result` describes only batch a (intent-alignment) — it is written at finalize.
 
+### 2026-09-30 — Code review (batch b)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 47 raw rows grouped into 38 entries: high 2, medium 3, low 32, false 1. 18 patched, 1 escalated (DW-1864), 19 closed; see `### Review Findings (batch b)`.
+- `[high]` `[patch]` A composed validator status leaked its first error's text (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Measured: `5002,5001` passes through `ValidatePassword` whole. Red in run 149; green in run 157.
+- `[high]` `[patch]` An allow-listed 958 quoting the new password reached the 422 (acceptance-auditor). Measured: `1446,958` "Invalid password pattern '<password>'". Red in run 150.
+- `[medium]` `[patch]` DW-1440's 403 half had no automated test (verification-gap, Rule 3). The anonymous request answered 200 in run 158, and was refused with an empty body in run 154.
+- `[medium]` `[patch]` The validator's account name was unpinned (verification-gap). Red in run 151.
+- `[medium]` `[escalated]` DW-1864, conversation restore past the string limit (blind-hunter, verification-gap, acceptance-auditor): out of footprint.
+- Measured on `ocupilot-b-ci`: with a split namespace's globals grant and no routine grant, `/ocupsplitm` answered a server error page (`#5924`), not a 403. The probe objects read back absent.
+- Rules: AD-39, AD-35, AD-49, AD-12, AD-33, AD-19, AD-8 and AD-21 (as the proposed amendments word them) match after the patches; the lead's amendment wording is in the stage report. Rule 3 is met: wire legs cover DW-1289, the new anonymous-request leg DW-1440, and `proposal-privilege` (c) DW-1669. No NFR touched.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -396,7 +444,7 @@ The lead applies these at spec validation (Rule 20).
 
 - **DW-1289 (b):** with a validation routine configured, Account › Change password shows the routine's sentence under New password instead of "An internal error occurred".
 - **DW-1210 (b):**
-  - An expanded tool-call card shows a long result's first 4,096 characters, ending in "…".
+  - An expanded tool-call card shows a long result's first 4,095 characters, then "…".
   - A turn with many long results no longer fails its poll.
 - **DW-1669 (b):** after a turn ends, a live proposal card's privilege line warns within about 15 s of a revocation, and clears again if the privilege is restored.
 - **DW-1440 (b):**
@@ -476,6 +524,14 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` ignore the current password in `QuotesPassword` → run 140 red on the current-password leg alone; reverted byte-identical, run 144 6/6.
 - `mutation:` merge a re-read's line only when it warns → `turn.test.mjs` 77/78, the clearing case red; reverted byte-identical, 78/78.
 - `mutation:` stop the re-read before the turn request → `turn.test.mjs` 77/78, the refused-send case red; reverted byte-identical, 78/78.
+- `mutation:` accept a validator refusal code anywhere in its status (the pre-review form) → run 149 red on the composed-status leg alone (the 422 carried "ObjectScript error: OcuProbeInternal"); reverted byte-identical, run 157 6/6.
+- `mutation:` drop the policy arm's quote check → run 150 red on the pattern leg alone (the 422 carried the new password); reverted byte-identical, run 157 6/6.
+- `mutation:` call `ValidatePassword` without the account name → run 151 red on the account-name leg alone (500); reverted byte-identical, run 157 6/6.
+- `mutation:` derive the routine database only → run 154 red, and the anonymous request was refused with an empty body; reverted byte-identical, run 158 26/26.
+- `mutation:` cut at `>=` the cap → run 156 red on the edge leg alone; reverted byte-identical, run 159 4/4.
+- `mutation:` stop the re-read on a 404 only → `turn.test.mjs` 79/80, the refusal case red; reverted byte-identical, 80/80.
+- `mutation:` drop the turn check from `hasLiveProposal` → `turn.test.mjs` 79/80, the later-turn case red; reverted byte-identical, 80/80.
+- Code review pass: green on the reloaded tree (`OCUPILOT-LOAD:OK:errors=0`): `AccountPasswordWire` run 157 (6/6), `WebApp` 158 (26/26), `LedgerStep` 159 (4/4), `TurnTools` 160 (13/13) and `Smoke` 161 (40/40). Also `npm run test:tools` 1,731/1,731, `npm run test:components` 1,958 tests in 145 files, and `proposal-privilege` 3/3 on a rebuilt, redeployed bundle (initial total 2.31 MB). `check-objectscript.py` and `lint-docs.sh` report no problems.
 
 **Batch c (loop):**
 

@@ -33,6 +33,10 @@ Parameter SPLITNAMESPACE = "OCUPILOTSPLITPROBE";
 /// split namespace's grants and removes.</p>
 Parameter SPLITROLE = "OcuPilotSplitProbeRole";
 
+/// <p>The unauthenticated application <method>TestTheFloorCoversASplitNamespacesTwoDatabases</method>
+/// creates over the split namespace, carrying <parameter>SPLITROLE</parameter>, and removes.</p>
+Parameter SPLITAPP = "/ocupilotsplitprobe";
+
 /// <p>Refuse to run at all unless this instance is armed for a production install.</p>
 /// <p><b>A doc comment does not keep a class that installs from installing.</b> Test classes are
 /// selected by package, so pointing the runner at a container someone cares about would run
@@ -659,10 +663,13 @@ Method TestEveryDeclaredMatchingRoleGrantsOnlyReadOnTheCodeDatabase()
 /// databases (globals <code>USER</code>, routines <code>HSCUSTOM</code>), created for this method
 /// and removed by it. The grants the matching roles take are read on both, in collation order, and
 /// a probe role (<parameter>SPLITROLE</parameter>, removed too) created with them reads them back
-/// unchanged, which is what the installer's drift check compares.</p>
+/// unchanged, which is what the installer's drift check compares. An unauthenticated application
+/// over the namespace dispatching to <class>OcuPilot.Api.Readiness</class> with that role as its
+/// application role (<parameter>SPLITAPP</parameter>, removed too) answers an anonymous request
+/// rather than refusing it 403.</p>
 /// <p>Mutation (Rule 19): derive the routine database only in
 /// <method>OcuPilot.Install.Installer.CodeDatabaseResource</method> -&gt; the derivation lacks the
-/// globals database's resource and this goes red.</p>
+/// globals database's resource, the anonymous request is refused 403, and this goes red.</p>
 Method TestTheFloorCoversASplitNamespacesTwoDatabases()
 {
     Set tNs = ..#SPLITNAMESPACE
@@ -671,6 +678,7 @@ Method TestTheFloorCoversASplitNamespacesTwoDatabases()
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         Do $$$AssertStatusOK(tSC, "switch to %SYS")
         If $$$ISERR(tSC) Quit
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Do $$$AssertStatusOK(##class(Security.Applications).Delete(..#SPLITAPP), "an application an earlier run left is removed first")
         If ##class(Config.Namespaces).Exists(tNs) Do $$$AssertStatusOK(##class(Config.Namespaces).Delete(tNs), "a namespace an earlier run left is removed first")
         Kill tProps
         Set tProps("Globals") = "USER"
@@ -709,16 +717,35 @@ Method TestTheFloorCoversASplitNamespacesTwoDatabases()
         Kill tRoleProps
         Do $$$AssertStatusOK(##class(Security.Roles).Get(..#SPLITROLE, .tRoleProps), "and read back")
         Do $$$AssertEquals($Get(tRoleProps("Resources")), $Get(tGrants), "reading back exactly as granted, so the drift check repairs nothing")
+
+        ; The floor's purpose: the framework's access check lets an anonymous request through to
+        ; the dispatch class only when the application's role reads the default globals database.
+        Kill tAppProps
+        Set tAppProps("NameSpace") = tNs
+        Set tAppProps("DispatchClass") = "OcuPilot.Api.Readiness"
+        Set tAppProps("AutheEnabled") = 64
+        Set tAppProps("Enabled") = 1
+        Set tAppProps("MatchRoles") = ":" _ ..#SPLITROLE
+        Set tSC = ##class(Security.Applications).Create(..#SPLITAPP, .tAppProps)
+        Do $$$AssertStatusOK(tSC, "an unauthenticated application over the split namespace carries the probe role")
         Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#SPLITAPP _ "/", "", "", .tHttpStatus, .tHttpBody, .tHttpHeaders)
+        Do $$$AssertStatusOK(tSC, "the anonymous request completes")
+        Do $$$AssertEquals(tHttpStatus, 200, "and is answered by the dispatch class rather than refused 403: " _ $Extract(tHttpBody, 1, 120))
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Do $$$AssertStatusOK(ex.AsStatus(), "the split-namespace leg ran without raising")
     }
+    ; A failure above can leave this process in %SYS, and the switch below saves where it is.
+    Set $NAMESPACE = tOrigNS
     Set tLeft = ""
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Set tDeleteSC = ##class(Security.Applications).Delete(..#SPLITAPP)
+        If ##class(Security.Applications).Exists(..#SPLITAPP) Set tLeft = ..#SPLITAPP
         If ##class(Config.Namespaces).Exists(tNs) Set tDeleteSC = ##class(Config.Namespaces).Delete(tNs)
-        If ##class(Config.Namespaces).Exists(tNs) Set tLeft = tNs
+        If ##class(Config.Namespaces).Exists(tNs) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: " and ") _ tNs
         If ##class(Security.Roles).Exists(..#SPLITROLE) Set tDeleteSC = ##class(Security.Roles).Delete(..#SPLITROLE)
         If ##class(Security.Roles).Exists(..#SPLITROLE) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: " and ") _ ..#SPLITROLE
     } Catch ex {
@@ -726,7 +753,7 @@ Method TestTheFloorCoversASplitNamespacesTwoDatabases()
         Set tLeft = "an unreadable " _ tNs
     }
     Set $NAMESPACE = tOrigNS
-    Do $$$AssertEquals(tLeft, "", "the split namespace and the probe role are removed")
+    Do $$$AssertEquals(tLeft, "", "the split namespace, the probe application and the probe role are removed")
 }
 
 /// <p>AC12 -- a second run repairs a drifted web application and reports the repair;

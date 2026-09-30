@@ -486,7 +486,7 @@ Method TestAJobWhoseLoopThrowsStillAppendsAndReleases()
 }
 
 /// <p>A tool result longer than <code>TOOLSTEPTEXTMAXLENGTH</code> reaches the model whole, while
-/// the tool step the progress poll projects keeps its first 4,096 characters ending in U+2026
+/// the tool step the progress poll projects is cut to 4,096 characters ending in U+2026
 /// (AD-33).</p>
 /// <p>Mutation (Rule 19): hand the model the step's cut text in
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> -&gt; the model's copy loses the

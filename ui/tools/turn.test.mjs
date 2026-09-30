@@ -1991,6 +1991,7 @@ async function endedTurnWith(proposals, rereads, options = {}) {
     [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
     [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
     [turnProgressPath('turn-1')]: [endedBody(proposals), ...rereads],
+    ...(options.responses ?? {}),
   });
   const turn = new TurnStore({
     api,
@@ -2091,6 +2092,40 @@ test('a hidden document skips a tick without reading, and a 404 ends the re-read
   await settle();
   assert.equal(api.calls.length, before + 1, 'a visible tick reads');
   assert.equal(scheduled.length, 0, 'and a 404 ends the re-read');
+});
+
+// Mutation (Rule 19): stop the re-read on a 404 only -> "a refusal ends the re-read, and a server
+// error keeps it armed" goes red.
+test('a refusal ends the re-read, and a server error keeps it armed', async () => {
+  const refused = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [err(403, 'AUTH.FORBIDDEN')]);
+  refused.scheduled.shift().run();
+  await settle();
+  assert.equal(refused.scheduled.length, 0, 'a 403 ends the re-read, as it ends a poll');
+  const failing = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [err(503, 'INTERNAL')]);
+  failing.scheduled.shift().run();
+  await settle();
+  assert.equal(failing.scheduled.length, 1, 'a 503 is transient, and the next re-read is armed');
+});
+
+// Mutation (Rule 19): drop the turn check from `hasLiveProposal` -> "a later turn with no
+// proposal of its own arms no re-read for an earlier turn's card" goes red.
+test("a later turn with no proposal of its own arms no re-read for an earlier turn's card", async () => {
+  const { turn, api, scheduled } = await endedTurnWith([wireProposal({ privilege: HELD_PRIVILEGE })], [], {
+    responses: {
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202)],
+      [turnProgressPath('turn-2')]: [ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [] })],
+    },
+  });
+  assert.equal(await turn.send('next'), 'sent', 'the instance accepts a second turn');
+  await settle();
+  scheduled.splice(scheduled.findIndex((entry) => entry.delayMs === 1000), 1)[0].run();
+  await settle();
+  assert.equal(turn.busy(), false, 'the second turn has ended');
+  assert.equal(scheduled.filter((entry) => entry.delayMs === 15000).length, 1, "only the first turn's re-read, armed before the send, is queued");
+  const before = api.calls.length;
+  scheduled.find((entry) => entry.delayMs === 15000).run();
+  await settle();
+  assert.equal(api.calls.length, before, 'and the accepted send left it inert');
 });
 
 // Mutation (Rule 19): merge a re-read's line only when it warns (skip `missing === ''`) -> "a

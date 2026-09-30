@@ -84,13 +84,14 @@ Method TestAToolStepsPreDispatchArgumentsAreDeclarationRedacted()
 }
 
 /// <p>A finished tool step stores the result content the model was handed, so the panel's card can
-/// show what the model actually read: the <code>tool_result</code> content itself, cut to its first
-/// <code>TOOLSTEPTEXTMAXLENGTH</code> characters ending in U+2026 (AD-33). It is untrusted content
-/// (AD-11) like every other step field.</p>
+/// show what the model actually read: the <code>tool_result</code> content itself, cut to
+/// <code>TOOLSTEPTEXTMAXLENGTH</code> characters ending in U+2026 when it is longer, and kept whole
+/// at that length or less (AD-33). It is untrusted content (AD-11) like every other step field.</p>
 /// <p>Mutation (Rule 19): revert <method>OcuPilot.Kernel.State.Step.GuardedFinishTool</method>'s
 /// text to the literal <code>""</code>, or drop the <code>content</code> argument from
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>'s success finish -- either goes red
-/// here. Cut at <code>TEXTMAXLENGTH</code> again and the cap leg goes red.</p>
+/// here. Cut at <code>TEXTMAXLENGTH</code> again and the cap leg goes red; cut a result of exactly
+/// the cap and the edge leg goes red.</p>
 Method TestAToolStepStoresTheResultContentTheModelWasHanded()
 {
     Set tUser = ..#PROBEUSER
@@ -112,8 +113,8 @@ Method TestAToolStepStoresTheResultContentTheModelWasHanded()
     Do $$$AssertStatusOK(tSourceSC, "the loop's source is readable")
     Do $$$AssertTrue(tSource [ "tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get(""content""), 1: """")", "and the loop's own success finish is what passes it")
 
-    ; The bound the content arrives under: the poll projects every step's text, so a tool step
-    ; keeps its result's first TOOLSTEPTEXTMAXLENGTH characters and no more.
+    ; The bound the content arrives under: the poll projects every step's text, so a tool step's
+    ; text is cut to TOOLSTEPTEXTMAXLENGTH characters, the last of them U+2026.
     Set tMax = +$Parameter(..#LIMITS, "TOOLSTEPTEXTMAXLENGTH")
     Do $$$AssertEquals(tMax, 4096, "the shipped tool step cap is 4,096 characters")
     Set tOversized = $Translate($Justify("", 65536), " ", "x")
@@ -128,6 +129,21 @@ Method TestAToolStepStoresTheResultContentTheModelWasHanded()
     Do $$$AssertEquals($Extract(tBigText, *), $Char(8230), "ending in U+2026")
     Do $$$AssertEquals($Extract(tBigText, 1, tMax - 1), $Extract(tOversized, 1, tMax - 1), "after the result's own first characters")
     Do $$$AssertEquals(tBigRows.%Get(1).%Get("truncated"), 1, "and the step says it was cut")
+
+    ; The edge: a result of exactly the cap is kept whole, and one character more is cut.
+    Set tExact = $Extract(tOversized, 1, tMax)
+    For tI = 0, 1 {
+        Set tName = "probe.ledger.edge" _ tI
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "tool", tName, "running", "", "", "", ..#LIMITS, .tEdgeSeq, .tEdgeStored), "an edge tool step is appended")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(tKey, tEdgeSeq, tName, "ok", "", ..#LIMITS, "", "", "", "", "", 0, tExact _ $Select(tI: "y", 1: "")), "and finished with a result of the cap plus " _ tI)
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tEdgeRows), "the turn's steps read back once more")
+    Do $$$AssertEquals(tEdgeRows.%Size(), 4, "as four steps")
+    If tEdgeRows.%Size() '= 4 Quit
+    Set tWhole = tEdgeRows.%Get(2)
+    Do $$$AssertEquals($Length(tWhole.text) _ "|" _ (tWhole.text = tExact) _ "|" _ tWhole.truncated, tMax _ "|1|0", "a result of exactly the cap is kept whole and not marked cut")
+    Set tOver = tEdgeRows.%Get(3)
+    Do $$$AssertEquals($Length(tOver.text) _ "|" _ ($Extract(tOver.text, *) = $Char(8230)) _ "|" _ tOver.truncated, tMax _ "|1|1", "one character more is cut to the cap, ending in U+2026, and marked cut")
 
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }

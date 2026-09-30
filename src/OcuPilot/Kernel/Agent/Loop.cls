@@ -563,9 +563,9 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             }
             ; The result content, stored on the step: the tool_result content the dispatcher cut to
             ; the per-call budget, before Sanitize.Results cleans and frames the model's copy below,
-            ; so the panel's card shows the instance data. The step keeps its first
-            ; TOOLSTEPTEXTMAXLENGTH characters (GuardedFinishTool); the model's copy is not cut by
-            ; it. The dispatcher-failed finish above records none: there was no result.
+            ; so the panel's card shows the instance data. The step's copy is cut to
+            ; TOOLSTEPTEXTMAXLENGTH characters ending in U+2026 (GuardedFinishTool); the model's copy
+            ; is not cut by it. The dispatcher-failed finish above records none: there was no result.
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
             If $$$ISERR(tSC) Quit
             If 'tIsError && $IsObject(tResult) && $IsObject(pCandidates) && ..CitesRows(tRunningResolved) {

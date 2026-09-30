@@ -2316,10 +2316,12 @@ ClassMethod CodeDatabaseResource(pInstallNs As %String, Output pResources As %St
 /// <class>OcuPilot.Api.StaticHandler</class> or <class>OcuPilot.Api.Readiness</class> from the
 /// install namespace's routine database unless the application grants read on it, and
 /// <method>%CSP.REST.AccessCheck</method> refuses it unless the application grants read on the
-/// default globals database: lacking either grant, IRIS refuses the request 403 with an empty body
-/// before the dispatch class runs (measured on the readiness application, and on a namespace whose
-/// two databases differ). The role buys the right to execute OcuPilot's own code and to pass that
-/// check, and no privilege over OcuPilot's state, which lives in the separate protected database
+/// default globals database. Without the globals grant IRIS refuses the request 403 with an empty
+/// body before the dispatch class runs; without the routine grant the class cannot load and the
+/// request fails with a server error page (measured on the readiness application, and on a
+/// namespace whose two databases differ). The role buys the right to execute OcuPilot's own code
+/// and to pass that check -- on a namespace whose globals database is separate, read on the data it
+/// holds -- and no privilege over OcuPilot's state, which lives in the separate protected database
 /// (AD-9) these roles do not reach.</p>
 /// <p><b>One role per application, not one shared role</b> (Story 1.17, the owner's overnight
 /// decision). Reusing the shell's role for the readiness application would be one fewer object

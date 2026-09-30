@@ -8508,3 +8508,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: found by the DW-1780 fix, 2026-09-30; orchestrator asked for the same fix as AC1
 - 2026-09-30T02:01:26Z status=routed owner=16-25-the-external-language-server-editor by=lead note=orchestrator: wait for this Search's own answer, pinned under the throttled condition, before 16.25's first code push
 - 2026-09-30T02:13:03Z status=resolved-by:16-25-the-external-language-server-editor by=adjudication note=AC6 waits for this Search's own answer (showsAnswer, shared with search()); the timing leg now reddens when the answer lands late
+
+### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
+- 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)

@@ -43,7 +43,8 @@ Parameter MAXSTEPS As %Integer = 100;
 /// <p>Characters a step's name or summary is cut at.</p>
 Parameter SUMMARYMAXLENGTH As %Integer = 1000;
 
-/// <p>Characters a step's text, or a turn's reply, is cut at.</p>
+/// <p>Characters a step's text, or a turn's reply, is cut at. A finished tool step's text is cut
+/// shorter, at <code>TOOLSTEPTEXTMAXLENGTH</code>.</p>
 Parameter TEXTMAXLENGTH As %Integer = 131072;
 
 /// <p>Characters a finished tool step's text -- the result the model was handed -- is cut at, the

@@ -292,14 +292,16 @@ cannot produce different ones, and `Uninstall` removes them:
 
 None carries an application resource. `OcuPilotShell` and `OcuPilotReadiness` each grant **read
 on the install namespace's routine and default globals databases and nothing else**, one grant
-where the two are the same database: in IRIS database READ is routine-execution permission, and
-the framework's access check tests the globals database's resource, so lacking either grant IRIS
+where the two are the same database. In IRIS database READ is routine-execution permission, and
+the framework's access check tests the globals database's resource. Without the globals grant IRIS
 refuses an anonymous request `403` with an empty body before the application's dispatch class
-runs (measured on the readiness application, 2026-09-26, and on a namespace whose two databases
-differ, 2026-09-30). They buy the right to run OcuPilot's own code and to pass that check, and no
-privilege over OcuPilot's state, which lives in the separate protected database neither role
-reaches (AD-9, AD-21). The authenticated API carries no matching role at all, so a request there runs with
-exactly the privileges its own account holds (AD-8).
+runs (measured on the readiness application, 2026-09-26). Without the routine grant the dispatch
+class cannot load and the request fails with a server error page (both measured on a namespace
+whose two databases differ, 2026-09-30). They buy the right to run OcuPilot's own code and to pass
+that check; on a namespace whose globals database is separate, that is read on the data it holds.
+Neither reaches OcuPilot's state, which lives in the separate protected database (AD-9, AD-21).
+The authenticated API carries no matching role at all, so a request there runs with exactly the
+privileges its own account holds (AD-8).
 
 **An API account needs that same read, as a prerequisite.** Because database READ is
 routine-execution permission, an account calling `/api/ocupilot` must hold read on the install
@@ -307,8 +309,8 @@ namespace's database, on top of whatever a screen's own privilege set requires. 
 really at issue and on this container they are one: the framework's access check tests the
 resource guarding the namespace's **default global** database
 (`$Piece($zu(90,21,<namespace>),"^",4)`, `%DB_HSCUSTOM` here), while loading OcuPilot's own classes
-needs read on the resource guarding its **routine** database — the other of the two
-`OcuPilot.Install.Installer.CodeDatabaseResource` derives from `SYS.Database`, also `%DB_HSCUSTOM`
+needs read on the resource guarding its **routine** database. That is one of the two resources
+`OcuPilot.Install.Installer.CodeDatabaseResource` reads from `SYS.Database`, also `%DB_HSCUSTOM`
 here because `HSCUSTOM`'s two databases are the same one. On a namespace configured with separate
 globals and routines databases they are two grants, and an account needs both. Without the first
 the framework's own access check refuses the request before any OcuPilot code runs, and the caller

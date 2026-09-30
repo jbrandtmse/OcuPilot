@@ -42,7 +42,11 @@ Parameter TOOSHORTPASSWORD = "ab";
 /// routine. Its entry points refuse a new password carrying <parameter>REFUSEDMARKER</parameter>
 /// and admit every other: <code>Refuse</code> with <parameter>REFUSALSENTENCE</parameter>,
 /// <code>Quote</code> with a sentence that quotes the password, <code>Empty</code> with no
-/// sentence; <code>Boom</code> raises <code>&lt;DIVIDE&gt;</code> instead.</p>
+/// sentence, <code>Pattern</code> with a 958 whose text quotes it, and <code>Both</code> with a
+/// status that leads with a 5002 before its refusal; <code>Boom</code> raises
+/// <code>&lt;DIVIDE&gt;</code> instead. <code>User</code> refuses a new password containing the
+/// account's name, which the instance passes in lower case, with
+/// <parameter>USERREFUSALSENTENCE</parameter>.</p>
 Parameter VALIDATIONROUTINE = "OcuPilotPwProbe";
 
 /// <p>What a new password carries for the probe routine to refuse it.</p>
@@ -50,6 +54,10 @@ Parameter REFUSEDMARKER = "OcuRefuse";
 
 /// <p>The sentence <code>Refuse</code> answers, and the oracle the routine leg asserts.</p>
 Parameter REFUSALSENTENCE = "Passwords on this instance may not carry the probe marker.";
+
+/// <p>The sentence <code>User</code> answers, the oracle for the account name the validator is
+/// given.</p>
+Parameter USERREFUSALSENTENCE = "Passwords on this instance may not contain the account name.";
 
 /// <p>The account's password as it stands right now: the generated one until the happy-path leg
 /// changes it, the replacement afterwards.</p>
@@ -118,6 +126,7 @@ Method OnBeforeAllTests() As %Status
         Set ..PreparedValidationRoutine = $Get(tSystem("PasswordValidationRoutine"))
         ; A probe an interrupted run left configured is not the instance's own setting.
         If $Piece(..PreparedValidationRoutine, "^", 2) = ..#VALIDATIONROUTINE Set ..PreparedValidationRoutine = ""
+        Do ..RemoveValidationProbe()
 
         Set ..PreparedSetupOk = ($SYSTEM.Security.CheckUserPermission(..#PROBEUSER, "%Admin_Operate", "USE") = 1)
         If '..PreparedSetupOk {
@@ -194,6 +203,18 @@ Method InstallValidationRoutine() As %Status
         Do tRoutine.WriteLine("}")
         Do tRoutine.WriteLine("Boom(Username,Password) PUBLIC {")
         Do tRoutine.WriteLine(" If Password [ """ _ tMarker _ """ Set x = 1/0")
+        Do tRoutine.WriteLine(" Quit 1")
+        Do tRoutine.WriteLine("}")
+        Do tRoutine.WriteLine("Pattern(Username,Password) PUBLIC {")
+        Do tRoutine.WriteLine(" If Password [ """ _ tMarker _ """ Quit $System.Status.Error(958,Password)")
+        Do tRoutine.WriteLine(" Quit 1")
+        Do tRoutine.WriteLine("}")
+        Do tRoutine.WriteLine("Both(Username,Password) PUBLIC {")
+        Do tRoutine.WriteLine(" If Password [ """ _ tMarker _ """ Quit $System.Status.AppendStatus($System.Status.Error(5002,""OcuProbeInternal""),$System.Status.Error(5001,""" _ ..#REFUSALSENTENCE _ """))")
+        Do tRoutine.WriteLine(" Quit 1")
+        Do tRoutine.WriteLine("}")
+        Do tRoutine.WriteLine("User(Username,Password) PUBLIC {")
+        Do tRoutine.WriteLine(" If $ZConvert(Password,""L"") [ Username Quit $System.Status.Error(5001,""" _ ..#USERREFUSALSENTENCE _ """)")
         Do tRoutine.WriteLine(" Quit 1")
         Do tRoutine.WriteLine("}")
         Set tSC = tRoutine.Save()
@@ -383,14 +404,19 @@ Method TestAPolicyRefusalCarriesTheInstancesOwnText()
 /// <p>A new password the instance's password validation routine refuses is a 422 violation on
 /// <code>newPassword</code> carrying <b>the routine's own sentence</b>
 /// (<parameter>REFUSALSENTENCE</parameter>, the oracle). A routine whose sentence quotes the password,
-/// or that gives none, has it replaced by the published one, and a wrong current password is still
-/// answered on <code>currentPassword</code> with the routine configured. A routine that raises an
-/// error confirms no refusal: the change is a 500 naming neither the error nor the routine.</p>
+/// or that gives none, has it replaced by the published one, and so does a 958 whose text quotes
+/// it; a wrong current password is still answered on <code>currentPassword</code> with the
+/// routine configured, and a routine that reads the account name refuses the same password when
+/// the validator asks. A routine that raises an error, or leads its refusal with another error,
+/// confirms no refusal: the change is a 500 naming neither the error nor the routine.</p>
 /// <p>Needs <code>%SYS</code> write for the routine and the setting, which the arming variable
 /// keeps to a throwaway.</p>
 /// <p>Mutation (Rule 19): delete the <method>%SYSTEM.Security.ValidatePassword</method> arm from
 /// <method>OcuPilot.Api.Account.ClassifyRefusal</method> -&gt; the refusals answer 500 and this goes
-/// red.</p>
+/// red. Call the validator without the account name -&gt; the account-name leg answers 500. Accept
+/// a refusal code anywhere in the validator's status -&gt; the composed-status leg answers 422 with
+/// the other error's text. Drop the policy arm's quote check -&gt; the pattern leg renders the
+/// password.</p>
 Method TestAValidationRoutineRefusalCarriesTheRoutinesSentence()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "the probe principal was prepared")
@@ -429,6 +455,33 @@ Method TestAValidationRoutineRefusalCarriesTheRoutinesSentence()
         Do $$$AssertStatusOK(tSC, "the empty-sentence request completes")
         Do ..AssertNewPasswordRefusal(tStatus, tBody, .tHeaders, ##class(OcuPilot.Api.Error).#REASONACCOUNTPASSWORDPOLICY, "the published sentence, because the routine gave none")
 
+        ; The instance hands the routine the account's name, so the validator's reading of the
+        ; same password must be given it too.
+        Set tSC = ..UseValidationEntry("User")
+        Do $$$AssertStatusOK(tSC, "the account-name entry point is set")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Post(..Payload(..PreparedPassword, ..#PROBEUSER _ ..GeneratePassword()), .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the account-name request completes")
+        Do ..AssertNewPasswordRefusal(tStatus, tBody, .tHeaders, ..#USERREFUSALSENTENCE, "the sentence of a routine that reads the account name")
+
+        Set tSC = ..UseValidationEntry("Pattern")
+        Do $$$AssertStatusOK(tSC, "the pattern entry point is set")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Post(..Payload(..PreparedPassword, tRefused), .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the pattern-refusal request completes")
+        Do ..AssertNewPasswordRefusal(tStatus, tBody, .tHeaders, ##class(OcuPilot.Api.Error).#REASONACCOUNTPASSWORDPOLICY, "the published sentence, because the policy code's text quotes the password")
+        Do $$$AssertEquals((tBody [ tRefused), 0, "and the quoted password is nowhere in the response")
+
+        ; A status the routine composes confirms a refusal only when the refusal comes first, so
+        ; the error ahead of it never reaches the wire.
+        Set tSC = ..UseValidationEntry("Both")
+        Do $$$AssertStatusOK(tSC, "the composed-status entry point is set")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Post(..Payload(..PreparedPassword, tRefused), .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the composed-status request completes")
+        Do $$$AssertEquals(tStatus, 500, "a refusal behind another error is an internal error")
+        Do $$$AssertEquals((tBody [ "OcuProbeInternal"), 0, "whose body carries neither error's text: " _ tBody)
+
         ; A routine that raises an error has refused nothing: its error names the routine's own
         ; line, which neither the classifier nor the wire may carry.
         Set tSC = ..UseValidationEntry("Boom")
@@ -457,7 +510,7 @@ Method TestAValidationRoutineRefusalCarriesTheRoutinesSentence()
 /// pattern and refuses <parameter>TOOSHORTPASSWORD</parameter>.</p>
 /// <p>Mutation (Rule 19): drop the <parameter>OcuPilot.Api.Account.NOSUCHUSERCODE</parameter>
 /// test from <method>OcuPilot.Api.Account.ClassifyRefusal</method> -&gt; the validator refuses the
-/// two-character password, the last leg answers 422 and goes red.</p>
+/// two-character password, the 838 leg answers 422 and goes red.</p>
 Method TestAnUnconfirmedRefusalStaysAnInternalError()
 {
     Set tNew = ..GeneratePassword()
