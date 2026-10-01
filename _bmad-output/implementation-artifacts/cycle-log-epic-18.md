@@ -377,3 +377,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-01T13:37:45Z	Epic 18	spine_updated	ad=AD-8(18.15_%All:USE_passes_direct_holders_only;granted-role_refused,DW-1897) reason=correction_at_origin(implement_measurement) by=runner story=18-15-enable-interoperability-on-a-namespace lint=pending
 2026-10-01T13:37:45Z	Story 18.15	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-10-01T13:37:51Z	Story 18.15	stage_spawned	stage=qa spawn_at=2026-10-01T13:37:51Z model=sonnet agent_name=18-15-enable-interop-qa-1 cycle_iteration=3
+2026-10-01T13:55:07Z	Story 18.15	qa_complete	spawn_at=2026-10-01T13:37:51Z model=sonnet tests_added=0 mutations_demonstrated=3(SystemProblem_blank->WriteCount_red_run1564;RestoreInstance_no_stop->NamespaceInteropGate_after-all_red_run1566;RecordPort_bound_0->AllHolder_admitted_red_run1569) first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-10-01T13:55:07Z	Story 18.15	stage_spawned	stage=code-review spawn_at=2026-10-01T13:55:07Z model=opus agent_name=18-15-enable-interop-code-review-1 cycle_iteration=3 review_tier=full-opus scope=575c65ee..be4b1baf
