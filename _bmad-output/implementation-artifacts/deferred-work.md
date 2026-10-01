@@ -8673,3 +8673,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-13-the-service-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: README.md:491-493 says the LDAP and service editors cover the common fields and link to the classic page; :517 lists the full service editor as remaining. Story 16.13 shipped the full editor and dropped the link.
 - 2026-10-01T00:44:22Z status=wontfix-accepted owner=16-13-the-service-editor by=cr note=README is outside Epic 16's footprint; reopen_if=README.md still says the service editor links to the classic page at the next release cut
+
+### DW-1886: A developer instance whose compose file does not set OCUPILOT_LOAD_TESTS=1 loses its compiled OcuPilot.Test classes on its next start from a tree carrying the DW-1885 delete; ocupilot-slot-b does not set it today, nor would ocupilot if recreated from the repository's compose file
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: docker inspect ocupilot-slot-b shows only OCUPILOT_DEMO=1; ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; 00724be8 deletes the test-scope package on any start without it
+- 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
