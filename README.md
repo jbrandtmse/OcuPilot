@@ -27,12 +27,13 @@ editors that work against live instance data. Home adds the instance's performan
 security and operational findings, each with a fix you can review, and a log hub merges every log
 the instance keeps into one timeline.
 
-A panel docked on the right of every screen holds the agent. It sees the screen you are on, answers
-questions about it from the rows in front of you, opens the screen a conversation is about, and
-changes settings through tools that run strictly as you. **Every change it wants to make is shown as
-a proposal you confirm; nothing changes until you press Confirm.** The change then runs with your own
-privileges, is marked in the IRIS audit database as an agent write, and the screen refreshes and
-marks the row that changed.
+A panel docked on the right of every screen holds the agent: a language model you choose - Claude,
+GPT, Gemini, or a model on your own network. You ask in your own words, about any screen. It answers
+from the rows in front of you, opens the screen a conversation is about, and can propose any change
+the screens themselves make - everything except its own configuration - through tools that run
+strictly as you. **Every change it wants to make is shown as a proposal you confirm; nothing changes
+until you press Confirm.** The change then runs with your own privileges, is marked in the IRIS
+audit database as an agent write, and the screen refreshes and marks the row that changed.
 
 > **Requires InterSystems IRIS or IRIS for Health 2026.2 or later.** OcuPilot is built on version 2
 > of the IRIS admin API, which first shipped in 2026.2, so it does not run on earlier versions. The
@@ -163,8 +164,8 @@ change and says what would be needed; Home marks the screens this user may not o
 | Area | Screens | What you can do |
 | --- | --- | --- |
 | Web applications | Web applications, web sessions, REST API explorer, OpenAPI document viewer | Create, edit, enable, disable and delete applications; end web sessions; browse every REST application's endpoints, send a request from its OpenAPI document and copy it as curl |
-| Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions, enable and disable services; see a user's effective privileges, and check whether a user or role holds a permission and through which role |
-| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories | Editors for each, SSL/TLS and LDAP connection tests, OAuth token revocation, audit event configuration, and audit database copy and purge |
+| Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions; edit services - enabled state, allowed IP addresses, roles and authentication methods; see a user's effective privileges, and check whether a user or role holds a permission and through which role |
+| Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories | Editors for each, SSL/TLS and LDAP connection tests, an LDAP test sign-in that keeps no password, OAuth token revocation, audit event configuration, and audit database copy and purge |
 | Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; suspend and resume the Task Manager itself; pause, resume and cancel background tasks |
 | OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, integrity check and its log, namespaces, devices, external language servers | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; edit devices; free space per database; create, edit, delete, start and stop external language servers and read their activity log |
 | Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry, which it reads alongside the rest of the page |
@@ -258,6 +259,10 @@ Governance policy**.
 In 1.0.4, the agent's eight disk operations - mount, dismount, truncate, compact, defragment,
 expand, grow and the integrity check - start switched off in the same way. The screens do all eight,
 and settings you already made are kept.
+
+From 1.0.5, an installed OcuPilot carries no test code. The first start after the update removes the
+test classes earlier releases compiled into the install namespace, and its log says how many (835 on
+a 1.0.4 install). Nothing you use changes.
 
 ## Get a model key in two minutes
 
@@ -368,8 +373,8 @@ the read-only state changes.
 - **Your choice:** the **Share screen context** switch in the panel turns this off for you.
 - **Secrets:** passwords, keys and wallet secrets are never given to the model. A change that needs
   one asks you for it on the proposal card, and it travels only with your Confirm.
-- **Where it goes:** to the model provider you configured, and nowhere else. A definition marked
-  local sends nothing off your network.
+- **Where it goes:** to the model provider you configured, and nowhere else; each turn shows the
+  provider and host its data went to. A definition marked local sends nothing off your network.
 - **Content is data, not instructions.** Log lines, field values and everything else a tool returns
   are cleaned and marked as data before they reach the model, so text planted in a log cannot pose
   as an instruction. Tests plant such text in every source the agent reads and check that it is not
@@ -436,8 +441,8 @@ token and hidden values left as placeholders.
   portal in headless Chrome, compiles and smoke-tests on both IRIS Community and IRIS for Health
   Community, and builds and loads the IPM package offline. The two long suites each run across three
   containers at once, so a full run takes about 20 minutes.
-- **Tests:** 386 `%UnitTest` classes run inside IRIS; 98 Node test files and 147 Angular component
-  specs cover the client; 131 browser specs exercise the running portal.
+- **Tests:** 392 `%UnitTest` classes run inside IRIS; 99 Node test files and 153 Angular component
+  specs cover the client; 133 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question.
@@ -490,8 +495,7 @@ that carry Community Opportunity status:
 
 - **One instance at a time.** OcuPilot manages the instance it is installed on.
 - **Not every portal page yet.** Remote databases, journals, encryption, mirroring and
-  Interoperability are still the classic portal's; the LDAP and Kerberos and the service editors
-  cover the common fields and link to the classic page for the rest.
+  Interoperability are still the classic portal's.
 - **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
@@ -514,7 +518,6 @@ New releases arrive every few days, each installed and tested on a clean machine
 
 - **The rest of system operation:** remote databases, journals, licensing and ECP, encryption,
   superservers and authentication options.
-- **The remaining editors:** the service editor and the LDAP and Kerberos editor in full.
 - **Permissions and monitoring:** SQL privileges, the raw metrics, and a live log tail.
 
 After that, OcuPilot grows toward parity with the classic portal: a code and SQL explorer,
@@ -524,7 +527,10 @@ Interoperability, and every remaining portal page.
 
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) is the contributor reference: the development container
 and its start path, the installer, the smoke script and CI, the IPM manifest, VS Code setup and the
-IRIS MCP server suite. Building the client needs Node `^22.22.3`, `^24.15.0` or `^26.0.0`.
+IRIS MCP server suite. Building the client needs Node `^22.22.3`, `^24.15.0` or `^26.0.0`. To run the
+ObjectScript test suite in the container, set `OCUPILOT_LOAD_TESTS: "1"` in its environment in
+`docker-compose.yml` and recreate it with `docker compose up -d --wait`; a `restart` does not apply
+a changed environment.
 
 OcuPilot was planned and built with the [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD),
 with Claude Code as the development agents: research, a product brief and PRD, UX design and an
