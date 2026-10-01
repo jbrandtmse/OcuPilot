@@ -255,12 +255,14 @@ export class MappingForm {
   }
 
   /**
-   * Whether the name names a system global: a global mapping whose name begins with `%`, whose
-   * consequence the form states under Name (AD-10). The kernel decides the effect; this decides only
-   * whether the published line shows.
+   * Whether the name reaches the `%` globals: a global mapping whose name begins with `%`, or whose
+   * global part (the text before its first `(`) begins with `:` (an empty low end, read as `%`) or
+   * `*`, whose consequence the form states under Name (AD-10). The kernel decides the effect; this
+   * decides only whether the published line shows.
    */
   systemGlobal(): boolean {
-    return this.kindValue.kind === 'global' && this.value(NAME_FIELD).startsWith('%');
+    // The global part's first character is the name's own, so one test covers all three.
+    return this.kindValue.kind === 'global' && /^[%:*]/.test(this.value(NAME_FIELD));
   }
 
   /**

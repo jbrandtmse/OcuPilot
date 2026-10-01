@@ -16,13 +16,13 @@ Parameter PORT = "OcuPilot.Port.DatabasePort";
 
 Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
 
-/// <p>The list: OS management's tenth entry over the vendor's configuration <code>LIST</code>
+/// <p>The list: OS management's eleventh entry over the vendor's configuration <code>LIST</code>
 /// narrowed to local databases, three fields filtered and sorted alike, Name first, one Delete row
 /// action and a Create, the classic Local Databases page; Epic 6's Databases re-fetches on its
 /// entity type, and it on Database details' (AD-14).</p>
 /// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Descriptor.LocalDatabaseList</class> declares no
 /// secondary entity type -> its re-fetch leg goes red.</p>
-Method TestTheListIsOsManagementsTenthEntryKeyedByName()
+Method TestTheListIsOsManagementsEleventhEntryKeyedByName()
 {
     Set tClass = ..#LIST
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -30,7 +30,7 @@ Method TestTheListIsOsManagementsTenthEntryKeyedByName()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey, "os-management:10:localDatabaseListLabel", "OS management's tenth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey, "os-management:11:localDatabaseListLabel", "OS management's eleventh side-bar entry")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Database.ConfigCRUD"",""type"":""LIST"",""query"":{""localOnly"":""1""}}", "read through the vendor's configuration list, local databases only")
     For tKey = "fields", "filter" {
         Do $$$AssertEquals(tDeclaration.read.%Get(tKey).%ToJSON(), "[""Name"",""Directory"",""Status""]", "read." _ tKey _ " is the three fields")
@@ -264,18 +264,19 @@ Method TestEveryDatabaseCodeIsSaidAndListed()
 
 /// <p>Story 18.4's two screens: Check integrity, a form page under Databases carrying the list's own
 /// pairs over the database entity, and the Integrity log, a log viewer carrying the log's two pairs and
-/// reading the integrity source; both built and unlisted, each over its classic page. The Databases list
+/// reading the integrity source; both built, each over its classic page, Check integrity unlisted and the
+/// Integrity log OS management's fifth side-bar entry, right after Databases. The Databases list
 /// offers Check integrity as its primary action and on a row, and Database details its five
 /// operations.</p>
-Method TestTheIntegrityScreensAreBuiltUnlisted()
+Method TestTheIntegrityScreensAreBuilt()
 {
-    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrity", "os-management/databases/integrity|form-page|0", "databaseIntegrityLabel", ..#SCREENPAIRS, "database|single", "%CSP.UI.Portal.Dialog.Integ", "osmgmt.databaseintegrity"), $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrityLog", "os-management/databases/integrity-log|log-viewer|0", "databaseIntegrityLogLabel", "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "log-entry|none", "%CSP.UI.Portal.Dialog.IntegLog", "osmgmt.integritylog") {
+    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrity", "os-management/databases/integrity|form-page|0", "databaseIntegrityLabel", ..#SCREENPAIRS, "database|single", "%CSP.UI.Portal.Dialog.Integ", "osmgmt.databaseintegrity"), $ListBuild("OcuPilot.Screen.Descriptor.DatabaseIntegrityLog", "os-management/databases/integrity-log|log-viewer|5", "databaseIntegrityLogLabel", "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "log-entry|none", "%CSP.UI.Portal.Dialog.IntegLog", "osmgmt.integritylog") {
         Set tClass = $List(tCase, 1)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
         If $$$ISERR(tSC) Continue
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", tClass _ ": the declaration validates")
-        Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.sideBarPosition, $List(tCase, 2), tClass _ ": its route and archetype, taking no side-bar position")
+        Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.sideBarPosition, $List(tCase, 2), tClass _ ": its route, archetype and side-bar position")
         Do $$$AssertEquals(tDeclaration.labelKey, $List(tCase, 3), tClass _ ": its label key")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), $List(tCase, 4), tClass _ ": its pairs")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "IdKind"), $List(tCase, 5), tClass _ ": its entity type and id")

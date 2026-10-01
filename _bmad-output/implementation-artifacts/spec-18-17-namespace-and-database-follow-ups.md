@@ -1,0 +1,461 @@
+---
+title: 'Story 18.17: Namespace and database follow-ups'
+type: 'bugfix'
+created: '2026-09-30'
+baseline_revision: '693ef46d9866d93b708d1f904a237948fcbca75c'
+baseline_commit: '693ef46d9866d93b708d1f904a237948fcbca75c'
+status: 'done'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
+warnings: ['oversized', 'multiple-goals']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Three follow-ups to shipped Epic 18 screens, split from Story 18.15 for release 1.0.5:
+
+- DW-1813: a global mapping whose global part begins with `:` (an empty low end, which the instance reads as `%`) or `*` reaches the `%` globals, yet neither the agent's proposal nor the global mapping form states the system-global consequence that a name beginning with `%` carries.
+- DW-1824: the New Namespace form's Create a database leaves the form, discards what was typed, lands on the new database's editor and never returns.
+- DW-1858: the Integrity log has no side-bar position, so a past check is reachable only by running a new one.
+
+**Approach:**
+
+- DW-1813 widens the kernel's one system-global predicate, which both callers already read, and its client mirror in the form.
+- DW-1824 carries the New Namespace form across the database wizard and back through the router, with a closed return marker.
+- DW-1858 lists the Integrity log right after Databases.
+
+There is no admin-API write, no new tool and no observation step before the build.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **DW-1813, one rule.** A global mapping reaches the `%` globals when its name begins with `%`, or when its global part (the text before any `(`) begins with `:` or `*`.
+  - The kernel's `IsSystemGlobalMapping` decides the effect `MAPPING.SYSTEMGLOBAL` for both callers (AD-10, AD-53). The agent's mint already asks it on a create and a change of a global mapping, never on a removal.
+  - The form's `systemGlobal()` mirrors the rule only to decide whether the published line shows.
+  - It is permitted at the strongest confirmation, exactly as a `%` name is. Nothing is refused.
+- **DW-1824, through the router (AD-19).**
+  - New Namespace in create mode opens the wizard with the closed marker `returnTo=namespace`. That is the only value honored, and it is never a URL (AD-47).
+  - Opened with the marker, the wizard's Create and Cancel replace the route with New Namespace carrying `kept=1`. Create also carries `database=<created name>`.
+  - New Namespace restores its own retained buffer, then chooses that database as Globals when its re-read list holds it. It compares ignoring case and keeps the list's spelling.
+  - Neither page reads or writes the other's store, and no store reads the route.
+- **The restored form is dirty, so leaving it asks.** The page drops `kept` and `database` from the URL before the restore, while the form is still clean, so the leave guard does not fire on that replacement.
+- **DW-1858.** `DatabaseIntegrityLog` takes `sideBarPosition` 5, and the six listed screens after it each move up by one: `DeviceList` 6, `NamespaceList` 7, `LicenseSummaryTab` 8, `Dashboard` 9, `LanguageServerList` 10 and `LocalDatabaseList` 11. Every pin is re-derived from the code and its class's red, never hand-counted.
+- **Probes** carry the prefix `OCUPROBE1817` and run on `ocupilot-b-ci` only. No test confirms a `:` or `*` mapping; it only mints one.
+- **Contended files (Rule 11):** see Design Notes › Footprint.
+  - `Prohibited.cls` takes inserted lines only.
+  - EXPERIENCE.md is edited in place and keeps 993 lines.
+  - `screens.generated.ts` is regenerated, never hand-merged.
+
+**Never:**
+
+- No new tool, governance key, port branch, `QUEUEDWRITES` entry, error code, route, dialog or string.
+- No edit to `Api/Error.cls`, `Api/Router.cls`, `Kernel/Governance/Baseline.cls`, `Port/AdminPort.cls`, `Screen/Registry.cls`, `Screen/Read.cls`, `Screen/Tool/*` or `ToolFields.cls`.
+- No interoperability work of any kind. It stays with Story 18.15, after release 1.0.5.
+- No hand-off from Edit Namespace's link, and no return for a wizard opened any other way.
+- No stop, restart, recreate, `up` or `down` of `ocupilot-b-ci` or any other container. No spine edit.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+| --- | --- | --- | --- |
+| `%` reach, agent (DW-1813) | A global mapping create in a probe namespace named `:A`, `:`, `*` or `*X`, or an edit of such a mapping | Minted destructive with consequence `MAPPING.SYSTEMGLOBAL`, as `%X` and `%X("a")` already are | effect, permitted |
+| `%` reach, form (DW-1813) | A person types `:A` or `*` in the global mapping form's Name | The system-global line shows under Name, and Name is described by it | none |
+| No `%` reach (DW-1813) | `A:`, `A:Z`, `X*`, `G("%a")` or `G(":")`; a routine mapping `:A`; a delete of `:A` | No `MAPPING.SYSTEMGLOBAL` effect and no line. A delete stays destructive as a delete | none |
+| Create a database (DW-1824) | New Namespace with Name and Routines typed, then Create a database, then the wizard's Create of `OCUPROBE1817W` | No leave prompt. Back on New Namespace with a URL carrying neither `kept` nor `database`. Name and Routines are as typed, Globals reads `OCUPROBE1817W`, and the form is dirty | none |
+| Wizard Cancel (DW-1824) | The same hand-off, then Cancel in the wizard | Back on New Namespace with what was typed. Globals is unchanged | a dirty wizard asks first, as today |
+| Wizard elsewhere (DW-1824) | The wizard opened from Local databases, from Edit Namespace's link, or with any other `returnTo` value | Unchanged: Create opens the new database's editor, and Cancel opens Local databases | none |
+| No kept buffer (DW-1824) | New Namespace opened with `kept=1` and nothing retained, as after a reload or a new tab | An empty create form, with Globals set to `database` when the list holds it | none |
+| Not listed (DW-1824) | The created name is absent from the re-read list | Globals keeps what was typed | none |
+| Side bar (DW-1858) | OS management for a holder of `%Admin_Operate:USE` and `%DB_IRISSYS:READ` | Processes · Locks · System usage · Databases · Integrity log · Devices · Namespaces · License usage · Dashboard · External language servers · Local databases. Integrity log opens the log | A non-holder sees the entry `aria-disabled` and naming the pair, as for every entry |
+| Integration (DW-1824) | A real browser and instance. The wizard opened from New Namespace creates `OCUPROBE1817W` | New Namespace's Globals select holds the database the instance just created. The wizard's created name reaches the consumer only through the router query | none |
+
+</intent-contract>
+
+## Code Map
+
+**DW-1813, kernel** (`src/OcuPilot/Kernel/Proposal/`):
+
+- `Prohibited.cls` (Epic 16 also changes this file, so edits are add-only):
+  - `EFFECTSYSTEMGLOBAL`: doc at :506-508, parameter at :509.
+  - `WeakensByEffect`: doc at :1383-1386. Its global-mapping arm (:1392-1394) answers the effect when `'pRemoves && IsSystemGlobalMapping(pId)`. A routine type falls through to `""`.
+  - `IsSystemGlobalMapping` (:2411-2418) splits the composite id with `EntityId.SplitComposite` and tests only `$Extract(name) = "%"`.
+- `Mint.cls:325-337` asks `WeakensByEffect` on every global-mapping create and change. It then sets `destructive` and `consequence` from the answer, so the agent's card follows the predicate with no change here.
+- `irissys/NSPMAP.int` `oneglob` (read-only): `$Piece(glob1,"*")` at :48 leaves an empty stem for a leading `*`. At :54 an empty stem becomes `%`, with an open upper end. So `:A`, `*` and `*X` reach the `%` globals (DW-1813's evidence measured `:A` moving `^%zz`).
+
+**DW-1813, client** (`ui/src/app/areas/os-management/`):
+
+- `mapping-form.store.ts`: `systemGlobal()` at :262-264, doc at :257-261. Today it is `kind === 'global' && name.startsWith('%')`.
+- `mapping-form.page.ts`: the line is drawn at :129-131 (create) and :147-149 (edit). The getter is at :292-296, with a doc saying "a `%` global's", and `nameField` adds `-effect` to `aria-describedby` at :349-353.
+- `core/proposal-view.ts:196,238` maps the code to the same string. No change.
+
+**DW-1824** (`ui/src/app/areas/os-management/`):
+
+- `namespace-form.page.ts` (494 lines):
+  - Constructor :240-262. It opens with `routeId()` (:447-450), the `NavigationEnd` follower is at :246-252, and the destroy hook (:254-261) resets unless `store.retaining()`.
+  - `databaseFields` :366-377 draws the link beside Globals in both modes. `createDatabaseLink` :379-385 is `withQuery(wizard.route, router.url)`, and `onCreateDatabase` :425-435 navigates to it.
+  - `NAMESPACE_FORM_ROUTE` is at :29.
+  - The query-read model is `mapping-form.page.ts:425-431` (`routeNamespace`).
+- `namespace-form.store.ts` (559 lines):
+  - `retaining()` :254-257, `retainAcrossRouteReplacement()` :259-262, `reset()` :266-289 (it also calls `formDirty.reset()`), and `open(name)` :291-312.
+  - `onChange` :421-426 re-reads the databases on a `database-configuration` created or deleted event while loaded.
+  - `absorb` :494-529: the databases are set at :512, and a create's buffer is set at :513-517.
+- `database-wizard.page.ts` (614 lines):
+  - The destroy hook :293-297 resets its store, which resets `FormDirty`.
+  - `onCreate` :533-542 replaces the route with `editorUrl(name)` (:609-613), and `cancel` :555-557 opens Local databases.
+  - `LOCAL_DATABASE_FORM_DESCRIPTOR` and `LOCAL_DATABASE_FORM_ROUTE` are exported at :38 and :41. The store sets the form clean on Create (`database-wizard.store.ts:438`).
+- `database-actions.ts` holds the OS management database route constants (:8-23), which both pages can import.
+- `core/navigation.ts:696-704`: `withQuery` keeps only `ns`. `core/form-dirty.ts` is the one dirty flag, and `app.routes.ts:24` is the guard on every form page.
+
+**DW-1858** (`src/OcuPilot/Screen/Descriptor/`):
+
+- `DatabaseIntegrityLog.cls`: `sideBarPosition` 0 at :27. Its doc at :14-15 says "It takes no side-bar position: the Check integrity flow opens it."
+- The current positions are `ProcessList` 1, `LockList` 2, `SystemUsage` 3, `DatabaseList` 4, `DeviceList` 5, `NamespaceList` 6, `LicenseSummaryTab` 7, `Dashboard` 8, `LanguageServerList` 9 and `LocalDatabaseList` 10. Positions must be whole numbers (`Registry.cls:508-531`).
+- Doc ordinals that go stale:
+  - `DatabaseList.cls:4` ("between System usage and Devices");
+  - `DeviceList.cls:4` ("fifth and last ... after Databases");
+  - `NamespaceList.cls:5` ("sixth");
+  - `LicenseSummaryTab.cls:5-6` ("seventh");
+  - `LocalDatabaseList.cls:5` ("tenth").
+- Area verdicts are unchanged. An area opens when any listed screen admits the caller (`Registry.ListedScreensForArea` :3340-3360), and `LockList` already declares the Integrity log's two pairs.
+
+**Pins to re-derive for DW-1858** (from each class's red):
+
+- ObjectScript (`src/OcuPilot/Test/`):
+  - `Navigation.cls:459-480`: the 30 screens stay 30, the unlisted count goes from 20 to 19, and the per-index list and its comment change.
+  - `Descriptor.cls:2288` (Devices), `DeviceWriteGate.cls:200`, `NamespaceWriteGate.cls:144`, `NamespaceDescriptor.cls:26`, `LicenseUsage.cls:110`, `Dashboard.cls:108` and `LanguageServer.cls:66`.
+  - `DatabaseDescriptor.cls`: :25-33 (`TestTheListIsOsManagementsTenthEntryKeyedByName`) and :265-278 (`TestTheIntegrityScreensAreBuiltUnlisted`, whose log case reads `|log-viewer|0`).
+  - `SurfaceCoverage.cls`: :82 and :135-136 name those two methods.
+  - `Wire.cls:694-701` and `WireSecurityRead.cls:540-566`: the full os-management screen JSON for each principal, with its comment.
+- Client (`ui/`):
+  - `tools/navigation.test.mjs`: the built-screens roster at :152-192 (`integrity-log` at :155 moves into the listed block after `os-management/databases` at :182), and the listed test at :256-280 (its title and comments).
+  - `tools/navigation-wire.test.mjs:115-305` and `src/app/shell/rail-wire.spec.ts:120-310`: the live-payload fixtures. They are copies of `Wire.cls`'s string, and they move together with it.
+  - `browser/namespaces.browser-spec.mjs:367-386` (the side bar, "sixth"), `license-usage.browser-spec.mjs:126-141` and `local-databases.browser-spec.mjs:1-12,483-496` ("tenth").
+- `language-servers.browser-spec.mjs:325-346` and `LanguageServerWire.cls:240-262` stay green, because their principals hold both pairs (inference from their role strings at :97 and :443).
+
+**EXPERIENCE.md** (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`, 993 lines). Epic 16 changes :173, :363, :490 and :504-507, and none of the lines below:
+
+- :164: the OS management side-bar row.
+- :375: License usage is "the seventh" entry and the Dashboard "the eighth".
+- :377: Local databases is "the tenth"; the clauses "the New Namespace form's link beside its globals select" and "the Integrity log's title".
+- :378: Devices is "the fifth" and Namespaces "the sixth"; the clause "the consequence a global mapping whose name begins with % states under Name".
+- :584: External language servers is "the ninth".
+
+**Test models:**
+
+- `Test/MappingWrite.cls` (485 lines, armed by `OCUPILOT_ALLOW_NAMESPACE_CONFIG`):
+  - `TestASystemGlobalMappingIsPermittedAtTheStrongestConfirmation` :256-276. It mints through `..Mint` and reads `..Marked` (:472-477) as `destructive|consequence`, with probe namespace `..#NS` `OCUPROBE1814A`.
+  - :363-373 already mints `*`, `:` and `:A` with status OK, so the mint's fresh read accepts those names.
+- `Test/MappingProbe.cls:218` `Id(ns, name)` builds a composite id.
+- Client spec models:
+  - `mapping-form.store.spec.ts:192-203` (the AD-10 test);
+  - `namespace-form.page.spec.ts:246-257` (the Create a database link, which expects `/os-management/local-databases/edit`);
+  - `namespace-form.store.spec.ts:208-219` (retained create);
+  - `database-wizard.page.spec.ts:229-256` (Create replaces the route, asserted with `vi.spyOn(router, 'navigateByUrl')`).
+- `ui/browser/local-databases.browser-spec.mjs`:
+  - `DATABASES` :75 drives the cleanup, `noneSurvives` and `probeDirectories` (:160-190).
+  - The wizard drive is at :502-527, with `chooseManagerRoot` :445-452, `nextTo` :461-468 and `sideBarOf` :286-300.
+- `ui/browser/namespace-mappings.browser-spec.mjs:350-356` is the `%OcuProbe1814` form-line leg.
+
+## Tasks & Acceptance
+
+**Execution: DW-1813:**
+
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, add-only:
+  - In `IsSystemGlobalMapping`, insert before its last `Quit`:
+
+    ```objectscript
+        Set tGlobal = $Piece($ListGet(tParts, 2), "(")
+        If ($Extract(tGlobal) = ":") || ($Extract(tGlobal) = "*") Quit 1
+    ```
+
+  - Insert one `///` paragraph after each of the doc comments of `IsSystemGlobalMapping`, `EFFECTSYSTEMGLOBAL` and `WeakensByEffect`. It says that a name whose global part begins with `:` (an empty low end, read as `%`) or `*` reaches the `%` globals too.
+- `ui/src/app/areas/os-management/mapping-form.store.ts`: `systemGlobal()` returns true for kind `global` when the name begins with `%`, or when the text before its first `(` begins with `:` or `*`. Its doc comment states the same rule.
+- `mapping-form.page.ts:292`: the getter's doc reads "Whether the name reaches the `%` globals".
+
+**Execution: DW-1824:**
+
+- `ui/src/app/areas/os-management/database-actions.ts`: export the hand-off vocabulary with one doc line each:
+  - `RETURN_PARAM = 'returnTo'` and `RETURN_TO_NAMESPACE = 'namespace'`;
+  - `KEPT_PARAM = 'kept'` and `CREATED_DATABASE_PARAM = 'database'`.
+- `namespace-form.store.ts`:
+  - Add `retainForHandOff()`. It keeps a copy of the create buffer, then calls `formDirty.setDirty(false)`.
+  - `retaining()` also answers true while that copy is held, and `reset()` drops it. The sign-out teardown therefore forgets it.
+  - `open(name, returning?: { readonly database: string })`. With `returning` and an empty name, capture the held copy before `reset()`. After `absorb`, the buffer is that copy (or empty).
+  - Globals becomes the list's spelling of `returning.database` when the list holds it, ignoring case. `opened` stays empty, and the form is marked dirty when the buffer differs from empty.
+  - Without `returning`, `open` behaves as today.
+- `namespace-form.page.ts`:
+  - In create mode, `createDatabaseLink` appends `returnTo=namespace` to its `url` and `href` (`?` or `&` after `withQuery`). Edit mode is unchanged.
+  - In create mode only, `onCreateDatabase` calls `store.retainForHandOff()` before navigating.
+  - The constructor reads `kept` and `database` from `router.url`, on the `routeNamespace` model. When `kept` is `1` and the id is empty, it first replaces the URL with `withQuery(NAMESPACE_FORM_ROUTE, router.url)` (`replaceUrl`), then opens with `{ database }`. Otherwise it opens as today.
+- `database-wizard.page.ts`: read `returnTo` from `router.url`; only `namespace` is honored.
+  - Create navigates (`replaceUrl`) to `withQuery(NAMESPACE_FORM_ROUTE, router.url)` plus `kept=1&database=<encodeURIComponent(created name)>`.
+  - Cancel does the same with `kept=1` only.
+  - Without the marker, both behave as today. Import `NAMESPACE_FORM_ROUTE` from `./namespace-form.page`; that page imports nothing from the wizard.
+
+**Execution: DW-1858:**
+
+- `DatabaseIntegrityLog.cls`: set `sideBarPosition` 5. Its doc sentence becomes "It is OS management's fifth side-bar entry, right after Databases, and the Check integrity flow also opens it."
+- `DeviceList`, `NamespaceList`, `LicenseSummaryTab`, `Dashboard`, `LanguageServerList` and `LocalDatabaseList`: each position plus one. Replace each stale ordinal sentence in the Code Map, `DatabaseList.cls:4` included, with the new ordinal and neighbour.
+- Regenerate with `cd ui && node tools/screen-mirror.mjs`, then update every pin in the Code Map.
+- Rename `DatabaseDescriptor`'s `TestTheListIsOsManagementsTenthEntryKeyedByName` to `TestTheListIsOsManagementsEleventhEntryKeyedByName`, and `TestTheIntegrityScreensAreBuiltUnlisted` to `TestTheIntegrityScreensAreBuilt`. Update `SurfaceCoverage.cls`'s three `method=` attributes to match.
+
+**Execution: EXPERIENCE.md (in place, still 993 lines):**
+
+- :164: the third cell begins "Integrity log (Stage 2, Story 18.17: listed right after Databases) · ".
+- :375, :377, :378 and :584: each OS management ordinal moves up by one, from fifth through tenth.
+- :377:
+  - "the New Namespace form's link beside its globals select" gains ", which opens the wizard and, on its Create or Cancel, returns to the form with what was typed and the created database chosen as its globals database (Story 18.17)".
+  - "the Integrity log's title" becomes "the Integrity log's side-bar entry, right after Databases (Story 18.17), and its title".
+- :378: "a global mapping whose name begins with %" becomes "a global mapping whose name, pattern or range reaches the % globals (its name begins with %, : or *, Story 18.17)".
+
+**Tests:**
+
+- `src/OcuPilot/Test/MappingSystemGlobal.cls` (new, stateless, under 100 lines). It builds ids with `MappingProbe.Id("OCUPROBE1817A", name)` and asserts `IsSystemGlobalMapping` and `WeakensByEffect("global-mapping", {}, {}, .e, id, 0)`:
+  - 1 and `MAPPING.SYSTEMGLOBAL` for `%X`, `%X("a")`, `:A`, `:`, `*` and `*X`;
+  - 0 and `""` for `A:`, `A:Z`, `X*`, `G("%a")` and `G(":")`;
+  - `""` for `:A` with `pRemoves` 1, and for type `routine-mapping`.
+- `MappingWrite.cls`: a new method mints, without confirming, global mapping creates in `..#NS`. `:OcuProbe1817` and `*` read `"1|MAPPING.SYSTEMGLOBAL"`, and the range `OcuProbe1817A:OcuProbe1817Z` reads `"0|"`. A routine create of `:OcuProbe1817R` reads `"0|"`. Each name has a shape the class's own legs already mint with status OK (:363-373, :393-396).
+- Client specs:
+  - `mapping-form.store.spec.ts`: the AD-10 test gains `:A`, `*` and `*X` (true) and `A:`, `G(":")` (false).
+  - `namespace-form.store.spec.ts`:
+    - `retainForHandOff`: retaining, and the form left clean;
+    - `open('', { database })`: the buffer restored, Globals in the list's spelling, and the form dirty;
+    - an unlisted database: Globals as typed;
+    - an open without `returning`: reset;
+    - `reset()`: drops the held copy.
+  - `namespace-form.page.spec.ts`:
+    - the link's expectation becomes `/os-management/local-databases/edit?returnTo=namespace`;
+    - an edit's link carries no marker;
+    - an arrival with `?kept=1&database=X` replaces the URL without them, then shows the restored values.
+  - `database-wizard.page.spec.ts`:
+    - with the marker, Create navigates to `/os-management/namespaces/edit?ns=USER&kept=1&database=OCUPROBE183A` (`replaceUrl`), and Cancel to `…?ns=USER&kept=1`;
+    - `returnTo=elsewhere` and no marker behave as today.
+  - `navigation.test.mjs`, `navigation-wire.test.mjs` and `rail-wire.spec.ts`, per the Code Map.
+- Browser:
+  - `namespace-mappings.browser-spec.mjs`: after the `%OcuProbe1814` step, retype Name `:OcuProbe1817`. The line shows. Then retype `OcuProbe1817:` and the line is gone, before the existing retype to `CREATED`.
+  - `local-databases.browser-spec.mjs`:
+    - add `OCUPROBE1817W` to `DATABASES`;
+    - correct header point 1's ordinal and add a point for DW-1824;
+    - in the side-bar test, Integrity log follows Databases, as the eleventh entry;
+    - a new DW-1824 test from `/ocupilot/os-management/namespaces/edit?ns=HSCUSTOM`: type Name `OCUPROBE1817N` and choose Routines `USER`, choose Create a database, and expect no leave dialog and a URL carrying `returnTo=namespace`;
+    - then create `OCUPROBE1817W` under the manager root. It is back on New Namespace with `kept` and `database` absent from the URL, Name and Routines as typed, and Globals `OCUPROBE1817W`, which `configured()` confirms exists;
+    - then Create a database again and Cancel the wizard. Back with the same values. Cancel New Namespace and answer the leave dialog. No namespace is created.
+  - `namespaces.browser-spec.mjs`: the side-bar assertion reads seven entries with Integrity log after Databases. Clicking it lands on `os-management/databases/integrity-log` with the log viewer drawn.
+  - `license-usage.browser-spec.mjs`: the eleven-entry list.
+
+**Acceptance Criteria:**
+
+- **AC1 (DW-1813, agent):** Given a probe namespace, when the agent proposes a global mapping create named `:A` or `*`, then the proposal is minted destructive with consequence `MAPPING.SYSTEMGLOBAL`, as a `%` name's is, and one named `A:` is not.
+- **AC2 (DW-1813, form):** Given the global mapping form, when a person types `:A` or `*` in Name, then the system-global line shows under Name. When the name becomes `A:`, the line is gone.
+- **AC3 (DW-1824):** Given New Namespace with a Name and Routines typed, when the person chooses Create a database and creates a database in the wizard, then no leave prompt appears and they are back on New Namespace with Name and Routines kept and the new database chosen as Globals. When they cancel in the wizard instead, they return with what was typed and Globals unchanged.
+- **AC4 (Integration, DW-1824):** Given the real throwaway in a browser, when the wizard opened from New Namespace creates a database, then New Namespace, the consumer, shows in its Globals select the database the instance holds under that name. The hand-off is the router query alone.
+- **AC5 (DW-1858):** Given OS management's side bar for a holder of the Integrity log's pairs, when it is drawn, then Integrity log is listed right after Databases, every other entry keeps its relative order, and choosing Integrity log opens the Integrity log.
+
+### Review Findings
+
+Code review 2026-10-01 (`bmad-code-review`, tier `full-opus`, layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 27 findings: high 0, medium 3, low 15, false 9. Fields: severity / fix-risk / footprint / spec-status.
+
+- [x] [Review][Decision, deferred] Back or a side-bar exit from a hand-off wizard empties New Namespace with no prompt, where the link click used to ask (med / low / in-story / spec-bound) — the Design Notes decide Back starts empty, so a fix is a product call: DW-1892 `decision-pending owner=burndown`.
+- [x] [Review][Patch] Create-mode `href` was never asserted to carry `returnTo=namespace`, so a new tab's wizard could stop returning unseen (med / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.spec.ts:246]
+- [x] [Review][Patch] Nothing pinned that a modified click hands nothing off; moving `retainForHandOff` above the modifier check would silently drop typed values (med / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.spec.ts:260]
+- [x] [Review][Patch] Side-bar ordinals and a neighbour left stale in edited test prose (low / low / in-story / clear) [src/OcuPilot/Test/Descriptor.cls:2277, NamespaceDescriptor.cls:15, LicenseUsage.cls:83, Dashboard.cls:87, LanguageServer.cls:52, WireSecurityRead.cls:544; ui/browser/namespaces.browser-spec.mjs:6,370]
+- [x] [Review][Patch] The mapping form's class doc still stated only the `%` rule (low / low / in-story / clear) [ui/src/app/areas/os-management/mapping-form.page.ts:79]
+- [x] [Review][Patch] The destroy hook's comment omitted the wizard hand-off (low / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.ts:268]
+- [x] [Review][Defer] A copy of mappings from a source holding a `%`-reaching mapping carries `NAMESPACE.COPYMAPPINGS` only [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1961] (low / med / in-epic / clear) — deferred: pre-existing since 18.14, the copy is already destructive; DW-1893 `wontfix-accepted`.
+
+Rejected:
+
+- `Prohibited.cls`'s three doc comments keep the `%` paragraph and append the widening — low, spec-bound: the spec makes the file add-only and prescribes the appended paragraph, which says "too".
+- `IsSystemGlobalMapping`'s `$Piece` spells the rule differently from the client's regex — false: both test the name's first character, so they cannot diverge.
+- The reused consequence sentence is singular for `*` and ranges — low, spec-bound: the spec forbids a new string.
+- 18.16's spec still names position 11, and the epic context's side-bar order is stale — false: the Consumed-by gives the re-base to the runner before 18.16's implement, and the pre-warm regenerates the context.
+- 18.15's blocked spec still carries DW-1813, DW-1824 and DW-1858 — false: its merge-gate log line (:392) records the split, and it cannot be re-dispatched until the lead resets it.
+- EXPERIENCE.md's screen inventory has no Integrity log row — low, spec-bound: pre-existing since 18.4, and a new row breaks the 993-line constraint.
+- The `replaceUrl` return leaves an identical New Namespace entry below, so the first Back appears to do nothing — low, spec-bound: the Tasks prescribe `replaceUrl`.
+- The hand-off marks the form clean before the navigation settles — false: no route has `canActivate`, and the only guard is New Namespace's own, which reads the flag just cleared.
+- `retainForHandOff` reuses `retainingValue` instead of keeping a copy — false: nothing writes `buffer` between the hand-off and the return, and the edit no-op is pinned.
+- An abandoned hand-off keeps the store loaded, so a database event costs one extra read — low: the read is cheap and stops at the next open or sign-out; a teardown adds state.
+- `queryValue` and `withParams` sit in `database-actions.ts` beside other copies of the parse — low: consolidating them is a refactor beyond a direct correction.
+- The `buildRoutes` reorder is not in the Spec Change Log — false: the Auto Run Result records it and `app.routes.spec` pins it; the log is for spec amendments.
+- The DW-1858 browser leg's `?.click()` names no failure — low: a missing entry still turns the leg red at its URL wait.
+- Long comment lines — false: no harm, and the linters are clean.
+- A Create a database click during a create Save yanks the wizard to the new namespace — low: it needs a click inside the save's round trip, the namespace is created as asked, and the fix adds a guard.
+- AC1's and AC2's negative halves and AC5's open half have no mutation line of their own — false: Rule 19 asks for one per AC, and each has one.
+- `local-databases`' "no leave prompt" asserts after a URL wait add nothing — low: a prompt still turns the leg red at that wait.
+- `local-databases`' "no namespace was created" cannot fail under this diff — low: a harmless post-condition.
+- The store spec's `reset` leg does not depend on the held copy — false: its `retaining()` assert carries the leg.
+- `core/proposal-view.ts:195` names only `%` — low: the comment is incomplete rather than wrong, in a file Epic 16 contends.
+
+## Spec Change Log
+
+## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 26 findings — high 0, medium 1, low 6, false 19, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Nothing pinned `retainForHandOff`'s no-op on an edit, which the page calls in both modes — added an edit leg to `namespace-form.page.spec` (a dirty edit stays dirty and unretained after the link), with its `mutation:` line.
+  - `[low]` `[patch]` AC3's no-leave-prompt half and the `kept` URL replacement had no `mutation:` line — applied both mutations, observed red, reverted byte-identically, recorded.
+  - `[low]` `[patch]` `formDirty.pending()` in the hand-off assertion cannot fail (the test router registers no leave guard) — element deleted; `dirty()` pins the half.
+  - `[low]` `[patch]` `database-wizard.page.spec`'s mutation comment named a nonexistent `returnsToNamespace` — corrected to `namespaceReturn` answers null.
+  - `[low]` `[reject]` Browser Back or a side-bar exit from a wizard opened by the hand-off drops what was typed, with no prompt — real, but Design Notes decide Back starts empty and Tasks keep `open` without `returning` as today; the fix edits this spec. Noted under residual risks.
+  - `[false]` `[reject]` The clean-before-replace ordering protects nothing because a query-only navigation skips `CanDeactivate` — no bad outcome: the intent requires the ordering and it holds either way.
+  - `[low]` `[patch]` `app.routes.spec`'s title and comment said an id route sits "beside" its route — reworded; the assertions were already order-free.
+  - `[false]` `[reject]` `:`, `:A` and `*X` are minted only at the predicate, not through the mint — the mint asks the same predicate (`Mint.cls:325-337`) and `MappingWrite` mints `:OcuProbe1817` and `*` through it.
+  - `[false]` `[reject]` An edit of a `:`/`*` mapping is never minted — minting an edit needs a held mapping, which the intent forbids confirming; `WeakensByEffect(..., 0)` covers create and change alike.
+  - `[false]` `[reject]` A delete's destructiveness is not re-run for `:` names — unchanged `DestructiveTool` path; the removal answers no effect (`MappingSystemGlobal`).
+  - `[false]` `[reject]` `MappingWrite` mints in `OCUPROBE1814A`, not an `OCUPROBE1817` namespace — the spec names `..#NS`; a mint creates nothing on the instance, and every created object carries `OCUPROBE1817`.
+  - `[false]` `[reject]` `*`, `*X` and `aria-describedby` are not checked in a browser — the store spec covers the names and the description follows the one getter the `%` leg pins.
+  - `[false]` `[reject]` Only the agent's mint reads the kernel; the screen's line is the client mirror — the intent says so ("mirrors the rule only to decide whether the published line shows"); pre-existing design.
+  - `[false]` `[reject]` The page spec reads `dirty()` at `navigateByUrl`, not at the guard — the browser leg shows no dialog either way.
+  - `[false]` `[reject]` A dirty wizard's Cancel on the return branch is not exercised — Cancel still leaves the form-page route, where the unchanged leave guard runs whatever `replaceUrl` says.
+  - `[low]` `[reject]` "Discards what was typed" read for every exit (reading B): Back or a side-bar exit restores nothing — same root cause as the Back row above; shares its route.
+  - `[false]` `[reject]` No-kept-buffer and unlisted cases have no browser leg — store spec covers both; no bad outcome.
+  - `[false]` `[reject]` Case folding is not exercised in a browser — the store and page specs fold `enslib` to `ENSLIB`.
+  - `[false]` `[reject]` The browser side-bar legs sign in as the configured user, not a minimal holder — `WireSecurityRead` pins the minimal holder at the payload.
+  - `[false]` `[reject]` A non-holder's `aria-disabled` entry has no browser leg — the payload carries `failedPair` (`Wire`, `WireSecurityRead`) and the side bar's rendering of it is unchanged.
+  - `[false]` `[reject]` Reaching the log is not shown to render a past check's rows — the log viewer is 18.4's, unchanged; the leg pins the route and the viewer.
+  - `[false]` `[reject]` `WireAreaAnyScreen` now lists `integrity-log=open` — expected; the area verdict string is unchanged.
+  - `[false]` `[reject]` `LanguageServerWire` and the language-servers browser leg depend on their principals' pairs — their role (`language-servers.browser-spec.mjs:97`) holds `%DB_IRISSYS:R` and `%Admin_Operate:U`; `LanguageServerWire` ran green (run 703).
+  - `[false]` `[reject]` `buildRoutes` reorders every screen's routes — literal-before-`:id` only changes which route wins where a literal has an id route's shape, which unlisted screens already won; the real-roster "no declared route is swallowed" test pins it.
+  - `[false]` `[reject]` The initial budget moves to 2351kB — the runner's prompt pre-authorized re-basing on a crossing (2,350,302 bytes measured).
+  - `[false]` `[reject]` EXPERIENCE.md :164 puts the Integrity log first in the polish-week cell — the spec's Tasks prescribe that exact cell start, and the cell was not in side-bar order before.
+
+## Design Notes
+
+**Governing ADs:**
+
+- AD-10: DW-1813's widening. The spine's own-mappings bullet already carries the rule (amended 2026-10-01).
+- AD-53 and AD-55: one kernel predicate for both callers.
+- AD-5: the side-bar position in the descriptor and the regenerated mirror. AD-8: area verdicts over listed screens.
+- AD-19: the router hand-off, with no store reaching another. AD-47: a closed marker, never a URL.
+- AD-13: the created name as one encoded query value. AD-14: the form's database choices re-read on the change bus.
+
+No spine amendment: AD-10 already states DW-1813, and nothing here changes an AD's Rule.
+
+**Decisions:**
+
+- **DW-1813 lives once, in the kernel.** The mint already asks `WeakensByEffect` for every global-mapping create and change (`Mint.cls:325-337`), so widening `IsSystemGlobalMapping` covers the agent's create, its edit and every later caller. The client copy only shows the published line.
+- **DW-1824 is the create form only.** The ledger and the criterion name New Namespace, whose classic page (`%CSP.UI.Portal.Namespace`) offers the popup. Edit Namespace's link keeps today's behavior.
+- **The URL is stripped before the restore.** The guard reads one shared dirty flag. The wizard's destroy has already reset that flag, so the replacement passes while the form is clean, and the restore then marks it dirty.
+- **Browser Back** from the wizard is history: it reopens New Namespace without the marker, which starts empty, as today. Both returns use `replaceUrl`, so Back from the restored form never re-enters the wizard.
+- **DW-1858 shifts six positions,** because positions are whole numbers.
+- **The two `DatabaseDescriptor` methods are renamed,** because their names would state a position or an unlisted status that no longer holds.
+
+**Footprint, for the spec gate (Rule 11).** Epic 16's branch (`OCU-1-epic16`, tree clean, checked 2026-09-30) changes these files that this story edits:
+
+- **Add-only or in place, with no overlap:**
+  - `Prohibited.cls` takes inserted lines only.
+  - EXPERIENCE.md is edited in place. This story touches rows :164, :375, :377, :378 and :584; Epic 16's hunks are at :173, :363, :490 and :504-507.
+  - `screens.generated.ts` is regenerated.
+- **Two non-add-only edits need the gate's approval:**
+  - `ui/tools/navigation.test.mjs`: the `integrity-log` line moves from :155 to the listed block at :182, and the OS management titles and comments at :185-191 and :256-279 are updated. Epic 16's hunks are in Security, at :217-222 and :359-363.
+  - `src/OcuPilot/Test/SurfaceCoverage.cls`: three `method=` attributes at :82 and :135-136. Epic 16's hunks are at :139 and :249-251, with two unchanged lines between this story's and theirs.
+  - If the gate refuses the second, the two methods keep their names and only their assertions change.
+
+**Prior art.** Story 18.15's spec (status `blocked`, now the enable's alone) planned these three items on 2026-09-30. This spec lifts its DW-1813, DW-1824 and DW-1858 execution, matrix rows, tests and pins, with every cited line re-checked against `c771e467`. It carries nothing about the enable.
+
+**Integration ACs:** AC4 is pinned by the `local-databases` browser leg on the real throwaway. The New Namespace form consumes the wizard's created name through the router and shows it as Globals. AC1 is pinned by `MappingWrite`, where the agent's mint consumes the kernel predicate on the instance.
+
+**Consumes:**
+
+- 18.2: the New Namespace form page and store.
+- 18.3: the database wizard and its `createdId`.
+- 18.14: `Prohibited.WeakensByEffect`, `IsSystemGlobalMapping`, the mint's ask and the form's `systemGlobal()`.
+- 18.4: `DatabaseIntegrityLog`.
+- Story 3.5: the side-bar position rule.
+
+**Consumed-by:**
+
+- 18.16: its planned `RemoteDatabaseList` position 11 is `LocalDatabaseList`'s after this story, so 18.16 takes 12. Its spec, `ready-for-dev`, names 11, and the runner re-bases it before 18.16's implement.
+- No other consumer in this epic.
+
+**Ledger inbox (Rule 17):**
+
+- DW-1813 is addressed by its tasks, AC1, AC2 and the matrix's three DW-1813 rows.
+- DW-1824 by its tasks, AC3, AC4 and the matrix's five DW-1824 rows.
+- DW-1858 by its tasks, AC5 and the side-bar row.
+- DW-1774 is met by the DW-1858 pins.
+
+## Verification
+
+**Setup (slot B):**
+
+- Load code with `/tmp/epic-18-d4/load-throwaway.sh` only, never the MCP loader, which reaches the dev instance. MCP calls carry `server: "ocupilot-slot-b"`.
+- Every probe stays on `ocupilot-b-ci`, which is never restarted.
+- If a class's arming variable reads unset there, arm it per call with `docker exec -e <VAR>=1`, using the variable its header names.
+- Run one test class per call, and wait until each run has landed in `%UnitTest_Result`.
+- Before any browser run: `cd ui && npm run build`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci` exported.
+
+**Commands:**
+
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time. Expect 0 failures each, with totals checked against `%UnitTest_Result`. The classes:
+  - `MappingSystemGlobal`, `MappingWrite`, `DatabaseDescriptor` and `SurfaceCoverage`;
+  - `Navigation`, `Descriptor`, `NamespaceDescriptor`, `DeviceWriteGate`, `NamespaceWriteGate`, `LicenseUsage`, `Dashboard`, `LanguageServer`, `Wire` and `WireSecurityRead`.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-mappings.browser-spec.mjs browser/local-databases.browser-spec.mjs browser/namespaces.browser-spec.mjs browser/license-usage.browser-spec.mjs`. Expect a pass.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expect clean, with `wc -l` on EXPERIENCE.md reading 993.
+- `(once, before dev_complete)`:
+  - the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time;
+  - then `cd ui && npm test && npm run build`;
+  - then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
+  - Expect green with a non-zero count.
+- `(CI)` The full browser suite runs in CI's three browser shards (Rule 29), not locally.
+
+**Planned pinning mutations (Rule 19).** Apply each to the throwaway's loaded source, or to a rebuilt and redeployed bundle. Observe red, revert byte-identical, and record a `mutation:` line here.
+
+| AC | Mutation | Expected red |
+| --- | --- | --- |
+| AC1 | Remove the inserted `:`/`*` line from `IsSystemGlobalMapping` | `MappingSystemGlobal`'s reaching names; `MappingWrite`'s `:OcuProbe1817` and `*` legs |
+| AC2 | `systemGlobal()` back to `startsWith('%')` | `mapping-form.store.spec`'s DW-1813 legs; the `namespace-mappings` browser leg |
+| AC3 | `open` ignores `returning` and resets | `namespace-form.store.spec`'s restore legs; the `local-databases` DW-1824 test |
+| AC3 | The wizard ignores `returnTo` | `database-wizard.page.spec`'s return legs |
+| AC4 | `open` skips choosing `returning.database` | the `local-databases` DW-1824 test's Globals assertion |
+| AC5 | `DatabaseIntegrityLog` back at position 0 | `navigation.test.mjs`'s listed test; `Navigation`; the browser side-bar legs |
+
+Each mutation was reverted byte-identically (`git status --short` and `git diff --stat` unchanged), then reloaded or rebuilt and redeployed.
+
+- mutation: the `:`/`*` line removed from `IsSystemGlobalMapping`, reloaded on `ocupilot-b-ci` → `MappingSystemGlobal.TestANameReachingThePercentGlobalsCarriesTheEffect` (`:A`, `:`, `*`, `*X`, run 704) and `MappingWrite.TestAGlobalPartBeginningWithAColonOrAStarReachesThePercentGlobals` (`:OcuProbe1817`, `*`, run 705)
+- mutation: `systemGlobal()` back to `startsWith('%')` → `mapping-form.store.spec`'s AD-10 test (`:A`); rebuilt and redeployed, the `namespace-mappings` AC2/AC3 leg at its `:OcuProbe1817` wait
+- mutation: `open` clears `returning` → `namespace-form.store.spec`'s three restore legs and `namespace-form.page.spec`'s round trip; rebuilt and redeployed, the `local-databases` DW-1824 test at its Globals wait
+- mutation: the wizard's `namespaceReturn` answers `null` → `database-wizard.page.spec`'s Create and Cancel return legs
+- mutation: `open` keeps the kept buffer without choosing `returning.database` → `namespace-form.store.spec`'s two Globals legs and the page round trip; rebuilt and redeployed, the `local-databases` DW-1824 test at its Globals wait
+- mutation: `DatabaseIntegrityLog` back at position 0, mirror regenerated → `navigation.test.mjs`'s roster and listed tests; reloaded, `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` (run 708); rebuilt and redeployed, the `namespaces` and `license-usage` AC1 side-bar legs
+- mutation: `buildRoutes` pushes each `:id` route beside its own route → `app.routes.spec`'s "no declared route is swallowed", naming the Integrity log under `os-management/databases/:id`
+- mutation: `retainForHandOff` without its `setDirty(false)` → `namespace-form.page.spec`'s "a create hands its values to the wizard without asking" and `namespace-form.store.spec`'s `retainForHandOff` leg (AC3's no-leave-prompt half)
+- mutation: the page constructor without its `kept` URL replacement → `namespace-form.page.spec`'s "the return drops kept and database before restoring them"
+- mutation: `retainForHandOff` without its create-only check → `namespace-form.page.spec`'s "an edit's Create a database link ... keeps an unsaved change under the leave guard"
+- mutation (code review): the create's `href` built without the marker → `namespace-form.page.spec`'s AC6, SA-13 (Story 18.3) leg, at its new `href` assertion
+- mutation (code review): `retainForHandOff` called before the modifier check → `namespace-form.page.spec`'s "a modified click on a create's ... hands nothing off"
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+**Summary.** DW-1813: the kernel's `IsSystemGlobalMapping` (inserted lines only) and the form's `systemGlobal()` treat a global part beginning with `:` or `*` as reaching the `%` globals, so the agent's create is minted destructive with `MAPPING.SYSTEMGLOBAL` and the form shows its line. DW-1824: New Namespace's create hands its buffer to the store (`retainForHandOff`), opens the wizard with `returnTo=namespace`, and the wizard's Create or Cancel replaces the route with `kept=1` (and `database`); the page strips both before the store restores the buffer and chooses the created database as Globals, dirty. DW-1858: the Integrity log is OS management's fifth entry and the six after it moved up by one; `buildRoutes` now emits every declared route before every `:id` route so Databases' `:id` cannot take it.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` — the `:`/`*` arm and three doc paragraphs, inserted only.
+- `src/OcuPilot/Screen/Descriptor/{DatabaseIntegrityLog,DeviceList,NamespaceList,LicenseSummaryTab,Dashboard,LanguageServerList,LocalDatabaseList,DatabaseList}.cls` — positions and ordinals.
+- `src/OcuPilot/Test/MappingSystemGlobal.cls` (new) and `MappingWrite.cls` — the predicate and mint pins; `Navigation`, `Descriptor`, `DeviceWriteGate`, `NamespaceWriteGate`, `NamespaceDescriptor`, `LicenseUsage`, `Dashboard`, `LanguageServer`, `DatabaseDescriptor` (two methods renamed), `SurfaceCoverage` (three `method=`), `Wire`, `WireSecurityRead`, `WireAreaAnyScreen` — re-derived pins.
+- `ui/src/app/areas/os-management/{database-actions,namespace-form.store,namespace-form.page,database-wizard.page,mapping-form.store,mapping-form.page}.ts` — the hand-off and the form mirror; `ui/src/app/app.routes.ts` — route order.
+- `ui/src/app/core/screens.generated.ts` — regenerated.
+- Client specs and tools tests (`namespace-form.*.spec`, `database-wizard.page.spec`, `mapping-form.store.spec`, `app.routes.spec`, `area-verdict.spec`, `rail-wire.spec`, `navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `angular-json.test.mjs`) and four browser specs.
+- `ui/angular.json` — initial budget 2351kB (2,350,302 bytes measured; re-based under the runner's standing instruction).
+- EXPERIENCE.md — rows :164, :375, :377, :378, :584 in place, 993 lines.
+
+**Review.** 26 findings (medium 1, low 6, false 19). Patched: the edit-mode hand-off pin (medium), three mutation lines, a vacuous `pending()` element, two stale test comments. Rejected: the Back/side-bar exit loss (low, spec-bound: Design Notes decide Back starts empty) and 19 false. Deferred: none. Follow-up review recommended: false (patched: medium 1, low 4).
+
+**Verification.** Full ObjectScript sweep on `ocupilot-b-ci` (runs 710-1094): 385 classes, 3,182 tests, 1 failed, 0 probe leftovers, 0 overlaps. The failure is `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`'s "nothing is cut at 1,000" on `tasks.taskhistory`: the reused throwaway holds 1,031 task history rows. That is DW-1554 (wontfix-accepted, reopen_if a CI instance job fails it); the class ran 25/25 earlier in this pass (run 700), and this story touches only its OS management assertions. Targeted classes green (runs 689-709). `npm test`: 1,757/1,757 tools tests and 2,024/2,024 component tests. `npm run build`: green, initial total 2,350,302 bytes (2.35 MB) under the 2351kB warning. `smoke.sh --container ocupilot-b-ci`: executed 49, passed 49. Browser (rebuilt bundle on `ocupilot-b-ci`): namespace-mappings 4/4, local-databases 7/7, namespaces 5/5, license-usage 3/3. `check-objectscript` 0 problems; `lint-docs` clean. Contended edits outside the spec's list: `screen-mirror.test.mjs:788` (one pin) and `angular.json`/`angular-json.test.mjs` (budget), made after Epic 16's 16.14 merged to the feature branch, leaving Epic 16 changing neither.
+
+**Residual risks.**
+
+- Browser Back or a side-bar exit from a wizard opened by the hand-off returns to an empty New Namespace with no prompt, since the hand-off marks the form clean (the spec's Back decision; a candidate for a later story).
+- `angular.json`'s budget conflicts with the feature branch's 2384kB at the next forward integration; take the larger.

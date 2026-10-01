@@ -42,6 +42,7 @@ interface Options {
   readonly check?: readonly unknown[];
   readonly create?: JsonResult<unknown>;
   readonly roots?: readonly string[];
+  readonly url?: string;
 }
 
 async function mount(options: Options = {}) {
@@ -71,7 +72,7 @@ async function mount(options: Options = {}) {
     ],
   });
   const router = TestBed.inject(Router);
-  await router.navigateByUrl('/os-management/local-databases/edit?ns=USER');
+  await router.navigateByUrl(options.url ?? '/os-management/local-databases/edit?ns=USER');
   const fixture = TestBed.createComponent(DatabaseWizardPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -100,6 +101,28 @@ function type(host: HTMLElement, id: string, value: string): void {
 async function next(fixture: ComponentFixture<unknown>, host: HTMLElement): Promise<void> {
   primary(host).click();
   await settle(fixture);
+}
+
+/** Walk the three steps with a name, a size and an existing resource, then press Create. */
+async function createThrough(fixture: ComponentFixture<unknown>, host: HTMLElement): Promise<void> {
+  type(host, 'ocu-database-Name', 'OcuProbe183A');
+  await settle(fixture);
+  await next(fixture, host);
+  type(host, 'ocu-database-Size', '5');
+  await settle(fixture);
+  await next(fixture, host);
+  (host.querySelector('#ocu-database-resource-existing') as HTMLInputElement).click();
+  await settle(fixture);
+  const select = host.querySelector('#ocu-database-ResourceName') as HTMLSelectElement;
+  select.value = '%DB_USER';
+  select.dispatchEvent(new Event('change'));
+  await settle(fixture);
+  primary(host).click();
+  await settle(fixture);
+}
+
+function cancelButton(host: HTMLElement): HTMLButtonElement {
+  return host.querySelector('.ocu-form-bar .ocu-button-text') as HTMLButtonElement;
 }
 
 afterEach(() => {
@@ -254,5 +277,37 @@ describe('DatabaseWizardPage', () => {
       ResourceName: '%DB_USER',
     });
     expect(navigate).toHaveBeenCalledWith('/os-management/local-databases/edit/OCUPROBE183A?ns=USER', { replaceUrl: true });
+  });
+
+  it('DW-1824: opened by New Namespace, Create returns there with kept=1 and the created database, replacing the route', async () => {
+    // Mutation (Rule 19): `namespaceReturn` answers null -> this and the Cancel leg below go red.
+    const { fixture, host, router } = await mount({ url: '/os-management/local-databases/edit?ns=USER&returnTo=namespace' });
+    const navigate = vi.spyOn(router, 'navigateByUrl');
+    await createThrough(fixture, host);
+    expect(navigate).toHaveBeenCalledWith('/os-management/namespaces/edit?ns=USER&kept=1&database=OCUPROBE183A', { replaceUrl: true });
+  });
+
+  it('DW-1824: opened by New Namespace, Cancel returns there with kept=1 alone, replacing the route', async () => {
+    const { fixture, host, router } = await mount({ url: '/os-management/local-databases/edit?ns=USER&returnTo=namespace' });
+    const navigate = vi.spyOn(router, 'navigateByUrl');
+    cancelButton(host).click();
+    await settle(fixture);
+    expect(navigate).toHaveBeenCalledWith('/os-management/namespaces/edit?ns=USER&kept=1', { replaceUrl: true });
+  });
+
+  it('DW-1824: any other returnTo value, and none, keep today\u2019s Create and Cancel', async () => {
+    for (const url of ['/os-management/local-databases/edit?ns=USER&returnTo=elsewhere', '/os-management/local-databases/edit?ns=USER']) {
+      const created = await mount({ url });
+      const onCreate = vi.spyOn(created.router, 'navigateByUrl');
+      await createThrough(created.fixture, created.host);
+      expect(onCreate, url).toHaveBeenCalledWith('/os-management/local-databases/edit/OCUPROBE183A?ns=USER', { replaceUrl: true });
+      for (const node of planted.splice(0)) node.remove();
+      const cancelled = await mount({ url });
+      const onCancel = vi.spyOn(cancelled.router, 'navigateByUrl');
+      cancelButton(cancelled.host).click();
+      await settle(cancelled.fixture);
+      expect(onCancel, url).toHaveBeenCalledWith('/os-management/local-databases?ns=USER', { replaceUrl: false });
+      for (const node of planted.splice(0)) node.remove();
+    }
   });
 });

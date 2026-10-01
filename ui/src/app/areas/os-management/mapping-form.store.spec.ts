@@ -189,9 +189,10 @@ describe('the namespace mapping editor store', () => {
     expect(JSON.parse(writes(calls)[0].body)).toEqual({ Namespace: 'OCUPROBE1814BA', Name: '%OcuProbe1814R', Database: 'USER' });
   });
 
-  it('AD-10: a global whose name begins with % names a system global, and no other does', async () => {
+  it('AD-10: a global whose name begins with %, or whose global part begins with : or *, reaches the % globals, and no other does', async () => {
     // Mutation (Rule 19): drop the kind check from `systemGlobal` -> the routine leg above goes red;
-    // test `includes('%')` instead of `startsWith` -> the subscript leg below goes red.
+    // test `includes('%')` instead of `startsWith` -> the subscript leg below goes red; return to
+    // `startsWith('%')` alone -> the DW-1813 legs go red.
     const { store } = mount();
     await store.open(GLOBAL, '', 'OCUPROBE1814BA');
     store.setValue('Name', '%OcuProbe1814');
@@ -200,6 +201,14 @@ describe('the namespace mapping editor store', () => {
     expect(store.systemGlobal()).toBe(true);
     store.setValue('Name', 'OcuProbe1814("%a")');
     expect(store.systemGlobal()).toBe(false);
+    for (const reaching of [':A', '*', '*X']) {
+      store.setValue('Name', reaching);
+      expect(store.systemGlobal(), reaching).toBe(true);
+    }
+    for (const other of ['A:', 'G(":")']) {
+      store.setValue('Name', other);
+      expect(store.systemGlobal(), other).toBe(false);
+    }
   });
 
   it('AD-39: a refused Save lands each violation on its field and keeps what was entered', async () => {

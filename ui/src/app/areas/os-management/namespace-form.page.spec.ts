@@ -10,7 +10,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { NamespaceFormPage } from './namespace-form.page';
-import { NAMESPACE_FORM_PATH, NAMESPACE_PATH } from './namespace-form.store';
+import { NAMESPACE_FORM_PATH, NAMESPACE_PATH, NamespaceForm } from './namespace-form.store';
 
 /**
  * The namespace editor over stubs of the two things an instance supplies -- the URL's screen and the
@@ -249,9 +249,75 @@ describe('the namespace editor', () => {
     expect(links).toHaveLength(1);
     expect(links[0].textContent?.trim()).toBe(STRINGS.databaseCreateLink);
     expect(links[0].closest('.ocu-field')?.querySelector('#ocu-namespace-Globals')).not.toBeNull();
+    // Mutation (Rule 19): build the create's `href` without the marker -> a new tab's wizard never returns, and this goes red.
+    expect(links[0].getAttribute('href') ?? '').toContain('/os-management/local-databases/edit?returnTo=namespace');
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
     links[0].click();
     await settle(fixture);
+    expect(navigate).toHaveBeenCalledWith('/os-management/local-databases/edit?returnTo=namespace');
+  });
+
+  it('DW-1824: a modified click on a create\u2019s "Create a database" link is the browser\u2019s, and hands nothing off', async () => {
+    const { fixture, host, formDirty } = await mount();
+    type(fixture, host, 'ocu-namespace-Name', 'OCUPROBE1817N');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+    // jsdom would follow the href; the page's own handler runs first and must leave the event alone.
+    host.addEventListener('click', (event) => event.preventDefault());
+    const link = host.querySelector('[data-create-database] a') as HTMLAnchorElement;
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ctrlKey: true }));
+    await settle(fixture);
+    expect(navigate).not.toHaveBeenCalled();
+    // Mutation (Rule 19): call `retainForHandOff` before the modifier check -> the form is marked clean and retained, and this goes red.
+    expect([formDirty.dirty(), TestBed.inject(NamespaceForm).retaining()]).toEqual([true, false]);
+  });
+
+  it('DW-1824: an edit\u2019s "Create a database" link carries no return marker and keeps an unsaved change under the leave guard', async () => {
+    const { fixture, host, formDirty } = await mount('/os-management/namespaces/edit/OCUPROBE182');
+    const link = host.querySelector('[data-create-database] a') as HTMLAnchorElement;
+    expect(link.getAttribute('href') ?? '').not.toContain('returnTo');
+    choose(fixture, host, 'ocu-namespace-Globals', 'HSCUSTOM');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+    // Held in place: this harness keeps the page alive across a navigation, which would re-open the form.
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    link.click();
+    await settle(fixture);
     expect(navigate).toHaveBeenCalledWith('/os-management/local-databases/edit');
+    // Mutation (Rule 19): drop `retainForHandOff`'s create-only check -> the edit is marked clean and retained, and this goes red.
+    expect([formDirty.dirty(), TestBed.inject(NamespaceForm).retaining()]).toEqual([true, false]);
+  });
+
+  it('DW-1824: a create hands its values to the wizard without asking, and the return drops kept and database before restoring them', async () => {
+    const { fixture, host, formDirty } = await mount('/os-management/namespaces/edit?ns=USER');
+    type(fixture, host, 'ocu-namespace-Name', 'OCUPROBE1817N');
+    choose(fixture, host, 'ocu-namespace-Routines', 'USER');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+    const router = TestBed.inject(Router);
+    (host.querySelector('[data-create-database] a') as HTMLAnchorElement).click();
+    await settle(fixture);
+    expect([formDirty.dirty(), router.url]).toEqual([false, '/os-management/local-databases/edit?ns=USER&returnTo=namespace']);
+    fixture.destroy();
+    await router.navigateByUrl('/os-management/namespaces/edit?ns=USER&kept=1&database=enslib', { replaceUrl: true });
+    const original = router.navigateByUrl.bind(router);
+    const dirtyAtReplace: boolean[] = [];
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockImplementation((url, extras) => {
+      dirtyAtReplace.push(formDirty.dirty());
+      return original(url, extras);
+    });
+    const back = TestBed.createComponent(NamespaceFormPage);
+    document.body.appendChild(back.nativeElement);
+    planted.push(back.nativeElement);
+    await settle(back);
+    const restored = back.nativeElement as HTMLElement;
+    // Mutation (Rule 19): drop the `kept` replacement from the constructor -> the URL keeps them and this goes red.
+    expect(navigate).toHaveBeenCalledWith('/os-management/namespaces/edit?ns=USER', { replaceUrl: true });
+    expect([router.url, dirtyAtReplace]).toEqual(['/os-management/namespaces/edit?ns=USER', [false]]);
+    expect((restored.querySelector('#ocu-namespace-Name') as HTMLInputElement).value).toBe('OCUPROBE1817N');
+    expect((restored.querySelector('#ocu-namespace-Routines') as HTMLSelectElement).value).toBe('USER');
+    expect((restored.querySelector('#ocu-namespace-Globals') as HTMLSelectElement).value).toBe('ENSLIB');
+    expect(formDirty.dirty()).toBe(true);
   });
 });

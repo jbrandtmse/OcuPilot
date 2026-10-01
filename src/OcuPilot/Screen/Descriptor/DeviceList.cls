@@ -1,7 +1,7 @@
 /// <p>The devices list: every configured I/O device on this instance, read through the vendor's
 /// own <code>%Api.Admin.Endpoints.Device.Standard</code> <code>LIST</code> (AD-2, AD-36) and
 /// rendered by the <code>list</code> archetype's page from the declared <code>table</code>
-/// (AD-5). It is OS management's fifth and last side-bar entry, after Databases.</p>
+/// (AD-5). It is OS management's sixth side-bar entry, after the Integrity log.</p>
 /// <p><b>Its scope is <code>instance</code>, and its rows are not filtered by namespace.</b> A
 /// device is CPF configuration, not a namespace-scoped object: the backing query's storage lives
 /// in the manager directory's own database, so the same rows answer whatever namespace the route
@@ -47,7 +47,7 @@ XData Declaration
   "route": "os-management/devices",
   "area": "os-management",
   "labelKey": "deviceListLabel",
-  "sideBarPosition": 5,
+  "sideBarPosition": 6,
   "archetype": "list",
   "built": true,
   "refreshes": false,

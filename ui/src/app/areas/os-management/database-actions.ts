@@ -22,6 +22,29 @@ export const INTEGRITY_ACTION = 'integrity';
 /** The Check integrity flow's route. */
 export const DATABASE_INTEGRITY_ROUTE = 'os-management/databases/integrity';
 
+/** The query parameter New Namespace opens the database wizard with, naming where it returns (AD-47). */
+export const RETURN_PARAM = 'returnTo';
+
+/** The one `returnTo` value the wizard honors: back to New Namespace. A closed marker, never a URL. */
+export const RETURN_TO_NAMESPACE = 'namespace';
+
+/** The query parameter the wizard returns to New Namespace with, asking it to restore what was typed. */
+export const KEPT_PARAM = 'kept';
+
+/** The query parameter carrying the database the wizard created, which New Namespace chooses as Globals. */
+export const CREATED_DATABASE_PARAM = 'database';
+
+/** The value `url`'s query carries under `name`, or `null` (the `routeNamespace` model). */
+export function queryValue(url: string, name: string): string | null {
+  const cut = url.indexOf('?');
+  return cut < 0 ? null : new URLSearchParams(url.slice(cut + 1).split('#')[0]).get(name);
+}
+
+/** `url` with `query` appended to its query string. */
+export function withParams(url: string, query: string): string {
+  return url + (url.includes('?') ? '&' : '?') + query;
+}
+
 /**
  * The handler behind the Local databases list's declared Create (AD-5, AD-19), on the
  * `namespace-actions.ts` model: registered once against the descriptor's class name and tab-scoped

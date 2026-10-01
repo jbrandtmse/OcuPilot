@@ -12,7 +12,7 @@ Parameter FORM = "OcuPilot.Screen.Descriptor.NamespaceForm";
 
 Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
 
-/// <p>The list: OS management's sixth entry over the vendor's namespace <code>LIST</code>, four
+/// <p>The list: OS management's seventh entry over the vendor's namespace <code>LIST</code>, four
 /// fields filtered and sorted alike, Name first, one Delete row action and a Create, the classic
 /// Namespaces page.</p>
 Method TestTheListDeclaresItsFourFieldsAndItsDelete()
@@ -23,7 +23,7 @@ Method TestTheListDeclaresItsFourFieldsAndItsDelete()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "os-management:6", "OS management's sixth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "os-management:7", "OS management's seventh side-bar entry")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Namespace.Namespace"",""type"":""LIST""}", "read through the vendor's namespace list")
     For tKey = "fields", "filter" {
         Do $$$AssertEquals(tDeclaration.read.%Get(tKey).%ToJSON(), "[""Name"",""Globals"",""Routines"",""TempGlobals""]", "read." _ tKey _ " is the four fields")

@@ -19,6 +19,7 @@ import { savedLine } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { CREATED_DATABASE_PARAM, KEPT_PARAM, RETURN_PARAM, RETURN_TO_NAMESPACE, queryValue, withParams } from './database-actions';
 import { MAPPING_KINDS } from './mapping-form.store';
 import { GLOBALS_FIELD, NAME_FIELD, NamespaceForm, ROUTINES_FIELD, TEMP_GLOBALS_FIELD } from './namespace-form.store';
 
@@ -83,8 +84,11 @@ const DATABASE_LABELS: readonly { readonly field: string; readonly label: string
  * because a namespace is never renamed.
  *
  * **A "Create a database" link beside the globals select opens the create database wizard**
- * (Story 18.3, SA-13) as an ordinary navigation, so the form-page's unsaved-changes guard asks first;
- * the store re-reads the database choices once a database is created.
+ * (Story 18.3, SA-13). On an edit it is an ordinary navigation, so the form-page's unsaved-changes
+ * guard asks first; the store re-reads the database choices once a database is created. On a create
+ * it hands the form off (Story 18.17, AD-19): the store keeps what was typed, the wizard opens with the
+ * closed marker `returnTo=namespace`, and its Create or Cancel returns here with `kept=1` (and the
+ * created `database`), which this page drops from the URL before the store restores the form.
  *
  * **An edit links the namespace's mappings** (Story 18.14): a Mappings line after the fields opens
  * its global, routine and package mapping lists, each at the namespace as its route id.
@@ -241,7 +245,13 @@ export class NamespaceFormPage {
     const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
     const stopDirty = this.formDirty.subscribe(() => this.generation.update((value) => value + 1));
     let followed = this.routeId();
-    void this.store.open(followed);
+    // The database wizard's return (Story 18.17): `kept=1`, with the created `database` or none.
+    const url = this.router.url;
+    const kept = followed === '' && queryValue(url, KEPT_PARAM) === '1';
+    const database = queryValue(url, CREATED_DATABASE_PARAM) ?? '';
+    // Dropped while the form is still clean, so the leave guard never asks on this replacement.
+    if (kept) void this.router.navigateByUrl(withQuery(NAMESPACE_FORM_ROUTE, url), { replaceUrl: true });
+    void this.store.open(followed, kept ? { database } : undefined);
     // One id route to another reuses this page, so the form follows the id, not the page's life.
     const stopIdChange = this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd)) return;
@@ -256,7 +266,8 @@ export class NamespaceFormPage {
       stopDirty();
       stopIdChange.unsubscribe();
       // Kept across a create's own route replacement, which destroys this page and builds it
-      // again over the new namespace; torn down on every other departure.
+      // again over the new namespace, and across a create's hand-off to the database wizard;
+      // torn down on every other departure.
       if (!this.store.retaining()) this.store.reset();
     });
   }
@@ -376,11 +387,15 @@ export class NamespaceFormPage {
     }));
   }
 
-  /** The create database wizard's router URL and href, carrying the data scope; empty when it is not built. */
+  /**
+   * The create database wizard's router URL and href, carrying the data scope and, on a create, the
+   * return marker `returnTo=namespace`; empty when it is not built.
+   */
   protected get createDatabaseLink(): { readonly url: string; readonly href: string } {
     const wizard = screenForDescriptor(DATABASE_WIZARD_DESCRIPTOR);
     if (wizard === null || !wizard.built) return { url: '', href: '' };
-    const url = withQuery(wizard.route, this.router.url);
+    const scoped = withQuery(wizard.route, this.router.url);
+    const url = this.store.mode() === 'create' ? withParams(scoped, `${RETURN_PARAM}=${RETURN_TO_NAMESPACE}`) : scoped;
     return { url, href: this.locationStrategy.prepareExternalUrl(url) };
   }
 
@@ -424,14 +439,18 @@ export class NamespaceFormPage {
   }
 
   /**
-   * "Create a database": a plain click opens the wizard in place, under the form-page's
-   * unsaved-changes guard; a modified click is the browser's.
+   * "Create a database": a plain click opens the wizard in place; a modified click is the browser's.
+   * An edit goes under the form-page's unsaved-changes guard; a create first hands its buffer to the
+   * store, which marks the form clean, so the wizard opens without asking.
    */
   protected onCreateDatabase(event: MouseEvent): void {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     const url = this.createDatabaseLink.url;
-    if (url !== '') void this.router.navigateByUrl(url);
+    if (url === '') return;
+    // A no-op on an edit: the store keeps a create's buffer only.
+    this.store.retainForHandOff();
+    void this.router.navigateByUrl(url);
   }
 
   /** A plain click opens the list in place; a modified click is the browser's (a new tab, say). */

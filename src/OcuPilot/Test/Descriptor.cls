@@ -2274,7 +2274,7 @@ Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
 /// <p>AC1, AC4, AC5, AC6, Story 6.12 -- the Devices list declares exactly its six fields and six
 /// columns, in order and by kind; sorts by <code>Name</code> ascending; declares
 /// <code>%Admin_Manage:USE</code> then <code>%DB_IRISSYS:READ</code> and no third pair; names its
-/// own empty state and its own classic key; is OS management's fifth side-bar entry; and offers
+/// own empty state and its own classic key; is OS management's sixth side-bar entry; and offers
 /// Create as its primary action, which opens the device editor, and no row action and no outbound
 /// classic link.</p>
 /// <p>Mutation: add a <code>rowActions</code> entry with no handler in
@@ -2285,7 +2285,7 @@ Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
 Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.DeviceList"
-    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 5, "OS management's fifth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "OS management's sixth side-bar entry")
     Set tRead = $ClassMethod(tClass, "Read")
     Do $$$AssertTrue($IsObject(tRead), "the Devices list declares a read")
     If '$IsObject(tRead) Quit

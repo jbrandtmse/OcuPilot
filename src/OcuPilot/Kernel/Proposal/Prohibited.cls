@@ -506,6 +506,8 @@ Parameter NESTEDCODEGLOBALS = "oddDEP,rINDEXEXT,rINDEXSQL";
 /// <p>The effect <method>WeakensByEffect</method> answers for a global mapping whose name begins with
 /// <code>%</code>: it shadows a system global for its namespace (AD-10 as amended 2026-09-28). It is
 /// also the proposal's consequence code.</p>
+/// <p>A name whose global part begins with <code>:</code> (an empty low end, read as <code>%</code>)
+/// or <code>*</code> reaches the <code>%</code> globals too, and answers this effect as well.</p>
 Parameter EFFECTSYSTEMGLOBAL = "MAPPING.SYSTEMGLOBAL";
 
 /// <p>The request type a copy of mappings is issued with, which the namespace predicate branches on
@@ -1387,6 +1389,8 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// when the mapping's name begins with <code>%</code> (<method>IsSystemGlobalMapping</method>), on a
 /// create and a change alike and never on a removal (<var>pRemoves</var>), which shadows nothing.
 /// The mint asks it for a create of this type too, and no request field can suppress it.</p>
+/// <p>A global mapping whose global part begins with <code>:</code> (an empty low end, read as
+/// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
@@ -2413,10 +2417,14 @@ ClassMethod BaseMappingMoves(pNamespace As %String, pGlobal As %String) As %Bool
 
 /// <p>Whether the global mapping whose composite id is <var>pId</var> names a system global: its
 /// name part begins with <code>%</code>, with or without a subscript range.</p>
+/// <p>A name whose global part (the text before any <code>(</code>) begins with <code>:</code> (an
+/// empty low end, read as <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too.</p>
 ClassMethod IsSystemGlobalMapping(pId As %String) As %Boolean
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
     If $ListLength(tParts) '= 2 Quit 0
+    Set tGlobal = $Piece($ListGet(tParts, 2), "(")
+    If ($Extract(tGlobal) = ":") || ($Extract(tGlobal) = "*") Quit 1
     Quit $Extract($ListGet(tParts, 2)) = "%"
 }
 

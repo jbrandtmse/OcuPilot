@@ -84,7 +84,7 @@ ClassMethod ArmMain()
 }
 
 /// <p>The declaration passes the read grammar; its route and tool identifier resolve to it; it is
-/// the OS management area's eighth entry, a <code>meters</code> screen on no entity type at instance
+/// the OS management area's ninth entry, a <code>meters</code> screen on no entity type at instance
 /// scope with no id, refreshing at 5, 10, 30 and 60 seconds with no default rate, over the two OS
 /// management pairs, with the three aliases, the three prompts in their groups, its classic page
 /// and no action. Its read is a parts <code>GET</code> of <code>Monitor</code>:
@@ -105,7 +105,7 @@ Method TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#TOOL), tClass, "and so does its tool identifier")
 
     Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", "in the OS management area")
-    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 8, "the eighth entry, after License usage")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 9, "the ninth entry, after License usage")
     Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "meters", "on the meters archetype")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ $ClassMethod(tClass, "IdKind"), "|instance|none", "no entity type, instance scope, no id")
     Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 1, "it refreshes")

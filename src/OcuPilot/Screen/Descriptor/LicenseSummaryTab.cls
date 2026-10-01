@@ -2,7 +2,7 @@
 /// <code>Summary</code> member of the vendor's <code>Monitor</code> <code>LICENSEUSAGE</code> answer
 /// (<code>source.rows</code>, AD-2, AD-36 as amended, Story 16.7) and rendered by the
 /// <code>detail</code> page over the declared <code>table</code> (AD-5).</p>
-/// <p><b>It is the tab group's first member and its side-bar entry</b>, the seventh OS management
+/// <p><b>It is the tab group's first member and its side-bar entry</b>, the eighth OS management
 /// entry; the other three tabs, By process, By user and Distributed, are unlisted routes under it, one
 /// descriptor each over the same answer's other members.</p>
 /// <p><b>It administers nothing</b>: <code>entityType</code> is <code>""</code> and its <code>id</code>
@@ -22,7 +22,7 @@ XData Declaration
   "route": "os-management/license-usage",
   "area": "os-management",
   "labelKey": "licenseUsageLabel",
-  "sideBarPosition": 7,
+  "sideBarPosition": 8,
   "archetype": "detail",
   "built": true,
   "refreshes": false,

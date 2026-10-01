@@ -141,7 +141,7 @@ Method TestTheScreensPairsReadTheListTheFormAndTheName()
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("name") _ "|" _ tAnswer.%Get("reason"), 1: ""), "user|" _ ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#NAMESPACENAMETAKEN), "naming the name and the taken sentence")
     Do $$$AssertTrue(tBody [ """taken"":true", "and finds USER taken in any case")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/navigation", ..#READERUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
-    Do $$$AssertTrue(tBody [ """route"":""os-management/namespaces"",""labelKey"":""namespaceListLabel"",""sideBarPosition"":6,""allowed"":true", "the navigation map lists the Namespaces list allowed")
+    Do $$$AssertTrue(tBody [ """route"":""os-management/namespaces"",""labelKey"":""namespaceListLabel"",""sideBarPosition"":7,""allowed"":true", "the navigation map lists the Namespaces list allowed")
 }
 
 /// <p>Without <code>%DB_IRISSYS:WRITE</code>: the screen's create, edit and delete and the agent's
