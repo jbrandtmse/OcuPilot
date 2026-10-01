@@ -8690,11 +8690,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-10-01: Security.LDAPConfigs.Create("OCUP99KRB") with flags 128 stored Name OCUP99KRB while FormatName answers ocup99krb.com; the classic page canonicalizes only with LDAP configuration ticked (LDAP.cls:408). The spec's 'stores only the canonical form' premise behind AD-13's amendment does not hold for Create.
 - 2026-10-01T05:41:07Z status=decision-pending owner=burndown by=cr note=admit a name the instance already stores as typed (amend AD-13 and the Boundary), or keep refusing; Rule 20 Deferred mirror
+- 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided as recommended (orchestrator 2026-10-01): admit a name the instance already stores, exactly as stored, for open/edit/test/delete; a NEW name is still refused when the instance would store it differently; amend AD-13; Epic 16 fixes it before its close as its own commit
 
 ### DW-1889: The LDAP editor cannot remove a configuration's last retrieved attribute: Security.LDAP PUT ignores LDAPAttributes [] (the Save answers 200, read-back differs) and [""] answers 500
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-10-01 through PUT /ldap/:id on a probe: [] left [cn,uid] stored with verdict differs; [""] answered 500 INTERNAL; a non-empty list replaces the stored one whole. The classic page clears it with Properties("LDAPAttributes")="" through Security.LDAPConfigs.Modify.
 - 2026-10-01T05:41:07Z status=escalated owner=burndown by=cr note=needs an AD-27 named case (Modify in %SYS) or a refusal sentence for an empty list; decision sheet
+- 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided (orchestrator 2026-10-01): now - a refusal with a plain sentence when the edit would remove the last retrieved attribute (the vendor PUT ignores LDAPAttributes []), instead of a silent no-op; the AD-27 named case (Modify in %SYS) is a later cleanup item - file it as a new range-end-cleanup entry (p4) when this one resolves
 
 ### DW-1890: LdapTest's no-task-row assertions pass when PortFixture.TaskGuids cannot read the async task table, because it answers "" on any error
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-story
