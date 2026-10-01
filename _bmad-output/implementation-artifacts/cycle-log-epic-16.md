@@ -718,3 +718,5 @@
 2026-10-01T12:17:08Z	Story 16.26	adr_verifications_complete	result=none_required(test-only_burn-down;no_AD-tooled_AC) model=claude-opus-5-5
 2026-10-01T12:17:08Z	Epic 16	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp(c4018051:16.15/DW-1888/DW-1889_merged,1.0.5_upgrade_legs) merge=fc68bea5 conflicts=0 docs_ledger_only=yes
 2026-10-01T12:17:09Z	Story 16.26	stage_spawned	stage=qa spawn_at=2026-10-01T12:17:09Z model=sonnet agent_name=16-26-epic-16-burn-down-qa-1 cycle_iteration=1
+2026-10-01T12:21:06Z	Story 16.26	qa_complete	spawn_at=2026-10-01T12:17:09Z model=sonnet tests=(none_new) tests_added=0 mutations_demonstrated=0(AC1-AC5_pinned;runs_read_back) first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-10-01T12:21:06Z	Story 16.26	stage_spawned	stage=code-review spawn_at=2026-10-01T12:21:06Z model=opus agent_name=16-26-epic-16-burn-down-code-review-1 cycle_iteration=1
