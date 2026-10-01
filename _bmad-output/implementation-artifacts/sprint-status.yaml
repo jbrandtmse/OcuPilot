@@ -288,7 +288,7 @@ development_status:
   18-12-the-agent-grows-with-the-stage: backlog
   18-13-multi-namespace-install: backlog
   18-14-namespace-mappings-and-copy-mappings: done
-  18-15-enable-interoperability-on-a-namespace: ready-for-dev
+  18-15-enable-interoperability-on-a-namespace: in-progress
   18-16-remote-databases: backlog
   epic-18-retrospective: optional
 
