@@ -380,6 +380,8 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // epic close follows.
 // Story 16.14 raised it to 2384kB, the measured 2,383,623-byte initial total rounded up to the next
 // kB (the LDAP and Kerberos editor and its test dialog), under the 4000kB hard stop.
+// Story 16.15 raised it to 2387kB, the measured 2,386,319-byte initial total rounded up to the next
+// kB (the data-egress line and the model-unused note), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -392,7 +394,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2384kB', 'DW-1166, Story 16.14: the measured 2,383,623 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2387kB', 'DW-1166, Story 16.15: the measured 2,386,319 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

@@ -108,11 +108,12 @@ ClassMethod GuardedOwner(pKey As %String, pUser As %String, Output pFound As %Bo
 /// conversation carry the turn's proposals; a caller that has none may omit it.
 /// <var>pCitations</var> is the reply's citations as JSON text, or <code>""</code> for none.
 /// <var>pContextJson</var> is the turn's bounded screen-context payload as JSON text, or
-/// <code>""</code>, and <var>pDefinitionId</var> the definition it ran under
+/// <code>""</code>, <var>pDefinitionId</var> the definition it ran under, and <var>pEgress</var> its
+/// egress fact as JSON text, or <code>""</code>
 /// (<method>OcuPilot.Kernel.State.Entry.GuardedAppend</method>). Defensively re-caps <var>pStepsJson</var> to <var>pLimitsClass</var>'s own
 /// <code>MAXSTEPS</code>, even though the caller's own projection
 /// (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>) is already within it.</p>
-ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "") As %Status
+ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "", pEgress As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -129,7 +130,7 @@ ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String,
             For tI = 0:1:tMax - 1 Do tKept.%Push(tSteps.%Get(tI))
             Set tSteps = tKept
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass, pTurnKey, pCitations, pContextJson, pDefinitionId)
+        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass, pTurnKey, pCitations, pContextJson, pDefinitionId, pEgress)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -221,7 +222,7 @@ ClassMethod GuardedPurgeEmpty(pCutoff As %String, Output pRemoved As %Integer) A
 
 /// <p>The GET shape of conversation <var>pKey</var> when <var>pUser</var> owns it:
 /// <code>{conversationId, turns:[{seq, message, state, reply, citations, error:{seq,code}, steps,
-/// stepsDropped}]}</code>. <code>error</code> here carries no <code>reason</code> --
+/// stepsDropped, egress}]}</code>. <code>error</code> here carries no <code>reason</code> --
 /// <class>OcuPilot.Api.Conversation</class> adds it the way
 /// <class>OcuPilot.Api.Turn</class> adds it to a turn's progress view, because this package does
 /// not name the API's vocabulary class (AD-9's re-entry rule).</p>
