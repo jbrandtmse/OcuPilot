@@ -52,7 +52,7 @@ test('AC4: each of the five administering areas has at least one built form-page
   }
   assert.ok(
     builtFormPages('permissions').some((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceForm'),
-    'the reduced service form is one of the permissions forms'
+    'the service editor is one of the permissions forms'
   );
   assert.ok(
     builtFormPages('security').some((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LdapConfigForm'),
@@ -83,9 +83,9 @@ test('AC4: no list-class archetype declares a classic-link exemption or a row li
   assert.ok(lists > 0, 'the check read at least one list screen');
 });
 
-test('AC2, AD-44: the two reduced forms each end with an honoured exemption to the classic page they name', () => {
+test('AC2, AD-44: the reduced LDAP form ends with an honoured exemption to the classic page it names, and the service editor declares none', () => {
+  // Mutation (Rule 19): set ServiceForm's exemption to exempt and regenerate -> the service leg goes red.
   for (const [descriptor, label, href] of [
-    ['OcuPilot.Screen.Descriptor.ServiceForm', 'Services', '/csp/sys/sec/%25CSP.UI.Portal.Services.zen'],
     ['OcuPilot.Screen.Descriptor.LdapConfigForm', 'Security LDAP Configs', '/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen'],
   ]) {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
@@ -95,4 +95,12 @@ test('AC2, AD-44: the two reduced forms each end with an honoured exemption to t
     assert.equal(screen.classicLinkExemption.href, href, `${descriptor} links to it`);
     assert.equal(screen.sideBarPosition, 0, `${descriptor} takes no side-bar position`);
   }
+  const service = SCREENS.find((entry) => entry.descriptor === 'OcuPilot.Screen.Descriptor.ServiceForm');
+  assert.ok(service !== undefined, 'the service editor is mirrored');
+  assert.deepEqual(
+    service.classicLinkExemption,
+    { exempt: false, reason: '', label: '', href: '' },
+    'the service editor links out to no classic page (Story 16.13)'
+  );
+  assert.equal(service.sideBarPosition, 0, 'and takes no side-bar position');
 });

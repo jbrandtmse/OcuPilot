@@ -369,8 +369,8 @@ test("AC4: a client configuration's name cell opens OcuPilot's own editor at the
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
   assert.deepEqual(
     honored,
-    ['LdapConfigForm.cls', 'ServiceForm.cls'],
-    'classic-links honors the two reduced editors alone: no OAuth 2.0 tab links out (AD-44)'
+    ['LdapConfigForm.cls'],
+    'classic-links honors the reduced LDAP editor alone: no OAuth 2.0 tab links out (AD-44)'
   );
 
   const tab = TABS[1];

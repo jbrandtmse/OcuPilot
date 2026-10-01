@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  InjectionToken,
   Injector,
   afterNextRender,
   inject,
@@ -12,7 +13,6 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 
 import { LDAP_FORM } from '../areas/security/ldap-form';
-import { SERVICE_FORM } from '../areas/permissions/service-form';
 import { ApiService } from '../core/api';
 import { ChangeBus } from '../core/change-bus';
 import { FormDirty } from '../core/form-dirty';
@@ -25,11 +25,22 @@ import { STATE_CONFLICT_CODE, type Violation } from '../core/violations';
 import { ClassicLinkCard } from './classic-link-card';
 import { Dialog } from './dialog';
 
-/** The reduced forms this page renders, keyed by the descriptor that declares each (AD-5). */
+/**
+ * The reduced forms this page renders, keyed by the descriptor that declares each (AD-5). The LDAP
+ * configuration form is the one left; the service form's full editor replaced it (Story 16.13).
+ */
 export const REDUCED_FORMS: Readonly<Record<string, ReducedFormDeclaration>> = {
-  [SERVICE_FORM.descriptor]: SERVICE_FORM,
   [LDAP_FORM.descriptor]: LDAP_FORM,
 };
+
+/**
+ * The declarations the page resolves its descriptor against: `REDUCED_FORMS` unless a provider
+ * supplies others, which is how a spec renders a declaration no shipped form carries.
+ */
+export const REDUCED_FORM_DECLARATIONS = new InjectionToken<Readonly<Record<string, ReducedFormDeclaration>>>('REDUCED_FORM_DECLARATIONS', {
+  providedIn: 'root',
+  factory: () => REDUCED_FORMS,
+});
 
 /** One field, resolved for drawing. */
 interface FieldView {
@@ -46,9 +57,10 @@ interface FieldView {
 }
 
 /**
- * A reduced form (Story 9.9, FR-9, AD-44): the one `form-page` the service form and the LDAP
- * configuration form both render, each from its own declaration (`REDUCED_FORMS`), ended by the
- * classic-link-card its descriptor declares.
+ * A reduced form (Story 9.9, FR-9, AD-44): the one `form-page` a reduced editor renders from its own
+ * declaration (`REDUCED_FORMS`) -- today the LDAP configuration form -- ended by the classic-link-card
+ * its descriptor declares. A declaration may name the serving entity's protected field and effect
+ * (`servingProtected`, `servingConsequence`).
  *
  * **With no id it shows one sentence** pointing back to its list; with an id it draws the
  * declared fields in a single column, the sticky Save and Cancel bar, "Saved" after a save, the
@@ -237,7 +249,7 @@ export class ReducedFormPage {
 
   constructor() {
     this.screen = this.navigation.screenForUrl(this.router.url);
-    this.declaration = REDUCED_FORMS[this.screen?.descriptor ?? ''] ?? SERVICE_FORM;
+    this.declaration = inject(REDUCED_FORM_DECLARATIONS)[this.screen?.descriptor ?? ''] ?? LDAP_FORM;
     this.store = new ReducedFormStore(this.declaration, {
       api: inject(ApiService),
       bus: inject(ChangeBus),

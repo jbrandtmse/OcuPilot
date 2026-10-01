@@ -57,9 +57,9 @@ Parameter TASKIMPORTKEY = "tasks.schedule.import";
 
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
 /// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
-/// and the database file edit and truncate declare none of their own; Story 18.4's dismount, whose
-/// classic page performs it itself, declares no page.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE";
+/// and the database file edit, the truncate and the service update declare none of their own; Story
+/// 18.4's dismount, whose classic page performs it itself, declares no page.</p>
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -128,7 +128,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the thirty OWNPAIRS names")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the thirty-one OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -255,6 +255,35 @@ Method TestAnAssignedPageGatesTheScreensCaller()
         Do $$$AssertEquals($ClassMethod(..#NSPROBE, "Holds", tDelete), (tUser = ..#LACKINGUSER), tUser _ ": the namespace to delete " _ $Select(tUser = ..#LACKINGUSER: "survives", 1: "is gone"))
     }
     Do $$$AssertEquals($ClassMethod(..#MAPPINGPROBE, "Names", "global", "OCUPROBE1814A"), "OcuProbe1814CPH", "only the holding principal's mapping is created")
+}
+
+/// <p>AC10 on the service Save (Story 16.13): with the probe resource assigned to one page at a time
+/// -- the classic Edit Service dialog, then the Services list page, whose resource only the tool's
+/// own pairs carry -- the principal lacking it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming
+/// <code>OcuProbe1814Page:USE</code> before the service is read, and the one holding it passes the
+/// gate and is answered 404 <code>SERVICE.ABSENT</code> for a name the instance does not hold, so
+/// nothing is written.</p>
+/// <p>Mutation (Rule 19): drop the tool's <code>PrivilegePairs</code> check from
+/// <method>OcuPilot.Area.Permissions.ServiceSave.Gate</method> -- the lacking principal's Save on the
+/// list page's leg is answered 404 and this goes red.</p>
+Method TestAnAssignedPageGatesTheServiceSave()
+{
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/services/" _ ##class(OcuPilot.Kernel.EntityId).Encode("OcuPilotNoSuchService99")
+    For tPage = "%CSP.UI.Portal.Dialog.Service", "%CSP.UI.Portal.Services" {
+        Kill tOne
+        Set tOne(tPage) = ""
+        ; Recorded here too, so the restore after the test puts it back even when no tool declares it.
+        If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+        Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+        Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+        For tCase = $ListBuild(..#LACKINGUSER, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"), $ListBuild(..#HOLDINGUSER, "404 SERVICE.ABSENT ") {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tPath, $List(tCase, 1), ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""Enabled"":false}", "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.%Get("detail").%Get("failedPair"), 1: ""), 1: $Get(tText))
+            Do $$$AssertEquals(tSaid, $List(tCase, 2), $List(tCase, 1) _ ": the service Save with " _ tPage _ " assigned")
+        }
+    }
 }
 
 /// <p>Mint the namespace create of <var>pName</var> for <var>pUser</var> over a completed turn seeded
