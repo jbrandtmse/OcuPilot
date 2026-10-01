@@ -8660,3 +8660,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-13-the-service-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: README.md:491-493 says the LDAP and service editors cover the common fields and link to the classic page; :517 lists the full service editor as remaining. Story 16.13 shipped the full editor and dropped the link.
 - 2026-10-01T00:44:22Z status=wontfix-accepted owner=16-13-the-service-editor by=cr note=README is outside Epic 16's footprint; reopen_if=README.md still says the service editor links to the classic page at the next release cut
+
+### DW-1887: The deleted reduced form's two checkbox rules remain in _components.scss as dead CSS (app-reduced-form-page)
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: reduced-form.page.ts was deleted in 16.14; its 24px checkbox rules at _components.scss:6110 remain because the file is shared-append
+- 2026-10-01T05:05:02Z status=wontfix-accepted owner=16-14-the-ldap-and-kerberos-editor by=harvest note=reopen_if=a cleanup pass edits _components.scss in place, or client-lint flags selectors with no component
