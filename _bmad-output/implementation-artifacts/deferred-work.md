@@ -8807,3 +8807,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen.Gate's ADMINRESOURCES floor refuses an account holding no %Admin_* resource and the stock %Developer role holds none (read on ocupilot), so a developer-only account cannot open System Explorer although AD-61's %Development:USE gate would admit it
 - 2026-10-01T18:39:19Z status=decision-pending owner=23-3-the-range-end-cleanup-part-3 by=spec_gate note=orchestrator kept the floor for 19.1 (product-wide security change); for the owner, who may reverse it
 - 2026-10-01T19:14:57Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=owner decided: %Development:USE admits a caller, as the classic portal does; Story 19.12 implements it
+
+### DW-1905: IRIS defect candidate: the Atelier action/index route called in process under %SYS.Capture ends the calling process with signal 11
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.1 Task 0 on ocupilot-ci: 8 of 20 background jobs of 20 index calls died under %SYS.Capture (messages.log, 14 caught signal 11 lines 20:17-20:21Z); through a file device and through the vendor's HTTP route none; AD-61 rule 5 routes index through a temporary file
+- 2026-10-01T21:38:12Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to file it with InterSystems, as DW-1527 and DW-1640 were

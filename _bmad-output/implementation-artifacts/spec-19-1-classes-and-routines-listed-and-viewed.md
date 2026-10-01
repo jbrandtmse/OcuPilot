@@ -2,7 +2,8 @@
 title: 'Story 19.1: Classes and routines, listed and viewed'
 type: 'feature'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '08ec761ccfc52af24593c821594c6df9654d9f79'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -281,6 +282,8 @@ deferred: []
   - `ui/src/app/areas/system-explorer/*.spec.ts`.
   - `ui/browser/system-explorer.browser-spec.mjs`, which includes the `structural()` walk on all four screens in light and dark.
 
+- [ ] [Lead] Pin `findmappings^%R`'s contract, which AD-61 rule 1 now names: a test in `Test/AtelierPort` or a sibling class (each under about 500 lines) calls it for HSCUSTOM as `AtelierPort` does and asserts the answer shape the port reads, HSLIB's directory among the mapped code databases, with a `mutation:` line under Verification.
+
 **Acceptance Criteria:**
 
 - **AC1 (the story's first criterion).** Given System Explorer's Classes or Routines list on a namespace, when it loads, then its rows come through `Port/AtelierPort` with the classic filters as server criteria and the max-rows cap. Those filters are the name pattern and the system, generated and mapped items, plus modified from and to. The footer shows the cap notice when the read reports `truncated`. Switching the namespace re-reads.
@@ -294,6 +297,7 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-01, implement halt (intent gap, AD-61 rule 5): lead ruling. AD-61 rule 5 now names a port-owned temporary file for `action/index` and rule 1 folds Task 0's pair set; re-dispatched `in-progress` with `baseline_revision` kept at `08ec761c` and the implementation intact in the tree.
 - 2026-10-01, spec gate (orchestrator answers, by=merge_gate): AD-61 and its five companion amendments written into the spine; System Explorer at rail 8 approved as a tier-1 amendment; "Look in: Database" dropped; the `%Admin_*` floor kept for 19.1, and widened by Story 19.12 on the owner's later decision (DW-1903); the four non-additive edits approved with disjoint hunks; never sending `filter` and never calling `POST modified` recorded at AD-61.
 
 ## Review Triage Log
@@ -397,7 +401,19 @@ Story 19.9 owns the full Documatic page, so 19.1 neither embeds it nor links to 
 
 **Ledger inbox:** none.
 
-**Task 0 results:** written here by the implement stage.
+**Task 0 results** (`ocupilot-ci`, 2026-10-01; principals `%Admin_Operate:U` + `%DB_HSCUSTOM:R` + the pairs named, each dropped in turn, removed afterwards):
+
+- **T0.1.** Superuser baseline, `docnames/CLS`: HSCUSTOM 13,867 rows, USER 5,214, `%SYS` 3,649.
+  - Without `%Development:USE`: `docnames` and `index` answer in full; `GET doc` answers 200 with `result.status` "ERROR #5838: You need %Development:Use privilege". Joins the gate, the descriptors and the area.
+  - Without the namespace's database READ (`%DB_USER` in USER, `%DB_IRISSYS` in `%SYS`): `<PROTECT>` at the namespace switch, all three routes. Joins the gate per namespace.
+  - Without `%DB_IRISSYS:READ`: HSCUSTOM and USER answer in full, the rows IRISSYS holds included (159 classes, 28 routines; `GET doc` and `index` of `%SYS.Audit.cls` answer 200). Does not join outside `%SYS`.
+  - `%DB_HSLIB` made non-public (a mapped code database): `docnames/CLS` in HSCUSTOM answers 200 with no rows (twice); `doc` and `index` answer 200. Joins the gate: READ on every database the namespace maps code from (`findmappings^%R`), the system database excepted, resolved at call time. Restored to `R`.
+  - Measured pair set: `PAIRS` = `%Development:USE`; per namespace, READ on its routines database, its globals database (the switch needs it; the two coincide in all three namespaces) and its mapped code databases but IRISSYS. The descriptors and the area declare `%Development:USE` alone.
+- **T0.2.** `index` answers 200 in process with a JSON array body through `Port/AtelierRequest`.
+- **T0.3.** An answer of 3.9 million characters: the renderer's own `Try` returns `<MAXSTRING>write+10^%SYS.Capture`; the port answers 503 `PORT.UNAVAILABLE`, `^||%capture` is gone, `$IO` and the redirect are restored, `$NAMESPACE` is unchanged, and the next call reads.
+  - **`index` under `%SYS.Capture` ends the process.** Background jobs of 20 calls each: 5 of 10, then 3 of 10, died with signal 11, mostly on the first call. `GET doc`, `docnames` and `GetNamespace` under the same capture: 0 of 10 each. `index` through a file device: 0 of 10; with no redirect: 0 of 10; the vendor's own HTTP route, 40 calls: none. The port writes `index`'s answer to a temporary file it reads back and deletes (`FILEDEVICEROUTES`); the `Class` endpoint then ran 10 jobs of 20 calls with none. AD-61 rule 5 names the capture for every route (inference: amend it to name the file device for `index`).
+- **T0.4.** `docnames`: the `^CacheTemp` counter rises by one and no node remains; `^rINDEX` (4,388 nodes, CRC unchanged) and `^ISC.Src.Jrn` in all five databases are unchanged. `doc` and `index`: nothing changed.
+- **T0.5.** The Classes default read through `Screen/Read.Execute` on HSCUSTOM: 0.32 to 0.36 s, 1,000 rows, truncated.
 
 ## Verification
 
@@ -442,15 +458,30 @@ docker exec -i ocupilot-ci iris session iris -U HSCUSTOM
 
 Record one `mutation: <change> → <test that reddened>` line per AC under this section as each is observed (Rule 19).
 
+- mutation: AC1, seed `filter` into `ListRows`' `GetDocNames` call → `AtelierPort.TestListFiltersApplyBeforeTheCapAndFilterIsNeverSent` (run 23785); drop the `default` line from `Read.SeedCriteria` → `AtelierPort.TestTheReadExecutorAppliesDefaultsAndCarriesTheDocument` (run 23794).
+- mutation: AC2, bind the viewer's text with `[innerHTML]` → `document-viewer.page.spec.ts` "opens a class on Source".
+- mutation: AC3, copy `document` into `Tool/Read.View`'s result → `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 23788).
+- mutation: AC4, drop `system-explorer` from `AREA_ICONS` → three `rail-icons.test.mjs` tests.
+- mutation: AC5, drop the namespace's own database pairs from `NamespacePairs` → `AtelierPortDenial.TestWithoutTheNamespacesDatabaseTheReadIsRefusedNamingIt` (run 23787); drop its mapped databases → `TestAMappedDatabaseIsGatedRatherThanReadEmpty` (run 23796); skip the `PAIRS` check → `TestWithoutDevelopmentEveryReadIsRefusedNamingIt` (run 23795) and `PortGate.TestEveryPortEvaluatesItsDeclaredGate` (run 23800).
+- mutation: AC6, declare a row action on `ExplorerClassList` → `ExplorerDescriptor.TestTheAreaIsReadOnly` (run 23790).
+- mutation: AC7, `.ocu-source-view { min-width: 1200px }`, rebuilt and deployed → both viewer tests of `system-explorer.browser-spec.mjs` (overflow entries outside the baseline).
+- mutation: AD-16, delete the restore from `Route`'s call `Catch` → `AtelierPort.TestTheNamespaceIsRestoredAfterSuccessAndAfterAFault` (run 23786).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: AD-61 rule 5 names `%SYS.Capture` for every route, and the `Index` route under that capture ends the calling process with signal 11 (Design Notes › Task 0 results, T0.3), so `Port/AtelierPort` writes `Index`'s answer to a port-owned temporary file instead (`FILEDEVICEROUTES`). Recommended amendment to AD-61 rule 5: "...wrap the route call, except `Index`, whose answer is written to a port-owned temporary file (`%File.TempFilename`), read back under the same ceiling and deleted on every path, because `Index` under the capture ends the process (measured on `ocupilot-ci`, Story 19.1 Task 0)."
 
-The plan stage halted after planning, as instructed. Items for the lead's spec gate:
+This pass (implement, stopped at Verify before the review layers):
 
-- the proposed AD and its five companion spine amendments (Design Notes);
-- the EXPERIENCE.md and DESIGN.md edits, all in place, as a Rule 5 tier-1 amendment;
-- the four contended edits that are not strictly add-only (Design Notes › Footprint);
-- the classic filters the port does not carry;
-- the API's administrative floor, which keeps out a developer-only account.
+- **Implemented:** every task in the spec. The handoff ran the spec's `(loop)` classes one at a time on `ocupilot-ci`, the client tiers, `npm test`, the build and the three browser files, and observed red for the mutations recorded under Verification. Not yet run: the full ObjectScript sweep, the Matrix Test Audit and the review.
+- **Evidence for the gap, checked by the stage:** `ocupilot-ci` `messages.log` holds 14 "caught signal 11" lines, from background jobs between 20:17 and 20:21 on 2026-10-01 (the handoff's bisection). A cross-namespace probe (USER and `%SYS`) of `Classes`, and of `Class` through the file path, answered 200 with the namespace restored.
+- **To fold with the amendment (AD-61 rule 1, Task 0 T0.1):**
+  - `PAIRS` is `%Development:USE`.
+  - Per namespace, the port also requires READ on the routines database, the globals database, and every database the namespace maps code from except IRISSYS.
+  - The mapped databases come from `findmappings^%R`, an internal vendor label the vendor's own namespace route calls. No test pins its signature.
+- **Bundle:** re-based under DW-1166, from 2391 kB to 2420 kB (measured 2,419,634 bytes), with `angular-json.test.mjs` updated to match.
+- **Environment on `ocupilot-ci`, for the lead:**
+  - IRISTEMP's directory holds no `IRIS.DAT`. The handoff hit `<FILEFULL>` there and killed `^IRIS.Temp.OcuPilotTurnProvider` to free space.
+  - A `%SYS` process, pid 231577, has run at about 99% CPU for 18 hours. It was not started by this stage, and it was left running.
+- **On re-dispatch:** amend AD-61 rule 5 and fold rule 1, set `status` back to `in-progress`, and commit the tree (Rule 16's rework commit). The working tree holds the whole implementation, uncommitted.
