@@ -12,7 +12,7 @@ Parameter FORM = "OcuPilot.Screen.Descriptor.NamespaceForm";
 
 Parameter SCREENPAIRS = "[{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
 
-/// <p>The list: OS management's sixth entry over the vendor's namespace <code>LIST</code>, four
+/// <p>The list: OS management's seventh entry over the vendor's namespace <code>LIST</code>, four
 /// fields filtered and sorted alike, Name first, one Delete row action and a Create, the classic
 /// Namespaces page.</p>
 Method TestTheListDeclaresItsFourFieldsAndItsDelete()

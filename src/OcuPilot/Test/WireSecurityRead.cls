@@ -541,7 +541,7 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     ; nine, in ScreensForArea's own (sideBarPosition, class name) collation: the unlisted
     ; sideBarPosition-0 screens sort first, alphabetically by descriptor class name (Database
     ; details, Database free-space, Database volumes, then Process details), ahead of the listed
-    ; ones in position order (Processes, Locks, System usage, Databases, the Integrity log, Devices). Every
+    ; ones in position order (Processes, Locks, System usage, Databases, Devices). Every
     ; assertion below states the full roster, not an append to an older one. Story 8.8's
     ; device editor and Story 18.2's namespace editor, unlisted, sort between Database volumes and
     ; Process details, and the Namespaces list follows Devices, at position 7. Story 18.14's three mapping

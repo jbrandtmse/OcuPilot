@@ -84,7 +84,7 @@ ClassMethod ArmMain()
 }
 
 /// <p>The declaration passes the read grammar; its route and tool identifier resolve to it; it is
-/// the OS management area's eighth entry, a <code>meters</code> screen on no entity type at instance
+/// the OS management area's ninth entry, a <code>meters</code> screen on no entity type at instance
 /// scope with no id, refreshing at 5, 10, 30 and 60 seconds with no default rate, over the two OS
 /// management pairs, with the three aliases, the three prompts in their groups, its classic page
 /// and no action. Its read is a parts <code>GET</code> of <code>Monitor</code>:

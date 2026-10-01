@@ -249,10 +249,28 @@ describe('the namespace editor', () => {
     expect(links).toHaveLength(1);
     expect(links[0].textContent?.trim()).toBe(STRINGS.databaseCreateLink);
     expect(links[0].closest('.ocu-field')?.querySelector('#ocu-namespace-Globals')).not.toBeNull();
+    // Mutation (Rule 19): build the create's `href` without the marker -> a new tab's wizard never returns, and this goes red.
+    expect(links[0].getAttribute('href') ?? '').toContain('/os-management/local-databases/edit?returnTo=namespace');
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
     links[0].click();
     await settle(fixture);
     expect(navigate).toHaveBeenCalledWith('/os-management/local-databases/edit?returnTo=namespace');
+  });
+
+  it('DW-1824: a modified click on a create\u2019s "Create a database" link is the browser\u2019s, and hands nothing off', async () => {
+    const { fixture, host, formDirty } = await mount();
+    type(fixture, host, 'ocu-namespace-Name', 'OCUPROBE1817N');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+    // jsdom would follow the href; the page's own handler runs first and must leave the event alone.
+    host.addEventListener('click', (event) => event.preventDefault());
+    const link = host.querySelector('[data-create-database] a') as HTMLAnchorElement;
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ctrlKey: true }));
+    await settle(fixture);
+    expect(navigate).not.toHaveBeenCalled();
+    // Mutation (Rule 19): call `retainForHandOff` before the modifier check -> the form is marked clean and retained, and this goes red.
+    expect([formDirty.dirty(), TestBed.inject(NamespaceForm).retaining()]).toEqual([true, false]);
   });
 
   it('DW-1824: an edit\u2019s "Create a database" link carries no return marker and keeps an unsaved change under the leave guard', async () => {

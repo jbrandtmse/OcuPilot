@@ -3,8 +3,9 @@
  *
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
- * 1. **The list** (AC1): OS management's sixth side-bar entry reads "Namespaces", and HSCUSTOM's and
- *    USER's rows show the databases the instance holds for them.
+ * 1. **The list** (AC1): OS management's seventh side-bar entry reads "Namespaces", and HSCUSTOM's and
+ *    USER's rows show the databases the instance holds for them; the Integrity log entry, right after
+ *    Databases, opens the log viewer (Story 18.17, DW-1858).
  * 2. **Create, edit and delete through the screens** (AC1, AC2): a taken name, in another case, is
  *    refused on its field and changes nothing; Create over USER/USER replaces the route with the new
  *    namespace's edit and stores `TempGlobals` `IRISTEMP`; the editor's Routines change sends that
@@ -366,7 +367,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // AC1. Mutation (Rule 19): give NamespaceList `sideBarPosition` 0, regenerate the mirror, rebuild and
 // redeploy -> the side-bar assertion goes red; so does DatabaseIntegrityLog back at 0 (Story 18.17).
-test('AC1: Namespaces is the seventh OS management entry, after the Integrity log, and HSCUSTOM and USER show the databases the instance holds', async () => {
+test('AC1: Namespaces is the seventh OS management entry, after Devices, and HSCUSTOM and USER show the databases the instance holds', async () => {
   const hscustom = stored('HSCUSTOM');
   const user = stored('USER');
   assert.ok(hscustom !== null && user !== null, 'the instance holds both namespaces');

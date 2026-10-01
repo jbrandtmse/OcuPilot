@@ -76,8 +76,8 @@ interface TemplateView extends FieldView {
  * **Its fields are the name, then the database**, a native select over the instance's database
  * names from the form read, **and for a global the lock database and the collation**. A create
  * starts the selects on an empty choice; an edit starts each at its fresh read and shows the name
- * read-only, because a mapping is never renamed. While a global's name begins with `%`, the published
- * system-global consequence shows under Name (AD-10).
+ * read-only, because a mapping is never renamed. While a global's name reaches the `%` globals (it
+ * begins with `%`, `:` or `*`), the published system-global consequence shows under Name (AD-10).
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page`
  * route guard, answered here. Cancel returns to that namespace's list. Every control-flow condition

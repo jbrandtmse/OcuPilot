@@ -8273,6 +8273,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T04:38:55Z status=routed owner=burndown by=cr note=found after 18.14's rework cap; the %-global effect should also cover a range or pattern that reaches the % globals
 - 2026-09-30T03:32:47Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: small mapping fix in Epic 18 after DW-1860 (empty-low-end range needs the system-global consequence)
 - 2026-10-01T06:27:55Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
+- 2026-10-01T09:22:37Z status=resolved-by:18-17-namespace-and-database-follow-ups by=adjudication note=3cc32b04: IsSystemGlobalMapping inserted :/* rule + systemGlobal() mirror; MappingSystemGlobal, MappingWrite, store spec pin it
 
 ### DW-1814: AdminPort logs every vendor 404 at error severity, including VerifyGone's expected absence after a delete, so the lines reach alerts.log and an OcuPilot delete raises the instance's alert state
 - source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
@@ -8331,6 +8332,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T22:56:19Z status=routed owner=range-end-cleanup by=merge_gate note=decided as recommended (orchestrator 2026-09-29): Create a database from the New Namespace form keeps what was typed and returns to it, as the classic portal does; routed to range-end-cleanup, 18.4 stays bounded
 - 2026-09-30T06:34:06Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): the decided fix (Create a database keeps the typed New Namespace form and returns to it) goes to the story that owns the New Namespace page
 - 2026-10-01T06:27:56Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
+- 2026-10-01T09:22:37Z status=resolved-by:18-17-namespace-and-database-follow-ups by=adjudication note=3cc32b04: returnTo=namespace hand-off, kept/database return; store/page/wizard specs + local-databases browser leg
 
 ### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8480,6 +8482,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=product call: list the Integrity log under OS management after Databases, or give Databases a link; recommended: list it
 - 2026-09-30T02:57:24Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=approved as recommended (orchestrator 2026-09-30): the Integrity log gets an OS management side-bar position right after Databases; a small item in 18.15
 - 2026-10-01T06:27:56Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
+- 2026-10-01T09:22:37Z status=resolved-by:18-17-namespace-and-database-follow-ups by=adjudication note=3cc32b04: DatabaseIntegrityLog sideBarPosition 5, six shifted, app.routes plain-before-:id; Navigation + browser legs
 
 ### DW-1859: A caller that cannot write the admin API's async-task rows (the disk tools' least-privileged pairs) leaves one finished row per queued call, each STATE read's INFO poll included, and AD-37's sweep deletes them by SQL, which logs ERROR #7846 per row (inference for the sweep)
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -8685,3 +8688,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: docker inspect ocupilot-slot-b shows only OCUPILOT_DEMO=1; ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; 00724be8 deletes the test-scope package on any start without it
 - 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
 - 2026-10-01T04:00:14Z occurrence=23-2-the-range-end-cleanup-part-2
+
+### DW-1892: Browser Back or a side-bar exit from a database wizard opened by New Namespace's hand-off returns to an empty form with no prompt; before 18.17 the link click asked first
+- source: spec-18-17-namespace-and-database-follow-ups.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: retainForHandOff marks the form clean (namespace-form.store.ts:272-276); open('') without returning drops the held buffer (:317-318); spec Design Notes decide Back starts empty
+- 2026-10-01T09:21:03Z status=decision-pending owner=burndown by=cr note=spec-bound product call: restore a held hand-off buffer on any create arrival (~5 lines + a spec leg), or keep
+
+### DW-1893: A copy of mappings from a source holding a global mapping that reaches the % globals carries NAMESPACE.COPYMAPPINGS only, never MAPPING.SYSTEMGLOBAL
+- source: spec-18-17-namespace-and-database-follow-ups.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Prohibited.cls:1961 copy arm asks CopiesOwnMapping only; NamespaceCopyMappings.cls:86 CONSEQUENCE NAMESPACE.COPYMAPPINGS; WeakensByEffect runs per create/change
+- 2026-10-01T09:21:03Z status=wontfix-accepted owner=18-17-namespace-and-database-follow-ups by=cr note=pre-existing (18.14), copy already DESTRUCTIVE=1. reopen_if=AD-10 is amended to name a copy for MAPPING.SYSTEMGLOBAL

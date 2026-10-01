@@ -257,6 +257,41 @@ There is no admin-API write, no new tool and no observation step before the buil
 - **AC4 (Integration, DW-1824):** Given the real throwaway in a browser, when the wizard opened from New Namespace creates a database, then New Namespace, the consumer, shows in its Globals select the database the instance holds under that name. The hand-off is the router query alone.
 - **AC5 (DW-1858):** Given OS management's side bar for a holder of the Integrity log's pairs, when it is drawn, then Integrity log is listed right after Databases, every other entry keeps its relative order, and choosing Integrity log opens the Integrity log.
 
+### Review Findings
+
+Code review 2026-10-01 (`bmad-code-review`, tier `full-opus`, layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 27 findings: high 0, medium 3, low 15, false 9. Fields: severity / fix-risk / footprint / spec-status.
+
+- [x] [Review][Decision, deferred] Back or a side-bar exit from a hand-off wizard empties New Namespace with no prompt, where the link click used to ask (med / low / in-story / spec-bound) — the Design Notes decide Back starts empty, so a fix is a product call: DW-1892 `decision-pending owner=burndown`.
+- [x] [Review][Patch] Create-mode `href` was never asserted to carry `returnTo=namespace`, so a new tab's wizard could stop returning unseen (med / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.spec.ts:246]
+- [x] [Review][Patch] Nothing pinned that a modified click hands nothing off; moving `retainForHandOff` above the modifier check would silently drop typed values (med / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.spec.ts:260]
+- [x] [Review][Patch] Side-bar ordinals and a neighbour left stale in edited test prose (low / low / in-story / clear) [src/OcuPilot/Test/Descriptor.cls:2277, NamespaceDescriptor.cls:15, LicenseUsage.cls:83, Dashboard.cls:87, LanguageServer.cls:52, WireSecurityRead.cls:544; ui/browser/namespaces.browser-spec.mjs:6,370]
+- [x] [Review][Patch] The mapping form's class doc still stated only the `%` rule (low / low / in-story / clear) [ui/src/app/areas/os-management/mapping-form.page.ts:79]
+- [x] [Review][Patch] The destroy hook's comment omitted the wizard hand-off (low / low / in-story / clear) [ui/src/app/areas/os-management/namespace-form.page.ts:268]
+- [x] [Review][Defer] A copy of mappings from a source holding a `%`-reaching mapping carries `NAMESPACE.COPYMAPPINGS` only [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1961] (low / med / in-epic / clear) — deferred: pre-existing since 18.14, the copy is already destructive; DW-1893 `wontfix-accepted`.
+
+Rejected:
+
+- `Prohibited.cls`'s three doc comments keep the `%` paragraph and append the widening — low, spec-bound: the spec makes the file add-only and prescribes the appended paragraph, which says "too".
+- `IsSystemGlobalMapping`'s `$Piece` spells the rule differently from the client's regex — false: both test the name's first character, so they cannot diverge.
+- The reused consequence sentence is singular for `*` and ranges — low, spec-bound: the spec forbids a new string.
+- 18.16's spec still names position 11, and the epic context's side-bar order is stale — false: the Consumed-by gives the re-base to the runner before 18.16's implement, and the pre-warm regenerates the context.
+- 18.15's blocked spec still carries DW-1813, DW-1824 and DW-1858 — false: its merge-gate log line (:392) records the split, and it cannot be re-dispatched until the lead resets it.
+- EXPERIENCE.md's screen inventory has no Integrity log row — low, spec-bound: pre-existing since 18.4, and a new row breaks the 993-line constraint.
+- The `replaceUrl` return leaves an identical New Namespace entry below, so the first Back appears to do nothing — low, spec-bound: the Tasks prescribe `replaceUrl`.
+- The hand-off marks the form clean before the navigation settles — false: no route has `canActivate`, and the only guard is New Namespace's own, which reads the flag just cleared.
+- `retainForHandOff` reuses `retainingValue` instead of keeping a copy — false: nothing writes `buffer` between the hand-off and the return, and the edit no-op is pinned.
+- An abandoned hand-off keeps the store loaded, so a database event costs one extra read — low: the read is cheap and stops at the next open or sign-out; a teardown adds state.
+- `queryValue` and `withParams` sit in `database-actions.ts` beside other copies of the parse — low: consolidating them is a refactor beyond a direct correction.
+- The `buildRoutes` reorder is not in the Spec Change Log — false: the Auto Run Result records it and `app.routes.spec` pins it; the log is for spec amendments.
+- The DW-1858 browser leg's `?.click()` names no failure — low: a missing entry still turns the leg red at its URL wait.
+- Long comment lines — false: no harm, and the linters are clean.
+- A Create a database click during a create Save yanks the wizard to the new namespace — low: it needs a click inside the save's round trip, the namespace is created as asked, and the fix adds a guard.
+- AC1's and AC2's negative halves and AC5's open half have no mutation line of their own — false: Rule 19 asks for one per AC, and each has one.
+- `local-databases`' "no leave prompt" asserts after a URL wait add nothing — low: a prompt still turns the leg red at that wait.
+- `local-databases`' "no namespace was created" cannot fail under this diff — low: a harmless post-condition.
+- The store spec's `reset` leg does not depend on the held copy — false: its `retaining()` assert carries the leg.
+- `core/proposal-view.ts:195` names only `%` — low: the comment is incomplete rather than wrong, in a file Epic 16 contends.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -395,6 +430,8 @@ Each mutation was reverted byte-identically (`git status --short` and `git diff 
 - mutation: `retainForHandOff` without its `setDirty(false)` → `namespace-form.page.spec`'s "a create hands its values to the wizard without asking" and `namespace-form.store.spec`'s `retainForHandOff` leg (AC3's no-leave-prompt half)
 - mutation: the page constructor without its `kept` URL replacement → `namespace-form.page.spec`'s "the return drops kept and database before restoring them"
 - mutation: `retainForHandOff` without its create-only check → `namespace-form.page.spec`'s "an edit's Create a database link ... keeps an unsaved change under the leave guard"
+- mutation (code review): the create's `href` built without the marker → `namespace-form.page.spec`'s AC6, SA-13 (Story 18.3) leg, at its new `href` assertion
+- mutation (code review): `retainForHandOff` called before the modifier check → `namespace-form.page.spec`'s "a modified click on a create's ... hands nothing off"
 
 ## Auto Run Result
 

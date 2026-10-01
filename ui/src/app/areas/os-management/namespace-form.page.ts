@@ -266,7 +266,8 @@ export class NamespaceFormPage {
       stopDirty();
       stopIdChange.unsubscribe();
       // Kept across a create's own route replacement, which destroys this page and builds it
-      // again over the new namespace; torn down on every other departure.
+      // again over the new namespace, and across a create's hand-off to the database wizard;
+      // torn down on every other departure.
       if (!this.store.retaining()) this.store.reset();
     });
   }

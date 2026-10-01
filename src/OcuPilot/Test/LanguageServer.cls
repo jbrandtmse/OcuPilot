@@ -49,7 +49,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>AD-5, AD-8: the list is OS management's ninth entry over <code>LanguageServer</code>
+/// <p>AD-5, AD-8: the list is OS management's tenth entry over <code>LanguageServer</code>
 /// <code>LIST</code> with an <code>ACTIVITY</code> detail call; the Activity log is its unlisted,
 /// parent-scoped log viewer reading <code>ACTIVITY</code> over <code>Activity</code>; both declare
 /// <code>%Admin_ExternalLanguageServerEdit:USE</code> as their own pair beside the database read,
