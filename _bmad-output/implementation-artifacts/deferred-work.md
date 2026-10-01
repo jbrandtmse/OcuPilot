@@ -8755,3 +8755,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1889 (merge gate 2026-10-01) | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
 - 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
+
+### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
+- source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: instance shard 3/3 was cancelled by its 46-min timeout with every class green (13:24:34, run 36862943319); refreshed timings estimate the largest leg at 37.5 min, so AC9 needed 60.7; the timeout was raised to 61 meanwhile
+- 2026-10-01T13:39:04Z status=routed owner=range-end-cleanup by=harvest note=priority p1 (CI health), orchestrator 2026-10-01: add a fourth instance shard (and a browser one if its legs follow) so a run's wall time falls
