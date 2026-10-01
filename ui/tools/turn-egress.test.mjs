@@ -5,9 +5,10 @@
 // filled.
 //
 // Mutations (Rule 19):
-// - make `parseEgress` accept a missing `leavesInstance` as false -> "a malformed egress parses to
-//   null" goes red.
-// - drop `egress` from `pollOnce`'s spread -> "the poll carries egress" goes red.
+// - make `parseEgress` accept a missing `leavesInstance` as false -> "a missing, null or malformed
+//   egress parses to null" goes red.
+// - drop `egress` from `pollOnce`'s spread -> "the poll carries egress into the live entry, and the
+//   finished entry keeps it" goes red.
 // - make `egressLine` ignore `contextSent` -> "sharing off reads the no-context sentence" goes red.
 
 import { test } from 'node:test';

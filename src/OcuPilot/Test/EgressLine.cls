@@ -5,7 +5,8 @@
 /// public test-net host and B at a private one. Also pins
 /// <method>OcuPilot.Kernel.Agent.Loop.KeepEgress</method>,
 /// <method>OcuPilot.Kernel.State.Turn.EgressObject</method> and
-/// <method>OcuPilot.Port.ProviderPort.EgressOf</method>'s marked-local answer directly.</p>
+/// <method>OcuPilot.Port.ProviderPort.EgressOf</method>'s marked-local answer and the port's TLS
+/// refusal directly.</p>
 /// <p><b>It creates an IRIS user and a role and spawns turn jobs, so
 /// <method>OnBeforeAllTests</method> refuses to run unless both</b>
 /// <parameter>ARMINGVARIABLE</parameter> <b>and</b> <parameter>PROVIDERVARIABLE</parameter>
@@ -36,6 +37,10 @@ Parameter LOOPBACKENDPOINT = "https://127.0.0.1/v1/messages";
 /// <p>A loopback proxy host, which the address policy refuses at the call once the endpoint has
 /// passed (<code>PROVIDER.EGRESS</code>). Never connected to.</p>
 Parameter LOOPBACKPROXY = "127.0.0.1";
+
+/// <p>A TLS configuration name the instance does not hold, which the port refuses at the call
+/// (<code>PROVIDER.TLS</code>) once the endpoint and proxy have passed.</p>
+Parameter ABSENTTLS = "OcuPilotProbeAbsentTls";
 
 Property PreparedPassword As %String;
 
@@ -306,6 +311,31 @@ Method TestATurnWhoseProxyWasRefusedRecordsNoEgress()
     Set tTurns = ..ConversationTurns(tConvId, "proxy refused")
     Do $$$AssertEquals(tTurns.%Size(), 1, "proxy refused: one restored turn")
     If tTurns.%Size() = 1 Do $$$AssertEquals(tTurns.%Get(0).%GetTypeOf("egress"), "null", "nor does the conversation entry")
+}
+
+/// <p>Refused TLS: a call whose TLS configuration is absent is refused <code>PROVIDER.TLS</code>
+/// before dispatch and answers no egress, while the same call under the instance's own
+/// configuration is dispatched and answers one. Asked of the port in this process, because the
+/// check reads the security database, which a turn's least-privileged owner cannot
+/// (<method>OcuPilot.Port.ProviderPort.SslConfigurationMissing</method> then lets the call
+/// proceed).</p>
+Method TestACallRefusedForItsTlsConfigurationRecordsNoEgress()
+{
+    Set tPort = "OcuPilot.Port.ProviderPort"
+    Set tMessages = 1
+    Set tMessages(1, "role") = "user"
+    Set tMessages(1, "content") = "where did it go"
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAGA, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ok"))
+    Do $ClassMethod(tPort, "Invoke", ..PreparedA, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault, "", "", .tEgress)
+    Do $$$AssertTrue($IsObject(tEgress), "under the instance's own TLS configuration the call is dispatched and answers its egress")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAGA), 1, "and reaches the provider")
+    Set tStored("sslConfiguration") = ..#ABSENTTLS
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStored), "an absent TLS configuration is stored")
+    Kill tEgress, tFault
+    Do $ClassMethod(tPort, "Invoke", ..PreparedA, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault, "", "", .tEgress)
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.code, 1: ""), "PROVIDER.TLS", "the call is refused for the absent configuration")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAGA), 1, "before it reaches the provider")
+    Do $$$AssertEquals($Get(tEgress), "", "and answers no egress")
 }
 
 /// <p>Provider refused: a turn whose dispatched call the provider refused still records where its

@@ -334,7 +334,7 @@ export interface TurnEntry {
   readonly citations: readonly Citation[];
   /**
    * Where the turn's screen data went (Story 16.15), as the instance recorded it for the turn's
-   * own provider call; `null` until a call has been dispatched, for a turn whose every call was
+   * own provider call; `null` until its first dispatched call returns, for a turn whose every call was
    * refused before dispatch, and on an entry stored before the fact existed.
    */
   readonly egress: TurnEgress | null;

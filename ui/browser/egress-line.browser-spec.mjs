@@ -8,7 +8,8 @@
  *
  * Uses two `turnprobe` definitions of `OcuPilot.Test.TurnWireFixture`: A, armed default at
  * `192.0.2.10`, and B at the private `10.0.0.5`. `after` removes both, restores the default the
- * instance held and the configured user's sharing choice, and hands the turn slot back.
+ * instance held, leaves the configured user's sharing on (`share: true`, as `context-chip` does),
+ * and hands the turn slot back.
  *
  * Run: `npm run build`, `docker cp` the bundle into the throwaway, then
  * `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test browser/egress-line.browser-spec.mjs`.

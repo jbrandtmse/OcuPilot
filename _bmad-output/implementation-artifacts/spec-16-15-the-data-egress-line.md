@@ -200,6 +200,37 @@ Client:
 - **AC6.** Given a turn whose every call was refused before dispatch, or an entry stored before this story, when the panel renders it, then no line is drawn.
 - **AC7 (DW-1192).** Given a `gemini` definition saved with an endpoint lacking `{model}`, when it is created or updated, then one info line names the definition and its unused Model, with no URL. The Definition form says so under Endpoint, and the egress line names no model.
 
+### Review Findings
+
+Code review 2026-10-01 (four layers, `full-opus`): 34 rows, 24 entries — 0 high, 0 medium, 18 low, 6 false. 0 decision-needed, 7 patch (applied), 1 defer, 16 rejected.
+
+- [x] [Review][Patch] The fact is documented as appearing at dispatch, but the poll carries it only once the first dispatched call returns (Named limits) [src/OcuPilot/Kernel/State/Turn.cls:106] — `Turn.Egress`, `GuardedView` and `turn.ts` `TurnEntry.egress` now say so; AD-33's sentence and EXPERIENCE.md:609 (contended by Epic 18) are DW-1894.
+- [x] [Review][Patch] `GET /conversation/:id`'s doc omits `egress` [src/OcuPilot/Api/Conversation.cls:53]
+- [x] [Review][Patch] The browser spec's header says `after` restores the user's sharing choice; it leaves `share: true`, as `context-chip` does [ui/browser/egress-line.browser-spec.mjs:11]
+- [x] [Review][Patch] `EgressLocal` and `ContextProbe` describe the pre-16.15 call structure, and `EgressLocal`'s mutation recipe names blanking that moved to `EgressOf` [src/OcuPilot/Test/EgressLocal.cls:7]
+- [x] [Review][Patch] `turn-egress.test.mjs`'s mutation notes misname two tests [ui/tools/turn-egress.test.mjs:8]
+- [x] [Review][Patch] A call refused for its TLS configuration was not pinned to answer no egress — added `EgressLine.TestACallRefusedForItsTlsConfigurationRecordsNoEgress` (port in process, since the check needs the security database) [src/OcuPilot/Test/EgressLine.cls:322]
+- [x] [Review][Patch] AC6's "entry stored before this story" half had no demonstrated mutation — demonstrated under `## Verification` [ui/src/app/core/egress-line.ts:27]
+- [x] [Review][Defer] DESIGN.md gives no visual spec for the line (egress-warning usage row, `message-user`) [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:759] — deferred: DW-1895, wontfix-accepted (a review does not edit another spec).
+
+Rejected:
+
+- `false` The line does not name the proxy — the spec's fact is the endpoint host as the chip names it, and "left" is true through the proxy.
+- `false` The sharing-off sentence implies nothing left — it claims only that no screen context was sent (Decision 3).
+- `false` DW-1888 and DW-1889 are owned by a story that does not deliver them — the merge gate routed them to the epic's last open key for their own commit; Rule 17's adjudication after this review dispositions every 16-15 entry.
+- `false` `ResolveEndpoint`'s and `EgressOf`'s proxy outputs are unused — `EgressOf`'s is pinned by `TestEgressOfAnswersStayedForAMarkedLocalCallBehindAPublicProxy`, and no caller diverges.
+- `false` The Transcript page draws no line — the intent's Never list forbids it.
+- `false` `KeepEgress` names the first leaving host, not the last — that is the intent's Turn rule.
+- `low` Extra uncached address lookups per call — measured on `ocupilot-ci`: 3.8 ms (`api.anthropic.com`), 13.7 ms (`generativelanguage.googleapis.com`), 0.4 ms (an IP literal) per `LeavesInstance`; a cache belongs to `Kernel/Egress`, outside this epic.
+- `low` A pre-connect adapter refusal (no key, a mismatched Gemini URL) shows "went to … and left" — untrue for that one turn, beside its error banner; by-design, the intent records the fact immediately before `tAdapter.Invoke` and Named limits accept it.
+- `low` `NoteModelUnused` uses Gemini's predicate for any row whose endpoint carries `{model}`, and logs on every update — by-design, both are the spec's predicate and AC7.
+- `low` EXPERIENCE.md:335 omits "non-empty" — spec-prescribed wording; the form's predicate has it.
+- `low` The Auto Run Result contradicts itself in two places — its fix edits the spec under review.
+- `low` AC5's "no screen context sent" with sharing on is not separately pinned — both clauses meet one computation, `pContext '= ""` (wontfix-theoretical: real if `contextSent` were computed from anything else).
+- `low` "One info line" is not counted — `NoteModelUnused` is called once per handler (wontfix-theoretical).
+- `low` `EgressLine.OnBeforeOneTest` reads a failed SQL as "no settings", and a failed `OnBeforeAllTests` skips `OnAfterAllTests` — test-only, a throwaway's setup failure, and the fix adds guards.
+- `low` `Loop` sets `pOutcome("egress")` before `GuardedProgress` saves — they differ only when that storage write fails (wontfix-theoretical).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -364,6 +395,11 @@ Demonstrated at review (2026-10-01, same discipline):
 - mutation: `Dispatch` records the fact before its proxy refusal → `EgressLine.TestATurnWhoseProxyWasRefusedRecordsNoEgress` (run 23330).
 - mutation: `EgressOf` passes 0 to `LeavesInstance` → `EgressLine.TestEgressOfAnswersStayedForAMarkedLocalCallBehindAPublicProxy` (run 23331); `Turn.EgressObject` drops its `endpointHost` check → `TestEgressObjectRefusesEveryMalformedText` (same run).
 - mutation: `NoteModelUnused` skips the catalog-row check → `GeminiModelUnused.TestAnEndpointWithThePlaceholderOrNoneLogsOnlyTheChangeRecord` (run 23332).
+
+Demonstrated at code review (2026-10-01, `ocupilot-ci` and the worktree; each reverted, recompiled, tree byte-identical after):
+
+- mutation: `Dispatch` records the fact before its TLS refusal (the `EgressOf` line moved above the attempt-bound and TLS blocks) → `EgressLine.TestACallRefusedForItsTlsConfigurationRecordsNoEgress` alone red, "and answers no egress" (run 23728; green before, run 23727, and after, run 23729).
+- mutation (AC6, an entry stored before this story): `egressLine` drops its `egress === null` guard → `turn-egress.test.mjs` "egressLine words the three cases from the published strings, filled" red (TypeError on `egressLine(null)`); the component build refuses it as a type error.
 
 ## Auto Run Result
 

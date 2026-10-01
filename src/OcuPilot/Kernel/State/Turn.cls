@@ -103,7 +103,7 @@ Property Citations As %String(MAXLEN = "");
 /// <p>Where the turn's screen data went, as JSON text <code>{provider, endpointHost,
 /// leavesInstance, contextSent}</code>: the egress fact
 /// <method>OcuPilot.Kernel.Agent.Loop.KeepEgress</method> kept from the turn's dispatched provider
-/// calls (AD-42), or <code>""</code> while no call has been dispatched. A snapshot of the
+/// calls (AD-42), or <code>""</code> until the first dispatched call returns. A snapshot of the
 /// configuration the call used, stored as data and never as a reference to the definition
 /// (AD-37); under 1,000 characters, since its provider key and endpoint are bounded by the
 /// definition's own columns (AD-41).</p>
@@ -547,8 +547,8 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 /// stepsDropped, reply, citations, error, egress, navigation?}</code>. <code>citations</code> is always an
 /// array (<method>CitationsArray</method>). <code>error</code> is <code>{seq, code}</code>
 /// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
-/// <code>egress</code> is <method>EgressObject</method>'s answer, <code>null</code> until a
-/// provider call of the turn has been dispatched.
+/// <code>egress</code> is <method>EgressObject</method>'s answer, <code>null</code> until the
+/// turn's first dispatched provider call returns.
 /// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
 /// it.</p>
 /// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is

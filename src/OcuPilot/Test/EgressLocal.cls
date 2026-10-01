@@ -4,8 +4,9 @@
 /// <p><b>Pinned at the route body rather than in a browser.</b> The chip renders
 /// <code>leavesInstance === true</code>, so the client shows no pill for anything else; what makes
 /// AC4 true is the server's answer, and that answer is
-/// <method>OcuPilot.Port.ProviderPort.ResolveEndpoint</method> followed by
-/// <method>OcuPilot.Kernel.Egress.LeavesInstance</method>, both reached through the shipped
+/// <method>OcuPilot.Port.ProviderPort.ResolveEndpoint</method>, whose verdict is
+/// <method>OcuPilot.Kernel.Egress.LeavesInstance</method> through
+/// <method>OcuPilot.Port.ProviderPort.EgressOf</method>, reached through the shipped
 /// projection (<class>OcuPilot.Test.ContextProbe</class>).</p>
 /// <p><b>Read-only and opens no socket.</b> Nothing here calls a provider. It writes one agent
 /// definition and the instance's one outbound-settings row; every address named is a loopback or a
@@ -158,7 +159,7 @@ Method StatusBody() As %DynamicObject
 /// asks the policy directly, with a proxy host it cannot have been given by the resolver.</p>
 /// <p>mutation: restore <method>OcuPilot.Kernel.Egress.LeavesInstance</method>'s original order,
 /// testing the proxy host before <var>pMarkedLocal</var> -- red on the direct leg alone; remove
-/// <method>OcuPilot.Port.ProviderPort.ResolveEndpoint</method>'s marked-local proxy blanking as
+/// <method>OcuPilot.Port.ProviderPort.EgressOf</method>'s marked-local proxy blanking as
 /// well and the with-a-proxy projection leg reddens too.</p>
 Method TestAMarkedLocalDefinitionAnswersLeavesInstanceFalseEvenWithAProxyConfigured()
 {
