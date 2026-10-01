@@ -104,7 +104,7 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Set tRules = "OcuPilot.Area.Security.LdapRules"
     Kill tViolations
     Set tViolations = 0
-    Set tSC = $ClassMethod(tRules, "NameViolation", pIdValue, .tViolations)
+    Set tSC = $ClassMethod(tRules, "NameViolation", pIdValue, .tViolations, 0)
     If $$$ISERR(tSC) Quit tSC
     If tViolations = 0 {
         Set tSC = $ClassMethod(tRules, "Compose", pArgs, .tPayload, .tDiff, .tUnchanged, .tProblem)

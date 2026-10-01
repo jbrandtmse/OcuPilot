@@ -16,7 +16,8 @@ Parameter REASONFLAGSKERBEROS = "A Kerberos-only configuration cannot also be LD
 
 /// <p>Violation code: a configuration name that <code>Security.LDAPConfigs.FormatName</code> would
 /// store differently other than by case -- a bare name, which gains <code>.com</code>, or one
-/// carrying a character it strips. The instance stores only the canonical form.</p>
+/// carrying a character it strips. A name this instance already holds is admitted as stored for a
+/// read, a change, a test or a delete; on a create such a name is always refused.</p>
 Parameter NAMEFORM = "LDAP.NAME.FORM";
 
 Parameter REASONNAMEFORM = "Use the full name the instance stores, such as example.com.";
@@ -43,10 +44,19 @@ Parameter TESTUSERNAME = "LDAP.TEST.USERNAME";
 
 Parameter REASONTESTUSERNAME = "Enter the user name without a domain; the test uses this configuration.";
 
+/// <p>Violation code: an edit that would leave <code>LDAPAttributes</code> holding no name while the
+/// configuration holds one. The vendor's <code>PUT</code> keeps the stored list when sent an empty
+/// one and fails on a list of empty names, while the classic page's own save,
+/// <code>Security.LDAPConfigs.Modify</code> with an empty list, clears it (each measured), so the
+/// edit is refused before any write.</p>
+Parameter ATTRIBUTESLASTONE = "LDAP.ATTRIBUTES.LASTONE";
+
+Parameter REASONATTRIBUTESLASTONE = "Keep at least one attribute to retrieve; the last one can be removed only on the classic portal.";
+
 /// <p>Every code this class declares, as a <class>%List</class>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#FLAGSKERBEROS, ..#NAMEFORM, ..#NAMETAKEN, ..#HOSTREQUIRED, ..#TESTREQUIRED, ..#TESTUSERNAME)
+    Quit $ListBuild(..#FLAGSKERBEROS, ..#NAMEFORM, ..#NAMETAKEN, ..#HOSTREQUIRED, ..#TESTREQUIRED, ..#TESTUSERNAME, ..#ATTRIBUTESLASTONE)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not
@@ -59,6 +69,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#HOSTREQUIRED Quit ..#REASONHOSTREQUIRED
     If pCode = ..#TESTREQUIRED Quit ..#REASONTESTREQUIRED
     If pCode = ..#TESTUSERNAME Quit ..#REASONTESTUSERNAME
+    If pCode = ..#ATTRIBUTESLASTONE Quit ..#REASONATTRIBUTESLASTONE
     Quit ""
 }
 

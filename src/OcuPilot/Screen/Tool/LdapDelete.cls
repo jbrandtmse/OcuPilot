@@ -88,10 +88,18 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
+/// <p>The name's own rule asked again at the agent's confirm (AD-6, AD-13): a stored name that
+/// is gone by then can find another configuration by its short form, which the fingerprint's re-read
+/// does not tell apart.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ..ArgumentProblem(pIdValue, pArgs, .pProblem)
+}
+
 /// <p>The list's Delete (AD-53) reaches this write without the mint's
 /// <method>ArgumentProblem</method>, so the name <var>pValues</var>' id argument carries is judged
-/// here by the same rule: a name the instance would store differently is refused with its published
-/// sentence before any port write (AD-13). Every other action is the base's.</p>
+/// here by the same rule: a name the instance would store differently and does not hold is refused
+/// with its published sentence before any port write (AD-13). Every other action is the base's.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
