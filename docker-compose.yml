@@ -27,6 +27,9 @@ services:
       # Opt-in walkthrough fixture set (AD-25): the literal string "1" only. Absent or
       # any other value means no fixtures -- see scripts/container-start.sh.
       OCUPILOT_DEMO: "1"
+      # OCUPILOT_LOAD_TESTS is deliberately not set: without it the start hook leaves the
+      # roster's test-scope package out of the compile, so this container compiles no
+      # OcuPilot.Test class (AD-17). scripts/ci-throwaway.sh sets it to "1" for the suite.
     volumes:
       - ./iris-data:/durable
       # Read-only: the container never writes back into this repository's source tree.
@@ -37,9 +40,9 @@ services:
       # every run, and a bind mount pinned to a directory the host removes stays broken for
       # the life of the container. Absent or unbuilt, install reports a warn and completes.
       - ./ui:/opt/ocupilot/ui:ro
-      # The committed IPM manifest, so OcuPilot.Test.Manifest's DW-197 parse reads it as a
-      # document rather than taking its "no manifest on this instance" skip. Without the mount
-      # that assertion skips on every instance there is, which is a test that cannot fail.
+      # The committed IPM manifest, which OcuPilot.Test.Manifest's DW-197 parse reads as a
+      # document. That class compiles only on a start that sets OCUPILOT_LOAD_TESTS to "1";
+      # where it runs without the mount, it takes its "no manifest on this instance" skip.
       - ./module.xml:/opt/ocupilot/module.xml:ro
     # Runs once IRIS itself has started (the web server is already listening by then --
     # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start

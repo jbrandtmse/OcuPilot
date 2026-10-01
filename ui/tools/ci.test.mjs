@@ -143,8 +143,9 @@ export const DECLARED_GATES = [
   'npm ci',
   'npm run build',
   'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
-  'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
+  'sh scripts/ci-throwaway.sh up --product --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
   'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
+  'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
   'node tools/admin-spec.mjs --origin http://localhost:52781',
   'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
   `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
@@ -1651,7 +1652,11 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   assert.equal(/--project (\S+)/.exec(imagesDown)?.[1], imagesProject[1], 'the teardown removes the project the bring-up created');
   const imagesDir = /--dir (\S+)/.exec(imagesUp)?.[1];
   assert.ok(imagesDir, 'the bring-up names its own directory');
-  for (const command of [imagesDown, imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh logs'))]) {
+  for (const command of [
+    imagesDown,
+    imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh logs')),
+    imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh product-check')),
+  ]) {
     assert.equal(/--dir (\S+)/.exec(command ?? '')?.[1], imagesDir, `"${command}" names the directory the bring-up wrote`);
   }
 
@@ -1693,6 +1698,119 @@ test("ci-image-compile.sh's verdict arms are the ones the images job's claim res
     !/%ExistsId\("%Api\.Admin\.Dispatch/.test(code),
     'and no class-existence test stands in for it'
   );
+});
+
+// --- DW-48: the images job starts as a product start, and the suites keep the test package ---
+//
+// The throwaway sets OCUPILOT_LOAD_TESTS=1, which makes container-start.sh compile the roster's
+// test-scope package; `up --product` leaves it out, as docker-compose.yml does (compose.test.mjs
+// pins both). The images job is the product start CI runs, and `product-check` is its proof.
+
+// Mutations (Rule 19): drop `--product` from the images job's `up` -> red at its assertion. Add it
+// to the instance or browser shard's `up` -> red naming that job. Move the count before the
+// readiness wait -> red at the order assertion.
+test('the images job starts a product throwaway and counts what it compiled, while both suites keep the test package (DW-48)', () => {
+  const imagesUp = runCommands(jobSlice(workflow, 'images')).find((command) => command.startsWith('sh scripts/ci-throwaway.sh up'));
+  assert.ok(imagesUp, 'the images job brings up a throwaway');
+  assert.ok(imagesUp.split(' ').includes('--product'), 'as a product start, which compiles no test class');
+  for (const job of ['instance-shard', 'browser-shard']) {
+    const up = runCommands(jobSlice(workflow, job)).find((command) => command.startsWith('sh scripts/ci-throwaway.sh up'));
+    assert.ok(up, `the ${job} job brings up a throwaway`);
+    assert.ok(!up.split(' ').includes('--product'), `and the ${job} job's compiles the test package its suite runs`);
+  }
+
+  const images = jobSlice(workflow, 'images');
+  const upAt = images.indexOf('scripts/ci-throwaway.sh up --product');
+  const waitAt = images.indexOf('scripts/wait-readiness.sh');
+  const checkAt = images.indexOf('scripts/ci-throwaway.sh product-check');
+  assert.ok(upAt > 0 && waitAt > upAt, 'the product throwaway comes up and is waited on');
+  assert.ok(checkAt > waitAt, 'and its compiled classes are counted once its install has reported installed');
+
+  // What the count asks: every compiled OcuPilot class, and those of the test package, in the
+  // throwaway's own iris service.
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  const arm = /^ {4}product-check\)([\s\S]*?)^ {8};;/m.exec(throwaway);
+  assert.ok(arm, 'ci-throwaway.sh answers a `product-check` action');
+  assert.match(arm[1], /docker compose -f "\$COMPOSE_FILE" exec -T iris iris session iris -U %SYS 2>&1/, 'in the generated compose file\'s iris service');
+  assert.match(arm[1], /SELECT COUNT\(\*\) FROM %Dictionary\.CompiledClass WHERE %EXACT\(ID\) %STARTSWITH \?","OcuPilot\.Test\."/, 'counting the compiled OcuPilot.Test classes');
+  assert.match(arm[1], /SELECT COUNT\(\*\) FROM %Dictionary\.CompiledClass WHERE %EXACT\(ID\) %STARTSWITH \?","OcuPilot\."/, 'beside every compiled OcuPilot class');
+});
+
+/** Run `ci-throwaway.sh product-check` against a stub docker whose session prints `answer`. */
+function runProductCheck(answer, { composeFile = true } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-product-check-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(scratch);
+    if (composeFile) writeFileSync(join(scratch, 'compose.yml'), 'name: ocupilot-ci\n');
+    writeStub(bin, 'docker', [
+      'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'cat > /dev/null',
+      'printf \'%s\\n\' "$OCUPILOT_SESSION_ANSWER"',
+      'exit 0',
+    ]);
+    const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'product-check', '--dir', scratch], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture, OCUPILOT_SESSION_ANSWER: answer }),
+    });
+    const argv = existsSync(capture) ? readFileSync(capture, 'utf8').split(scratch).join('<scratch>') : '';
+    return { status: run.status, output: `${run.stdout}${run.stderr}`, argv };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const productAnswer = (fields) => `%SYS>\nOCUPILOT-PRODUCT-START:${fields}:OCUPILOT-PRODUCT-END\n%SYS>`;
+
+// Mutations (Rule 19): invert the test-class arm (`-eq 0`) -> the product and the loaded rows go
+// red. Delete the `-lt 1` floor -> the empty-namespace row exits 0 and goes red. Drop the
+// unanswered-count case -> the missing and partial rows go red.
+test('product-check passes only on a namespace holding OcuPilot classes and no OcuPilot.Test class (DW-48)', () => {
+  const product = runProductCheck(productAnswer('HSCUSTOM:481:0'));
+  assert.equal(product.status, 0, `a product start passes: ${product.output}`);
+  assert.match(product.output, /compiled no OcuPilot\.Test class/, 'and says so');
+  assert.match(product.argv, /^compose -f <scratch>\/compose\.yml exec -T iris iris session iris -U %SYS$/m, 'asking the generated compose file\'s iris service');
+
+  const loaded = runProductCheck(productAnswer('HSCUSTOM:1255:827'));
+  assert.equal(loaded.status, 1, `a start that compiled the test package fails: ${loaded.output}`);
+  assert.match(loaded.output, /compiled 827 OcuPilot\.Test class/, 'naming how many');
+
+  const empty = runProductCheck(productAnswer('USER:0:0'));
+  assert.equal(empty.status, 1, `zero test classes where no OcuPilot class is compiled fails: ${empty.output}`);
+  assert.match(empty.output, /proves nothing/, 'because it proves nothing');
+
+  for (const [label, answer] of [
+    ['no marker', '%SYS>\n<UNDEFINED>\n%SYS>'],
+    ['a partial count', productAnswer('HSCUSTOM:481:')],
+    ['a count that is not a number', productAnswer('HSCUSTOM:48x:0')],
+  ]) {
+    const run = runProductCheck(answer);
+    assert.equal(run.status, 1, `${label} fails: ${run.output}`);
+    assert.match(run.output, /did not answer how many classes/, `${label}: saying the count is missing`);
+  }
+
+  const nothing = runProductCheck(productAnswer('HSCUSTOM:481:0'), { composeFile: false });
+  assert.equal(nothing.status, 1, 'with no throwaway brought up there is nothing to check, which is a failure');
+  assert.match(nothing.output, /nothing was brought up to check/);
+  assert.equal(nothing.argv, '', 'and no docker command ran');
+});
+
+// Mutation (Rule 19): have any OcuPilot.Test class read OCUPILOT_LOAD_TESTS (a `Parameter` or an
+// inline GetEnviron) -> red naming it.
+test('DW-48: OCUPILOT_LOAD_TESTS is not an arming variable, so no roster reads or requires it', () => {
+  // It is the start hook's switch, not a guard a test class refuses on. The roster equality above
+  // filters both sides through ARMING_VARIABLE_RE, which this name does not match, and no class
+  // under src/OcuPilot/Test/ names it, so it can neither be read as a roster nor be owed one.
+  assert.ok(!ARMING_VARIABLE_RE.test('OCUPILOT_LOAD_TESTS'), 'it is not an OCUPILOT_ALLOW_* name');
+  const source = readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8');
+  assert.match(source, /^LOAD_TESTS_ENV='OCUPILOT_LOAD_TESTS: "1"'$/m, 'ci-throwaway.sh sets it');
+  const readers = testClassSources(join(REPO_ROOT, 'src', 'OcuPilot', 'Test'))
+    .filter(({ code }) => code.includes('OCUPILOT_LOAD_TESTS'))
+    .map(({ shortName }) => shortName);
+  assert.deepEqual(readers, [], 'and no test class reads it');
 });
 
 test("the pre-commit hook runs the ObjectScript checker when only a CI shell script is staged", () => {

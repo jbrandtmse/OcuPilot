@@ -19,12 +19,12 @@ The `HSCUSTOM` namespace is the default target for everything here.
 
 | Piece | Purpose |
 | --- | --- |
-| [src/OcuPilot/](../src/OcuPilot/) | Project ObjectScript source — classes, includes, and eventually the IPM module manifest. The container start hook loads and compiles this whole tree on every start; see [Project source layout](../CLAUDE.md#project-source-layout) |
+| [src/OcuPilot/](../src/OcuPilot/) | Project ObjectScript source — classes, includes, and eventually the IPM module manifest. The container start hook loads and compiles this tree on every start, leaving out the roster's test-scope package unless `OCUPILOT_LOAD_TESTS` is `1`; see [Project source layout](../CLAUDE.md#project-source-layout) |
 | [docs/initial-idea.md](../docs/initial-idea.md) | The owner's original project brief |
 | [_bmad-output/planning-artifacts/](../_bmad-output/planning-artifacts/) | Research, feature catalog, and product brief produced by the BMAD Method planning process |
 | [logo/](../logo/) | The OcuPilot logo, full-size and web-optimized |
 | [docker-compose.yml](../docker-compose.yml) | Runs `intersystems/irishealth-community` at the explicit `2026.2` tag as `ocupilot`, publishing 1973→1972 (SuperServer) and 52774→52773 (Management Portal), with `ISC_DATA_DIRECTORY=/durable/iris`, the `--after` start hook and the install health check |
-| [scripts/container-start.sh](../scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, marks an `installed` version stamp `installing`, compiles `src/OcuPilot/`, calls `Installer.StartPath`, records that this container start's install succeeded, exits non-zero on failure |
+| [scripts/container-start.sh](../scripts/container-start.sh) | The `--after` start hook: resolves the install namespace, marks an `installed` version stamp `installing`, compiles `src/OcuPilot/` (less the roster's test-scope package unless `OCUPILOT_LOAD_TESTS` is `1`), calls `Installer.StartPath`, records that this container start's install succeeded, exits non-zero on failure |
 | [scripts/container-health.sh](../scripts/container-health.sh) | The compose health probe: reports healthy only once this container start's install has recorded success and `Installer.GateStatus()` reads `installed` at the deployed schema version |
 | [scripts/smoke.sh](../scripts/smoke.sh) | The one smoke entry point CI and Epic 17's clean-clone run both call; its assertions live in `OcuPilot.Install.Smoke`, inside the instance — see [The smoke script](#the-smoke-script-story-117) |
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | Every gate this repository has, run on every change — see [What CI runs](#what-ci-runs-story-117) |
@@ -189,7 +189,8 @@ namespace — `HSCUSTOM` if it exists, else `USER`, unless `OCUPILOT_NAMESPACE` 
 namespace that does not exist fails the start rather than falling back
 ([Choosing the install namespace](#choosing-the-install-namespace-and-the-two-overrides)) —
 marks an `installed` version stamp `installing` (see below), loads and compiles
-`src/OcuPilot/` from a read-only bind mount, and calls
+`src/OcuPilot/` from a read-only bind mount (less the roster's test-scope package unless
+`OCUPILOT_LOAD_TESTS` is `1`), and calls
 `OcuPilot.Install.Installer.StartPath(pDemo, pBundleSource)` — the single install entry point the
 container uses. The second argument is the built client bundle's directory on the `./ui` mount,
 which the hook names on every start, present or not — install is the one place that decides what
@@ -451,7 +452,7 @@ gate is run rather than described. Seven jobs, split by what each needs:
 | `instance` | the three legs' records | `ui/tools/ci-shards.mjs check`: red unless every class the instance offered ran in exactly one leg, every leg executed a test, and the legs succeeded |
 | `browser-shard` | three legs, each with its own throwaway container on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `npm run test:browser:shard -- --shard k/3` over the leg's share of the spec files, one file at a time in sorted order, then the record upload and the same capture and teardown |
 | `browser` | the three legs' records | `ui/tools/ci-shards.mjs check`, holding the legs to the spec files the checkout carries |
-| `images` | both stock Community editions at the pinned `2026.2` | per edition, `scripts/ci-image-compile.sh` first: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read. Then the client build and a throwaway on that edition (52781/1980): `scripts/wait-readiness.sh`, `ui/tools/admin-spec.mjs` over HTTP, and `scripts/smoke.sh` with no `--namespace`, so plain IRIS Community installs, drift-checks and smokes in `USER` (NFR-13) |
+| `images` | both stock Community editions at the pinned `2026.2` | per edition, `scripts/ci-image-compile.sh` first: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read. Then the client build and a product-start throwaway on that edition (`scripts/ci-throwaway.sh up --product`, 52781/1980): `scripts/wait-readiness.sh`, `scripts/ci-throwaway.sh product-check` (no `OcuPilot.Test` class compiled), `ui/tools/admin-spec.mjs` over HTTP, and `scripts/smoke.sh` with no `--namespace`, so plain IRIS Community installs, drift-checks and smokes in `USER` (NFR-13) |
 | `package` | two throwaway containers with **no network at all** | the client build, then `scripts/ci-ipm-archive.sh`: the distributable IPM archive is built on one fresh instance and loaded on a second, which `scripts/smoke.sh` then reports on. Runs beside the shard jobs rather than after them |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives

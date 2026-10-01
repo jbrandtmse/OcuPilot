@@ -12,9 +12,15 @@
 # service, are copied from docker-compose.yml on purpose, so a start behaves on the throwaway as it
 # would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
 #
+# Beside the arming variables, its environment carries OCUPILOT_LOAD_TESTS: "1", which
+# docker-compose.yml does not: it makes container-start.sh compile the roster's test-scope package
+# the suite runs (AD-17). `up --product` leaves it out, so the throwaway starts as a product start
+# does and compiles no test class, and `product-check` then counts what that start compiled.
+#
 # Usage:
-#   sh scripts/ci-throwaway.sh up    [--dir DIR] [--project NAME] [--web 52776] [--super 1975]
+#   sh scripts/ci-throwaway.sh up    [--dir DIR] [--project NAME] [--web 52776] [--super 1975] [--product]
 #   sh scripts/ci-throwaway.sh logs  [--dir DIR]
+#   sh scripts/ci-throwaway.sh product-check [--dir DIR]
 #   sh scripts/ci-throwaway.sh down  [--dir DIR] [--project NAME]
 set -e
 
@@ -27,6 +33,8 @@ WEB_PORT="52776"
 SUPER_PORT="1975"
 IMAGE="intersystems/irishealth-community:2026.2"
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# The environment line that makes the start hook compile the test package; `--product` empties it.
+LOAD_TESTS_ENV='OCUPILOT_LOAD_TESTS: "1"'
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -35,6 +43,7 @@ while [ $# -gt 0 ]; do
         --web) WEB_PORT="$2"; shift 2 ;;
         --super) SUPER_PORT="$2"; shift 2 ;;
         --image) IMAGE="$2"; shift 2 ;;
+        --product) LOAD_TESTS_ENV=""; shift ;;
         *) echo "ci-throwaway: unknown argument $1"; exit 2 ;;
     esac
 done
@@ -169,6 +178,7 @@ services:
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
+      $LOAD_TESTS_ENV
       # ARMING ROSTERS. Each block below carries one or more \`classes:\` lines naming, in
       # OcuPilot.Test.* short form, every class that declares that variable -- and nothing else
       # does. ui/tools/ci.test.mjs derives the same set from the declarations under
@@ -499,6 +509,47 @@ EOF
         # capture before the log -- the half that is actually being captured -- ever printed.
         docker compose -f "$COMPOSE_FILE" ps -a || true
         docker compose -f "$COMPOSE_FILE" logs --no-color --timestamps
+        ;;
+    product-check)
+        # What a product start (`up --product`) compiled, counted in the install namespace --
+        # HSCUSTOM when it exists, else USER, as container-start.sh resolves it with no override.
+        # It passes only when OcuPilot classes are compiled there and none is OcuPilot.Test.*
+        # (AD-17). No OcuPilot class at all is a failure: zero test classes in a namespace nothing
+        # was installed into proves nothing.
+        if [ ! -f "$COMPOSE_FILE" ]; then
+            echo "ci-throwaway: no compose file at $COMPOSE_FILE; nothing was brought up to check"
+            exit 1
+        fi
+        RAW=$(docker compose -f "$COMPOSE_FILE" exec -T iris iris session iris -U %SYS 2>&1 <<'EOF'
+Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",##class(%SYS.Namespace).Exists("USER"):"USER",1:"")
+Set $NAMESPACE=$Select(tNS="":$NAMESPACE,1:tNS)
+Set tAll=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE %EXACT(ID) %STARTSWITH ?","OcuPilot.")
+Set tTests=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE %EXACT(ID) %STARTSWITH ?","OcuPilot.Test.")
+Write "OCUPILOT-"_"PRODUCT-START:"_tNS_":"_$Select(tAll.%Next():tAll.%GetData(1),1:"")_":"_$Select(tTests.%Next():tTests.%GetData(1),1:"")_":OCUPILOT-"_"PRODUCT-END",!
+Halt
+EOF
+) || { echo "ci-throwaway: could not open a session in the throwaway's iris service"; printf '%s\n' "$RAW" | tail -n 20; exit 1; }
+        PRODUCT=$(printf '%s' "$RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-PRODUCT-START:.*:OCUPILOT-PRODUCT-END' | sed -e 's/^OCUPILOT-PRODUCT-START://' -e 's/:OCUPILOT-PRODUCT-END$//')
+        NS=$(printf '%s' "$PRODUCT" | cut -d: -f1)
+        ALL=$(printf '%s' "$PRODUCT" | cut -d: -f2)
+        TESTS=$(printf '%s' "$PRODUCT" | cut -d: -f3)
+        case "$ALL:$TESTS" in
+            :*|*:|*[!0-9:]*)
+                echo "ci-throwaway: the throwaway did not answer how many classes its start compiled"
+                printf '%s\n' "$RAW" | tail -n 20
+                exit 1
+                ;;
+        esac
+        echo "ci-throwaway: $NS holds $ALL compiled OcuPilot class(es), $TESTS of them OcuPilot.Test.*"
+        if [ "$ALL" -lt 1 ]; then
+            echo "ci-throwaway: no OcuPilot class is compiled in '$NS', so its count of test classes proves nothing"
+            exit 1
+        fi
+        if [ "$TESTS" -ne 0 ]; then
+            echo "ci-throwaway: a product start compiled $TESTS OcuPilot.Test class(es); it must compile none (AD-17)"
+            exit 1
+        fi
+        echo "ci-throwaway: the product start compiled no OcuPilot.Test class"
         ;;
     down)
         if [ -f "$COMPOSE_FILE" ]; then
