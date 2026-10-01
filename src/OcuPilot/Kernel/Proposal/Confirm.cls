@@ -241,9 +241,14 @@ ClassMethod StoredArguments(pJson As %String) As %DynamicAbstractObject [ Privat
 /// <p>Every gate here is evaluated against state <b>as it is now</b>, never against an answer the
 /// mint recorded (AD-40). The claim is the last thing before the commit, and the port call is the
 /// first thing after it.</p>
+/// <p>The scoped target is held (<method>OcuPilot.Kernel.Proposal.Operation.Hold</method>) from
+/// before the gates through the read-back (AD-34, AD-53). A target another write keeps past the
+/// wait is refused 409 <parameter>OcuPilot.Api.Error.WRITETARGETBUSY</parameter> before any gate,
+/// leaving the row live and unburned.</p>
 ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSuppliedSecrets As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, Output pDetail As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
+    Set tHoldKey = ""
     Try {
         Set tTool = ""
         Set tResolveSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve($Get(pRow("toolName")), .tTool)
@@ -259,6 +264,20 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(tTool, .tSecretsDeclared)
         If 'tSecretsDeclared {
             Set tSC = ..Internal("the secret arguments of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
+            Quit
+        }
+
+        ; AD-34, AD-53: the target is held from here, before the gates and the fresh read, through
+        ; the port write and the read-back, so a screen row action on it cannot land between this
+        ; confirm's re-read and its write. The claim below re-enters the same lock. Released after
+        ; the Catch, on every exit.
+        Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).Hold($Get(pRow("targetRef")), .tHeld, .tHoldKey)
+        If $$$ISERR(tHoldSC) {
+            Set tSC = ..Internal("the proposal's target could not be held: " _ $System.Status.GetErrorText(tHoldSC), .pHttpStatus, .pCode)
+            Quit
+        }
+        If 'tHeld {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, .pHttpStatus, .pCode)
             Quit
         }
 
@@ -499,6 +518,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
     }
+    If tHoldKey '= "" Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     ; AD-26: a queued write the port answered 202 was made above, and continues on the instance;
     ; the answer says so.
     If $$$ISOK(tSC) && (+$Get(tWriteHttp) = 202) && $IsObject(pResult) Do pResult.%Set("continues", 1, "boolean")

@@ -13,6 +13,9 @@
 /// <p><b>It creates no web application and changes nothing on the instance.</b> The one test that
 /// needs a real target reads an application the instance already serves; nothing in this suite
 /// writes to the instance at all, because minting is the whole of Story 5.1.</p>
+/// <p><method>LockFreeInAnotherProcess</method> starts one short-lived process, which tries
+/// OcuPilot's target lock once, leaves its answer in a node of <code>^OcuPilotProbeLockFree</code>
+/// that the caller reads and kills, and ends.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ProposalFixture Extends %RegisteredObject
 {
@@ -104,6 +107,85 @@ ClassMethod WriteCount() As %Integer
     Quit +$Get(^||OcuPilotProposalFixture("writes"))
 }
 
+/// <p>Arm every later mutating <method>Invoke</method> to ask, at the moment of the write, whether
+/// another process can take the scoped target lock <var>pKey</var>
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>), the first reading
+/// <method>Invoke</method> before any write and the first after one to ask the same, and the first
+/// armed <method>Prohibits</method> too; <method>LockFreeAtWrite</method>,
+/// <method>LockFreeAtRead</method>, <method>LockFreeAtReadBack</method> and
+/// <method>LockFreeAtGate</method> answer what each found.</p>
+ClassMethod ArmLockProbe(pKey As %String)
+{
+    Set ^||OcuPilotProposalFixture("lockprobe") = pKey
+    Kill ^||OcuPilotProposalFixture("lockfree")
+    Kill ^||OcuPilotProposalFixture("lockfreeread")
+    Kill ^||OcuPilotProposalFixture("lockfreereadback")
+    Kill ^||OcuPilotProposalFixture("lockfreegate")
+}
+
+/// <p>What the armed lock probe found at the first armed prohibited-set check
+/// (<method>Prohibits</method>), as <method>LockFreeAtWrite</method> answers it.</p>
+ClassMethod LockFreeAtGate() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("lockfreegate"))
+}
+
+/// <p>What the armed lock probe found at the last write: 1 when another process took the target
+/// lock, 0 when it could not, <code>""</code> when no probe ran or its process did not answer.</p>
+ClassMethod LockFreeAtWrite() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("lockfree"))
+}
+
+/// <p>What the armed lock probe found at the first read before any write -- a caller's fresh read --
+/// as <method>LockFreeAtWrite</method> answers it.</p>
+ClassMethod LockFreeAtRead() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("lockfreeread"))
+}
+
+/// <p>What the armed lock probe found at the first read after a write -- its read-back (AD-58) --
+/// as <method>LockFreeAtWrite</method> answers it.</p>
+ClassMethod LockFreeAtReadBack() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("lockfreereadback"))
+}
+
+/// <p>Where <method>ProbeLock</method> leaves its answer. A real global, not a process-private one,
+/// because the two processes are the point.</p>
+Parameter LOCKPROBEGLOBAL = "OcuPilotProbeLockFree";
+
+/// <p>Whether a second process can take the scoped target lock <var>pKey</var> right now: 1 or 0,
+/// or <code>""</code> when that process did not start or did not answer within 10 s. The process
+/// tries once without waiting, lets go of what it took, and ends.</p>
+ClassMethod LockFreeInAnotherProcess(pKey As %String) As %String
+{
+    Set tSlot = $Job
+    Kill @("^" _ ..#LOCKPROBEGLOBAL)@(tSlot)
+    Job ##class(OcuPilot.Test.ProposalFixture).ProbeLock(pKey, tSlot)::10
+    If '$Test Quit ""
+    Set tWaited = 0
+    While '$Data(@("^" _ ..#LOCKPROBEGLOBAL)@(tSlot)) && (tWaited < 100) {
+        Hang 0.1
+        Set tWaited = tWaited + 1
+    }
+    Set tFree = $Get(@("^" _ ..#LOCKPROBEGLOBAL)@(tSlot))
+    Kill @("^" _ ..#LOCKPROBEGLOBAL)@(tSlot)
+    Quit tFree
+}
+
+/// <p>The second process's half of <method>LockFreeInAnotherProcess</method>: try the target lock
+/// <var>pKey</var> once without waiting, release it if taken, and record the answer under
+/// <var>pSlot</var>.</p>
+ClassMethod ProbeLock(pKey As %String, pSlot As %String)
+{
+    Lock +^OcuPilotProposalTarget(pKey):0
+    Set tTaken = $Test
+    If tTaken Lock -^OcuPilotProposalTarget(pKey)
+    Set @("^" _ ..#LOCKPROBEGLOBAL)@(pSlot) = tTaken
+    Quit
+}
+
 /// <p>Refuse the pair <var>pPair</var> (<code>resource:permission</code>) to
 /// <class>OcuPilot.Test.ConfirmFixture</class>'s privilege check, so AD-8's re-check at the write
 /// can be driven without changing a single grant on the instance. <code>""</code> refuses
@@ -141,12 +223,14 @@ ClassMethod ProhibitedClass() As %String
     Quit $Get(^||OcuPilotProposalFixture("prohibited"))
 }
 
-/// <p>A prohibited set that refuses every write, for
+/// <p>A prohibited set that refuses every write, and asks the armed lock probe
+/// (<method>ArmLockProbe</method>) the first time it is called, for
 /// <method>OcuPilot.Test.ConfirmFixture.ProhibitedClassName</method> to answer with. The signature
 /// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls;
 /// <class>OcuPilot.Kernel.Proposal.Prohibited</class> implements the same one.</p>
 ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, pDiff As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
 {
+    If ($Get(^||OcuPilotProposalFixture("lockprobe")) '= "") && '$Data(^||OcuPilotProposalFixture("lockfreegate")) Set ^||OcuPilotProposalFixture("lockfreegate") = ..LockFreeInAnotherProcess(^||OcuPilotProposalFixture("lockprobe"))
     Set pProhibits = 1
     Set pCode = "AGENT.PROHIBITED"
     Quit $$$OK
@@ -214,6 +298,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; declared secret values merged in).
         Do $Increment(^||OcuPilotProposalFixture("writes"))
         Set ^||OcuPilotProposalFixture("writebody") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+        If $Get(^||OcuPilotProposalFixture("lockprobe")) '= "" Set ^||OcuPilotProposalFixture("lockfree") = ..LockFreeInAnotherProcess(^||OcuPilotProposalFixture("lockprobe"))
         If $Get(^||OcuPilotProposalFixture("writeexception")) {
             ; The call really reached the port -- the increment above already counted it -- and
             ; then raised instead of returning, which is what leaves a caller's ledger row
@@ -228,6 +313,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set pHttpStatus = 200
         Set pResult = ##class(%DynamicAbstractObject).%FromJSON($Get(^||OcuPilotProposalFixture("write"), $Get(^||OcuPilotProposalFixture("answer"), "{}")))
         Quit $$$OK
+    }
+    ; A read while the lock probe is armed: the first before any write and the first after one
+    ; each ask once, so with its write's own a caller starts at most three probe processes.
+    If $Get(^||OcuPilotProposalFixture("lockprobe")) '= "" {
+        Set tProbeSlot = $Select(+$Get(^||OcuPilotProposalFixture("writes")): "lockfreereadback", 1: "lockfreeread")
+        If '$Data(^||OcuPilotProposalFixture(tProbeSlot)) Set ^||OcuPilotProposalFixture(tProbeSlot) = ..LockFreeInAnotherProcess(^||OcuPilotProposalFixture("lockprobe"))
     }
     If $Data(^||OcuPilotProposalFixture("readfault")) {
         Set pHttpStatus = +^||OcuPilotProposalFixture("readfault")

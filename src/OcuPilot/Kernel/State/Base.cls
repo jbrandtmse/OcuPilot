@@ -480,8 +480,11 @@ ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
 /// <code>^OcuPilotProposalTarget(</code><var>pKey</var><code>)</code>, waiting at most
 /// <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it.</p>
 /// <p>The lock outlives this frame and is released by <method>GuardedTargetUnlock</method> or by
-/// the process ending. Reach it through <code>..</code> dispatch from
-/// <class>OcuPilot.Kernel.State.Propose</class>, whose claim is the only caller.</p>
+/// the process ending. It is incremental, so a second take by the holding process re-enters it and
+/// each take needs its own release. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Propose</class>, whose hold and claim are its callers. The escalation
+/// is required, not only chosen: a principal with no privilege on OcuPilot's database is refused
+/// <code>&lt;PROTECT&gt;</code> by the <code>Lock</code> itself.</p>
 ClassMethod GuardedTargetLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK

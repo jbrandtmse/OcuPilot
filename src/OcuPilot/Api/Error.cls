@@ -1211,6 +1211,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
 {
     If pCode = "" Quit ""
     If pCode = ..#AUTHNOPRIVILEGE Quit ..#REASONAUTHNOPRIVILEGE
+    If pCode = ..#WRITETARGETBUSY Quit ..#REASONWRITETARGETBUSY
     Set tReason = ..ReasonForTool(pCode)
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForRestraint(pCode)
@@ -4280,5 +4281,14 @@ Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has
 Parameter LANGUAGESERVERSTART = "LANGUAGESERVER.START";
 
 Parameter REASONLANGUAGESERVERSTART = "The server did not start. Its activity log records why.";
+
+/// <p>Machine code (AD-12, AD-34, AD-39, AD-53): a confirm or a screen row action whose scoped
+/// target another write held past <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter>,
+/// so nothing was written and a proposal stays live. Answered on the <parameter>CONFLICT</parameter>
+/// slug with 409 by <class>OcuPilot.Kernel.Proposal.Confirm</class> and
+/// <class>OcuPilot.Api.ScreenAction</class>.</p>
+Parameter WRITETARGETBUSY = "WRITE.TARGETBUSY";
+
+Parameter REASONWRITETARGETBUSY = "Another change to this target is being applied. Try again in a moment.";
 
 }

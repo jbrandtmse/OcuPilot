@@ -37,9 +37,9 @@ Parameter COMPACTTASK = "CompactDBSpace";
 
 /// <p>How long, in seconds, <method>Remove</method> keeps reading a task it canceled for the
 /// vendor's record of its end. The cancel before it blocks about 18 s on a job that does not respond,
-/// and the last read can wait out the lock timeout (10 s) past this bound. A job that does not respond
-/// acts on the cancel only once it runs again, as a compact on a host whose writes stall does
-/// (inference).</p>
+/// and the last read and the delete that follows it can each wait out the lock timeout (10 s) past
+/// this bound. A job that does not respond acts on the cancel only once it runs again, as a compact
+/// on a host whose writes stall does (inference).</p>
 Parameter ENDSECONDS As INTEGER = 60;
 
 /// <p>A refusal status unless this instance is armed.</p>
@@ -267,8 +267,9 @@ ClassMethod Release(pTaskId As %String) As %Status [ Private ]
 }
 
 /// <p>Stop job <var>pJob</var> for <var>pSeconds</var>, then let it run again, as a host whose
-/// writes stall stops a compact. A shell started through <code>$ZF(-100)</code> continues the job
-/// after the wait, and the job is stopped only once that shell has started, so it always runs again.
+/// writes stall stops a compact (inference). A shell started through <code>$ZF(-100)</code> continues
+/// the job after the wait, and the stop follows that shell's start at once, well inside
+/// <var>pSeconds</var>, so the job runs again.
 /// A job number is its process id on this platform. Needs <code>%System_CallOut:USE</code>.</p>
 ClassMethod Stall(pJob As %String, pSeconds As %Integer) As %Status
 {

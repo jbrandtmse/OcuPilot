@@ -2,12 +2,13 @@
 /// /proposal/:id/confirm</code> and <code>POST /proposal/:id/cancel</code>. Every status, content
 /// type and body below is read off a real response from the shipped router.</p>
 /// <p><b>No confirmed write is issued from here.</b> The wire tests drive the refusals and the
-/// cancel: an unknown id, a key outside the closed channel, a target the instance does not carry,
-/// and the framework's own 405. A successful confirmed write end to end is
+/// cancel: an unknown id, a key outside the closed channel, a target the instance does not carry, a
+/// target another write holds, and the framework's own 405. A successful confirmed write end to end is
 /// <file>ui/browser/proposal-confirm.browser-spec.mjs</file>'s, against a throwaway, because it is
 /// the only assertion that needs a real application to write to.</p>
 /// <p><b>What it needs from the environment:</b> the OcuPilot web application reachable on this
-/// instance's own web-server port, and an account holding <code>%All</code>. Every row it seeds
+/// instance's own web-server port, and the suite's HTTP account and the running process holding
+/// <code>%All</code> (the busy leg takes OcuPilot's target lock itself). Every row it seeds
 /// hangs off a turn <method>OcuPilot.Test.ProposalFixture.SeedTurn</method> created, which is what
 /// <method>OnAfterOneTest</method> removes them by.</p>
 Class OcuPilot.Test.ConfirmRoute Extends %UnitTest.TestCase
@@ -126,6 +127,41 @@ Method TestAConfirmOnAMissingTargetIsRefusedAndClosesTheRow()
     Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "with the target-changed code")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "canceled", "the row closes")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "with the reason the card renders")
+}
+
+/// <p>AD-34, AD-53: a confirm whose target another write holds waits out
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and is refused 409
+/// <code>WRITE.TARGETBUSY</code> over the wire with its published reason, and the row stays live.
+/// This process plays the other write, holding the lock under the key the confirm takes
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>).</p>
+/// <p>Mutation (Rule 19): drop <code>WRITE.TARGETBUSY</code>'s line from
+/// <method>OcuPilot.Api.Error.ReasonForToolCode</method> -- the refusal carries the generic tool
+/// sentence and this goes red.</p>
+Method TestAConfirmOnAHeldTargetIsRefusedBusyOverTheWire()
+{
+    Set tKey = ..Seed()
+    If tKey = "" Quit
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#TARGET, .tTargetRef)
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey($Get(tTargetRef))
+    Do $$$AssertNotEquals(tLockKey, "", "the target names a lock")
+    If tLockKey = "" Quit
+    Lock +^OcuPilotProposalTarget(tLockKey):5
+    Set tHeld = $Test
+    Do $$$AssertTrue(tHeld, "which this process holds, as another write's hold does")
+    If 'tHeld Quit
+    Set tStatus = 0
+    Set tBody = ""
+    Try {
+        Set tSC = ..Call("POST", "/" _ tKey _ "/confirm", "", .tStatus, .tBody, .tHeaders)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Lock -^OcuPilotProposalTarget(tLockKey)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Set tEnvelope = $Select(tBody '= "": ##class(%DynamicObject).%FromJSON(tBody), 1: {})
+    Do $$$AssertEquals(tStatus _ " " _ tEnvelope.%Get("code"), "409 " _ ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, "the confirm is refused busy: " _ tBody)
+    Do $$$AssertEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, "with the published reason")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "and the row is left live")
 }
 
 /// <p>The cancel route answers 200 with the closed row, and a second cancel of the same id is 404 --

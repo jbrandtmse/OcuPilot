@@ -63,7 +63,7 @@ Parameter RESULTGLOBAL = "OcuPilotProbeSpellingResult";
 /// <p>How long <method>TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight</method> waits
 /// for the jobbed confirm. It has to outlast
 /// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter>, which is what refuses
-/// that claim.</p>
+/// that confirm.</p>
 Parameter RACEWAITSECONDS = 40;
 
 Method OnBeforeAllTests() As %Status
@@ -442,13 +442,16 @@ ClassMethod ConfirmInSecondProcess(pKey As %String, pUser As %String, pSlot As %
 /// row lock, so only the target lock can order the two -- and the two rows hold two different
 /// <property>OcuPilot.Kernel.State.Propose.TargetRef</property> strings here, which is the case the
 /// sibling cancel's exact compare cannot reach at all. The rival's claim is raw SQL because the
-/// rival must stay in flight, which the real method, which commits, cannot do.</p>
+/// rival must stay in flight, which the real method, which commits, cannot do. The jobbed confirm
+/// waits for that lock at its hold, before any gate, and is refused 409
+/// <code>WRITE.TARGETBUSY</code> with its row live.</p>
 /// <p>Mutations, each reddening this alone: drop the
 /// <method>OcuPilot.Kernel.EntityRef.Canonical</method> call from
-/// <method>OcuPilot.Kernel.State.Propose.GuardedClaimAndClose</method>, or answer <var>pId</var>
-/// verbatim from <method>OcuPilot.Kernel.EntityRef.NormalizedId</method>'s web-application arm. In
-/// either case the jobbed confirm takes a lock nobody holds, wins, burns its token and writes,
-/// so the untouched-application clause and the row clauses go red.</p>
+/// <method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method> -- the hold takes a lock nobody
+/// holds and the claim's own lock refuses instead, at 500; or answer <var>pId</var> verbatim from
+/// <method>OcuPilot.Kernel.EntityRef.NormalizedId</method>'s web-application arm -- the jobbed
+/// confirm takes locks nobody holds, wins, burns its token and writes, so the untouched-application
+/// clause and the row clauses go red.</p>
 Method TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight()
 {
     Kill @("^" _ ..#RESULTGLOBAL)
@@ -496,11 +499,10 @@ Method TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight()
     Do $$$AssertTrue(tJobbed, "a second process runs the other confirm")
     Do $$$AssertTrue(tAnswer '= "", "and answers inside the wait")
     If tAnswer = "" Quit
-    Do $$$AssertEquals($ListGet(tAnswer, 1), 1, "that process can read the target through the shipped port, so its confirm reached the claim")
+    Do $$$AssertEquals($ListGet(tAnswer, 1), 1, "that process can read the target through the shipped port, so its refusal is not a failed read")
     Do $$$AssertEquals($ListGet(tAnswer, 2), 0, "a confirm made while another confirm of this target is in flight is refused: " _ $ListGet(tAnswer, 4) _ " " _ $ListGet(tAnswer, 5))
-    Do $$$AssertEquals($ListGet(tAnswer, 3), 500, "at the status a claim that could not be taken answers")
-    Do $$$AssertEquals($ListGet(tAnswer, 4), ##class(OcuPilot.Api.Error).#INTERNAL, "carrying that code")
-    Do $$$AssertTrue($ListGet(tAnswer, 5) [ "another confirm of this target is in flight", "and the claim is what refused it, not a gate in front of it: " _ $ListGet(tAnswer, 5))
+    Do $$$AssertEquals($ListGet(tAnswer, 3), 409, "at the status a target another write holds answers")
+    Do $$$AssertEquals($ListGet(tAnswer, 4), ##class(OcuPilot.Api.Error).#WRITETARGETBUSY, "carrying that code")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tOther, "Burned"), 0, "and its token is not spent")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tOther, "State"), "live", "and its row is left live for whoever claims next")
     Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "the application's properties on the instance are what they were, so the second write never reached the port")

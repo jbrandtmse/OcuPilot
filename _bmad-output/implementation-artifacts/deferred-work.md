@@ -5333,6 +5333,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:50Z status=routed owner=burndown by=spec_gate note=needs a code-keyed oracle (DecomposeStatus layout unmeasured on 2026.2); pairs with DW-1289
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-10-01T00:03:44Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3b3dbc14: expected sentence from Status.Error(845); privileged probe removed; index mutation red; CI 36790460370
 
 ### DW-1291: The change-password dialog does not submit on Enter, where the house credential form does
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: med | footprint: in-story
@@ -5557,6 +5558,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T16:48:05Z status=routed owner=burndown by=lead note=OWNER DECISION 2026-09-20, decided in principle and not left as a question: LOCK CONTENTION IS NOT A SERVER ERROR. A 500 says OcuPilot failed when the system worked exactly as designed and refused a concurrent write, which is the product telling the user something that is not so. It needs a named, retryable refusal a client can act on and a person can understand. NOT floor-blocking: two concurrent confirms on one target is real but uncommon and Story 5.3 has shipped, and the lead checked the AD-invariant ruling rather than assuming it applied -- AD-39's Rule governs the envelope's SHAPE (a stable machine code, a written reason, the violations pair) and AD-34's governs the loser's refusal WITH A TERMINAL STATE, which a live row does not have, so neither invariant is named directly and this is charterable at the burn-down rather than obligatory in 5.5. The burn-down implements the decision above; it does not re-open it
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
+- 2026-10-01T00:03:44Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=side effect of DW-1497 (3b3dbc14): lock contention answers 409 WRITE.TARGETBUSY, ProposalSpelling 500->409
 
 ### DW-1367: An id that normalizes to nothing is refused by EntityRef.Key and reaches the agent as 500 INTERNAL rather than an argument refusal
 - source: code review, spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: low | fix-risk: med | footprint: in-story
@@ -6109,6 +6111,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T08:16:00Z occurrence=18-1-the-directory-allow-list
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-10-01T00:03:43Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3b3dbc14+89b2aaad: gate derives MOVESMARKING tools via superclass graph, follows confirm path; CI 36790460370
 
 ### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
@@ -6686,6 +6689,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T14:20:24Z occurrence=18-2-namespaces-and-their-mappings
 - 2026-09-30T03:32:44Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:48Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-10-01T00:03:43Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=3b3dbc14+89b2aaad: per-target hold for confirm and row action, 409 WRITE.TARGETBUSY; AD-34/53 amended; CI 36790460370
 
 ### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -8623,6 +8627,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: dw1868 owner fix review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: LockPort sends a stored id the fresh listing holds verbatim, without comparing its Reference; reuse was not observed (16.12 review: a reused slot advanced its second piece, 230006 then 230008)
 - 2026-09-30T21:33:37Z status=wontfix-theoretical owner=16-13-the-service-editor by=harvest note=real if a measurement shows the vendor reusing a vacated DeleteID for another lock of the same owner; then carry each id's Reference
+### DW-1882: A screen's per-entity Save (AD-55's 21 handlers) takes no per-target hold, so a Save and a concurrent confirm or row action on the same target are still ordered only by the vendor endpoint
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Batch e (3b3dbc14) holds the target in Confirm.Transition and ScreenAction.Run only; 16 of the 21 Save handlers call their port directly (plan measurement); Epic 16 edits two of them
+- 2026-09-30T22:37:41Z status=routed owner=burndown by=harvest note=DW-1497's residual for the Save route: take Operation.Hold/Release around each Save's read-to-write (23.3 candidate)
+- 2026-09-30T23:16:38Z occurrence=23-2-the-range-end-cleanup-part-2
+- 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
