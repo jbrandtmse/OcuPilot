@@ -1,0 +1,407 @@
+---
+title: 'Story 23.3: The range-end cleanup, part 3'
+type: 'bugfix'
+created: '2026-10-01'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
+warnings: ['multiple-goals', 'oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** Twelve chartered ledger entries are open. CI's three instance legs run 38 to 46 minutes. Four flakes and four isolation defects produce false reds. Three security gaps remain: a declared secret the model sends as an id reaches a step's target, a privileged role reaches a service address unmarked, and the residue sweep skips the log.
+
+**Approach:** Fix all twelve in four batches, in this order: (a) a fourth instance shard, (b) flakes, (c) isolation, (d) security, DW-1782 first. Each batch gets one implement pass and one commit, needs a green CI run on its head, and is merged at its boundary. A defect is shown by a test that reddens on it; a flake or an isolation defect is shown by its test passing under the condition that reproduces it.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- Work in `/Users/jbrandt/git/OcuPilot/.worktrees/epic-23` on `OCU-1-epic23`. Every IRIS MCP call carries `server: "ocupilot-slot-b"`.
+- Run tests and state-changing probes only on the throwaway `ocupilot-b-ci`, one class per call, and await each run in `%UnitTest_Result`. Never restart it: its compose file predates DW-48, so a restart is a product start and deletes `OcuPilot.Test`.
+- Run one implement pass per batch, in the order a, b, c, d. A red batch is reopened alone.
+- Every fix that is a wait, a predicate or a refusal has a `mutation:` line in its batch's Verification (Rule 19).
+- Reproduction state is removed afterwards and read back as gone: a seeded definition, an override, a monitor state, a held response. Leave the throwaway with no definition, no override and no seeded row of this story's.
+- Prose discipline (CLAUDE.md) applies to every comment. Non-ASCII characters in source are written `\uXXXX`.
+
+**Never:**
+
+- Implement passes do not edit the spine, `CLAUDE.md`, `.claude/rules/`, `_bmad/custom/`, `epics.md`, the ledger, or another story's spec. The lead applies Design Notes › Lead edits.
+- Do not lower any `timeout-minutes`. The browser suite stays at three legs.
+- Do not touch `structural-walk.mjs`'s id-source table. A red that depends on shard composition is fixed in the test, never by pinning to a shard (Conventions › Tests).
+- No product behavior changes except DW-1782 and DW-1881. Nothing beyond the twelve; anything else is named for filing.
+- Do not stop, restart or `down` any container. The full browser suite is never run as verification, because CI's browser shards run it. The one full run in DW-1204 is a reproduction.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Secret sent as an id (DW-1782) | The model calls `permissions_users_password` with `{"id": V, "Password": V}` | The step's `target` reads `[redacted]` in the poll, the stored transcript and the panel's card. V appears in none of them. | A target that holds no declared secret's value is kept as sent |
+| Privileged role, `\|` spelling (DW-1881) | A proposal adds `10.0.0.9\|%Manager` (or `%Operator`) to a service's allowed addresses | Destructive treatment, privileged consequence. The editor marks the role privileged. | A role whose read fails counts as privileged |
+| Classic spelling (DW-1881) | `10.0.0.9:%All` reaches `GrantsPrivilegeByEffect` | Privileged grant | No error expected |
+| Held classic entry (DW-1881) | Target holds `10.0.0.6:%All`; payload is `10.0.0.6\|%All,%Developer` | Not a privileged grant: `%All` was already held | No error expected |
+| Non-administrative role (DW-1881) | `10.0.0.9\|%Developer` | Not destructive by this arm | No error expected |
+| CI shape (DW-1901) | A push | Four instance legs (`1/4` to `4/4`) and three browser legs. Both roll-ups are green, with every class and spec file in exactly one leg. | A missing record, an empty leg or a duplicate fails the roll-up |
+
+</intent-contract>
+
+## Code Map
+
+- **a:**
+  - `.github/workflows/ci.yml`:
+    - the instance literals: `:134` name `/3`, `:142` `shard: [1, 2, 3]`, `:185` `--shard …/3`, `:231` `--shards 3`;
+    - the comments at `:15` and `:130-131`;
+    - the browser literals stay as they are (`:237`, `:245`, `:284`, `:319`), and so do the timeouts (`:138` 61, `:241` 43).
+  - `ui/tools/ci-shards.mjs`:
+    - `refresh --run` downloads the run's `ci-record-*` with `gh` (`:417`) and rewrites `ci-timings.json` (`:457`);
+    - `assign` (`:358-384`) only prints;
+    - `checkRecords` (`:210-286`);
+    - the comment at `:6`.
+  - `ui/tools/ci-runner.mjs:42` (comment).
+  - `ui/tools/ci.test.mjs`:
+    - the declared-gates strings at `:122` and `:128`;
+    - `SHARDED` at `:2713-2716`;
+    - the test at `:2747-2763`, which asserts `[1, 2, 3]` for both suites;
+    - the timeout check at `:2819-2833` already uses the matrix length.
+  - `docs/DEVELOPMENT.md:451-452,466`.
+  - Measured on run 36910157178 (`33d325da`, green):
+    - instance legs 44.6, 45.7 and 23.5 min; browser legs 25.1, 27.3 and 25.7 min; wall time 46.1 min;
+    - timings refreshed from it, held in memory and not written: four instance legs about 26.5 min each (timeout floor 44.3 against 61), browser about 23.5 min (floor 39.7 against 43).
+- **b:**
+  - DW-1866: `Test/AdminPortAbsence.cls`:
+    - `TestAVerifiedDeletePostsNoAlert` at `:90-107`, with the instance-wide counter at `:95,:103` and the state check at `:96,:106`;
+    - `LOGMONITORWAIT` at `:23`, the alerts.log helpers at `:109-161`, and the header at `:1-9,:82-89`.
+    - Helper `Test/SslSinks.cls`: `LogOffset` `:17`, `LogSince` `:24`, `Flush` `:46`.
+    - The port logs from `Port/AdminPort.cls:1100` (`'..IsMutating`) through `Kernel/Audit/Log.cls:82-98` with `WriteToConsoleLog(…,1,2,"OcuPilot.Log")`. A line reads `(<pid>) 2 [OcuPilot.Log] [OcuPilot] {…"subsystem":"adminport"…}`, measured on `ocupilot-b-ci`.
+  - DW-1865: `ui/browser/proposal-demo.browser-spec.mjs:348-356` is a bare evaluate.
+    - `Kernel/Agent/Loop.cls` appends the step `running` at `:559`, mints at `:580` and finishes at `:605`. The poll runs every 1000 ms (`ui/src/app/core/turn.ts:56`).
+    - Precedent: `ui/browser/users-write.browser-spec.mjs:252-259`.
+  - DW-1808: `ui/browser/audit-events.browser-spec.mjs`:
+    - `recordActions` at `:121-132` collects **POST** responses, so `[200, 200]` at `:342` is rounds 0 and 1 of the Apply POST. It is not a write and a re-read.
+    - Nothing waits for round 1's response. The page re-reads the list after its POSTs (`ui/src/app/areas/security/auditing-config.page.ts:505-520`).
+    - Precedent: the same file's "the delete answered" wait.
+  - DW-1822: `ui/browser/a11y-structural-invariants.browser-spec.mjs:48` calls `puppeteer.launch(launchOptions(config))`. `ui/browser.config.mjs:100-110` sets no `protocolTimeout`; puppeteer 24.24.0 defaults to 180,000 ms.
+    - The walk's only evaluate that awaits a page promise is `settle`'s `await document.fonts.ready` (`ui/browser/structural-walk.mjs:585-588`).
+    - CI evidence: runs 36569407842 and 36751724771. In each, the `before` hook died at about 250 s, with the call that hung starting about 70 s into the walk. A green walk takes 179 s.
+- **c:**
+  - DW-1759: `Kernel/State/Agent.cls`:
+    - `NameIdx` at `:155` and `DefaultIdx` at `:157`. Only `Agent` declares these indexes; the compiled ones are these two plus IDKEY.
+    - `ResolveDefault` at `:627` picks the lowest-id row marked default and enabled. `GuardedRebalanceDefault` at `:650` hands the marker to the lowest-id enabled row.
+    - Rows sit in the shared extent `^OcuPilot.Kernel.State.BaseD(id)` / `BaseI(<index>,…)`.
+    - Definition ids are referenced by `Kernel/State/Entry.cls:79`, `Turn.cls:44` and `Propose.cls:161,163`, and checked by `Kernel/Proposal/Confirm.cls:361`.
+    - `Test/AgentFixture.cls`: `CreateDefinition` `:23`, `RemoveProbeDefinitions` `:79`.
+    - The 29 methods:
+      - AgentState, 13. Every method asserts `PreparedInstanceEmpty`, which is set at `:34-42`.
+      - TurnContext, 7: `:607`, `:514`, `:317`, `:296`, `:156`, `:458`, `:209`. Set up at `:54`, torn down at `:76`. These are (inference) from the mechanism; the count matches the ledger.
+      - TurnWire, 1: `:272`. Set up at `:44`, torn down at `:65`.
+      - AgentWire, 3: `:97`, `:141`, `:497`.
+      - StateRead, 3: `:89`, `:138`, `:156`.
+      - EgressLocal, 1: `:190`.
+      - Restraint, 1: `:300`.
+  - DW-1839: `Kernel/State/Policy.cls`: `GuardedApply` `:73`, where `inherit` deletes the row; `DeleteAllGuarded` `:133`.
+    - `Test/GovernanceFixture.cls`: `Snapshot` `:9`, `Restore` `:17`, `Matches` `:36`, `Apply` `:58`, `Clear` `:123`. Pattern to copy: `Test/Governance.cls:53-80`.
+    - Governance refuses a confirm at `Kernel/Proposal/Confirm.cls:318-325`.
+    - The seven failures:
+      - DeviceDelete `:64,:94,:112` (hooks at `:24/:33`);
+      - DeviceWire `:292` (only `OnAfterOneTest`, at `:105`);
+      - DeviceWriteGate `:152` (only `OnAfterOneTest`, at `:94`);
+      - Prohibited `:626` (hooks at `:32/:42`);
+      - ToolDispatch `:141` (hooks at `:23/:30`).
+  - DW-1204: DW-1190 was fixed by `9bf7c9d1` (the messages-log seed window). The DW-1447 reset is fixed: `ui/browser/preferences-reset.mjs` clears every preference kind.
+    - Post-sweep `ocupilot-b-ci`, measured: 4,325,263 audit rows, 1,607 unit-test instances, 1,857 ledger rows.
+    - Candidates, by reading only:
+      - `audit.browser-spec.mjs`: AC2 counts exactly in its own window; AC6 expects 1,000 rows within 2 s;
+      - `log-hub`;
+      - `default-search`;
+      - `agent-ledger`;
+      - `secondary-logs` AC4.
+  - DW-434:
+    - `ui/src/app/areas/agent/switches.page.spec.ts`: the constant at `:52-53`, used at `:59` and asserted at `:371-372`.
+    - `ui/src/app/areas/agent/definition-form.page.spec.ts`: the constant at `:190-191`, fixtures at `:1013,:1041,:1069`, asserts at `:1025-1026` and `:1057`. `:1057`, on the Test connection path, is the only assertion not covered by an exact `toBe(STRINGS.formStaleSave)`.
+    - The server's value: `src/OcuPilot/Api/Error.cls:723` `REASONSTATECONFLICT`.
+    - Precedent for reading the server value: `ui/tools/audit-event-copy.test.mjs:22,44-48` (`serverValue`).
+- **d:**
+  - DW-1782:
+    - Every step target comes from `Kernel/Agent/Dispatch.cls` `TargetOf` (`:612`), raw. The write sites are:
+      - `AnswerOne` `:198`, with secret names at `:215` and arguments re-derived at `:220`;
+      - `Kernel/Agent/Loop.cls` `:514`, `:531`, `:559`, `:569` and `:585`, all `TargetOf(tRunningInput)`; `:605` writes `tDetail.target`.
+    - The ledger's decision: `Kernel/Audit/Ledger.cls` `CarriesSecretValue` (`:294-316`, public, fails closed), used at `:279-280`. The mark is `Kernel/Audit/Log.cls:42` `REDACTED`.
+    - Precedent for delegating to it: `Dispatch.StepArguments` `:643`, which calls `Ledger.RedactArguments`.
+    - Every surface reads `Kernel/State/Step.cls`:
+      - the poll (`Api/Turn.cls:218`);
+      - the transcript copy (`Kernel/Agent/Job.cls:147-154` into `Entry.StepsJson`, read by `Api/Transcripts.cls:79,126`);
+      - the card label (`ui/src/app/shell/tool-call-card.ts:43`, `stepLabel` at `ui/src/app/core/turn.ts:816-818`).
+  - DW-1881: `Kernel/Proposal/Prohibited.cls`:
+    - `AddressGrantsPrivilege` `:4138-4168` splits on `|` only and judges with `IsPrivilegedRole` (`:3158`, by name). Its only caller is `GrantsPrivilegeByEffect` `:3048` (service branch `:3071-3073`).
+    - `RoleGrantsAdministrativePrivilege` is at `:2915`. The OAuth precedent is `AddsPrivilegedCustomizationRole` `:2566-2582`.
+    - `Area/Permissions/ServiceRules.cls`: `EntryParts` `:246-256` reads both spellings the way the vendor's dialog does; `RoleOptions` asks the kernel at `:534`.
+    - Vendor: `irissys/%CSP/UI/Portal/Dialog/Service.cls:330,391`; `irissys/Security/Services.cls:154`.
+    - `Screen/Tool/ServiceUpdate.cls:154-167` sends held entries verbatim.
+  - DW-1307: `Test/TurnSecretResidue.cls`: the header at `:1-5`, and `TestNoKeyReachesTheLedger` at `:135-169`, which sweeps the ledger, the steps and the view only. The console log is reached through `Kernel/Audit/Log.cls:82-99,226`. Usage of the `SslSinks` helper: `Test/SslSecret.cls:91,114-117`.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- One implement pass per batch, leaving the tree for one commit: `fix(23.3): batch <x> - <area>`.
+- Each entry gives its defect, its reproduction or red, its fix, its files and its ADs.
+- The lead writes the ledger trailers once the batch's commit is green.
+
+### Batch a: CI health (DW-1901)
+
+- [ ] **DW-1901** — With three instance legs, the run's wall time is 46 min (run 36910157178).
+  - **Fix:**
+    - Refresh `ui/tools/ci-timings.json` with `cd ui && node tools/ci-shards.mjs refresh --run 36910157178`, or from a later green full run on the feature line. Record the run used.
+    - In `ci.yml`, set the instance matrix to `[1, 2, 3, 4]`, the names and `--shard` to `/4`, and the roll-up to `--shards 4`. Reword the comments at `:15` and `:130-131`.
+    - In `ci.test.mjs`:
+      - give each `SHARDED` entry its leg count (instance 4, browser 3);
+      - assert the matrix equals `1..legs`;
+      - rename that test;
+      - update the gates strings at `:122` and `:128`.
+    - Correct the comments at `ci-shards.mjs:6` and `ci-runner.mjs:42` to `k/4`.
+    - In `docs/DEVELOPMENT.md`:
+      - `:451`: "four legs, `instance shard 1/4` to `4/4`", and `--shard k/4`;
+      - `:452`: "the four legs' records";
+      - `:466`: "**The ObjectScript suite is split across four containers and the browser specs across three, never run in parallel inside one.**"
+  - **No other changes:** `ci-throwaway.sh`, the ports and the leg-1-only steps stay as they are (`matrix.shard == 1`).
+  - ADs: Stack › CI, Operational Envelope › Build and CI, Conventions › Tests.
+  - AC: Given batch (a)'s head, when CI runs, then:
+    - `instance-shard` runs legs `1/4` to `4/4` from the refreshed timings;
+    - `instance` is green with every class in exactly one leg and no empty leg;
+    - `browser-shard` still runs three legs;
+    - no `timeout-minutes` is lower;
+    - the boundary reports the longest instance leg.
+
+### Batch b: CI flakes (DW-1866, DW-1865, DW-1808, DW-1822)
+
+- [ ] **DW-1866** — The test judges alerts instance-wide. A severe line from any other process inside the window fails `:103`, and an instance already at Warning fails `:106`.
+  - **Reproduce** on `ocupilot-b-ci`, before the fix:
+    - (i) While the class runs, a `Job` posts `##class(%SYS.System).WriteToConsoleLog("DW-1866 unrelated line",0,2)` every 5 s for 60 s. That rate stays under the monitor's limit of 3 alerts in 10 s per process.
+    - (ii) `Do $SYSTEM.Monitor.SetState(1)` before the run.
+    - Restore with `Do $SYSTEM.Monitor.Clear()` and read `State()` back as 0.
+  - **Fix:**
+    - Drop the counter and state assertions, `LOGMONITORWAIT`, the `Hang`, and the two alerts.log helpers.
+    - Take `SslSinks.LogOffset()` before the delete. After it, assert that `SslSinks.Flush(tOffset)` holds, then that `LogSince(tOffset)` holds no line carrying `(<$JOB>) `, `[OcuPilot.Log]` and `"subsystem":"adminport"`. A severity-2 `messages.log` line is what the instance copies to alerts.log.
+    - Reword the header and the method doc to match.
+  - Files: `Test/AdminPortAbsence.cls`. ADs: AD-2, AD-39, Conventions › Tests.
+  - AC: Given (i) or (ii), when `TestAVerifiedDeletePostsNoAlert` runs, then it passes. Given the re-read's 404 is logged, then it fails.
+- [ ] **DW-1865** — AC1 reads the tool card at the moment the proposal card appears. A poll between the mint (`Loop.cls:580`) and the finish (`:605`) shows `running`.
+  - **Reproduce:** a temporary local edit, never committed, between `:283` and `:284`. It opens CDP `Fetch.enable` on `*/api/ocupilot/turn/*/progress*` at the Response stage. The first body whose `proposals` is non-empty is fulfilled with every tool step's `status` set to `running`; all other bodies pass unchanged. Before the fix, `:355` reads `running`.
+  - **Fix:** before `:348`, `page.waitForFunction` until `app-tool-call-card .ocu-tool-call-status-word` reads `STRINGS.toolCallStatusDone`, within `config.navigationTimeoutMs`.
+  - Files: `ui/browser/proposal-demo.browser-spec.mjs`. ADs: Conventions › Tests.
+  - AC: Given that rewrite, when AC1 runs, then it waits for `done` and passes.
+- [ ] **DW-1808** — Round 1's POST response can land after the instance has changed and the dialog has closed, so `:342` sees `[200]`.
+  - **Reproduce:** a temporary local edit that holds the second paused `…/security.auditsystemevents/action` POST response for 3 s (CDP `Fetch` at the Response stage). Before the fix, `:342` is red.
+  - **Fix:**
+    - In each round, before clicking Apply, arm `page.waitForResponse` for the GET of `/api/ocupilot/screens/security.auditsystemevents/read`.
+    - After the dialog closes, wait for `statuses.length === round + 1`, then await the re-read.
+  - Files: `ui/browser/audit-events.browser-spec.mjs`. ADs: Conventions › Tests.
+  - AC: Given that hold, when AC2 runs, then it passes with both 200s and the re-read received.
+- [ ] **DW-1822** — One protocol call in the walk exceeded puppeteer's 180 s default. The one awaiting evaluate is `settle`'s font wait; that CI's stall was a font fetch is (inference).
+  - **Reproduce:** a temporary local edit after the launch adds `browser.on('targetcreated')` request interception. It holds the first `.woff2` response for 200 s. Before the fix, `Runtime.callFunctionOn timed out` appears at about 180 s.
+  - **Fix:** change `:48` to `puppeteer.launch({ ...launchOptions(config), protocolTimeout: 600_000 })`. A green walk takes 179 s, and the browser leg runs about 25 min against its 43 min timeout.
+  - Files: `ui/browser/a11y-structural-invariants.browser-spec.mjs`, the launch line only (Design Notes › Contention). ADs: Conventions › Tests.
+  - AC: Given the 200 s hold, when the spec runs, then no protocol call times out and the spec passes.
+
+### Batch c: test isolation (DW-1759, DW-1839, DW-1204, DW-434)
+
+- [ ] **DW-1759** — With any agent definition present, it is the lower id, so it holds or retakes the default marker, and 29 methods fail.
+  - **Reproduce** on `ocupilot-b-ci`:
+    - Seed one enabled definition that is not named as a probe: `UpgradeSeedAgent` through `Agent.GuardedCreate`, with provider `anthropic` and `CredType` `env`.
+    - Run the seven classes one at a time. Expect 13 + 7 + 3 + 3 + 1 + 1 + 1 red before the fix.
+    - Remove the seed with `GuardedDeleteId` and read back 0 definitions.
+  - **Fix:** add `SetAsideDefinitions()` and `RestoreDefinitions()` to `Test/AgentFixture.cls`.
+    - **Set aside:**
+      - First restore anything a crashed run left.
+      - Then, for every Agent row, move `BaseD(id)` with its subtree, plus the `BaseI("NameIdx")` and `BaseI("DefaultIdx")` subtrees, into a persistent `^OcuPilot*` global. `Base.MAPPINGPATTERN` maps that name into OcuPilot's protected database.
+      - Move raw nodes, never `GuardedDeleteId`, so ids and row versions survive and nothing rebalances.
+    - **Restore:**
+      - `RemoveProbeDefinitions`.
+      - Refuse, keeping the copy, if any Agent row or index node remains.
+      - Otherwise merge the copy back and kill the holding global.
+    - **Callers:**
+      - Each of AgentState, AgentWire, StateRead, Restraint and EgressLocal sets aside first in `OnBeforeAllTests` and restores last in `OnAfterAllTests`.
+      - TurnContext (`:54/:76`) and TurnWire (`:44/:65`) set aside before `MarkedDefault` and restore last.
+      - If `OnBeforeAllTests` fails after the move, it restores on that error path.
+  - Files: `Test/AgentFixture.cls` and the seven classes. ADs: Conventions › Tests, AD-9.
+  - AC: Given one enabled definition and, in a second pass, a second disabled one, when each of the seven classes runs, then it passes, and each seeded row's `BaseD(id)` and id read back byte-identical.
+- [ ] **DW-1839** — A stored override disables `osmgmt.devices.delete`. Confirm then refuses it as `GOVERNANCE.DISABLED` (`Confirm.cls:318-325`), and Prohibited's baseline precondition fails.
+  - **Reproduce:** run `Kill s Set s("osmgmt.devices.delete")="disabled"` and then `GovernanceFixture.Apply("",.s)`, and run the five classes (7 red before the fix). Afterwards run `Policy.DeleteAllGuarded()` and read back 0 rows.
+  - **Fix:** copy `Governance.cls:53-80` into all five classes:
+    - `OnBeforeOneTest` snapshots and clears the whole store, because a stored read-only preset would disable more.
+    - `OnAfterOneTest` restores the snapshot and asserts `Matches`.
+    - Add `OnBeforeOneTest` to DeviceWire and DeviceWriteGate.
+    - Prohibited's "leaves every key to the baseline" stays, as the class's own precondition.
+  - Files: `Test/{DeviceDelete,DeviceWire,DeviceWriteGate,Prohibited,ToolDispatch}.cls`. ADs: AD-22, Conventions › Tests.
+  - AC: Given that override, when each of the five classes runs, then it passes, and the override reads back unchanged.
+- [ ] **DW-1204** — A browser spec that relies on instance state the class sweep disturbs fails on a container the sweep has run on.
+  - **Reproduce by running.** This is a one-time measurement, not verification. `ocupilot-b-ci` is post-sweep.
+    - Redeploy the bundle.
+    - Run `audit.browser-spec.mjs` alone first.
+    - Then run every other `browser/*.browser-spec.mjs` once, in sorted order, except `audit-copy-purge`, which would copy 4.3M audit rows into USER (Design Notes › Named for filing). CI's per-file timings sum to about 75 min; local time differs (inference).
+    - Re-run each failure alone on the same container.
+    - A file that fails alone is a member. A file that passes alone depends on another spec's leftovers and is named for filing.
+  - **Fix each member** in its own spec file: assert only on rows or lines its own action produced, or within a window it opened itself. Show it passing alone on the same container.
+    - If a fix needs product code or another spec, name it for filing.
+    - At most three members are fixed, `audit.browser-spec.mjs` first; the rest are named for filing.
+    - Before editing a file, check it against Epic 19's diff.
+  - **No member found:** the lead closes the entry `wontfix-accepted`, `reopen_if=` a browser spec fails alone on a container after the ObjectScript sweep and passes on a fresh one.
+  - ADs: Conventions › Tests.
+  - AC: Given the post-sweep throwaway, when each member spec runs alone, then it passes.
+- [ ] **DW-434** — Both specs transcribe `REASONSTATECONFLICT` behind `not.toContain`, so a server rewording leaves them green and vacuous.
+  - **Fix:** a new `ui/tools/state-conflict.test.mjs`, about 25 lines. It reads `Api/Error.cls` with the `serverValue` regex and each spec's `const CONFLICT_ENVELOPE_REASON = '…'`, asserts every match exists, and asserts both constants equal the server's value, naming the file. Neither spec changes.
+  - ADs: Conventions › Concurrent writes, AD-39.
+  - AC: Given one word of `REASONSTATECONFLICT` changed, when `npm run test:tools` runs, then it fails naming both spec files.
+
+### Batch d: security (DW-1782, then DW-1881, then DW-1307)
+
+- [ ] **DW-1782** — `Step.Target` stores `TargetOf(input)` raw. A declared secret the model sends as `id` therefore reaches the poll, the transcript copy and the card. The ledger row is already marked.
+  - **Red first:** a new `Test/TurnConversation.cls` method next to `:242`.
+    - The scripted model sends `permissions_users_password` twice: once with `{"id": V, "Password": V}`, and once with `{"id": <an account>, "Password": V2}`.
+    - Assert that step 1's target in the poll view is `[redacted]` and the view's JSON lacks V.
+    - Assert that `GET /conversation/:id` and `Test.Ledger.StepText` lack V.
+    - Assert that step 2's target is the account.
+  - **Fix:**
+    - Add `Dispatch.StepTarget(pInput, pSecretNames)`: it answers `TargetOf`, or `Log.#REDACTED` when `Ledger.CarriesSecretValue` holds. It is the one home; `TargetOf` stays raw for the ledger.
+    - Use it in `AnswerOne` after `:220`.
+    - In `Loop.cls`, compute one `tRunningTarget` for `:559`, `:569` and `:585`, and use the same call at `:514` and `:531`, with `SecretNamesOf`.
+    - `agent-ledger.browser-spec.mjs` already sends this call (`:163`). After the reply, assert the card label reads `permissions.users.password [redacted]` and the panel's text lacks the secret.
+  - Files: `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Test/TurnConversation.cls`, `ui/browser/agent-ledger.browser-spec.mjs`. ADs: AD-35, AD-33, AD-41, AD-46, AD-3, Conventions › Secrets.
+  - AC: Given the model sends a declared secret's value as a tool call's `id`, when the turn runs, then the step's target reads `[redacted]` in the poll, the stored transcript and the panel's card, and the value appears in none of them.
+- [ ] **DW-1881** — The service arm splits entries on `|` only and judges roles by name.
+  - **Red first:** a direct table of `GrantsPrivilegeByEffect("service", …)` rows in `Test/ServiceUpdate.cls`. The rows are the matrix's: `%Manager` and `%Operator` with `|` (1), kernel-level `10.0.0.9:%All` (1), the held classic entry (0), `%Developer` (0), and `["10.0.0.6:%All","10.0.0.7"]` against held `10.0.0.6:%All` (0).
+  - **Fix:**
+    - Move the spelling rule into the kernel as `Prohibited.EntryParts`, and have `ServiceRules.EntryParts` delegate to it. Prohibited names no Area class.
+    - `AddressGrantsPrivilege` parses both the held and the payload entries with it, and judges each added role with `RoleGrantsAdministrativePrivilege`.
+    - Delete `IsPrivilegedRole` if no caller remains.
+    - `Test/ServiceEdit.cls:165`'s control role `%Operator` becomes `%Developer`.
+  - Files: `Kernel/Proposal/Prohibited.cls`, `Area/Permissions/ServiceRules.cls`, `Test/ServiceUpdate.cls`, `Test/ServiceEdit.cls`. ADs: AD-10, AD-8, AD-53, AD-16.
+  - AC: Given an agent proposal that gives a service address `%Manager` in the `|` spelling, or `%All` in the classic `address:roles` spelling, when it is minted, then it takes the destructive treatment with the privileged consequence (`Mint.CONSEQUENCEPRIVILEGED`). A role the target already gives that address, in either spelling, is not counted as added.
+- [ ] **DW-1307** — The class header and Story 5.4's AC5 promise a log sweep. `TestNoKeyReachesTheLedger` sweeps no log.
+  - **Fix:**
+    - For each outcome, take `SslSinks.LogOffset()` before `Drive`.
+    - After the writes, assert `SslSinks.Flush(tOffset)`, then assert `LogSince(tOffset)` lacks `CANARYMARK`.
+    - Header line 4 becomes: "and the console log (`messages.log`) lines written over each turn are swept for it."
+  - Files: `Test/TurnSecretResidue.cls`. ADs: AD-35, Conventions › Secrets.
+  - AC: Given a completed turn and a failed turn, when the sweep runs, then the `messages.log` lines written over each turn hold no canary. A change that logs the key reddens the sweep.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
+
+**Governing ADs (Rule 6):**
+
+| Batch | ADs |
+| --- | --- |
+| a | Stack › CI, Operational Envelope › Build and CI, Conventions › Tests |
+| b | AD-2, AD-39, Conventions › Tests |
+| c | Conventions › Tests, AD-9, AD-22, Conventions › Concurrent writes, AD-39 |
+| d | AD-35, AD-33, AD-41, AD-46, AD-3, Conventions › Secrets, AD-10, AD-8, AD-53, AD-16 |
+
+No AC contradicts an AD.
+
+**Declined:** none. Planned dispositions: every entry `resolved-by` its batch's commit. The exception is DW-1204: if its run finds no member, the lead closes it `wontfix-accepted`.
+
+**Why the fixes take these shapes:**
+
+- **DW-1808:** the ledger's "write and re-read" misreads `:342`. Both 200s are Apply POSTs. The fix waits for each POST's answer, and for the re-read the ledger asks for.
+- **DW-1822:** the launch line is the change the orchestrator preferred. Bounding `settle`'s font wait would instead fail a 20 s to 180 s stall that the old code tolerates. A stall that never completes still fails, after 600 s (the reopen condition).
+- **DW-1759:** deleting and recreating a definition renumbers it and breaks the conversations, turns and proposals that reference it. A guarded delete also rebalances the marker. So the rows are moved aside raw and come back byte-identical.
+- **DW-434:** the transcribed literal is pinned across files, as `compose.test.mjs` pins ports, so a rewording reddens the tools tier.
+
+**Contention (Epic 19, checked 2026-10-01):**
+
+- `ui/tools/ci.test.mjs`: our edits at `:118-131` and `:2710-2765` are separate from Epic 19's roster block (about `:2091-2200`). Cleared by the dispatch.
+- `a11y-structural-invariants.browser-spec.mjs:48`: a one-line change to the launch line, outside any row table. Cleared by the lead at the spec gate (the orchestrator accepted the launch-line fix, by=merge_gate, 2026-10-01). Re-check Epic 19's diff on the file before editing it.
+- `CLAUDE.md` and the spine: the lead's edits, cleared by the orchestrator.
+- Epic 19 touches none of the other files named here.
+
+**Lead edits (Rule 20 and corrections at origin):**
+
+- **With batch a's commit:**
+  - Spine Stack › CI (`:913`): replace "the ObjectScript suite and the browser specs each as three shard jobs" with "the ObjectScript suite as four shard jobs and the browser specs as three". Append `[AMENDED 2026-10-01, Story 23.3, DW-1901, Rule 20: was "the ObjectScript suite and the browser specs each as three shard jobs"]`.
+  - Operational Envelope › Build and CI (`:1050`): replace "each long suite split across three shards (Stack › CI)" with "the ObjectScript suite split across four shards and the browser specs across three (Stack › CI)". Append `[AMENDED 2026-10-01, Story 23.3, DW-1901, Rule 20]`.
+  - `CLAUDE.md`: replace "The ObjectScript suite and the browser specs each run as three shard legs," with "The ObjectScript suite runs as four shard legs and the browser specs as three,".
+- **After batch a's green run, in a follow-up docs commit:** replace `CLAUDE.md`'s "A run takes about 21 minutes (run 36376868939)." with that run's wall time and id, in the same sentence shape. Wall time is first job start to last job end, in whole minutes.
+- **With batch d's commit:** AD-33, after its last paragraph: "A tool step's `target` carries the redaction mark where it holds a declared secret's value, set at write time as the ledger row's is (AD-46) [AMENDED 2026-10-01, Story 23.3, DW-1782, Rule 20]."
+
+**User-visible changes:**
+
+- **DW-1782 (d):** the panel's tool-call card shows `[redacted]` where the model sent a declared secret as an id, as the ledger viewer does. The progress poll and the stored transcript carry the mark too.
+- **DW-1881 (d):**
+  - The Services editor marks `%Manager`, `%Operator`, and any role reaching `%All` or an `%Admin_*` resource, as privileged. Its consequence line shows at the field.
+  - An agent proposal giving one of them to an address, in either spelling, is destructive.
+  - Changing an address that already held a role in the classic spelling no longer reads as granting that role again.
+
+**Named for filing (outside the twelve):**
+
+- `audit-copy-purge.browser-spec.mjs` copies the whole audit database and waits 30 s for it. That a post-sweep container (4.3M rows) outlasts the wait is (inference).
+- Step and transcript rows written before the DW-1782 fix keep the value until retention purges them. No scrub is planned.
+- Every DW-1204 non-member, and every member beyond the cap.
+
+## Verification
+
+Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/tmp/ocupilot-b-ci`, project `ocupilot-b-ci`, web 52777, super 1976, `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777`, `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci`. Never send two test calls in one message.
+
+**Shared loop steps:**
+
+- **Load source (loop):** `rsync -a --delete src/ /tmp/ocupilot-b-ci/src/`, then `Do $System.OBJ.LoadDir("/opt/ocupilot/src","ck-d",.e,1)` in `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`. Expected: 0 errors. Recompile the mutated class and every descendant before reading a mutation.
+- **One class (loop):** `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`. Expected: 0 failed, confirmed in `%UnitTest_Result`.
+- **One browser spec (loop):** `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<name>.browser-spec.mjs`. Expected: every leg passes.
+- **Checks (loop):** `uv run scripts/check-objectscript.py <changed .cls>` is clean. `bash scripts/lint-docs.sh` is clean when Markdown changed.
+- **Temporary reproduction edits:** never committed. `git status --short` shows none before the commit.
+
+**Batch a (loop):**
+
+- `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 4`. Expected: four legs, the largest at most 37.6 min.
+- `cd ui && npm run test:tools`. Expected: green.
+- `mutation:` delete `4` from the instance matrix → `ci.test.mjs`'s shard-matrix test goes red naming `instance-shard`. Set the roll-up's `--shards 3` → red.
+- Proof, by the lead: CI green on batch a's exact head with `instance shard 1/4` to `4/4`. Report the longest instance leg and the wall time.
+
+**Batch b (loop):**
+
+- Class `AdminPortAbsence`:
+  - Before the fix, red under (i) and under (ii). After the fix, green, clean and under each.
+  - Afterwards, `Monitor.Clear()` and `State()` reads 0.
+- `mutation:` pass `0` for `pRead` at `AdminPort.cls:1100` → `TestAVerifiedDeletePostsNoAlert` goes red alone.
+- Specs `proposal-demo`, `audit-events` and `a11y-structural-invariants`: each red under its hold before the fix, and green clean and under its hold after it.
+- `mutation:` delete the `done` wait → `proposal-demo` AC1 red under the rewrite.
+- `mutation:` delete the answered and re-read waits → `audit-events` AC2 red under the hold.
+- `mutation:` remove `protocolTimeout` → red under the 200 s hold.
+
+**Batch c (loop):**
+
+- DW-1759 and DW-1839: run the seven and five classes clean, then seeded as each task says. Read the seeded rows and the override back unchanged, then remove them and read back 0.
+- `mutation:` drop `SetAsideDefinitions` from `AgentState.OnBeforeAllTests` → AgentState goes 13/13 red under the seed.
+- `mutation:` drop the clear in `DeviceDelete.OnBeforeOneTest` → DeviceDelete red under the override.
+- DW-1204: the run as the task says. Each member spec passes alone on the post-sweep container.
+- `mutation:` revert a member's own-rows predicate → that member goes red there.
+- `cd ui && npm run test:tools && npm run test:components`. Expected: green.
+- `mutation:` change one word of `REASONSTATECONFLICT` → `state-conflict.test.mjs` goes red naming both specs. Edit the switches constant → red naming that file.
+
+**Batch d (loop):**
+
+- Classes `TurnConversation`, `ServiceUpdate`, `ServiceEdit`, `TurnSecretResidue`, `Prohibited`, `LedgerSearch`. Specs `agent-ledger` and `service-editor`. If the latter reddens on `%Operator` now being marked privileged, switch its role to `%Developer`.
+- The new DW-1782 method and the new DW-1881 rows go red before their fixes.
+- `mutation:` make `StepTarget` answer `TargetOf` alone → the TurnConversation method and agent-ledger's card assertion go red.
+- `mutation:` revert to `IsPrivilegedRole` → the `%Manager` and `%Operator` rows go red. Parse the held side on `|` only → the held-classic row goes red. Parse the payload side on `|` only → the classic `10.0.0.9:%All` row goes red.
+- `mutation:` insert `Do ..LogRaw("residue probe", $$$ERROR($$$GeneralError, ..ApiKey))` after the key-shape gate in `Kernel/Provider/Base.cls` `Invoke` (`:185`), and recompile Base and every descendant → the new log sweep goes red. The unfixed class stays green under the same change, which shows the gap.
+
+**Full sweep (once, before dev_complete of batch d):** `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci` with no seeded state present. Expected: 0 failed, totals from `%UnitTest_Result`.
+
+**Each batch (lead):** push the code commit alone, and wait for CI green on its exact head.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
