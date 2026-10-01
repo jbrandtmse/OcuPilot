@@ -217,7 +217,10 @@ async function structural(page, tabs) {
   const surfaces = {};
   for (const tab of tabs) {
     await openTab(page, tab);
-    if (tab === 'groups' && (await page.$('#ocu-ldap-advanced')) === null) await press(page, 'app-ldap-editor-page .ocu-form-disclosure');
+    if (tab === 'groups' && (await page.$('#ocu-ldap-advanced')) === null) {
+      await press(page, 'app-ldap-editor-page .ocu-form-disclosure');
+      await page.waitForSelector('#ocu-ldap-advanced', { timeout: config.navigationTimeoutMs });
+    }
     for (const { viewport, theme, checks } of passes) {
       await page.setViewport(viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');

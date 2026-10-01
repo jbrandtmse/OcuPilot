@@ -484,6 +484,14 @@ Rejected (32):
 - `low`, theoretical: `Defaults()` answering `{}` on an exception; an exception in `Canonical` reported as `LDAP.NAME.FORM`; a port GET answering OK without an object.
 - Rejected because its fix edits the spec under review: the Auto Run Result's finding arithmetic (24 rows plus the harvested DW-1887).
 
+Code review 2026-10-01, rework re-review 1 (`full-opus`; verification-gap and acceptance-auditor; 3 rows into 2 entries: low 1, false 1). Both `[CI]` items confirmed fixed. After the patch, `ldap-editor` 6/6 and `security` 5/5 passed on a rebuilt, redeployed bundle on `ocupilot-ci`.
+
+- [x] [Review][Patch] The DW-1337 walk pressed the Advanced disclosure without checking that it opened, so the walk would skip the Advanced fields if the disclosure stopped opening. It now waits for `#ocu-ldap-advanced` [ui/browser/ldap-editor.browser-spec.mjs:222] -- low / low / in-story
+
+Rejected (1):
+
+- `false`: CI has not yet run `281e3097`, which has a `[skip ci]` commit on top. The diff has no defect here; push order is the lead's under Rule 28.
+
 ## Spec Change Log
 
 - 2026-10-01, lead, rework iteration 1 (trigger: CI red, run 36818056858): re-opened for the two `[CI]` items under Tasks & Acceptance; nothing else changes.
