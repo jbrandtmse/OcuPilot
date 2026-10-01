@@ -26,6 +26,7 @@ import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
 
 const config = browserConfig();
 const GENERAL_URL = '/ocupilot/os-management/databases?ns=HSCUSTOM';
@@ -280,6 +281,32 @@ test('AC2, AC3, AC4: the Free-space view paints rows immediately with skeleton f
     // read, once each (AD-36) -- never a per-figure request.
     const freeSpaceReads = reads.filter((url) => new URL(url).pathname === FREE_SPACE_READ_PATH);
     assert.equal(freeSpaceReads.length, 1, `exactly one Free-space read was issued: ${JSON.stringify(reads)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+// DW-1880. Mutation (Rule 19): drop the `.ocu-details-volumes-table` rules appended to
+// `_components.scss`, rebuild and redeploy -> the header and cells read the browser's serif default
+// and this goes red.
+test("DW-1880: Database details' Volume files table is set in the app's type, header and cells alike, as its section heading is", async () => {
+  const { context, page } = await signedInAtGeneral();
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const directory = await page.$eval(ROW_SELECTOR, (row) => row.querySelector('[role="gridcell"]')?.textContent.trim() ?? '');
+    assert.notEqual(directory, '', 'a database row names its directory');
+    await page.goto(`${config.origin}/ocupilot/os-management/databases/details/${encodeEntityId(directory)}?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('.ocu-details-volumes-table th', { visible: true, timeout: config.navigationTimeoutMs });
+    const families = await page.evaluate(() => ({
+      header: getComputedStyle(document.querySelector('.ocu-details-volumes-table th')).fontFamily,
+      cell: getComputedStyle(document.querySelector('.ocu-details-volumes-table td')).fontFamily,
+      heading: getComputedStyle(document.querySelector('.ocu-details-heading')).fontFamily,
+    }));
+    assert.deepEqual(
+      { header: families.header, cell: families.cell },
+      { header: families.heading, cell: families.heading },
+      `the Volume files table takes the app's family: ${JSON.stringify(families)}`
+    );
   } finally {
     await context.close();
   }

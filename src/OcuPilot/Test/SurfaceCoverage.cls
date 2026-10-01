@@ -135,7 +135,7 @@ XData Coverage
 <screen name="DatabaseIntegrity" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
 <screen name="DatabaseIntegrityLog" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
-<screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
+<screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndLinksNowhere"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <screen name="WebSessionList" class="OcuPilot.Test.WebSessions" method="TestTheDescriptorDeclaresTheListItsPairsAndItsRowAction"/>
 <screen name="BackgroundTaskList" class="OcuPilot.Test.BackgroundTasks" method="TestTheDescriptorDeclaresTheListItsPairsAndItsActions"/>

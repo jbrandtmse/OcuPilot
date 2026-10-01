@@ -10184,10 +10184,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "classicPage": "%CSP.UI.Portal.Dialog.Service",
     "classicLinkExemption": {
-      "exempt": true,
-      "reason": "Reduced until the full service editor ships (Story 16.13); counted against SM-C1",
-      "label": "Services",
-      "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "toolIdentifier": "permissions.serviceform",
     "refreshDefault": 0,

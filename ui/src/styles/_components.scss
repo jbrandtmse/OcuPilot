@@ -7545,3 +7545,54 @@ app-log-hub-page {
   color: var(--ocu-error);
   overflow-wrap: anywhere;
 }
+
+// A gated side-bar entry keeps its name on one line and reads its "Requires <pair>" reason after it
+// (UX-DR22, DW-1879): the reason follows the name, and moves under it when the two do not fit,
+// rather than both shrinking into two columns that wrap the name.
+.ocu-side-bar-item-gated {
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 0;
+  height: auto;
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.ocu-side-bar-item-gated .ocu-side-bar-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.ocu-side-bar-item-gated .ocu-side-bar-reason {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// A details page's own small tables -- Database details' Volume files and Background tasks, the
+// database editor's volume files, Auditing configuration's -- take the shared data table's type: the
+// header its label role, the cells its body role (DW-1880).
+.ocu-details-volumes-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-details-volumes-table th {
+  @include typo.ocu-type('label');
+
+  padding: var(--ocu-space-1) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ocu-details-volumes-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  overflow-wrap: anywhere;
+}

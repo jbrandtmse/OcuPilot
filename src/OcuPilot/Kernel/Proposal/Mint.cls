@@ -290,6 +290,9 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             }
         }
 
+        ; DW-1016: a field whose empty value means something else reads the tool's own word for it.
+        Do ..ApplyEmptyKeys(pToolClass, tDiff)
+
         Kill tValues
         Set tValues("user") = pUser
         Set tValues("convKey") = pConvKey
@@ -882,6 +885,35 @@ ClassMethod Display(pValue As %RawString, pType As %String) As %String
     If pType = "boolean" Quit $Select(''pValue: "true", 1: "false")
     If $IsObject(pValue) Quit pValue.%ToJSON()
     Quit pValue
+}
+
+/// <p>Apply the tool <var>pToolClass</var>'s <parameter>OcuPilot.Screen.Tool.Write.EMPTYKEYS</parameter>
+/// to the final diff <var>pDiff</var>, in place: each row whose field the declaration names carries
+/// the declared string key as <code>emptyKey</code>, and its <code>before</code> or
+/// <code>after</code> reads <code>""</code> where it was empty (<code>""</code> or <code>[]</code>).
+/// A tool that declares nothing leaves every row as it was.</p>
+ClassMethod ApplyEmptyKeys(pToolClass As %String, pDiff As %DynamicArray) [ Private ]
+{
+    If (pToolClass = "") || '$IsObject(pDiff) Quit
+    Set tDeclared = $Parameter(pToolClass, "EMPTYKEYS")
+    If tDeclared = "" Quit
+    Kill tKeys
+    For tI = 1:1:$Length(tDeclared, ",") {
+        Set tPair = $ZStrip($Piece(tDeclared, ",", tI), "<>W")
+        If ($Piece(tPair, "=", 1) = "") || ($Piece(tPair, "=", 2) = "") Continue
+        Set tKeys($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+    }
+    Set tIterator = pDiff.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        Set tField = tRow.%Get("field")
+        If (tField = "") || '$Data(tKeys(tField)) Continue
+        For tSide = "before", "after" {
+            If tRow.%GetTypeOf(tSide) = "unassigned" Continue
+            If (tRow.%Get(tSide) = "") || (tRow.%Get(tSide) = "[]") Do tRow.%Set(tSide, "", "string")
+        }
+        Do tRow.%Set("emptyKey", tKeys(tField), "string")
+    }
 }
 
 /// <p>The stored form of the call's arguments: compact JSON, exactly what the model sent, with no

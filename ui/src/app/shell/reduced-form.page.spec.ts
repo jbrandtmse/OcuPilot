@@ -7,9 +7,10 @@ import { ChangeBus, type ChangeEvent } from '../core/change-bus';
 import { FormDirty } from '../core/form-dirty';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { SCREENS } from '../core/screens.generated';
+import type { ReducedFormDeclaration } from '../core/reduced-form.store';
+import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
-import { ReducedFormPage } from './reduced-form.page';
+import { REDUCED_FORM_DECLARATIONS, REDUCED_FORMS, ReducedFormPage } from './reduced-form.page';
 
 /**
  * The reduced form page over stubs of the two things an instance supplies -- the URL's screen and
@@ -18,9 +19,50 @@ import { ReducedFormPage } from './reduced-form.page';
  * tab and no half-built control, the bare and absent states, Save and "Saved", a refusal routed to
  * its field after the summary takes focus, the protected control and the consequence line, and the
  * classic-link-card as the content column's last child.
+ *
+ * The toggle, list and serving cases render `SERVICE_FORM` over `SERVICE_SCREEN`, a declaration and
+ * a screen local to this spec in the shape Story 9.9's reduced service form had, since the service
+ * editor replaced that form (Story 16.13) and no shipped declaration carries those options now.
  */
 
-const SERVICE_SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceForm') ?? null;
+const MIRRORED_SERVICE_SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceForm');
+
+/** The service form's route and pairs, under a descriptor of its own that declares the classic card. */
+const SERVICE_SCREEN: ScreenDeclaration | null =
+  MIRRORED_SERVICE_SCREEN === undefined
+    ? null
+    : {
+        ...MIRRORED_SERVICE_SCREEN,
+        descriptor: 'OcuPilot.Spec.ReducedServiceFixture',
+        classicLinkExemption: { exempt: true, reason: 'spec fixture', label: 'Services', href: '/csp/sys/sec/%25CSP.UI.Portal.Services.zen' },
+      };
+
+/** A reduced declaration with a protected toggle and a list with a client refusal and a consequence. */
+const SERVICE_FORM: ReducedFormDeclaration = {
+  descriptor: 'OcuPilot.Spec.ReducedServiceFixture',
+  formPath: '/api/ocupilot/services/form',
+  savePath: '/api/ocupilot/services',
+  answerKey: 'service',
+  entityType: 'service',
+  listRoute: 'permissions/services',
+  bareSentence: STRINGS.serviceFormBare,
+  goneSentence: STRINGS.serviceGone,
+  servingReason: STRINGS.serviceRefusalServing,
+  servingEffect: STRINGS.serviceEffectServesOcuPilot,
+  fields: [
+    { key: 'Enabled', kind: 'toggle', label: STRINGS.serviceFieldEnabled, servingProtected: true },
+    {
+      key: 'ClientSystems',
+      kind: 'list',
+      label: STRINGS.serviceFieldClientSystems,
+      addLabel: STRINGS.serviceAddressField,
+      addAction: STRINGS.serviceAddressAdd,
+      emptyCaption: STRINGS.serviceAddressAnyCaption,
+      refuse: (entry) => (entry.includes('|') ? STRINGS.serviceAddressNoRoles : ''),
+      servingConsequence: true,
+    },
+  ],
+};
 
 const LDAP_SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LdapConfigForm') ?? null;
 
@@ -78,6 +120,7 @@ async function mount(screen: typeof SERVICE_SCREEN, url: string, read: JsonResul
       { provide: FormDirty, useValue: formDirty },
       { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
+      { provide: REDUCED_FORM_DECLARATIONS, useValue: { ...REDUCED_FORMS, [SERVICE_FORM.descriptor]: SERVICE_FORM } },
     ],
   });
   await TestBed.inject(Router).navigateByUrl(url);

@@ -6,8 +6,9 @@
 /// overridden and never for a remote one; the owner tools refuse the wrong owner kind and a set above
 /// 200; an override on a local owner carries the consequence; the arm refuses a lock on OcuPilot's own
 /// globals and permits a system process's; the script is one <code>DELETE</code> step per stored id;
-/// and the port sends only an id its fresh listing holds, stops at the vendor's 409, sends a remote
-/// owner's lock without the check, and reads an owner one row beyond the cap; and the Locks list
+/// and the port sends only an id its latest listing holds, lists an owner's locks again after each
+/// <code>DELETE</code>, stops at the vendor's 409, sends a remote owner's lock without the check, and
+/// reads an owner one row beyond the cap; and the Locks list
 /// sends each row's owner kind as context.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed. Every read is canned; nothing is
 /// sent to the instance's lock table (<class>OcuPilot.Test.LockRecordPort</class>).</p>
@@ -276,7 +277,7 @@ Method TestThePortSendsOnlyWhatItsFreshListingHolds()
     Set tQuery("checkTxn") = 1
     Set tSC = $ClassMethod(tPort, "Invoke", "Lock", "REMOVEOWNER", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the owner removal succeeds")
-    Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "LIST"), ","), "||,P905,|201", "its re-list asks the vendor for the owner key and one row beyond the cap")
+    Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "LIST"), ","), "||,P905,|201,||,P905,|201", "it lists before A's DELETE and again after it, each time asking the vendor for the owner key and one row beyond the cap")
     Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "DELETE"), ","), tA _ "|1||," _ tB _ "|1||", "it sends A and B with the check, and neither the released id nor another owner's")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("removed"), 1: ""), 2, "answering two removed")
 
@@ -313,6 +314,55 @@ Method TestThePortSendsOnlyWhatItsFreshListingHolds()
     Set tSC = $ClassMethod(tPort, "Invoke", "Lock", "REMOVE", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a remote owner's lock is removed")
     Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "DELETE"), ","), ..#REMOTEID _ "|0||", "with checkTxn 0")
+    Do $ClassMethod(tPort, "Reset")
+}
+
+/// <p>AD-52: an owner-scope removal lists the owner's locks again after each <code>DELETE</code> and
+/// judges the next stored id against that listing, over canned listings that nothing sends to the
+/// instance (<class>OcuPilot.Test.LockRecordPort</class>). When the owner renumbers its second lock
+/// between the first and second <code>DELETE</code> -- the second listing answers a different
+/// <code>DeleteID</code> for the same reference -- no <code>DELETE</code> carries the stale id; a later
+/// stored id that listing still holds is sent, and the id after it is judged against a third listing,
+/// taken after that <code>DELETE</code>, in which the owner has renumbered it too.</p>
+/// <p>Mutation (Rule 19): drop the re-listing from <method>OcuPilot.Port.LockPort.Invoke</method>, so
+/// the first listing judges every stored id -- the stale ids are sent and this goes red; re-list only
+/// after the first <code>DELETE</code> -- the fourth id is sent and this goes red.</p>
+Method TestAnOwnerRemovalReListsBeforeEachDelete()
+{
+    Set tPort = "OcuPilot.Test.LockRecordPort"
+    Set tA = ..#LOCALID
+    Set tB = "313131010,1,P905,"
+    Set tRenumbered = "313131020,1,P905,"
+    Set tC = "313131012,1,P905,"
+    Set tD = "313131014,1,P905,"
+    Set tRenumberedD = "313131024,1,P905,"
+    Set tFirst = []
+    Do tFirst.%Push({"DeleteID": (tA), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(1)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tFirst.%Push({"DeleteID": (tB), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(2)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tFirst.%Push({"DeleteID": (tC), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(3)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tFirst.%Push({"DeleteID": (tD), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(4)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    ; After A's DELETE the owner holds its second lock under a new DeleteID, and C and D unchanged.
+    Set tSecond = []
+    Do tSecond.%Push({"DeleteID": (tRenumbered), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(2)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tSecond.%Push({"DeleteID": (tC), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(3)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tSecond.%Push({"DeleteID": (tD), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(4)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    ; After C's DELETE it holds its fourth lock under a new DeleteID as well.
+    Set tThird = []
+    Do tThird.%Push({"DeleteID": (tRenumbered), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(2)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do tThird.%Push({"DeleteID": (tRenumberedD), "Pid": 905, "RemoteOwner": false, "Reference": "^OcuProbeLock(4)", "ModeCount": "Exclusive", "Directory": "/d/", "System": ""})
+    Do $ClassMethod(tPort, "Reset")
+    Do $ClassMethod(tPort, "ArmListing", 1, tFirst)
+    Do $ClassMethod(tPort, "ArmListing", 2, tSecond)
+    Do $ClassMethod(tPort, "ArmListing", 3, tThird)
+    Kill tQuery
+    Set tQuery("id") = tA
+    Set tQuery("ids") = "[""" _ tA _ """,""" _ tB _ """,""" _ tC _ """,""" _ tD _ """]"
+    Set tQuery("checkTxn") = 1
+    Set tSC = $ClassMethod(tPort, "Invoke", "Lock", "REMOVEOWNER", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the owner removal succeeds")
+    Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "DELETE"), ","), tA _ "|1||," _ tC _ "|1||", "it sends A, then C, and no DELETE for the second or fourth lock's stale id")
+    Do $$$AssertEquals($ListToString($ClassMethod(tPort, "Calls", "LIST"), ","), "||,P905,|201,||,P905,|201,||,P905,|201", "listing the owner's locks before A's DELETE and again after each DELETE, by the same owner query")
+    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("removed"), 1: ""), 2, "answering two removed")
     Do $ClassMethod(tPort, "Reset")
 }
 

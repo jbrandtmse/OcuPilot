@@ -236,6 +236,37 @@ describe('the proposal card', () => {
     );
   });
 
+  it('renders an empty value as the word its row declares, on a changed and an unchanged row, and "(none)" without one (DW-1016)', () => {
+    // Story 16.13: an empty allowed-address list means any address may connect, so its row carries
+    // the tool's `emptyKey` and reads "Unrestricted"; a row with no key, or a key STRINGS does not
+    // hold, keeps the published empty word.
+    //
+    // mutation: make `shown()` ignore its key -> the "Unrestricted" legs go red.
+    const { fixture, card } = mount(
+      liveView({
+        changed: [
+          { field: 'ClientSystems', before: '', after: '["10.0.0.1"]', emptyKey: 'serviceAllowedUnrestricted' },
+          { field: 'Resource', before: '', after: '%Development' },
+          { field: 'Description', before: '', after: 'x', emptyKey: 'noSuchStringsKey' },
+          { field: 'ClientSystems', before: '["10.0.0.1"]', after: '', emptyKey: 'serviceAllowedUnrestricted' },
+        ],
+        unchanged: [{ field: 'ClientSystems', value: '', emptyKey: 'serviceAllowedUnrestricted' }],
+      }),
+      { phase: 'live' }
+    );
+    const rows = Array.from(card.querySelectorAll('.ocu-proposal-card-diff > .ocu-diff-row')) as HTMLElement[];
+    expect(rows[0].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(
+      STRINGS.serviceAllowedUnrestricted
+    );
+    expect(rows[1].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.tableEmptyValue);
+    expect(rows[2].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.tableEmptyValue);
+    expect(rows[3].querySelector('.ocu-diff-after .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.serviceAllowedUnrestricted);
+    (card.querySelector('.ocu-proposal-card-disclosure') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const unchanged = card.querySelector('.ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged') as HTMLElement;
+    expect(unchanged.querySelector('.ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.serviceAllowedUnrestricted);
+  });
+
   it("renders the agent's two blocks under their published headings, and the Reverse line", () => {
     const { card } = mount(EXAMPLE_PROPOSAL);
     const blocks = Array.from(card.querySelectorAll('.ocu-proposal-card-agent')) as HTMLElement[];

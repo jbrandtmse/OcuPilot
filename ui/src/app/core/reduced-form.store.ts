@@ -5,11 +5,11 @@
  *
  * **One store for every reduced form, driven by a declaration.** A reduced form is a handful of
  * fields of four kinds -- a text, a boolean toggle, one bit of a number (`flag`) and a list of
- * entries -- so the service form and the LDAP configuration form differ only in their
- * `ReducedFormDeclaration`, which their own areas own. The store composes no payload beyond the
+ * entries -- so a form differs from another only in its `ReducedFormDeclaration`, which its own
+ * area owns; the LDAP configuration form is the one left. The store composes no payload beyond the
  * fields a person changed: the server merges them over its own fresh read (AD-4), and every field
  * sentence is the server's (AD-39) but one: a list field's own client rule (`refuse`), which stops
- * an entry the form never sends, such as a `|` in a service address.
+ * an entry the form never sends.
  *
  * **A flag is a bit of the value the form opened.** Ticking it sets that bit on the number the form
  * read and keeps every other bit, so the Save sends the whole number; a concurrent change to another

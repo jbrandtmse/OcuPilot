@@ -875,4 +875,13 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
     Quit $$$OK
 }
 
+/// <p>The word the proposal card reads for an empty value of a diff field, as comma-separated
+/// <code>Field=stringKey</code> pairs, each key a member of <file>ui/src/app/core/strings.ts</file>
+/// (Story 16.13, DW-1016). <code>""</code> here, so every empty value reads "(none)".</p>
+/// <p>For a declared field the mint sends an empty value (<code>""</code> or <code>[]</code>) of a
+/// changed row as <code>""</code> with the row's <code>emptyKey</code>, and the unchanged-field
+/// disclosure does the same for an unchanged row
+/// (<method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>).</p>
+Parameter EMPTYKEYS = "";
+
 }

@@ -2167,3 +2167,29 @@ test("a refused send leaves the ended turn's re-read running, and an accepted on
   await settle();
   assert.equal(api.calls.length, beforeAccepted, "the accepted send ends the earlier turn's re-read");
 });
+
+// --- Story 16.13: a field's declared empty word (DW-1016) ---------------------------------------
+//
+// Mutation (Rule 19): drop the `emptyKey` spread from `parseProposalUnchanged` -> the unchanged leg
+// goes red.
+
+test('a diff row and an unchanged row keep the emptyKey the instance sent, and a row with none carries no key', () => {
+  const [proposal] = parsePrivilegeProposals([
+    wireProposal({
+      target: { type: 'service', scope: 'instance', id: '%Service_CacheDirect' },
+      tool: 'permissions.services.update',
+      changed: [
+        { field: 'ClientSystems', before: '', after: '["10.0.0.1"]', emptyKey: 'serviceAllowedUnrestricted' },
+        { field: 'Enabled', before: 'false', after: 'true', emptyKey: '' },
+      ],
+      unchanged: [
+        { field: 'ClientSystems', value: '', emptyKey: 'serviceAllowedUnrestricted' },
+        { field: 'AutheEnabled', value: '32' },
+      ],
+    }),
+  ]);
+  assert.equal(proposal.changed[0].emptyKey, 'serviceAllowedUnrestricted', 'the changed row keeps its key');
+  assert.equal('emptyKey' in proposal.changed[1], false, 'an empty key is not carried');
+  assert.equal(proposal.unchanged[0].emptyKey, 'serviceAllowedUnrestricted', 'the unchanged row keeps its key');
+  assert.equal('emptyKey' in proposal.unchanged[1], false, 'and a row with none carries none');
+});
