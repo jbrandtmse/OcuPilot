@@ -345,3 +345,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-01T08:55:20Z	Story 18.17	decision_received	items=footprint_asks(navigation.test.mjs,SurfaceCoverage.cls_renames) decision=approved by=merge_gate(orchestrator) log_as=footprint_extensions note=check_SurfaceCoverage_region_after_next_forward_merge
 2026-10-01T08:55:20Z	Story 18.17	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none
 2026-10-01T08:55:20Z	Story 18.17	stage_spawned	stage=qa spawn_at=2026-10-01T08:55:20Z model=sonnet agent_name=18-17-follow-ups-qa-1 cycle_iteration=1
+2026-10-01T08:57:28Z	Story 18.17	qa_complete	spawn_at=2026-10-01T08:55:20Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=gap_audit_none(AC1-AC5,8_matrix_rows)
+2026-10-01T08:57:28Z	Story 18.17	stage_spawned	stage=code-review spawn_at=2026-10-01T08:57:28Z model=opus agent_name=18-17-follow-ups-code-review-1 cycle_iteration=1 review_tier=full-opus scope=693ef46d..3cc32b04
