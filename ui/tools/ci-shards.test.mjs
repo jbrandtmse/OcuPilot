@@ -87,14 +87,14 @@ test('more shards than items leaves the later shards empty', () => {
   assert.deepEqual(assignShards(['a'], {}, 3).shares.map((share) => share.items), [['a'], [], []]);
 });
 
-test("the checkout's classes and spec files split three ways, each once, within one largest item of each other", () => {
+test("the checkout's classes split four ways and its spec files three, as CI runs them, each once, within one largest item of each other", () => {
   const timings = readTimings();
-  for (const [suite, items] of [
-    ['objectscript', testClassesOnDisk()],
-    ['browser', browserSpecsOnDisk()],
+  for (const [suite, items, legs] of [
+    ['objectscript', testClassesOnDisk(), 4],
+    ['browser', browserSpecsOnDisk(), 3],
   ]) {
     assert.ok(items.length > 20, `the checkout carries ${items.length} ${suite} item(s)`);
-    const { shares, weights } = assignShards(items, timings[suite], 3);
+    const { shares, weights } = assignShards(items, timings[suite], legs);
     assert.deepEqual(shares.flatMap((share) => share.items).sort(), [...items].sort(), `every ${suite} item is in exactly one shard`);
     const totals = shares.map((share) => share.seconds);
     const largest = Math.max(...items.map((name) => weights[name]));

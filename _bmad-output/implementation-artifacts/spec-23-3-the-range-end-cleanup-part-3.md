@@ -2,8 +2,9 @@
 title: 'Story 23.3: The range-end cleanup, part 3'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: 'a0c415b776875300f944b6756313c8ff531cbbdb'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -155,7 +156,7 @@ deferred: []
 
 ### Batch a: CI health (DW-1901)
 
-- [ ] **DW-1901** — With three instance legs, the run's wall time is 46 min (run 36910157178).
+- [x] **DW-1901** — With three instance legs, the run's wall time is 46 min (run 36910157178).
   - **Fix:**
     - Refresh `ui/tools/ci-timings.json` with `cd ui && node tools/ci-shards.mjs refresh --run 36910157178`, or from a later green full run on the feature line. Record the run used.
     - In `ci.yml`, set the instance matrix to `[1, 2, 3, 4]`, the names and `--shard` to `/4`, and the roll-up to `--shards 4`. Reword the comments at `:15` and `:130-131`.
@@ -295,6 +296,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-01 — Review pass (batch a)
+
+- verdicts: 15 findings — high 0, medium 0, low 10, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The instance job's `name:` `/4` is pinned by no test. — The shard-matrix test now matches each shard job's `name:` against `k/<matrix length>`; mutation recorded.
+  - `[low]` `[patch]` "browser-shard still runs three legs" has no `mutation:` line. — Mutation applied, red observed, line recorded.
+  - `[low]` `[reject]` No test pins "no `timeout-minutes` is lower". — Holds on this diff (61 and 43 untouched, recorded); the durable guard is the 1.5x floor test, and pinning the literals would block legitimate tuning.
+  - `[low]` `[reject]` "every class in exactly one leg, no empty leg" has no `mutation:` line. — A CI runtime outcome, proven by the lead's run; `checkRecords` is unchanged and loops `1..shards` (`ci-shards.mjs:240`).
+  - `[low]` `[reject]` No test can tell refreshed timings from old ones. — Provenance is the file's own `source` field (run 36910157178); a freshness pin would change with every refresh.
+  - `[false]` `[reject]` "the boundary reports the longest instance leg" has no test. — It is the lead's reporting step (Verification › Proof, by the lead), not code.
+  - `[low]` `[patch]` `ci-shards.test.mjs:90` still splits both suites three ways. — Now splits ObjectScript four ways and browser three, retitled.
+  - `[low]` `[patch]` The mutation comment says a `--shards` mutation "goes red naming the job"; that assertion names no job. — Comment corrected.
+  - `[false]` `[reject]` The tests check `ci.yml` text, not a live run. — The live-run proof on the exact head is the lead's gate; an implement pass may not push.
+  - `[false]` `[reject]` `checkRecords` is not exercised at four shards. — It is count-generic: the shard count is a parameter in every check and label (`ci-shards.mjs:210-240`).
+  - `[low]` `[reject]` The 26.5 min estimate carries run-to-run class variance. — Residual risk only; CI settles it, against a 61 min timeout.
+  - `[low]` `[reject]` `assign` splits the on-disk list (390), CI the offered list (392). — Pre-existing and documented at `ci-shards.mjs:24-27`.
+  - `[false]` `[reject]` `CLAUDE.md` and the spine still say three legs. — Design Notes › Lead edits, applied with this commit.
+  - `[low]` `[patch]` (same root cause as the comment row above) The mutation comment overstates. — Same fix.
+  - `[false]` `[reject]` DW-1901 is ticked before CI proof. — The tick marks this pass's implementation; the CI proof and the ledger trailer are the lead's (Tasks › Execution).
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
@@ -363,9 +384,14 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 
 **Batch a (loop):**
 
-- `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 4`. Expected: four legs, the largest at most 37.6 min.
-- `cd ui && npm run test:tools`. Expected: green.
-- `mutation:` delete `4` from the instance matrix → `ci.test.mjs`'s shard-matrix test goes red naming `instance-shard`. Set the roll-up's `--shards 3` → red.
+- Timings: `ci-timings.json` refreshed with `refresh --run 36910157178` (`33d325da`, green): 392 class and 134 spec-file timings.
+- `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 4`. Expected: four legs, the largest at most 37.6 min. Observed: 96, 97, 97 and 100 classes, 26.5 min each; browser over 3 legs 23.5 min.
+- `cd ui && npm run test:tools`. Expected: green. Observed: 1,765 pass, 0 fail. `bash scripts/lint-docs.sh`: 0 issues.
+- `mutation:` delete `4` from the instance matrix → `ci.test.mjs`'s shard-matrix test alone red: "instance-shard runs legs 1 to 4; it declares [1,2,3]".
+- `mutation:` set the instance roll-up's `--shards 3` → the shard-matrix test red ("and over the same 4 shards"), with the three declared-gates equality tests. Both reverted; `git status --short` and `git diff --stat` unchanged.
+- `mutation:` relabel the instance job `instance shard ${{ matrix.shard }}/3` → the shard-matrix test alone red: "instance-shard labels its legs k/4, the matrix's own length".
+- `mutation:` delete `3` from the browser matrix → the shard-matrix test red ("browser-shard runs legs 1 to 3; it declares [1,2]"), with the timeout-floor test. Both reverted byte-identical.
+- `timeout-minutes`: the diff touches none (61 and 43).
 - Proof, by the lead: CI green on batch a's exact head with `instance shard 1/4` to `4/4`. Report the longest instance leg and the wall time.
 
 **Batch b (loop):**
@@ -403,5 +429,19 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Batch a (DW-1901) only;** batches b, c and d are untouched. CI now runs the ObjectScript suite as four legs (`instance shard 1/4` to `4/4`, roll-up `--shards 4`); the browser suite stays at three and no `timeout-minutes` changed.
+
+- `ui/tools/ci-timings.json`: refreshed from run 36910157178 (392 classes, 134 spec files).
+- `.github/workflows/ci.yml`: instance matrix, name, `--shard` and roll-up to 4; comments at `:15` and `:131-133`.
+- `ui/tools/ci.test.mjs`: `SHARDED` carries `legs`; the shard-matrix test asserts `1..legs` and each job's `k/n` label; declared gates updated.
+- `ui/tools/ci-shards.test.mjs`: the checkout split test splits as CI does (4 and 3).
+- `ui/tools/ci-shards.mjs:6`, `ui/tools/ci-runner.mjs:42`: comments now `k/4`. `docs/DEVELOPMENT.md:451-452,466`: four-leg wording.
+
+**Review:** 15 findings, 5 low patched, 5 low and 5 false rejected (Review Triage Log), none deferred. Follow-up review: false (no high or medium patched).
+
+**Verification:** `assign --shards 4` gives 26.5 min per leg (largest under 37.6); browser 23.5. `npm run test:tools` 1,765 pass, 0 fail after the patches. Four mutations red and reverted byte-identical (Verification › Batch a). `bash scripts/lint-docs.sh` clean. No instance or container touched.
+
+**Residual risk:** leg times are estimates from one run; the lead's CI run on this head is the proof and reports the longest leg and wall time.
