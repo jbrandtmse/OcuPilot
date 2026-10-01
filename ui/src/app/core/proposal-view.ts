@@ -210,6 +210,9 @@ export const CONSEQUENCE_TASKMANAGERSUSPEND = 'TASK.MANAGER.SUSPEND';
 /** Story 16.12: removing a lock whose owner is in an open transaction, which it leaves running without it. */
 export const CONSEQUENCE_LOCKINTRANSACTION = 'LOCK.INTRANSACTION';
 
+/** Story 18.15: an enable of interoperability, which on IRIS for Health changes the whole instance. */
+export const CONSEQUENCE_NAMESPACEINTEROP = 'NAMESPACE.INTEROP';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -246,6 +249,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_TASKMANAGERSUSPEND) return STRINGS.taskManagerSuspendConsequence;
   // The Remove locks dialog's own warning, published once (DW-1073).
   if (code === CONSEQUENCE_LOCKINTRANSACTION) return STRINGS.lockRemoveInTransaction;
+  // The enable dialog's own consequence sentence, published once.
+  if (code === CONSEQUENCE_NAMESPACEINTEROP) return STRINGS.namespaceEnableInteropConsequence;
   return '';
 }
 

@@ -170,6 +170,7 @@ XData Coverage
 <tool name="osmgmt.namespaces.update" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.delete" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.namespaces.copymappings" class="OcuPilot.Test.NamespaceCopy" method="TestTheCopyIsAQueuedWrite"/>
+<tool name="osmgmt.namespaces.enableinterop" class="OcuPilot.Test.NamespaceInterop" method="TestTheDeclarations"/>
 <tool name="osmgmt.localdatabases.create" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
 <tool name="osmgmt.localdatabases.updatemount" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>
 <tool name="osmgmt.localdatabases.update" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the create and the two edits are asserted together in one loop, with the delete"/>

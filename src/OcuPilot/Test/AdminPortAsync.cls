@@ -76,10 +76,11 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '[ "task row", "but not at the mutating guard, which this read never trips: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
 }
 
-/// <p>AD-26 as amended 2026-09-24, 2026-09-28 and 2026-09-29: the queued writes the port admits are
-/// exactly <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>,
-/// <code>Namespace.Namespace</code> <code>MAPPINGS</code> and Story 18.4's six
-/// <code>Database.Actions</code> operations, each a mutating pair, and the probe pair the refusal above
+/// <p>AD-26 as amended 2026-09-24, 2026-09-28, 2026-09-29 and 2026-10-01: the queued writes the port
+/// admits are exactly <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>,
+/// <code>Namespace.Namespace</code> <code>MAPPINGS</code>, Story 18.4's six
+/// <code>Database.Actions</code> operations and <code>Namespace.Namespace</code> <code>INTEROP</code>,
+/// each a mutating pair, and the probe pair the refusal above
 /// is driven with is not one of them, so the refusal is still what every other mutating request that
 /// would queue meets.</p>
 /// <p>Mutation (Rule 19): add <code>OcuPilotProbeAsyncWrite/PUT</code> to
@@ -88,7 +89,7 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 Method TestOnlyTheNamedQueuedWritesAreAdmitted()
 {
     Set tQueued = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
-    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings and the six disk operations")
+    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings, the six disk operations and the enable of interoperability")
     For tI = 1:1:$ListLength(tQueued) {
         Set tPair = $List(tQueued, tI)
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), tPair _ " is a mutating pair")

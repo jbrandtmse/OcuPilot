@@ -16,6 +16,7 @@ import {
   ADD_MATCHING_ROLE,
   ADD_ROLE,
   COPY_MAPPINGS,
+  ENABLE_INTEROP,
   DATABASE_DETAILS,
   EXPAND_VOLUME,
   LOCAL_DATABASE_LIST,
@@ -1580,6 +1581,14 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     const { actions } = mount(undefined, NAMESPACE_LIST);
     expect(actions.has(NAMESPACE_LIST, 'delete')).toBe(true);
     expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+
+  it('leaves Enable interoperability undrawn, for the Namespaces list\u2019s own page to register', () => {
+    // Mutation (Rule 19): drop ENABLE_INTEROP from the Namespaces list's `UNDRAWN_ACTIONS` entry ->
+    // this goes red, and a later construction of the handler would replace the page's registration
+    // with a send that opens no typed-name dialog.
+    const { actions } = mount(undefined, NAMESPACE_LIST);
+    expect(actions.has(NAMESPACE_LIST, ENABLE_INTEROP)).toBe(false);
   });
 
   it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {

@@ -8029,6 +8029,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
 - 2026-09-28T15:06:10Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-09-28: 18.14 split for risk; 18.15 runs after 18.4 with its Task 0 observation first
 - 2026-10-01T06:27:56Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-10-01 option 2: %All only, typed-name confirm, consequence names every measured instance-wide effect, governance key disabled; after 1.0.5
+- 2026-10-01T18:36:10Z status=resolved-by:18-15-enable-interoperability-on-a-namespace by=adjudication note=delivered at bb6ec657 (CI 36881324905 green): NamespaceEnableInterop tool, NamespacePort INTEROP branch through AdminPort QUEUEDWRITES Namespace.Namespace/INTEROP, the Namespaces list's typed-name enable; NamespaceInterop 9/9, NamespaceInteropGate 4/4, namespace-interop.browser-spec 1/1
 
 ### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8157,6 +8158,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: BackgroundTaskPort.AdminRows maps the caller's whole AsyncResult LIST, so rows labeled /v2/ocupilot/ (left for the sweep for a caller who cannot delete them) are listed and offered controls; AdminPort.AwaitTask treats only Finished and Failed as terminal, so an OcuPilot task canceled while Queued waits out PORT.TIMEOUT.
 - 2026-09-28T23:43:52Z status=wontfix-accepted owner=16-5-background-tasks by=cr note=reopen_if=a user reports /v2/ocupilot/ rows in Background tasks, or a canceled queued task holds a read to PORT.TIMEOUT
+- 2026-10-01T14:33:07Z occurrence=18-15-enable-interoperability-on-a-namespace
 ### DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT: an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories (SYS.Database VolumeDirectoryList, NewVolumeDirectory)
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
@@ -8740,6 +8742,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: docker inspect ocupilot-slot-b shows only OCUPILOT_DEMO=1; ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; 00724be8 deletes the test-scope package on any start without it
 - 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
 - 2026-10-01T04:00:14Z occurrence=23-2-the-range-end-cleanup-part-2
+- 2026-10-01T19:10:53Z status=dropped by=merge_gate note=action_item:epic-23-retro-item-3-add-ocupilot_load_tests-1-to-ocupilot-sl (human=owner adds OCUPILOT_LOAD_TESTS to slot B's compose before the next refresh)
 
 ### DW-1894: AD-33's Story 16.15 amendment and EXPERIENCE.md:609 say a turn's egress appears once a provider call is dispatched; it appears once the turn's first dispatched call returns
 - source: spec-16-15-the-data-egress-line.md | severity: low | fix-risk: low | footprint: in-story
@@ -8762,6 +8765,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.cls:1961 copy arm asks CopiesOwnMapping only; NamespaceCopyMappings.cls:86 CONSEQUENCE NAMESPACE.COPYMAPPINGS; WeakensByEffect runs per create/change
 - 2026-10-01T09:21:03Z status=wontfix-accepted owner=18-17-namespace-and-database-follow-ups by=cr note=pre-existing (18.14), copy already DESTRUCTIVE=1. reopen_if=AD-10 is amended to name a copy for MAPPING.SYSTEMGLOBAL
 
+### DW-1897: The enable's %All:USE pair refuses a user whose role only grants %All (CheckUserPermission reads 0 for a granted-role %All holder, 1 for a direct one)
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: NamespaceInteropGate runs 1345/1562 on ocupilot-b-ci; admitting such users needs a role check in Operation.Holds and the gates (contended kernel files)
+- 2026-10-01T13:37:15Z status=decision-pending owner=burndown by=harvest note=product call: keep the stricter direct-%All rule (recommended; safe, classic portal remains) or add a role check
+- 2026-10-01T14:33:07Z occurrence=18-15-enable-interoperability-on-a-namespace
+- 2026-10-01T18:36:10Z status=by-design owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-10-01: keep the stricter rule; the %All:USE pair passes only a user assigned %All directly, a granted-role %All holder is refused and the classic portal still serves them; AD-8 and the spine's Deferred row amended; reopen_if=a user reports needing the enable through an indirect %All
+
+### DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: monitor state 1->2 across NamespaceInterop runs on ocupilot-b-ci; the same as 18.14's copy-mappings started legs (AdminPort :2641)
+- 2026-10-01T13:37:15Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; the port should not log a bound it converts to started
+
+### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: pre-existing: ClassicPageGate run 1099 showed it before Story 18.15 (MappingWriteGateProbe.QueuedCopies); test harness only
+- 2026-10-01T13:37:15Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=harvest note=reopen_if=a CI instance job fails or reports a <FUNCTION> BeginCapture alert from a gate probe
+
+### DW-1900: Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest fails on a reused throwaway once another suite's conversation entries are a day old
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: full sweep run 1437 on ocupilot-b-ci: ForeignExpired found _SYSTEM conversation entries from 2026-09-30T13:08Z; CI's fresh throwaways start empty (like DW-1554)
+- 2026-10-01T13:37:15Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=harvest note=reopen_if=a CI instance job fails TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest
+
+### DW-1902: Enable interoperability can be sent again on a namespace whose first enable is still running in the background: the Namespaces page clears its one-operation guard on a still-running answer
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: namespace-list.page.ts onEnable clears operation after continued(); no screen reads async-result (AD-26), so the page cannot know when the vendor's task ends; a second send needs the typed name again
+- 2026-10-01T14:33:07Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=cr note=reopen_if=two concurrent INTEROP tasks for one namespace are observed, or a user reports a doubled enable
 ### DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it
 - source: DW-1889 (merge gate 2026-10-01) | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
