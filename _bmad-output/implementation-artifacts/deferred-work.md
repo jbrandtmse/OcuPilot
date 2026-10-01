@@ -8813,3 +8813,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/browser.config.mjs:99 vs data-table-columns.browser-spec.mjs:441 (ignoreDefaultArgs) and a11y-structural-invariants.browser-spec.mjs:48 (protocolTimeout, batch b)
 - 2026-10-01T23:19:37Z status=open owner=23-3-the-range-end-cleanup-part-3 by=harvest note=comment-only; patch in batch b's code review
+
+### DW-1907: ci-throwaway.sh's arming comment says AdminPortAbsence reads the alert state; since DW-1866 it reads messages.log
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: scripts/ci-throwaway.sh:264 vs src/OcuPilot/Test/AdminPortAbsence.cls (6e6b8dcc): the class no longer reads $SYSTEM.Monitor or alerts.log
+- 2026-10-01T23:37:15Z status=open owner=23-3-the-range-end-cleanup-part-3 by=cr note=one-word comment fix; Epic 19 is editing ci-throwaway.sh (add-only), so not patched in batch b's review

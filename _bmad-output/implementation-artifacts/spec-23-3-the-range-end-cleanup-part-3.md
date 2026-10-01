@@ -331,6 +331,33 @@ Rejected:
 - `low`: three clauses have no mutation line of their own: no lowered `timeout-minutes`, the refreshed timings, and the roll-up's runtime check. Rule 19 asks for one mutation per AC, and the shard-matrix test carries four. The timeouts 61 and 43 are untouched (`ci.yml:139,242`), and the timings reproduce byte-identical.
 - `false`: "reports the longest instance leg" has no test. That is the lead's reporting step.
 
+### Review Findings (batch b)
+
+Code review 2026-10-01 of `4e05a61d..6e6b8dcc`: four layers, tier `full-opus`. 32 raw findings make 3 entries, all low; none high or medium. Rule 3: exempt (test-only; the three specs drive the real throwaway). Checked: the commit holds no reproduction edit (no CDP `Fetch`, interception, font hold or poster); each fix waits on its own event; AD-2's 404 promise stays pinned (run 1625); one 600 s stall fits the 43 min browser leg.
+
+- [x] [Review][Patch] The class header says the verified delete "posts nothing the instance would copy to `alerts.log`", but the test reads only this process's port lines [src/OcuPilot/Test/AdminPortAbsence.cls:5]
+- [x] [Review][Patch] The batch b task text describes reproductions the runs did not use; say so in the Review Triage Log [spec Tasks › Batch b]
+- [x] [Review][Patch] DW-1906 (lead-filed): `launchOptions`' doc comment says a spec states no launch option of its own [ui/browser.config.mjs:99]
+- [x] [Review][Defer] The 404 class's comment says it "reads the alert state" [scripts/ci-throwaway.sh:264] — deferred: Epic 19 is editing the file (add-only); DW-1907 `open`, owned by this story.
+
+Rejected:
+
+- `false`: a reproduction edit leaked, or `:471`, `:472` and `:474` record no revert. The committed files hold no `Fetch`, interception, font hold or poster code.
+- `low` (2): AC3's red cites `:617`; after the review patch it is `:620`. The line was right for the file the runs used.
+- `low` (2): AC3's "pre-existing" has no run before the fix, and the number of kept stage logs is unstated. AC3 is outside the diff; batch c's DW-1204 run measures it alone.
+- `false`: the `$Job` clause has no mutation of its own. Rule 19 asks one per AC (run 1625), and the re-read runs in-process (`VerifyGone` calls `Invoke`), so the clause cannot hide the port's line.
+- `low` (3): a failed final `LogSince` scores as no line, and a rotation inside the window returns the whole file. `Flush` read the same range moments before; real if a red run's log shows a rotation or a read failure inside the window.
+- `low`: `alerts-log.browser-spec.mjs:13-14` says only severity 3 reaches `alerts.log`, against AD-2. It predates this diff, settling it needs a probe, and run 1614 favors AD-2 (inference).
+- `low`: `SslSinks`' header names only the SSL/TLS tests. Its contract is unchanged.
+- `low`: `PortLines` is quadratic in lines. The text is the window since the offset.
+- `low` (4): the re-read wait resolves on headers, before the list renders; round 1's can be met by round 0's second GET, ignores status, and its timeout names no round. Round 1 opens with a synchronous `eventFlag` instance round trip, nothing reads the list after round 1, and the re-read mutation shows round 0's wait is load-bearing.
+- `false`: the re-read's 30 s covers the test's polling. The promise resolves on the response while the other waits run, so it times the POST and GET only, the budget the page's first load already has.
+- `low` (4): `protocolTimeout` carries no comment; the fix stretches the CDP limit instead of bounding `settle`'s font wait; repeated 180 to 600 s stalls could pass the leg; a font held during a load still fails navigation. Spec-bound (Design Notes › DW-1822 and Contention); a wait that never ends throws once at 600 s, since `settle` catches nothing.
+- `low`: `column-widths` and `data-table-columns` await `document.fonts.ready` under the 180 s default. No CI run shows it; real if one fails with `Runtime.callFunctionOn timed out`.
+- `false` (2): the poster's ~9,000 lines skew batch c's DW-1204 run. A spec that fails on lines it did not write is a member either way (Conventions › Tests).
+- `low`: `ci-timings.json` holds 15.2 s for `AdminPortAbsence`, mostly the removed `Hang`. The next refresh corrects it.
+- `low`: the Auto Run Result's wording ("each item red", "follow-up pass"). The triage row below records what was run.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -376,6 +403,14 @@ Rejected:
   - `[low]` `[reject]` `protocolTimeout` raises the limit for every CDP call in that browser, so a real hang costs 600 s. — Spec-bound: Design Notes accept a 600 s failure against the 43 min leg.
   - `[false]` `[reject]` A font held during a document's load stalls navigation at 30 s, which the fix does not cover. — CI's evidence (runs 36569407842, 36751724771) is a protocol timeout; the navigation path is outside DW-1822.
   - `[medium]` `[defer]` proposal-demo AC3 is red at `:617` in 2 of 5 stage runs, recorded in Verification but not filed. — Pre-existing and outside this diff; deferred to frontmatter, a DW-1204 candidate.
+
+### 2026-10-01 — Code review (batch b)
+
+- verdicts: 32 findings — high 0, medium 0, low 27, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The batch b task text is not what was run. DW-1866's (i) went red only with numbered poster lines, and at `:106`; (ii) only with the poster; `:103` was never reproduced (the window is 6 to 9 ms). DW-1865's rewrite also set the turn state to `running`. DW-1822's hold took the first `.woff2` after the document's load. — The task text stays as planned; Verification › Batch b holds what was measured, and the DW-1866 trailer cites it.
+  - `[low]` `[patch]` The class header claims the verified delete posts nothing for `alerts.log`; the test reads only this process's port lines. — Clause deleted. The filter itself is the Fix's: AD-2's rule is the port's, and the re-read runs in-process.
+  - `[low]` `[defer]` `scripts/ci-throwaway.sh:264` says the class "reads the alert state". — Epic 19 is editing the file; DW-1907 `open` for this story.
 
 ## Design Notes
 
