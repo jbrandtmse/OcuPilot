@@ -2,7 +2,7 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '4ab6bd01415b7de50883653b40a2fdf197800ac5'
 baseline_commit: '4ab6bd01415b7de50883653b40a2fdf197800ac5'
 review_loop_iteration: 0
@@ -557,6 +557,14 @@ Rejected:
 - low, rejected: the both-suites `mutation:` line names the instance shard only. The browser shard is the same assertion in the same loop.
 - rejected (DW-1885): `docs/DEVELOPMENT.md` says nothing about test classes an earlier start left. That belongs to DW-1885's decision.
 - rejected (lead-owned): the slot compose files' `OCUPILOT_LOAD_TESTS: "1"` owner action lives only in this spec, and `CLAUDE.md` says a compile failure reads `LOAD-FAILED`. The AC's "every throwaway" against the `--product` `images` throwaway, the runner-step note on recreating `ocupilot-b-ci`, and the Auto Run Result stating "a product restart keeps the 835" without `(inference)` are spec text.
+
+### DW-1885 (DW-48 follow-up, decided at the merge gate)
+
+- [ ] **DW-1885** — a product start leaves the `OcuPilot.Test.*` classes an earlier test-mode start compiled, so an upgraded 1.0.4 volume keeps the fault-injection classes DW-48 exists to remove. Decided: a product start deletes them.
+  - **Fix:** when `OCUPILOT_LOAD_TESTS` is not 1, the start hook deletes the package of each roster test-scope folder (from `Install/Roster`, never a hard-coded name, nothing outside it) and logs one line with the number of classes it removed (0 included). When the flag is 1 it deletes nothing. A failed delete fails the start like a failed load.
+  - **Red:** `ui/tools/compose.test.mjs` (or `ci.test.mjs`) pins the delete, its flag guard, its roster source and its log line; extend the `images` job's `product-check` (or a log assertion) if cheap.
+  - **Runner step (lead):** on `ocupilot-b-ci`, with the test package compiled, a restart (flag unset) logs the removed count and leaves no `OcuPilot.Test` class; the loader then restores them.
+  - AC: Given a volume holding compiled `OcuPilot.Test` classes, when a product start runs, then the package is gone and the log says how many classes it removed; given `OCUPILOT_LOAD_TESTS=1`, nothing is deleted.
 
 ## Spec Change Log
 
