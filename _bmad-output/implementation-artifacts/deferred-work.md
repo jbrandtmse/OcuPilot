@@ -7922,6 +7922,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-09-30T17:16:05Z occurrence=1.0.4 upgrade check (orchestrator) 2026-09-30 note=docker compose restart iris logged '[ERROR] Status of instance IRIS is running' at the stop signal, the next start logged 'Previous system shutdown was abnormal' at severity 2 and Monitor.State went 0 to 1; nothing lost; same as 1.0.3's check
+- 2026-10-01T05:57:13Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=both the in-place restart and the env-change recreate logged 'Previous system shutdown was abnormal'; nothing lost
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
@@ -8579,6 +8580,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
 - 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
+- 2026-10-01T05:57:12Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=a second failure mode: 'and the instance's state, 1 before, has not reached Alert' on an upgraded instance already at Warning from the restart (DW-1762), with the three preceding classes logging deliberate severity-2 lines (inference); the port's own assertions passed; 3/3 green on a fresh instance. The fix should assert on lines this delete posts, not the instance-wide state
 
 ### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
