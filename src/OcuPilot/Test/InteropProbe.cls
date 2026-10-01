@@ -738,8 +738,10 @@ ClassMethod RecordInstance() As %Status
 /// each by an exact name taken from the difference: delete each resource, role and task the record
 /// lacks; put back each role's resources and granted roles, each user's roles and each application's
 /// matching roles that differ from it; stop, through the port's <code>LanguageServer</code>
-/// <code>STOP</code>, each external language server that runs now and was stopped in it; kill each
-/// <parameter>SYSTEMCONFIG</parameter> node it lacks; and forget it once no probe namespace remains.
+/// <code>STOP</code>, each external language server that runs now and was stopped in it, and stop when
+/// it runs, then <code>DELETE</code>, each one it lacks (none when it holds no language server, as when
+/// its list could not be read); kill each <parameter>SYSTEMCONFIG</parameter> node it lacks; and forget
+/// it once no probe namespace remains.
 /// A name holding <parameter>PREFIX</parameter> is <method>RemoveAll</method>'s own removal and is left
 /// to it, and nothing the record holds is removed. A record older than
 /// <parameter>RECORDSECONDS</parameter> is discarded unapplied, and the status says so.</p>
@@ -833,10 +835,13 @@ ClassMethod RestoreInstance() As %Status
     For {
         Set tName = $Order(tNow("languageserver", tName), 1, tRunning)
         If tName = "" Quit
-        If 'tRunning || ($Get(tRecord("languageserver", tName), 1) '= 0) Continue
+        Set tHeld = $Data(tRecord("languageserver", tName), tRecorded)
+        If tHeld && ('tRunning || (tRecorded '= 0)) Continue
+        If 'tHeld && '$Data(tRecord("languageserver")) Continue
         Kill tQuery
         Set tQuery("name") = tName
-        Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PORT, "Invoke", "LanguageServer", "STOP", .tQuery, "", .tResult, .tHttp, .tFault))
+        If tRunning Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PORT, "Invoke", "LanguageServer", "STOP", .tQuery, "", .tResult, .tHttp, .tFault))
+        If 'tHeld Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PORT, "Invoke", "LanguageServer", "DELETE", .tQuery, "", .tResult, .tHttp, .tFault))
     }
     If $$$ISOK(tSC) && ($ListLength(..ProbeNamespaces()) = 0) Kill @..#RECORD@("I"), @..#RECORD@("N"), @..#RECORD@("T")
     Quit tSC
