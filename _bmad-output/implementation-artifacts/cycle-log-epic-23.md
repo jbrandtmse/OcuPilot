@@ -162,3 +162,6 @@
 2026-10-01T00:03:44Z	Story 23.2	ci_resolved	batch=e story=23.2 run=36790460370 head=89b2aaad result=success attempt=1 resolved_at=batch_boundary
 2026-10-01T00:03:44Z	Story 23.2	ledger_adjudicated	batch=e owned=3 resolved=3(DW-1497,DW-1451,DW-1290) side_effect_resolved=DW-1366(range-end-cleanup) reowned=0 terminal=0 filed=DW-1882(routed_burndown) slice_after=1(DW-48)
 2026-10-01T00:03:44Z	Story 23.2	batch_boundary_reported	batch=e to=main code_head=89b2aaad run=36790460370 feature_code_moved=no
+2026-10-01T00:04:12Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@b4ab122b merge=8afae2a1 conflicts=none code_changes=none before=batch_d
+2026-10-01T00:04:12Z	Story 23.2	rework_opened	cycle_iteration=8 iteration=batch_d trigger=next_batch(last) items=DW-48 scope_baseline=HEAD epic16_edits=ci-throwaway.sh:357(comment_in_env_roster;disjoint_from_args_32-40_and_env_top_171)
+2026-10-01T00:04:12Z	Story 23.2	stage_spawned	stage=implement batch=d spawn_at=2026-10-01T00:04:12Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-implement-d cycle_iteration=8 prior_ci=success(36790460370) note=includes_full_ObjectScript_sweep_once
