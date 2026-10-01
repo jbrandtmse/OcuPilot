@@ -161,7 +161,7 @@ deferred: []
 
 **Execution:**
 
-- **Task 0, measure first, on `ocupilot-ci` only.** Use a purpose-built role and user, never `%Operator`. Clean up exactly what you created. Write the results into Design Notes › Task 0 results, which the lead folds into the proposed AD.
+- **Task 0, measure first, on `ocupilot-ci` only.** Use a purpose-built role and user, never `%Operator`. Clean up exactly what you created. Write the results into Design Notes › Task 0 results, which the lead folds into AD-61 rule 1.
   - **T0.1, the gate.** Holding one administrative resource to pass the API floor, run the in-process recipe for `docnames/CLS`, `GET doc` and `action/index`:
     - in HSCUSTOM, USER and `%SYS`;
     - with `%Development:USE`, the namespace's routines-database READ and `%DB_IRISSYS:READ`, each dropped in turn;
@@ -290,69 +290,21 @@ deferred: []
 - **AC5 (gate).** Given a principal holding exactly the measured pair set, when it reads either list or viewer, then it succeeds. Given the same principal missing any one pair, when it makes the same read, then it is refused 403 naming that pair, and never answered an empty list.
 - **AC6 (read-only).** Given the tool registry and governance after this story, when `ExplorerDescriptor` enumerates every `explorer.*` tool and route, then no `explorer.*` tool classifies `write`, `Baseline.cls` is unchanged, and no route mints a proposal for the new area.
 - **AC7 (DW-1337).** Given the structural walk, when it covers all four screens at 1280 light, 720 light and 1280 dark, then it adds no entry to `structural-baseline.json`.
+- **Limit (AC4, AC5).** An account holding only `%Developer` cannot open System Explorer, because OcuPilot's `%Admin_*` floor guards every route and AD-61's gate sits on top of it (DW-1903, decision-pending for the owner).
 
 ## Spec Change Log
+
+- 2026-10-01, spec gate (orchestrator answers, by=merge_gate): AD-61 and its five companion amendments written into the spine; System Explorer at rail 8 approved as a tier-1 amendment; "Look in: Database" dropped; the `%Admin_*` floor kept (DW-1903); the four non-additive edits approved with disjoint hunks; never sending `filter` and never calling `POST modified` recorded at AD-61.
 
 ## Review Triage Log
 
 ## Design Notes
 
-**Governing ADs:** AD-1, AD-2 (the pattern this port copies), AD-5, AD-7, AD-8, AD-11, AD-12, AD-13, AD-14, AD-16, AD-19, AD-21, AD-24, AD-27 (its containment pattern), AD-29, AD-36, AD-39, AD-43, AD-44, AD-45, AD-60.
+**Governing ADs:** AD-61 (the port's contract), AD-1, AD-2 (the pattern this port copies), AD-5, AD-7, AD-8, AD-11, AD-12, AD-13, AD-14, AD-16, AD-19, AD-21, AD-24, AD-27 (its containment pattern), AD-29, AD-36, AD-39, AD-43, AD-44, AD-45, AD-60.
 
-### Proposed AD (the lead claims the id and writes it into the spine at the spec gate)
+### AD-61 (in the spine)
 
-#### AD-n — The Atelier API is reached through one port that calls its route methods in process, behind its own gate
-
-- **Binds:** Stage 3 (Epic 19), with every System Explorer screen, read tool and later write tool; `Port/AtelierPort`; AD-1, AD-2, AD-7, AD-12, AD-16, AD-21, AD-27, AD-29, AD-36, AD-39
-- **Prevents:**
-  - the browser or a tool calling `/api/atelier`, which would mean a password kept in the page or a vendor web application modified to accept the tab's token;
-  - a route's 4xx, or a soft error answered with 200, being read as success in process;
-  - a read that skips the `%Development` check the web application makes and the in-process call does not;
-  - a caller's text reaching SQL the vendor concatenates.
-- **Rule:** `Port/AtelierPort` is the only class that names an `%Api.Atelier.*` class, and it names them only through parameters. For one route at a time, in the caller's process and as the signed-in user, it reproduces what `%Api.Atelier`'s dispatch does:
-  1. **Gate first (AD-29).** The port evaluates its pairs with `$System.Security.Check` before any vendor call, and a refusal names the failed pair. The pairs are:
-     - `%Development:USE`, the resource of the `/api/atelier` web application and of the classic Classes and Routines pages (both read on the instance);
-     - READ on the resource guarding the target namespace's routines database, resolved at call time through `%SYS.Namespace.GetAllNSInfo`;
-     - every further pair whose absence makes a route answer an empty or partial list. A route answers an empty list with 200 when `^SYS` or `^rINDEX` is unreadable (`%Library.RoutineMgr` :1121-1127), so a denial must never read as "no documents". Story 19.1's Task 0 measures these pairs on `ocupilot-ci` (inference until measured).
-  2. **Version.** The port reads the highest `%Api.Atelier.v<N>` that `%Api.Atelier`'s URL map forwards to, and calls `%Api.Atelier.v<min(N, 8)>`. Each endpoint declares the lowest version its route needs. An older instance is refused `PORT.NOTIMPLEMENTED`, naming both versions, before any call. On the 2026.2 floor N is 8 (observed), so the refusal never fires there.
-  3. **Stub CSP state.**
-     - `New %request, %response, %session, %SourceControl`. The route leaves `%SourceControl` behind otherwise (observed).
-     - A fresh `%CSP.Request` and `%CSP.Response`. Where the route checks the body's content type (`action/index`), the request is a port-owned subclass.
-     - Query parameters seeded into `%request.Data`, with trailing route arguments omitted rather than passed empty.
-     - `%session` empty, which none of the routes reads.
-  4. **Namespace.** The port saves and restores the namespace explicitly (AD-16).
-     - It switches immediately around the vendor call, because the routes ignore their namespace argument and read `$NAMESPACE` (observed).
-     - It restores first in every `Catch`.
-     - It calls no `OcuPilot.*` class while switched, because the target namespace need not map them.
-  5. **Capture.** `$$BeginCapture^%SYS.Capture` and `EndCapture` wrap the route call, so the route's envelope never reaches OcuPilot's response (AD-12). The route's own capture nests inside the port's (observed). An answer above the capture's single-string ceiling, about 3.6 million characters, is refused `PORT.UNAVAILABLE` with the capture closed and the namespace restored.
-  6. **Outcome from four places.** The port reads the route's `%Status`, `%response.Status`, the envelope's `status.errors` and the result's own `status`, because the routes answer a soft error with 200 (observed). The mapping:
-     - 404 is `PORT.NOTFOUND`, unlogged on a read;
-     - 400 is `PORT.VALIDATION`;
-     - a `<PROTECT>`, wherever it surfaces, is `PORT.ACCESSDENIED`;
-     - anything else is `INTERNAL`.
-
-     The port logs vendor text and never sends it (AD-39).
-  7. **No caller value reaches vendor SQL.** `docnames`' `filter` is spliced into a query by the vendor (`%Library.RoutineMgr` :1282, observed), so the port never sends it. Every list filter is applied by the port to the parsed rows before the cap (AD-21, AD-36). The port's pattern grammar is the classic page's: `*` wildcard, comma union, leading `'` exclusion, case-sensitive.
-  8. **What a read costs the instance.**
-     - `docnames` allocates a `^CacheTemp` scratch subscript, as every vendor query does, and rebuilds the namespace's routine index `^rINDEX` when that index is stale (inference from `%Library.RoutineMgr`).
-     - `GET doc` instantiates the namespace's configured source-control class, whose creation and load hooks run as they do for every Atelier client (inference).
-     - `POST modified` writes `^ISC.Src.Jrn` in every mapped database (observed in the vendor source), and no read calls it.
-
-  **No case like AD-27's named ones is needed yet.** Every view Story 19.1 shows is an Atelier route:
-  - source and XML come from `GET doc?format=udl|xml`;
-  - intermediate code comes from `GET doc/<name>.int`, named by `action/index`'s `others`;
-  - the structure index comes from `POST action/index`;
-  - the Documatic quick view is composed from that index's descriptions.
-
-  A later call that Atelier cannot carry names itself here.
-
-**The spine amendments that go with it** (the lead's, Rule 20):
-
-- **Design Paradigm (:46).** After `ProviderPort` (the LLM, outbound HTTPS), add ", and `AtelierPort` (the Atelier API's route methods, in process, Stage 3)". Add `AtelierPort` to the port row of the table at :53.
-- **AD-7 (:179).** "three shapes" becomes "four shapes". The fourth is the routine index `^rINDEX` a document list rebuilds when stale, the same derived-cache reasoning.
-- **AD-29.** `AtelierPort` joins Binds.
-- **AD-36, an added sentence.** A `text` or `choice` criterion may declare `default`, which for a choice is one of its options. A caller that omits the criterion is read with that value, which `criteria` reports. A caller that sends it empty leaves it unset. Screen and tool therefore open on the same rows, as with `defaultHoursAgo`.
-- **The capability map (:1037).** The Stage 3 row reads `Port/AtelierPort`, `ui/src/app/areas/system-explorer/`, AD-5, AD-21, AD-29, AD-36 and AD-n.
+The lead wrote AD-61 into the spine at the spec gate with its five companion amendments (Design Paradigm's port list, AD-7's fourth shape `^rINDEX`, AD-29's Binds, AD-36's criterion `default`, the capability map). AD-61 is the contract for `AtelierPort`; read it there. Task 0's measured pairs are folded into AD-61 rule 1 by the lead after `dev_complete`.
 
 **Where each of AC2's six forms comes from** (Atelier v8; each route's minimum version in brackets):
 
@@ -403,7 +355,7 @@ Story 19.9 owns the full Documatic page, so 19.1 neither embeds it nor links to 
   - Routines: "Which routines changed most recently?" · "Which include files does this namespace hold?" · "Which routines here are generated?"
   - Class: "Summarize what this class does." · "Which methods does this class define?" · "Which members are deprecated or internal?"
   - Routine: "When did this routine last change?" · "Which database holds this routine?" · "Which intermediate routines does this routine generate?"
-- **EXPERIENCE.md edits.** All are in place, with no line inserted above :586. The lead reports them as a Rule 5 tier-1 amendment.
+- **EXPERIENCE.md edits** (approved at the spec gate as a Rule 5 tier-1 amendment). All are in place, with no line inserted above :586. Rows added below :585 shift every later line, so update every EXPERIENCE.md line citation the suites hold, not only `strings.ts`'s; `npm run test:tools` names them.
   - :52 and :66: add "· System Explorer" after "Security and secrets". In :66, Agent co-pilot becomes "the eighth area".
   - :159: append "System Explorer (Stage 3, Story 19.1): Classes · Routines; each list's documents open in its unlisted viewer." A new side-bar table row would shift every reference below it.
   - :310: add `"System Explorer"` before `"Agent co-pilot"`.
@@ -432,7 +384,7 @@ Story 19.9 owns the full Documatic page, so 19.1 neither embeds it nor links to 
 **Footprint (Rule 11).**
 
 - **Contended, add-only:** `Test/SurfaceCoverage.cls` rows, `Test/ToolRoundTrip.cls` `REFUSEEMPTY` entries, new `strings.ts` keys, the EXPERIENCE.md edits above, the `scripts/ci-throwaway.sh` `# classes:` line, and the regenerated `screens.generated.ts`.
-- **Contended and not strictly add-only.** The lead's approval is requested at the spec gate; without it, the implement stage stops and asks.
+- **Contended and not strictly add-only, approved at the spec gate with disjoint hunks.** Re-check both concurrent worktrees at edit time (`git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-18 diff --stat=200 origin/feature/OCU-1_ocupilot-mvp...HEAD` plus `status -s`, and the same for `.worktrees/epic-23`). If either changes the same lines, HALT `blocked` naming the file and lines. Story 18.15 changes `Test/ReadTool.cls` :93-94; the lead integrates it from feature before this stage, and if it is not in your tree at edit time, HALT.
   - `Test/ReadTool.cls` :93-94 and :112: the count literal and the sorted name string.
   - `ui/tools/strings.test.mjs`: the eight-key area list, plus any count literal.
   - `strings.ts`: the one `EXPERIENCE.md:626` reference.
@@ -441,7 +393,6 @@ Story 19.9 owns the full Documatic page, so 19.1 neither embeds it nor links to 
 
 **Named limitations, for the lead.**
 
-- **The API's administrative floor.** It refuses an account holding no `%Admin_*` resource (`Gate.ADMINRESOURCES`), and the stock `%Developer` role holds none (read on `ocupilot`). So a developer-only account cannot reach System Explorer at all. 19.1 does not widen the floor. Whether `%Development` should count toward it is a product decision.
 - **The capture ceiling.** A namespace listing more than about 3.6 million characters of document names gets `PORT.UNAVAILABLE` (HSCUSTOM's classes use 1.83 MB).
 
 **Ledger inbox:** none.

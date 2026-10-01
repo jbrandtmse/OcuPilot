@@ -8772,3 +8772,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance shard 3/3 was cancelled by its 46-min timeout with every class green (13:24:34, run 36862943319); refreshed timings estimate the largest leg at 37.5 min, so AC9 needed 60.7; the timeout was raised to 61 meanwhile
 - 2026-10-01T13:39:04Z status=routed owner=range-end-cleanup by=harvest note=priority p1 (CI health), orchestrator 2026-10-01: add a fourth instance shard (and a browser one if its legs follow) so a run's wall time falls
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+
+### DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor?
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Screen.Gate's ADMINRESOURCES floor refuses an account holding no %Admin_* resource and the stock %Developer role holds none (read on ocupilot), so a developer-only account cannot open System Explorer although AD-61's %Development:USE gate would admit it
+- 2026-10-01T18:39:19Z status=decision-pending owner=23-3-the-range-end-cleanup-part-3 by=spec_gate note=orchestrator kept the floor for 19.1 (product-wide security change); for the owner, who may reverse it
