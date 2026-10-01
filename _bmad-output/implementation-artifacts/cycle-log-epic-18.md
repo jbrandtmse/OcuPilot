@@ -335,3 +335,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-01T06:28:46Z	Epic 18	ledger_routed_planned	story=18-17-namespace-and-database-follow-ups entries=3(DW-1813,DW-1824,DW-1858) excess=0 by=merge_gate also=DW-1776_trailer(option_2)_owner_18-15
 2026-10-01T06:28:46Z	Epic 18	deps_hash_rerecorded	reason=rule5_amendment(18.15_split->18.17) hash=5e919c69 by=runner
 2026-10-01T06:28:46Z	Epic 18	spine_updated	ad=AD-8(18.15_enable_requires_%All) reason=decision_sheet(orchestrator_merge_gate_2026-10-01) by=runner story=18-15-enable-interoperability-on-a-namespace lint=ok(pre-existing_low_{id}_only)
+2026-10-01T06:31:31Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(18.17_chartered) bytes=23060 model=opus agent=a40e9810
+2026-10-01T06:31:31Z	Story 18.17	stage_spawned	stage=plan spawn_at=2026-10-01T06:31:31Z model=opus agent_name=18-17-follow-ups-plan-1 cycle_iteration=1 inbox=DW-1813,DW-1824,DW-1858 prior_art=spec-18-15(DW-1813/1824/1858_execution_sections)
