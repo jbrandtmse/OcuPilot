@@ -4383,6 +4383,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:19:37Z occurrence=23-3-the-range-end-cleanup-part-3 note=batch b stage: proposal-demo AC3 :617 red 2 of 5 on post-sweep ocupilot-b-ci (30 s wait to the audit screen); a batch c member candidate
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -8807,3 +8808,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ARCHITECTURE-SPINE.md:1050 (amended in 98e71205): the client unit tests run in gates with no container; Stack > CI (:913) states both suites correctly
 - 2026-10-01T20:58:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=cr note=reopen_if=a plan or review cites the Build and CI row for where client unit tests or browser specs run (spine contended: add-only)
+
+### DW-1906: browser.config.mjs launchOptions doc comment says a spec states no launch option of its own, but two specs add one
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/browser.config.mjs:99 vs data-table-columns.browser-spec.mjs:441 (ignoreDefaultArgs) and a11y-structural-invariants.browser-spec.mjs:48 (protocolTimeout, batch b)
+- 2026-10-01T23:19:37Z status=open owner=23-3-the-range-end-cleanup-part-3 by=harvest note=comment-only; patch in batch b's code review

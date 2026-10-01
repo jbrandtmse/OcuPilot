@@ -5,7 +5,7 @@ created: '2026-10-01'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '4e05a61db02729d5d6ee24000f72ad7b656bab45'
-baseline_commit: 'a0c415b776875300f944b6756313c8ff531cbbdb'
+baseline_commit: '4e05a61db02729d5d6ee24000f72ad7b656bab45'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
