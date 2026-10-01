@@ -8020,6 +8020,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.2's plan left it unobserved (it needs a probe database); the orchestrator routed it at the 18.2 spec gate 2026-09-28
 - 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
 - 2026-09-28T15:06:10Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-09-28: 18.14 split for risk; 18.15 runs after 18.4 with its Task 0 observation first
+- 2026-10-01T06:27:56Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-10-01 option 2: %All only, typed-name confirm, consequence names every measured instance-wide effect, governance key disabled; after 1.0.5
 
 ### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8271,6 +8272,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured in 18.14's round-3 review on ocupilot-b-ci: ':A' moved ^%zz in a probe namespace; the vendor reads an empty low end as '%' (NSPMAP oneglob)
 - 2026-09-29T04:38:55Z status=routed owner=burndown by=cr note=found after 18.14's rework cap; the %-global effect should also cover a range or pattern that reaches the % globals
 - 2026-09-30T03:32:47Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: small mapping fix in Epic 18 after DW-1860 (empty-low-end range needs the system-global consequence)
+- 2026-10-01T06:27:55Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
 
 ### DW-1814: AdminPort logs every vendor 404 at error severity, including VerifyGone's expected absence after a delete, so the lines reach alerts.log and an OcuPilot delete raises the instance's alert state
 - source: lead smoke, Story 18.14 | severity: med | fix-risk: low | footprint: out-of-story
@@ -8328,6 +8330,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T14:12:00Z status=decision-pending owner=burndown by=cr note=product call: carry the form across the wizard and return with the new database selected, as classic SA-13 does?
 - 2026-09-29T22:56:19Z status=routed owner=range-end-cleanup by=merge_gate note=decided as recommended (orchestrator 2026-09-29): Create a database from the New Namespace form keeps what was typed and returns to it, as the classic portal does; routed to range-end-cleanup, 18.4 stays bounded
 - 2026-09-30T06:34:06Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): the decided fix (Create a database keeps the typed New Namespace form and returns to it) goes to the story that owns the New Namespace page
+- 2026-10-01T06:27:56Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
 
 ### DW-1825: An accepted Save in the database editor re-opens its store through reset(), unmounting every field and the form bar until the re-read lands: focus is lost and edits typed during the PUT are dropped
 - source: spec-18-3-databases-configuration-creation-properties-and-volumes.md | severity: low | fix-risk: med | footprint: in-story
@@ -8476,6 +8479,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Spec Tasks fix DatabaseIntegrityLog at sideBarPosition 0 and name only the flow's Open the integrity log; its doc comment claimed Databases opens it (corrected in review). The command box offers listed screens only (Conventions, screens with no side-bar position).
 - 2026-09-30T02:04:14Z status=decision-pending owner=burndown by=cr note=product call: list the Integrity log under OS management after Databases, or give Databases a link; recommended: list it
 - 2026-09-30T02:57:24Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=approved as recommended (orchestrator 2026-09-30): the Integrity log gets an OS management side-bar position right after Databases; a small item in 18.15
+- 2026-10-01T06:27:56Z status=routed owner=18-17-namespace-and-database-follow-ups by=merge_gate note=orchestrator 2026-10-01: split from 18.15 for scope (Rule 5); Story 18.17 carries it and runs first, for release 1.0.5
 
 ### DW-1859: A caller that cannot write the admin API's async-task rows (the disk tools' least-privileged pairs) leaves one finished row per queued call, each STATE read's INFO poll included, and AD-37's sweep deletes them by SQL, which logs ERROR #7846 per row (inference for the sweep)
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: high | footprint: out-of-footprint

@@ -389,6 +389,8 @@ deferred: []
 - 2026-10-01, spec gate (runner): spine amendments 1-5 under Design Notes were written at the gate (AD-26, AD-44, AD-10 for DW-1813, AD-21, and AD-8's poll pair); Task 0 completes AD-8 with its measured pairs. AD-21's reading (vendor-derived ENSTEMP/SECONDARY directories accepted) is with the orchestrator for confirmation; if it is overruled, the change is a refusal leg on this tool.
 - 2026-10-01, implement (Task 0): halted, `intent gap: observation contradicts the plan` (Design Notes › Measured at implement). No AD-8 sentence: the candidate pairs do not reproduce the reference. No AD-15/AD-53 case: the vendor audits the enable. AD-21's amendment holds on IRIS for Health: no database was created. Task 0's port plumbing was reverted; `Test/InteropProbe.cls` is kept.
 
+- 2026-10-01, orchestrator merge gate (by=merge_gate): the story is split for scope (Rule 5). DW-1813, DW-1824 and DW-1858 move to Story 18.17, which runs first; this story keeps the enable (DW-1776) and runs after release 1.0.5. The enable takes option 2: `%All` only (AD-8, written), the strongest typed-name confirmation, a consequence naming every instance-wide effect Task 0 measured, a refusal before anything is queued for a caller without `%All`, and its governance key disabled by default. On resume the runner rewrites the intent contract to that scope, sets `status: draft` and re-plans.
+
 ## Review Triage Log
 
 ## Design Notes

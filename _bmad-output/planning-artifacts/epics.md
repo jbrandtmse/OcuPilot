@@ -7375,9 +7375,7 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
-- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
-- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
-- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
+- Decision 2026-10-01 (orchestrator merge gate, after Task 0 measured the enable on IRIS for Health): the enable needs `%All` and nothing less, takes the strongest (typed-name) confirmation, states every instance-wide effect it measured (the HealthShare Foundation install, the `Admin` user granted `%HS_BFC_Administrator`, the new roles and resources, the FHIR purge task and the FHIR_Validation_Server Java server, applications gaining access to the install database, and that it cannot be undone), refuses a caller without `%All` before anything is queued, and its governance key is disabled by default. [AMENDED 2026-10-01, orchestrator merge gate: split for scope, Rule 5 -- DW-1813, DW-1824 and DW-1858 moved to Story 18.17; this story keeps the enable and runs after release 1.0.5]
 
 ### Story 18.16: Remote databases
 
@@ -7394,6 +7392,30 @@ So that database administration also covers the databases an ECP data server hol
 - **Given** choosing a remote directory opens an ECP connection to its data server (a read blocked about 11 seconds on the throwaway)
 - **When** a remote directory is chosen or a remote database is written
 - **Then** AD-21 carries its own case for that connection, and the wait is bounded and stated before it starts.
+
+### Story 18.17: Namespace and database follow-ups
+
+As an operator,
+I want the namespace and database screens' follow-up fixes,
+So that a mapping that reaches the system globals says so, creating a database from New Namespace keeps what I typed, and the Integrity log is reachable from the side bar. [AMENDED 2026-10-01, orchestrator merge gate: split from 18.15 for scope, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** a global mapping whose global part begins with `:` (an empty low end, which the instance reads as `%`) or `*`
+- **When** the agent proposes its create or a person types it in the global mapping form
+- **Then** it carries the system-global consequence a name beginning with `%` carries.
+
+- **Given** the New Namespace form with values typed
+- **When** the person chooses Create a database and then creates a database, or cancels, in the wizard
+- **Then** they return to New Namespace with what was typed kept, and a created database chosen as its globals database, as the classic portal does.
+
+- **Given** OS management's side bar
+- **When** it is drawn for a holder of the Integrity log's pairs
+- **Then** Integrity log is listed right after Databases and opens the log.
+
+- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
+- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
+- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
