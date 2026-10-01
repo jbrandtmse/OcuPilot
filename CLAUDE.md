@@ -140,7 +140,7 @@ The MCP-server rule above and the container detail below this block are the oper
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, seven jobs: `gates`,
   `instance-shard`, `instance`, `browser-shard`, `browser`, `images`, `package`). The ObjectScript
-  suite and the browser specs each run as three shard legs, every leg on its own fresh throwaway and
+  suite runs as four shard legs and the browser specs as three, every leg on its own fresh throwaway and
   still one class or spec file at a time; the `instance` and `browser` roll-ups fail unless every
   class and spec ran in exactly one leg. Shares come longest-first from `ui/tools/ci-timings.json`;
   refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>`. A run
