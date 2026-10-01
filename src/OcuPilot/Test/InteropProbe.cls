@@ -738,12 +738,13 @@ ClassMethod RecordInstance() As %Status
 /// each by an exact name taken from the difference: delete each resource, role and task the record
 /// lacks; put back each role's resources and granted roles, each user's roles and each application's
 /// matching roles that differ from it; stop, through the port's <code>LanguageServer</code>
-/// <code>STOP</code>, each external language server that runs now and was stopped in it, and stop when
-/// it runs, then <code>DELETE</code>, each one it lacks (none when it holds no language server, as when
-/// its list could not be read); kill each <parameter>SYSTEMCONFIG</parameter> node it lacks; and forget
-/// it once no probe namespace remains.
-/// A name holding <parameter>PREFIX</parameter> is <method>RemoveAll</method>'s own removal and is left
-/// to it, and nothing the record holds is removed. A record older than
+/// <code>STOP</code>, each external language server that runs now and was stopped in the record; stop
+/// each language server the record lacks if it runs, then <code>DELETE</code> it, unless the record
+/// holds no language server, as when its list could not be read; kill each
+/// <parameter>SYSTEMCONFIG</parameter> node the record lacks; and forget the record once no probe
+/// namespace remains.
+/// A role or resource whose name holds <parameter>PREFIX</parameter> is <method>RemoveAll</method>'s own
+/// removal and is left to it, and nothing the record holds is removed. A record older than
 /// <parameter>RECORDSECONDS</parameter> is discarded unapplied, and the status says so.</p>
 ClassMethod RestoreInstance() As %Status
 {
