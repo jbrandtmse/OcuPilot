@@ -6811,6 +6811,23 @@ So that a gateway's definition is managed where its status is.
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 - DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
 
+### Story 16.26: Epic 16 burn-down
+
+[ADDED 2026-10-01, Epic 16 burn-down gate, Rule 17 and Rule 27: the epic's two CI flakes, chartered at its close]
+
+As a maintainer of the CI suite,
+I want the two test flakes Epic 16's close found fixed at their cause,
+So that a red CI run means a regression again rather than an unlucky order or timing.
+
+**Acceptance Criteria:**
+
+- **Given** a test that flaked in CI
+- **When** this story lands
+- **Then** its cause is found and fixed in the test (or in the code, if the code is wrong), and the fix is shown by a run that reproduces the old failure and passes after it.
+
+- DW-1851: WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair answers LOG.ABSENT on a fresh instance that has no alerts.log yet, so it fails when it runs before anything has posted a severe line (ledger; chartered by burndown 2026-10-01)
+- DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once (ledger; chartered by burndown 2026-10-01)
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.

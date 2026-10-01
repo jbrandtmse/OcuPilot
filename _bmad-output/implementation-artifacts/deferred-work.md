@@ -8479,6 +8479,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (forward merge d9f84f52) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Forward-merge roster run on a freshly recreated ocupilot-b-ci: run 3 red (LOG.ABSENT), alerts.log appeared at 23:13 during the sweep, re-run 17 green
 - 2026-09-29T23:16:25Z status=routed owner=burndown by=lead note=the test should seed or tolerate an absent alerts.log (Epic 16's log hub, 16.9)
+- 2026-10-01T11:09:47Z owner=16-26-epic-16-burn-down by=burndown note=chartered: CI flake (Rule 27); seed or tolerate an absent alerts.log
 
 ### DW-1858: Databases offers no way into the Integrity log: DatabaseIntegrityLog takes no side-bar position and only the Check integrity flow links to it after a send, so a past check (a task's, the classic portal's) is reachable only by running a new one; the classic OpDatabases has its own Integrity Log button
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -8596,6 +8597,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: browser shard 2/3 at 13:58:47Z: 3 passed, 1 failed; the spec is 16.25's own and passed in 36681132055, 36684985324, 36706426500 and 36722327485; DW-1861 touches no language-server code
 - 2026-09-30T15:17:44Z status=routed owner=burndown by=orchestrator note=Epic 16's close gate: a CI flake in its own 16.25 spec (inference: the probe's start is read before it reports running); fix at the epic close under Rule 27 (CI flakes are chartered)
+- 2026-10-01T11:09:48Z owner=16-26-epic-16-burn-down by=burndown note=chartered: CI flake (Rule 27); wait for the probe's running state before asserting
 ### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
