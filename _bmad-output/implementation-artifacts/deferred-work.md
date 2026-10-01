@@ -8023,6 +8023,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T11:02:18Z status=routed owner=18-14-namespace-mappings-and-copy-mappings by=merge_gate note=observe its payload on the throwaway; an async write needs a QUEUEDWRITES entry (AD-26)
 - 2026-09-28T15:06:10Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-09-28: 18.14 split for risk; 18.15 runs after 18.4 with its Task 0 observation first
 - 2026-10-01T06:27:56Z status=routed owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-10-01 option 2: %All only, typed-name confirm, consequence names every measured instance-wide effect, governance key disabled; after 1.0.5
+- 2026-10-01T18:36:10Z status=resolved-by:18-15-enable-interoperability-on-a-namespace by=adjudication note=delivered at bb6ec657 (CI 36881324905 green): NamespaceEnableInterop tool, NamespacePort INTEROP branch through AdminPort QUEUEDWRITES Namespace.Namespace/INTEROP, the Namespaces list's typed-name enable; NamespaceInterop 9/9, NamespaceInteropGate 4/4, namespace-interop.browser-spec 1/1
 
 ### DW-1777: PathPort's manager-directory refusal does not cover the instance's configuration file: iris.cpf sits in the manager directory's parent, so an overwriting file consumer under an allowed data-directory root could resolve it
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8737,6 +8738,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: NamespaceInteropGate runs 1345/1562 on ocupilot-b-ci; admitting such users needs a role check in Operation.Holds and the gates (contended kernel files)
 - 2026-10-01T13:37:15Z status=decision-pending owner=burndown by=harvest note=product call: keep the stricter direct-%All rule (recommended; safe, classic portal remains) or add a role check
 - 2026-10-01T14:33:07Z occurrence=18-15-enable-interoperability-on-a-namespace
+- 2026-10-01T18:36:10Z status=by-design owner=18-15-enable-interoperability-on-a-namespace by=merge_gate note=orchestrator 2026-10-01: keep the stricter rule; the %All:USE pair passes only a user assigned %All directly, a granted-role %All holder is refused and the classic portal still serves them; AD-8 and the spine's Deferred row amended; reopen_if=a user reports needing the enable through an indirect %All
 
 ### DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
