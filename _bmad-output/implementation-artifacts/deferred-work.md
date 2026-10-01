@@ -8650,6 +8650,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the database details volumes table template
 - evidence: same class of slip as DW-1837 (a template class name that no stylesheet defines); DW-1188 (queued 23.3) is the lint rule that would catch it
 - 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): use the shared data-table styling, with a check that the header takes the shell font
+- 2026-10-01T03:35:18Z status=resolved-by:16-13-the-service-editor by=merge_gate note=restores the 00:46:55Z adjudication line (Volume files table uses the shared data-table styling; databases browser leg asserts the header font) that the DW-48 merge's union placed under DW-1885
 
 ### DW-1885: A product start leaves the OcuPilot.Test.* classes an earlier test-mode start compiled on its volume, so an upgraded compose volume, or a slot instance restarted without OCUPILOT_LOAD_TESTS, still carries them
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
