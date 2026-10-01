@@ -8654,6 +8654,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: $$$ServiceCSP is %Service_WebGateway (%sySecurity.inc:277); %CSP.UI.Portal.Dialog.Service shows HttpOnlyCookies for it (:515) and saves it (:629); %Api.Admin.Endpoints.Security.Service MergeJsonAndProperties sets only AutheEnabled, ClientSystems and Enabled (read on slot A). The spec's Named limit ('the CSP service ... does not exist on this build') misstates why.
 - 2026-10-01T00:44:17Z status=decision-pending owner=burndown by=cr note=product call: accept the gap now that ServiceForm's classic link is gone, or add an AD-27 named case writing it via Security.Services
+- 2026-10-01T01:42:43Z status=wontfix-accepted by=merge_gate note=decided (orchestrator 2026-10-01): accept the gap - a direct Security.Services write (an AD-27 named case) is high fix-risk for one flag the install already sets; the classic Edit Service dialog still edits it; reopen_if=the admin API's Security.Service PUT carries HttpOnlyCookies (2027.1 final spec) or a user reports needing it from OcuPilot
 
 ### DW-1884: README's Known limitations and roadmap still describe the service editor as reduced, covering the common fields and linking to the classic page
 - source: spec-16-13-the-service-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
