@@ -525,6 +525,39 @@ Rejected:
 - low, wontfix-accepted (`reopen_if=` a Test class writes a marking tool, unguarded, through a subclass of the shipped confirm, `$ClassMethod`, an AD-55 Save route, or a row action named only by screen and action id): those paths stay outside the arm, and its stated limit now names them.
 - rejected (lead-owned): the proposed AD-53 replacement drops "inside the transition" for the prohibited set, which both callers evaluate under the hold; AD-34's Binds line names the confirm path only; the pointers :505 and :739 read :514 and :753 in the spine. DW-1882 sits flush against DW-1879 (both parse); frontmatter `done` against the tracker's `review`.
 
+### Review Findings (batch d)
+
+- [x] [Review][Patch] medium: a `--dir` holding `..` passed the scratch-root guard, so `product-check --dir /tmp/../<path>` reached a compose file outside the root (`../OcuPilot-slot-b/compose.yml` is one), and `up` and `down` removed the directory it named [scripts/ci-throwaway.sh:84]
+- [x] [Review][Patch] the header and the stderr test's note still said "either `iris session`" with three sessions [scripts/container-start.sh:58]
+- [x] [Review][Patch] the roster outcome's unrecognised arm said the session "reported no test-scope package", which reads as the empty-roster case it is not [scripts/container-start.sh:327]
+- [x] [Review][Patch] the header said a `--product` throwaway "starts as a product start does", while its arming variables stay [scripts/ci-throwaway.sh:18]
+- [x] [Review][Patch] the `module.xml` mount comments said the class compiles only on a flagged start, and the test's note pinned the mount for a start the next test forbids [docker-compose.yml:44]
+- [x] [Review][Patch] the hand-written throwaway said `ci-throwaway.sh` writes "this file", which now differs by `OCUPILOT_LOAD_TESTS` [docs/DEVELOPMENT.md:551]
+- [x] [Review][Patch] `field-lists.sh`'s usage named the compose container, whose start no longer compiles `OcuPilot.Test.FieldDerive` [scripts/field-lists.sh:11]
+- [x] [Review][Patch] the usage line omitted `product-check` [scripts/ci-throwaway.sh:568]
+- [x] [Review][Patch] the roster-rename `mutation:` line said "red alone", while `ipm-manifest.test.mjs`'s three manifest-drift tests redden too [spec Verification, Batch d (loop)]
+- [x] [Review][Defer] medium: on a volume an earlier start compiled the tests into, the compose start keeps them, so the AC is shown on fresh volumes only [scripts/container-start.sh:301] — deferred: DW-1885 (decision-pending), filed this batch; not re-filed
+
+Rejected:
+
+- low, wontfix-theoretical: the roster loop could fail open on an element that is not a plain object. `ipm-manifest.mjs` refuses a non-object or nameless resource in every build and CI gate, and `$IsObject(tRes) &&` short-circuits. Real when a roster element reaches the hook without passing `ipm-manifest.mjs --check`.
+- low, wontfix-theoretical: `< /proc/1/environ` opens before `2>/dev/null` applies. The same read at :123 runs first, so this line adds no exit, and every start reads PID 1's environment. Real when `/proc/1/environ` is unreadable to the hook.
+- low, rejected: the bash 3.2 comment omits an unbalanced `'`. The file parses under `bash -n` (3.2) and `dash -n`.
+- false: `product-check`'s floor is met by the roster's own compile. The floor guards a wrong namespace, and the roster compiles only into the namespace it reads; a start that compiled only the roster fails readiness first.
+- low, rejected: `product-check`'s namespace choice is not pinned to the hook's. A drift reads a namespace with no OcuPilot class and fails on the floor.
+- low, wontfix-accepted (`reopen_if=` a product start fails at a roster, folder or copy arm in CI or on a slot, or one of those arms changes with no text pin reddening): the product branch's failure arms run only as text.
+- low, wontfix-theoretical: the folder-name guard and `set -f` are unpinned. The roster's test-scope names are held to real `.PKG` folders. Real when one maps to a name outside `[A-Za-z0-9/]`.
+- false: the comment says `.PKG` while the code maps every test-scope resource. `compose.test.mjs` asserts every test-scope resource ends `.PKG`.
+- low, rejected: `LoadDir`'s errors name the deleted copy. Its relative paths equal those under `src/`, and CI compiles the whole tree first.
+- low, rejected: the not-an-arming-variable test protects nothing. Each assertion was reddened by a recorded mutation.
+- low, rejected: `README.md` says a compile failure reads `LOAD-FAILED`, while a `Roster.cls` compile failure on a product start reads "could not read the roster's test-scope package (<error>)". That line carries the error and fails the start, and CI compiles `Roster.cls` first.
+- low, wontfix-theoretical: a stale `/tmp/ocupilot-product-src` the pre-clean cannot remove makes `cp -R` nest the copy. The start still fails closed, naming the folder. Real when irisowner cannot remove its own earlier copy.
+- low, wontfix-theoretical: nested or duplicate test-scope packages fail every product start. It fails closed, and CI's `images` start reddens first.
+- low, wontfix-theoretical: a test-scope resource naming a product ancestor empties the copy. Real only for a roster that marks `OcuPilot.PKG` test-scope; CI's fresh-volume start then fails at `StartPath`.
+- low, rejected: the both-suites `mutation:` line names the instance shard only. The browser shard is the same assertion in the same loop.
+- rejected (DW-1885): `docs/DEVELOPMENT.md` says nothing about test classes an earlier start left. That belongs to DW-1885's decision.
+- rejected (lead-owned): the slot compose files' `OCUPILOT_LOAD_TESTS: "1"` owner action lives only in this spec, and `CLAUDE.md` says a compile failure reads `LOAD-FAILED`. The AC's "every throwaway" against the `--product` `images` throwaway, the runner-step note on recreating `ocupilot-b-ci`, and the Auto Run Result stating "a product restart keeps the 835" without `(inference)` are spec text.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -753,6 +786,15 @@ Rejected:
   - `[false]` `[reject]` `product-check` counts only the default namespace while the hook honors an override — its one caller, the `images` job, sets none.
   - `[false]` `[reject]` `docs/DEVELOPMENT.md` was edited outside the task's file list — the edit corrects, at its origin, a sentence this change made false.
 
+### 2026-09-30 — Code review (batch d)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 30 raw rows grouped into 27 entries: high 0, medium 2, low 21, false 2, other 2. 9 patched, 1 deferred (DW-1885, decision-pending, not re-filed), 17 closed; see `### Review Findings (batch d)`.
+- `[medium]` `[patch]` A `..` in `--dir` passed the scratch-root guard (edge-case-hunter). `product-check` reached a compose file outside the root, and `up` and `down` removed the directory it named. The arm `ci-ipm-archive.sh` already carries now runs before the root check. Red with the arm deleted, restored byte-identical.
+- `[medium]` `[defer]` A reused volume keeps compiled Test classes (verification-gap). This is DW-1885, so it was not re-filed.
+- Runtime evidence (Rule 3): CI run 36801722725's `images` legs are a product start on a fresh volume on both editions. Each logged "leaves the roster's test-scope folder OcuPilot/Test out", STARTPATH-OK, then `product-check` 436 compiled, 0 `OcuPilot.Test`, and smoke 49/49. The runner step covers a reused volume after a manual delete. At review time `browser shard 2/3` and `3/3` were green, and the instance shards were still running.
+- Probe on `ocupilot-b-ci` (`USER`, no restart): compiling a superclass with "ck" left its compiled subclass's `TimeChanged` unchanged (`/subclasses` defaults to 0). So a product start over stale Test subclasses of product classes does not recompile them, and cannot fail on them. Both probe classes were deleted and read back absent.
+- Rules: AD-17 (as amended), AD-18 (`module.xml` and every `.cls` untouched, `Scope="test"` kept), AD-25, AD-38 (every new arm exits 1 before the start marker, the roster compile follows the namespace refusal and the mark) and AD-45 match. The Stack CI and Docker Compose rows still hold, and no `timeout-minutes` changed. `sh -n`, `bash -n` (3.2) and `dash -n` are clean on both scripts.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -960,11 +1002,12 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - Runner step: restart in product mode, then check the Test.* count is 0 and `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` is green. Then restore test mode and confirm the count is back to 827 or more.
 - `mutation:` set `OCUPILOT_LOAD_TESTS: "1"` in `docker-compose.yml` → `compose.test.mjs` red on the compose-leaves-it-unset test alone; restored byte-identical (`shasum`, `git status --short`, `git diff --stat`), 35/35.
 - `mutation:` in the hook, `LoadDir` over `$SRC_DIR`, the flag compared with `!=`, the folder named literally, or `exit 1` dropped from the roster's `FAILED` arm → the hook-exclusion test red alone, each at its own assertion; the roster session's `2>&1` dropped → that test and the stderr test red. Each restored byte-identical, 35/35.
-- `mutation:` `LOAD_TESTS_ENV`'s default emptied → the throwaway-environment test (compose) and the not-an-arming-variable test (ci) red; `--product` leaving it set → the throwaway-environment test red alone; the roster's test package renamed `OcuPilot.Tests.PKG` → the roster-folder test red alone. Each restored byte-identical.
+- `mutation:` `LOAD_TESTS_ENV`'s default emptied → the throwaway-environment test (compose) and the not-an-arming-variable test (ci) red; `--product` leaving it set → the throwaway-environment test red alone; the roster's test package renamed `OcuPilot.Tests.PKG` → the roster-folder test red in `compose.test.mjs`, and `ipm-manifest.test.mjs`'s three manifest-drift tests red with it (4 of 235 over the six roster-reading files). Each restored byte-identical.
 - `mutation:` `--product` dropped from the images `up`, or added to the instance shard's → the images-product test red, with the declared-gate equality; the count moved before the readiness wait → that test red alone; `product-check`'s `--dir` changed in both the workflow and the declared gates → the one-fact test red alone. Each restored byte-identical, 78/78.
 - `mutation:` `product-check`'s test arm inverted, its no-OcuPilot-class floor deleted, or its unanswered-count case dropped → the verdict test red alone (the product, empty-namespace and no-marker rows); a test class declaring `OCUPILOT_LOAD_TESTS` → the not-an-arming-variable test red alone. Each restored byte-identical, 78/78.
 - `mutation:` put the roster verdict's default `OK` arm before its two `FAILED` arms → the hook-exclusion test red alone at "and OK is the default arm, after both"; restored byte-identical (`shasum`, `git diff --stat`), 35/35.
 - `mutation:` drop `exit 1` from the hook's `LOAD-FAILED*)` arm → the hook-exclusion test red alone at "and it fails the start"; report a failed load as `STARTPATH-FAILED` → red alone at "a failed load is reported LOAD-FAILED". Each restored byte-identical, 35/35.
+- `mutation:` delete the `*..*` arm of `ci-throwaway.sh`'s directory guard → `ci.test.mjs`'s climbing-`--dir` test red at "product-check was not refused"; restored byte-identical (`shasum -c`), 79/79.
 - CI's `images` job is the behavioral proof, and the `instance` job proves the test paths.
 
 **Once, before the last batch's dev_complete:**

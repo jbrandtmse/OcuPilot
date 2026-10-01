@@ -548,7 +548,9 @@ The `durable-init` service is what lets IRIS write `<scratch-dir>/data` on Linux
 does for `./iris-data`. Afterwards the tree belongs to uid 51773 and `rm -rf` refuses it, so
 remove the data directory as root — `docker run --rm --user 0:0 --entrypoint sh -v
 <scratch-dir>:/scratch intersystems/irishealth-community:2026.2 -c 'rm -rf /scratch/data'`.
-`scripts/ci-throwaway.sh` writes this file and does the removal for you.
+`scripts/ci-throwaway.sh` writes this file and does the removal for you. Its file also sets
+`OCUPILOT_LOAD_TESTS: "1"`, so the start compiles the test package the suite runs, which the file
+above leaves out; `up --product` leaves it out too.
 
 ```bash
 docker compose -f <scratch-dir>/compose.yml up -d --wait

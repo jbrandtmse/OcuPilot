@@ -41,8 +41,8 @@ services:
       # the life of the container. Absent or unbuilt, install reports a warn and completes.
       - ./ui:/opt/ocupilot/ui:ro
       # The committed IPM manifest, which OcuPilot.Test.Manifest's DW-197 parse reads as a
-      # document. That class compiles only on a start that sets OCUPILOT_LOAD_TESTS to "1";
-      # where it runs without the mount, it takes its "no manifest on this instance" skip.
+      # document. This file's start never compiles that class; where it is loaded by hand, it
+      # reads this mount, and without the mount it takes its "no manifest on this instance" skip.
       - ./module.xml:/opt/ocupilot/module.xml:ro
     # Runs once IRIS itself has started (the web server is already listening by then --
     # see scripts/container-start.sh's own note on why AD-38's traffic gate, not start

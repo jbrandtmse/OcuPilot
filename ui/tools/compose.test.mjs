@@ -128,8 +128,8 @@ test('a one-shot durable-init service makes the durable root writable before iri
 // DW-197. OcuPilot.Test.Manifest reads /opt/ocupilot/module.xml and logs a skip when nothing
 // mounted one, so the mount is what makes its only document-level assertion run at all. The
 // throwaway's copy is pinned in ci.test.mjs; this one was pinned by nothing, and deleting it
-// returns the class to skipping silently on any container from this file that also sets
-// OCUPILOT_LOAD_TESTS, the only start that compiles it.
+// returns the class to skipping silently wherever it is loaded into a container from this file,
+// whose own start never compiles it.
 //
 // Mutation (Rule 19): drop the module.xml volume from docker-compose.yml -> this goes red.
 test('the committed manifest is mounted where OcuPilot.Test.Manifest reads it (DW-197)', () => {
@@ -258,7 +258,7 @@ test('no outcome of the pre-recompile mark fails the start (DW-72)', () => {
 // probe with `exit 1` and no stderr shut the instance down.
 //
 // Mutation (Rule 19): put a `>&2` back on any message in scripts/container-start.sh, or drop
-// a `2>&1` from either `iris session` -> this goes red. What it does to a container is
+// a `2>&1` from any `iris session` -> this goes red. What it does to a container is
 // observed on a throwaway, not here.
 test('the start hook never writes to stderr, its children included (Story 1.5)', () => {
   const lines = startHook.split('\n');

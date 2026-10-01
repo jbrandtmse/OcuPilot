@@ -8,7 +8,10 @@
 # committed file and the instance disagree; this is how the file is brought back into line.
 #
 # Usage:
-#   sh scripts/field-lists.sh --container ocupilot
+#   sh scripts/field-lists.sh --container ocupilot-ci
+#
+# The container must have OcuPilot.Test.FieldDerive compiled: a throwaway from
+# scripts/ci-throwaway.sh does, and a start from docker-compose.yml does not.
 #
 # Options:
 #   --container NAME   run inside this docker container (docker exec) -- required

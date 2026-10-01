@@ -1798,6 +1798,35 @@ test('product-check passes only on a namespace holding OcuPilot classes and no O
   assert.equal(nothing.argv, '', 'and no docker command ran');
 });
 
+// Mutation (Rule 19): delete the `*..*` arm of ci-throwaway.sh's directory guard -> red: the
+// climbing path reaches docker, and `up` and `down` remove the directory it names.
+test("a --dir that climbs out of its scratch root through '..' is refused before any action reaches it", () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-climb-'));
+  try {
+    const bin = join(dir, 'bin');
+    const outside = join(dir, 'outside');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(outside);
+    writeFileSync(join(outside, 'compose.yml'), 'name: someone-elses\n');
+    writeStub(bin, 'docker', ['printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"', 'exit 0']);
+    // Starts under /tmp, which the scratch-root arm accepts, and resolves to `outside`.
+    const climbing = `/tmp/..${outside}`;
+    for (const action of ['product-check', 'down', 'up']) {
+      const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), action, '--dir', climbing], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture }),
+      });
+      assert.equal(run.status, 2, `${action} was not refused: ${run.stdout}${run.stderr}`);
+      assert.match(run.stdout, /contains '\.\.'/, `${action}: the refusal says why`);
+    }
+    assert.ok(!existsSync(capture), 'no docker command ran');
+    assert.ok(existsSync(join(outside, 'compose.yml')), 'and the directory outside the scratch root is untouched');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // Mutation (Rule 19): have any OcuPilot.Test class read OCUPILOT_LOAD_TESTS (a `Parameter` or an
 // inline GetEnviron) -> red naming it.
 test('DW-48: OCUPILOT_LOAD_TESTS is not an arming variable, so no roster reads or requires it', () => {

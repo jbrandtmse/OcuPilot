@@ -55,7 +55,7 @@
 #   from this container start's install and the version row (the gate still reads the
 #   row, so a later failed install still turns it unhealthy).
 #
-# NO MESSAGE OF THIS HOOK'S OWN REACHES STDERR, and neither does either `iris session`:
+# NO MESSAGE OF THIS HOOK'S OWN REACHES STDERR, and neither does any `iris session`:
 # every message below is written to stdout, and every `iris session` is captured with `2>&1`,
 # so a session that writes to stderr puts that text into the captured output (where
 # print_tail can show it) instead of into /iris-main's. Those are the two things
@@ -324,7 +324,7 @@ EOF
             exit 1
             ;;
         *)
-            echo "container-start: the roster session reported no test-scope package; failing the start rather than compiling test classes into a product start"
+            echo "container-start: the roster session wrote no verdict on the test-scope package; failing the start rather than compiling test classes into a product start"
             print_tail "roster" "$SCOPE_RAW"
             exit 1
             ;;

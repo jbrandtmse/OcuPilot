@@ -14,8 +14,8 @@
 #
 # Beside the arming variables, its environment carries OCUPILOT_LOAD_TESTS: "1", which
 # docker-compose.yml does not: it makes container-start.sh compile the roster's test-scope package
-# the suite runs (AD-17). `up --product` leaves it out, so the throwaway starts as a product start
-# does and compiles no test class, and `product-check` then counts what that start compiled.
+# the suite runs (AD-17). `up --product` leaves it out, so the start hook compiles what a product
+# start compiles, no test class (the arming variables stay), and `product-check` then counts it.
 #
 # Usage:
 #   sh scripts/ci-throwaway.sh up    [--dir DIR] [--project NAME] [--web 52776] [--super 1975] [--product]
@@ -78,7 +78,11 @@ fi
 # `down` removes $DIR recursively, and $DIR is caller-supplied. Every other destructive surface
 # in this script and in ci-image-compile.sh is guarded by name (52774, 1973, project `ocupilot`,
 # container `ocupilot`); this one was not, so a mistyped --dir deleted whatever it named.
-# Scratch roots only, and never the root of one.
+# Scratch roots only, and never the root of one. A `..` would walk out of the root the case below
+# checks, so `/tmp/../x` is refused before it.
+case "$DIR" in
+    *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
+esac
 case "$DIR" in
     /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*) ;;
     *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
@@ -561,7 +565,7 @@ EOF
         echo "ci-throwaway: removed $DIR"
         ;;
     *)
-        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|down [options]"
+        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|down [options]"
         exit 2
         ;;
 esac
