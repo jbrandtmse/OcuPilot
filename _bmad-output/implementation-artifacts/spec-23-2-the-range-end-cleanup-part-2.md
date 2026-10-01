@@ -2,9 +2,9 @@
 title: 'Story 23.2: The range-end cleanup, part 2'
 type: 'bugfix'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '4ab6bd01415b7de50883653b40a2fdf197800ac5'
-baseline_commit: '4ab6bd01415b7de50883653b40a2fdf197800ac5'
+status: 'done'
+baseline_revision: '2c9a132b5e06b061831aa4e85ada8513e465cdbd'
+baseline_commit: '2c9a132b5e06b061831aa4e85ada8513e465cdbd'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -59,6 +59,13 @@ deferred:
       The hook only narrows what it compiles, and no non-Test class deletes the package. `ocupilot-b-ci` holds 835 compiled `OcuPilot.Test` classes (`product-check`, this pass); a product restart over that volume keeps them (inference from `LoadDir` compiling only the files it is given). The spec's Residuals name `$System.OBJ.DeletePackage("OcuPilot.Test")` as the remedy.
     location: >-
       scripts/container-start.sh:288
+    severity: medium
+  - summary: >-
+      A developer instance whose compose file does not set OCUPILOT_LOAD_TESTS=1 loses its compiled OcuPilot.Test classes on its next start from a tree carrying the DW-1885 delete, and ocupilot-slot-b's environment does not set it today.
+    evidence: |-
+      `docker inspect ocupilot-slot-b` lists only OCUPILOT_DEMO=1, and ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; slot A's `ocupilot` would start from the repository's docker-compose.yml, which leaves it unset by design. The fix is the owner's compose files and CLAUDE.md's slot paragraph, outside this pass.
+    location: >-
+      scripts/container-start.sh:375
     severity: medium
 ---
 
@@ -560,7 +567,7 @@ Rejected:
 
 ### DW-1885 (DW-48 follow-up, decided at the merge gate)
 
-- [ ] **DW-1885** — a product start leaves the `OcuPilot.Test.*` classes an earlier test-mode start compiled, so an upgraded 1.0.4 volume keeps the fault-injection classes DW-48 exists to remove. Decided: a product start deletes them.
+- [x] **DW-1885** — a product start leaves the `OcuPilot.Test.*` classes an earlier test-mode start compiled, so an upgraded 1.0.4 volume keeps the fault-injection classes DW-48 exists to remove. Decided: a product start deletes them.
   - **Fix:** when `OCUPILOT_LOAD_TESTS` is not 1, the start hook deletes the package of each roster test-scope folder (from `Install/Roster`, never a hard-coded name, nothing outside it) and logs one line with the number of classes it removed (0 included). When the flag is 1 it deletes nothing. A failed delete fails the start like a failed load.
   - **Red:** `ui/tools/compose.test.mjs` (or `ci.test.mjs`) pins the delete, its flag guard, its roster source and its log line; extend the `images` job's `product-check` (or a log assertion) if cheap.
   - **Runner step (lead):** on `ocupilot-b-ci`, with the test package compiled, a restart (flag unset) logs the removed count and leaves no `OcuPilot.Test` class; the loader then restores them.
@@ -803,6 +810,27 @@ Rejected:
 - Probe on `ocupilot-b-ci` (`USER`, no restart): compiling a superclass with "ck" left its compiled subclass's `TimeChanged` unchanged (`/subclasses` defaults to 0). So a product start over stale Test subclasses of product classes does not recompile them, and cannot fail on them. Both probe classes were deleted and read back absent.
 - Rules: AD-17 (as amended), AD-18 (`module.xml` and every `.cls` untouched, `Scope="test"` kept), AD-25, AD-38 (every new arm exits 1 before the start marker, the roster compile follows the namespace refusal and the mark) and AD-45 match. The Stack CI and Docker Compose rows still hold, and no `timeout-minutes` changed. `sh -n`, `bash -n` (3.2) and `dash -n` are clean on both scripts.
 
+### 2026-09-30 — Review pass (DW-1885)
+
+- verdicts: 13 findings — high 0, medium 3, low 6, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The only executed check of the logged count planted one class, so a status or a boolean in place of `tBefore` also read "deleted 1", and nothing read the fresh start's 0 (verification-gap) — `product-reuse` now requires the first start's log to say 0, plants a direct member and a subpackage member, and requires "deleted 2"; stub rows for 1 and 0 fail; mutations red, restored.
+  - `[low]` `[reject]` "Given the flag at 1, nothing is deleted" is pinned by the session's position only (verification-gap) — the realistic regression, the delete moved above the flag check, reddens that assertion; an executed check needs a new step on every flag-1 start. Reopen if a flag-1 start logs "this start deleted".
+  - `[false]` `[reject]` The AC's real-volume scenario (835 classes) is not exercised by the diff (intent-alignment) — the task gives that restart to the lead's runner step, and the `images` job runs the real hook session over a reused volume on both editions.
+  - `[medium]` `[patch]` The "0 included" line is read by nothing, and an empty `TEST_DIRS` logs no count line (intent-alignment) — the first half shares the root cause of the first row and is patched with it; an empty `TEST_DIRS` is unreachable while the roster declares `OcuPilot.Test.PKG`, and its own line says there is no package.
+  - `[low]` `[reject]` The flag-1 case is pinned by code position only (intent-alignment) — the same claim as the second row; same reason.
+  - `[low]` `[reject]` The `MAPPED`, `LEFT`, `FAILED` and no-verdict arms are pinned as text and never triggered (intent-alignment) — triggering them needs a fault-injected instance, and each exits before anything compiles. Reopen if a start fails at one of them in CI or on a slot, or one changes with no text pin reddening.
+  - `[low]` `[reject]` "Not in another namespace" covers a mapped top-level package only (intent-alignment) — a namespace sharing the install namespace's routines database holds the same single copy the task deletes; a separately mapped `OcuPilot.Test` subpackage needs an operator to map one (wontfix-theoretical).
+  - `[medium]` `[defer]` Developer instances whose compose file lacks `OCUPILOT_LOAD_TESTS=1` lose their test classes on their next start from this tree (intent-alignment) — `ocupilot-slot-b`'s environment carries only `OCUPILOT_DEMO=1` today (`docker inspect`), and slot A's `ocupilot` would start from the repository's compose file; the fix is owner-managed compose files and CLAUDE.md's slot paragraph, so it is deferred.
+  - `[low]` `[reject]` Only the start hook changed, and test classes' stored data stays (intent-alignment) — the task scopes the delete to the start hook, IPM ships no test class (`Scope="test"`), and `/deleteextent` 0 keeps data a product extent may share (inference); data is not code.
+  - `[false]` `[reject]` Deleting 835 classes inside the health-check budget is unmeasured (intent-alignment) — measured: 300 scratch classes of six methods were deleted in 0.023 s on `ocupilot-b-ci`, with definitions, compiled classes and routines reading 0 after.
+  - `[low]` `[reject]` The logged count is definitions while the left-over check also counts compiled classes (intent-alignment) — a compiled class with no definition fails the start, which is fail-closed, and has no everyday source.
+  - `[false]` `[reject]` The diff adds a `product-reuse` verb instead of extending `product-check` (intent-alignment) — the task names "or a log assertion", which this is, and `product-check` runs again after it.
+  - `[false]` `[reject]` The spec's frontmatter moved to `in-review` with a new baseline (intent-alignment) — that is this workflow's own bookkeeping on the story's own spec.
+- stage additions, outside the layers' count:
+  - `[patch]` Splitting on commas drops a trailing empty roster folder, which the per-folder `""` arm never sees and which would reach `DeletePackage` as an empty package; the hook now refuses a list naming an empty folder before the copy. Pinned in `compose.test.mjs`; mutation red, restored.
+  - Incident: the stage's own probe of the two-class plant session ran in `ocupilot-b-ci`'s `HSCUSTOM` (a `sed` range matched two sessions), and its cleanup `DeletePackage("OcuPilot.Test")` then removed that instance's 835 compiled test classes. `LoadDir("/opt/ocupilot/src","ck-d",,1)` in `HSCUSTOM` restored them: 0 errors, 835 `OcuPilot.Test` and 1,272 `OcuPilot.*` compiled, readiness `installed`, `USER` 0 `OcuPilot*`.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -1018,6 +1046,28 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` delete the `*..*` arm of `ci-throwaway.sh`'s directory guard → `ci.test.mjs`'s climbing-`--dir` test red at "product-check was not refused"; restored byte-identical (`shasum -c`), 79/79.
 - CI's `images` job is the behavioral proof, and the `instance` job proves the test paths.
 
+**DW-1885 (loop):**
+
+- Tiers: `npm run test:tools` 1,757/1,757 (`compose.test.mjs` 36, `ci.test.mjs` 80); `sh -n`, `dash -n` and `bash -n` (3.2.57) clean on `container-start.sh` and `ci-throwaway.sh`; `lint-docs.sh` 0 issues. No `.cls` changed.
+- Placement: the delete is its own session in the product branch, after the roster's folders pass the name and tree checks and before `LOAD_DIR` and `LoadDir`. A mapped package, an uncounted or failed delete, or a class left afterwards exits 1 before anything compiles, so no start reaches `STARTPATH-OK` with part of the package left.
+- Measured on `ocupilot-b-ci`, no restart: the hook's delete session, expanded with `TEST_DIRS=OcuPilot/Test`, piped into `USER`. First read: no `OcuPilot` package mapping in `USER`, no `%ALL` namespace, `GetPackageDest("USER","OcuPilot.Test")` equal to `USER`'s routines database, no `OcuPilot*` class there.
+  - With `OcuPilot.Test.Dw1885A`, `OcuPilot.Test.Sub.Dw1885B`, `OcuPilot.TestX.Dw1885C` and `OcuPilot.Dw1885D` planted and compiled, it answered `OK:2`. The first two were gone (definition, compiled class, `.1.int`, `.obj`); the sibling `OcuPilot.TestX` and the parent package's class stayed; `HSCUSTOM` still held 835 `OcuPilot.Test` definitions and compiled classes.
+  - Again over the now-absent package: `OK:0`. `DeletePackage` of a package that never existed returned 1, with and without `-d`; `-d` printed nothing. `/deleteextent` defaults to 0, so a test class's stored data stays.
+  - The mapping check alone (its first three lines, no delete) flagged `Ens` (`^/usr/irissys/mgr/enslib/`) and not `OcuPilot.Test`.
+  - The verb's compile session in its one-class form, pointed at `USER`, answered `OK:1`, the delete session then `OK:1`, and `USER` read back 0 `OcuPilot*` definitions, compiled classes and probe routines. Its two-class form answered `OK:2`; that run went to `HSCUSTOM`, not `USER` (see the Auto Run Result).
+  - Scale: 300 scratch classes of six methods each, compiled in `USER` as `Dw1885Scale.*`, were deleted by `DeletePackage(..., "-d")` in 0.023 s; definitions, compiled classes and routines then read 0.
+- CI: the `images` job's `product-reuse` requires the first start's log to say it deleted 0 classes, compiles `OcuPilot.Test.PlantedProbe` and `OcuPilot.Test.Planted.Probe`, recreates the iris service over the same volume, requires that start's log to say it deleted 2 classes, then `product-check` runs again. Cost: run 36801722725's product bring-up took 28 s (IRIS for Health) and 23 s (IRIS Community), its `images` legs 3 min 18 s and 2 min 33 s against `timeout-minutes: 30`, which is unchanged.
+- `mutation:` no vendor delete in the session (`DeletePackage(...)` → `1`) → `compose.test.mjs` red on the DW-1885 test alone at "and calls the vendor delete in that session only"; restored byte-identical (`shasum`, `git status --short`, `git diff --stat`).
+- `mutation:` the delete block moved above `if [ "$LOAD_TESTS_FLAG" = "1" ]` → that test red alone at "the delete runs only on a start whose flag is not "1""; restored byte-identical.
+- `mutation:` the literal `"OcuPilot/Test"` in place of `"$TEST_DIRS"` → that test red at "the packages are the roster's test-scope folders", and the DW-48 hook test at "never names OcuPilot/Test"; restored byte-identical.
+- `mutation:` `${PURGE#OK:}` dropped from the OK arm's line → that test red at "which logs how many classes the start deleted, 0 included", and `ci.test.mjs`'s DW-1885 test at "container-start.sh logs how many classes a product start deleted"; restored byte-identical.
+- `mutation:` `exit 1` dropped from the `LEFT:*)` arm → red alone at "and LEFT:*) fails the start"; `(tMapped = "") &&` dropped → red alone at "and the delete runs only when none is mapped"; the block moved below `LOAD_DIR="$PRODUCT_SRC"` → red alone at "the delete comes before the product tree is chosen". Each restored byte-identical.
+- `mutation:` the `product-reuse` step and its declared gate dropped → `ci.test.mjs` red alone at "the fresh product start is counted, then started again over its volume"; restored byte-identical.
+- `mutation:` the verb grepping the reused start's log for 1 class → `ci.test.mjs` red on the DW-1885 test at "a fresh start that deleted 0 and a reused start that deleted 2 pass"; restored byte-identical (`shasum -c`, `git status --short`, `git diff --stat`).
+- `mutation:` the first start's 0-class check deleted → red alone at "a fresh start that did not log deleting 0 classes fails"; restored byte-identical.
+- `mutation:` the verb's `OCUPILOT_LOAD_TESTS` refusal deleted → red alone at "a throwaway whose start compiles the test package is refused"; restored byte-identical.
+- `mutation:` the hook's empty-name guard (`case ",$TEST_DIRS," in *,,*)`) deleted → `compose.test.mjs` red alone at "a list naming an empty folder is refused before the folder loop"; restored byte-identical. `npm run test:tools` 1,757/1,757 on the final tree.
+
 **Once, before the last batch's dev_complete:**
 
 - Full ObjectScript sweep: `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, with totals checked in `%UnitTest_Result`. Expected: 0 failed, non-zero count.
@@ -1027,29 +1077,25 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 
 ## Auto Run Result
 
-**Batch d (DW-48).** All five batches are now checked.
+**DW-1885.** All five batches and the DW-1885 follow-up are now checked.
 
-- **Change:** a start compiles the roster's test-scope package only when PID 1's environment carries `OCUPILOT_LOAD_TESTS=1`. Otherwise the hook compiles `Roster.cls` alone, reads its `scope: test` `.PKG` resources as folders (`OcuPilot/Test`), runs `LoadDir` over a copy of the tree without them, and fails the start when the roster cannot be read or names a folder the tree lacks. `ci-throwaway.sh` sets the flag; `up --product` leaves it out, and `product-check` counts the compiled `OcuPilot.*` and `OcuPilot.Test.*` classes, failing on any Test class or on none of OcuPilot's. CI's `images` job starts its throwaway with `--product` and runs `product-check` after readiness; the `instance` and `browser` legs still compile the test package. `docker-compose.yml` leaves the flag unset. No `timeout-minutes` changed.
-- **CI route:** the `images` throwaway became the product start. `ci-image-compile.sh` is not the product path (it compiles the whole tree, tests included, with no start hook) and stays as the both-editions whole-tree compile. The count is a script verb because `ci.test.mjs` reads a `run:` line only up to `#`, so it cannot carry `##class`.
+- **Change:** a start whose PID 1 environment does not carry `OCUPILOT_LOAD_TESTS=1` deletes each roster test-scope package (`$TEST_DIRS`, the same roster read DW-48 uses) from the install namespace with `$System.OBJ.DeletePackage(..., "-d")`, subpackages included, and logs `deleted N class(es) of the roster's test-scope package <pkg> from <ns>`, 0 included. A package mapped in from another database, an uncounted or failed delete, a class left afterwards, or no verdict exits 1 with its own line. A roster list naming an empty folder now fails the start before the copy. With the flag at 1 nothing is deleted.
+- **Placement:** its own `iris session` in the product branch, after the folder checks and before `LOAD_DIR` and `LoadDir`. Every failure exits before anything compiles, so no start reaches `STARTPATH-OK` with part of the package left; a later compile error still reads `LOAD-FAILED` and exits 1, with the package fully deleted.
 - **Files:**
-  - `scripts/container-start.sh`: the flag, the roster session, the product copy, `LoadDir` over `$LOAD_DIR`, two comments.
-  - `scripts/ci-throwaway.sh`: the default flag line, `--product`, `product-check`; Epic 16's lines 350-365 untouched.
-  - `docker-compose.yml`: why the flag is unset; the `module.xml` mount comment.
-  - `.github/workflows/ci.yml`: `images` up `--product`, the `product-check` step, the header.
+  - `scripts/container-start.sh`: the empty-name guard, the delete session and its outcome arms, one comment.
+  - `scripts/ci-throwaway.sh`: `product-reuse` (first start logged 0; two classes planted; recreate; the reused start logged 2); usage lines. Lines 350-365 untouched.
+  - `.github/workflows/ci.yml`: `images` runs `product-reuse`, then `product-check` again; the header. No `timeout-minutes` changed.
   - `ui/tools/compose.test.mjs`, `ui/tools/ci.test.mjs`: the pins.
-  - `docs/DEVELOPMENT.md`: :22, :27, :191 and the `images` row.
-- **Review:** 14 findings (medium 2, low 6, false 6). Patched 6: medium 1 (the load-error exit pin), low 5 (the verdict-order pin, two unfalsifiable assertions deleted, the docs, the dead `*..*` arm). Deferred 1: a product start keeps Test classes an earlier start compiled (medium). Rejected 7: recording the vendor measurements under Verification (low; its fix edits the spec) and six false (see the triage log).
-- **Follow-up review:** not recommended. Patched high 0, medium 1, low 5.
-- **Verification:**
-  - `npm run test:tools` 1,751/1,751 after the patches (`compose.test.mjs` 35, `ci.test.mjs` 78); `npm run build` green; `npm test` 1,751 tools and 1,988 component tests in 147 files; `lint-docs.sh` 0 issues; `bash -n` and `sh -n` clean on both scripts. No `.cls` changed.
-  - Mutations under `Batch d (loop)`, each red at its own assertion and restored byte-identical.
-  - The handoff's probe on `ocupilot-b-ci`, no restart: the hook's product lines, with the roster session in `USER`, compiled `Roster.cls` alone, answered `OcuPilot/Test`, and left a copy of 436 `.cls` files, none under `OcuPilot/Test` (the mount carries 1,271, 835 there); the flag at 1 made no copy; a tree without the folder exited 1 naming it. The `USER` class and the scratch paths were removed and read back absent. `product-check` against the test-mode throwaway: `HSCUSTOM` 1,271 compiled, 835 `OcuPilot.Test`, exit 1.
-  - Full ObjectScript sweep on the final tree (`OCUPILOT-LOAD:OK:errors=0`): 384 classes, 3,165 tests, 0 failed, runs 303-686, 0 overlaps and 0 probe leftovers. `%UnitTest_Result` over runs above 302: 3,165 methods, 3,165 passed, 0 failed, 384 classes, every run landed. Smoke on `ocupilot-b-ci`: executed=49 passed=49.
-- **For the lead's runner step:**
-  - A product restart keeps the 835 compiled `OcuPilot.Test` classes, as deferred above. Run `$System.OBJ.DeletePackage("OcuPilot.Test")` first, or expect 835.
-  - `load-b-ci.sh` has synced the new hook into `ocupilot-b-ci`'s mount, and `/tmp/ocupilot-b-ci/compose.yml` carries no `OCUPILOT_LOAD_TESTS`. Any restart of it is therefore a product start. Test mode needs that line added and the container recreated, since a plain restart keeps PID 1's environment.
-  - The AD-17 amendment is the lead's to apply.
-- **Residual risks:** the `images` job's product start runs in CI for the first time on this push. The hook's fail-closed roster arms are pinned as text, not executed.
+  - `docker-compose.yml` (comment), `docs/DEVELOPMENT.md` (:22, :27, :192, the `images` row).
+- **Review:** 13 findings (medium 3, low 6, false 4). Patched one medium entry of two rows: `product-reuse` checks 0 then 2 classes. Deferred 1 medium: developer instances without the flag lose their test classes. Rejected 9: four false and five low, each with its reason in the triage log. The stage added the empty-name guard.
+- **Follow-up review:** not recommended. Patched high 0, medium 1 entry, low 0.
+- **Verification:** `npm run test:tools` 1,757/1,757; `sh -n`, `dash -n` and `bash -n` (3.2.57) clean on both scripts; `lint-docs.sh` 0 issues; no `.cls` changed. The mutations under `DW-1885 (loop)` each reddened their own assertion and were restored byte-identical. On `ocupilot-b-ci` with no restart, the delete session in `USER` removed a direct and a subpackage member and kept `OcuPilot.TestX` and the parent package; 300 scratch classes were deleted in 0.023 s.
+- **Incident:** a stage probe of the two-class plant session ran in `ocupilot-b-ci`'s `HSCUSTOM`, because a `sed` range matched two sessions. Its cleanup `DeletePackage("OcuPilot.Test")` then removed that instance's 835 compiled test classes. A whole-tree `LoadDir` in `HSCUSTOM` restored them: 0 errors, 835 `OcuPilot.Test` and 1,272 `OcuPilot.*` compiled, readiness `installed`.
+- **For the lead:**
+  - Runner step: `ocupilot-b-ci` holds 835 `OcuPilot.Test` definitions, and its compose file sets no flag. A restart should log `deleted 835 class(es) of the roster's test-scope package OcuPilot.Test from HSCUSTOM`, then `product-check` should read 0.
+  - `ocupilot-slot-b` carries only `OCUPILOT_DEMO=1` today, so the owner action under Residuals must land before its next refresh. That entry is the new deferred item.
+  - Now false: AD-17's last sentence; the Residuals DW-48 bullet ("The product path does not delete them"); the `deferred:` DW-1885 entry, closed by this pass; CLAUDE.md's slot paragraph, which says only that the variable makes a start compile the tests.
+- **Residual risks:** `product-reuse`'s recreate-and-wait runs for the first time in CI on this push. The hook's failure arms are pinned as text, not executed.
 
 Status: done
 Blocking condition: none

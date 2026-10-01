@@ -298,6 +298,14 @@ fi
 # carry, fails the start rather than compiling test classes into it. Every command here
 # captures its own stderr, for the reason the header gives. No `##class` on a piped line follows
 # a space: bash 3.2 reads ` #` inside `$( )` as a comment and the file then fails to parse.
+#
+# A product start also deletes those packages, subpackages included, from the install namespace
+# before it compiles, so test classes an earlier start compiled into a reused volume do not
+# survive it (DW-1885), and the compile runs against the class set a fresh volume has. It logs how
+# many classes it deleted, 0 included. A package mapped into the namespace from another database
+# is never deleted, since $System.OBJ.DeletePackage deletes through a mapping; that, a delete
+# that fails, or a class of the package still there afterwards fails the start before anything
+# is compiled, so no start reaches STARTPATH-OK with part of the package left.
 LOAD_TESTS_FLAG=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_LOAD_TESTS=' | cut -d= -f2-)
 LOAD_DIR="$SRC_DIR"
 PRODUCT_SRC="/tmp/ocupilot-product-src"
@@ -332,6 +340,14 @@ EOF
     if [ -z "$TEST_DIRS" ]; then
         echo "container-start: the roster declares no test-scope package, so this start compiles the whole source tree"
     else
+        # Splitting on commas drops a trailing empty name, which the per-folder check below would
+        # then never see; an empty name here fails the start before anything is copied or deleted.
+        case ",$TEST_DIRS," in
+            *,,*)
+                echo "container-start: the roster's test-scope packages map to '$TEST_DIRS', which names an empty folder; failing the start"
+                exit 1
+                ;;
+        esac
         COPY_OUT=$( { cp -R "$SRC_DIR" "$PRODUCT_SRC" && chmod -R u+w "$PRODUCT_SRC"; } 2>&1 ) || { echo "container-start: could not copy $SRC_DIR to $PRODUCT_SRC ($COPY_OUT); failing the start rather than compiling test classes into a product start"; exit 1; }
         # The list is split on commas with globbing off, so a name is never expanded against
         # whatever directory this script runs in.
@@ -354,6 +370,44 @@ EOF
         done
         IFS="$OLD_IFS"
         set +f
+        # Every folder has passed the name check above, so the list is safe to interpolate.
+        TEST_PKGS=$(printf '%s' "$TEST_DIRS" | tr '/' '.')
+        PURGE_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF
+Set tPkgs = \$Translate("$TEST_DIRS", "/", ".")
+Set tHome=##class(%SYS.Namespace).GetRoutineDest()
+Set tMapped = "" For tI = 1:1:\$Length(tPkgs, ",") { Set tDest=##class(%SYS.Namespace).GetPackageDest(, \$Piece(tPkgs, ",", tI)) Set tMapped = tMapped _ \$Select(tDest = tHome: "", 1: ", " _ \$Piece(tPkgs, ",", tI) _ " from " _ tDest) }
+Set tCountSQL = "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE %EXACT(ID) %STARTSWITH ?"
+Set tBefore = 0, tCounted = 1 For tI = 1:1:\$Length(tPkgs, ",") { Set tRS=##class(%SQL.Statement).%ExecDirect(, tCountSQL, \$Piece(tPkgs, ",", tI) _ ".") Set tCounted = tCounted && tRS.%Next() Set tBefore = tBefore + \$Select(tCounted: tRS.%GetData(1), 1: 0) }
+Set tSC = \$Select((tMapped = "") && tCounted: \$System.OBJ.DeletePackage(tPkgs, "-d"), 1: 1)
+Set tLeftSQL = "SELECT (SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE %EXACT(ID) %STARTSWITH ?) + (SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE %EXACT(ID) %STARTSWITH ?)"
+Set tLeft = 0 For tI = 1:1:\$Length(tPkgs, ",") { Set tRS=##class(%SQL.Statement).%ExecDirect(, tLeftSQL, \$Piece(tPkgs, ",", tI) _ ".", \$Piece(tPkgs, ",", tI) _ ".") Set tCounted = tCounted && tRS.%Next() Set tLeft = tLeft + \$Select(tCounted: tRS.%GetData(1), 1: 0) }
+Write "OCUPILOT-"_"PURGE-START:"_\$Select(tMapped = "": \$Select(tCounted = 0: "FAILED:the classes of the package could not be counted", \$System.Status.IsOK(tSC) = 0: "FAILED:" _ \$System.Status.GetErrorText(tSC), tLeft > 0: "LEFT:" _ tLeft, 1: "OK:" _ tBefore), 1: "MAPPED:" _ \$Extract(tMapped, 3, *))_":OCUPILOT-"_"PURGE-END",!
+Halt
+EOF
+) || { echo "container-start: iris session failed while deleting the roster's test-scope package $TEST_PKGS"; print_tail "test-scope delete" "$PURGE_RAW"; exit 1; }
+        PURGE=$(printf '%s' "$PURGE_RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-PURGE-START:.*:OCUPILOT-PURGE-END' | sed -e 's/^OCUPILOT-PURGE-START://' -e 's/:OCUPILOT-PURGE-END$//')
+        case "$PURGE" in
+            OK:*)
+                echo "container-start: OCUPILOT_LOAD_TESTS is not 1, so this start deleted ${PURGE#OK:} class(es) of the roster's test-scope package $TEST_PKGS from $INSTALL_NS"
+                ;;
+            MAPPED:*)
+                echo "container-start: the roster's test-scope package is mapped into $INSTALL_NS from another database (${PURGE#MAPPED:}), and deleting it there would delete it for every namespace that maps it; failing the start rather than deleting it or leaving test classes on a product start"
+                exit 1
+                ;;
+            LEFT:*)
+                echo "container-start: ${PURGE#LEFT:} class(es) of the roster's test-scope package $TEST_PKGS are still in $INSTALL_NS after the delete; failing the start rather than leaving test classes on a product start"
+                exit 1
+                ;;
+            FAILED:*)
+                echo "container-start: could not delete the roster's test-scope package $TEST_PKGS from $INSTALL_NS (${PURGE#FAILED:}); failing the start rather than leaving test classes on a product start"
+                exit 1
+                ;;
+            *)
+                echo "container-start: the delete session wrote no verdict on the roster's test-scope package; failing the start rather than leaving test classes on a product start"
+                print_tail "test-scope delete" "$PURGE_RAW"
+                exit 1
+                ;;
+        esac
         LOAD_DIR="$PRODUCT_SRC"
     fi
 fi

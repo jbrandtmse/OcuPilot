@@ -16,11 +16,14 @@
 # docker-compose.yml does not: it makes container-start.sh compile the roster's test-scope package
 # the suite runs (AD-17). `up --product` leaves it out, so the start hook compiles what a product
 # start compiles, no test class (the arming variables stay), and `product-check` then counts it.
+# `product-reuse` compiles two classes into the test package and starts a product throwaway again
+# over the same volume, which must delete both (DW-1885).
 #
 # Usage:
 #   sh scripts/ci-throwaway.sh up    [--dir DIR] [--project NAME] [--web 52776] [--super 1975] [--product]
 #   sh scripts/ci-throwaway.sh logs  [--dir DIR]
 #   sh scripts/ci-throwaway.sh product-check [--dir DIR]
+#   sh scripts/ci-throwaway.sh product-reuse [--dir DIR]
 #   sh scripts/ci-throwaway.sh down  [--dir DIR] [--project NAME]
 set -e
 
@@ -556,6 +559,55 @@ EOF
         fi
         echo "ci-throwaway: the product start compiled no OcuPilot.Test class"
         ;;
+    product-reuse)
+        # A product start over a volume that already holds compiled test classes (DW-1885). The
+        # throwaway's own start must have logged deleting 0 classes; then two classes are compiled
+        # into the install namespace's OcuPilot.Test package, one a direct member and one in a
+        # subpackage, the iris service is recreated over the same volume, so its start hook runs
+        # again as a product start, and that start's log must say it deleted 2 classes;
+        # `product-check` then counts none. A throwaway that sets OCUPILOT_LOAD_TESTS is refused,
+        # since its start compiles the package.
+        if [ ! -f "$COMPOSE_FILE" ]; then
+            echo "ci-throwaway: no compose file at $COMPOSE_FILE; nothing was brought up to start again"
+            exit 1
+        fi
+        if grep -q 'OCUPILOT_LOAD_TESTS' "$COMPOSE_FILE"; then
+            echo "ci-throwaway: $COMPOSE_FILE sets OCUPILOT_LOAD_TESTS, so its start compiles the test package rather than deleting it; bring the throwaway up with --product"
+            exit 1
+        fi
+        DELETED_LINE="container-start: OCUPILOT_LOAD_TESTS is not 1, so this start deleted"
+        LOG=$(docker compose -f "$COMPOSE_FILE" logs --no-color iris 2>&1) || { echo "ci-throwaway: could not read the log of the throwaway's start"; exit 1; }
+        if ! printf '%s\n' "$LOG" | grep -F -q "$DELETED_LINE 0 class(es) of the roster's test-scope package"; then
+            echo "ci-throwaway: the throwaway's own start did not log deleting 0 classes of the test package"
+            printf '%s\n' "$LOG" | grep 'container-start:' | tail -n 20
+            exit 1
+        fi
+        RAW=$(docker compose -f "$COMPOSE_FILE" exec -T iris iris session iris -U %SYS 2>&1 <<'EOF'
+Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",##class(%SYS.Namespace).Exists("USER"):"USER",1:"")
+Set $NAMESPACE=$Select(tNS="":$NAMESPACE,1:tNS)
+Set tSC=$Select(tNS="":$System.Status.Error(5001,"neither HSCUSTOM nor USER exists"),1:##class(%Dictionary.ClassDefinition).%New("OcuPilot.Test.PlantedProbe").%Save())
+Set tSC=$Select($System.Status.IsOK(tSC):##class(%Dictionary.ClassDefinition).%New("OcuPilot.Test.Planted.Probe").%Save(),1:tSC)
+Set tSC=$Select($System.Status.IsOK(tSC):$System.OBJ.Compile("OcuPilot.Test.PlantedProbe,OcuPilot.Test.Planted.Probe","ck-d"),1:tSC)
+Write "OCUPILOT-"_"PLANT-START:"_$Select($System.Status.IsOK(tSC):"OK:"_(##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Test.PlantedProbe")+##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Test.Planted.Probe")),1:"FAILED:"_$System.Status.GetErrorText(tSC))_":OCUPILOT-"_"PLANT-END",!
+Halt
+EOF
+) || { echo "ci-throwaway: could not open a session in the throwaway's iris service"; printf '%s\n' "$RAW" | tail -n 20; exit 1; }
+        PLANT=$(printf '%s' "$RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-PLANT-START:.*:OCUPILOT-PLANT-END' | sed -e 's/^OCUPILOT-PLANT-START://' -e 's/:OCUPILOT-PLANT-END$//')
+        if [ "$PLANT" != "OK:2" ]; then
+            echo "ci-throwaway: could not compile two classes into the test package to start over (${PLANT:-no answer})"
+            printf '%s\n' "$RAW" | tail -n 20
+            exit 1
+        fi
+        echo "ci-throwaway: compiled OcuPilot.Test.PlantedProbe and OcuPilot.Test.Planted.Probe; starting the throwaway again over the same volume"
+        docker compose -f "$COMPOSE_FILE" up -d --wait --force-recreate --no-deps iris || { echo "ci-throwaway: the throwaway did not come back healthy over the reused volume"; exit 1; }
+        LOG=$(docker compose -f "$COMPOSE_FILE" logs --no-color iris 2>&1) || { echo "ci-throwaway: could not read the log of the start over the reused volume"; exit 1; }
+        if ! printf '%s\n' "$LOG" | grep -F -q "$DELETED_LINE 2 class(es) of the roster's test-scope package"; then
+            echo "ci-throwaway: the start over the reused volume did not log deleting the two classes compiled into the test package"
+            printf '%s\n' "$LOG" | grep 'container-start:' | tail -n 20
+            exit 1
+        fi
+        echo "ci-throwaway: the start over the reused volume deleted the two test classes compiled before it"
+        ;;
     down)
         if [ -f "$COMPOSE_FILE" ]; then
             docker compose -f "$COMPOSE_FILE" logs --no-color iris | tail -n 80 || true
@@ -566,7 +618,7 @@ EOF
         echo "ci-throwaway: removed $DIR"
         ;;
     *)
-        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|down [options]"
+        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|product-reuse|down [options]"
         exit 2
         ;;
 esac

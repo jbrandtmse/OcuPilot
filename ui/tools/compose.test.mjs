@@ -270,9 +270,9 @@ test('the start hook never writes to stderr, its children included (Story 1.5)',
 
   // A message of the hook's own is only half of it: `iris session` is a child process whose
   // stderr is inherited straight through to /iris-main unless it is captured.
-  // Indented too: the roster session sits inside the product-start branch.
+  // Indented too: the roster and delete sessions sit inside the product-start branch.
   const sessions = lines.filter((l) => /^\s*\w+=\$\(iris session/.test(l));
-  assert.ok(sessions.length >= 3, 'expected the hook to capture all three iris sessions');
+  assert.ok(sessions.length >= 4, 'expected the hook to capture all four iris sessions');
   for (const line of sessions) {
     assert.ok(
       line.includes('2>&1'),
@@ -695,6 +695,83 @@ test('the start hook leaves the roster\'s test-scope folder out of a start witho
     assert.ok(!startHookCode.includes(folder), `the hook's code never names ${folder}; it reads it from the roster`);
     assert.ok(!startHookCode.includes(pkg), `nor ${pkg}`);
   }
+});
+
+// A product start also deletes the roster's test-scope packages from the install namespace, so a
+// reused volume keeps none an earlier start compiled (DW-1885). What the vendor delete removes was
+// measured on a throwaway; what a restart over such a volume deletes is CI's images job
+// (`ci-throwaway.sh product-reuse`).
+//
+// Mutations (Rule 19): move the delete session above `if [ "$LOAD_TESTS_FLAG" = "1" ]` -> red at the
+// flag assertion. Hand the session a literal package in place of "$TEST_DIRS" -> red at the roster
+// assertion. Drop the count from the OK arm's line -> red at the log-line assertion. Drop
+// `(tMapped = "") &&` -> red at the mapping assertion. Drop `exit 1` from the LEFT arm -> red at the
+// failure-arm assertion. Move the session below `LOAD_DIR="$PRODUCT_SRC"` -> red at the order
+// assertion. Hand the session no vendor delete -> red at the delete assertion. Drop the empty-name
+// guard before the folder loop -> red at the empty-folder assertion.
+test('a product start deletes the roster\'s test-scope package before it compiles, and logs how many classes it deleted (DW-1885)', () => {
+  const sessionHead = 'PURGE_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF\n';
+  const purgeAt = startHookCode.indexOf(sessionHead);
+  assert.ok(purgeAt > 0, 'the hook runs a delete session in the install namespace, stderr captured');
+  assert.equal(startHookCode.split('DeletePackage(').length - 1, 1, 'and calls the vendor delete in that session only');
+  const body = startHookCode.slice(purgeAt + sessionHead.length, startHookCode.indexOf('\nEOF\n', purgeAt));
+
+  // The flag: the session sits in the product branch, never in the branch a flag of "1" takes.
+  const branchAt = startHookCode.indexOf('\nif [ "$LOAD_TESTS_FLAG" = "1" ]; then\n');
+  const elseAt = startHookCode.indexOf('\nelse\n', branchAt);
+  const branchEnd = startHookCode.indexOf('\nfi\n', startHookCode.indexOf('\n    fi\n', branchAt));
+  assert.ok(branchAt > 0 && elseAt > branchAt, 'the flag check has a product branch');
+  assert.ok(purgeAt > elseAt && purgeAt < branchEnd, 'the delete runs only on a start whose flag is not "1"');
+
+  // The roster: the packages are the folders the roster session read, once each has passed the
+  // folder checks, and nothing else.
+  const loopEnd = startHookCode.indexOf('\n        done\n', elseAt);
+  assert.ok(loopEnd > 0 && purgeAt > loopEnd, 'after every folder the roster names has been checked');
+  // Splitting on commas drops a trailing empty name, so the whole list is refused first when it
+  // names an empty folder, which would otherwise reach the delete as an empty package.
+  const emptyAt = startHookCode.indexOf('\n        case ",$TEST_DIRS," in\n            *,,*)\n', elseAt);
+  assert.ok(emptyAt > elseAt && emptyAt < startHookCode.indexOf('\n        for TEST_DIR in $TEST_DIRS; do\n', elseAt), 'a list naming an empty folder is refused before the folder loop');
+  assert.match(startHookCode.slice(emptyAt, startHookCode.indexOf('\n        esac\n', emptyAt)), /\n\s*exit 1\n/, 'and that fails the start');
+  assert.match(body, /^Set tPkgs = \\\$Translate\("\$TEST_DIRS", "\/", "\."\)\n/, 'the packages are the roster\'s test-scope folders');
+  assert.match(body, /\\\$System\.OBJ\.DeletePackage\(tPkgs, "-d"\)/, 'and the delete names those packages alone');
+  assert.match(startHookCode, /\n {8}TEST_PKGS=\$\(printf '%s' "\$TEST_DIRS" \| tr '\/' '\.'\)\n/, 'as does the log');
+
+  // A package mapped in from another database is never deleted: the vendor deletes through a mapping.
+  assert.match(body, /GetPackageDest\(, \\\$Piece\(tPkgs, ",", tI\)\)/, 'each package\'s database is read');
+  assert.match(body, /\\\$Select\(tDest = tHome: "", /, 'and compared with the namespace\'s own routines database');
+  assert.match(body, /\\\$Select\(\(tMapped = ""\) && tCounted: \\\$System\.OBJ\.DeletePackage/, 'and the delete runs only when none is mapped');
+
+  // What is counted: definitions before, definitions and compiled classes after.
+  assert.match(body, /tCountSQL = "SELECT COUNT\(\*\) FROM %Dictionary\.ClassDefinition WHERE %EXACT\(ID\) %STARTSWITH \?"/, 'the classes are counted before the delete');
+  assert.match(body, /tLeftSQL = "[^"\n]*%Dictionary\.ClassDefinition[^"\n]*%Dictionary\.CompiledClass[^"\n]*"/, 'and every definition and compiled class left is counted after it');
+
+  // The verdict: unless a package is mapped (the outer arm), an uncounted or failed delete, then a
+  // class left, and OK, carrying the count, only by default.
+  const verdict = body.split('\n').find((line) => line.includes('"PURGE-START:"'));
+  assert.ok(verdict, 'the delete session writes one verdict line');
+  const order = ['"FAILED:the classes', '"FAILED:" _', '"LEFT:"', '1: "OK:" _ tBefore', '1: "MAPPED:"'].map((arm) => verdict.indexOf(arm));
+  assert.ok(order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), `the verdict's arms are in that order: ${verdict}`);
+
+  // The log line, and the start it fails.
+  const outcome = startHookCode.slice(startHookCode.indexOf('case "$PURGE" in'), startHookCode.indexOf('\n        esac\n', startHookCode.indexOf('case "$PURGE" in')));
+  const okAt = outcome.indexOf('\n            OK:*)\n');
+  assert.ok(okAt > 0, 'the delete outcome has an OK arm');
+  const okArm = outcome.slice(okAt, outcome.indexOf(';;', okAt));
+  assert.match(
+    okArm,
+    /\n {16}echo "container-start: OCUPILOT_LOAD_TESTS is not 1, so this start deleted \$\{PURGE#OK:\} class\(es\) of the roster's test-scope package \$TEST_PKGS from \$INSTALL_NS"\n/,
+    'which logs how many classes the start deleted, 0 included'
+  );
+  assert.ok(!/\bexit\b/.test(okArm), 'and carries on');
+  for (const arm of ['MAPPED:*)', 'LEFT:*)', 'FAILED:*)', '*)']) {
+    const at = outcome.indexOf(`\n            ${arm}\n`);
+    assert.ok(at > 0, `the delete outcome has a ${arm} arm`);
+    assert.match(outcome.slice(at, outcome.indexOf(';;', at)), /\n\s*exit 1\n/, `and ${arm} fails the start`);
+  }
+
+  // Before the compile, so no start reaches STARTPATH-OK with part of the package left.
+  assert.ok(purgeAt < startHookCode.indexOf('\n        LOAD_DIR="$PRODUCT_SRC"\n'), 'the delete comes before the product tree is chosen');
+  assert.ok(purgeAt < startHookCode.indexOf('$System.OBJ.LoadDir('), 'and before LoadDir compiles it');
 });
 
 // Mutation (Rule 19): rename a test-scope resource in the roster to a package with no folder

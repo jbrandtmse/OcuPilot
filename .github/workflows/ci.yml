@@ -24,9 +24,10 @@
 #   images          both stock Community editions at the pinned version: src/OcuPilot/ compiles
 #                   and the admin API reports v2 through the port's own version read, then a
 #                   product-start throwaway on that edition installs with no test class compiled,
-#                   drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else USER) and
-#                   reads the credentials rung as offered, so no HealthShare-only dependency can go
-#                   unnoticed (NFR-13).
+#                   starts again over its volume with two test classes compiled into it and deletes
+#                   both, drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else
+#                   USER) and reads the credentials rung as offered, so no HealthShare-only
+#                   dependency can go unnoticed (NFR-13).
 #   package         two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive
 #                   is built on the first and loaded on the second, which smoke then reports on. It
 #                   waits on nothing, so it runs beside the shards rather than after them.
@@ -354,6 +355,13 @@ jobs:
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/
       - name: the product start compiled no test class
+        run: sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci
+      # A product start over a volume an earlier compile left test classes on deletes them (DW-1885):
+      # two classes are compiled into the test package and the throwaway starts again over the same
+      # volume. The steps after this one run against that second start.
+      - name: a product start over a reused volume deletes the test classes it finds
+        run: sh scripts/ci-throwaway.sh product-reuse --dir /tmp/ocupilot-images-ci
+      - name: the product start over the reused volume left no test class
         run: sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci
       - name: admin API drift against the vendored table
         working-directory: ui

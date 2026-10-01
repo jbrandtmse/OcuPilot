@@ -146,6 +146,8 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh up --product --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
   'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
   'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
+  'sh scripts/ci-throwaway.sh product-reuse --dir /tmp/ocupilot-images-ci',
+  'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
   'node tools/admin-spec.mjs --origin http://localhost:52781',
   'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
   `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
@@ -1655,7 +1657,7 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   for (const command of [
     imagesDown,
     imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh logs')),
-    imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh product-check')),
+    ...imagesRuns.filter((run) => run.startsWith('sh scripts/ci-throwaway.sh product-')),
   ]) {
     assert.equal(/--dir (\S+)/.exec(command ?? '')?.[1], imagesDir, `"${command}" names the directory the bring-up wrote`);
   }
@@ -1798,6 +1800,125 @@ test('product-check passes only on a namespace holding OcuPilot classes and no O
   assert.equal(nothing.argv, '', 'and no docker command ran');
 });
 
+// --- DW-1885: the images job starts its product throwaway again over a volume with test classes ---
+//
+// A product start deletes the roster's test-scope package from the install namespace
+// (container-start.sh, pinned in compose.test.mjs). `product-reuse` requires the throwaway's own
+// start to have logged deleting 0 classes, compiles two classes into that package (a direct member
+// and a subpackage member), and recreates the iris service over the same volume; that start's log
+// must say it deleted 2 classes, and the second `product-check` then counts none.
+
+/** The start hook's deleted-count line, as a start that deleted `count` classes logs it. */
+function hookDeletedLine(count) {
+  const hook = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'container-start.sh'), 'utf8'));
+  const template = /echo "(container-start: OCUPILOT_LOAD_TESTS is not 1, so this start deleted \$\{PURGE#OK:\}[^"\n]*)"/.exec(hook);
+  assert.ok(template, 'container-start.sh logs how many classes a product start deleted');
+  return template[1].replace('${PURGE#OK:}', String(count)).replace('$TEST_PKGS', 'OcuPilot.Test').replace('$INSTALL_NS', 'HSCUSTOM');
+}
+
+/**
+ * Run `ci-throwaway.sh product-reuse` against a stub docker whose session prints `session`, whose
+ * first log read prints `firstLog` and whose later log reads print `log`.
+ */
+function runProductReuse({ session, firstLog, log, composeText = 'name: ocupilot-images-ci\n' }) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-product-reuse-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(scratch);
+    if (composeText !== null) writeFileSync(join(scratch, 'compose.yml'), composeText);
+    writeStub(bin, 'docker', [
+      'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'case "$*" in',
+      '  *" exec "*) cat > /dev/null; printf \'%s\\n\' "$OCUPILOT_SESSION_ANSWER" ;;',
+      '  *" logs "*) if [ -f "$OCUPILOT_DOCKER_CAPTURE.read" ]; then printf \'%s\\n\' "$OCUPILOT_LOG_ANSWER"; else : > "$OCUPILOT_DOCKER_CAPTURE.read"; printf \'%s\\n\' "$OCUPILOT_FIRST_LOG_ANSWER"; fi ;;',
+      'esac',
+      'exit 0',
+    ]);
+    const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'product-reuse', '--dir', scratch], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: stubEnv(bin, {
+        OCUPILOT_DOCKER_CAPTURE: capture,
+        OCUPILOT_SESSION_ANSWER: session,
+        OCUPILOT_FIRST_LOG_ANSWER: firstLog,
+        OCUPILOT_LOG_ANSWER: log,
+      }),
+    });
+    const argv = existsSync(capture) ? readFileSync(capture, 'utf8').split(scratch).join('<scratch>') : '';
+    return { status: run.status, output: `${run.stdout}${run.stderr}`, argv };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const plantAnswer = (verdict) => `%SYS>\nOCUPILOT-PLANT-START:${verdict}:OCUPILOT-PLANT-END\n%SYS>`;
+const startLog = (count) => `ocupilot-images-ci  | ${hookDeletedLine(count)}`;
+
+// Mutations (Rule 19): drop the product-reuse step and its declared gate -> red at the order
+// assertion. Reword the hook's deleted-count line -> the passing row goes red. Grep the second
+// start's log for 1 class -> the passing row and the one-class row go red. Drop the first start's
+// 0-class check -> the first-start row goes red. Drop its OCUPILOT_LOAD_TESTS refusal -> the
+// suite-throwaway row goes red.
+test('the images job starts its product throwaway again over a volume holding test classes, which the start deletes (DW-1885)', () => {
+  const images = runCommands(jobSlice(workflow, 'images'));
+  const at = (prefix, from = 0) => images.findIndex((command, i) => i >= from && command.startsWith(prefix));
+  const firstCheck = at('sh scripts/ci-throwaway.sh product-check');
+  const reuse = at('sh scripts/ci-throwaway.sh product-reuse');
+  const secondCheck = at('sh scripts/ci-throwaway.sh product-check', firstCheck + 1);
+  assert.ok(firstCheck > 0 && reuse > firstCheck, 'the fresh product start is counted, then started again over its volume');
+  assert.ok(secondCheck > reuse, 'and counted again afterwards');
+  for (const after of ['node tools/admin-spec.mjs', 'sh scripts/smoke.sh']) {
+    assert.ok(at(after) > secondCheck, `and "${after}" runs against that second start`);
+  }
+
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  const arm = /^ {4}product-reuse\)([\s\S]*?)^ {8};;/m.exec(throwaway);
+  assert.ok(arm, 'ci-throwaway.sh answers a `product-reuse` action');
+  assert.match(arm[1], /%New\("OcuPilot\.Test\.PlantedProbe"\)\.%Save\(\)/, 'it adds a direct member to the test package');
+  assert.match(arm[1], /%New\("OcuPilot\.Test\.Planted\.Probe"\)\.%Save\(\)/, 'and a subpackage member');
+  assert.match(arm[1], /\$System\.OBJ\.Compile\("OcuPilot\.Test\.PlantedProbe,OcuPilot\.Test\.Planted\.Probe","ck-d"\)/, 'and compiles both');
+  assert.match(arm[1], /docker compose -f "\$COMPOSE_FILE" up -d --wait --force-recreate --no-deps iris/, 'then starts the iris service again over the same volume');
+
+  const passed = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2) });
+  assert.equal(passed.status, 0, `a fresh start that deleted 0 and a reused start that deleted 2 pass: ${passed.output}`);
+  const calls = passed.argv.split('\n').filter((line) => line !== '');
+  assert.deepEqual(
+    calls,
+    [
+      'compose -f <scratch>/compose.yml logs --no-color iris',
+      'compose -f <scratch>/compose.yml exec -T iris iris session iris -U %SYS',
+      'compose -f <scratch>/compose.yml up -d --wait --force-recreate --no-deps iris',
+      'compose -f <scratch>/compose.yml logs --no-color iris',
+    ],
+    'reading the first start\'s log, compiling, then starting again, then reading that start\'s log'
+  );
+
+  const one = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(1) });
+  assert.equal(one.status, 1, `a reused start that logs 1 class for the two compiled fails: ${one.output}`);
+  assert.match(one.output, /did not log deleting the two classes/);
+
+  const none = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(0) });
+  assert.equal(none.status, 1, `a reused start that deleted nothing fails: ${none.output}`);
+
+  const first = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(1), log: startLog(2) });
+  assert.equal(first.status, 1, `a fresh start that did not log deleting 0 classes fails: ${first.output}`);
+  assert.ok(!first.argv.includes(' exec '), 'before anything is compiled into the package');
+
+  const unplanted = runProductReuse({ session: plantAnswer('OK:1'), firstLog: startLog(0), log: startLog(2) });
+  assert.equal(unplanted.status, 1, `two classes that did not both compile fail: ${unplanted.output}`);
+  assert.ok(!unplanted.argv.includes(' up '), 'before the throwaway is started again');
+
+  const suite = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2), composeText: 'name: x\n      OCUPILOT_LOAD_TESTS: "1"\n' });
+  assert.equal(suite.status, 1, `a throwaway whose start compiles the test package is refused: ${suite.output}`);
+  assert.equal(suite.argv, '', 'and no docker command ran');
+
+  const nothing = runProductReuse({ session: plantAnswer('OK:2'), firstLog: startLog(0), log: startLog(2), composeText: null });
+  assert.equal(nothing.status, 1, 'with no throwaway brought up there is nothing to start again');
+  assert.equal(nothing.argv, '', 'and no docker command ran');
+});
+
 // Mutation (Rule 19): delete the `*..*` arm of ci-throwaway.sh's directory guard -> red: the
 // climbing path reaches docker, and `up` and `down` remove the directory it names.
 test("a --dir that climbs out of its scratch root through '..' is refused before any action reaches it", () => {
@@ -1811,7 +1932,7 @@ test("a --dir that climbs out of its scratch root through '..' is refused before
     writeStub(bin, 'docker', ['printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"', 'exit 0']);
     // Starts under /tmp, which the scratch-root arm accepts, and resolves to `outside`.
     const climbing = `/tmp/..${outside}`;
-    for (const action of ['product-check', 'down', 'up']) {
+    for (const action of ['product-check', 'product-reuse', 'down', 'up']) {
       const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), action, '--dir', climbing], {
         cwd: REPO_ROOT,
         encoding: 'utf8',
