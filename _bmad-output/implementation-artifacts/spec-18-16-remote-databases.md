@@ -19,7 +19,7 @@ deferred: []
 
 **Approach:**
 
-- Add **Remote databases** to OS management at position 11. It is keyed by configuration name like Local databases (`database-configuration`) and reads `Database.ConfigCRUD` `LIST` with `remoteOnly`.
+- Add **Remote databases** to OS management at position 12. It is keyed by configuration name like Local databases (`database-configuration`) and reads `Database.ConfigCRUD` `LIST` with `remoteOnly`.
 - A form page creates or re-points one. Its fields are Name (create only), Data server (from the instance's ECP data servers) and Directory. The directory is chosen from the data server's own listing (`ECP.DataServer` `DBLIST`, `GET /ecp/data-server/databases`).
 - A new `Port/RemoteDatabasePort` runs that listing in a short-lived child job. The request waits for it against a stated bound, the `Kernel/Provider/TestCall.cls` model. The port re-checks the directory at every write, and the listing never runs in a turn.
 - Delete reuses `DatabasePort`'s configuration delete, with the typed-name dialog and a removal impact.
@@ -32,7 +32,7 @@ deferred: []
 
 - **Task 0 runs first, on `ocupilot-b-ci` only.** It works on probe objects named `OCUPROBE1816*` that it creates and removes, and it halts on any contradiction (Tasks › Task 0).
 - **The probe data server is configuration only.** Task 0 and the tests define `OCUPROBE1816SRV` at `127.0.0.1:1972` through test-only `%SYS` seeding (`Config.ECPServers`), as `Test/DatabaseWriteProbe.cls:342-366` already does. Nothing changes `%Service_ECP`, `Config.ECP`, `Config.config` or the license. Each of those is instance-wide, and the license refuses ECP whatever they hold.
-- **Screens.** `RemoteDatabaseList` is a list at side-bar position 11, route `os-management/remote-databases`, `classicPage` `%CSP.UI.Portal.RemoteDatabases`, with columns Name, Server, Directory and Status. `RemoteDatabaseForm` is a form page at position 0, `classicPage` `%CSP.UI.Portal.Dialog.RemoteDatabase`. Both:
+- **Screens.** `RemoteDatabaseList` is a list at side-bar position 12, route `os-management/remote-databases`, `classicPage` `%CSP.UI.Portal.RemoteDatabases`, with columns Name, Server, Directory and Status. `RemoteDatabaseForm` is a form page at position 0, `classicPage` `%CSP.UI.Portal.Dialog.RemoteDatabase`. Both:
   - declare `%Admin_Manage:USE` and `%DB_IRISSYS:READ`;
   - use entity type `database-configuration`; there is no new type;
   - carry at least three suggested prompts.
@@ -313,7 +313,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - `src/OcuPilot/Test/RemoteDatabaseWriteGate.cls`, with `RemoteDatabaseWriteGateProbe.cls`: the pairs, refused by name with zero port calls.
 - `src/OcuPilot/Test/RemoteDatabaseDescriptor.cls`: the list and its read tool answer one read; `remoteOnly` is set; Local databases omits the rows.
 - `ui/browser/remote-databases.browser-spec.mjs`, seeding and cleaning up over `docker exec`:
-  - the side bar's eleventh entry;
+  - the side bar's twelfth entry;
   - the list;
   - the form's hint before choosing, then the running line, then the reason on Data server within the bound plus 5 s, and the Save refused;
   - the delete through the typed-name dialog with its advisory;
@@ -332,12 +332,14 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - **AC6:** Given an omitted directory, an unlisted one, or the one the listing names `IRISSYS`, when either caller saves or confirms, then each is refused on Directory: `NONE` before any vendor call, the other two before any vendor write.
 - **AC7:** Given a local configuration named to a remote tool, a protected name, or a caller lacking a declared pair, when the tool runs, then it is refused `DATABASE.LOCAL`, `PROHIBITED.OCUPILOTDATABASE` or `AUTH.NOPRIVILEGE` respectively, and nothing is sent.
 - **AC8:** Given the side bar, governance and rosters, when the story lands, then:
-  - Remote databases is OS management's eleventh entry, with three prompts;
+  - Remote databases is OS management's twelfth entry, with three prompts;
   - the three keys are in the baseline (the delete disabled);
   - every roster and pinned side-bar list includes the new screens and tools;
   - the DW-1337 gate holds in both themes.
 
 ## Spec Change Log
+
+- 2026-10-01, spec gate (runner): Story 18.17 (merged into this branch at `c8dedb69`) listed the Integrity log at OS management position 5 and moved Devices through Local databases to 6-11, so Remote databases takes position 12 and is the twelfth entry (Intent, Boundaries, Tests, AC8 amended). Every Code Map line citation for a side-bar pin (`Navigation.cls`, `navigation.test.mjs`, `navigation-wire.test.mjs`, `rail-wire.spec.ts`, `license-usage`, `local-databases`, `namespaces` and `language-servers` browser specs) predates 18.17: re-derive each from the current tree at implement. Spine amendments 1, 2, 4 and 5 under Design Notes were written at the gate (AD-21 seventh case, AD-42, AD-44, AD-52); amendment 3 (AD-8) and, if needed, 6 (AD-15/AD-53) are written by the runner after Task 0 records them here. The orchestrator agreed (2026-10-01) that on Community the bounded unreachable refusal is the measured path and the listing's success leg is pinned at the port through the seam.
 
 ## Review Triage Log
 

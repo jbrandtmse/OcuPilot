@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-01-2026 02:26'
+last_updated: '10-01-2026 02:35'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -289,7 +289,7 @@ development_status:
   18-13-multi-namespace-install: backlog
   18-14-namespace-mappings-and-copy-mappings: done
   18-15-enable-interoperability-on-a-namespace: in-progress
-  18-16-remote-databases: backlog
+  18-16-remote-databases: ready-for-dev
   18-17-namespace-and-database-follow-ups: done
   epic-18-retrospective: optional
 
