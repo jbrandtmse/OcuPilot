@@ -6,6 +6,7 @@ import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { tabAccessibleName } from '../../core/form-tabs';
 import { formatRequires } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
@@ -238,7 +239,7 @@ describe('the service editor page (Story 16.13)', () => {
     await settle(fixture);
     expect(visibleBody(host)).toBe('connections');
     expect(host.querySelector('.ocu-form-summary')?.textContent).toContain('Use an IP address.');
-    expect(host.querySelector('[role="tab"][data-tab="connections"]')?.getAttribute('aria-label')).toContain(STRINGS.serviceFieldClientSystems);
+    expect(host.querySelector('[role="tab"][data-tab="connections"]')?.getAttribute('aria-label')).toBe(tabAccessibleName(STRINGS.serviceFieldClientSystems, 1));
     expect(host.querySelector('#ocu-service-edit-ClientSystems-reason')?.textContent?.trim()).toBe('Use an IP address.');
   });
 

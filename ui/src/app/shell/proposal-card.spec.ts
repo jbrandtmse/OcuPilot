@@ -241,13 +241,14 @@ describe('the proposal card', () => {
     // the tool's `emptyKey` and reads "Unrestricted"; a row with no key, or a key STRINGS does not
     // hold, keeps the published empty word.
     //
-    // mutation: make `shown()` ignore its key -> the two "Unrestricted" legs go red.
+    // mutation: make `shown()` ignore its key -> the "Unrestricted" legs go red.
     const { fixture, card } = mount(
       liveView({
         changed: [
           { field: 'ClientSystems', before: '', after: '["10.0.0.1"]', emptyKey: 'serviceAllowedUnrestricted' },
           { field: 'Resource', before: '', after: '%Development' },
           { field: 'Description', before: '', after: 'x', emptyKey: 'noSuchStringsKey' },
+          { field: 'ClientSystems', before: '["10.0.0.1"]', after: '', emptyKey: 'serviceAllowedUnrestricted' },
         ],
         unchanged: [{ field: 'ClientSystems', value: '', emptyKey: 'serviceAllowedUnrestricted' }],
       }),
@@ -259,6 +260,7 @@ describe('the proposal card', () => {
     );
     expect(rows[1].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.tableEmptyValue);
     expect(rows[2].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.tableEmptyValue);
+    expect(rows[3].querySelector('.ocu-diff-after .ocu-diff-value')?.textContent?.trim()).toBe(STRINGS.serviceAllowedUnrestricted);
     (card.querySelector('.ocu-proposal-card-disclosure') as HTMLButtonElement).click();
     fixture.detectChanges();
     const unchanged = card.querySelector('.ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged') as HTMLElement;

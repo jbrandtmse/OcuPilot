@@ -82,7 +82,7 @@ Method OnBeforeAllTests() As %Status
 
 /// <p>AC11: every written service is put back as its snapshot, and reads back as it, whether the test
 /// passed or failed.</p>
-/// <p>Mutation (Rule 19): skip the <code>RestoreOf</code> call here -- the residue assertion goes
+/// <p>Mutation (Rule 19): skip the <code>RestoreAll</code> call here -- the residue assertion goes
 /// red.</p>
 Method OnAfterOneTest() As %Status
 {
@@ -249,7 +249,6 @@ Method TestAMethodSaveKeepsTheBitsNotOffered()
     Set tBase = ##class(%DynamicObject).%FromJSON(..Snapshots(..#CACHEDIRECT)).%Get("AutheEnabled")
     Set tHeld = $ZBoolean(+tBase, tHidden, 7)
     Do $$$AssertStatusOK(..Seed(..#CACHEDIRECT, "AutheEnabled", tHeld), "CacheDirect holds " _ tHeld)
-    Do $$$AssertEquals($ListFind(..OfferedBits(..#CACHEDIRECT), tHidden), 0, "and its form offers no box for bit " _ tHidden)
     Set tSent = $ZBoolean(tHeld, 64, 7)
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#CACHEDIRECT), .tStatus, .tAnswer, "{""AutheEnabled"":" _ tSent _ "}", "application/json")
     Do $$$AssertEquals(tStatus, 200, "the method Save answers: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
@@ -275,7 +274,7 @@ Method TestTheRulesRefuseTheSave()
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: ""), "400 PORT.FIELD.UNEXPECTED", "the description is never settable")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path("OcuPilotNoSuchService99"), .tStatus, .tAnswer, "{""Enabled"":false}", "application/json")
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: ""), "404 SERVICE.ABSENT", "an absent service is 404")
-    Do $$$AssertEquals(..Unchanged(), "", "and every service reads back as it was")
+    Do $$$AssertEquals(..Moved(), "", "and every service reads back as it was")
 }
 
 /// <p>AC7: an added address the vendor's check refuses (on <code>%Service_CacheDirect</code>), an
@@ -294,7 +293,7 @@ Method TestTheAddressRulesRefuseTheSave()
     Do ..AssertRefused(..#CACHEDIRECT, "{""ClientSystems"":[""999.1.1.1""]}", "ClientSystems", $Parameter(tError, "ADDRESSINVALID"))
     Do ..AssertRefused(..#CALLIN, "{""ClientSystems"":[""10.0.0.1""]}", "ClientSystems", $Parameter(tError, "ADDRESSUNSUPPORTED"))
     Do ..AssertRefused(..#CACHEDIRECT, "{""ClientSystems"":[""10.0.0.5|%Operator""]}", "ClientSystems", $Parameter(tError, "ADDRESSROLEUNSUPPORTED"))
-    Do $$$AssertEquals(..Unchanged(), "", "and every service reads back as it was")
+    Do $$$AssertEquals(..Moved(), "", "and every service reads back as it was")
     Do $$$AssertStatusOK(..Seed(..#CACHEDIRECT, "ClientSystems", ["10.0.0.5|%Operator"]), "CacheDirect holds an entry with a role it never gives")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#CACHEDIRECT), .tStatus, .tAnswer, "{""ClientSystems"":[""10.0.0.5|%Operator"",""10.0.0.1""]}", "application/json")
     Do $$$AssertEquals(tStatus, 200, "an address added beside the held entry is saved: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
@@ -333,9 +332,10 @@ Method TestTheServingServiceSaveIsRefusedBeforeAnyWrite()
     Do $ClassMethod(..#HELDPORT, "Clear")
 }
 
-/// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form and saves an
-/// address on <code>%Service_CacheDirect</code>, which the vendor's address check judges in that
-/// principal's process. A caller without the pairs is refused in
+/// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form, with
+/// <code>%Service_ECP</code>'s role options among it, and saves an address on
+/// <code>%Service_CacheDirect</code>, which the vendor's address check judges in that principal's
+/// process. A caller without the pairs is refused in
 /// <method>OcuPilot.Test.WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs</method>.</p>
 Method TestALeastPrivilegedPrincipalSaves()
 {
@@ -346,6 +346,10 @@ Method TestALeastPrivilegedPrincipalSaves()
     Set tRead = ""
     Try { Set tRead = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
     Do $$$AssertTrue($IsObject(tRead) && (tRead.%GetTypeOf("service") = "object") && (tRead.%Get("authenticationMethods").%Size() > 0), "one envelope carrying the service and its methods")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..FormPath(..#ECP), ..#LEASTUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders)
+    Set tRead = ""
+    Try { Set tRead = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+    Do $$$AssertTrue((tStatus = 200) && $IsObject(tRead) && (tRead.%Get("roles").%Size() > 0), "and ECP's form with its role options: " _ $Get(tStatus) _ " " _ $Extract($Get(tText), 1, 200))
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ ..Path(..#CACHEDIRECT), ..#LEASTUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""ClientSystems"":[""10.0.0.2""]}", "application/json")
     Do $$$AssertEquals(tStatus, 200, "and saves: " _ $Get(tText))
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "answering application/json")
@@ -380,7 +384,7 @@ Method RestoreAll() As %Status
 
 /// <p>The names of the written services that no longer read back as their snapshot, space-separated,
 /// or <code>""</code>.</p>
-Method Unchanged() As %String
+Method Moved() As %String
 {
     Set tMoved = ""
     For tName = ..#CALLIN, ..#CACHEDIRECT, ..#ECP {

@@ -71,7 +71,7 @@ Parameter PROBEADDRESS = "0.0.0.0";
 /// <p>An entry that is not exactly one of <var>pFresh</var>'s -- one this change adds or rewrites --
 /// is also judged by <method>AddedViolations</method>: its address by the vendor's own check, and
 /// the service's <code>Capabilities</code> for an address and for roles. An entry the instance
-/// already holds is never refused for what it holds, so it can always be removed.</p>
+/// already holds is judged by the shape and role rules alone, never by those three.</p>
 ClassMethod Validate(pName As %String, pArgs As %DynamicObject, pFresh As %DynamicObject, Output pViolations) As %Status
 {
     Kill pViolations
@@ -272,8 +272,8 @@ ClassMethod HasBit(pMask As %Integer, pBit As %Integer) As %Boolean
 
 /// <p>Whether <var>pEntry</var> is one allowed connection the vendor stores as one: an address, with
 /// at most one <code>|</code> followed by a comma-separated role list, and no whitespace or
-/// semicolon anywhere. An empty address, an empty role list after a <code>|</code> and an empty
-/// role between commas are all refused. A shape refusal is
+/// semicolon anywhere. An empty address in either spelling (<method>EntryParts</method>), an empty
+/// role list after a <code>|</code> and an empty role between commas are all refused. A shape refusal is
 /// <parameter>OcuPilot.Api.Error.SERVICEADDRESSSHAPE</parameter>'s, which is why this answers no
 /// code of its own.</p>
 ClassMethod EntryShaped(pEntry As %String) As %Boolean
@@ -283,6 +283,8 @@ ClassMethod EntryShaped(pEntry As %String) As %Boolean
     If $Translate(pEntry, " " _ $Char(9, 10, 13, 160)) '= pEntry Quit 0
     If $Length(pEntry, "|") > 2 Quit 0
     If $Piece(pEntry, "|", 1) = "" Quit 0
+    Do ..EntryParts(pEntry, .tAddress, .tRoles)
+    If tAddress = "" Quit 0
     If pEntry '[ "|" Quit 1
     Set tList = $Piece(pEntry, "|", 2)
     If tList = "" Quit 0

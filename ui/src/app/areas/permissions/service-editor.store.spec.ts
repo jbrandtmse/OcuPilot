@@ -150,6 +150,14 @@ describe('the service editor store (Story 16.13)', () => {
     expect(store.changedFields()).toEqual({ ClientSystems: ['fe80::1'] });
   });
 
+  it('an address already listed with roles is not added again as a bare entry', async () => {
+    // Mutation (Rule 19): compare the typed address with each whole entry in `addAddress` -> `10.0.0.6` is added beside `10.0.0.6:%Manager` and this goes red.
+    const { store } = mount(ecp([{ entry: '10.0.0.6:%Manager', address: '10.0.0.6', roles: ['%Manager'] }]));
+    await store.open('%Service_ECP');
+    expect(store.addAddress('10.0.0.6')).toBe(false);
+    expect(store.changedFields()).toEqual({});
+  });
+
   it('a service that checks no address draws its connections tab only while it holds an entry, and takes no new one', async () => {
     // Mutation (Rule 19): make `hasConnectionsTab` answer `clientSystems` alone -> the held-entry leg goes red.
     const callIn = (entries: readonly string[]) =>

@@ -12,8 +12,8 @@
  * 3. **On `%Service_ECP`, Edit roles and Apply give an address a role**, which the Save stores as
  *    `address|role`, read back inside the container (AC3).
  * 4. **On the service OcuPilot is served through**, Service enabled is drawn unavailable with the
- *    published sentence and a click leaves it on, while a drawn change to its methods or addresses
- *    shows the served-through line; the change is then discarded, and nothing is ever sent (AC5).
+ *    published sentence and a click leaves it on, while a drawn change to its addresses shows the
+ *    served-through line; the change is then discarded, and nothing is ever sent (AC5).
  * 5. **The DW-1337 structural walk** of the editor at an id route, each tab in turn, in both themes.
  *
  * **It runs only in a throwaway** (`-ci`), and writes only `%Service_CacheDirect` and

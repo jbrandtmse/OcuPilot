@@ -420,7 +420,7 @@ export class ServiceEditor {
       this.notify();
       return false;
     }
-    if (address === '' || this.buffer.connections.some((connection) => connection.entry === address)) return false;
+    if (address === '' || this.buffer.connections.some((connection) => connection.address === address)) return false;
     this.buffer = { ...this.buffer, connections: [...this.buffer.connections, { entry: address, address, roles: [] }] };
     this.change(CLIENT_SYSTEMS_FIELD);
     return true;

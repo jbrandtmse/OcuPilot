@@ -375,7 +375,7 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // measured 2,234,284 bytes, under the 4000kB hard stop.
 // Story 18.4, merged forward onto that figure with the disk operations, the Check integrity flow and
 // the Integrity log, measured 2,275,176 bytes and stays under it.
-// Story 16.13 raised it to 2350kB, the measured 2,349,229-byte initial total rounded up to the next
+// Story 16.13 raised it to 2350kB, the measured 2,349,256-byte initial total rounded up to the next
 // kB (the service editor and its roles dialog), under the 4000kB hard stop; DW-1166's re-base at the
 // epic close follows.
 //
@@ -390,7 +390,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2350kB', 'DW-1166, Story 16.13: the measured 2,349,229 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2350kB', 'DW-1166, Story 16.13: the measured 2,349,256 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

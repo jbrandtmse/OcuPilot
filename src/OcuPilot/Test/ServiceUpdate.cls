@@ -103,18 +103,22 @@ Method TestATwoFieldConfirmKeepsEveryOtherField()
 }
 
 /// <p>AD-55: the tool's rules refuse at the mint what the form refuses: an entry holding a semicolon,
-/// a role the instance does not hold, in either spelling, and an authentication method the service
-/// does not support -- each by its published sentence, and nothing is written.</p>
+/// a role the instance does not hold, in either spelling, an authentication method the service
+/// does not support, and an empty address before a role in the <code>address:role</code> spelling --
+/// each by its published sentence, and nothing is written.</p>
 /// <p>Mutation (Rule 19): drop the <code>Validate</code> call from
 /// <method>OcuPilot.Screen.Tool.ServiceUpdate.ArgumentProblem</method> -- every leg goes red. Make
 /// <method>OcuPilot.Area.Permissions.ServiceRules.AddressViolations</method> read roles after
-/// <code>|</code> only -- the <code>address:role</code> leg goes red.</p>
+/// <code>|</code> only -- the <code>address:role</code> leg goes red. Drop the empty-address check
+/// <method>OcuPilot.Area.Permissions.ServiceRules.EntryShaped</method> makes through
+/// <method>OcuPilot.Area.Permissions.ServiceRules.EntryParts</method> -- the <code>:%Operator</code> leg
+/// goes red.</p>
 Method TestTheRulesRefuseAtTheMint()
 {
     Set tError = "OcuPilot.Api.Error"
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[]", "false"))
-    Set tCases = [{"Name": (..#PROBE), "ClientSystems": ["a;b"]}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1|OcuPilotNoSuchRole99"]}, {"Name": (..#CALLIN), "AutheEnabled": 262192}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1:OcuPilotNoSuchRole99"]}]
-    Set tCodes = $ListBuild($Parameter(tError, "SERVICEADDRESSSHAPE"), $Parameter(tError, "SERVICEADDRESSROLE"), $Parameter(tError, "SERVICEAUTHEUNSUPPORTED"), $Parameter(tError, "SERVICEADDRESSROLE"))
+    Set tCases = [{"Name": (..#PROBE), "ClientSystems": ["a;b"]}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1|OcuPilotNoSuchRole99"]}, {"Name": (..#CALLIN), "AutheEnabled": 262192}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1:OcuPilotNoSuchRole99"]}, {"Name": (..#PROBE), "ClientSystems": [":%Operator"]}]
+    Set tCodes = $ListBuild($Parameter(tError, "SERVICEADDRESSSHAPE"), $Parameter(tError, "SERVICEADDRESSROLE"), $Parameter(tError, "SERVICEAUTHEUNSUPPORTED"), $Parameter(tError, "SERVICEADDRESSROLE"), $Parameter(tError, "SERVICEADDRESSSHAPE"))
     For tI = 1:1:$ListLength(tCodes) {
         Set tCase = $ListBuild("", $List(tCodes, tI))
         Set tArgs = tCases.%Get(tI - 1)
@@ -308,11 +312,11 @@ Method TestTheAddressRulesRefuseAtTheMint()
 }
 
 /// <p>DW-1016, AC8: an empty address list reads with the tool's declared word, on the changed row
-/// the mint answers (<code>before</code> <code>""</code> with <code>emptyKey</code>) and on an
-/// unchanged row under the disclosure (<code>{value: "", emptyKey}</code>); a field the tool does not
-/// declare carries no key.</p>
+/// the mint answers (<code>before</code> <code>""</code> with <code>emptyKey</code> for a restriction,
+/// <code>after</code> <code>""</code> for its removal) and on an unchanged row under the disclosure
+/// (<code>{value: "", emptyKey}</code>); a field the tool does not declare carries no key.</p>
 /// <p>Mutation (Rule 19): make the mint's <code>ApplyEmptyKeys</code> skip the key -- the changed-row
-/// leg goes red.</p>
+/// leg goes red. Make it rewrite only <code>before</code> -- the removal leg goes red.</p>
 Method TestAnEmptyAddressListReadsUnrestricted()
 {
     Set tKey = "serviceAllowedUnrestricted"
@@ -323,6 +327,11 @@ Method TestAnEmptyAddressListReadsUnrestricted()
     If '$IsObject($Get(tProposal)) Quit
     Set tRow = tProposal.%Get("changed").%Get(0)
     Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("field") _ " [" _ tRow.%Get("before") _ "] " _ tRow.%Get("after") _ " " _ tRow.%Get("emptyKey"), 1: ""), "ClientSystems [] [""10.0.0.1""] " _ tKey, "the changed row's empty before reads the tool's word")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[""10.0.0.1""]", "false"))
+    Set tSC = ..Mint({"Name": (..#PROBE), "ClientSystems": []}, .tProposal, .tHttp, .tFault)
+    Set tRow = $Select($IsObject($Get(tProposal)): tProposal.%Get("changed").%Get(0), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("before") _ " [" _ tRow.%Get("after") _ "] " _ tRow.%Get("emptyKey"), 1: ""), "[""10.0.0.1""] [] " _ tKey, "and a removed restriction's empty after reads it too: " _ ..Problem(.tFault))
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[]", "false"))
     Set tKey2 = ..MintedKey({"Name": (..#PROBE), "Enabled": true})
     Do ..Stored(tKey2, .tDestructive, .tConsequence, .tPayload, .tDiff)
     Set tRows = ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Parameter(..#UPDATE, "TOOLNAME"), $Select($IsObject(tPayload): tPayload.%ToJSON(), 1: ""), tDiff)

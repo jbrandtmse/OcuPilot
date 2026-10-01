@@ -3927,6 +3927,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 6.2's emptyKey is a table-column attribute only; EXPERIENCE.md:378's diff-row (and its '(none) -> %Development' demo at :719) renders an empty before-value as (none), which for [] says no address rather than Unrestricted (inference: 9.4's card is unbuilt).
 - 2026-09-16T20:44:45Z status=routed owner=9-4-the-service-editor by=cr note=medium unverified; 9.4's proposal card must read an empty AllowedConnections as Unrestricted, as the Services column does
 - 2026-09-17T11:38:32Z owner=16-13-the-service-editor by=load note=retitle_repair: Story 9.4 moved to Epic 16 as 16.13 (owner amendment 0dc7c48)
+- 2026-10-01T00:46:55Z status=resolved-by:16-13-the-service-editor by=adjudication note=EMPTYKEYS ClientSystems=serviceAllowedUnrestricted; mint and Disclosure send '' with emptyKey; ServiceUpdate + proposal-card legs
 
 ### DW-1017: The two client LIVE_PAYLOAD copies are compared with nothing but themselves, so a server navigation pin change can leave both stale and green
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -8626,13 +8627,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
 - 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): the gated reason reads inline after the name, as UX-DR22 says, with a browser check of the label on one line
+- 2026-10-01T00:46:55Z status=resolved-by:16-13-the-service-editor by=adjudication note=gated side-bar reason drawn inline after the name; side-bar.spec + permissions-effective browser leg
 
 ### DW-1880: Database details: the 'Volume files' table is unstyled - browser-default serif bold header (File, Volume, Directory, Size, Directory total, Disk free)
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the database details volumes table template
 - evidence: same class of slip as DW-1837 (a template class name that no stylesheet defines); DW-1188 (queued 23.3) is the lint rule that would catch it
 - 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): use the shared data-table styling, with a check that the header takes the shell font
+- 2026-10-01T00:46:55Z status=resolved-by:16-13-the-service-editor by=adjudication note=Volume files table uses the shared data-table styling; databases browser leg asserts the header font
 
 ### DW-1881: A privileged role granted to a service address under a non-%Admin name (%Manager) or in the classic 'address:roles' spelling is not minted destructive: Prohibited.AddressGrantsPrivilege splits on | only and IsPrivilegedRole matches %All or %Admin_* by name
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 16.13 plan: the service arm uses IsPrivilegedRole (by name) and '|' only; 23.2 batch c moved the OAuth arm to RoleGrantsAdministrativePrivilege (DW-1663); 16.13 canonicalizes only entries a write adds or changes
 - 2026-09-30T21:35:51Z status=routed owner=range-end-cleanup by=harvest note=orchestrator 2026-09-30: service arm to RoleGrantsAdministrativePrivilege plus EntryParts for held entries; Prohibited.cls held by Epic 23
+
+### DW-1883: The service editor has no control for %Service_WebGateway's HttpOnlyCookies, which the classic Edit Service dialog draws and saves for that service, and the admin API's Security.Service PUT cannot carry it
+- source: spec-16-13-the-service-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: $$$ServiceCSP is %Service_WebGateway (%sySecurity.inc:277); %CSP.UI.Portal.Dialog.Service shows HttpOnlyCookies for it (:515) and saves it (:629); %Api.Admin.Endpoints.Security.Service MergeJsonAndProperties sets only AutheEnabled, ClientSystems and Enabled (read on slot A). The spec's Named limit ('the CSP service ... does not exist on this build') misstates why.
+- 2026-10-01T00:44:17Z status=decision-pending owner=burndown by=cr note=product call: accept the gap now that ServiceForm's classic link is gone, or add an AD-27 named case writing it via Security.Services
+
+### DW-1884: README's Known limitations and roadmap still describe the service editor as reduced, covering the common fields and linking to the classic page
+- source: spec-16-13-the-service-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: README.md:491-493 says the LDAP and service editors cover the common fields and link to the classic page; :517 lists the full service editor as remaining. Story 16.13 shipped the full editor and dropped the link.
+- 2026-10-01T00:44:22Z status=wontfix-accepted owner=16-13-the-service-editor by=cr note=README is outside Epic 16's footprint; reopen_if=README.md still says the service editor links to the classic page at the next release cut
