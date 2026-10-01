@@ -264,7 +264,10 @@ feature branch and restarts it at an epic boundary. Throwaways (`scripts/ci-thro
 slot — `ocupilot-ci` on 52776/1975 for slot A, `ocupilot-b-ci` on 52777/1976 for slot B, `ocupilot-c-ci` on 52779/1978 for slot C — and an
 agent tears down only a throwaway whose `up` it ran itself and can name from its own transcript;
 anything else it reports and leaves running. The script refuses the live and slot names and ports,
-and a project name Compose already knows from another config file, outright.
+and a project name Compose already knows from another config file, outright. A throwaway sets
+`OCUPILOT_LOAD_TESTS=1`, so its start hook compiles the `OcuPilot.Test` classes; the repository's
+`docker-compose.yml` does not, so a product start compiles none and deletes any an earlier start
+compiled (AD-17); a slot instance's own compose file needs the variable, or its next start removes them.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`

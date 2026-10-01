@@ -342,6 +342,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T21:00:47Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=owner-delegated decision: move Test.* to a sibling tree excluded from the start hook and module.xml. A compile error in any test class fails every container start and DemoTask ships with the flag off, which is exactly what a first-time install must not do
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.2 (chartered after the 1.0.4 cut)
 - 2026-09-30T06:30:49Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=chartered: Story 23.2 per the owner-approved burn-down decision sheet 2026-09-29 (23.2 capped at 12)
+- 2026-10-01T02:49:23Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=93602359+aa098a24: start compiles OcuPilot/Test only with OCUPILOT_LOAD_TESTS=1; CI 36804115324 images 0 test classes
 
 ### DW-49: A private RSA key (the demo X.509 fixture credential) is checked into OcuPilot.Install.Fixture.cls source
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: high | footprint: in-epic
@@ -7922,6 +7923,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-09-30T17:16:05Z occurrence=1.0.4 upgrade check (orchestrator) 2026-09-30 note=docker compose restart iris logged '[ERROR] Status of instance IRIS is running' at the stop signal, the next start logged 'Previous system shutdown was abnormal' at severity 2 and Monitor.State went 0 to 1; nothing lost; same as 1.0.3's check
+- 2026-10-01T05:57:13Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=both the in-place restart and the env-change recreate logged 'Previous system shutdown was abnormal'; nothing lost
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
@@ -8533,11 +8535,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
 - 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
+- 2026-10-01T02:06:23Z status=routed owner=range-end-cleanup by=lead note=restores the orchestrator's 2026-09-30 merge-gate decision after a union merge duplicated this entry's block
 
 ### DW-1865: proposal-demo AC1 reads the read tool card's status with a bare evaluate once the proposal card shows, so a card still reading running at that instant turns it red (CI flake)
 - source: cycle-log-epic-23.md (CI run 36727128251) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36727128251 attempt 1 browser shard 2/3: proposal-demo.browser-spec.mjs:355 read running; same product code green in run 36720188412 and 3/3 locally on ocupilot-b-ci
 - 2026-09-30T14:50:03Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: wait for the status word done before reading; next standing cleanup (23.3)
+- 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: CI flake, Rule 27 priority for the standing cleanup after 1.0.5
 ### DW-1861: The task create and the 9.8 edit judge the task type's privilege (TaskRules.Permitted) only at the mint, never at Confirm, so a caller who lost it since the mint still confirms (AD-6, AD-40)
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
@@ -8560,11 +8564,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.AddressGrantsPrivilege (Prohibited.cls:4021) still calls name-only IsPrivilegedRole; batch c (68f76262) replaced it with RoleGrantsAdministrativePrivilege for customization roles only
 - 2026-09-30T16:42:53Z status=routed owner=burndown by=harvest note=Same defect as DW-1663 in the service arm; reuse RoleGrantsAdministrativePrivilege. Prohibited.cls contended with Epic 16
 - 2026-09-30T17:25:28Z occurrence=23-2-the-range-end-cleanup-part-2
+- 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: real MED outside the cap of 12; queued for the standing cleanup after 1.0.5
 
 ### DW-1873: web-sessions AC1's structural check can catch a rail tooltip revealed mid-capture (app-rail span.ocu-rail-tooltip 406px past its slot at 720px), a CI flake unrelated to the screen under test
 - source: cycle-log-epic-23.md (CI run 36746183320) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 36746183320 browser shard 1/3 on 68f76262 (batch c changed no shell or rail code): web-sessions.browser-spec.mjs:234 overflow on the rail tooltip; the same spec was green on the prior two runs
 - 2026-09-30T17:29:36Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: move the pointer off the rail or exclude a hover-revealed tooltip before the structural capture (23.3)
+- 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: CI flake, Rule 27 priority for the standing cleanup after 1.0.5
 ### DW-1868: An owner-scope lock removal lists once and then sends its DELETEs, so a lock its owner renumbers during the sequence is sent under a stale DeleteID
 - source: spec-16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-09-30: taking ^R("r",2) changed ^R("r",1)'s DeleteID, so a sibling taken mid-loop leaves a listed id stale; the vendor's answer to it is unmeasured, and a crafted id crashed a CSP worker
@@ -8575,6 +8581,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
 - 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
+- 2026-10-01T05:57:12Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=a second failure mode: 'and the instance's state, 1 before, has not reached Alert' on an upgraded instance already at Warning from the restart (DW-1762), with the three preceding classes logging deliberate severity-2 lines (inference); the port's own assertions passed; 3/3 green on a fresh instance. The fix should assert on lines this delete posts, not the instance-wide state
 
 ### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
@@ -8585,6 +8592,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
 - 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
 - 2026-09-30T16:00:04Z status=routed owner=range-end-cleanup by=merge_gate note=decided (orchestrator 2026-09-30): not in 23.2 (owner cap of 12); queued for the standing cleanup after the next release, priority p4, user-visible but rare (about nine tool-heavy turns); likely fix: write the response with the object's own device writer (Do pData.%ToJSON()) instead of one string - verify on the one AD-12 writer
+- 2026-10-01T02:06:23Z status=routed owner=range-end-cleanup by=lead note=restores the orchestrator's 2026-09-30 merge-gate decision after a union merge duplicated this entry's block
 
 ### DW-1870: A Windows clone (Git for Windows, core.autocrlf=true) checks scripts/*.sh out with CRLF, so durable-init dies at once ('set: Illegal option -') and docker compose up --wait fails in 1 s
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
@@ -8633,6 +8641,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Batch e (3b3dbc14) holds the target in Confirm.Transition and ScreenAction.Run only; 16 of the 21 Save handlers call their port directly (plan measurement); Epic 16 edits two of them
 - 2026-09-30T22:37:41Z status=routed owner=burndown by=harvest note=DW-1497's residual for the Save route: take Operation.Hold/Release around each Save's read-to-write (23.3 candidate)
 - 2026-09-30T23:16:38Z occurrence=23-2-the-range-end-cleanup-part-2
+- 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: real MED outside the cap of 12; queued for the standing cleanup after 1.0.5
 - 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
 - 2026-10-01T05:41:07Z occurrence=16-14-the-ldap-and-kerberos-editor
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
@@ -8645,7 +8654,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the database details volumes table template
 - evidence: same class of slip as DW-1837 (a template class name that no stylesheet defines); DW-1188 (queued 23.3) is the lint rule that would catch it
 - 2026-09-30T21:33:46Z status=routed owner=16-13-the-service-editor by=orchestrator note=Epic 16 fix pack with 16.13 (1.0.5): use the shared data-table styling, with a check that the header takes the shell font
+- 2026-10-01T03:35:18Z status=resolved-by:16-13-the-service-editor by=merge_gate note=restores the 00:46:55Z adjudication line (Volume files table uses the shared data-table styling; databases browser leg asserts the header font) that the DW-48 merge's union placed under DW-1885
+
+### DW-1885: A product start leaves the OcuPilot.Test.* classes an earlier test-mode start compiled on its volume, so an upgraded compose volume, or a slot instance restarted without OCUPILOT_LOAD_TESTS, still carries them
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Runner step 2026-10-01 01:34Z on ocupilot-b-ci: product start compiled 0 test classes after the package was deleted by hand; without that delete the volume kept 835 (the hook only narrows what it compiles)
+- 2026-10-01T01:35:37Z status=decision-pending owner=burndown by=harvest note=human=decide whether a product start deletes the OcuPilot.Test package (recommended: yes, logged, only when the flag is unset)
 - 2026-10-01T00:46:55Z status=resolved-by:16-13-the-service-editor by=adjudication note=Volume files table uses the shared data-table styling; databases browser leg asserts the header font
+- 2026-10-01T02:51:51Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=decided (orchestrator): product start deletes the roster's test-scope package, flag unset only, logs the count
+- 2026-10-01T04:45:46Z status=resolved-by:23-2-the-range-end-cleanup-part-2 by=adjudication note=00724be8+e94bc50e: product start deletes the test-scope package, logs count; CI 36813220551 images deleted 2
 
 ### DW-1881: A privileged role granted to a service address under a non-%Admin name (%Manager) or in the classic 'address:roles' spelling is not minted destructive: Prohibited.AddressGrantsPrivilege splits on | only and IsPrivilegedRole matches %All or %Admin_* by name
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8688,3 +8705,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Kernel.Proposal.Mint reads the target before the tool's ArgumentProblem, so AC8's published-sentence clause holds for the Save alone; LdapCreate.TestTheMintRefusesTheCreatesRules asserts 'already present'. Nothing is sent either way.
 - 2026-10-01T05:41:07Z status=wontfix-accepted owner=16-14-the-ldap-and-kerberos-editor by=cr note=reopen_if=a create tool's agent refusal must carry its own code, or AC8 is re-read as binding the agent's wording
+
+### DW-1886: A developer instance whose compose file does not set OCUPILOT_LOAD_TESTS=1 loses its compiled OcuPilot.Test classes on its next start from a tree carrying the DW-1885 delete; ocupilot-slot-b does not set it today, nor would ocupilot if recreated from the repository's compose file
+- source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: docker inspect ocupilot-slot-b shows only OCUPILOT_DEMO=1; ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; 00724be8 deletes the test-scope package on any start without it
+- 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
+- 2026-10-01T04:00:14Z occurrence=23-2-the-range-end-cleanup-part-2
