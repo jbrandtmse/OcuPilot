@@ -2,7 +2,7 @@
 title: 'Story 23.3: The range-end cleanup, part 3'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: 'a0c415b776875300f944b6756313c8ff531cbbdb'
 baseline_commit: 'a0c415b776875300f944b6756313c8ff531cbbdb'

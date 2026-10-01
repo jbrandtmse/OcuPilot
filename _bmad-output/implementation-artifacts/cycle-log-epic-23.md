@@ -221,3 +221,7 @@
 2026-10-01T21:22:56Z	Story 23.3	committed	batch=a sha=06c9fa1b code=cd14a21f,98e71205,006d6cda(review_LOW_patches),06c9fa1b(run_time_docs) ci=pending run=36928231112 green_code_head=98e71205(run_36923461500) amendments=spine_913+1050(Rule20);CLAUDE.md:143,147;README.md:442-443;docs/DEVELOPMENT.md:451-452,466 footprint_extensions=README.md
 2026-10-01T21:22:56Z	Story 23.3	ledger_adjudicated	batch=a owned=1(DW-1901) resolved=1 reowned=0 terminal=0 filed=DW-1904(wontfix-accepted,cr)
 2026-10-01T21:22:56Z	Story 23.3	batch_boundary_reported	batch=a to=main code_head=98e71205 run=36923461500 followup_head=06c9fa1b followup_run=36928231112(pending) feature_code_moved=no
+2026-10-01T21:57:53Z	Story 23.3	ci_resolved	batch=a_followup story=23.3 run=36928231112 head=06c9fa1b result=success attempt=1 instance_legs_min=24.9,34.1,33.0,27.8 wall_min=34.4 resolved_at=before_next_implement
+2026-10-01T21:57:53Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@d234498d(batch_a_merged_ff_98e71205+bookkeeping) merge=0ee6bce8 conflicts=none code_changes=none before=batch_b
+2026-10-01T21:57:53Z	Story 23.3	rework_opened	cycle_iteration=2 iteration=batch_b trigger=next_batch items=DW-1866,DW-1865,DW-1808,DW-1822 scope_baseline=HEAD spec=status_only(oversized)
+2026-10-01T21:57:53Z	Story 23.3	stage_spawned	stage=implement batch=b spawn_at=2026-10-01T21:57:53Z model=opus agent_name=23-3-the-range-end-cleanup-part-3-implement-b cycle_iteration=2 prior_ci=success(36928231112) feature=d234498d
