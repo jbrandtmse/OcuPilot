@@ -25,6 +25,9 @@ Parameter DATABASEDELETE = "osmgmt.localdatabases.delete";
 /// <p>The agent's task import, which the baseline also disables (DW-1827).</p>
 Parameter TASKIMPORT = "tasks.schedule.import";
 
+/// <p>The enable of interoperability, which the baseline also disables (Story 18.15).</p>
+Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
+
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
 
@@ -107,11 +110,11 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey): "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey): "0|baseline", 1: "1|baseline")
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import and the eight disk operations disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations and the enable of interoperability disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

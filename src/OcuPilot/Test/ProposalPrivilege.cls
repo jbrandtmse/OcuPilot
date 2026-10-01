@@ -109,6 +109,14 @@ Method TestTheSetCarriesExtraAndArgumentPairs()
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{}", .tPairs), "the mapping copy's pairs resolve")
         Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Operate", "USE")) > 0, "and include %Admin_Operate:USE, the pair its queued task's poll needs (AD-8)")
     }
+    ; Story 18.15: the enable of interoperability's set carries %All:USE and the poll's pair (AD-8 as
+    ; amended 2026-10-01).
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("osmgmt.namespaces.enableinterop", .tTool), "the enable of interoperability resolves")
+    If $IsObject($Get(tTool)) {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, "{}", .tPairs), "the enable's pairs resolve")
+        Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%All", "USE")) > 0, "and include %All:USE (AD-8)")
+        Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Operate", "USE")) > 0, "and %Admin_Operate:USE, the pair its queued task's poll needs (AD-8)")
+    }
     ; Story 18.3: the database create declares the resource and path pairs; the mounting edit adds
     ; %Admin_Operate:USE when it sets MountRequired, and the file edit adds %Admin_Secure:USE for a
     ; resource and %Admin_FileSystemAccess:USE for a new volume directory (AD-8).

@@ -55,11 +55,19 @@ Parameter DISKKEYS = "osmgmt.databasedetails.mount,osmgmt.databasedetails.trunca
 /// <p>The agent's task import key, which the baseline disables too (DW-1827).</p>
 Parameter TASKIMPORTKEY = "tasks.schedule.import";
 
+/// <p>The agent's enable-interop key, which the baseline disables too (Story 18.15).</p>
+Parameter ENABLEINTEROPKEY = "osmgmt.namespaces.enableinterop";
+
+/// <p>The tool whose first own pair is <code>%All:USE</code>: a holder of the <code>%All</code> role
+/// holds every custom resource, so its page's resource is never the pair that fails, and its legs
+/// assert the <code>%All:USE</code> refusal instead (AD-8 as amended 2026-10-01).</p>
+Parameter ALLTOOL = "osmgmt.namespaces.enableinterop";
+
 /// <p>The pairs each declaring tool declares beyond its list's own, as <code>tool=pair|pair</code>
 /// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
 /// and the database file edit, the truncate and the service update declare none of their own; Story
 /// 18.4's dismount, whose classic page performs it itself, declares no page.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=";
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -128,7 +136,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the thirty-four OWNPAIRS names")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the thirty-five OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -166,6 +174,11 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 /// the lacking principal and its leg goes red. A namespace create minted for each is refused at the
 /// lacking principal's confirm naming the pair with no port call, and applied at the holding
 /// principal's, reaching the port.</p>
+/// <p><parameter>ALLTOOL</parameter> is refused naming <code>%All:USE</code> for both principals, which
+/// hold every declared pair but not the <code>%All</code> role.</p>
+/// <p>Its pairs are read directly to carry the assigned page's resource, which neither refusal can
+/// show (AD-44). Mutation (Rule 19): its <method>PrivilegePairs</method> skips
+/// <method>OcuPilot.Screen.Gate.WithClassicPages</method> -> that read goes red.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Gate.WithClassicPages</method> answers
 /// <var>pPairs</var> unchanged -> the lacking principal is admitted and this goes red.</p>
 Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
@@ -174,6 +187,9 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
     Set tSC = ..Roster(.tRoster)
     Set tTools = ..Declared()
     Do $$$AssertStatusOK(..Assign(.tRoster), "the probe resource is assigned to every declared page")
+    Kill tAllTool
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#ALLTOOL, .tAllTool, 1)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tAllTool)) && $ListFind(##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tAllTool, .tAllResolved), $ListBuild(..#RESOURCE, "USE")), ..#ALLTOOL _ ": its pairs carry the assigned page's resource, though %All:USE fails first for every principal here")
     For tUser = ..#LACKINGUSER, ..#HOLDINGUSER {
         Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
         Do $$$AssertStatusOK(tSC, tUser _ ": a running turn is seeded")
@@ -186,6 +202,10 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
         For tI = 1:1:$ListLength(tTools) {
             Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRun, tI)
             Set tSaid = $Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent")
+            If $List(tTools, tI) = ..#ALLTOOL {
+                Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE %All:USE", $List(tTools, tI) _ ": " _ tUser _ "'s call is refused naming %All:USE")
+                Continue
+            }
             If tUser = ..#LACKINGUSER {
                 Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", $List(tTools, tI) _ ": the lacking principal's call is refused naming the page's resource")
             } Else {
@@ -397,12 +417,14 @@ Method RestorePages() As %Status
 
 /// <p>Enable the agent's namespace and database delete keys, its task import key and Story 18.4's
 /// disk operation keys, over the snapshot this class took.</p>
+/// <p>And Story 18.15's enable-interop key.</p>
 Method EnableDelete() As %Status
 {
     Kill tSettings
     Set tSettings(..#DELETEKEY) = "enabled"
     Set tSettings(..#DATABASEDELETEKEY) = "enabled"
     Set tSettings(..#TASKIMPORTKEY) = "enabled"
+    Set tSettings(..#ENABLEINTEROPKEY) = "enabled"
     For tI = 1:1:$Length(..#DISKKEYS, ",") {
         Set tSettings($Piece(..#DISKKEYS, ",", tI)) = "enabled"
     }

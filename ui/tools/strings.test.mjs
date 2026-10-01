@@ -646,7 +646,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
-  // one by one; so does Story 18.14's Copy mappings row action on that list, and Story 18.3's four
+  // one by one; so do Story 18.14's Copy mappings and Story 18.15's Enable interoperability row actions
+  // on that list, and Story 18.3's four
   // phrases of a database delete's impact that name the namespaces using the database. Story 16.14's
   // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
@@ -672,6 +673,12 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceCopyMappingsDone',
       'namespaceCopyMappingsRunning',
       'namespaceDeleteConsequence',
+      'namespaceEnableInteropAction',
+      'namespaceEnableInteropConsequence',
+      'namespaceEnableInteropDone',
+      'namespaceEnableInteropRunning',
+      'namespaceEnableInteropSystem',
+      'namespaceEnableInteropVerb',
       'namespaceFormPrompt1',
       'namespaceFormPrompt2',
       'namespaceFormPrompt3',

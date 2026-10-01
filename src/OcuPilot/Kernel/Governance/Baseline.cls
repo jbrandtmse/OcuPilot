@@ -39,6 +39,7 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.namespaces.copymappings": true,
   "osmgmt.namespaces.create": true,
   "osmgmt.namespaces.delete": false,
+  "osmgmt.namespaces.enableinterop": false,
   "osmgmt.namespaces.update": true,
   "osmgmt.packagemappings.create": true,
   "osmgmt.packagemappings.delete": true,

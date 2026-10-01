@@ -7187,6 +7187,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "copy-mappings",
         "selfProtection": ""
+      },
+      {
+        "id": "enable-interop",
+        "selfProtection": ""
       }
     ],
     "context": {

@@ -21,6 +21,11 @@
 /// port's <code>AwaitTask</code> is its one poller, reading the finished result once. A copy still
 /// running at the bound has started: success with HTTP <parameter>STARTEDHTTP</parameter>, never
 /// <code>PORT.TIMEOUT</code> (AD-26), and nothing reads its task again.</p>
+/// <p><b>An enable of interoperability is sent here</b> (AD-26, Story 18.15). The enable tool sends
+/// no body; its target, in <code>name</code>, is sent upper-cased in the query alone. The vendor queues
+/// it (<parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter>), the admin port's
+/// <code>AwaitTask</code> reads the finished result once, and past the bound it has started, as a copy
+/// has.</p>
 /// <p><b>The copy tool's read adds its argument field.</b> <code>Namespace.Namespace</code>'s
 /// <code>GET</code> through this port answers the vendor's object with
 /// <parameter>SOURCEQUERY</parameter> added empty, so a merge of the tool's argument makes the one
@@ -42,6 +47,10 @@ Parameter NAMESPACEENDPOINT = "Namespace.Namespace";
 /// (AD-51 as amended by Story 12.3): the vendor's copy of mappings, sent
 /// <code>{SourceNamespace, DestinationNamespace}</code>.</p>
 Parameter COMPOSEDTYPES = "Namespace.Namespace/MAPPINGS";
+
+/// <p>The one pair this port sends with its target alone, upper-cased, and no body: the vendor's
+/// enable of interoperability.</p>
+Parameter INTEROPTYPES = "Namespace.Namespace/INTEROP";
 
 /// <p>The read type whose answer gains <parameter>SOURCEQUERY</parameter>.</p>
 Parameter READTYPE = "GET";
@@ -73,7 +82,9 @@ Parameter STARTEDHTTP = 202;
 /// the admin port refuses one for a constant-body pair, a query missing either is 400
 /// <code>PORT.VALIDATION</code>, and a copy not finished within <method>AsyncTimeout</method>
 /// returns OK with <var>pHttpStatus</var> <parameter>STARTEDHTTP</parameter> and <var>pResult</var>
-/// and <var>pFault</var> empty. <parameter>NAMESPACEENDPOINT</parameter>'s
+/// and <var>pFault</var> empty. For the <parameter>INTEROPTYPES</parameter> pair, <code>name</code> is
+/// the namespace, sent upper-cased; a caller body is refused the same way, and an enable not finished
+/// within <method>AsyncTimeout</method> is answered as a copy is. <parameter>NAMESPACEENDPOINT</parameter>'s
 /// <parameter>READTYPE</parameter> answers the vendor's object with <parameter>SOURCEQUERY</parameter>
 /// added empty.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -105,16 +116,45 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If '$IsObject(tBody) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "The copy of mappings was not given a source and a destination namespace it can use", .pHttpStatus, .pFault)
         Kill tNone
         Set tSC = ##super(pEndpoint, pType, .tNone, tBody, .pResult, .pHttpStatus, .pFault)
-        ; AD-26: past the bound the queued copy has started, and the vendor's worker finishes it.
-        If $$$ISERR(tSC) && ..IsQueuedWrite(pEndpoint, pType) && $IsObject(pFault) && (pFault.%Get("code") = ##class(OcuPilot.Api.Error).#PORTTIMEOUT) {
-            Set pResult = ""
-            Set pHttpStatus = ..#STARTEDHTTP
-            Set pFault = ""
-            Quit $$$OK
+        Quit ..Started(pEndpoint, pType, tSC, .pResult, .pHttpStatus, .pFault)
+    }
+    If $ListFind($ListFromString(..#INTEROPTYPES), pEndpoint _ "/" _ pType) {
+        Set pResult = ""
+        Set pHttpStatus = 0
+        Set pFault = ""
+        If $IsObject(pBody) || (pBody '= "") {
+            Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+            Do ..LogFault(pEndpoint _ " " _ pType _ " was given a caller body, and it sends none", $$$ERROR($$$GeneralError, "an enable of interoperability takes no caller body"), pFault.code)
+            Quit tSC
         }
-        Quit tSC
+        Do ..InteropQuery(.pQuery, .tQuery)
+        Set tSC = ##super(pEndpoint, pType, .tQuery, "", .pResult, .pHttpStatus, .pFault)
+        Quit ..Started(pEndpoint, pType, tSC, .pResult, .pHttpStatus, .pFault)
     }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>AD-26: a queued write whose task is not terminal at the bound has started, and the vendor's
+/// worker finishes it, so its <code>PORT.TIMEOUT</code> answers <var>pSC</var>'s caller OK with
+/// <parameter>STARTEDHTTP</parameter> and an empty result and fault. Every other outcome is
+/// <var>pSC</var> as it is.</p>
+ClassMethod Started(pEndpoint As %String, pType As %String, pSC As %Status, ByRef pResult, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
+{
+    If $$$ISERR(pSC) && ..IsQueuedWrite(pEndpoint, pType) && $IsObject($Get(pFault)) && (pFault.%Get("code") = ##class(OcuPilot.Api.Error).#PORTTIMEOUT) {
+        Set pResult = ""
+        Set pHttpStatus = ..#STARTEDHTTP
+        Set pFault = ""
+        Quit $$$OK
+    }
+    Quit pSC
+}
+
+/// <p>The query an enable of interoperability sends, in <var>pSent</var>: <var>pQuery</var>'s
+/// <parameter>IDQUERY</parameter> alone, upper-cased, the spelling the instance stores.</p>
+ClassMethod InteropQuery(ByRef pQuery, Output pSent)
+{
+    Kill pSent
+    Set pSent(..#IDQUERY) = $ZConvert($Get(pQuery(..#IDQUERY)), "U")
 }
 
 /// <p>Turn a mapping write's fault that names a <code>MAPPING.*</code> field refusal
@@ -192,7 +232,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <p><method>Invoke</method>'s branches as a script (AD-59): a mapping call is the vendor call with
 /// the split query, and a malformed composite id answers no step; a copy of mappings is the vendor
 /// call with <method>CopyBody</method>'s body and an empty query, and a query it cannot compose from
-/// answers no step; every other call is the admin port's script.</p>
+/// answers no step; an enable of interoperability is the vendor call with
+/// <method>InteropQuery</method>'s query and no body; every other call is the admin port's
+/// script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..IsMappingEndpoint(pEndpoint) && '($Data(pQuery(..#NAMESPACEPARAM)) # 2) {
@@ -204,6 +246,10 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         If '$IsObject(tBody) Quit []
         Kill tNone
         Quit ##super(pEndpoint, pType, .tNone, tBody, pContext)
+    }
+    If $ListFind($ListFromString(..#INTEROPTYPES), pEndpoint _ "/" _ pType) {
+        Do ..InteropQuery(.pQuery, .tQuery)
+        Quit ##super(pEndpoint, pType, .tQuery, "", pContext)
     }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
 }

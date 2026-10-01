@@ -2,13 +2,43 @@
 title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '337bfe9bf3bb26e712affd1fc6071932bfc499f0'
+baseline_commit: '337bfe9bf3bb26e712affd1fc6071932bfc499f0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A user whose own role only grants the %All role is refused the enable naming %All:USE, though it holds every resource.
+    evidence: |-
+      NamespaceInteropGate.TestNoResourceIsNamedAll and TestACallerWithoutAllIsRefusedBeforeAnyPortCall (runs 1345, 1562): CheckUserPermission(u, "%All", "USE") reads 0 for a user whose role's GrantedRoles is %All and 1 for a direct %All holder, and the gates evaluate pairs through it. AD-8's 2026-10-01 sentence (spine :225), this spec's Design Notes :349, its proposed amendment 1 (:367) and Tasks :272-273 say a granted-role holder passes; replace those at origin. Admitting such users needs the role check the Design Notes rejected (Operation.Holds and the gates, contended kernel files): a product decision.
+    location: >-
+      src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls PrivilegePairs; ARCHITECTURE-SPINE.md:225
+    severity: medium
+  - summary: >-
+      The two started legs raise the instance's alert state: AwaitTask logs the bound (AdminPort :2641) before NamespacePort answers the enable as started.
+    evidence: |-
+      The Design Notes' "Read once" bullet asks for this entry if it happened. The handoff measured the monitor state 1 -> 2 across its NamespaceInterop runs on ocupilot-b-ci (18.14's known behavior on the copy). AdminPort was not changed, per the spec.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls AwaitTask; src/OcuPilot/Test/NamespaceInterop.cls started legs
+    severity: medium
+  - summary: >-
+      A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, logging three alerts per NamespaceInteropGate run.
+    evidence: |-
+      Reported by the handoff on ocupilot-b-ci; the same fault came from ClassicPageGate run 1099 before this story, so it is pre-existing harness behavior (MappingWriteGateProbe.QueuedCopies).
+    location: >-
+      src/OcuPilot/Test/MappingWriteGateProbe.cls QueuedCopies
+    severity: low
+  - summary: >-
+      Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest fails on a reused throwaway once another suite's conversation entries are a day old.
+    evidence: |-
+      Full sweep run 1437 on ocupilot-b-ci: ForeignExpired found _SYSTEM conversation entries from 2026-09-30T13:08Z, before this story's dispatch, older than the test's one-day probe definition. CI's fresh throwaways start empty; reused-throwaway noise like DW-1554, not caused by this story.
+    location: >-
+      src/OcuPilot/Test/Retention.cls:189
+    severity: low
 ---
 
 <intent-contract>
@@ -167,7 +197,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 **Task 1: restore the probe and prove the cleanup.** It runs first, on `ocupilot-b-ci` only. No tool, port branch, descriptor or client code is written before it passes.
 
-1. Run `git apply _bmad-output/implementation-artifacts/spec-18-15-task0-interopprobe.patch`, which creates `src/OcuPilot/Test/InteropProbe.cls`.
+1. Run `git apply _bmad-output/implementation-artifacts/spec-18-15-task1-interopprobe.patch` (it supersedes the Task 0 patch): it restores the extended `src/OcuPilot/Test/InteropProbe.cls` and steps 2-3's `AdminPort` and `PortFixture:21` appends, cut against `6bcbea1d`. Update `AdminPortAsync`'s pair count with it. Then add the residue patterns of step 3's amendment and re-run the proof.
 2. `src/OcuPilot/Port/AdminPort.cls`:
    - Append `,Namespace.Namespace/INTEROP` to `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`.
    - Under `QUEUEDWRITES`' doc, add one line naming INTEROP as Story 18.15's: it has no body, is queued through `ShouldRunAsync`, and is read once.
@@ -188,8 +218,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
      - and it forgets the record once no probe namespace remains.
 
      Every removal uses an exact name taken from the diff, and nothing the record holds is removed.
-   - **`RESIDUE`** is a closed list of node patterns: the counter and HSSYS index nodes that the measurement in step 5 shows may differ after a restore, each one named. **`BroadResidue(pBefore, pAfter)`** answers the lines of the broad diff outside it.
-4. Load the code with `/tmp/epic-18-d4/load-throwaway.sh`. Then read through `NamespacePort` `GET` that `%SYS` and `%ALL` both answer on the throwaway.
+   - **`RESIDUE`** is a closed list of node patterns: the counter, edit-stamp and HSSYS index nodes that the measurement in step 5 shows may differ after a restore, each one named. The edit stamps are exactly the five Task 1 measured (Design Notes › Restore proof): the web-application `^%SYS("CSP","LastUpdate")` node and the four `SQLStatsSettings` rows' edit date, job, namespace and user, whose settings are unchanged [AMENDED 2026-10-01, runner, spec gate after the Task 1 halt]. **`BroadResidue(pBefore, pAfter)`** answers the lines of the broad diff outside it.
+4. Load the code with `/tmp/epic-18-d4/load-throwaway.sh`. Then read through `NamespacePort` `GET` that `%SYS` answers on the throwaway, and record whether `%ALL` exists there (`ocupilot-b-ci` has none; slot B's dev instance has one).
 5. Run the proof through `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`, as the test process, which holds `%All`:
    1. `RemoveAll`.
    2. Take S0 = `Snapshot()` and B0 = `Snapshot(1)`, and read `SecondReads()` and `$SYSTEM.Monitor.State()`.
@@ -204,10 +234,10 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
    - `SecondReads()` and the monitor state are unchanged.
 7. **HALT** `blocked`, with blocking condition `intent gap: the throwaway cannot be restored: <what>` and nothing else built, if any of these hold:
    - S2 differs from S0.
-   - A broad residue line is neither a counter nor an HSSYS index node.
+   - A broad residue line is not a counter, one of the five named edit stamps, or an HSSYS index node.
    - `SecondReads()` grows, or the monitor state rises.
    - A clause of the consequence sentence is false on the throwaway.
-   - `%SYS` or `%ALL` does not answer the `GET`, so the tool's sentence could not be reached.
+   - `%SYS` does not answer the `GET`, so the tool's sentence could not be reached.
    - The enable ends other than `Finished`, or with a non-empty `Console`.
 
 **Execution: the enable.**
@@ -267,9 +297,10 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - **The started legs, on `A` and `B`,** through `NamespaceStartedPort`, a new `NamespaceStartedAction.Enable` (over the seam) and `NamespaceStartedConfirm`: the confirm answers continues, the route answers `continues: true`, and each task is settled once.
 - **`src/OcuPilot/Test/NamespaceInteropGate.cls`** (new; armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_NAMESPACE_CONFIG`). It runs on the `MappingWriteGate` model, through `MappingWriteGateProbe`'s `dispatch`, `action` and `confirm` steps; a probe class of its own is added only if those steps cannot carry the enable.
   - It asserts `Security.Resources.Exists("%All")` is 0.
-  - A principal holding the list's pairs, `%Admin_Operate:USE` and every other resource, but not `%All`, is refused 403 `AUTH.NOPRIVILEGE` with `failedPair` `%All:USE`, with zero port calls, on the dispatch and on the route.
-  - On the confirm, the principal mints while its role grants `%All`, loses that grant, and is then refused the same way.
-  - A principal whose role grants `%All` is admitted on the dispatch and on the route, and the recording port receives exactly one `INTEROP` call.
+  - A principal holding the list's pairs, `%Admin_Operate:USE` and every other resource, but not the `%All` role, is refused 403 `AUTH.NOPRIVILEGE` with `failedPair` `%All:USE` on the dispatch and on the route, the route's port asked nothing and no proposal minted.
+  - So is a principal whose own role only grants `%All` (DW-1897).
+  - On the confirm, a principal mints while it holds the `%All` role, loses that role, and is then refused the same way, its port asked nothing.
+  - A principal holding the `%All` role is admitted on the dispatch and on the route; the route's recording port receives exactly one `INTEROP` call and answers it done, and the namespace is enabled with its HealthShare half.
 - **Rosters**, each updated from its class's red:
   - `AdminPortAsync` (10 pairs and its message) and `PortFixture:21`;
   - `ReadTool:93-94`;
@@ -297,6 +328,12 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - Proceed shows the running line, then the done line or the still-running line. Exactly one `enable-interop` POST is sent, and the list is read again afterwards.
   - The DW-1337 walk runs in both themes, with the dialog open and with the status line holding text.
 
+**Rework iteration 1 (trigger: CI run 36869954798 on `be4b1baf`):**
+
+- [x] [CI] instance shard 1/3, instance shard 2/3, browser shard 3/3: on CI's fresh throwaway the enable creates and starts the language server `FHIR_Validation_Server`, which the record lacks; `RestoreInstance` only stops a server the record holds stopped, so `NamespaceInterop` and `NamespaceInteropGate` (`OnAfterAllTests`) and `namespace-interop.browser-spec.mjs:118` report `added ["languageserver|FHIR_Validation_Server|1"]`. Fix: `RestoreInstance` stops, then deletes, every language server the record lacks (exact name from the diff), and a mutation pins it. Reproduce first on `ocupilot-b-ci` by removing the `FHIR_Validation_Server` definition the earlier probe enables left there (stopped), since a fresh instance has none.
+- [x] [CI] Throwaway hygiene: remove, as objects (`%DeleteId`, never an SQL `DELETE`, DW-1859), the two vendor async task rows QA's mutation runs left on `ocupilot-b-ci` for the deleted principal `OcuGate1815All` (one stuck `Running`, one `Failed` naming `OCUPROBE1815G`).
+- [x] [Review] Stale spec text the code review named (Tasks :301-302, the `angular.json` statements, the Auto Run Result tally): state the delivered values.
+
 **Acceptance Criteria:**
 
 - **AC1:** Given `ocupilot-b-ci`, when the implement stage starts, then Task 1's proof shows that the throwaway's snapshot after `RemoveAll` equals the one before it, before any tool exists. That snapshot includes `Admin`'s roles, `%HS_Administrator`'s resources, the HealthShare roles, resources, task, language server and `SystemConfig` records. If the proof fails, the story halts.
@@ -311,8 +348,43 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - its finished result was read once, and `messages.log` gained no `ERROR #7846`;
   - a write still running at the bound is recorded applied and marked, and both callers say it is still running;
   - at the baseline, the agent's call is refused `GOVERNANCE.DISABLED`.
-- **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces, or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
+- **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces (for `%ALL` where the instance defines it; where it does not, the fresh read's 404 `PORT.NOTFOUND`, and the sentence is pinned through the recording seam), or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
 - **AC5:** Given the typed-name dialog and the status line, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3,800 kB.
+
+### Review Findings
+
+Code review 2026-10-01, `review_tier: full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor), none failed. 51 raw findings: 15 grouped into 8 patch and 2 defer entries, 36 rejected (below).
+
+- [x] [Review][Patch] (medium; fix-risk low, test-only) The completion checks read `IsEnsembleNamespace`, which the vendor sets once `createMappings` runs, early in `EnableNamespace`. The gate's admitted leg passes on an enable that has only started. The browser spec's still-running path waits on that check, then settles irisowner's tasks instead of the browser user's, so `RemoveAll` can delete the probe namespace mid-install. Evidence on `ocupilot-b-ci`: vendor task `8177754…` for `OcuGate1815All` has been `Running` since 13:50:33 (QA run 1568), and `5445061…` is `Failed`, "Namespace 'OCUPROBE1815G' does not exist" (run 1569) [src/OcuPilot/Test/NamespaceInteropGate.cls:223, ui/browser/namespace-interop.browser-spec.mjs:272]
+- [x] [Review][Patch] (medium; fix-risk low) No test checks that an allowed enable ran its HealthShare half, which is why the enable requires `%All` (Task 0: a narrower principal's enable skips it) [src/OcuPilot/Test/NamespaceInterop.cls:164]
+- [x] [Review][Patch] (medium; fix-risk low, add-only in a contended file) Nothing pins that the enable's pairs carry the classic page's custom resource (AD-44), because `%All:USE` fails first for every principal [src/OcuPilot/Test/ClassicPageGate.cls:199]
+- [x] [Review][Patch] (medium; fix-risk low) Any later `RemoveAll` applies a restore record a failed run left behind, deleting every role, resource and task created since [src/OcuPilot/Test/InteropProbe.cls:709]
+- [x] [Review][Patch] (low, two-way door) `RemoveAll` drops its settle status and does not report a task still unfinished [src/OcuPilot/Test/InteropProbe.cls:504]
+- [x] [Review][Patch] (low) The agent-facing description says a user "holding %All may confirm it", but only a direct `%All` holder may propose or confirm (DW-1897) [src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls:32]
+- [x] [Review][Patch] (low) The gate class header says it creates three users and three roles; it creates four of each and a scratch role [src/OcuPilot/Test/NamespaceInteropGate.cls:22]
+- [x] [Review][Patch] (low) This story's `NAMESPACE_CONFIG` comment lines do not say that the classes write `%SYS` objects directly and create their own probe database [scripts/ci-throwaway.sh:420]
+- [x] [Review][Defer] `AdminPort.AwaitTask` does not treat `Canceled` as terminal, so an enable canceled from Background tasks during the wait would be answered started and recorded applied [src/OcuPilot/Port/AdminPort.cls:2630] — deferred: pre-existing; DW-1805 occurrence appended (and DW-1897 for the granted-role wording the layers raised)
+- [x] [Review][Defer] A second enable can be sent on a namespace whose first is still running in the background, because the screen clears its one-operation guard on a still-running answer and reads no task [ui/src/app/areas/os-management/namespace-list.page.ts:216] — deferred: low and deliberate (typed name twice); DW-1902, wontfix-accepted with `reopen_if`
+
+**Rejected:**
+
+- Spec text (a review does not edit the spec under review; the lead owns it): the granted-role wording in Tasks :301-302; deferred item 1's stale line numbers; the `angular.json` statements at :422 and :457; the triage tally at :582; `followup_review_recommended`; the gap audit at :573; the garbled Restore proof clause; AC4's 404 wording against the mint's 400 "not present"; the Integration ACs' claim that the page spec observes the re-read (the browser spec does). The QA `BOUNDSECONDS` inference is corrected in `## Verification`, under the first patch.
+- by-design (spec-bound): the consequence sentence's ENSTEMP/SECONDARY naming, the USER exception and the `%SYS` mapping (prescribed text, EXPERIENCE.md :378); re-running the enable on a namespace already enabled, `HSCUSTOM` included (Design Notes: a re-run is the vendor's own path, and the install namespace is not refused); `%SYS`/`%ALL` not foreseen in the dialog (the spec prescribes `"selfProtection": ""` and no advisory); a `Finished` task whose `Console` reports a step failure, read as done (Never: no `Console` parsing); `BroadResidue` run only by the Task 1 proof (the suites compare `Snapshot()`).
+- false: the parked `.patch` files (the spec cites them as its record); `InteropProbe` with no arming (callers are armed, and `browserConfig` refuses `ocupilot` and `ocupilot-slot-*`); the `SETTLESECONDS` derivation (max(3 × 13 s, 300) is 300); a `Failed` enable reported done (`AwaitTask` answers it 500); CI timings (`ci-shards.mjs` assigns an unrecorded class, and the timings refresh from a green run); the granted-role legs pinning a defect (they pin AD-8's current rule); unauthenticated privileged applications (vendor source: `/bulkfhir/api` is password plus JWT, and `/bulkfhir` carries no role; `HS.BulkFHIR.Installer.CreateWebApp` runs only from a BFC configuration).
+- wontfix-theoretical: the port queues a nameless enable (the tool always sends its target, the fresh read precedes the write, and the vendor's `validateNamespace` refuses `""`); a resource named `%All` (creating one needs `%Admin_Secure`, whose holder may already grant itself the `%All` role, AD-10).
+- low, not worth the change: `ProbeNamespaces` reading a failed list as none, and a snapshot read error in `RestoreInstance` (each fails loudly through the after-all snapshot); the unguarded `%SYS` switch around `Security.Resources.Exists`; the page spec's `HSCUSTOM` target in the AC4 stub leg; the copy-named status-line hooks; `InteropProbe`'s length (a helper, not a test class); the 120-character snapshot cut and the restore's partial repair (both fail loudly); the two wide `RESIDUE` patterns (used by the Task 1 proof only).
+
+Code review 2026-10-01, rework iteration 1 (`337bfe9b..HEAD`), `review_tier: full-opus`, four layers, none failed. 22 raw findings: 1 patch, 0 defer, 21 rejected. Checklist: the restore stops, then deletes, each language server the record lacks and never one it holds (`InteropProbe.cls:835-846`; runs 1582-1586), with CI run 36881324905 on `bb6ec657` still running at review; the two vendor async rows are gone, and no process on `ocupilot-b-ci` runs installer, async or probe-namespace work; the Tasks and `angular.json` text states the delivered values, and the stale tally no longer appears.
+
+- [x] [Review][Patch] (low) `RestoreInstance`'s doc said any name holding `PREFIX` is left to `RemoveAll`, which the language-server delete does not do, and its "it" switched between server and record; it now names roles and resources, and the record [src/OcuPilot/Test/InteropProbe.cls:737]
+
+**Rejected (rework iteration 1):**
+
+- low, unlikely, and the fix adds a branch: a `DELETE` sent after a failed `STOP` (the failed `STOP` already makes the restore's status an error); a server whose `ACTIVITY` read failed at record time is deleted (no new evidence since the rework's own review; red through the after-all snapshot); a server started by an enable still running past the settle (`RemoveAll` already reports that task as an error); a restore-time list read error (red through the after-all snapshot, as at round 1).
+- false: the held-server branch never ran (its stopped `Continue` runs on every run for the eight vendor `%` servers, and its `STOP` predicate is the old one); the deleted `Running` vendor row orphaned a live worker (no such process on `ocupilot-b-ci`, and no Java process); a record with no language server on an instance that has none (this image always lists the eight vendor `%` servers).
+- maybe-false, low if true: the create-then-delete path was not checked with `BroadResidue`; settle it with `BroadResidue(B0, B2)` around an enable on an instance with no `FHIR_Validation_Server` definition.
+- spec text (a review does not edit the spec under review): the Auto Run Result calls the removed tally corrected and points at `6500f96c`; `deferred` item 1's evidence (DW-1897 in the ledger is current); Tasks :216, the gap audit, AC4's 404 wording and the Integration ACs (as at round 1); the Bundle and Footprint notes on 16.15 (the integrate-forward re-measures the merged build, Rule 22); the rework triage's premises and repetition.
+- outside the rework range and not high: the consequence sentence (:281, EXPERIENCE.md :378) and the intent (:52) say the enable starts `FHIR_Validation_Server`, but on a fresh instance it also creates that definition; by-design (prescribed text) until a Rule 5 amendment.
 
 ## Spec Change Log
 
@@ -325,7 +397,65 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 - 2026-10-01, spec gate (runner): orchestrator ruling option A (by=merge_gate) -- the agent card takes the destructive treatment with no typed name (UX-DR56 stands); the screen keeps the typed-name dialog. The card's typed-name tasks, the `typedName` wire field and its tests, the EXPERIENCE.md :618/:672/:755 edits, the `TYPEDNAME` parameter and AD-53 amendment 2 are removed; the intent's Approach bullet and "Enable (agent)" row are amended. AD-8 amendment 1 (`%All:USE`) was written at the gate.
 
+- 2026-10-01, implement (Task 1): halted, `intent gap: the throwaway cannot be restored` (Design Notes › Restore proof): `%ALL` answers 404 on `ocupilot-b-ci`, and five broad residue lines are edit stamps. Task 1's code is parked as `spec-18-15-task1-interopprobe.patch` (it supersedes the Task 0 patch); nothing else was built.
+
+- 2026-10-01, spec gate after the Task 1 halt (runner, intent-preserving test approach, Rule 5 tier 1): (1) `%ALL` -- the tool's refusal is unchanged; where the instance has no `%ALL` namespace the fresh read's 404 already queues nothing, so the real-port leg accepts either answer and the sentence is pinned through the recording seam (Design Notes, the order bullet); Task 1's `%ALL` halt condition is dropped. (2) Residue -- the five measured edit stamps (web-application `LastUpdate`, four `SQLStatsSettings` edit stamps with unchanged settings) join `RESIDUE` by exact name. Task 1 resumes from `spec-18-15-task1-interopprobe.patch`. Status reset to `in-progress`.
+
+- 2026-10-01, rework iteration 1 (runner, trigger=ci): CI run 36869954798 on `be4b1baf` failed three legs on the restore's language-server gap on a fresh instance; the code review's patches are committed with this re-open; the open items are the `[CI]` and `[Review]` tasks under Tasks & Acceptance.
+
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 25 findings — high 0, medium 7, low 10, false 8, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) The gate class's dispatch legs assert `calls=0`, which a dispatch through the shipped port can never break — the dispatch legs now compare only status, code and pair; route and confirm legs keep `calls=0`.
+  - `[medium]` `[patch]` (verification-gap) "No task queued", "not enabled" and `SecondReads` assertions cannot fail where they stand — removed the constant ones (seam, governance, gate refusal legs); the shipped-port and deleted-since-read legs now run through `MappingRecordPort` and assert no enable was sent (`WriteCount` 0); both round trips assert `SecondReads() >= 0`. Runs 1561, 1562 green.
+  - `[low]` `[reject]` (verification-gap) `NamespacePort`'s INTEROP caller-body refusal has no test — no shipped caller sends a body (`SENDSBODY` 0), and a test would log an error and raise the instance's alerts; MAPPINGS' twin is untested alike.
+  - `[medium]` `[patch]` (verification-gap) The gate class and the browser spec enable without comparing the instance snapshot afterwards — `NamespaceInteropGate` takes the snapshot before its principals exist and fails `OnAfterAllTests` on any difference (run 1562); the browser spec keeps the snapshot in `^OCUPROBE1815("browser")` and asserts an empty diff in `after` (1/1 pass).
+  - `[low]` `[reject]` (verification-gap) AC1's planned users-roles mutation stayed green (run 1164) — deleting `%HS_BFC_Administrator` removes it from `Admin`, so that branch is defense in depth; AC1's pin is falsified by the language-server mutation (run 1165).
+  - `[low]` `[reject]` (verification-gap) AC2's browser typed-name leg was not run under its mutation — Rule 19 needs one demonstrated mutation per AC, and AC2 has the page spec's and the browser registration's.
+  - `[medium]` `[patch]` (verification-gap) AC3's read-once clause compares `SecondReads` with no floor — same root cause as the second row; floor added.
+  - `[medium]` `[patch]` (verification-gap) AC4's "nothing is queued" and "zero port calls on the mint" are not observed — same root cause as the first two rows; the route and confirm legs observe it, and the dispatch gate's order before `InvokeTool` is kernel structure pinned by earlier stories.
+  - `[false]` `[reject]` (verification-gap) AC5's 3,800 kB clause has no test — DW-371 pins `maximumWarning` (2388kB) and `build-output.test.mjs` measures the emitted total against it.
+  - `[medium]` `[defer]` (verification-gap) The spine's AD-8 says a granted-role `%All` holder passes `%All:USE`; the code and its pin refuse one — frontmatter `deferred` item 1 (with the intent layer's R1 row).
+  - `[false]` `[reject]` (verification-gap) The diff edits `ui/angular.json` against the spec's Design Notes — the runner's binding dispatch direction re-bases `maximumWarning` when crossed (2,387,861 bytes, re-based to 2388kB); the Auto Run Result below records it.
+  - `[medium]` `[patch]` (verification-gap) The gate class's admitted leg reads `IsEnabled` without handling an enable that outlasts the 30 s bound — the leg's route now runs through `NamespaceInteropRecordPort`, which waits 150 s (under `RunAs`'s 180 s), so it never answers started (run 1562).
+  - `[medium]` `[defer]` (intent) R1: "holds `%All`" read as an effective holder; the diff admits only a direct one — grouped with the AD-8 row, `deferred` item 1.
+  - `[false]` `[reject]` (intent) R2: `%ALL` gets the sentence only through the seam — AC4 was amended at the spec gate to accept 404 where the instance has no `%ALL` namespace; the seam pins the sentence.
+  - `[false]` `[reject]` (intent) R3: 202 is internal and the client sees 200 with `continues` — that is 18.14's shipped contract for the started answer (`Api/ScreenAction.cls:375`, `Confirm.cls:524`).
+  - `[false]` `[reject]` (intent) R4: the suites run in CI too — the Design Notes name CI's fresh throwaways, and the Tasks add the ci-throwaway rosters.
+  - `[low]` `[reject]` (intent) R5: a regressed guard would send a `%SYS` or `%ALL` enable from the shipped-port leg — the vendor refuses `%SYS`, throwaways hold no `%ALL` namespace, and the seam leg pins the guard; a read-through, write-refusing port would be new test surface.
+  - `[false]` `[reject]` (intent) R6: the consequence omits the SystemConfig records and adds an unmeasured "Elsewhere" clause — the sentence is the spec's prescribed text, names every effect the Approach lists, and "Elsewhere" is AD-21's amended reading of editions without the HealthShare libraries.
+  - `[false]` `[reject]` (intent) R7: the typed name is checked only in the browser — AD-53: a screen action's review is its dialog and typed name, and the route is the person's own write.
+  - `[low]` `[reject]` (intent) No card rendering is tested for this tool — the destructive treatment is the unchanged generic card, and the code-to-sentence map is pinned by `proposal-view.test.mjs`.
+  - `[low]` `[reject]` (intent) The agent's still-running sentence is not exercised for this tool — the panel's `continues` path is unchanged; the confirm's `continues` is asserted.
+  - `[false]` `[reject]` (intent) The screen's started leg asserts no marking — AD-53: a screen action emits no marker; the agent's leg asserts `200 confirmed 1 1`.
+  - `[low]` `[reject]` (intent) No test re-fetches a mapping list or the list after an agent-confirmed enable — 18.14 pins the `secondaryEntityTypes` routing; this story pins that the enable emits the event.
+  - `[low]` `[reject]` (intent) `RestoreInstance`'s users branch is untested — duplicate of the AC1 row above.
+  - `[low]` `[defer]` (intent) The change's records disagree (Auto Run Result said `angular.json` untouched; Tasks :272-273 admit a granted-role holder) — the Auto Run Result is rewritten below; the Tasks text goes with `deferred` item 1.
+
+### 2026-10-01 — Review pass (rework iteration 1)
+
+- verdicts: 17 findings — high 0, medium 1, low 13, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap) Nothing fails if the STOP before an unrecorded server's DELETE is dropped, which would leave its process listening — the code stops first and no Java process or listener remained on `ocupilot-b-ci` after this pass's enables (`ps`, `ss`); a post-STOP re-read is a new branch against an unlikely edit.
+  - `[low]` `[reject]` (verification-gap) The empty-record guard has no test — it is reached only when the record-time `LIST` fails, which is red through the after-all snapshot either way; a seam to reach it is new test surface.
+  - `[low]` `[reject]` (verification-gap) The language-server half of the snapshot comparison has no floor if `LIST` fails on every call — that read is the shipped Language Servers read, pinned by `LanguageServer` and `LanguageServerWire`, so it cannot fail silently; the floor would add assertions to three files.
+  - `[low]` `[reject]` (verification-gap) A server whose `ACTIVITY` read fails at record time is left out of the record and later deleted — unlikely for the vendor's local stopped `%` servers, and red through the after-all snapshot, whose `PreparedSnapshot` is taken apart from the record; the fix is a new guard.
+  - `[low]` `[reject]` (verification-gap) The Auto Run Result still says `FHIR_Validation_Server` stopped and has no line for this rework — spec text; finalize rewrites the Auto Run Result for this pass.
+  - `[low]` `[reject]` (verification-gap) Task 1's `RestoreInstance` text (:216) describes stop-only — spec text; it is Task 1's plan, and the rework item at :333 states the extension.
+  - `[low]` `[reject]` (verification-gap) Frontmatter `deferred` item 1 keeps stale line numbers though the `[Review]` item is ticked — spec text outside that item's three named targets; the claim lives in DW-1897.
+  - `[false]` `[reject]` (intent) No CI run on the rework is recorded — CI runs on the runner's push of this commit, as for every pass.
+  - `[false]` `[reject]` (intent) The pin bites only when the definition is absent at record time — by design: a definition the record holds is not deleted; the delete path runs on CI's fresh throwaways and on `ocupilot-b-ci`, which now has no definition.
+  - `[low]` `[reject]` (intent) The empty-record carve-out has no test — same root cause and reason as the second row.
+  - `[low]` `[reject]` (intent) Stop-then-delete is not separately falsified — same root cause and reason as the first row.
+  - `[low]` `[reject]` (intent) A failed per-server `ACTIVITY` read at record time leads to a deletion — same root cause and reason as the fourth row.
+  - `[low]` `[reject]` (intent) Tasks :216 is stale — same as the sixth row.
+  - `[low]` `[reject]` (intent) Auto Run Result :631 is stale — same as the fifth row.
+  - `[low]` `[reject]` (intent) The hygiene item has no evidence in the spec — spec text; the Auto Run Result for this pass records it.
+  - `[medium]` `[defer]` (intent) carried — the "Not `%All`" row admits only a direct `%All` holder; `deferred` item 1 (DW-1897).
+  - `[false]` `[reject]` (intent) carried — `ui/angular.json`'s re-base is an edit to a contended line; the runner's dispatch direction, landed in `be4b1baf`.
 
 ## Design Notes
 
@@ -341,7 +471,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 **Decisions:**
 
 - **`%All` is declared as the pair `%All:USE`.** Every gate already evaluates pairs before any port call: the dispatch at :257, the confirm at :299 and the route at :249. The same pair set reaches the card's "requires" line and the ledger's row release, so nothing in the kernel, API or client changes.
-  - No resource is named `%All`. A pair naming an absent resource is passed only by a holder of the `%All` role, held directly or through a granted role: read on slot B, `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`.
+  - No resource is named `%All`. A pair naming an absent resource is passed only by a user assigned the `%All` role directly; a user whose role only grants `%All` is refused (measured on `ocupilot-b-ci`: `CheckUserPermission` reads 1 for a direct holder, 0 for a granted-role holder; ledger DW-1897).
   - The refusal therefore names `%All:USE`.
   - A dedicated role check was rejected. It would touch `Base`, `Operation.Gate`, `Dispatch`, `Confirm`, `Disclosure`, `Read.BannerRequires` and the ledger. `$ROLES` was rejected too, since no gate infers authorization from roles alone (AD-21).
   - The pair order is list pairs, `%All:USE`, the poll pair, then the classic page, so a principal without `%All` is refused naming it.
@@ -352,14 +482,14 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - **The install namespace is not refused.** AD-10's install-namespace rule covers a delete and a Globals or Routines change, and `Prohibited.Namespace` reads only those. The enable's mappings name no OcuPilot package, routine or global (inference, from the source and Task 0's E1). No test enables the install namespace.
 - **No interoperability state on the list.** The admin API's read answers no enabled flag, and composing one would be a new AD-27 case. A re-run is the vendor's own path.
 - **The `%SYS`/`%ALL` refusal is the tool's own sentence** (`SYSTEMREASON`, the `AuditCopy` precedent), because `Api/Error.cls` holds 989 of its 1,000 parameters. The sentence is published at EXPERIENCE.md :378, and `NamespaceInterop` asserts both callers answer exactly it.
-  - Order on both callers: the fresh read, then the sentence, then any write. `%ALL` exists on slot B, and Task 1 confirms that both `GET`s answer on the throwaway.
+  - Order on both callers: the fresh read, then the sentence, then any write. On an instance with no `%ALL` namespace (`ocupilot-b-ci`, and likely CI's fresh throwaways) the fresh read answers 404 `PORT.NOTFOUND` first and nothing is queued, which meets AC4's "nothing is queued"; the `%ALL` sentence is pinned through the recording seam (`SeamNamespaceEnableInterop` over `MappingAcceptPort`, the 18.14 `MappingAllTargetFixture` precedent), whose fresh read answers for `%ALL`. The real-port `%ALL` leg asserts either the sentence (where `%ALL` exists) or 404 (where it does not), and no task either way [AMENDED 2026-10-01, runner, spec gate after the Task 1 halt].
 - **Read once.** `AwaitTask` and the tests' `Settle` are the only readers of a finished task. The started legs inherit 18.14's known behavior: `AwaitTask` logs the bound (:2641) before `NamespacePort` converts it to started. If that raises the monitor state, the implement stage lists it under `deferred:`; `AdminPort` is not changed.
 - **The restore is test-only.** It works by diff against a record taken before the first probe namespace exists, on `ocupilot-b-ci` and CI's fresh throwaways, never on a dev instance. No test enables `USER`, `HSCUSTOM`, `%SYS`, `%ALL`, or a namespace over their databases.
-- **Bundle.** If the build crosses `maximumWarning` (2386kB), do not edit `ui/angular.json` or `angular-json.test.mjs`: Epic 16's 16.15 changes the same line. Report the measured size in `## Auto Run Result` for the runner, and stop and ask above 3,800 kB.
+- **Bundle.** The build measured 2,387,861 bytes, over `maximumWarning` (2386kB), so `ui/angular.json` and `angular-json.test.mjs` re-base it to 2388kB, per the runner's dispatch direction. Epic 16's 16.15 changes the same line; the integrate-forward takes the larger measured figure. Above 3,800 kB the story stops and asks.
 
 **Proposed spine amendments.** Under Rule 20 the runner writes these at the spec gate; this stage does not edit the spine.
 
-1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a holder of the `%All` role, directly or through a granted role, passes it (read on slot B, 2026-10-01: `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
+1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a user assigned the `%All` role directly passes it, and a user whose role only grants `%All` is refused (measured on `ocupilot-b-ci`; ledger DW-1897), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
 2. (Withdrawn at the gate, option A: no AD-53 change.)
 
 **Integration ACs:**
@@ -390,7 +520,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - EXPERIENCE.md is edited in place at :164, :173, :378 and :728.
 - `ci-throwaway.sh` takes two new lines, at :417 and :255, away from Epic 16's.
 - `strings.ts` takes a block after :3610.
-- `angular.json` is not touched.
+- `ui/angular.json` takes the re-based `maximumWarning`, 2388kB, on the line 16.15 also changes.
 - These are one-element appends to one-line lists, which the integrate-forward merge resolves by union: `AdminPort` (`MUTATINGTYPES`, `BODYLESSTYPES`, `QUEUEDWRITES`), `PortFixture:21`, `ReadTool:93-94`, `ToolRoundTrip:51`, `MappingDescriptor:20`, `ClassicPageGate:62`, `GovernanceBaseline:11` and `screen-action-handler.ts:255`.
 - Kernel files take inserted lines only: `Baseline.cls`. `Write.cls`, `Mint.cls` and `Propose.cls` are untouched.
 - `Error.cls`, `Router.cls`, `Prohibited.cls`, `Registry.cls` and `Classification.cls` are untouched.
@@ -425,6 +555,28 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
   - The two drop-one runs were not made.
 - **Cleanup.** After `RemoveAll` alone, S2 differs from S0 by every change outside E1-E6. A test-only restore deleted those resources, roles and the task, restored `%HS_Administrator` and `Admin`, removed the SystemConfig records and stopped the language server. S2 then equals S0, apart from counters and HSSYS index nodes.
 - **One incident.** The harness read an already-ended task a second time: the principal had not been able to delete its row. That read logged one `ERROR #7846`. `SettleOwnTasks` now deletes a task the list already shows ended without reading it. The monitor state, which that line and the vendor's own alert raised to 2, was set back to 0, and the two task rows were deleted as objects.
+
+### Restore proof
+
+Task 1 re-run, 2026-10-01, on `ocupilot-b-ci`, as the test process (`irisowner`, `%All`), from `spec-18-15-task1-interopprobe.patch` with the five edit stamps in `RESIDUE`. The enable went through an `AdminPort` subclass with a 300 s bound whose poll recorded each answer, so `AwaitTask` read the finished result once; `SettleOwnTasks` then found no task. **Pass.**
+
+- **The enable.** `OCUPROBE1815A` over `OCUPROBE1815D` ended `Finished` in 12.4 s (11:03:26 to 11:03:38), HTTP 200, with an empty `FailureReason` and `Console`. `IsEnabled` and `HasPortal` read 1. `RemoveAll` took 2.6 s, the whole proof 15.9 s.
+- **S2 equals S0:** 495 lines each, none differing, `Admin`'s roles included. The record held 344 instance lines and no `SystemConfig` node, and was forgotten after `RemoveAll`.
+- **Each clause, in `Diff(S0, S1)`:**
+  - 112 ENSLIB, 52 HSLIB and 7 HSSYS mappings, beside IRISSYS, HSCUSTOM and 11 to the probe database; four applications; `%EnsRole_ProdPrivs_OCUPROBE1815A` and `%HS_DB_OCUPROBE1815A`; 236 `SystemConfig*` nodes, the configuration item and 29 activation-log rows;
+  - `Admin` gains `%HS_BFC_Administrator`, which holds `%Admin_Manage`, `%Admin_OAuth2_Client`, `%Admin_Secure` and `%Admin_Task` at `U`;
+  - 13 HealthShare resources and six `%HS_BFC_*` roles created, and `%HS_Administrator` gains `%HSAdmin_ServiceRegistry` and `%HSAdmin_XUAConfigRegistry`;
+  - task 1151 "FHIR Purge Expired Search Results Task" in HSSYS, and `FHIR_Validation_Server` from stopped to running;
+  - `/services`, the namespace's own application and `/bulkfhir/api` match `%DB_HSCUSTOM`, and `/bulkfhir/api` also `%DB_IRISSYS` and `%HS_ImpersonateUser`;
+  - no database created beyond the probe's.
+- **Unchanged:** `SecondReads()` 0, the monitor state 1, `$SYSTEM.Monitor.Alerts()` 410.
+- **Broad residue:** `B0` and `B2` hold 1,669 lines each and nine differ, all inside `RESIDUE`, so `BroadResidue(B0, B2)` is empty:
+  - the SQL `cursor counter` (3365 to 3368) and `statement id` (25270 to 25302);
+  - `^%SYS("CSP","LastUpdate")` (67844,38894 to 67844,39813);
+  - the four `SQLStatsSettings` rows, whose edit date and job moved and whose settings, from the fifth `$List` position, are equal (`STAMPEDROWS`);
+  - `HS.HC.Util.Installer.LogD` and `LogI`, node counts unchanged at 18 and 7. `^%SYS("WQM","Repeat")` did not move this run.
+- **The `GET`s:** `%SYS` answers 200; `%ALL` answers 404 `PORT.NOTFOUND` (`Config.Namespaces.Exists("%ALL")` 0).
+- **After:** no probe namespace, database, directory or record, no `%HS_BFC_*` role or resource, no FHIR purge task and no `SystemConfig*` node; `Admin`'s roles as before; `FHIR_Validation_Server` stopped. The proof's scratch classes were deleted.
 
 ## Verification
 
@@ -466,14 +618,51 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
 | AC4 | `PrivilegePairs` drops `%All:USE` | `NamespaceInteropGate` (the non-`%All` principal is admitted, and the port is called); `ProposalPrivilege` |
 | AC5 | the dialog's consequence drawn in `--ocu-surface` | the interop browser spec's DW-1337 legs, in both themes |
 
+- mutation: `NamespaceEnableInterop.PrivilegePairs` drops `%All:USE` → `NamespaceInteropGate`'s refusal and lost-grant legs red, both principals admitted and the route's write recorded by `MappingAcceptPort` (run 1155); `ProposalPrivilege` red (run 1156).
+- mutation: `NamespaceEnableInterop.SystemProblem` answers `""` → `NamespaceInterop`'s seam leg (an `INTEROP` recorded, the mint answering 200) and its shipped-port `%SYS` leg red (run 1157); the vendor refused the shipped `%SYS` enable as not valid.
+- mutation: `Namespace.Namespace/INTEROP` removed from `AdminPort.QUEUEDWRITES`, the port tree recompiled → five `NamespaceInterop` legs red (run 1158), and `AdminPortAsync` (run 1159).
+- mutation: `NamespaceEnableInterop.Consequence` answers `""` → `NamespaceInterop.TestTheAgentsEnableRoundTrips` alone red, `"1|"` (run 1160).
+- mutation: `NamespacePort.Invoke`'s `INTEROP` branch skips `Started` → both started legs red, 503 `PORT.TIMEOUT` (run 1161).
+- mutation: the baseline's `osmgmt.namespaces.enableinterop` line `true` → `GovernanceBaseline` (run 1162) and `NamespaceInterop`'s governance leg and declarations (run 1163) red.
+- mutation: `InteropProbe.RestoreInstance` skips users' roles → stayed green (run 1164): deleting `%HS_BFC_Administrator` removes it from `Admin` (measured), so that branch is defense in depth. `RestoreInstance` stops no language server instead → `NamespaceInterop`'s after-all snapshot red on `FHIR_Validation_Server` (run 1165); the server was stopped by hand after the revert.
+- mutation: the Namespaces list page drops its `enable-interop` registration → six `namespace-list.page.spec` legs red; rebuilt and redeployed, `namespace-interop.browser-spec` red, no menu item.
+- mutation: the page's `onOpenEnable` sends at once → six `namespace-list.page.spec` legs red. The browser spec was not run under it, since it would enable the probe while `after` removes it.
+- mutation: `.ocu-typed-name-consequence` drawn in `--ocu-surface`, rebuilt and redeployed → `namespace-interop.browser-spec`'s dialog walk red in both themes (1.04:1 light, 1.08:1 dark).
+- mutation: the `NAMESPACE.INTEROP` branch dropped from `consequenceSentence` → `proposal-view.test.mjs` red; one word of `SYSTEMREASON` changed → `self-protection.test.mjs`'s Story 18.15 pin red; `ENABLE_INTEROP` dropped from `UNDRAWN_ACTIONS` → `screen-action-handler.spec`'s undrawn leg red.
+
+**QA pass, 2026-10-01 (the three review-patched assertions the implement stage never falsified):**
+
+- mutation: `NamespaceEnableInterop.SystemProblem` answers `""` (re-run, isolating the `WriteCount` guard) → `NamespaceInterop.TestSysAndAllAreRefusedThroughTheShippedPort` red on "no enable was sent, so nothing was queued" (`RECORDPORT.WriteCount` reads 1, not 0) alongside the sentence legs, and `TestSysAndAllAreRefusedThroughTheSeam` red the same way (run 1564); reverted byte-identical, `NamespaceInterop` 9/9 clean (run 1565).
+- mutation: `InteropProbe.RestoreInstance`'s language-server loop forced to `Continue` unconditionally (stops none) → `NamespaceInteropGate.OnAfterAllTests` red, `ERROR #5001`: `added ["languageserver|FHIR_Validation_Server|1"] removed ["languageserver|FHIR_Validation_Server|0"]` (run 1566); `FHIR_Validation_Server` stopped by hand (the record had already been forgotten by the mutated restore), reverted byte-identical, `NamespaceInteropGate` 4/4 clean (run 1567).
+- mutation: `NamespaceInteropRecordPort.BOUNDSECONDS` 150 → 0 → `NamespaceInteropGate.TestAnAllHolderIsAdmittedOnBothCallers` red on "and the namespace is enabled" (the route answered started before the vendor's worker finished; run 1569); reverted byte-identical, `NamespaceInteropGate` 4/4 clean (run 1570). At `BOUNDSECONDS` 3 (run 1568) the leg stayed green on an enable that had only started. `IsEnsembleNamespace` reads 1 once the vendor's mappings exist, early in the run. The cleanup then deleted the namespace mid-install, which left vendor task `8177754…` `Running`. The code review added the `continues` assertion below.
+
+Gap audit against AC1-AC5 and the I/O & Edge-Case Matrix found no row without a pinning test and no pinning assertion that cannot fail; no test was added.
+
+**Code review, 2026-10-01 (the patched assertions):**
+
+- mutation: `NamespacePort.Started` also answers a finished `INTEROP` as started → `NamespaceInteropGate.TestAnAllHolderIsAdmittedOnBothCallers` red on "the route answers the enable done" alone (run 1577); reverted byte-identical, the port tree recompiled.
+- mutation: `InteropProbe.HasHealthShareHalf` reads `%HS_DBX_` → the same leg red on "its HealthShare half included" alone (run 1578); reverted byte-identical.
+- mutation: `NamespaceEnableInterop.PrivilegePairs` skips `Gate.WithClassicPages` → `ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller` red on the enable's page-resource read alone (run 1579); reverted byte-identical, `ClassicPageGate` 5/5 (run 1580) and `NamespaceInteropGate` 4/4 (run 1581).
+- The stale-record guard, run directly on `ocupilot-b-ci`: a fresh record was applied and forgotten; a record taken a day earlier was discarded unapplied, with its error, and nothing was left.
+- The browser spec's still-running branch, with `NamespacePort`'s bound set to 2 s on the throwaway: the enable's task was left `Running` at the bound (14:31:24), the spec settled it as `_SYSTEM`, and `after`'s diff was empty (1/1); the bound was reverted byte-identical.
+- Green after the patches: `NamespaceInteropGate` 4/4 (1571), `NamespaceInterop` 9/9 (1572), `ClassicPageGate` 5/5 (1573), `MappingWriteGate` 4/4 (1574), `ToolEmit` 11/11 (1575), `ToolRoundTrip` 2/2 (1576); `namespace-interop.browser-spec` 1/1 on the rebuilt bundle; `npm run test:tools` 1,759; `check-objectscript` 0; `lint-docs` 0.
+
+**Rework iteration 1, 2026-10-01 (the language-server restore):**
+
+- mutation: `InteropProbe.RestoreInstance` stops but no longer deletes a language server the record lacks, loaded on `ocupilot-b-ci` with `FHIR_Validation_Server` absent beforehand → `NamespaceInterop.OnAfterAllTests` red, `ERROR #5001`: `added ["languageserver|FHIR_Validation_Server|0"]` (run 1584); reverted byte-identical and reloaded, the server deleted by hand. Before the fix, with the definition removed, run 1582 reddened as CI did (`|1`). Green with the definition absent before each run: `NamespaceInterop` 9/9 (runs 1583, 1586), `NamespaceInteropGate` 4/4 (run 1585), `namespace-interop.browser-spec` 1/1.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass re-planned the spec from Task 0's measurement, around the preserved intent contract, with the scope reduced to the enable (DW-1776). Three items need the runner's ruling at the spec gate:
+Rework iteration 1 (CI run 36869954798 on `be4b1baf`); the first pass's record is this section at `6500f96c`.
 
-1. **The agent card's typed name:** resolved at the gate, option A -- the card takes the destructive treatment with no typed name (UX-DR56 stands).
-2. **`%All` is declared as the pair `%All:USE`**, so its refusal names that pair. AD-8 amendment 1 is proposed.
-3. **`CLASSICPAGES` is subsumed by `%All`** when the pairs are evaluated: a `%All` holder holds every custom resource.
+- **Changed:** `src/OcuPilot/Test/InteropProbe.cls` `RestoreInstance` stops, when it runs, and then deletes through `AdminPort` `LanguageServer` `DELETE` each language server the record lacks, by the exact name from the difference; a server the record holds is never deleted, and a record with no language-server line deletes none. The spec's stale Tasks text (:300-303), the two `angular.json` statements and the earlier review tally now state the delivered values. No product file changed.
+- **Reproduced:** with the probe-left `FHIR_Validation_Server` definition (stopped) removed from `ocupilot-b-ci`, `NamespaceInterop` run 1582 reddened as CI did, `OnAfterAllTests` `added ["languageserver|FHIR_Validation_Server|1"] removed []`.
+- **Verified, the definition absent before each run:** `NamespaceInterop` 9/9 (runs 1583, 1586), `NamespaceInteropGate` 4/4 (run 1585), `namespace-interop.browser-spec` 1/1 on a rebuilt, redeployed bundle; the mutation (DELETE dropped) red in run 1584, in `## Verification`; results read back from `^UnitTest.Result`; the loaded source equals the worktree's; `check-objectscript` 0, `lint-docs` 0. The full sweep was not re-run (Rule 29: no product file changed).
+- **Review:** 17 findings, none patched, none newly deferred (one carried, `deferred` item 1), 16 rejected with reasons in the triage log.
+- **Follow-up review recommended:** no (follow-up pass, no `high` patched).
+- **Throwaway hygiene:** the two vendor async rows for `OcuGate1815All` (`817775471414144648964609` `Running`, `544506135165721633348099` `Failed`) deleted with `%Api.Admin.Util.AsyncTask.%DeleteId`; none remains for `OcuGate1815*`.
+- **Throwaway at the end:** no `FHIR_Validation_Server` definition (`Config.Gateways.Exists` 0) and no Java process or listener; no `OCUPROBE1815*` namespace, gate user, `%HS_BFC_*` role, FHIR purge task or `SystemConfig*` node; `Admin`'s roles as before.
+- **Residual risk:** stop-then-delete on a CI runner is measured only on `ocupilot-b-ci`.
