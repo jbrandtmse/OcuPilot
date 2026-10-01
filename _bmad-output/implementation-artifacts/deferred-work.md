@@ -8725,6 +8725,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: retainForHandOff marks the form clean (namespace-form.store.ts:272-276); open('') without returning drops the held buffer (:317-318); spec Design Notes decide Back starts empty
 - 2026-10-01T09:21:03Z status=decision-pending owner=burndown by=cr note=spec-bound product call: restore a held hand-off buffer on any create arrival (~5 lines + a spec leg), or keep
+- 2026-10-01T10:17:43Z status=by-design by=merge_gate note=decided as recommended (orchestrator 2026-10-01): browser Back and a side-bar exit leave the hand-off wizard as history does; the spec binds the form's return to the wizard's own Create and Cancel; reopen_if=a user reports losing typed New Namespace values through Back
 
 ### DW-1893: A copy of mappings from a source holding a global mapping that reaches the % globals carries NAMESPACE.COPYMAPPINGS only, never MAPPING.SYSTEMGLOBAL
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: low | fix-risk: med | footprint: in-epic
