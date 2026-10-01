@@ -3,6 +3,7 @@ title: 'Story 18.17: Namespace and database follow-ups'
 type: 'bugfix'
 created: '2026-09-30'
 baseline_revision: '693ef46d9866d93b708d1f904a237948fcbca75c'
+baseline_commit: '693ef46d9866d93b708d1f904a237948fcbca75c'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
