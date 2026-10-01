@@ -2,8 +2,8 @@
 title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
-baseline_revision: '6dbcc472c787dce739b4da4f281e3aee499f18d8'
-status: 'ready-for-dev'
+baseline_revision: 'f83dfaf4194e5e95259303c7aac29d427fff5ad8'
+status: 'blocked'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -387,6 +387,7 @@ deferred: []
 ## Spec Change Log
 
 - 2026-10-01, spec gate (runner): spine amendments 1-5 under Design Notes were written at the gate (AD-26, AD-44, AD-10 for DW-1813, AD-21, and AD-8's poll pair); Task 0 completes AD-8 with its measured pairs. AD-21's reading (vendor-derived ENSTEMP/SECONDARY directories accepted) is with the orchestrator for confirmation; if it is overruled, the change is a refusal leg on this tool.
+- 2026-10-01, implement (Task 0): halted, `intent gap: observation contradicts the plan` (Design Notes › Measured at implement). No AD-8 sentence: the candidate pairs do not reproduce the reference. No AD-15/AD-53 case: the vendor audits the enable. AD-21's amendment holds on IRIS for Health: no database was created. Task 0's port plumbing was reverted; `Test/InteropProbe.cls` is kept.
 
 ## Review Triage Log
 
@@ -473,6 +474,37 @@ deferred: []
   - `screen-action-handler.ts:253`.
 - **A non-add-only edit to a file Epic 16 changed:** DW-1858's move of `integrity-log` from the unlisted block (:155) to the listed block (:179-192) of `ui/tools/navigation.test.mjs`. Epic 16's two hunks there are in Security (:217-222 and :359-363). This edit needs the gate's approval.
 
+### Measured at implement
+
+Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went through `AdminPort` with a test port whose bound is 0 and whose poll never reads; `InteropProbe.SettleOwnTasks` read each finished task once.
+
+- **Payload and queue (as planned).** `INTEROP` sends no body and is queued through `ShouldRunAsync`. The port answered 503 at once, and the vendor's worker then ran the task. `IsHealthShareInstalled` reads 1. The install namespace `HSCUSTOM` already reads `IsEnsembleNamespace` 1, and `/api/interop-editors` already matches `%EnsRole_InteropEditorsAPI`.
+- **Reference run** (the test process, `%All`, `OCUPROBE1815A` over `OCUPROBE1815D`):
+  - The task ended `Finished` in 13 s, with an empty `FailureReason` and an empty `Console`.
+  - `IsEnsembleNamespace` went from 0 to 1, and a portal application serves the namespace. The probe database grew from 1 MB to 114 MB, and no database was created.
+  - `SecondReads()` stayed 0 and the monitor state stayed 0. OcuPilot's own objects (145 snapshot lines) were unchanged.
+- **Inside E1-E6:**
+  - E1: 184 mappings, to ENSLIB, HSLIB and HSSYS, plus `%SYS` to IRISSYS, `HS.Local` to HSCUSTOM and 11 to the namespace's own database.
+  - E2: four applications, `/csp/healthshare/<ns>`, `/services`, `/bulkfhir` and `/bulkfhir/api`, and their CSP directory.
+  - E3: `%EnsRole_ProdPrivs_<NS>`, `%HS_DB_<NS>` and 20,479 SQL privilege rows.
+  - E4: the vendor's `^%SYS` markers, the HSSYS configuration item, activation-log rows, and `<mgr>HS.Util.Installer.<NS>-1.log`.
+  - E5 was unchanged. E6: `[Map.<NS>]`.
+- **Outside E1-E6 (the halt).** These are instance-wide changes from the HealthShare branch's FHIR and BulkFHIR setup, and `RemoveAll` cannot remove them by probe name:
+  - 13 resources created: `%HS_BFC_*`, `%HSAdmin_ServiceRegistry`, `%HSAdmin_XUAConfigRegistry` and `%HS_FHIRServer_Validator`.
+  - Six `%HS_BFC_*` roles created, and `%HS_Administrator`'s resources changed.
+  - User `Admin` granted `%HS_BFC_Administrator`, a role that holds `%Admin_Manage`, `%Admin_Secure`, `%Admin_Task` and `%Admin_OAuth2_Client` at USE.
+  - The task "FHIR Purge Expired Search Results Task" scheduled in HSSYS.
+  - The `FHIR_Validation_Server` Java language server started.
+  - About 235 `^%SYS("HealthShare","SystemConfig*")` records keyed by integer id.
+  - The new applications also match `%DB_HSCUSTOM`, the install namespace's database, and `/bulkfhir/api` matches `%DB_IRISSYS` and `%HS_ImpersonateUser`.
+- **Audit.** The vendor wrote 20,592 events: 20,346 `RoleChange` "Object Privilege Granted", 206 `ConfigurationChange`, 13 `ResourceChange`, 10 `ApplicationChange`, 3 `OSCommand`, one `UserChange` "Modify User Admin" and one production change.
+- **Pairs** (a child process logged in as the principal):
+  - With the list's two pairs, `%Admin_Operate:USE`, `%DB_IRISSYS:WRITE` and `%Admin_Secure:USE`, the task `Failed` with `<PROTECT>validateInstallation+5^%Library.EnsembleMgr.1` on the probe database. It left 122 mappings and `IsEnsembleNamespace` 1, and the vendor posted an alert (`Error rebuilding Extent index`).
+  - With `%DB_OCUPROBE1815D:RW` added, the task `Finished`, but the HealthShare half was skipped silently (audit "Attempt to access a protected resource"). The run made no `%HS_DB` role, no HS mapping and only one application, so the candidates do not reproduce the reference.
+  - The two drop-one runs were not made.
+- **Cleanup.** After `RemoveAll` alone, S2 differs from S0 by every change outside E1-E6. A test-only restore deleted those resources, roles and the task, restored `%HS_Administrator` and `Admin`, removed the SystemConfig records and stopped the language server. S2 then equals S0, apart from counters and HSSYS index nodes.
+- **One incident.** The harness read an already-ended task a second time: the principal had not been able to delete its row. That read logged one `ERROR #7846`. `SettleOwnTasks` now deletes a task the list already shows ended without reading it. The monitor state, which that line and the vendor's own alert raised to 2, was set back to 0, and the two task rows were deleted as objects.
+
 ## Verification
 
 **Setup (slot B):**
@@ -519,5 +551,10 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: on IRIS for Health the enable's HealthShare branch makes instance-wide changes outside E1-E6 (13 resources, six `%HS_BFC_*` roles, user `Admin` granted `%HS_BFC_Administrator` holding `%Admin_Secure`, an HSSYS FHIR purge task, the `FHIR_Validation_Server` started, about 235 HealthShare SystemConfig records, application roles on `%DB_HSCUSTOM` and `%DB_IRISSYS`) that `RemoveAll` cannot remove by probe name, and the candidate pairs, with the namespace database's RW added, do not reproduce the reference enable (a `<PROTECT>` failure, then the HealthShare half skipped silently)
+
+- Task 0 ran on `ocupilot-b-ci` (Design Notes › Measured at implement). It met three halt conditions: effects outside E1-E6, a needed pair outside the candidates, and S2 differing from S0 after `RemoveAll` alone. No form, tool, port branch, roster or client code was built.
+- The tree holds only this spec and the Task 0 helper `src/OcuPilot/Test/InteropProbe.cls`, uncommitted. The `AdminPort` and `PortFixture` plumbing was reverted to HEAD.
+- The throwaway is back at S0. A test-only restore removed the vendor's instance-wide objects; checked at halt: `Admin`'s roles equal slot B's, no probe namespace, database, role, task or application remains, and the monitor state reads 0. One `ERROR #7846` from the harness's second read of an ended task stays in the throwaway's `messages.log`.
+- Decision needed before a resume: scope the enable to instances without HealthShare, widen the effect classes, consequence and pairs to the HealthShare branch, or refuse SA-13. The `Admin` grant and the `%DB_HSCUSTOM` application role bear on AD-8, AD-9 and AD-10.
