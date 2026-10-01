@@ -1,10 +1,12 @@
 /// <p>The Story 9.9 and 16.13 probes: a snapshot and restore of each service the service tests write
 /// (<parameter>SERVICES</parameter>, <parameter>SERVICE</parameter> among them), and the
 /// <code>ocup99*</code> LDAP configurations the LDAP tests create and
-/// delete through <class>Security.LDAPConfigs</class> in <code>%SYS</code> (AD-16). A configuration's
-/// name is a lower-case domain: the vendor stores a name given with <code>LDAPFlags</code> lower-cased
-/// with <code>.com</code> appended, and refuses a <code>Modify</code> of one that is not domain-shaped
-/// (ERROR #908, measured), so every probe name is <code>ocup99&lt;word&gt;.invalid</code>.</p>
+/// delete through <class>Security.LDAPConfigs</class> in <code>%SYS</code> (AD-16). An LDAP
+/// configuration's name is a lower-case domain: the vendor stores one lower-cased with
+/// <code>.com</code> appended, and refuses a <code>Modify</code> of one that is not domain-shaped
+/// (ERROR #908, measured), so every such probe is <code>ocup99&lt;word&gt;.invalid</code>. A
+/// Kerberos-only configuration (<code>LDAPFlags</code> 128) keeps its name as typed (measured), as the
+/// classic page creates it, so its probe may be a dotless <code>ocup99</code> name.</p>
 /// <p><b>Every write here refuses unless <parameter>ARMINGVARIABLE</parameter> reads 1</b>, so a
 /// runner pointed at an instance someone cares about writes nothing through this class, and a
 /// service write also refuses a service outside <parameter>SERVICES</parameter> or one that is
@@ -119,11 +121,12 @@ ClassMethod Read(pName As %String, Output pFresh As %DynamicObject, pEndpoint As
     Quit $$$OK
 }
 
-/// <p>Create the probe LDAP configuration <var>pName</var>, a lower-case domain starting
-/// <parameter>PREFIX</parameter>: by default disabled and not Active Directory (<code>LDAPFlags</code>
+/// <p>Create the probe LDAP configuration <var>pName</var>, starting <parameter>PREFIX</parameter>,
+/// a lower-case domain unless it is Kerberos-only: by default disabled and not Active Directory (<code>LDAPFlags</code>
 /// <var>pFlags</var> 8, use groups), host <var>pHost</var> <code>ocup99.invalid</code>, with a
-/// description, and every required setting the vendor's own default or a probe value.</p>
-ClassMethod CreateLdap(pName As %String, pFlags As %Integer = 8, pHost As %String = "ocup99.invalid") As %Status
+/// description, the retrieved attributes <var>pAttributes</var> (comma-separated, by default the
+/// vendor's own), and every required setting the vendor's own default or a probe value.</p>
+ClassMethod CreateLdap(pName As %String, pFlags As %Integer = 8, pHost As %String = "ocup99.invalid", pAttributes As %String = "") As %Status
 {
     Set tSC = ..Armed()
     If $$$ISERR(tSC) Quit tSC
@@ -139,6 +142,7 @@ ClassMethod CreateLdap(pName As %String, pFlags As %Integer = 8, pHost As %Strin
         Set tProperties("LDAPBaseDN") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPBaseDNForGroups") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPSearchUsername") = "CN=ocup99,DC=ocup99,DC=invalid"
+        If pAttributes '= "" Set tProperties("LDAPAttributes") = pAttributes
         Set tSC = ##class(Security.LDAPConfigs).Create(pName, .tProperties)
         Set $NAMESPACE = tOrigNS
     } Catch ex {

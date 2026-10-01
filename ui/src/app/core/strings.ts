@@ -4131,6 +4131,14 @@ export const STRINGS = {
   ldapListEmptyAgent: 'create an LDAP configuration',
   /** EXPERIENCE.md:490 */
   ldapDeleteConsequence: 'Anyone who signs in through this configuration can no longer sign in. This cannot be undone.',
+  /** EXPERIENCE.md:261 */
+  egressLineLeft: 'This turn\'s screen context went to <provider> at <host> and left the instance.',
+  /** EXPERIENCE.md:261 */
+  egressLineStayed: 'This turn\'s screen context went to <provider> at <host> and did not leave the instance.',
+  /** EXPERIENCE.md:261 */
+  egressLineNone: 'This turn sent no screen context to <provider>.',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionModelUnused: 'This endpoint has no {model} placeholder, so Model is not used; calls go to the model the endpoint names.',
 } as const;
 
 /**

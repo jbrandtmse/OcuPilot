@@ -387,10 +387,10 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
-        ; AD-6, AD-40: a tool whose own rule judges the caller's privilege against live state is
-        ; asked it again here, at the write, so a privilege lost since the mint refuses the confirm
-        ; and leaves the row live, as the pair check above does. Empty for every tool that declares
-        ; no such rule.
+        ; AD-6, AD-40: a tool whose own rule judges live state -- the caller's privilege, or whether
+        ; the id still names the target -- is asked it again here, at the write, so what the mint
+        ; would now refuse refuses the confirm and leaves the row live, as the pair check above does.
+        ; Empty for every tool that declares no such rule.
         If ##class(%Dictionary.CompiledMethod).%ExistsId(tToolClass _ "||ConfirmProblem") {
             Set tConfirmRuleSC = $ClassMethod(tToolClass, "ConfirmProblem", tIdValue, ..ParsedObject($Get(pRow("arguments"))), .tConfirmProblem)
             If $$$ISERR(tConfirmRuleSC) {

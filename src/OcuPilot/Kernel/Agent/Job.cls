@@ -114,7 +114,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Set tCode = tUnavailable
         }
         Set tBegun = 0
-        Do ..AppendConvoEntry(tConvo, pKey, pMessage, tState, $Get(tOutcome("reply")), tCode, +$Get(tOutcome("errorSeq")), tLimits, $Get(tOutcome("citations")), pContext, pDefinitionId)
+        Do ..AppendConvoEntry(tConvo, pKey, pMessage, tState, $Get(tOutcome("reply")), tCode, +$Get(tOutcome("errorSeq")), tLimits, $Get(tOutcome("citations")), pContext, pDefinitionId, $Get(tOutcome("egress")))
         Set tConvo = ""
         Do ..Finish(pKey, pUser, tState, tCode, $Get(tOutcome("limit")), $Get(tOutcome("reply")), +$Get(tOutcome("errorSeq")), tLimits, $Get(tOutcome("citations")))
     } Catch ex {
@@ -122,7 +122,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
         ; Mirrors the normal-completion path above: append the conversation entry, then drop the
         ; OREF, then finish the turn.
         If tBegun && (tLimits '= "") {
-            Do ..AppendConvoEntry(tConvo, pKey, pMessage, ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED, "", tUnavailable, 0, tLimits, "", pContext, pDefinitionId)
+            Do ..AppendConvoEntry(tConvo, pKey, pMessage, ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED, "", tUnavailable, 0, tLimits, "", pContext, pDefinitionId, $Get(tOutcome("egress")))
         }
         Set tConvo = ""
         If tBegun && (tLimits '= "") {
@@ -135,11 +135,12 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
 /// projection (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>), its dropped count and its
 /// own turn key, which is what a restored conversation reads a turn's proposals by, and the reply's
 /// citations <var>pCitations</var> (JSON text, <code>""</code> for none), the bounded screen-context
-/// payload the turn was started with <var>pContext</var> (<code>""</code> for none) and the
-/// definition it ran under <var>pDefinitionId</var>, which retention reads. A
+/// payload the turn was started with <var>pContext</var> (<code>""</code> for none), the
+/// definition it ran under <var>pDefinitionId</var>, which retention reads, and the turn's egress
+/// fact <var>pEgress</var> (JSON text, <code>""</code> for a turn that dispatched no call). A
 /// no-op when <var>pConvo</var> is not an open OREF. Failures are logged, never thrown -- the
 /// turn's own outcome does not depend on its conversation entry having been written.</p>
-ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %String, pMessage As %String, pState As %String, pReply As %String, pCode As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "", pContext As %String = "", pDefinitionId As %String = "") [ Private ]
+ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %String, pMessage As %String, pState As %String, pReply As %String, pCode As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "", pContext As %String = "", pDefinitionId As %String = "", pEgress As %String = "") [ Private ]
 {
     Try {
         If '$IsObject(pConvo) Quit
@@ -150,7 +151,7 @@ ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %Str
         }
         Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedDropped(pKey, .tDropped)
         If $$$ISERR(tSC) Set tDropped = 0
-        Set tSC = ##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, pMessage, pState, pReply, pCode, pErrorSeq, tSteps, +tDropped, pLimitsClass, pKey, pCitations, pContext, pDefinitionId)
+        Set tSC = ##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, pMessage, pState, pReply, pCode, pErrorSeq, tSteps, +tDropped, pLimitsClass, pKey, pCitations, pContext, pDefinitionId, pEgress)
         If $$$ISERR(tSC) Do ..Log("the turn's conversation entry could not be appended", tSC)
     } Catch ex {
         Do ..Log("appending the turn's conversation entry failed", ex.AsStatus())

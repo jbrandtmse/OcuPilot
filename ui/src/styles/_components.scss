@@ -7622,3 +7622,24 @@ app-ldap-editor-page .ocu-field-checkbox input[type='radio'] {
   gap: var(--ocu-space-2);
   margin: var(--ocu-space-4) 0 0;
 }
+
+// The data-egress line beneath a turn's message (Story 16.15): small text under the user's
+// bubble, at the same alignment and width. The words carry the meaning; when the screen context
+// left the instance the egress-warning roles are added, padded like the context chip's pill, with
+// a small radius because the sentence can wrap to two lines.
+.ocu-panel-egress-line {
+  @include typo.ocu-type('caption');
+
+  align-self: flex-end;
+  max-width: 86%;
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+  overflow-wrap: break-word;
+}
+
+.ocu-panel-egress-line-leaves {
+  padding: 0 6px;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-egress-warning-container);
+  color: var(--ocu-egress-warning);
+}

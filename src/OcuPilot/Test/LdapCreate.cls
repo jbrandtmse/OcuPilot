@@ -5,7 +5,8 @@
 /// refuse at the mint and on the Save, and a Kerberos-only create carries the classic page's host and
 /// user; the Save's create answers 201 and the configuration reads back; and
 /// <class>OcuPilot.Screen.Tool.LdapDelete</class>'s mint, confirm and the list's Delete remove a
-/// configuration, a bare name refused and an absent one answering 404.</p>
+/// configuration, a bare name refused and an absent one answering 404; and a stored dotless name
+/// asked again at the agent's confirm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the test principal
 /// holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: it
 /// creates and deletes <code>ocup99*</code> LDAP configurations
@@ -225,6 +226,39 @@ Method TestBothCallersDeleteAConfiguration()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tScreen), 0, "and its configuration is gone")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .tStatus, .tAnswer, {"action": "delete", "id": (tScreen)}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus, 404, "a Delete of an absent name answers 404")
+}
+
+/// <p>AD-6, AD-13: a stored dotless name is asked again at the agent's confirm. With
+/// <code>ocup99KRB</code> and <code>ocup99krb.com</code> both Kerberos-only and alike, a delete, a
+/// change and a search password minted against <code>ocup99KRB</code> are each refused at the
+/// confirm by <code>LDAP.NAME.FORM</code> once <code>ocup99KRB</code> is gone, when the vendor's read
+/// of that name finds <code>ocup99krb.com</code> by its short form; <code>ocup99krb.com</code> is left
+/// as it was.</p>
+/// <p>Mutation (Rule 19): drop the <code>ConfirmProblem</code> of
+/// <class>OcuPilot.Screen.Tool.LdapDelete</class>, <class>OcuPilot.Screen.Tool.LdapUpdate</class> and
+/// <class>OcuPilot.Screen.Tool.LdapPassword</class> -- each leg goes red.</p>
+Method TestAConfirmRefusesAStoredNameNowFindingAnother()
+{
+    Set tDotless = "ocup99KRB"
+    Set tOther = "ocup99krb.com"
+    For tTool = ..#DELETE, "OcuPilot.Screen.Tool.LdapUpdate", "OcuPilot.Screen.Tool.LdapPassword" {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tDotless, 128, "UNKNOWNHOST"), tTool _ ": the dotless configuration is created")
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tOther, 128, "UNKNOWNHOST"), tTool _ ": and one its short form finds")
+        Set tArgs = {"Name": (tDotless)}
+        If tTool = "OcuPilot.Screen.Tool.LdapUpdate" Do tArgs.%Set("Description", "retargeted", "string")
+        Set tSC = $ClassMethod(..#HELPER, "Mint", tTool, tDotless, tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, tTool _ ": minted against the stored name: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveLdap", tDotless), tTool _ ": the dotless configuration is then removed")
+        If $IsObject($Get(tProposal)) {
+            Set tSecrets = $Select(tTool = "OcuPilot.Screen.Tool.LdapPassword": {"LDAPSearchPassword": "ocup99"}, 1: "")
+            Set tDetail = ""
+            Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), tSecrets, $Username, .tResult, .tHttp, .tCode, .tDetail)
+            Do $$$AssertTrue((tHttp = 400) && $IsObject(tDetail) && (tDetail.%Get("problem") [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM), tTool _ ": the confirm is refused by LDAP.NAME.FORM: " _ tHttp _ " " _ $Get(tCode))
+        }
+        Set tSC = $ClassMethod(..#PROBE, "Read", tOther, .tAfter, "Security.LDAP")
+        Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: "absent") _ " " _ $ClassMethod(..#PROBE, "LdapPasswordSet", tOther), "OcuPilot probe 0", tTool _ ": and " _ tOther _ " is left as it was")
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), tTool _ ": the probes are removed")
+    }
 }
 
 /// <p>The create arguments for <var>pName</var>: a host, the search user and the two base DNs, which

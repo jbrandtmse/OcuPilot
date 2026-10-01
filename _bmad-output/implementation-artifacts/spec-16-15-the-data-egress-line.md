@@ -2,7 +2,9 @@
 title: 'Story 16.15: The data-egress line'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '96499dbc9fb562d695263185aece17f97ef16262'
+baseline_commit: '96499dbc9fb562d695263185aece17f97ef16262'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -198,9 +200,64 @@ Client:
 - **AC6.** Given a turn whose every call was refused before dispatch, or an entry stored before this story, when the panel renders it, then no line is drawn.
 - **AC7 (DW-1192).** Given a `gemini` definition saved with an endpoint lacking `{model}`, when it is created or updated, then one info line names the definition and its unused Model, with no URL. The Definition form says so under Endpoint, and the egress line names no model.
 
+### Review Findings
+
+Code review 2026-10-01 (four layers, `full-opus`): 34 rows, 24 entries — 0 high, 0 medium, 18 low, 6 false. 0 decision-needed, 7 patch (applied), 1 defer, 16 rejected.
+
+- [x] [Review][Patch] The fact is documented as appearing at dispatch, but the poll carries it only once the first dispatched call returns (Named limits) [src/OcuPilot/Kernel/State/Turn.cls:106] — `Turn.Egress`, `GuardedView` and `turn.ts` `TurnEntry.egress` now say so; AD-33's sentence and EXPERIENCE.md:609 (contended by Epic 18) are DW-1894.
+- [x] [Review][Patch] `GET /conversation/:id`'s doc omits `egress` [src/OcuPilot/Api/Conversation.cls:53]
+- [x] [Review][Patch] The browser spec's header says `after` restores the user's sharing choice; it leaves `share: true`, as `context-chip` does [ui/browser/egress-line.browser-spec.mjs:11]
+- [x] [Review][Patch] `EgressLocal` and `ContextProbe` describe the pre-16.15 call structure, and `EgressLocal`'s mutation recipe names blanking that moved to `EgressOf` [src/OcuPilot/Test/EgressLocal.cls:7]
+- [x] [Review][Patch] `turn-egress.test.mjs`'s mutation notes misname two tests [ui/tools/turn-egress.test.mjs:8]
+- [x] [Review][Patch] A call refused for its TLS configuration was not pinned to answer no egress — added `EgressLine.TestACallRefusedForItsTlsConfigurationRecordsNoEgress` (port in process, since the check needs the security database) [src/OcuPilot/Test/EgressLine.cls:322]
+- [x] [Review][Patch] AC6's "entry stored before this story" half had no demonstrated mutation — demonstrated under `## Verification` [ui/src/app/core/egress-line.ts:27]
+- [x] [Review][Defer] DESIGN.md gives no visual spec for the line (egress-warning usage row, `message-user`) [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:759] — deferred: DW-1895, wontfix-accepted (a review does not edit another spec).
+
+Rejected:
+
+- `false` The line does not name the proxy — the spec's fact is the endpoint host as the chip names it, and "left" is true through the proxy.
+- `false` The sharing-off sentence implies nothing left — it claims only that no screen context was sent (Decision 3).
+- `false` DW-1888 and DW-1889 are owned by a story that does not deliver them — the merge gate routed them to the epic's last open key for their own commit; Rule 17's adjudication after this review dispositions every 16-15 entry.
+- `false` `ResolveEndpoint`'s and `EgressOf`'s proxy outputs are unused — `EgressOf`'s is pinned by `TestEgressOfAnswersStayedForAMarkedLocalCallBehindAPublicProxy`, and no caller diverges.
+- `false` The Transcript page draws no line — the intent's Never list forbids it.
+- `false` `KeepEgress` names the first leaving host, not the last — that is the intent's Turn rule.
+- `low` Extra uncached address lookups per call — measured on `ocupilot-ci`: 3.8 ms (`api.anthropic.com`), 13.7 ms (`generativelanguage.googleapis.com`), 0.4 ms (an IP literal) per `LeavesInstance`; a cache belongs to `Kernel/Egress`, outside this epic.
+- `low` A pre-connect adapter refusal (no key, a mismatched Gemini URL) shows "went to … and left" — untrue for that one turn, beside its error banner; by-design, the intent records the fact immediately before `tAdapter.Invoke` and Named limits accept it.
+- `low` `NoteModelUnused` uses Gemini's predicate for any row whose endpoint carries `{model}`, and logs on every update — by-design, both are the spec's predicate and AC7.
+- `low` EXPERIENCE.md:335 omits "non-empty" — spec-prescribed wording; the form's predicate has it.
+- `low` The Auto Run Result contradicts itself in two places — its fix edits the spec under review.
+- `low` AC5's "no screen context sent" with sharing on is not separately pinned — both clauses meet one computation, `pContext '= ""` (wontfix-theoretical: real if `contextSent` were computed from anything else).
+- `low` "One info line" is not counted — `NoteModelUnused` is called once per handler (wontfix-theoretical).
+- `low` `EgressLine.OnBeforeOneTest` reads a failed SQL as "no settings", and a failed `OnBeforeAllTests` skips `OnAfterAllTests` — test-only, a throwaway's setup failure, and the fix adds guards.
+- `low` `Loop` sets `pOutcome("egress")` before `GuardedProgress` saves — they differ only when that storage write fails (wontfix-theoretical).
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 19 findings — high 0, medium 2, low 12, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` A call refused at the proxy or TLS check is not pinned to record no egress — added `EgressLine.TestATurnWhoseProxyWasRefusedRecordsNoEgress` (loopback proxy; `null` on the poll and the entry).
+  - `[medium]` `[patch]` A dispatched call that then fails is not pinned to keep its egress, on the server or in the panel — added `EgressLine.TestADispatchedCallThatFailedStillRecordsItsEgress` (401) and a failed-turn case in `panel-egress.spec.ts`.
+  - `[medium]` `[patch]` The marked-local flag `Dispatch` passes to `EgressOf` is unpinned for the line — added `EgressLine.TestAMarkedLocalDefaultRecordsThatTheDataStayed` and `TurnWireFixture.SetMarkedLocal`.
+  - `[low]` `[patch]` `NoteModelUnused`'s catalog-row condition is unpinned — an `anthropic` case added to `GeminiModelUnused.TestAnEndpointWithThePlaceholderOrNoneLogsOnlyTheChangeRecord`.
+  - `[low]` `[patch]` Four EgressLine entry checks and the post-move turn-1 poll can skip silently — size and status assertions added before each guard.
+  - `[low]` `[patch]` The `EgressOf` marked-local leg used a loopback host, so its verdict could not fail for a dropped flag — the host is now the public `192.0.2.10`.
+  - `[low]` `[patch]` AC4's server-side live check is guarded (same root cause as the skipping checks) — closed by the same assertions.
+  - `[low]` `[patch]` `Turn.EgressObject`'s test has no missing or wrong-typed `endpointHost` case — both added.
+  - `[false]` `[reject]` AC7's update half has no `mutation:` line — Rule 19 asks one demonstrated mutation per AC; AC7's create leg carries it (run 23320).
+  - `[low]` `[reject]` A refusal inside the adapter (no key, a mismatched built URL) records "left" though nothing is sent — spec-bound: the intent contract records "immediately before `tAdapter.Invoke`", and Named limits states this consequence.
+  - `[low]` `[reject]` The line appears only once the first call returns, while EXPERIENCE.md says "once the turn has dispatched a provider call" — Named limits states it, and the published sentence (the spec's own Copy) holds as written.
+  - `[false]` `[reject]` "Values the call was dispatched with" is held by structure, not by a test — no bad outcome; the reviewer names none, and the refusal-ordering mutations pin the call site.
+  - `[low]` `[reject]` The two-call rule is tested on the pure `KeepEgress` only — every call of a turn uses one definition, so differing facts need a mid-turn settings change; a loop-level seam adds surface for a case users rarely meet.
+  - `[low]` `[reject]` "A failed log is never a failed save" is untested — the note runs after the save and the change record, inside a `Try` with an empty `Catch`; a fault-injection seam is more than a direct correction.
+  - `[false]` `[reject]` The live line is covered only by browser legs — that is the surface the intent names, and `egress-line.browser-spec.mjs` ran 4/4 against the redeployed bundle.
+  - `[low]` `[patch]` `Entry.Egress`'s doc says it is copied from `Turn.Egress` — reworded: passed in at append time, the same text `Turn.Egress` holds.
+  - `[low]` `[patch]` `Convo.GuardedView`'s doc lists the turn keys without `egress` — added.
+  - `[false]` `[reject]` `EgressOf` takes five parameters where the intent lists four — the four inputs carry the specified semantics; the optional fifth output keeps `ResolveEndpoint`'s proxy on the same computation.
+  - `[false]` `[reject]` The budget re-base and the roster comments lie outside the intent — both are in the spec's Code Map and Tasks (DW-1166; `ci.test.mjs`).
 
 ## Design Notes
 
@@ -314,7 +371,65 @@ This runs on slot A. Every test runs on `ocupilot-ci`, one run at a time. Never 
 - The two-call rule: `KeepEgress` keeps the first fact always → `EgressLine`'s order leg.
 - AD-11 rule 4: the line is bound with `[innerHTML]` → `panel-egress.spec.ts`'s markup leg.
 
+Demonstrated (2026-10-01, `ocupilot-ci`; each reverted, recompiled or rebuilt, tree byte-identical after):
+
+- mutation: the panel template drops the `@if (turn.egress)` block → `panel-egress.spec.ts` (2 of 3 red) and browser Leg 1 (no line).
+- mutation: `Turn.GuardedView` omits `egress` → `TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` (key roster, run 23311) and `EgressLine` (6 of 9 red, run 23312).
+- mutation: `EgressOf` ignores the proxy → `EgressLine.TestAProxyMakesTheLineAndTheChipLeave` (run 23313) and `EgressLocal.TestAnUnmarkedDefinitionBehindAPublicProxyStillLeaves` (run 23314).
+- mutation: `Dispatch` sets `pEgress` before its scheme and address-policy refusals → `EgressLine.TestATurnWhoseCallWasRefusedRecordsNoEgress` (run 23315).
+- mutation: `EgressOf` answers `leavesInstance` 1 → `EgressLine.TestAPrivateDefaultRecordsThatTheDataStayed` (run 23316) and browser Leg 2 (chip keeps the pill).
+- mutation: `AgentContext.onChange` ignores `agent-definition` → browser Leg 2 (chip keeps naming `192.0.2.10`).
+- mutation: `Entry.GuardedRows` builds `egress` from the current default → `EgressLine.TestMovingTheDefaultLeavesEachTurnItsOwnEgress` (turn 1's entry names B, run 23317).
+- mutation: `KeepEgress` writes `contextSent` true always → `EgressLine.TestSharingOffRecordsThatNoContextWasSent` (run 23318).
+- mutation: `egressLine` ignores `contextSent` → `turn-egress.test.mjs` "sharing off reads the no-context sentence" and browser Leg 3.
+- mutation: `parseEgress` accepts a missing `leavesInstance` as false → `turn-egress.test.mjs` "a missing, null or malformed egress parses to null".
+- mutation: `HandleCreate` skips `NoteModelUnused` → `GeminiModelUnused.TestACreateWithoutThePlaceholderLogsTheUnusedModel` (run 23320).
+- mutation: `showModelUnused` answers false → `definition-form.page.spec.ts` "DW-1192: Endpoint carries the model-unused note".
+- mutation: `KeepEgress` keeps the first fact always → `EgressLine.TestKeepEgressKeepsTheFactThatLeavesInEitherOrder` (run 23319).
+- mutation: the line is bound with `[innerHTML]` → `panel-egress.spec.ts` "renders an endpoint host carrying markup as text".
+
+Demonstrated at review (2026-10-01, same discipline):
+
+- mutation: `Dispatch` passes 0 as the marked-local flag to `EgressOf` → `EgressLine.TestAMarkedLocalDefaultRecordsThatTheDataStayed` (run 23328).
+- mutation: `Dispatch` records the fact only when the adapter returned no fault → `EgressLine.TestADispatchedCallThatFailedStillRecordsItsEgress` (run 23329); the panel draws the line only without an error banner → `panel-egress.spec.ts` "draws the line for a failed turn whose call was dispatched".
+- mutation: `Dispatch` records the fact before its proxy refusal → `EgressLine.TestATurnWhoseProxyWasRefusedRecordsNoEgress` (run 23330).
+- mutation: `EgressOf` passes 0 to `LeavesInstance` → `EgressLine.TestEgressOfAnswersStayedForAMarkedLocalCallBehindAPublicProxy` (run 23331); `Turn.EgressObject` drops its `endpointHost` check → `TestEgressObjectRefusesEveryMalformedText` (same run).
+- mutation: `NoteModelUnused` skips the catalog-row check → `GeminiModelUnused.TestAnEndpointWithThePlaceholderOrNoneLogsOnlyTheChangeRecord` (run 23332).
+
+Demonstrated at code review (2026-10-01, `ocupilot-ci` and the worktree; each reverted, recompiled, tree byte-identical after):
+
+- mutation: `Dispatch` records the fact before its TLS refusal (the `EgressOf` line moved above the attempt-bound and TLS blocks) → `EgressLine.TestACallRefusedForItsTlsConfigurationRecordsNoEgress` alone red, "and answers no egress" (run 23728; green before, run 23727, and after, run 23729).
+- mutation (AC6, an entry stored before this story): `egressLine` drops its `egress === null` guard → `turn-egress.test.mjs` "egressLine words the three cases from the published strings, filled" red (TypeError on `egressLine(null)`); the component build refuses it as a type error.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+**Change.** `ProviderPort.EgressOf` is the one egress computation: the chip reads it through `ResolveEndpoint`, and `Dispatch` records it immediately before the adapter is invoked. `Loop.KeepEgress` keeps the first dispatched call's fact unless a later call leaves. The fact is stored on `Turn.Egress` and `Entry.Egress` (no `SCHEMAVERSION` move) and served as `egress` on the progress poll and on each conversation turn. The panel draws it as one text line beneath the message. A `gemini` save whose endpoint lacks `{model}` logs one info line, and the Definition form notes it under Endpoint (DW-1192, first half).
+
+**Files.**
+
+- Server: `Port/ProviderPort.cls` (`EgressOf`, `Invoke`/`Dispatch` egress, `ResolveEndpoint` verdict), `Api/Context.cls` (verdict from `ResolveEndpoint`), `Kernel/Agent/Loop.cls` (`KeepEgress`, outcome, progress write), `Kernel/Agent/Job.cls` (entry append), `Kernel/State/Turn.cls`, `Entry.cls`, `Convo.cls` (property, wire key, `EgressObject`), `Kernel/Provider/Gemini.cls` (`ModelUnused`), `Api/Definitions.cls` (`NoteModelUnused`).
+- Server tests: `Test/EgressLine.cls` (new, 12 legs), `Test/GeminiModelUnused.cls` (new), `Test/TurnWire.cls` (both rosters), `Test/TurnWireFixture.cls` (private-host definition, `MarkDefault`, `SetEndpoint`, `SetMarkedLocal`), `scripts/ci-throwaway.sh` (two roster comments).
+- Client: `core/turn.ts` (`TurnEgress`, `parseEgress`), `core/egress-line.ts` (new), `shell/panel.ts`, `core/strings.ts`, `styles/_components.scss`, `areas/agent/definition-form.page.ts`; tests `tools/turn-egress.test.mjs`, `shell/panel-egress.spec.ts`, `definition-form.page.spec.ts`, `browser/egress-line.browser-spec.mjs` (new), `browser/turnprobe-spec.mjs`.
+- `ui/angular.json` and `angular-json.test.mjs`: the warning budget was re-based under DW-1166 from 2384kB to 2387kB, because the measured initial total was 2,386,319 B.
+- EXPERIENCE.md rows 261, 335 and 609 were edited in place; the file is still 993 lines. No path outside the Code Map and Tasks was edited.
+
+**Review.** 19 findings: 2 medium and 12 low verdicts, 5 false. Ten entries were patched: 2 medium, 8 low.
+
+- The patches added five EgressLine legs and assertions: refused proxy, provider-refused call, marked-local turn, size and status guards, public marked-local `EgressOf` host, and `endpointHost` malformed cases.
+- They also added a non-gemini `NoteModelUnused` case and a failed-turn panel case, and corrected two doc comments.
+- Each new pin's mutation reddened its test (runs 23328-23332, and the panel case).
+- Nine were rejected (see the triage log). Nothing was deferred.
+
+**Follow-up review: `false`.** The two medium patches were test gaps, each now closed with a demonstrated mutation. No unverified risk can be named.
+
+**Verification** (all on `ocupilot-ci`, one run at a time):
+
+- **Full ObjectScript sweep, all 16 arming variables:** 389 classes, 3,223 tests, 6 failed, all known residue: `PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` task-history 1. Story classes ran green (`EgressLine` 12, `GeminiModelUnused` 4, `TurnWire` 15).
+- **Browser** (`egress-line`, `context-chip`, `turn`, `definitions`, rebuilt bundle): 32 of 32.
+- **Client:** `npm test` 1,763 tools tests and 2,045 component tests.
+- **Gates:** `check-objectscript.py` 0, `lint-docs.sh` 0, EXPERIENCE.md 993 lines.
+
+**Residual risk.** Each dispatched call now resolves its endpoint (and proxy) host once more for `LeavesInstance` (inference: a lookup per call beside the address policy's own).
+
+Status: done
 Blocking condition: none

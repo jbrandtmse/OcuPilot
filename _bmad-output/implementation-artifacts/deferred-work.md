@@ -3325,6 +3325,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:19:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=x0 note=a missing live browser leg is 13.2's charter; context-chip and definitions.browser-spec are Epic 10 contended for Epic 5
 - 2026-09-19T18:35:53Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a missing live leg, not a defect; Story 10.3 pins the same LeavesInstance computation server-side in Test/EgressLocal
 - 2026-09-26T09:53:46Z status=routed owner=16-15-the-data-egress-line by=spec_gate note=16.15 AC2/AC3 need a two-host fixture and a live default-marker-move leg; chip pinned store-level only
+- 2026-10-01T10:17:14Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=second probe definition on 10.0.0.5; egress-line browser Leg 2 sets the default and asserts the chip and the line follow, live and after reload
 
 ### DW-1077: On Home the context chip names a screen and namespace that no turn carries, because Home's declared route is the empty string
 - source: code review of story 4.11 | severity: low | fix-risk: med | footprint: in-story
@@ -4826,6 +4827,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Gemini.RequestUrl:61 answers the endpoint unchanged when the placeholder is absent and CallMessages puts no model in the body, so a definition whose Model reads gemini-3.8-flash pointed at a stored .../models/gemini-2.5-pro:generateContent calls 2.5-pro while every screen and ledger row says 3.8-flash; Kernel/AgentRules.cls:82's rule list validates name, provider, tokens, temperature, credentials, endpoint, prompt, retention and iterations but never model
 - 2026-09-19T08:49:39Z status=decision-pending owner=burndown by=harvest note=one product call with two halves: whether a placeholder-less Gemini endpoint is warned, refused or documented, and whether a model gains a create-time validation rule (which means a new violation code and changes what the form accepts). This story is what first makes the model load-bearing on the wire
 - 2026-09-19T20:01:30Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=DECIDED on both halves. Half one, the placeholder-less Gemini endpoint: do NOT refuse it - an operator may legitimately pin a model-specific endpoint - but it must never be SILENT. The defect is that every screen and ledger row says one model while another answers, which makes the UI untruthful, and untruthfulness about what leaves the instance is exactly what the egress line exists to prevent. Surface it: at minimum a log line naming that the definition's Model is unused, and say so where the endpoint is edited. Half two, a create-time model validation rule: DEFERRED - it needs a new violation code and changes what the form accepts, disproportionate to the residual once half one lands, and the wire already refuses an unusable model as PROVIDER.EGRESS. Routed here rather than Epic 11 because the owner's 0dc7c48 amendment moved the data-egress line into 16.15
+- 2026-10-01T10:17:14Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=half one: GeminiModelUnused logs the unused Model on save and the form notes it under Endpoint; half two declined per the 2026-09-19 decision
 
 ### DW-1193: The three adapters' ProviderMessage bodies are byte-identical duplicates, and the duplicated body stringifies an OREF into detail.providerText when a vendor's error.message is not a string
 - source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8698,12 +8700,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-10-01: Security.LDAPConfigs.Create("OCUP99KRB") with flags 128 stored Name OCUP99KRB while FormatName answers ocup99krb.com; the classic page canonicalizes only with LDAP configuration ticked (LDAP.cls:408). The spec's 'stores only the canonical form' premise behind AD-13's amendment does not hold for Create.
 - 2026-10-01T05:41:07Z status=decision-pending owner=burndown by=cr note=admit a name the instance already stores as typed (amend AD-13 and the Boundary), or keep refusing; Rule 20 Deferred mirror
 - 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided as recommended (orchestrator 2026-10-01): admit a name the instance already stores, exactly as stored, for open/edit/test/delete; a NEW name is still refused when the instance would store it differently; amend AD-13; Epic 16 fixes it before its close as its own commit
+- 2026-10-01T11:08:27Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=3822a50b: a stored non-canonical name admitted as stored (open/edit/test/delete, confirm re-check); create still refused; LdapEdit/LdapUpdate/LdapCreate legs, mutations A-C, E
 
 ### DW-1889: The LDAP editor cannot remove a configuration's last retrieved attribute: Security.LDAP PUT ignores LDAPAttributes [] (the Save answers 200, read-back differs) and [""] answers 500
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-10-01 through PUT /ldap/:id on a probe: [] left [cn,uid] stored with verdict differs; [""] answered 500 INTERNAL; a non-empty list replaces the stored one whole. The classic page clears it with Properties("LDAPAttributes")="" through Security.LDAPConfigs.Modify.
 - 2026-10-01T05:41:07Z status=escalated owner=burndown by=cr note=needs an AD-27 named case (Modify in %SYS) or a refusal sentence for an empty list; decision sheet
 - 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided (orchestrator 2026-10-01): now - a refusal with a plain sentence when the edit would remove the last retrieved attribute (the vendor PUT ignores LDAPAttributes []), instead of a silent no-op; the AD-27 named case (Modify in %SYS) is a later cleanup item - file it as a new range-end-cleanup entry (p4) when this one resolves
+- 2026-10-01T11:08:27Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=3822a50b: last retrieved attribute refused LDAP.ATTRIBUTES.LASTONE before any write, both callers; mutation D; AD-27 named case filed separately
 
 ### DW-1890: LdapTest's no-task-row assertions pass when PortFixture.TaskGuids cannot read the async task table, because it answers "" on any error
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -8721,6 +8725,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
 - 2026-10-01T04:00:14Z occurrence=23-2-the-range-end-cleanup-part-2
 
+### DW-1894: AD-33's Story 16.15 amendment and EXPERIENCE.md:609 say a turn's egress appears once a provider call is dispatched; it appears once the turn's first dispatched call returns
+- source: spec-16-15-the-data-egress-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Loop.Run writes Turn.Egress through GuardedProgress only after Invoke returns (the spec's Named limits say so), so the poll answers null for the whole first call, streamed text included. The code comments were corrected in review; EXPERIENCE.md is contended by Epic 18 and the spine sentence is the lead's (Rule 20).
+- 2026-10-01T10:13:57Z status=wontfix-accepted owner=16-15-the-data-egress-line by=cr note=lead may fix the AD-33 phrase at the next spine touch; reopen_if=a consumer reads egress from the poll while the first call runs
+- 2026-10-01T10:17:14Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=lead corrected AD-33's sentence and EXPERIENCE.md:609 at origin: the line appears once the first dispatched call returns
+
+### DW-1895: DESIGN.md gives no visual spec for Story 16.15's data-egress line: the egress-warning usage row (:759) and the message-user component (:1146) omit it
+- source: spec-16-15-the-data-egress-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The line's caption type, on-surface-variant color and egress-warning leaves modifier exist only in _components.scss, while EXPERIENCE.md's Component Patterns header says visual specs live in DESIGN.md Components; the spec's Code Map named no DESIGN.md edit, and review does not edit another spec.
+- 2026-10-01T10:14:01Z status=wontfix-accepted owner=16-15-the-data-egress-line by=cr note=reopen_if=DESIGN.md's egress-warning row or message-user component is next edited, or a restyle of egress-warning misses the line
 ### DW-1892: Browser Back or a side-bar exit from a database wizard opened by New Namespace's hand-off returns to an empty form with no prompt; before 18.17 the link click asked first
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: retainForHandOff marks the form clean (namespace-form.store.ts:272-276); open('') without returning drops the held buffer (:317-318); spec Design Notes decide Back starts empty
@@ -8731,3 +8745,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Prohibited.cls:1961 copy arm asks CopiesOwnMapping only; NamespaceCopyMappings.cls:86 CONSEQUENCE NAMESPACE.COPYMAPPINGS; WeakensByEffect runs per create/change
 - 2026-10-01T09:21:03Z status=wontfix-accepted owner=18-17-namespace-and-database-follow-ups by=cr note=pre-existing (18.14), copy already DESTRUCTIVE=1. reopen_if=AD-10 is amended to name a copy for MAPPING.SYSTEMGLOBAL
+
+### DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it
+- source: DW-1889 (merge gate 2026-10-01) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
+- 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
