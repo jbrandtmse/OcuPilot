@@ -203,3 +203,6 @@
 2026-10-01T19:45:41Z	Epic 23	telemetry_gate	pending=0 action=none
 2026-10-01T19:45:41Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@298057f9 kind=fast_forward from_head=12f501e3 conflicts=none before=story_23.3
 2026-10-01T19:45:41Z	Epic 23	slot_verified	slot=b mcp_profile=ocupilot-slot-b baseUrl=52775 docker_port=52775 throwaway=ocupilot-b-ci_healthy(not_restarted) bootstrap=node_modules_ok,irislib_ok
+2026-10-01T19:52:28Z	Epic 23	epic_context_compiled	sha=75818933 reason=planning_artifact_newer(23.3_charter) model=opus agent=a544a4dcb34c28927 size=6452B
+2026-10-01T19:52:28Z	Epic 23	footprint_decision	asked=main answer=ok(by=merge_gate) scope=DW-1901_replace_in_place:CLAUDE.md_CI_paragraph(name_each_suite_count;refresh_21min_sentence_from_batch_a_green_run),spine_Stack_CI_row_913,spine_OpsEnvelope_BuildCI_1050,docs/DEVELOPMENT.md_451-454(not_touched_by_epic19) recheck_epic19_hunks_at_edit_time=required disjoint_ok=ci-throwaway.sh_roster_line,ci.test.mjs_roster,structural-walk_id_table
+2026-10-01T19:52:56Z	Story 23.3	stage_spawned	stage=plan spawn_at=2026-10-01T19:52:56Z model=opus agent_name=23-3-the-range-end-cleanup-part-3-plan-1 cycle_iteration=1
