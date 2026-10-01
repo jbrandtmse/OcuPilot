@@ -942,7 +942,7 @@ The lead applies these at spec validation (Rule 20).
 - **DW-1829:** the screen and admin-API legs pause a live compact over HTTP, where the hold cannot be used, because the CSP worker's `Request()` takes the same lock. They pause back to back, answered 200 when measured, and have no CI sighting. The lead names them in the trailer.
 - **DW-1497:** the 21 per-entity Save handlers (AD-55) take no hold. Sixteen call their port directly, and Epic 16's 16.13 and 16.14 edit two of them. The lead files one new entry (owner `burndown`) for the Save route.
 - **DW-1366** (not one of the twelve) closes as a side effect of DW-1497 (`ProposalSpelling` 500 → 409). The lead records it.
-- **DW-48:** a volume that compiled `OcuPilot.Test.*` before this change keeps those classes until `$System.OBJ.DeletePackage("OcuPilot.Test")` is run. The product path does not delete them. `Install.DemoTask` is not a Test class and is outside this AC.
+- **DW-48:** a product start deletes the `OcuPilot.Test.*` classes an earlier start compiled (DW-1885); a start with `OCUPILOT_LOAD_TESTS=1` keeps them. `Install.DemoTask` is not a Test class and is outside this AC.
 
 **Owner action:**
 

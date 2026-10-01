@@ -266,8 +266,8 @@ agent tears down only a throwaway whose `up` it ran itself and can name from its
 anything else it reports and leaves running. The script refuses the live and slot names and ports,
 and a project name Compose already knows from another config file, outright. A throwaway sets
 `OCUPILOT_LOAD_TESTS=1`, so its start hook compiles the `OcuPilot.Test` classes; the repository's
-`docker-compose.yml` does not, so a product start compiles none (AD-17), and a slot instance's own
-compose file needs the variable for its start to compile them.
+`docker-compose.yml` does not, so a product start compiles none and deletes any an earlier start
+compiled (AD-17); a slot instance's own compose file needs the variable, or its next start removes them.
 
 - **Management Portal:** <http://localhost:52774/csp/sys/UtilHome.csp>
 - **Credentials:** `_SYSTEM` / `SYS` · **Default namespace:** `HSCUSTOM`
