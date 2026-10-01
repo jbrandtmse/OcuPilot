@@ -886,6 +886,8 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// <p>An SSL/TLS configuration's thirteen are a change's less the private key password
 /// (<method>SslFields</method>): a create names no private key file, so it can set no password.</p>
 /// <p>A task's thirty-four are <method>TaskCreateFields</method>'s.</p>
+/// <p>An LDAP configuration's are a change's twenty-nine (<method>LdapFields</method>, Story 16.14):
+/// its name is the target's id, never a body field.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
@@ -907,6 +909,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If ..IsMappingType(pType) Quit ..MappingFields(pType)
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
     If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields() _ $ListBuild("Type")
+    If pType = ..#TYPELDAP Quit ..LdapFields()
     Quit ""
 }
 

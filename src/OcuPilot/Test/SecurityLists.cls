@@ -47,15 +47,15 @@ Method OnAfterOneTest() As %Status
 
 /// <p>The five screens as <code>$ListBuild(descriptor, route, tool, side-bar position, entity type,
 /// classic page, read fields as JSON, privileges as JSON, parent scope, the read's criterion query
-/// suffix, primary action, row actions)</code>. The X.509 and Secrets lists' primary action is Create
-/// and their one row action Delete; the other three declare neither.</p>
+/// suffix, primary action, row actions)</code>. The X.509, LDAP / Kerberos and Secrets lists' primary
+/// action is Create and their one row action Delete; the other two declare neither.</p>
 ClassMethod Screens() As %List
 {
     Set tSecure = "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
     Set tWallet = "[{""resource"":""%Admin_Wallet"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
     Set tScreens = ""
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.X509CredentialList", "security/x509", "security.x509", 2, "x509-credential", "%CSP.UI.Portal.X509Credentials", "[""Alias"",""OwnerList"",""PeerNames"",""CAFile"",""SubjectDN"",""IssuerDN"",""ValidityNotBefore"",""ValidityNotAfter""]", tSecure, "", "", "create", "delete"))
-    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.LdapConfigList", "security/ldap", "security.ldap", 3, "ldap-configuration", "%CSP.UI.Portal.LDAPs", "[""Name"",""Enabled"",""Description"",""LDAPCACertFile""]", tSecure, "", ""))
+    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.LdapConfigList", "security/ldap", "security.ldap", 3, "ldap-configuration", "%CSP.UI.Portal.LDAPs", "[""Name"",""Enabled"",""Description"",""LDAPCACertFile"",""LDAPFlags""]", tSecure, "", "", "create", "delete"))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletCollectionList", "security/wallet", "security.wallet", 4, "wallet-collection", "", "[""Name"",""EditResource"",""UseResource""]", tWallet, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION, "create", "delete"))
     Set tFileSystem = "[{""resource"":""%Admin_FileSystemAccess"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
@@ -202,21 +202,23 @@ Method TestTheX509ListReadsItsCertificateFieldsOverTheWire()
     }
 }
 
-/// <p>Matrix "LDAP" -- the whole read answers the four declared fields, untruncated, with at least
-/// one row and a boolean <code>Enabled</code> on every row.</p>
+/// <p>Matrix "LDAP" -- the whole read answers the five declared fields, untruncated, with at least
+/// one row and a boolean <code>Enabled</code> on every row, which is <code>LDAPFlags</code>' bit 64
+/// (DW-1639).</p>
 Method TestTheLdapListReadsOverTheWire()
 {
     Set tSC = ..Read("security.ldap", 1000, "", .tStatus, .tAnswer)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the read answers")
     If (tStatus '= 200) || '$IsObject(tAnswer) Quit
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), $List($List(..Screens(), 2), 7), "fields are the four declared fields, in order")
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), $List($List(..Screens(), 2), 7), "fields are the five declared fields, in order")
     Do $$$AssertEquals(tAnswer.truncated, 0, "nothing is cut at 1,000")
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "the instance's LDAP configurations are listed: " _ tAnswer.rows.%Size())
     Set tBad = ""
     Set tIterator = tAnswer.rows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         If tRow.%GetTypeOf("Enabled") '= "boolean" Set tBad = tRow.Name _ " has an Enabled that is " _ tRow.%GetTypeOf("Enabled")
+        If (tBad = "") && (tRow.%Get("Enabled") '= $ZBoolean(+tRow.%Get("LDAPFlags"), 64, 1)) Set tBad = tRow.Name _ " has an Enabled that is not its flags' bit 64"
         If tBad '= "" Quit
     }
     Do $$$AssertEquals(tBad, "", "every row's Enabled is a boolean")
@@ -264,8 +266,8 @@ Method TestTheSecretsListReadsOneCollection()
 /// <p>AC4 -- every row the five reads answer over the wire and every row the five read tools answer
 /// carries exactly the declared fields, and none carries a key <parameter>SECRETKEYS</parameter>
 /// names; and for the LDAP / Kerberos, Wallet and Secrets lists, every raw port LIST row's key set is
-/// the declared fields, so nothing is projected away there. The X.509 LIST row's own
-/// <code>HasPrivateKey</code> is the one key a read projects away.</p>
+/// the declared fields less those a per-row detail call adds, so nothing is projected away there. The
+/// X.509 LIST row's own <code>HasPrivateKey</code> is the one key a read projects away.</p>
 /// <p>Mutation: add <code>Value</code> to <class>OcuPilot.Screen.Descriptor.WalletSecretList</class>'s
 /// read and context fields -&gt; the raw key-set and route key-set assertions go red.</p>
 Method TestEveryRowCarriesTheDeclaredFieldsAndNoSecret()
@@ -307,7 +309,16 @@ Method TestEveryRowCarriesTheDeclaredFieldsAndNoSecret()
         Do $$$AssertStatusOK(tSC, tClass _ ": the live " _ tEndpoint _ " LIST answers")
         If $$$ISERR(tSC) || '$IsObject(tRaw) Continue
         Do $$$AssertTrue(tRaw.%Size() > 0, tClass _ ": with raw rows to hold the declared fields to")
-        Do $$$AssertEquals(..KeySetProblem(tRaw, tRead.fields.%ToJSON()), "", tClass _ ": every raw LIST row's key set is the declared fields " _ tRead.fields.%ToJSON())
+        ; A detail call's fields are merged after the LIST (AD-36), so the raw row lacks exactly them.
+        Set tRawFields = []
+        Set tDetail = ""
+        If tRead.source.%GetTypeOf("rowGet") = "object" Set tDetail = tRead.source.rowGet.fields.%ToJSON()
+        Set tFieldIterator = tRead.fields.%GetIterator()
+        While tFieldIterator.%GetNext(.tFieldIndex, .tField) {
+            If (tDetail '= "") && (tDetail [ ("""" _ tField _ """")) Continue
+            Do tRawFields.%Push(tField)
+        }
+        Do $$$AssertEquals(..KeySetProblem(tRaw, tRawFields.%ToJSON()), "", tClass _ ": every raw LIST row's key set is the declared fields " _ tRawFields.%ToJSON())
     }
 }
 

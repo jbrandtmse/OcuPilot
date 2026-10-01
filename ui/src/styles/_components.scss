@@ -7596,3 +7596,29 @@ app-log-hub-page {
   border-bottom: 1px solid var(--ocu-outline-variant);
   overflow-wrap: anywhere;
 }
+
+// The LDAP and Kerberos editor (Story 16.14): its flags and the search password's options are 24px
+// targets (DW-1337), as the SSL/TLS editor's are; the three group examples read in the monospace face
+// of the text the instance formats; and Test authentication sits under the tabs with its caption.
+app-ldap-editor-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-ldap-editor-page .ocu-field-checkbox input[type='checkbox'],
+app-ldap-editor-page .ocu-field-checkbox input[type='radio'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}
+
+.ocu-ldap-example {
+  font-family: var(--ocu-type-code-family);
+}
+
+.ocu-ldap-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-2);
+  margin: var(--ocu-space-4) 0 0;
+}

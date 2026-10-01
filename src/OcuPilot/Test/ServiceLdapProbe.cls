@@ -120,10 +120,10 @@ ClassMethod Read(pName As %String, Output pFresh As %DynamicObject, pEndpoint As
 }
 
 /// <p>Create the probe LDAP configuration <var>pName</var>, a lower-case domain starting
-/// <parameter>PREFIX</parameter>: disabled and not Active Directory (<code>LDAPFlags</code> 8, use
-/// groups), host <code>ocup99.invalid</code>, with a description, and every required setting the
-/// vendor's own default or a probe value.</p>
-ClassMethod CreateLdap(pName As %String) As %Status
+/// <parameter>PREFIX</parameter>: by default disabled and not Active Directory (<code>LDAPFlags</code>
+/// <var>pFlags</var> 8, use groups), host <var>pHost</var> <code>ocup99.invalid</code>, with a
+/// description, and every required setting the vendor's own default or a probe value.</p>
+ClassMethod CreateLdap(pName As %String, pFlags As %Integer = 8, pHost As %String = "ocup99.invalid") As %Status
 {
     Set tSC = ..Armed()
     If $$$ISERR(tSC) Quit tSC
@@ -134,8 +134,8 @@ ClassMethod CreateLdap(pName As %String) As %Status
         If ##class(Security.LDAPConfigs).Exists(pName) Do ##class(Security.LDAPConfigs).Delete(pName)
         Kill tProperties
         Set tProperties("Description") = "OcuPilot probe"
-        Set tProperties("LDAPFlags") = 8
-        Set tProperties("LDAPHostNames") = "ocup99.invalid"
+        Set tProperties("LDAPFlags") = pFlags
+        Set tProperties("LDAPHostNames") = pHost
         Set tProperties("LDAPBaseDN") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPBaseDNForGroups") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPSearchUsername") = "CN=ocup99,DC=ocup99,DC=invalid"
@@ -214,6 +214,26 @@ ClassMethod LdapExists(pName As %String) As %Boolean
         Set $NAMESPACE = tOrigNS
     }
     Quit tExists
+}
+
+/// <p>Whether the LDAP configuration <var>pName</var> holds a search password, read in
+/// <code>%SYS</code> through <code>Security.LDAPConfigs.Get</code> by presence alone: the value is
+/// never returned, compared or written anywhere.</p>
+ClassMethod LdapPasswordSet(pName As %String) As %Boolean
+{
+    Set tSet = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProperties
+        If $$$ISOK(##class(Security.LDAPConfigs).Get(pName, .tProperties)) Set tSet = ($Get(tProperties("LDAPSearchPassword")) '= "")
+        Kill tProperties
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Kill tProperties
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tSet
 }
 
 /// <p>Create the throwaway principal <var>pUser</var> with password <var>pPassword</var>, holding one

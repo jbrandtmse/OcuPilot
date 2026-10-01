@@ -1,9 +1,13 @@
-/// <p>Pins the LDAP configuration form's routes over the wire (AD-4, AD-8, AD-12, AD-39, AD-55): the
-/// form read (<code>GET /ldap/form?name=</code>) and the Save (<code>PUT /ldap/:id</code>) through the
-/// Matrix's rows -- a two-field save whose every other key reads back, the enable bit set with every
-/// other flag kept, the four rules, an undeclared key, and an absent name that is refused rather
-/// than created by the vendor's upsert -- and a least-privileged principal holding exactly the form's
-/// pairs saving.</p>
+/// <p>Pins the LDAP and Kerberos editor's routes over the wire (AD-4, AD-8, AD-12, AD-39, AD-55): the
+/// form read (<code>GET /ldap/form?name=</code>, and <code>?new=1</code>) with the instance's Kerberos
+/// answer, the name check (<code>GET /ldap/name</code>), the group examples (<code>GET
+/// /ldap/examples</code>), and the Save (<code>PUT /ldap/:id</code>) through the Matrix's rows -- a
+/// two-field save whose every other key reads back, the enable bit set with every other flag kept,
+/// a Kerberos-only save filled with the classic page's values, the rules, an undeclared key, a bare
+/// name refused by the form read and the Save, and an absent name that is refused rather than
+/// created by the vendor's upsert; the list and its read
+/// tool reading Enabled from the flags (DW-1639); and a least-privileged principal holding exactly
+/// the form's pairs reading and saving.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the test principal
 /// holding <code>%All</code>, and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>PRINCIPALSVARIABLE</parameter> reading <code>1</code>: it creates and deletes
@@ -84,6 +88,8 @@ Method TestTheFormReadAnswersOneConfiguration()
         Do $$$AssertEquals(tLdap.%Get("LDAPFlags") _ " " _ tLdap.%Get("LDAPHostNames").%ToJSON(), "8 [""ocup99.invalid""]", tName _ ": carrying its stored values")
         Do $$$AssertEquals(tLdap.%GetTypeOf("LDAPFlags"), "number", tName _ ": its flags a number, which the enable bit is set on")
         Do $$$AssertEquals(tLdap.%GetTypeOf("LDAPSearchPassword"), "unassigned", tName _ ": and no search password")
+        Do $$$AssertEquals(##class(OcuPilot.Test.OAuthServerProbe).Keys(tAnswer), "kerberos,ldap", tName _ ": beside whether Kerberos is on")
+        Do $$$AssertEquals(tAnswer.%GetTypeOf("kerberos") _ " " _ tAnswer.%Get("kerberos"), "boolean " _ ..KerberosOn(), tName _ ": which is the instance's own Security.System answer")
     }
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/form?name=ocup99nosuch.invalid", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.%Get("code"), 1: ""), "404 LDAP.ABSENT", "an absent configuration is 404")
@@ -148,17 +154,19 @@ Method TestEnablingSetsOneBitAndKeepsTheRest()
 }
 
 /// <p>AD-39, AD-55: each rule refuses the Save as one 422 <code>LDAP.VALIDATION</code> envelope on its
-/// field with its published sentence; <code>LDAPCACertFile</code> is 400 undeclared; an absent name
-/// is 404 <code>LDAP.ABSENT</code> and is not created, although the vendor's <code>PUT</code> would
-/// create it; nothing is written by any of them.</p>
-/// <p>Mutation (Rule 19): drop the <code>LDAPFlags</code> range check from
-/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- the flags leg goes red.</p>
+/// field with its published sentence, an emptied host list on an LDAP configuration among them;
+/// <code>LDAPCACertFile</code> is 400 undeclared; an absent name is 404 <code>LDAP.ABSENT</code> and
+/// is not created, although the vendor's <code>PUT</code> would create it; nothing is written by any
+/// of them.</p>
+/// <p>Mutations (Rule 19): drop the <code>LDAPFlags</code> range check from
+/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- the flags leg goes red; skip
+/// <code>LDAP.HOST.REQUIRED</code> there -- the host leg goes red.</p>
 Method TestTheRulesRefuseTheSave()
 {
     Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tBefore, "Security.LDAP")
     Set tLong = ""
     For tI = 1:1:129 Set tLong = tLong _ "d"
-    For tCase = $ListBuild("{""LDAPFlags"":300}", "LDAPFlags", "LDAP.FLAGS.VALUE"), $ListBuild("{""LDAPHostNames"":[""a b""]}", "LDAPHostNames", "LDAP.HOST.SHAPE"), $ListBuild("{""LDAPBaseDN"":""""}", "LDAPBaseDN", "LDAP.FIELD.REQUIRED"), $ListBuild("{""Description"":""" _ tLong _ """}", "Description", "LDAP.DESCRIPTION.LENGTH") {
+    For tCase = $ListBuild("{""LDAPFlags"":300}", "LDAPFlags", "LDAP.FLAGS.VALUE"), $ListBuild("{""LDAPHostNames"":[""a b""]}", "LDAPHostNames", "LDAP.HOST.SHAPE"), $ListBuild("{""LDAPHostNames"":[]}", "LDAPHostNames", "LDAP.HOST.REQUIRED"), $ListBuild("{""LDAPBaseDN"":""""}", "LDAPBaseDN", "LDAP.FIELD.REQUIRED"), $ListBuild("{""Description"":""" _ tLong _ """}", "Description", "LDAP.DESCRIPTION.LENGTH") {
         Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, $List(tCase, 1), "application/json")
         Set tRow = ""
         If $IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("detail") = "object") Set tRow = tAnswer.%Get("detail").%Get("violations").%Get(0)
@@ -174,8 +182,21 @@ Method TestTheRulesRefuseTheSave()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99ldapnew.invalid"), 0, "and nothing is created")
 }
 
-/// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form and saves a
-/// description.</p>
+/// <p>AD-13: a name the instance would store differently -- a bare name, which it extends with
+/// <code>.com</code> -- is refused 422 on <code>Name</code> by <code>LDAP.NAME.FORM</code> at the form
+/// read and at the Save, and the Save creates nothing.</p>
+Method TestAShortNameIsRefusedByTheFormAndTheSave()
+{
+    Set tShort = "OcuP99Ldap"
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/form?name=" _ tShort, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "the form read refuses a bare name")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tShort), .tStatus, .tAnswer, "{""Description"":""short""}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "and so does the Save")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99ldap.com"), 0, "which creates nothing")
+}
+
+/// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form, a new
+/// form, the name check and the examples, and saves a description.</p>
 Method TestALeastPrivilegedPrincipalSaves()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
@@ -185,6 +206,10 @@ Method TestALeastPrivilegedPrincipalSaves()
     Set tRead = ""
     Try { Set tRead = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
     Do $$$AssertTrue($IsObject(tRead) && (tRead.%GetTypeOf("ldap") = "object"), "one envelope carrying the ldap")
+    For tPath = "/ldap/form?new=1", "/ldap/name?name=" _ ..#NAME, "/ldap/examples?OrganizationId=intersystems&GroupId=Group&InstanceId=Instance&RoleId=Role&EscalationRoleId=EscalationRole&NamespaceId=Namespace&RoutineId=Routine&DelimiterId=-&UniversalGroup=0&LDAPGroupId=&LDAPInstanceId=" {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ tPath, ..#LEASTUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders)
+        Do $$$AssertEquals(tStatus, 200, "and reads " _ $Piece(tPath, "?", 1) _ ": " _ $Extract($Get(tText), 1, 200))
+    }
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ ..Path(..#NAME), ..#LEASTUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""Description"":""least""}", "application/json")
     Do $$$AssertEquals(tStatus, 200, "and saves: " _ $Get(tText))
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "answering application/json")
@@ -193,6 +218,187 @@ Method TestALeastPrivilegedPrincipalSaves()
     Do $$$AssertTrue($IsObject(tSaved) && (tSaved.%Get("name") '= ""), "one envelope naming what it saved")
     Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
     Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: ""), "least", "and the description reads back")
+}
+
+/// <p>A new configuration's form read (<code>?new=1</code>) answers an empty name and a new
+/// <class>Security.LDAPConfigs</class> object's values, read here in <code>%SYS</code>, with the
+/// Kerberos-only bit cleared, the hosts an empty list and no search password, beside the instance's
+/// Kerberos answer.</p>
+Method TestANewFormReadAnswersANewConfigurationsValues()
+{
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/form?new=1", .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the new form read answers")
+    Set tLdap = $Select($IsObject($Get(tAnswer)): tAnswer.%Get("ldap"), 1: "")
+    If '$IsObject(tLdap) Quit
+    Set tExpected = ..NewValues()
+    Do $$$AssertEquals(tLdap.%Get("Name") _ "|" _ tLdap.%Get("LDAPHostNames").%ToJSON() _ "|" _ tLdap.%GetTypeOf("LDAPSearchPassword"), "|[]|unassigned", "an empty name, no host and no search password")
+    For tField = "LDAPFlags", "LDAPClientTimeout", "LDAPServerTimeout", "LDAPUniqueDNIdentifier", "GroupId", "DelimiterId", "LDAPAttributeMail" {
+        Do $$$AssertEquals(tLdap.%Get(tField), tExpected.%Get(tField), tField _ " is a new object's own")
+    }
+    Do $$$AssertEquals($ZBoolean(+tLdap.%Get("LDAPFlags"), 128, 1), 0, "with the Kerberos-only bit cleared")
+    Do $$$AssertEquals(tAnswer.%Get("kerberos"), ..KerberosOn(), "beside the instance's Kerberos answer")
+}
+
+/// <p>The name check answers the name the instance stores and the base DN it derives
+/// (<code>Security.LDAPConfigs.FormatName</code>, read here in <code>%SYS</code>), and whether it is
+/// taken; an empty name and one the vendor refuses are each 422 on <code>Name</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Canonical</method> answers its
+/// input -- the <code>corp</code> leg goes red.</p>
+Method TestTheNameCheckAnswersTheStoredForm()
+{
+    For tCase = $ListBuild("Corp.Example.COM", "corp.example.com", "DC=corp,DC=example,DC=com", 0), $ListBuild("corp", "corp.com", "DC=corp,DC=com", 0), $ListBuild($ZConvert(..#NAME, "U"), ..#NAME, "DC=ocup99ldap,DC=invalid", 1) {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/name?name=" _ $ZConvert($List(tCase, 1), "O", "URL"), .tStatus, .tAnswer)
+        Do $$$AssertEquals(tStatus, 200, $List(tCase, 1) _ ": the name check answers")
+        If '$IsObject($Get(tAnswer)) Continue
+        Do $$$AssertEquals(tAnswer.%Get("canonical") _ "|" _ tAnswer.%Get("baseDN") _ "|" _ tAnswer.%Get("taken"), $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|" _ $List(tCase, 4), $List(tCase, 1) _ ": the stored name, its base DN and whether it is taken")
+        Do $$$AssertEquals(..Formatted($List(tCase, 1)), $List(tCase, 2), $List(tCase, 1) _ ": which is the vendor's own FormatName")
+    }
+    For tCase = $ListBuild("", "LDAP.FIELD.REQUIRED"), $ListBuild("a..b", "LDAP.NAME.FORM") {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/name?name=" _ $List(tCase, 1), .tStatus, .tAnswer)
+        Set tRow = ..FirstViolation($Get(tAnswer))
+        Do $$$AssertEquals(tStatus _ " " _ tRow, "422 Name " _ $List(tCase, 2), "'" _ $List(tCase, 1) _ "' is refused on Name")
+    }
+}
+
+/// <p>The group examples are the instance's own: each of the three answers equals
+/// <code>Security.LDAPConfigs.FormatExample</code>'s for its mode over the same inputs, read here in
+/// <code>%SYS</code>.</p>
+Method TestTheExamplesAreTheInstancesOwn()
+{
+    Set tQuery = "OrganizationId=intersystems&GroupId=Group&InstanceId=Instance&RoleId=Role&EscalationRoleId=EscalationRole&NamespaceId=Namespace&RoutineId=Routine&DelimiterId=-&UniversalGroup=1&LDAPGroupId=GID&LDAPInstanceId=IID"
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/examples?" _ tQuery, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the examples answer")
+    If '$IsObject($Get(tAnswer)) Quit
+    For tMode = 1:1:3 {
+        Set tKey = $Case(tMode, 1: "universal", 2: "group", : "instance")
+        Set tExpected = ..Example(tMode, "intersystems", "Group", "Instance", "Role", "EscalationRole", "Namespace", "Routine", "-", 1, "GID", "IID")
+        Do $$$AssertTrue(tExpected '= "", tKey _ ": the vendor answers text")
+        Do $$$AssertEquals(tAnswer.%Get(tKey), tExpected, tKey _ ": the instance's own text for mode " _ tMode)
+    }
+}
+
+/// <p>Matrix "Kerberos only": a Save that unticks LDAP configuration -- the flags gain 128 and lose 64
+/// -- with an empty host list and search user stores the classic page's <code>UNKNOWNHOST</code> and
+/// <code>UNKNOWNUSER</code>; 64 sent with 128 is refused 422 <code>LDAP.FLAGS.KERBEROS</code> and
+/// nothing is written.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.KerberosFilled</method> answers its
+/// arguments unchanged -- the fill leg goes red.</p>
+Method TestAKerberosOnlySaveFillsTheClassicValues()
+{
+    Set tName = "ocup99kerberos.invalid"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 72), "an enabled probe is created")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tName), .tStatus, .tAnswer, "{""LDAPFlags"":192}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 LDAPFlags LDAP.FLAGS.KERBEROS", "64 with 128 is refused on the flags")
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tHeld, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tHeld)): tHeld.%Get("LDAPFlags"), 1: ""), 72, "and nothing is written")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tName), .tStatus, .tAnswer, "{""LDAPFlags"":136,""LDAPHostNames"":[],""LDAPSearchUsername"":""""}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the Kerberos-only Save answers: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    If '$IsObject($Get(tAfter)) Quit
+    Do $$$AssertEquals(tAfter.%Get("LDAPFlags") _ " " _ tAfter.%Get("LDAPHostNames").%ToJSON() _ " " _ tAfter.%Get("LDAPSearchUsername"), "136 [""UNKNOWNHOST""] UNKNOWNUSER", "128 is set, 64 cleared, and the empty host and user are the classic page's values")
+}
+
+/// <p>DW-1639, AC9: the list's screen read and its read tool answer <code>Enabled</code> true for a
+/// configuration whose flags carry 64 (72) and false for one whose do not (8), though the vendor's
+/// LIST answers false for both.</p>
+/// <p>Mutation (Rule 19): the <code>bit64</code> rule in <method>OcuPilot.Screen.Read.Derive</method>
+/// answers false -- the enabled leg goes red.</p>
+Method TestTheListReadsEnabledFromTheFlags()
+{
+    Set tEnabled = "ocup99enabled.invalid"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tEnabled, 72), "an enabled probe is created beside the disabled one")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/screens/security.ldap/read?maxRows=1000", .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the list's read answers")
+    Do ##class(OcuPilot.Kernel.Scope).Set("HSCUSTOM")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LdapConfigList", {}, 1000, .tView)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertStatusOK(tSC, "and so does its read tool")
+    For tRows = $Select($IsObject($Get(tAnswer)): tAnswer.rows, 1: ""), $Select($IsObject($Get(tView)): tView.rows, 1: "") {
+        If '$IsObject(tRows) Continue
+        Set tOn = ##class(OcuPilot.Test.SecurityLists).RowWhere(tRows, "Name", tEnabled)
+        Set tOff = ##class(OcuPilot.Test.SecurityLists).RowWhere(tRows, "Name", ..#NAME)
+        Do $$$AssertEquals($Select($IsObject(tOn): tOn.%Get("Enabled") _ " " _ tOn.%Get("LDAPFlags"), 1: "absent"), "1 72", "the enabled configuration reads Enabled true")
+        Do $$$AssertEquals($Select($IsObject(tOff): tOff.%Get("Enabled") _ " " _ tOff.%Get("LDAPFlags"), 1: "absent"), "0 8", "and the other reads false")
+    }
+}
+
+/// <p>Whether the instance's Kerberos authentication is on: <class>Security.System</class>'s
+/// <code>AutheEnabled</code> bit 128, read in <code>%SYS</code>.</p>
+ClassMethod KerberosOn() As %Boolean
+{
+    Set tOn = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tOn = ''$ZBoolean(+##class(Security.System).%OpenId("SYSTEM").AutheEnabled, 128, 1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tOn
+}
+
+/// <p>A new <class>Security.LDAPConfigs</class> object's values for a few fields, read in
+/// <code>%SYS</code>; <code>LDAPFlags</code> with its Kerberos-only bit cleared.</p>
+ClassMethod NewValues() As %DynamicObject
+{
+    Set tValues = {}
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tConfig = ##class(Security.LDAPConfigs).%New()
+        For tField = "LDAPClientTimeout", "LDAPServerTimeout", "LDAPUniqueDNIdentifier", "GroupId", "DelimiterId", "LDAPAttributeMail" {
+            Do tValues.%Set(tField, $Property(tConfig, tField))
+        }
+        Do tValues.%Set("LDAPFlags", $ZBoolean(+tConfig.LDAPFlags, 128, 2))
+        Set tConfig = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tValues
+}
+
+/// <p><code>Security.LDAPConfigs.FormatName</code>'s stored form of <var>pName</var>, read in
+/// <code>%SYS</code>, or <code>""</code>.</p>
+ClassMethod Formatted(pName As %String) As %String
+{
+    Set tNew = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If $$$ISERR(##class(Security.LDAPConfigs).FormatName(pName, .tNew, .tBase)) Set tNew = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tNew
+}
+
+/// <p><code>Security.LDAPConfigs.FormatExample</code>'s text for mode <var>pMode</var> over the group
+/// inputs, read in <code>%SYS</code>, or <code>""</code>.</p>
+ClassMethod Example(pMode As %Integer, pOrg As %String, pGroup As %String, pInstance As %String, pRole As %String, pEscalation As %String, pNamespace As %String, pRoutine As %String, pDelimiter As %String, pUniversal As %Boolean, pGroupId As %String, pInstanceId As %String) As %String
+{
+    Set tText = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If $$$ISERR(##class(Security.LDAPConfigs).FormatExample(pMode, pOrg, pGroup, pInstance, pRole, pEscalation, pNamespace, pRoutine, pDelimiter, pUniversal, pGroupId, pInstanceId, .tText)) Set tText = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit $Get(tText)
+}
+
+/// <p>The first violation of an answer <var>pAnswer</var> as <code>field code</code>, or
+/// <code>""</code>.</p>
+ClassMethod FirstViolation(pAnswer) As %String
+{
+    If '$IsObject(pAnswer) || (pAnswer.%GetTypeOf("detail") '= "object") Quit ""
+    Set tRow = pAnswer.%Get("detail").%Get("violations").%Get(0)
+    If '$IsObject(tRow) Quit ""
+    Quit tRow.%Get("field") _ " " _ tRow.%Get("code")
 }
 
 /// <p>The keys of <var>pBefore</var> other than <code>Description</code> whose value <var>pAfter</var>

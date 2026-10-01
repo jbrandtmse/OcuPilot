@@ -884,4 +884,11 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 /// (<method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>).</p>
 Parameter EMPTYKEYS = "";
 
+/// <p>The <parameter>SECRETBODY</parameter> names whose explicitly supplied empty value is sent, as
+/// comma-separated names, so the vendor clears the stored secret (AD-56 (i) as amended by Story
+/// 16.14). <code>""</code> here, so an empty secret is not a secret supplied and is left out
+/// (<method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method>). A tool declares a name only where
+/// its vendor type clears the secret on <code>""</code>, measured.</p>
+Parameter CLEARABLESECRETS = "";
+
 }

@@ -2,7 +2,8 @@
 title: 'Story 16.14: The LDAP and Kerberos editor'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '2c5da91e74965b1c373324a75704aaf908ffe926'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-16-13-the-service-editor.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-9-a-cut-editor-ships-reduced-never-half-working.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The deleted reduced form's two checkbox rules are left in _components.scss as dead CSS.
+    evidence: |-
+      app-reduced-form-page no longer exists (Story 16.14 deleted reduced-form.page.ts), but its 24px checkbox rules remain; the file is shared-append, so this story could not delete them.
+    location: >-
+      ui/src/styles/_components.scss:6110
+    severity: low
 ---
 
 <intent-contract>
@@ -401,6 +409,21 @@ Client:
 - `ui/browser/oauth.browser-spec.mjs:372` -- a declared edit: the roster becomes `[]`.
 - Bundle: re-base `maximumWarning` and its `angular-json.test.mjs` literal to the measured total, rounded up to the next kB (DW-1166). HALT `blocked` above 3800kB.
 
+**Review pass 1 patches (2026-10-01; tests and one doc line; no product change):**
+
+- P1 (AC8, host on update): `LdapEdit.TestTheRulesRefuseTheSave` gains `PUT {"LDAPHostNames":[]}` on its LDAP probe → 422 `LDAPHostNames LDAP.HOST.REQUIRED`, nothing written; `LdapUpdate` gains the same at the update mint (fixture read with hosts, args `[]`).
+- P2 (Kerberos-only fill, both callers): `LdapUpdate` asserts the minted payload of a Kerberos-only update over a fixture read with empty hosts and user carries `["UNKNOWNHOST"]` and `UNKNOWNUSER`; `LdapCreate` asserts the composed payload of its flags-136, no-host create does too.
+- P3 (AC6, agent create applied): `LdapCreate` gains a leg minting `security.ldap.create` for an absent `ocup99*` name, confirming it, and asserting it applied: `LdapExists` 1, the sent hosts read back, and the read-back verdict.
+- P4 (AC5, password on create): `LdapPassword` gains `POST /ldap` with `LDAPSearchPassword` → 201, `LdapPasswordSet` 1, `written` includes it, and the raw answer does not carry it.
+- P5 (Save step 4, password refused after the Save): server — a test-only `LdapSave` subclass whose `PortClass` answers a fixture port refusing `Security.LDAP/CHANGEPWD` with a sentence (the `OAuthClientFailSave`/`OAuthClientFailPort` pattern) shows the edit Save answering 200 with `secretsRefused` equal to that sentence, the other change landed and no password stored; client — store and page specs where a Save answers `secretsRefused`, and the page draws `ldapPasswordRefused` with the reason.
+- P6 (Matrix "Examples" trigger): a page spec leg edits Group ID prefix, fires `change`, and asserts a new `/ldap/examples` request and the redrawn text.
+- P7 (page wiring): page spec legs for choosing a Copy settings from option (the copy read is made), clicking a host's and an attribute's Remove (the entry goes), and an outside `ldap-configuration` `updated` event re-reading a clean open editor.
+- P8 (ported from the deleted reduced-form specs): a Save answered 404 turns the editor absent and publishes nothing (store spec); the dirty guard asks before leaving a changed editor (page spec).
+- P9 (`LDAP.NAME.FORM` at every site): a short name refused with `LDAP.NAME.FORM` at `PUT /ldap/:id` and `GET /ldap/form?name=` (`LdapEdit`), and at the `security.ldap.delete` and `security.ldap.password` mints (`LdapCreate`, `LdapPassword`).
+- P10 (AC4, the lines are logged nowhere): `LdapTest`'s first test also asserts the count of its run's configuration-specific line ("Authenticating using LDAP Configuration <NAME>") in `messages.log` and today's `^ERRORS` is unchanged before and after the test; demonstrate the planned mutation (`TestOutcome` passes the captured lines to `LogFault`).
+- P11: `LdapUpdate.TestThePairsUnionTheClassicEditorsResource`'s pair leg message says what it checks (the list's pairs with `%Admin_Secure:USE`; the classic page's union is `ClassicPageGate`'s), since no page carries a custom resource there.
+- P12: `ldap-editor.store.ts`'s class doc says the Test authentication password is the dialog's, not the store's.
+
 **Acceptance Criteria:**
 
 - **AC1 (coverage).** Given the LDAP / Kerberos list, when a name cell is followed, then the editor opens on General, Groups and Attributes. It covers every input of `%CSP.UI.Portal.LDAP` in the classic order: the Kerberos pair where the instance has Kerberos, the couplings, the examples, and the CA file as text. No classic card is drawn. Pinned by browser leg 1 and `ldap-editor.page.spec.ts`.
@@ -422,6 +445,35 @@ Client:
 - 2026-10-01, lead, spec gate (orchestrator merge gate 2026-10-01, Rule 5): the plan's intent gap answered with option (a) -- epics.md 16.14 criteria 2 and 4 amended at origin as written under Design Notes (the test runs on `AdminPort`'s synchronous path, never the vendor's queue), and a new criterion added at origin for create, search password and delete (approved; FR-45; delete takes the typed-name confirmation; their governance keys enabled); spine amendments (a)-(g) written; Task 0 added (measure the synchronous path first; HALT if it persists the password). Status reset from `blocked`.
 
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 24 findings — high 0, medium 11, low 6, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `LDAP.HOST.REQUIRED` was pinned on creates only, not on either caller's update — P1: the Save and update-mint legs added, mutation run 22874/22875.
+  - `[medium]` `[patch]` the Kerberos-only fill was observed only where `LdapSave` fills on its own; the agent's update merge and every create were unpinned — P2: the minted and composed payloads asserted.
+  - `[medium]` `[patch]` the agent's create confirm was tested only refusing — P3: `TestAConfirmedAgentCreateIsApplied`, mutation run 22876.
+  - `[medium]` `[patch]` the create Save's password write never ran on the server — P4: `TestACreateStoresItsPassword`, mutation run 22877.
+  - `[medium]` `[patch]` the "Saved, password refused" answer was untested at every layer — P5: `LdapFailPort`/`LdapFailSave` and `TestAPasswordRefusedAfterTheSaveIsAnswered` (mutation run 22878), plus store and page legs.
+  - `[medium]` `[patch]` nothing triggered the examples re-read — P6: a page leg edits Group ID prefix and asserts the re-read and redraw.
+  - `[low]` `[patch]` Copy, Remove and the outside-change refresh had no page test — P7: three page legs.
+  - `[medium]` `[patch]` the deleted reduced-form specs' 404-on-Save and leave-guard tests were not carried over — P8: ported to the store and page specs.
+  - `[medium]` `[patch]` `LDAP.NAME.FORM` was pinned at four of eight call sites — P9: the PUT Save, form read, delete mint and password mint legs added (the two mints through a fixture read; see Auto Run Result).
+  - `[medium]` `[patch]` the planned AC4 mutation (lines to `LogFault`) would have survived — P10: a before/after count of the run's configuration line in `messages.log` and `^ERRORS`, mutation run 22879.
+  - `[low]` `[patch]` `TestThePairsUnionTheClassicEditorsResource`'s pair leg claimed a union no assigned page exercises there — P11: its message now names what it checks.
+  - `[low]` `[reject]` the Kerberos pair is also drawn for a Kerberos-only configuration where the instance's Kerberos is off — without it that editor is a dead end; the case is rare and following the classic page's silent conversion would add behavior the spec does not describe.
+  - `[low]` `[reject]` a new configuration's flags default to 73, not the vendor object's 201 or the classic page's Kerberos-only — 201 is the 64-with-128 pair `LDAP.FLAGS.KERBEROS` refuses, and the Matrix's Create row enters a host on an LDAP configuration; recorded as a departure.
+  - `[low]` `[reject]` the agent's taken-name refusal is the kernel's AD-54 absence sentence, not `LDAP.NAME.TAKEN`'s — `Mint` reads the target before any tool rule, nothing is sent, and the fix is a kernel reorder for every create tool.
+  - `[false]` `[reject]` `taken` unused on blur, so a taken name is posted — "Nothing is sent" in the Matrix means no vendor write (as in its agent rows); the Save answers 422 `Name LDAP.NAME.TAKEN` before any port write (`LdapCreate.TestTheSaveCreatesUnderTheStoredName`).
+  - `[false]` `[reject]` a refused Save keeps the typed password — the Boundary says "as for `sslForm`", whose refused Save keeps it (`ssl-form.store.ts:544`); accepted Save, leaving and sign-out clear it (`app.spec.ts`).
+  - `[false]` `[reject]` the journal and full-global absence are not in the suite — AC4 is pinned by `LdapTest` plus the Verification's once-only journal check, which ran (0 hits).
+  - `[false]` `[reject]` a direct confirm with `""` clears the password — the spec's Named limits make that the user's own act; the card's `secretsFilled` is unchanged.
+  - `[medium]` `[patch]` the Kerberos-only path was tested only with a hand-built route body — grouped with the fill finding above, P2.
+  - `[medium]` `[patch]` the examples re-read trigger is untested (and fires on `change`, not per keystroke) — grouped with the trigger finding above, P6; `change` is a committed group input change.
+  - `[false]` `[reject]` the edit route's Name and the CA file are read-only inputs rather than text — a read-only input is read-only text, and AD-21 holds (never set).
+  - `[false]` `[reject]` `LdapConfigForm` declares `context.secretFields` `LDAPSearchPassword` — `OAuthClientForm`'s precedent; it keeps the typed password out of context.
+  - `[false]` `[reject]` `HandleTest` refuses short names — the Boundary refuses `LDAP.NAME.FORM` on every LDAP route.
+  - `[low]` `[patch]` the store's doc said the test password is the store's — P12: it says the dialog's.
 
 ## Design Notes
 
@@ -458,6 +510,13 @@ Client:
 - **Tabs.** General, Groups and Attributes, cut at the classic page's own captions (the epic context's open question).
 - **Delete.** It is included. FR-45 lists delete, EXPERIENCE.md `:173` lists an LDAP configuration delete confirmation, and no other story owns it.
 - **`LDAP.NAME.FORM` refuses rather than rewrites.** The instance resolves `corp` to `corp.com`. A rule refusing short names keeps `foldcase` as the identity rule, so AD-13's identity layer is not edited.
+
+**Task 0 (measured on `ocupilot-ci`, 2026-10-01 01:51 UTC; transcript in `scratchpad/epic-16/16-14/impl/t0-*`):** `AdminPort.Invoke("Security.LDAP", "TEST", , {Username, Password})` with a unique probe password, on the in-process path, against probe `ocup99taskzero.invalid` (host `127.0.0.1:1`), answered 200 `{lines}` (11 lines, "Can't contact LDAP server" and "Test completed", no `passed`) in 5,009 ms. The password was found nowhere:
+
+- `%Api.Admin.Util.AsyncTask` rows 269 before and after, stream top unchanged; `%SYS.Task` rows 20 before and after.
+- Full global scans, values and subscripts: IRISSYS (2,607,180 nodes, `^SYS("Task")` and `%SYS`'s `^ERRORS` included), IRISLOCALDATA (482,624), OcuPilot's own database (37,591: ledger, transcripts, proposals), IRISTEMP (105,448), IRISSECURITY (60,201), HSCUSTOM (16,151,747, its `^ERRORS` included), IRISAUDIT (473,355): 0 hits each.
+- `grep -c` after `%SYS.Journal.System.Sync()`: the current journal `20261001.001` 0 (the probe's name 5, so the file was being written), `messages.log` 0, `alerts.log` 0, `journal.log` 0.
+- The password exists only as the vendor's `JOB` argument to `TESTBACKGROUND1^%SYS.LDAP`, in process memory (inference). The probe configuration was deleted.
 
 **Named limits:**
 
@@ -554,30 +613,46 @@ This runs on slot A. Every probe and test runs on `ocupilot-ci`, one test run at
 - Integration: `save` skips the publish → store and page specs.
 - AC12: `LdapCreate.OnAfterOneTest` skips `RemoveAll` → its residue assertion.
 
+**Demonstrated** (on `ocupilot-ci`, each recompiled with its descendants or rebuilt, then reverted and recompiled; `git diff` and `git status --short` hashed identical before and after each):
+
+- mutation: `AdminPort.Sequence` hands `Security.LDAP/TEST` to the vendor's queue → `LdapTest.TestTheTestAnswersTheInstancesLinesAndKeepsNothing` and `TestThePortRunsTheTestInProcess` (run 22841).
+- mutation: `AdminPort.TestOutcome` drops the captured lines → the same two `LdapTest` tests (run 22842).
+- mutation: `AdminPort.InvokeLocated` passes the test's request body to `LogFault` → `LdapTest.TestTheTestAnswersTheInstancesLinesAndKeepsNothing`, its messages.log leg (run 22843).
+- mutation: `Operation.SecretBody` drops `""` for every name → `LdapPassword`, the clear assertion of each of its three tests (run 22838).
+- mutation: `LdapRules.Taken` answers false → `LdapCreate.TestTheSaveCreatesUnderTheStoredName` (run 22835).
+- mutation: `LdapRules.Canonical` answers its input → `LdapUpdate.TestAShortNameIsRefusedAtTheMint` (run 22834).
+- mutation: `LdapDelete.WRITETYPE` set to `GET` → `LdapCreate.TestBothCallersDeleteAConfiguration` (run 22836).
+- mutation: `LdapRules.Validate` skips `LDAP.FLAGS.KERBEROS` → `LdapUpdate.TestKerberosOnlyIsNeverAlsoEnabled` (run 22833).
+- mutation: `Read.Derive`'s `bit64` answers false → `LdapEdit.TestTheListReadsEnabledFromTheFlags` (run 22837).
+- mutation: `LdapConfigForm` set back to exempt and the mirror regenerated → `classic-links.test.mjs` (the shipped roster) and `floor.test.mjs` (AC2, AD-44).
+- mutation: `LdapUpdate.CLASSICPAGES` and `LdapPassword.CLASSICPAGES` emptied → `ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller` and `TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` (run 22839); the routes stay refused through the form descriptor's own classic page.
+- mutation: `LdapRules.TESTPAGE` emptied → `ClassicPageGate.TestAnAssignedPageGatesTheLdapRoutes` (run 22840).
+- mutation: `LdapEditor.save` skips the publish → `ldap-editor.store.spec.ts` (the edit and create publishes) and `ldap-editor.page.spec.ts` (AC6, Integration).
+- mutation: the page draws the Kerberos pair whatever `kerberos` answers → `ldap-editor.page.spec.ts` (the Kerberos pair leg).
+- mutation: `setFlag` keeps 16 and 32 when Use LDAP groups is unticked → `ldap-editor.store.spec.ts` (the groups coupling).
+- mutation: the test dialog renders no lines → `ldap-test-dialog.spec.ts` (AC3).
+- mutation: `LdapCreate.OnAfterOneTest` skips `RemoveAll` → its "no ocup99 configuration remains" assertion in three tests (run 22844).
+- mutation: `LdapRules.Validate` skips `LDAP.HOST.REQUIRED` → `LdapEdit.TestTheRulesRefuseTheSave`, its host leg (run 22874), and `LdapUpdate.TestNoHostIsRefusedAtTheMint` (run 22875).
+- mutation: `LdapCreate.WRITETYPE` set to `GET` → `LdapCreate.TestAConfirmedAgentCreateIsApplied` and `TestTheSaveCreatesUnderTheStoredName` (run 22876).
+- mutation: `LdapSave.HandleCreate` writes no password → `LdapPassword.TestACreateStoresItsPassword` (run 22877).
+- mutation: `LdapSave.Answer` drops `secretsRefused` → `LdapPassword.TestAPasswordRefusedAfterTheSaveIsAnswered`, run through `LdapFailSave` (run 22878).
+- mutation: `AdminPort.TestOutcome` passes the captured lines to `LogFault` → `LdapTest.TestTheTestAnswersTheInstancesLinesAndKeepsNothing`, its configuration-line `messages.log` leg (run 22879).
+- mutation: `LdapUpdate.MergeUpdate` merges the arguments unfilled → `LdapUpdate.TestAKerberosOnlyUpdateCarriesTheClassicValues` (run 23273).
+- mutation: `LdapSave.Update` skips `NameViolation` → `LdapEdit.TestAShortNameIsRefusedByTheFormAndTheSave`, its Save leg (run 23274).
+- mutation: `LdapEditorPage.onGroupInput` reads nothing → `ldap-editor.page.spec.ts` (Matrix "Examples").
+- mutation: `LdapEditorPage.onCopy` copies nothing → `ldap-editor.page.spec.ts` (Copy settings from).
+- mutation: `LdapEditor.save` keeps a 404'd edit present → `ldap-editor.store.spec.ts` (Matrix "Absent").
+- mutation: the leave dialog is never drawn → `ldap-editor.page.spec.ts` (the dirty guard).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Planned.**
-  - A tabbed editor (General, Groups, Attributes) over every input of `%CSP.UI.Portal.LDAP`.
-  - Create from the list's command bar, and Delete from a row (FR-45).
-  - A write-only search password through the vendor's `CHANGEPWD`, with Enter, Clear and Leave as is.
-  - Test authentication, run in process.
-  - DW-1639 through a `bit64` `rowGet` rule.
-  - `LdapConfigForm`'s exemption removed, so SM-C1 counts zero.
-  - Three new write keys, which join the baseline enabled.
-- **Measured on `ocupilot-ci`** (transcripts in `scratchpad/epic-16/16-14/`):
-  - The vendor endpoint's request types, bodies and gates.
-  - The upsert, and the `LDAPFlags` normalization.
-  - `FormatName` and `FormatExample`.
-  - The test's in-process run: 5 s, with its output lines and no audit event.
-  - The queued body in the task row and the journal.
-  - The task row's public read.
-  - Every probe configuration, principal and task row was deleted. Only the journal copies of two probe passwords remain, and no API removes them.
-- **Lead decisions besides the blocker:**
-  - The tab grouping.
-  - Including Delete.
-  - `LDAP.NAME.FORM` refusing a short name, rather than an AD-13 rule rewriting it.
-- **Ledger.** DW-1639 is addressed; DW-118 is declined (resolved by 15.6).
-- **Edits.** Only this spec was written; `bash scripts/lint-docs.sh` reports 0 issues.
+- **Task 0.** The synchronous `Security.LDAP` `TEST` left a unique probe password in no task row, global, journal record, log or audit row (Design Notes); re-checked at the end through `POST /ldap/:id/test` (journal, `messages.log`, `alerts.log`: 0 hits). No HALT.
+- **Implemented.** A tabbed LDAP and Kerberos editor (`LdapEditorPage`, `LdapEditor` store, `LdapTestDialog`, `LdapActions`) replaces the reduced form: General, Groups and Attributes over every input of `%CSP.UI.Portal.LDAP` with the classic couplings, the Kerberos pair, the three-way search password, Copy settings from, the name check and the instance's examples; Create from the list and a typed-name Delete. Server: `security.ldap.create`, `.password` and `.delete` (`Screen/Tool/LdapCreate`, `LdapPassword`, `LdapDelete`); `LdapRules` (`Defaults`, `Compose`, `KerberosFilled`, `Canonical`, `NameViolation`, `Taken`, the form's `kerberos` and `new=1`, `HandleName`, `HandleExamples`, `HandleTest`); `LdapSave` (create at 201, password through the password tool's operation, `secretsRefused`); `Api/LdapError.cls` (six codes; `Error.cls` delegates, no parameter added); `Write.CLEARABLESECRETS` and `Operation.SecretBody`; `AdminPort` (`CHANGEPWD`/`DELETE` types, `Security.LDAP/TEST` in process via `CONNECTIONTESTTYPES` and `CONSOLETESTS`); `bit64` (DW-1639); four routes; three baseline keys; `LdapConfigForm`'s exemption removed (SM-C1 counts zero).
+- **Files.** As the Code Map, plus outside it: `shell/screen-action-handler.ts`, `ui/tools/field-lists.test.mjs`, `strings.test.mjs` (namespace-key roster), `Test/InjectionEgress.cls` (doc), `Test/PortFixture.cls` (`TaskGuids`, `TaskGlobalsCarry`), `Test/ReadTool.cls` (bit64 corpus test), `Test/MappingDescriptor.cls` (classic-pages roster, found by the sweep), new fixtures `Test/LdapFailPort.cls` and `Test/LdapFailSave.cls`, `_components.scss` (appended). `strings.ts` drops `ldapFormBare` with EXPERIENCE.md :505's bare-route sentence. EXPERIENCE.md rows 140, 173, 363, 490, 504, 505, 508 edited in place (993 lines; 633, 691 and 730 never named the form). Epic 23 overlap: `scripts/ci-throwaway.sh`, comment lines only.
+- **Departures, recorded.** `PermittedCreateFields` is the 29 fields without `Name` (the target id); `Defaults` clears bit 128 (the vendor object's 201 is the refused 64-with-128 pair), so a new configuration is an enabled LDAP one (73); the editor does not mark `taken` on blur, and the Save refuses `LDAP.NAME.TAKEN`; `LDAPAttributes` compares unordered (the vendor sorts and dedups); an empty Enter sends no password; the Kerberos pair is also drawn for a Kerberos-only configuration; the agent's mint refuses a taken or unknown short name with the kernel's AD-54 absence sentence, because `Mint` reads before the tool's rules; browser leg 6 is folded into leg 1.
+- **Review.** 24 findings: 14 rows patched as 12 entries (9 medium, 3 low; Tasks P1-P12), each medium closed with an observed mutation under `## Verification`; 1 deferred (dead reduced-form CSS, `_components.scss` is append-only); 10 rejected (7 false, 3 low) with reasons in the triage log. Also corrected: one test doc phrase and `MUTATINGTYPES`' spacing. Follow-up review: `false` -- nine medium entries were patched, but each closed with a demonstrated mutation (runs 22874-22879, 23273, 23274 and the component specs), and no unverified risk can be named.
+- **Verification** (slot A, `ocupilot-ci`, one run at a time, full arming list). Targeted: `LdapUpdate` 12/12 (run 23275), `LdapEdit` 12/12 (23276), `LdapCreate` 5/5 (22882), `LdapPassword` 5/5 (22881), `LdapTest` 3/3 (22880), `MappingDescriptor` 6/6 (23272), and before the patches `ClassicPageGate`, `SecurityLists`, `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `ToolWrite`, `Descriptor`, `DraftRegistry`, `SslTest`, `ProposalConfirm`, `ReadBack` (runs 22856-22867). Full sweep: 387 classes, 3,204 tests, 7 failed -- `MappingDescriptor` 1 (this story's roster, fixed and green at 23272) and the named residue (`PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` task history 1); 0 probe leftovers, 0 overlaps. `npm test` green; LDAP component specs 99/99 after the patches; `test:tools` 1,747/1,747; `check-objectscript` 0 problems; `lint-docs` clean; EXPERIENCE.md 993 lines. Browser, bundle rebuilt and redeployed: `ldap-editor` 6/6, `oauth` 6/6; initial total 2,383,623 bytes, `maximumWarning` re-based to 2384kB (DW-1166).
+- **Residual risks.** 377 bytes of bundle headroom, so the next story re-bases (DW-1166). On `ocupilot-ci`, mutation runs left a fake one-run password in the journal (a queued-path mutation) and fake text in `messages.log`; no real secret. `ui/tools/ci-timings.json` still names the deleted `reduced-editors` spec, which `ci-shards.mjs` ignores until the next `refresh`.

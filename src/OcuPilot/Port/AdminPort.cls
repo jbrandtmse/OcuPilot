@@ -399,7 +399,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <class>OcuPilot.Port.LockPort</class>, for the tools' <code>Lock/REMOVE</code> and
 /// <code>Lock/REMOVEOWNER</code>, which that port answers itself
 /// (<parameter>OcuPilot.Port.LockPort.COMPOSEDTYPES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE";
+/// <p>The two <code>Security.LDAP</code> pairs after <code>PUT</code> are Story 16.14's. Read on this
+/// build: <code>CHANGEPWD</code> takes <code>{LDAPSearchPassword}</code> and a <code>name</code>
+/// query, sets that one property through <code>Security.LDAPConfigs.Modify</code> (an empty value
+/// clears it) and answers 404 for an absent name; <code>DELETE</code> reads no body, calls
+/// <code>Security.LDAPConfigs.Delete</code> and answers 404 for an absent name. Both need
+/// <code>%Admin_Secure</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -415,7 +421,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -447,7 +453,21 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 /// <code>TYPETEST</code> is 10, its body is <code>{Host, Port}</code>, and its <code>RunTest</code>
 /// calls <code>Security.SSLConfigs.TestConnection</code> synchronously, answering
 /// <code>{Info}</code>, and 404 for an absent configuration.</p>
-Parameter CONNECTIONTESTTYPES = "Security.SSLConfig/TEST";
+/// <p><code>Security.LDAP/TEST</code> is the second (Story 16.14, AD-26). Its
+/// <code>ShouldRunAsync()</code> is true, and the vendor's queue would write its body -- the tested
+/// user's password -- into its task row and the journal, so <method>Sequence</method> runs a pair
+/// listed here in process and never hands it to the queue. Read on this build: its body is
+/// <code>{Username, Password}</code>, both required; its <code>RunTest</code> JOBs
+/// <code>TESTBACKGROUND1^%SYS.LDAP</code>, waits 5 s and writes the job's lines, answering
+/// <code>{}</code> and OK whatever happened (<parameter>CONSOLETESTS</parameter>).</p>
+Parameter CONNECTIONTESTTYPES = "Security.SSLConfig/TEST,Security.LDAP/TEST";
+
+/// <p>The <parameter>CONNECTIONTESTTYPES</parameter> pairs whose vendor answer carries no verdict,
+/// comma-separated. Their outcome is the console lines <method>Sequence</method> captured while
+/// <code>Run()</code> ran: <code>{lines}</code> at 200, with no <code>passed</code>, because the
+/// vendor answers <code>{}</code> and OK whether the test passed or failed (AD-39's fourth named
+/// exception). The lines are answered to the caller and nowhere else.</p>
+Parameter CONSOLETESTS = "Security.LDAP/TEST";
 
 Parameter VERIFIEDDELETES = "Security.Role/DELETE,Device.Standard/DELETE,Namespace.Namespace/DELETE";
 
@@ -1008,11 +1028,13 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Quit
             }
         }
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
-        ; CONNECTIONTESTTYPES: a test's outcome is its answer, pass or fail, and its failure text goes
-        ; to the caller alone (AD-39's named exception).
-        If ..IsConnectionTest(pEndpoint, pType) {
-            Set tSC = ..TestOutcome(pEndpoint, tSeqSC, tHttp, $Get(tAnswer), .pResult, .pHttpStatus, .pFault)
+        Set tTest = ..IsConnectionTest(pEndpoint, pType)
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType), tTest, .tLines)
+        ; CONNECTIONTESTTYPES: a test runs in process, never queued, its outcome is its answer, pass
+        ; or fail, and its text goes to the caller alone (AD-26, AD-39's named exceptions).
+        If tTest {
+            Set tSC = ..TestOutcome(pEndpoint, pType, tSeqSC, tHttp, $Get(tAnswer), $Get(tLines), .pResult, .pHttpStatus, .pFault)
+            Set tLines = ""
             Quit
         }
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
@@ -2239,17 +2261,49 @@ ClassMethod IsConnectionTest(pEndpoint As %String, pSuffix As %String) As %Boole
     Quit ''$ListFind($ListFromString(..#CONNECTIONTESTTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CONSOLETESTS</parameter> lists.</p>
+ClassMethod IsConsoleTest(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CONSOLETESTS), pEndpoint _ "/" _ pSuffix)
+}
+
 /// <p>The answer a <parameter>CONNECTIONTESTTYPES</parameter> call gives, from its sequence status
 /// <var>pSeqSC</var>, its HTTP status <var>pHttp</var> and the vendor's answer <var>pAnswer</var>:
 /// <code>{passed: true, lines}</code> at 200 from a 2xx, <code>{passed: false, lines}</code> at 200
 /// from a vendor status error at 500 -- each error's text a line -- and otherwise the ordinary
 /// fault <method>Fail</method> builds.</p>
-/// <p><b>Nothing here logs the failure text</b>: it is the result the caller asked for, and a line
-/// written to the log would hand it to the error log screen and its read tool (AD-35, AD-39).</p>
-ClassMethod TestOutcome(pEndpoint As %String, pSeqSC As %Status, pHttp As %Integer, pAnswer, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>A <parameter>CONSOLETESTS</parameter> pair (<var>pEndpoint</var>'s request type
+/// <var>pType</var>) answers <code>{lines}</code> instead, with no <code>passed</code>: the console
+/// lines <var>pLines</var> (a <class>%DynamicArray</class>, or <code>""</code>) captured while its
+/// <code>Run()</code> ran, followed, on a vendor status error at 500, by each error's text.</p>
+/// <p><b>Nothing here logs the failure text or the lines</b>: they are the result the caller asked
+/// for, and a line written to the log would hand it to the error log screen and its read tool
+/// (AD-35, AD-39).</p>
+ClassMethod TestOutcome(pEndpoint As %String, pType As %String, pSeqSC As %Status, pHttp As %Integer, pAnswer, pLines, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
     Set pFault = ""
+    If ..IsConsoleTest(pEndpoint, pType) && (($$$ISOK(pSeqSC) && (pHttp >= 200) && (pHttp < 300)) || ($$$ISERR(pSeqSC) && (pHttp = 500))) {
+        Set tLines = []
+        If $IsObject(pLines) {
+            Set tIterator = pLines.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If '$IsObject(tLine) Do tLines.%Push(tLine _ "", "string")
+            }
+        }
+        If $$$ISERR(pSeqSC) {
+            Do $System.Status.DecomposeStatus(pSeqSC, .tErrors)
+            For tI = 1:1:+$Get(tErrors) {
+                Do tLines.%Push($Get(tErrors(tI)), "string")
+            }
+            Kill tErrors
+        }
+        Set pResult = {}
+        Do pResult.%Set("lines", tLines)
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
     If $$$ISOK(pSeqSC) && (pHttp >= 200) && (pHttp < 300) {
         Set tLines = []
         If $IsObject(pAnswer) && (pAnswer.%GetTypeOf("Info") = "array") {
@@ -2392,15 +2446,19 @@ ClassMethod MethodOrigin(pClass As %String, pMethod As %String) As %String [ Pri
 /// 500 when the returned status is an error under no status or any 2xx (<code>Main()</code>
 /// raises it under 200, 201 and 202);
 /// <var>pLocation</var> is its <code>Location</code> header.</p>
+/// <p><var>pConnectionTest</var> is 1 for a <parameter>CONNECTIONTESTTYPES</parameter> pair, which
+/// <method>Sequence</method> never queues; <var>pLines</var> is then the console output its
+/// <code>Run()</code> wrote, as a <class>%DynamicArray</class>, and otherwise <code>""</code>.</p>
 /// <p>The endpoint is constructed before the switch, in the caller's namespace, because a
 /// class compiled only there cannot be constructed from <code>%SYS</code>; the vendor's
 /// <code>%OnNew</code> records the type and version and nothing else.</p>
-ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String, pMethod As %String = "GET") As %Status [ Private ]
+ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String, pMethod As %String = "GET", pConnectionTest As %Boolean = 0, Output pLines) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pLocation = ""
+    Set pLines = ""
     ; AD-27's named fallback: a value the admin API refuses and the vendor class accepts.
     If ..ClassCompletedField(pEndpoint, pMethod, pBody) '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     ; AD-27's second case: an import completed from content rather than from server file paths.
@@ -2428,7 +2486,7 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
         Set tEndpoint.IsRunningAsync = 0
 
         Set $NAMESPACE = "%SYS"
-        Set tSC = ..Sequence(pEndpoint, tEndpoint, tBody, .pAnswer)
+        Set tSC = ..Sequence(pEndpoint, tEndpoint, tBody, .pAnswer, pConnectionTest, .pLines)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -2449,10 +2507,15 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
 /// <p><var>pName</var> is the endpoint's name and <var>pEndpoint</var> its constructed object. The
 /// name is here for the async refusal alone, which asks <method>IsMutating</method> the same
 /// <code>(endpoint, type)</code> question the admission gate asked (DW-1473).</p>
-ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As %DynamicAbstractObject, Output pAnswer) As %Status [ Private ]
+/// <p><var>pConnectionTest</var> 1 runs <code>Run()</code> in process whatever
+/// <code>ShouldRunAsync()</code> answers, so a test's body never reaches the vendor's task row
+/// (AD-26, AD-35), and answers the console output <code>Run()</code> wrote in <var>pLines</var>, a
+/// <class>%DynamicArray</class>; for any other call <var>pLines</var> is <code>""</code>.</p>
+ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As %DynamicAbstractObject, Output pAnswer, pConnectionTest As %Boolean = 0, Output pLines) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
+    Set pLines = ""
     Try {
         Set tAllowed = 0
         Set tResources = pEndpoint.ResourcesOR()
@@ -2494,7 +2557,9 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
         }
         If $$$ISERR(tSC) Quit
 
-        If pEndpoint.ShouldRunAsync() {
+        ; AD-26 (Story 16.14): a connection test runs in process and is never queued, because its
+        ; body can carry a password the vendor's queue would write into its task row and the journal.
+        If 'pConnectionTest && pEndpoint.ShouldRunAsync() {
             ; AD-35, DW-1279: a mutating request's body can carry a supplied secret, and
             ; SaveRequestBody writes it into the vendor's own task row
             ; (^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD), which is a surface OcuPilot
@@ -2530,6 +2595,7 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
             }
         }
         If $Data(tCookie) Do $ClassMethod(..#CAPTURECLASS, "EndCaptureOutput", tCookie, .tLines)
+        If pConnectionTest && $IsObject($Get(tLines)) Set pLines = tLines
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

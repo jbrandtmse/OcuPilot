@@ -4127,14 +4127,17 @@ ClassMethod ServiceViolationCodes() As %List
 ClassMethod ReasonForLdap(pCode As %String) As %String
 {
     If '$ListFind(..LdapViolationCodes(), pCode) Quit ""
+    Set tEditorReason = ##class(OcuPilot.Api.LdapError).ReasonFor(pCode)
+    If tEditorReason '= "" Quit tEditorReason
     Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
 }
 
 /// <p>Every <code>LDAP.*</code> field-level violation code, as a <class>%List</class>, for the
 /// reason <method>UserViolationCodes</method> exists.</p>
+/// <p>The editor's codes are <class>OcuPilot.Api.LdapError</class>'s, because this class is at the compiler's limit of parameters.</p>
 ClassMethod LdapViolationCodes() As %List
 {
-    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT)
+    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT) _ ##class(OcuPilot.Api.LdapError).ViolationCodes()
 }
 
 /// <p>Envelope code (Story 9.10): one 422 carrying every broken rule of a user audit event Save.</p>
