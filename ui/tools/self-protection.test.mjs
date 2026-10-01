@@ -481,3 +481,14 @@ test('Story 16.12: the three owner refusals and the in-transaction refusal are e
     assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
   }
 });
+
+/** Story 18.15's enable tool, which declares the refusal of %SYS and %ALL. */
+const ENABLE_INTEROP_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'NamespaceEnableInterop.cls');
+
+test('Story 18.15: the refusal of %SYS and %ALL is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of SYSTEMREASON in NamespaceEnableInterop.cls -> this goes red naming both.
+  const server = /Parameter SYSTEMREASON = "([^"]+)";/.exec(readFileSync(ENABLE_INTEROP_TOOL, 'utf8'));
+  assert.notEqual(server, null, 'NamespaceEnableInterop.cls declares SYSTEMREASON');
+  assert.equal(server[1], stringValue('namespaceEnableInteropSystem'), 'SYSTEMREASON and namespaceEnableInteropSystem are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "SYSTEMREASON's sentence is published in EXPERIENCE.md's Fixed strings");
+});

@@ -205,6 +205,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; (AD-34, AD-40), never a privilege delta.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            ; Story 18.15: the enable of interoperability declares %All:USE first, before the poll's
+            ; pair, and names no write pair of its own (AD-8 as amended 2026-10-01).
+            If tTool.name = "osmgmt.namespaces.enableinterop" Set tExpected = tExpected _ $ListBuild($ListBuild("%All", "USE"))
             ; Story 18.14: the mapping copy declares the pair its queued task's poll needs, before
             ; the write's own (AD-8).
             If $Parameter(tTool.class, "POLLRESOURCE") '= "" {
@@ -214,7 +217,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.3: the database file edit alone declares no write pair, since its PUT writes no
             ; system database (measured); every other write tool must still name its own.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
-            If (tTool.name '= "osmgmt.localdatabases.update") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            If (tTool.name '= "osmgmt.localdatabases.update") && (tTool.name '= "osmgmt.namespaces.enableinterop") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
             ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
             If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))

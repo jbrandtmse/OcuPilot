@@ -382,6 +382,8 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // kB (the LDAP and Kerberos editor and its test dialog), under the 4000kB hard stop.
 // Story 18.17's forward merge raised it to 2386kB, the measured 2,385,025-byte initial total rounded up
 // to the next kB (Story 16.14's LDAP editor plus Story 18.17's New Namespace hand-off), under the 4000kB hard stop.
+// Story 18.15 raised it to 2388kB, the measured 2,387,861-byte initial total rounded up to the next kB
+// (the Namespaces list's Enable interoperability and its typed-name dialog), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -394,7 +396,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2386kB', 'DW-1166, Story 18.17 forward merge: the measured 2,385,025 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2388kB', 'Story 18.15: the measured 2,387,861 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

@@ -252,6 +252,8 @@ services:
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: NamespaceWriteGate
+      # The enable-interop gate class also enables interoperability on a probe namespace as its principal.
+      # classes: NamespaceInteropGate
       # classes: ClassicPageGate, MappingWriteGate
       # classes: DatabaseRefusals, DatabaseWriteGate
       # classes: DatabaseActionsGate, DatabaseIntegrity
@@ -415,6 +417,9 @@ services:
       # custom resource to the classic namespace and mapping pages, restoring each.
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
       # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
+      # It also enables interoperability on OCUPROBE1815* namespaces over a probe database and restores
+      # what the vendor's enable changes instance-wide, each object by its exact name.
+      # classes: NamespaceInterop, NamespaceInteropGate
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
       # configuration, with the %DB_* resources and directories a create makes, through the shipped

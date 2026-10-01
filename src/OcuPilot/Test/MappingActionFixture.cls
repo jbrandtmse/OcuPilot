@@ -2,9 +2,10 @@
 /// <method>PortClass</method> answers the port a test names in
 /// <code>^||OcuPilotNamespaceWritePort</code>, and <class>OcuPilot.Test.MappingAcceptPort</class>,
 /// which writes nothing, when none is named; and <method>ToolFor</method> runs the global mapping
-/// delete and the copy of mappings through their seam subclasses
+/// delete, the copy of mappings and the enable of interoperability through their seam subclasses
 /// (<class>OcuPilot.Test.SeamGlobalMappingDelete</class>,
-/// <class>OcuPilot.Test.SeamNamespaceCopyMappings</class>), which declare the default port, so their
+/// <class>OcuPilot.Test.SeamNamespaceCopyMappings</class>,
+/// <class>OcuPilot.Test.SeamNamespaceEnableInterop</class>), which declare the default port, so their
 /// fresh read and write go to that seam; and <method>ProhibitedClassName</method> answers the set a
 /// test names in <code>^||OcuPilotMappingProhibitedClass</code>, the shipped one otherwise. The
 /// resolved registry entry, the pairs and the prohibited set's own read of the live target are the
@@ -16,9 +17,9 @@ Class OcuPilot.Test.MappingActionFixture Extends OcuPilot.Api.ScreenAction
 {
 
 /// <p>The shipped tools this fixture runs through a seam subclass, and the subclasses, in step.</p>
-Parameter SEAMED = "OcuPilot.Screen.Tool.GlobalMappingDelete,OcuPilot.Screen.Tool.NamespaceCopyMappings";
+Parameter SEAMED = "OcuPilot.Screen.Tool.GlobalMappingDelete,OcuPilot.Screen.Tool.NamespaceCopyMappings,OcuPilot.Screen.Tool.NamespaceEnableInterop";
 
-Parameter SEAMS = "OcuPilot.Test.SeamGlobalMappingDelete,OcuPilot.Test.SeamNamespaceCopyMappings";
+Parameter SEAMS = "OcuPilot.Test.SeamGlobalMappingDelete,OcuPilot.Test.SeamNamespaceCopyMappings,OcuPilot.Test.SeamNamespaceEnableInterop";
 
 ClassMethod PortClass() As %String
 {

@@ -10,12 +10,13 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
-import { COPY_MAPPINGS, NAMESPACE_LIST } from '../../shell/screen-action-handler';
+import { COPY_MAPPINGS, ENABLE_INTEROP, NAMESPACE_LIST } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { NamespaceListPage } from './namespace-list.page';
 
 /**
- * The Namespaces list page's Copy mappings (Story 18.14, AC6). The shared list page is replaced by an
+ * The Namespaces list page's Copy mappings (Story 18.14, AC6) and Enable interoperability (Story
+ * 18.15, AC2). The shared list page is replaced by an
  * empty stand-in, so only this page's own wiring runs: the action it registers after the shell's
  * handler, the dialog over the rows the list's store holds, the one request the copy sends, and the
  * status line that follows it. The handler, the stores and the bus are real; only the server's
@@ -187,5 +188,161 @@ describe('the Namespaces list page', () => {
     expect(calls).toHaveLength(0);
     fixture.destroy();
     expect(actions.has(NAMESPACE_LIST, COPY_MAPPINGS)).toBe(false);
+  });
+
+  it('AC2: registers Enable interoperability, whose typed-name dialog states the consequence and holds Proceed until the exact name is typed', async () => {
+    // Mutation (Rule 19): drop this page's `actions.register` of `enable-interop` -> the first
+    // assertion goes red, and no surface offers the action.
+    const { fixture, host, store, actions, calls } = mount({ kind: 'ok', status: 200, body: {} });
+    expect(actions.has(NAMESPACE_LIST, ENABLE_INTEROP)).toBe(true);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
+
+    store.setSelection(['OCUPROBE1814BB']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.namespaceEnableInteropVerb} OCUPROBE1814BB`);
+    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.namespaceEnableInteropConsequence);
+    const proceed = host.querySelector('.ocu-button-destructive') as HTMLButtonElement;
+    expect(proceed.getAttribute('aria-disabled')).toBe('true');
+    proceed.click();
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'ocuprobe1814bb';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(proceed.getAttribute('aria-disabled')).toBe('true');
+    proceed.click();
+    await settle(fixture);
+    expect(calls).toHaveLength(0);
+    field.value = 'OCUPROBE1814BB';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(proceed.getAttribute('aria-disabled')).toBeNull();
+    expect(line(host)).toBe('');
+  });
+
+  it('AC2: Proceed sends one enable-interop request with no value, shows the running line while it is in flight, then the done line, and the list is read again', async () => {
+    // Mutation (Rule 19): send on `confirmed` without the typed name, by opening no dialog and calling
+    // `onEnable` from the action -> the dialog assertions above and below go red.
+    const { fixture, host, store, actions, calls, events, release } = mount({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'namespace', scope: 'instance', id: 'OCUPROBE1814BB' } },
+    });
+    store.setSelection(['OCUPROBE1814BB']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'OCUPROBE1814BB';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
+    const running = STRINGS.namespaceEnableInteropRunning.split('<namespace>').join('OCUPROBE1814BB');
+    expect(line(host).startsWith(running.split('<time>')[0])).toBe(true);
+    expect(line(host)).toMatch(/\d{2}:\d{2}:\d{2}$/);
+
+    release();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${NAMESPACES.toolIdentifier}/action`);
+    expect(calls[0].method).toBe('POST');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: ENABLE_INTEROP, id: 'OCUPROBE1814BB', values: {} });
+    expect(line(host)).toBe(STRINGS.namespaceEnableInteropDone.split('<namespace>').join('OCUPROBE1814BB'));
+    // AD-14: the change event is what makes the list read itself again.
+    expect(events.map(({ type, id, action }) => ({ type, id, action }))).toEqual([{ type: 'namespace', id: 'OCUPROBE1814BB', action: 'updated' }]);
+  });
+
+  it('AC3, AD-26: an enable the instance answers is still running reads as still running, never as done', async () => {
+    // Mutation (Rule 19): drop the `continued()` branch from `onEnable` -> this reads the done line.
+    const { fixture, host, store, actions, release } = mount({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'namespace', scope: 'instance', id: 'OCUPROBE1814BB' }, continues: true },
+    });
+    store.setSelection(['OCUPROBE1814BB']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'OCUPROBE1814BB';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    release();
+    await settle(fixture);
+    expect(line(host)).toBe(STRINGS.auditDatabaseStillRunning);
+  });
+
+  it('AC4: a refused enable leaves no line and puts the published refusal on the list', async () => {
+    const reason = STRINGS.namespaceEnableInteropSystem;
+    const { fixture, host, store, actions, release, events } = mount({
+      kind: 'error',
+      status: 400,
+      code: 'TOOL.ARGUMENTS',
+      reason: 'generic',
+      detail: { problem: reason },
+    } as unknown as JsonResult<unknown>);
+    store.setSelection(['HSCUSTOM']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'HSCUSTOM';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    release();
+    await settle(fixture);
+    expect(line(host)).toBe('');
+    expect(store.refusal()).toBe(reason);
+    expect(events).toHaveLength(0);
+  });
+
+  it('Cancel closes the enable dialog and sends nothing, and leaving the page takes the action with it', async () => {
+    const { fixture, host, store, actions, calls } = mount({ kind: 'ok', status: 200, body: {} });
+    store.setSelection(['OCUPROBE1814BB']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
+    expect(calls).toHaveLength(0);
+    fixture.destroy();
+    expect(actions.has(NAMESPACE_LIST, ENABLE_INTEROP)).toBe(false);
+  });
+
+  it('one operation at a time: neither dialog opens over the other or while either action is in flight', async () => {
+    const { fixture, host, store, actions, calls, release } = mount({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'updated', target: { type: 'namespace', scope: 'instance', id: 'OCUPROBE1814BB' } },
+    });
+    store.setSelection(['OCUPROBE1814BB']);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    actions.run(NAMESPACE_LIST, COPY_MAPPINGS);
+    await settle(fixture);
+    expect(host.querySelector('app-copy-mappings-dialog')).toBeNull();
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'OCUPROBE1814BB';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    actions.run(NAMESPACE_LIST, COPY_MAPPINGS);
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    expect(host.querySelector('app-copy-mappings-dialog')).toBeNull();
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
+    release();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    actions.run(NAMESPACE_LIST, COPY_MAPPINGS);
+    await settle(fixture);
+    expect(host.querySelector('app-copy-mappings-dialog')).not.toBeNull();
+    actions.run(NAMESPACE_LIST, ENABLE_INTEROP);
+    await settle(fixture);
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
   });
 });

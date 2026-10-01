@@ -3609,6 +3609,24 @@ export const STRINGS = {
   mappingRefusalOcuPilot:
     'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
 
+  // Story 18.15: the Namespaces list's Enable interoperability -- its row action, the typed-name
+  // dialog's verb and consequence, which is also the agent's card line, the running and done lines,
+  // and the tool's refusal of %SYS and %ALL. An enable that outlasts the wait reads
+  // `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropAction: 'Enable interoperability',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropVerb: 'Enable interoperability in',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropConsequence:
+    'Enabling interoperability maps the interoperability code into this namespace, creates its portal applications and gives the interoperability roles access to its databases. On InterSystems IRIS for Health it also runs the HealthShare Foundation install, which changes the whole instance: it maps the HealthShare libraries into this namespace; grants the Admin user the %HS_BFC_Administrator role, which holds %Admin_Manage, %Admin_Secure, %Admin_Task and %Admin_OAuth2_Client; creates HealthShare roles and resources and changes %HS_Administrator\'s resources; schedules the FHIR purge task and starts the FHIR_Validation_Server Java language server; and gives the new applications access to the HSCUSTOM database, and /bulkfhir/api access to IRISSYS and %HS_ImpersonateUser. Elsewhere it creates two databases, ENSTEMP and SECONDARY, beside this namespace\'s globals database. This cannot be undone.',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropRunning: 'Enabling interoperability in <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropDone: 'Enabled interoperability in <namespace>.',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropSystem: 'Interoperability cannot be enabled in %SYS or %ALL.',
+
   // Story 16.6: Processes' Broadcast over the checked rows, its dialog and refusal, and the data
   // table's checked set. The dialog's field label and buttons reuse `logViewerColumnMessage`,
   // `actionSend`, `actionCancel` and `auditDialogClose`.

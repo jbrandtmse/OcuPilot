@@ -13,9 +13,11 @@
 /// <p><b>The classic key is <code>%CSP.UI.Portal.Namespaces</code></b> (AD-44); as a list it links
 /// out to nothing. It does not refresh (AD-43).</p>
 /// <p>Its primary action is Create, which opens the form. Its row actions are Delete, whose
-/// typed-name dialog states the removal's impact (AD-8), and Copy mappings, whose dialog names the
-/// source namespace and runs <code>osmgmt.namespaces.copymappings</code> (Story 18.14). Each runs a
-/// namespace tool (AD-53, AD-55).</p>
+/// typed-name dialog states the removal's impact (AD-8); Copy mappings, whose dialog names the
+/// source namespace and runs <code>osmgmt.namespaces.copymappings</code> (Story 18.14); and Enable
+/// interoperability, whose typed-name dialog states the enable's consequence and runs
+/// <code>osmgmt.namespaces.enableinterop</code> (Story 18.15). Each runs a namespace tool (AD-53,
+/// AD-55).</p>
 Class OcuPilot.Screen.Descriptor.NamespaceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -37,7 +39,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "copy-mappings", "selfProtection": ""}],
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "copy-mappings", "selfProtection": ""}, {"id": "enable-interop", "selfProtection": ""}],
   "context": {"fields": ["Name", "Globals", "Routines", "TempGlobals"], "secretFields": []},
   "emptyStateKey": "namespaceListEmpty",
   "commandAliases": ["namespaces", "configure namespace"],
