@@ -8700,12 +8700,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-ci 2026-10-01: Security.LDAPConfigs.Create("OCUP99KRB") with flags 128 stored Name OCUP99KRB while FormatName answers ocup99krb.com; the classic page canonicalizes only with LDAP configuration ticked (LDAP.cls:408). The spec's 'stores only the canonical form' premise behind AD-13's amendment does not hold for Create.
 - 2026-10-01T05:41:07Z status=decision-pending owner=burndown by=cr note=admit a name the instance already stores as typed (amend AD-13 and the Boundary), or keep refusing; Rule 20 Deferred mirror
 - 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided as recommended (orchestrator 2026-10-01): admit a name the instance already stores, exactly as stored, for open/edit/test/delete; a NEW name is still refused when the instance would store it differently; amend AD-13; Epic 16 fixes it before its close as its own commit
+- 2026-10-01T11:08:27Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=3822a50b: a stored non-canonical name admitted as stored (open/edit/test/delete, confirm re-check); create still refused; LdapEdit/LdapUpdate/LdapCreate legs, mutations A-C, E
 
 ### DW-1889: The LDAP editor cannot remove a configuration's last retrieved attribute: Security.LDAP PUT ignores LDAPAttributes [] (the Save answers 200, read-back differs) and [""] answers 500
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-ci 2026-10-01 through PUT /ldap/:id on a probe: [] left [cn,uid] stored with verdict differs; [""] answered 500 INTERNAL; a non-empty list replaces the stored one whole. The classic page clears it with Properties("LDAPAttributes")="" through Security.LDAPConfigs.Modify.
 - 2026-10-01T05:41:07Z status=escalated owner=burndown by=cr note=needs an AD-27 named case (Modify in %SYS) or a refusal sentence for an empty list; decision sheet
 - 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided (orchestrator 2026-10-01): now - a refusal with a plain sentence when the edit would remove the last retrieved attribute (the vendor PUT ignores LDAPAttributes []), instead of a silent no-op; the AD-27 named case (Modify in %SYS) is a later cleanup item - file it as a new range-end-cleanup entry (p4) when this one resolves
+- 2026-10-01T11:08:27Z status=resolved-by:16-15-the-data-egress-line by=adjudication note=3822a50b: last retrieved attribute refused LDAP.ATTRIBUTES.LASTONE before any write, both callers; mutation D; AD-27 named case filed separately
 
 ### DW-1890: LdapTest's no-task-row assertions pass when PortFixture.TaskGuids cannot read the async task table, because it answers "" on any error
 - source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-story
@@ -8743,3 +8745,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Prohibited.cls:1961 copy arm asks CopiesOwnMapping only; NamespaceCopyMappings.cls:86 CONSEQUENCE NAMESPACE.COPYMAPPINGS; WeakensByEffect runs per create/change
 - 2026-10-01T09:21:03Z status=wontfix-accepted owner=18-17-namespace-and-database-follow-ups by=cr note=pre-existing (18.14), copy already DESTRUCTIVE=1. reopen_if=AD-10 is amended to name a copy for MAPPING.SYSTEMGLOBAL
+
+### DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it
+- source: DW-1889 (merge gate 2026-10-01) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-ci: PUT LDAPAttributes [] keeps the stored list, [""] answers 500; the classic page's own save clears the list; 3822a50b refuses the edit (LDAP.ATTRIBUTES.LASTONE) meanwhile
+- 2026-10-01T11:08:27Z status=routed owner=range-end-cleanup by=harvest note=priority p4 (orchestrator 2026-10-01): AD-27 named case, Modify in %SYS, then lift the LASTONE refusal
