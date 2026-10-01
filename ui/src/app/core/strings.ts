@@ -2234,7 +2234,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:503 */
   serviceAddressAnyCaption: 'With no address listed, any address may connect.',
   /** EXPERIENCE.md:503 */
-  serviceAddressNoRoles: 'Enter one address. Roles for an address are set in the classic portal.',
+  serviceAddressNoRoles: 'Enter one address, with no roles.',
   /** EXPERIENCE.md:504 */
   ldapFormLabel: 'LDAP configuration',
   /** EXPERIENCE.md:504 */
@@ -4024,6 +4024,10 @@ export const STRINGS = {
   lockRefusalOcuPilot: 'This lock keeps OcuPilot\'s own state consistent. It cannot be removed from OcuPilot.',
   /** EXPERIENCE.md:376 */
   lockListEmptyAgent: 'remove a lock that a stuck process still holds',
+  /** EXPERIENCE.md:503 */
+  serviceAddressRolesEdit: 'Edit roles',
+  /** EXPERIENCE.md:503 */
+  serviceAddressRolesTitle: 'Roles for <address>',
 } as const;
 
 /**

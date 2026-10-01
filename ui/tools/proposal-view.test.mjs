@@ -713,3 +713,36 @@ test('formatUserName resolves the published placeholder and leaves the rest of t
   );
   assert.ok(STRINGS.proposalFooterRunsAs.includes(USER_NAME_PLACEHOLDER));
 });
+
+// --- Story 16.13: a tool's declared empty word (DW-1016) -----------------------------------------
+
+const TOOL_DIR = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool');
+
+// Mutation (Rule 19): change ServiceUpdate's EMPTYKEYS to name `serviceAllowedUnrestrictedX` -> red
+// naming it.
+test('every EMPTYKEYS a write tool declares names an existing STRINGS key, and the service update declares its word', async () => {
+  const { readdirSync } = await import('node:fs');
+  const declared = [];
+  for (const file of readdirSync(TOOL_DIR).filter((name) => name.endsWith('.cls'))) {
+    const match = /^Parameter EMPTYKEYS = "([^"]*)";$/m.exec(readFileSync(join(TOOL_DIR, file), 'utf8'));
+    if (match === null || match[1] === '') continue;
+    for (const pair of match[1].split(',')) {
+      const [field, key] = pair.trim().split('=');
+      assert.ok(field !== undefined && field !== '' && key !== undefined && key !== '', `${file}: "${pair}" is Field=stringKey`);
+      assert.equal(typeof STRINGS[key], 'string', `${file}: ${field}'s word ${key} is a STRINGS key`);
+      declared.push(`${file}:${field}=${key}`);
+    }
+  }
+  assert.ok(declared.includes('ServiceUpdate.cls:ClientSystems=serviceAllowedUnrestricted'), `the service update declares an empty address list's word, read ${declared.join(', ')}`);
+});
+
+test('the card view carries a row\'s emptyKey through on a changed and an unchanged row', () => {
+  const proposal = parsedProposal({
+    tool: 'permissions.services.update',
+    changed: [{ field: 'ClientSystems', before: '', after: '["10.0.0.1"]', emptyKey: 'serviceAllowedUnrestricted' }],
+    unchanged: [{ field: 'ClientSystems', value: '', emptyKey: 'serviceAllowedUnrestricted' }],
+  });
+  const view = toCardView(proposal, 'Service');
+  assert.equal(view.changed[0].emptyKey, 'serviceAllowedUnrestricted');
+  assert.equal(view.unchanged[0].emptyKey, 'serviceAllowedUnrestricted');
+});

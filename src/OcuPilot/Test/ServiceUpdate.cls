@@ -1,12 +1,17 @@
 /// <p>Pins <class>OcuPilot.Screen.Tool.ServiceUpdate</class> as the agent reaches it (AD-3, AD-4,
-/// AD-6, AD-10): what it advertises and declares; the mint's diff rows; a two-field confirm whose
-/// body keeps every other field; the three rules at the mint; the serving service's disable refused
-/// at the mint by name while an address change is minted destructive with its consequence; and the
-/// destructive marking of an added unauthenticated bit and of an address carrying
-/// <code>%All</code>.</p>
+/// AD-6, AD-10, AD-44): what it advertises and declares, its pairs among them; the mint's diff rows,
+/// an empty address list reading "Unrestricted" on a changed and an unchanged row (DW-1016); a
+/// two-field confirm whose body keeps every other field; the entry reading both callers share, the
+/// classic <code>address:role</code> spelling sent canonical and an entry the service holds sent as
+/// read; the rules at the mint, the three address rules against held services among them, and the
+/// vendor's own address check they use; the serving service's disable refused at the mint by name
+/// while an address change is minted destructive with its consequence; and the destructive marking
+/// of an added unauthenticated bit and of an address carrying <code>%All</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state readable.
 /// Every mint's fresh read and every confirmed write go to <class>OcuPilot.Test.ProposalFixture</class>;
-/// the tool's own rules read the instance, and only read it. No arming variable is required.</p>
+/// the tool's own rules read the instance (<code>%Service_CallIn</code>,
+/// <code>%Service_CacheDirect</code> and the serving service among it), and only read it. No arming
+/// variable is required.</p>
 Class OcuPilot.Test.ServiceUpdate Extends %UnitTest.TestCase
 {
 
@@ -25,8 +30,16 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// <p>A name the instance does not hold, so the tool's own rules read nothing for it.</p>
 Parameter PROBE = "OcuPilotProbeService";
 
-/// <p>A service this instance holds and never enables, read by the capability rule.</p>
+/// <p>A service this instance holds and never enables, read by the capability rule. It checks no
+/// address.</p>
 Parameter CALLIN = "%Service_CallIn";
+
+/// <p>A service this instance holds and never enables, which checks addresses and gives them no
+/// roles. Read here, never written.</p>
+Parameter CACHEDIRECT = "%Service_CacheDirect";
+
+/// <p>The Edit Service dialog the tool declares it performs (AD-44).</p>
+Parameter DIALOG = "%CSP.UI.Portal.Dialog.Service";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -90,16 +103,18 @@ Method TestATwoFieldConfirmKeepsEveryOtherField()
 }
 
 /// <p>AD-55: the tool's rules refuse at the mint what the form refuses: an entry holding a semicolon,
-/// a role the instance does not hold, and an authentication method the service does not support --
-/// each by its published sentence, and nothing is written.</p>
+/// a role the instance does not hold, in either spelling, and an authentication method the service
+/// does not support -- each by its published sentence, and nothing is written.</p>
 /// <p>Mutation (Rule 19): drop the <code>Validate</code> call from
-/// <method>OcuPilot.Screen.Tool.ServiceUpdate.ArgumentProblem</method> -- all three legs go red.</p>
+/// <method>OcuPilot.Screen.Tool.ServiceUpdate.ArgumentProblem</method> -- every leg goes red. Make
+/// <method>OcuPilot.Area.Permissions.ServiceRules.AddressViolations</method> read roles after
+/// <code>|</code> only -- the <code>address:role</code> leg goes red.</p>
 Method TestTheRulesRefuseAtTheMint()
 {
     Set tError = "OcuPilot.Api.Error"
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[]", "false"))
-    Set tCases = [{"Name": (..#PROBE), "ClientSystems": ["a;b"]}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1|OcuPilotNoSuchRole99"]}, {"Name": (..#CALLIN), "AutheEnabled": 262192}]
-    Set tCodes = $ListBuild($Parameter(tError, "SERVICEADDRESSSHAPE"), $Parameter(tError, "SERVICEADDRESSROLE"), $Parameter(tError, "SERVICEAUTHEUNSUPPORTED"))
+    Set tCases = [{"Name": (..#PROBE), "ClientSystems": ["a;b"]}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1|OcuPilotNoSuchRole99"]}, {"Name": (..#CALLIN), "AutheEnabled": 262192}, {"Name": (..#PROBE), "ClientSystems": ["10.0.0.1:OcuPilotNoSuchRole99"]}]
+    Set tCodes = $ListBuild($Parameter(tError, "SERVICEADDRESSSHAPE"), $Parameter(tError, "SERVICEADDRESSROLE"), $Parameter(tError, "SERVICEAUTHEUNSUPPORTED"), $Parameter(tError, "SERVICEADDRESSROLE"))
     For tI = 1:1:$ListLength(tCodes) {
         Set tCase = $ListBuild("", $List(tCodes, tI))
         Set tArgs = tCases.%Get(tI - 1)
@@ -113,9 +128,10 @@ Method TestTheRulesRefuseAtTheMint()
 /// <p>AD-10 as amended (ruling 2dca0322), AC5: on the service OcuPilot is served through, turning it
 /// off is refused at the mint with the published sentence, in any spelling of its name; changing its
 /// addresses or methods is minted destructive with <code>SERVICE.SERVESOCUPILOT</code> as its
-/// consequence, even beside a privileged role. The method leg sends a mask inside the live service's
-/// own capabilities, so it also shows the capability rule admits a supported method. The mint writes
-/// nothing, and no proposal here is confirmed.</p>
+/// consequence, which outranks a privileged role on the card; the service gives an address no roles,
+/// so an address with one is refused at the mint. The method leg sends a mask inside the live
+/// service's own capabilities, so it also shows the capability rule admits a supported method. The
+/// mint writes nothing, and no proposal here is confirmed.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ServingServiceDisabled</method>
 /// answer 0 -- the disable legs go red. Drop the serving branch of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.ServiceWeakening</method> -- the address and method
@@ -134,9 +150,9 @@ Method TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked()
     Do $$$AssertNotEquals(tKey, "", "an address change is minted")
     Do ..Stored(tKey, .tDestructive, .tConsequence)
     Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter(..#SET, "EFFECTSERVINGSERVICE"), "destructive, naming that OcuPilot is served through it")
-    Set tKey = ..MintedKey({"Name": (tServing), "ClientSystems": ["10.0.0.1|%All"]})
-    Do ..Stored(tKey, .tDestructive, .tConsequence)
-    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter(..#SET, "EFFECTSERVINGSERVICE"), "and the serving consequence outranks a privileged role")
+    Do $$$AssertEquals($ClassMethod(..#UPDATE, "Consequence", {}, 1, $Parameter(..#SET, "EFFECTSERVINGSERVICE")), $Parameter(..#SET, "EFFECTSERVINGSERVICE"), "the serving consequence outranks a privileged role")
+    Set tSC = ..Mint({"Name": (tServing), "ClientSystems": ["10.0.0.1|%All"]}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertTrue((tHttp = 400) && (..Problem(.tFault) [ ##class(OcuPilot.Api.ServiceError).#REASONADDRESSROLEUNSUPPORTED), "an address with a role is refused, since this service gives none: " _ ..Problem(.tFault))
     Set tKey = ..MintedKey({"Name": (tServing), "AutheEnabled": 2080})
     Do $$$AssertNotEquals(tKey, "", "a method the service supports (32 plus LDAP's 2048) is minted")
     Do ..Stored(tKey, .tDestructive, .tConsequence)
@@ -193,11 +209,10 @@ Method TestAWeakeningOrPrivilegedChangeIsMintedDestructive()
 }
 
 /// <p>AD-5, AD-44: the form is built, unlisted, at the list's own route with the editor suffix, over
-/// the list's own pairs, and ends with a honoured classic-portal exemption naming the classic page
-/// and its same-origin address, while the list declares none; every <code>SERVICE.*</code> code
-/// carries a sentence.</p>
-/// <p>Mutation (Rule 19): set the list's exemption to exempt -- the list leg goes red.</p>
-Method TestTheFormDescriptorIsBuiltUnlistedAndExempt()
+/// the list's own pairs, and declares its classic page and no exemption, which the registry accepts,
+/// while the list declares none either; every <code>SERVICE.*</code> code carries a sentence.</p>
+/// <p>Mutation (Rule 19): set the form's exemption to exempt -- the exemption leg goes red.</p>
+Method TestTheFormDescriptorIsBuiltUnlistedAndLinksNowhere()
 {
     Set tForm = "OcuPilot.Screen.Descriptor.ServiceForm"
     Set tList = ..#LIST
@@ -210,9 +225,8 @@ Method TestTheFormDescriptorIsBuiltUnlistedAndExempt()
     Do $$$AssertStatusOK(tSC, "the form's declaration parses")
     If $$$ISERR(tSC) Quit
     Set tExemption = tDeclaration.%Get("classicLinkExemption")
-    Do $$$AssertEquals(tDeclaration.%Get("classicPage") _ " " _ tExemption.%Get("exempt") _ " " _ tExemption.%Get("label") _ " " _ tExemption.%Get("href"), "%CSP.UI.Portal.Dialog.Service 1 Services /csp/sys/sec/%25CSP.UI.Portal.Services.zen", "it names its classic page and links out to the classic list")
-    Do $$$AssertTrue(tExemption.%Get("reason") [ "Story 16.13", "its reason names the story that removes it")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and the registry honours it")
+    Do $$$AssertEquals(tDeclaration.%Get("classicPage") _ " " _ tExemption.%Get("exempt") _ " [" _ tExemption.%Get("reason") _ tExemption.%Get("label") _ tExemption.%Get("href") _ "]", ..#DIALOG _ " 0 []", "it names its classic page and declares no exemption")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "which the registry accepts")
     Do $$$AssertEquals(tDeclaration.%Get("suggestedPrompts").%Size(), 3, "it declares three suggested prompts")
     Set tSC = $ClassMethod(tList, "DeclarationJson", .tListDeclaration)
     If $$$ISOK(tSC) Do $$$AssertEquals(tListDeclaration.%Get("classicLinkExemption").%Get("exempt"), 0, "while the list declares no exemption")
@@ -220,6 +234,117 @@ Method TestTheFormDescriptorIsBuiltUnlistedAndExempt()
     For tI = 1:1:$ListLength(tCodes) {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a written sentence")
     }
+}
+
+/// <p>The one entry reading the rules, the form read and the merge share: the separator is
+/// <code>|</code> when the entry holds one or more than one <code>:</code>, and <code>:</code>
+/// otherwise, as the classic dialog reads it; the canonical spelling is <code>address</code> or
+/// <code>address|role,role</code>.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Permissions.ServiceRules.EntryParts</method>
+/// ignore <code>:</code> -- the <code>a:r</code> row goes red.</p>
+Method TestAnEntryReadsTheWayTheClassicDialogReadsIt()
+{
+    Set tRules = "OcuPilot.Area.Permissions.ServiceRules"
+    For tCase = $ListBuild("a", "a", "", "a"), $ListBuild("a|r1,r2", "a", "r1,r2", "a|r1,r2"), $ListBuild("a:r", "a", "r", "a|r"), $ListBuild("::1", "::1", "", "::1"), $ListBuild("fe80::1|r", "fe80::1", "r", "fe80::1|r"), $ListBuild("a|r1,,r2", "a", "r1,r2", "a|r1,r2") {
+        Do $ClassMethod(tRules, "EntryParts", $List(tCase, 1), .tAddress, .tRoles)
+        Do $$$AssertEquals(tAddress _ " [" _ $ListToString(tRoles, ",") _ "]", $List(tCase, 2) _ " [" _ $List(tCase, 3) _ "]", $List(tCase, 1) _ " reads as its address and roles")
+        Do $$$AssertEquals($ClassMethod(tRules, "Canonical", $List(tCase, 1)), $List(tCase, 4), $List(tCase, 1) _ " is spelled " _ $List(tCase, 4))
+    }
+}
+
+/// <p>The vendor's own address check, which <parameter>OcuPilot.Api.ServiceError.ADDRESSINVALID</parameter>
+/// refuses 1, 2 and 3 of, answers as measured: 0 for an address, a range, a wildcard, a host name
+/// and IPv6; 1 for an address or range it cannot read; 2 for a malformed name; 4 for a name that does
+/// not resolve, which the classic page accepts.</p>
+Method TestTheVendorsAddressCheckAnswersAsMeasured()
+{
+    For tCase = $ListBuild("10.0.0.1", 0), $ListBuild("10.0.0.1-20", 0), $ListBuild("10.0.0.*", 0), $ListBuild("localhost", 0), $ListBuild("::1", 0), $ListBuild("fe80::1", 0), $ListBuild("999.1.1.1", 1), $ListBuild("10.0.0.0/24", 1), $ListBuild("a b", 2), $ListBuild("no-such-host.invalid", 4) {
+        Set tSC = ##class(OcuPilot.Area.Permissions.ServiceRules).AddressValidity($List(tCase, 1), .tAnswer)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ " is checked")
+        Do $$$AssertEquals(tAnswer, $List(tCase, 2), $List(tCase, 1) _ " answers " _ $List(tCase, 2))
+    }
+}
+
+/// <p>AD-4, AD-10: an entry the agent writes in the classic <code>address:role</code> spelling is
+/// sent as <code>address|role</code>, so the kernel reads its role and mints a <code>%All</code>
+/// grant destructive with <code>GRANT.PRIVILEGED</code>; an entry the service already holds is sent
+/// back exactly as read, beside a new one sent canonical.</p>
+/// <p>Mutation (Rule 19): drop the canonical rewrite from
+/// <method>OcuPilot.Screen.Tool.ServiceUpdate.MergeUpdate</method> -- the payload and destructive legs go
+/// red.</p>
+Method TestAClassicSpellingIsSentCanonicalAndMarkedPrivileged()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[]", "false"))
+    Set tKey = ..MintedKey({"Name": (..#PROBE), "ClientSystems": ["10.0.0.9:%All"]})
+    Do $$$AssertNotEquals(tKey, "", "the classic spelling is minted")
+    Do ..Stored(tKey, .tDestructive, .tConsequence, .tPayload)
+    Do $$$AssertEquals($Select($IsObject(tPayload): tPayload.%Get("ClientSystems").%ToJSON(), 1: ""), "[""10.0.0.9|%All""]", "and its payload carries the canonical spelling")
+    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter("OcuPilot.Kernel.Proposal.Mint", "CONSEQUENCEPRIVILEGED"), "which the kernel reads as a privileged grant")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[""10.0.0.6:%Manager""]", "false"))
+    Set tKey = ..MintedKey({"Name": (..#PROBE), "ClientSystems": ["10.0.0.6:%Manager", "10.0.0.8:%Operator"]})
+    Do ..Stored(tKey, .tDestructive, .tConsequence, .tPayload)
+    Do $$$AssertEquals($Select($IsObject(tPayload): tPayload.%Get("ClientSystems").%ToJSON(), 1: ""), "[""10.0.0.6:%Manager"",""10.0.0.8|%Operator""]", "a held entry is sent as read and a new one canonical")
+}
+
+/// <p>AD-55, AC7: at the mint, an added address the vendor's check refuses, an address on a service
+/// that checks none, and a role on a service that gives none are each refused by the published
+/// sentence, judged against the held services <code>%Service_CacheDirect</code> and
+/// <code>%Service_CallIn</code>, which are read and never written; nothing is written.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Permissions.ServiceRules.Validate</method> skip
+/// the <code>ADDRESSUNSUPPORTED</code> rule -- the <code>%Service_CallIn</code> leg goes red.</p>
+Method TestTheAddressRulesRefuseAtTheMint()
+{
+    Set tError = "OcuPilot.Api.ServiceError"
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(32, "[]", "false"))
+    For tCase = $ListBuild(..#CACHEDIRECT, "999.1.1.1", $Parameter(tError, "ADDRESSINVALID")), $ListBuild(..#CALLIN, "10.0.0.1", $Parameter(tError, "ADDRESSUNSUPPORTED")), $ListBuild(..#CACHEDIRECT, "10.0.0.5|%Operator", $Parameter(tError, "ADDRESSROLEUNSUPPORTED")) {
+        Set tArgs = {"Name": ($List(tCase, 1)), "ClientSystems": [($List(tCase, 2))]}
+        Set tSC = ..Mint(tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp, 400, tArgs.%ToJSON() _ " is refused at the mint")
+        Do $$$AssertTrue(..Problem(.tFault) [ ("'ClientSystems': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tCase, 3))), tArgs.%ToJSON() _ ": on ClientSystems by " _ $List(tCase, 3) _ "'s sentence: " _ ..Problem(.tFault))
+    }
+    Set tKey = ..MintedKey({"Name": (..#CACHEDIRECT), "ClientSystems": ["10.0.0.1"]})
+    Do $$$AssertNotEquals(tKey, "", "while a plain address on a service that checks addresses is minted")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
+}
+
+/// <p>DW-1016, AC8: an empty address list reads with the tool's declared word, on the changed row
+/// the mint answers (<code>before</code> <code>""</code> with <code>emptyKey</code>) and on an
+/// unchanged row under the disclosure (<code>{value: "", emptyKey}</code>); a field the tool does not
+/// declare carries no key.</p>
+/// <p>Mutation (Rule 19): make the mint's <code>ApplyEmptyKeys</code> skip the key -- the changed-row
+/// leg goes red.</p>
+Method TestAnEmptyAddressListReadsUnrestricted()
+{
+    Set tKey = "serviceAllowedUnrestricted"
+    Do $$$AssertEquals($Parameter(..#UPDATE, "EMPTYKEYS"), "ClientSystems=" _ tKey, "the tool declares its word for an empty address list")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh(48, "[]", "false"))
+    Set tSC = ..Mint({"Name": (..#PROBE), "ClientSystems": ["10.0.0.1"]}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a restriction is minted: " _ ..Problem(.tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Set tRow = tProposal.%Get("changed").%Get(0)
+    Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("field") _ " [" _ tRow.%Get("before") _ "] " _ tRow.%Get("after") _ " " _ tRow.%Get("emptyKey"), 1: ""), "ClientSystems [] [""10.0.0.1""] " _ tKey, "the changed row's empty before reads the tool's word")
+    Set tKey2 = ..MintedKey({"Name": (..#PROBE), "Enabled": true})
+    Do ..Stored(tKey2, .tDestructive, .tConsequence, .tPayload, .tDiff)
+    Set tRows = ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Parameter(..#UPDATE, "TOOLNAME"), $Select($IsObject(tPayload): tPayload.%ToJSON(), 1: ""), tDiff)
+    Set (tAddresses, tMethods) = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tUnchanged) {
+        If tUnchanged.%Get("field") = "ClientSystems" Set tAddresses = "[" _ tUnchanged.%Get("value") _ "] " _ tUnchanged.%Get("emptyKey")
+        If tUnchanged.%Get("field") = "AutheEnabled" Set tMethods = tUnchanged.%Get("value") _ " " _ tUnchanged.%GetTypeOf("emptyKey")
+    }
+    Do $$$AssertEquals(tAddresses, "[] " _ tKey, "an unchanged empty list reads the same word under the disclosure")
+    Do $$$AssertEquals(tMethods, "48 unassigned", "and a field the tool does not declare carries no key")
+}
+
+/// <p>AD-8, AD-44: the tool's pairs are the Services list's, with the custom resource of the classic
+/// Edit Service dialog it performs unioned through <method>OcuPilot.Screen.Gate.WithClassicPages</method>.</p>
+Method TestThePairsUnionTheClassicDialogsResource()
+{
+    Do $$$AssertEquals($Parameter(..#UPDATE, "CLASSICPAGES"), ..#DIALOG, "the tool declares the Edit Service dialog")
+    Set tList = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#LIST, .tResolved)
+    Do $$$AssertTrue(tResolved, "the list's pairs resolve")
+    Set tPairs = $ClassMethod(..#UPDATE, "PrivilegePairs", "", .tToolResolved)
+    Do $$$AssertTrue(tToolResolved && (tPairs = ##class(OcuPilot.Screen.Gate).WithClassicPages(tList, ..#DIALOG)), "its pairs are the list's with the dialog's custom resource")
 }
 
 /// <p>A service as the vendor's read answers one.</p>
@@ -251,15 +376,19 @@ Method Confirm(pKey As %String, Output pHttp As %Integer, Output pCode As %Strin
     Quit $ClassMethod(..#CONFIRM, "Confirm", pKey, "", $Username, .tResult, .pHttp, .pCode, .tDetail)
 }
 
-/// <p>Proposal <var>pKey</var>'s stored destructive flag and consequence.</p>
-ClassMethod Stored(pKey As %String, Output pDestructive As %Boolean, Output pConsequence As %String)
+/// <p>Proposal <var>pKey</var>'s stored destructive flag, consequence, payload and diff.</p>
+ClassMethod Stored(pKey As %String, Output pDestructive As %Boolean, Output pConsequence As %String, Output pPayload As %DynamicObject, Output pDiff As %String)
 {
     Set pDestructive = ""
     Set pConsequence = "<absent>"
+    Set pPayload = ""
+    Set pDiff = ""
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(pKey, .tFound, .tValues)
     If $$$ISERR(tSC) || '$Get(tFound) Quit
     Set pDestructive = +$Get(tValues("destructive"))
     Set pConsequence = $Get(tValues("consequence"))
+    Set pDiff = $Get(tValues("diff"))
+    If $Get(tValues("payload")) '= "" Set pPayload = ##class(%DynamicObject).%FromJSON(tValues("payload"))
 }
 
 /// <p>The problem a refusal's fault carries, or <code>""</code>.</p>

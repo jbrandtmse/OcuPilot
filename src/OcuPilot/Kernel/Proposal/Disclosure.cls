@@ -42,6 +42,9 @@ Parameter MASKWIDTH As %Integer = 8;
 /// member, and a property with no row at all. So the caption's count and the rows behind it are
 /// one population, every field stays available, and no secret value reaches the wire. An
 /// unreadable field list masks everything rather than disclosing anything.</p>
+/// <p>A disclosed field the tool names in <parameter>OcuPilot.Screen.Tool.Write.EMPTYKEYS</parameter>
+/// carries that string key as <code>emptyKey</code>, and its empty value (<code>""</code> or
+/// <code>[]</code>) reads <code>""</code>, as the mint's changed rows do (DW-1016).</p>
 ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As %DynamicArray
 {
     Set tRows = []
@@ -58,13 +61,17 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
             Set tChanged(tDiffRow.%Get("field")) = 1
         }
         Set tReadable = ..OrdinaryPaths(pToolName, .tOrdinary)
+        Do ..EmptyKeysOf(pToolName, .tEmptyKeys)
         Set tIterator = tPayload.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
             If $Data(tChanged(tKey)) Continue
             Set tRow = {}
             Do tRow.%Set("field", tKey, "string")
             If tReadable && +$Get(tOrdinary(tKey)) {
-                Do tRow.%Set("value", ##class(OcuPilot.Kernel.Proposal.Mint).Display(tValue, tPayload.%GetTypeOf(tKey)), "string")
+                Set tShown = ##class(OcuPilot.Kernel.Proposal.Mint).Display(tValue, tPayload.%GetTypeOf(tKey))
+                If $Data(tEmptyKeys(tKey)) && (tShown = "[]") Set tShown = ""
+                Do tRow.%Set("value", tShown, "string")
+                If $Data(tEmptyKeys(tKey)) Do tRow.%Set("emptyKey", tEmptyKeys(tKey), "string")
             } Else {
                 Do tRow.%Set("value", ..Mask(), "string")
             }
@@ -124,6 +131,26 @@ ClassMethod SendsBody(pToolName As %String) As %Boolean [ Private ]
         Set tSends = 1
     }
     Quit tSends
+}
+
+/// <p>The write tool <var>pToolName</var>'s <parameter>OcuPilot.Screen.Tool.Write.EMPTYKEYS</parameter>
+/// as <code>pKeys(field) = stringKey</code>, its class resolved through the tool registry as
+/// <method>SendsBody</method> resolves it. A name the registry does not carry declares nothing.</p>
+ClassMethod EmptyKeysOf(pToolName As %String, Output pKeys) [ Private ]
+{
+    Kill pKeys
+    Try {
+        If $$$ISERR(##class(OcuPilot.Screen.Tool.Registry).Resolve(pToolName, .tTool)) Quit
+        If '$IsObject(tTool) || (tTool.%Get("class") = "") Quit
+        Set tDeclared = $Parameter(tTool.%Get("class"), "EMPTYKEYS")
+        For tI = 1:1:$Length(tDeclared, ",") {
+            Set tPair = $ZStrip($Piece(tDeclared, ",", tI), "<>W")
+            If ($Piece(tPair, "=", 1) = "") || ($Piece(tPair, "=", 2) = "") Continue
+            Set pKeys($Piece(tPair, "=", 1)) = $Piece(tPair, "=", 2)
+        }
+    } Catch {
+        Kill pKeys
+    }
 }
 
 /// <p>The top-level property names the write tool <var>pToolName</var>'s generated field list

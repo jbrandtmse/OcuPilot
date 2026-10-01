@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { LDAP_FORM } from '../areas/security/ldap-form';
-import { SERVICE_FORM } from '../areas/permissions/service-form';
 import type { ApiRequestInit, JsonResult } from './api';
 import type { ChangeEventInput } from './change-bus';
 import { FormDirty } from './form-dirty';
@@ -12,7 +11,37 @@ import { STRINGS } from './strings';
  * The reduced forms' store over a scripted API (Story 9.9): its read, its absent and bare states,
  * the Save body (only what changed, a flag as its whole number), "Saved", the change event it
  * publishes (AD-14), a refusal kept on its field, the dirty flag, and the serving-service rules.
+ * The toggle, list and serving cases run on `SERVICE_FORM`, a declaration local to this spec in the
+ * shape Story 9.9's reduced service form had, since the service editor replaced that form (Story
+ * 16.13) and no shipped declaration carries those options now.
  */
+
+/** A reduced declaration with a protected toggle and a list with a client refusal and a consequence. */
+const SERVICE_FORM: ReducedFormDeclaration = {
+  descriptor: 'OcuPilot.Spec.ReducedServiceFixture',
+  formPath: '/api/ocupilot/services/form',
+  savePath: '/api/ocupilot/services',
+  answerKey: 'service',
+  entityType: 'service',
+  listRoute: 'permissions/services',
+  bareSentence: STRINGS.serviceFormBare,
+  goneSentence: STRINGS.serviceGone,
+  servingReason: STRINGS.serviceRefusalServing,
+  servingEffect: STRINGS.serviceEffectServesOcuPilot,
+  fields: [
+    { key: 'Enabled', kind: 'toggle', label: STRINGS.serviceFieldEnabled, servingProtected: true },
+    {
+      key: 'ClientSystems',
+      kind: 'list',
+      label: STRINGS.serviceFieldClientSystems,
+      addLabel: STRINGS.serviceAddressField,
+      addAction: STRINGS.serviceAddressAdd,
+      emptyCaption: STRINGS.serviceAddressAnyCaption,
+      refuse: (entry) => (entry.includes('|') ? STRINGS.serviceAddressNoRoles : ''),
+      servingConsequence: true,
+    },
+  ],
+};
 
 const SERVICE = { AutheEnabled: 48, ClientSystems: ['10.0.0.9|%All'], Description: 'Controls the Call-In Interface', Enabled: false };
 

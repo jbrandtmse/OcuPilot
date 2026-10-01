@@ -25,7 +25,7 @@ import {
 } from '../core/proposal-view';
 import { impactLine } from '../core/impact';
 import { type ReadBack, readBackLine } from '../core/read-back';
-import { STRINGS } from '../core/strings';
+import { STRINGS, stringFor } from '../core/strings';
 import {
   type ProposalCardView,
   type ProposalDiffRow,
@@ -134,7 +134,7 @@ export interface ProposalConfirmRequest {
           <p class="ocu-diff-row ocu-diff-row-removed">
             <span class="ocu-diff-field">{{ row.field }}</span>
             <span class="ocu-diff-before">
-              <span class="ocu-diff-value">{{ shown(row.before) }}</span>
+              <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
             </span>
             <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
             <span class="ocu-diff-after">
@@ -149,12 +149,12 @@ export interface ProposalConfirmRequest {
             <span class="ocu-diff-field">{{ row.field }}</span>
             <span class="ocu-diff-before">
               <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
-              <span class="ocu-diff-value">{{ shown(row.before) }}</span>
+              <span class="ocu-diff-value">{{ shown(row.before, row.emptyKey) }}</span>
             </span>
             <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
             <span class="ocu-diff-after">
               <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
-              <span class="ocu-diff-value">{{ shown(row.after) }}</span>
+              <span class="ocu-diff-value">{{ shown(row.after, row.emptyKey) }}</span>
             </span>
           </p>
         }
@@ -188,7 +188,7 @@ export interface ProposalConfirmRequest {
             @for (row of unchangedRows; track row.field) {
               <p class="ocu-diff-row ocu-diff-row-unchanged">
                 <span class="ocu-diff-field">{{ row.field }}</span>
-                <span class="ocu-diff-value">{{ shown(row.value) }}</span>
+                <span class="ocu-diff-value">{{ shown(row.value, row.emptyKey) }}</span>
                 <span class="ocu-diff-direction">{{ STRINGS.proposalDiffUnchanged }}</span>
               </p>
             }
@@ -531,15 +531,19 @@ export class ProposalCard {
   }
 
   /**
-   * `value` as the card shows it: the published empty-value word where the instance sent nothing
-   * (EXPERIENCE.md's diff-row rule, "empty values read"), else the value itself.
+   * `value` as the card shows it: where the instance sent nothing, the word the row's `emptyKey`
+   * names when `STRINGS` holds it -- the tool's own declaration for that field, "Unrestricted" for an
+   * empty allowed-address list (DW-1016) -- and the published empty-value word otherwise
+   * (EXPERIENCE.md's diff-row rule, "empty values read"); else the value itself.
    *
    * One function for both halves of a changed row and for an unchanged row, because the rule is
    * the row's and not the half's -- UJ-3's own diff reads `Resource: (none) -> %Development`, and
    * a field the payload sends empty reads the same word under the disclosure.
    */
-  protected shown(value: string): string {
-    return value === '' ? STRINGS.tableEmptyValue : value;
+  protected shown(value: string, emptyKey?: string): string {
+    if (value !== '') return value;
+    const declared = emptyKey === undefined ? '' : stringFor(emptyKey);
+    return declared !== '' ? declared : STRINGS.tableEmptyValue;
   }
 
   /**

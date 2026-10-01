@@ -192,6 +192,11 @@ export interface TurnProposalDiffRow {
    * empty (AD-6). Present, and `true`, only on such a row; every other row carries no key.
    */
   readonly optional?: boolean;
+  /**
+   * The `STRINGS` key the tool declares its field's empty value reads as (DW-1016), such as
+   * `serviceAllowedUnrestricted`. Present only where the instance sent a non-empty key.
+   */
+  readonly emptyKey?: string;
 }
 
 /**
@@ -202,6 +207,8 @@ export interface TurnProposalDiffRow {
 export interface TurnProposalUnchangedRow {
   readonly field: string;
   readonly value: string;
+  /** As on a diff row: the declared word an empty value reads as, present only where sent (DW-1016). */
+  readonly emptyKey?: string;
 }
 
 /**
@@ -540,6 +547,7 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       after: textAt(row, 'after'),
       removed: boolAt(row, 'removed'),
       ...(boolAt(row, 'optional') ? { optional: true } : {}),
+      ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
     });
   }
   return rows;
@@ -551,7 +559,11 @@ function parseProposalUnchanged(value: unknown): TurnProposalUnchangedRow[] {
   for (const raw of value) {
     const row = asRecord(raw);
     if (row === null) continue;
-    rows.push({ field: textAt(row, 'field'), value: textAt(row, 'value') });
+    rows.push({
+      field: textAt(row, 'field'),
+      value: textAt(row, 'value'),
+      ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+    });
   }
   return rows;
 }

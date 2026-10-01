@@ -187,6 +187,25 @@ async function openTab(who, user) {
   return { context, page, traffic };
 }
 
+/**
+ * Each gated side-bar entry's name, how many lines its name takes, and whether its reason starts
+ * after the name -- to its right on the same line, or below it (DW-1879).
+ */
+function gatedLayout(page) {
+  return page.$$eval('app-side-bar .ocu-side-bar-item[aria-disabled="true"]', (items) =>
+    items.map((item) => {
+      const label = item.querySelector('.ocu-side-bar-label');
+      const reason = item.querySelector('.ocu-side-bar-reason');
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const lines = new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size;
+      const named = label.getBoundingClientRect();
+      const said = reason.getBoundingClientRect();
+      return { label: label.textContent.trim(), lines, after: said.left >= named.right - 0.5 || said.top >= named.bottom - 0.5 };
+    })
+  );
+}
+
 /** The computed font family of the first element `selector` matches. */
 function familyOf(page, selector) {
   return page.$eval(selector, (element) => getComputedStyle(element).fontFamily);
@@ -474,6 +493,31 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
       ],
       'SSL/TLS, X.509, LDAP and Auditing are available; Wallet, OAuth 2.0 and Allowed directories are not, each naming its pair'
     );
+
+    // DW-1879: each gated entry keeps its name on one line and reads its reason after it, in both
+    // themes, and the page with the side bar open passes the structural walk.
+    // Mutation (Rule 19): drop the `.ocu-side-bar-item-gated` rules appended to `_components.scss`,
+    // rebuild and redeploy -> a gated name wraps into its own column and this goes red.
+    // The rail item's tooltip, shown while the pointer rests where the rail was clicked, is the
+    // rail's own and not this walk's subject.
+    await page.mouse.move(900, 700);
+    await page.evaluate(() => document.activeElement?.blur());
+    const found = [];
+    const minimums = componentMinimums();
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
+      await frames(page);
+      assert.deepEqual(
+        await gatedLayout(page),
+        [STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.allowedDirectoriesLabel].map((label) => ({ label, lines: 1, after: true })),
+        `${theme}: every gated name is on one line with its reason after it`
+      );
+      const { entries: walked } = await detectScreen(page, { route: 'security/ssl', checks: theme === 'light' ? INVARIANTS : ['contrast'], viewport: VIEWPORTS.wide.width, theme, minimums });
+      found.push(...walked);
+    }
+    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    const fresh = compare(collapse(found), readBaseline()?.entries ?? []).fresh;
+    assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], 'no violation beyond the baseline with the gated side bar open, in either theme');
   } finally {
     await context.close();
   }

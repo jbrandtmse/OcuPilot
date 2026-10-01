@@ -355,6 +355,7 @@ services:
       # LDAP classes create ocup99* configurations and delete each once its exact name reads back.
       # The service OcuPilot is served through is never written: its legs mint only, or save
       # through a port that records a PUT and never sends it.
+      # Since Story 16.13 ServiceEdit also writes %Service_CacheDirect and %Service_ECP, each disabled, snapshotted and restored the same way.
       # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,

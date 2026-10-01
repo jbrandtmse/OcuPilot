@@ -4105,14 +4105,19 @@ Parameter REASONLDAPDESCRIPTIONLENGTH = "An LDAP configuration's description is 
 /// code; <method>ReasonForViolation</method> delegates the family here.</p>
 ClassMethod ReasonForService(pCode As %String) As %String
 {
+    Set tAddressReason = ##class(OcuPilot.Api.ServiceError).ReasonFor(pCode)
+    If tAddressReason '= "" Quit tAddressReason
     If '$ListFind(..ServiceViolationCodes(), pCode) Quit ""
     Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
 }
 
 /// <p>Every <code>SERVICE.*</code> field-level violation code, as a <class>%List</class>, for the
 /// reason <method>UserViolationCodes</method> exists.</p>
+/// <p>The address codes are <class>OcuPilot.Api.ServiceError</class>'s, because this class is at the compiler's limit of parameters.</p>
 ClassMethod ServiceViolationCodes() As %List
 {
+    Set tAddressCodes = ##class(OcuPilot.Api.ServiceError).ViolationCodes()
+    If tAddressCodes '= "" Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT) _ tAddressCodes
     Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT)
 }
 
