@@ -290,11 +290,11 @@ deferred: []
 - **AC5 (gate).** Given a principal holding exactly the measured pair set, when it reads either list or viewer, then it succeeds. Given the same principal missing any one pair, when it makes the same read, then it is refused 403 naming that pair, and never answered an empty list.
 - **AC6 (read-only).** Given the tool registry and governance after this story, when `ExplorerDescriptor` enumerates every `explorer.*` tool and route, then no `explorer.*` tool classifies `write`, `Baseline.cls` is unchanged, and no route mints a proposal for the new area.
 - **AC7 (DW-1337).** Given the structural walk, when it covers all four screens at 1280 light, 720 light and 1280 dark, then it adds no entry to `structural-baseline.json`.
-- **Limit (AC4, AC5).** An account holding only `%Developer` cannot open System Explorer, because OcuPilot's `%Admin_*` floor guards every route and AD-61's gate sits on top of it (DW-1903, decision-pending for the owner).
+- **Limit (AC4, AC5).** An account holding only `%Developer` cannot open System Explorer, because OcuPilot's `%Admin_*` floor guards every route and AD-61's gate sits on top of it until Story 19.12 widens that floor to admit `%Development:USE` (DW-1903, owner decision 2026-10-01).
 
 ## Spec Change Log
 
-- 2026-10-01, spec gate (orchestrator answers, by=merge_gate): AD-61 and its five companion amendments written into the spine; System Explorer at rail 8 approved as a tier-1 amendment; "Look in: Database" dropped; the `%Admin_*` floor kept (DW-1903); the four non-additive edits approved with disjoint hunks; never sending `filter` and never calling `POST modified` recorded at AD-61.
+- 2026-10-01, spec gate (orchestrator answers, by=merge_gate): AD-61 and its five companion amendments written into the spine; System Explorer at rail 8 approved as a tier-1 amendment; "Look in: Database" dropped; the `%Admin_*` floor kept for 19.1, and widened by Story 19.12 on the owner's later decision (DW-1903); the four non-additive edits approved with disjoint hunks; never sending `filter` and never calling `POST modified` recorded at AD-61.
 
 ## Review Triage Log
 

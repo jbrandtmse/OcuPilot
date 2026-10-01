@@ -8777,3 +8777,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Screen.Gate's ADMINRESOURCES floor refuses an account holding no %Admin_* resource and the stock %Developer role holds none (read on ocupilot), so a developer-only account cannot open System Explorer although AD-61's %Development:USE gate would admit it
 - 2026-10-01T18:39:19Z status=decision-pending owner=23-3-the-range-end-cleanup-part-3 by=spec_gate note=orchestrator kept the floor for 19.1 (product-wide security change); for the owner, who may reverse it
+- 2026-10-01T19:14:57Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=owner decided: %Development:USE admits a caller, as the classic portal does; Story 19.12 implements it
