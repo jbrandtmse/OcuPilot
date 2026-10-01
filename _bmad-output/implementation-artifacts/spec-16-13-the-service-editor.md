@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-30'
 status: 'done'
 baseline_revision: '0c6af680bfacfb01f868bf0a60407fc48ec56ca7'
+baseline_commit: '0c6af680bfacfb01f868bf0a60407fc48ec56ca7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -341,6 +342,7 @@ Client:
 
 ## Spec Change Log
 
+- 2026-10-01, lead: the implement stage re-based the bundle's `maximumWarning` from 2346kB to 2350kB under DW-1166 (bundle 2,349,254 bytes); accepted by the orchestrator as a warning re-base, the 4000kB error limit unchanged.
 - 2026-09-30, lead, spec gate: the fix pack's DW-1879 and DW-1880 (orchestrator-routed after planning) added under Tasks & Acceptance; the planner's four spine amendments written into the spine; the prohibited-set gap in its Named limits filed as DW-1881 for range-end cleanup.
 
 ## Review Triage Log
