@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -29,6 +29,7 @@ export type ArchetypeKey =
   | 'wizard'
   | 'meters'
   | 'viewer (OpenAPI)'
+  | 'viewer (source)'
   | 'dialog'
   | 'home'
   | 'panel'
@@ -50,6 +51,7 @@ export type BuiltArchetypeKey =
   | 'form-page'
   | 'meters'
   | 'viewer (OpenAPI)'
+  | 'viewer (source)'
   | 'home';
 
 export interface PrivilegePair {
@@ -160,7 +162,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -246,6 +248,12 @@ export interface ReadCriterion {
    * to the vendor (AD-36): earlier rows are dropped before truncation is judged.
    */
   readonly atOrAfterField?: string;
+  /**
+   * The value a caller that omits this `text` or `choice` criterion is read with (AD-36 as
+   * amended, Story 19.1); a choice's is one of its `options`. An explicit empty value leaves the
+   * criterion unset instead. The form opens on it.
+   */
+  readonly default?: string;
   readonly options?: readonly string[];
 }
 
@@ -482,7 +490,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "routine-mapping",
   "package-mapping",
   "database-configuration",
-  "language-server"
+  "language-server",
+  "class",
+  "routine"
 ];
 
 /**
@@ -650,8 +660,21 @@ export const AREAS: readonly AreaDeclaration[] = [
     ]
   },
   {
-    "key": "agent",
+    "key": "system-explorer",
     "railPosition": 8,
+    "labelKey": "navAreaSystemExplorer",
+    "navigates": false,
+    "pinBottom": false,
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ]
+  },
+  {
+    "key": "agent",
+    "railPosition": 9,
     "labelKey": "navAreaAgent",
     "navigates": false,
     "pinBottom": true,
@@ -3949,6 +3972,676 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "deviceListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.devices",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",
+    "route": "system-explorer/classes/document",
+    "area": "system-explorer",
+    "labelKey": "explorerClassDocumentLabel",
+    "sideBarPosition": 0,
+    "archetype": "viewer (source)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Kind",
+        "Name",
+        "Type",
+        "Flags"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerClassDocumentEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ClassList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Class",
+        "type": "LIST"
+      },
+      "fields": [
+        "Order",
+        "Kind",
+        "Name",
+        "Type",
+        "Flags",
+        "Description",
+        "Modified",
+        "Database",
+        "Generates"
+      ],
+      "filter": [
+        "Name",
+        "Kind"
+      ],
+      "sort": {
+        "fields": [
+          "Order",
+          "Kind",
+          "Name"
+        ],
+        "default": "Order",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 256
+          },
+          {
+            "param": "form",
+            "labelKey": "explorerFormLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "udl",
+              "xml",
+              "int"
+            ],
+            "default": "udl"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Kind",
+          "labelKey": "agentLedgerColumnKind",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "identifier"
+        },
+        {
+          "field": "Flags",
+          "labelKey": "explorerColumnFlags",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.class",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassList",
+    "route": "system-explorer/classes",
+    "area": "system-explorer",
+    "labelKey": "explorerClassListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified",
+        "Database",
+        "Generated"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerClassListEmpty",
+    "commandAliases": [
+      "classes",
+      "class list",
+      "source code"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ClassList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Classes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified",
+        "Database",
+        "Generated"
+      ],
+      "filter": [
+        "Name",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "pattern",
+            "labelKey": "explorerClassPatternLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "default": "*"
+          },
+          {
+            "param": "system",
+            "labelKey": "explorerSystemLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          },
+          {
+            "param": "mapped",
+            "labelKey": "explorerMappedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "yes"
+          },
+          {
+            "param": "from",
+            "labelKey": "auditCriteriaBegin",
+            "kind": "datetime",
+            "maxLength": 30
+          },
+          {
+            "param": "to",
+            "labelKey": "auditCriteriaEnd",
+            "kind": "datetime",
+            "maxLength": 30
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Generated",
+          "labelKey": "explorerColumnGenerated",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.classes",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineDocument",
+    "route": "system-explorer/routines/document",
+    "area": "system-explorer",
+    "labelKey": "processColumnRoutine",
+    "sideBarPosition": 0,
+    "archetype": "viewer (source)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "routine",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Kind",
+        "Name",
+        "Type",
+        "Flags"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerRoutineDocumentEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.System.ViewCode",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Routine",
+        "type": "LIST"
+      },
+      "fields": [
+        "Order",
+        "Kind",
+        "Name",
+        "Type",
+        "Flags",
+        "Description",
+        "Modified",
+        "Database",
+        "Generates"
+      ],
+      "filter": [
+        "Name",
+        "Kind"
+      ],
+      "sort": {
+        "fields": [
+          "Order",
+          "Kind",
+          "Name"
+        ],
+        "default": "Order",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 256
+          },
+          {
+            "param": "form",
+            "labelKey": "explorerFormLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "udl",
+              "xml",
+              "int"
+            ],
+            "default": "udl"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Kind",
+          "labelKey": "agentLedgerColumnKind",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "identifier"
+        },
+        {
+          "field": "Flags",
+          "labelKey": "explorerColumnFlags",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.routine",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineList",
+    "route": "system-explorer/routines",
+    "area": "system-explorer",
+    "labelKey": "explorerRoutineListLabel",
+    "sideBarPosition": 2,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "routine",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Modified",
+        "Database",
+        "Generated"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerRoutineListEmpty",
+    "commandAliases": [
+      "routines",
+      "include files",
+      "mac routines"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineListPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineListPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.RoutineList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Routines",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Modified",
+        "Database",
+        "Generated"
+      ],
+      "filter": [
+        "Name",
+        "Database"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Modified",
+          "Database"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "pattern",
+            "labelKey": "explorerRoutinePatternLabel",
+            "kind": "text",
+            "maxLength": 256,
+            "default": "*.mac"
+          },
+          {
+            "param": "system",
+            "labelKey": "explorerSystemLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          },
+          {
+            "param": "generated",
+            "labelKey": "explorerGeneratedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "yes"
+          },
+          {
+            "param": "mapped",
+            "labelKey": "explorerMappedLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "yes"
+          },
+          {
+            "param": "from",
+            "labelKey": "auditCriteriaBegin",
+            "kind": "datetime",
+            "maxLength": 30
+          },
+          {
+            "param": "to",
+            "labelKey": "auditCriteriaEnd",
+            "kind": "datetime",
+            "maxLength": 30
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "explorerColumnModified",
+          "kind": "text"
+        },
+        {
+          "field": "Database",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        },
+        {
+          "field": "Generated",
+          "labelKey": "explorerColumnGenerated",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.routines",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

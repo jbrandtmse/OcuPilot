@@ -164,8 +164,9 @@ prose into one checker.
     `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` or `Screen/Tool/` names no
     `OcuPilot.Api.*` class but the vocabulary class `OcuPilot.Api.Error`, because the handlers
     depend on the shell reads and the tools and never the reverse; and `BeginCapture` or
-    `%SYS.Capture` appears only in `Port/AdminPort.cls` and `Port/MgmntPort.cls`, because a
-    port's own capture refuses to open inside one that already holds output.
+    `%SYS.Capture` appears only in `Port/AdminPort.cls`, `Port/MgmntPort.cls` and
+    `Port/AtelierPort.cls`, because a port's own capture refuses to open inside one that already
+    holds output.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
@@ -910,10 +911,12 @@ API_REACH_PREFIXES = ("src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Screen/Tool/")
 SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
 CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
-# the only port that captured; Epic 6's MgmntPort captures the same way, and the merge of the two
-# epics is where the second name arrives. The rule still refuses a capture anywhere else, which is
-# what keeps one from opening inside another (DW-1173 asks whether these two can nest).
-CAPTURE_ALLOWED = frozenset({"src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/MgmntPort.cls"})
+# the only port that captured; Epic 6's MgmntPort captures the same way, and Story 19.1's
+# AtelierPort is the third. The rule still refuses a capture anywhere else, which is what keeps one
+# from opening inside another (DW-1173 asks whether these can nest).
+CAPTURE_ALLOWED = frozenset(
+    {"src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/MgmntPort.cls", "src/OcuPilot/Port/AtelierPort.cls"}
+)
 
 
 def check_tool_dispatch(problems: list[str]) -> None:

@@ -1004,11 +1004,12 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The source is one of six kinds:
+/// (<method>SourceQueryProblem</method>). The source kinds are
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
-/// <code>rowGet</code>;
+/// <code>rowGet</code>; <code>atelier</code>, the source code API reached through its own port
+/// (AD-61), which declares no <code>rowGet</code>;
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
 /// file's bounded tail, which declares no <code>rowGet</code>; <code>path</code>, the instance's
@@ -1067,8 +1068,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', the seven sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', the eight sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1228,6 +1229,12 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         ; detail call to issue.
         If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMGMNT) && (tSource.%GetTypeOf("rowGet") = "object") {
             Set tProblem = "read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management API and has no per-row detail call (AD-36)"
+            Quit
+        }
+        ; An atelier source answers whole rows from the source code API (AD-61), whose port issues
+        ; no per-row detail call.
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tSource.%GetTypeOf("rowGet") = "object") {
+            Set tProblem = "read.source.rowGet is declared on an atelier source, which reads whole rows from the source code API and has no per-row detail call (AD-36)"
             Quit
         }
         ; A logsource source answers whole rows parsed from one log file's tail, which has no
@@ -1394,7 +1401,8 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// every list before Story 2.10 filters and sorts on the client within the cap, and only a read
 /// whose API searches on the server declares one.</p>
 /// <p>Otherwise <code>criteria</code> is an object carrying only <code>fields</code> and
-/// <code>marker</code>, on an <code>admin</code> or <code>mgmnt</code> source. <code>fields</code> is a non-empty array
+/// <code>marker</code>, on an <code>admin</code>, <code>mgmnt</code>, <code>atelier</code> or
+/// <code>timeline</code> source. <code>fields</code> is a non-empty array
 /// of objects carrying only <code>param</code> (a query parameter name, unique across the block
 /// and never one of <parameter>CRITERIARESERVEDPARAMS</parameter>), a non-empty
 /// <code>labelKey</code>, a <code>kind</code> from <parameter>CRITERIONKINDS</parameter> and a
@@ -1420,6 +1428,8 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// does not know and <code>-1</code> matches nearly every row.</p>
 /// <p><b>A server-search screen never auto-refreshes</b> (AD-43): <file>EXPERIENCE.md</file> exempts
 /// it by name, and it re-reads only on open, Search and Refresh.</p>
+/// <p><b>A <code>text</code> or <code>choice</code> criterion may declare <code>default</code></b>,
+/// the value a caller that omits it is read with (<method>CriteriaValueDefaultProblem</method>).</p>
 /// <p><b>A <code>datetime</code> criterion may declare <code>defaultHoursAgo</code></b> (a whole
 /// number from 1 to <parameter>CRITERIONMAXHOURS</parameter>), the default a caller that omits it
 /// takes, <b>or <code>atOrAfterField</code></b>, a <code>read.fields</code> member it is compared
@@ -1462,8 +1472,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) {
-            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)"
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier and timeline ports alone (AD-21)"
             Quit
         }
 
@@ -1520,7 +1530,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField", "default")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -1573,8 +1583,11 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
         If tProblem '= "" Quit
         Set tProblem = ..CriteriaDefaultProblem(tField, tWhere, pReadFields)
         If tProblem '= "" Quit
-        If tKind '= "choice" Continue
-        Set tProblem = ..CriteriaOptionsProblem(tField, tWhere)
+        If tKind = "choice" {
+            Set tProblem = ..CriteriaOptionsProblem(tField, tWhere)
+            If tProblem '= "" Quit
+        }
+        Set tProblem = ..CriteriaValueDefaultProblem(tField, tWhere)
         If tProblem '= "" Quit
     }
     If tProblem '= "" Set pParams = ""
@@ -1616,7 +1629,7 @@ ClassMethod CriteriaDefaultProblem(pField As %DynamicObject, pWhere As %String, 
     Set tKind = pField.%Get("kind")
     Set tHoursType = pField.%GetTypeOf("defaultHoursAgo")
     If tHoursType '= "unassigned" {
-        If tKind '= "datetime" Quit pWhere _ " declares defaultHoursAgo on kind '" _ tKind _ "', and only a datetime criterion carries a default (AD-36)"
+        If tKind '= "datetime" Quit pWhere _ " declares defaultHoursAgo on kind '" _ tKind _ "', and only a datetime criterion carries defaultHoursAgo (AD-36)"
         Set tHours = pField.%Get("defaultHoursAgo")
         If (tHoursType '= "number") || (tHours = "") || '$IsValidNum(tHours) || (tHours '= (tHours \ 1)) || (tHours < 1) || (tHours > ..#CRITERIONMAXHOURS) {
             Quit pWhere _ " defaultHoursAgo '" _ tHours _ "' is not a whole number of hours from 1 to " _ ..#CRITERIONMAXHOURS
@@ -1661,6 +1674,32 @@ ClassMethod CriteriaOptionsProblem(pField As %DynamicObject, pWhere As %String) 
         Set tSeen = tSeen _ $ListBuild(tOption)
     }
     Quit tProblem
+}
+
+/// <p>What is wrong with a criterion's <code>default</code>, or <code>""</code> (AD-36 as amended,
+/// Story 19.1). It is admitted on a <code>text</code> criterion, as a string no longer than its
+/// <code>maxLength</code>, and on a <code>choice</code> criterion, as one of its
+/// <code>options</code>; a <code>datetime</code> criterion's default is
+/// <code>defaultHoursAgo</code>. A caller that omits the criterion is read with the default.</p>
+ClassMethod CriteriaValueDefaultProblem(pField As %DynamicObject, pWhere As %String) As %String [ Private ]
+{
+    Set tType = pField.%GetTypeOf("default")
+    If tType = "unassigned" Quit ""
+    Set tKind = pField.%Get("kind")
+    Set tDefault = pField.%Get("default")
+    If tKind = "datetime" Quit pWhere _ " declares default on kind 'datetime', and a datetime criterion's default is defaultHoursAgo (AD-36)"
+    If tType '= "string" Quit pWhere _ " default '" _ tDefault _ "' is not a string"
+    If tKind = "text" {
+        If $Length(tDefault) > pField.%Get("maxLength") Quit pWhere _ " default '" _ tDefault _ "' is longer than its maxLength"
+        Quit ""
+    }
+    Set tFound = 0
+    Set tIterator = pField.%Get("options").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tOption) {
+        If tOption = tDefault Set tFound = 1
+    }
+    If 'tFound Quit pWhere _ " default '" _ tDefault _ "' is not one of its options"
+    Quit ""
 }
 
 /// <p>What is wrong with <var>pCriteria</var>'s declared <code>vendorParam</code>s taken together,

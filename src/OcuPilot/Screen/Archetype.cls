@@ -13,14 +13,15 @@
 /// <code>none</code> may never declare an exemption; only <code>detail</code> may. An archetype
 /// the vocabulary does not hold is refused outright, so a mis-classification refuses a link
 /// rather than permitting one.</p>
-/// <p><b>How the sixteen keys were classified.</b> The three list shapes and the two that are
+/// <p><b>How the seventeen keys were classified.</b> The three list shapes and the two that are
 /// lists of rows under another name -- <code>list</code>, <code>list (two views)</code>,
 /// <code>list (server criteria)</code>, <code>log-viewer</code>, <code>drill-down</code> -- are
 /// <code>list</code>. The four entity-at-a-time shapes -- <code>detail</code>,
 /// <code>form-page</code>, <code>form-page (tabs)</code>, <code>wizard</code> -- are
 /// <code>detail</code>: a reduced form is a form-page (<file>EXPERIENCE.md</file> "*Every create and edit route.* Full-page") and
 /// <file>epics.md</file> `:3325` declares the OAuth 2.0 tabs detail views rather than lists.
-/// Everything else -- <code>meters</code>, <code>viewer (OpenAPI)</code>, <code>dialog</code>,
+/// Everything else -- <code>meters</code>, <code>viewer (OpenAPI)</code>,
+/// <code>viewer (source)</code>, <code>dialog</code>,
 /// <code>home</code>, <code>panel</code>, <code>shell</code>, <code>external</code> -- is
 /// <code>none</code>: none of them is a form a reduced form could end, and
 /// <code>external</code> is already a link out rather than a screen that carries one.</p>
@@ -57,7 +58,7 @@ Parameter LINKOUTNONE = "none";
 
 /// <p>The one declaration. Read here on the server and off disk by
 /// <file>ui/tools/classic-links.mjs</file> and <file>ui/tools/screen-mirror.mjs</file>, so the
-/// refusal the build makes and the refusal install makes come from the same sixteen lines.</p>
+/// refusal the build makes and the refusal install makes come from the same seventeen lines.</p>
 XData Archetypes
 {
 {"archetypes":[
@@ -72,6 +73,7 @@ XData Archetypes
   {"key":"wizard","linkOut":"detail"},
   {"key":"meters","linkOut":"none"},
   {"key":"viewer (OpenAPI)","linkOut":"none"},
+  {"key":"viewer (source)","linkOut":"none"},
   {"key":"dialog","linkOut":"none"},
   {"key":"home","linkOut":"none"},
   {"key":"panel","linkOut":"none"},

@@ -2,7 +2,7 @@
 title: 'Story 19.1: Classes and routines, listed and viewed'
 type: 'feature'
 created: '2026-10-01'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '08ec761ccfc52af24593c821594c6df9654d9f79'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -282,7 +282,7 @@ deferred: []
   - `ui/src/app/areas/system-explorer/*.spec.ts`.
   - `ui/browser/system-explorer.browser-spec.mjs`, which includes the `structural()` walk on all four screens in light and dark.
 
-- [ ] [Lead] Pin `findmappings^%R`'s contract, which AD-61 rule 1 now names: a test in `Test/AtelierPort` or a sibling class (each under about 500 lines) calls it for HSCUSTOM as `AtelierPort` does and asserts the answer shape the port reads, HSLIB's directory among the mapped code databases, with a `mutation:` line under Verification.
+- [x] [Lead] Pin `findmappings^%R`'s contract, which AD-61 rule 1 now names: a test in `Test/AtelierPort` or a sibling class (each under about 500 lines) calls it for HSCUSTOM as `AtelierPort` does and asserts the answer shape the port reads, HSLIB's directory among the mapped code databases, with a `mutation:` line under Verification.
 
 **Acceptance Criteria:**
 
@@ -301,6 +301,27 @@ deferred: []
 - 2026-10-01, spec gate (orchestrator answers, by=merge_gate): AD-61 and its five companion amendments written into the spine; System Explorer at rail 8 approved as a tier-1 amendment; "Look in: Database" dropped; the `%Admin_*` floor kept for 19.1, and widened by Story 19.12 on the owner's later decision (DW-1903); the four non-additive edits approved with disjoint hunks; never sending `filter` and never calling `POST modified` recorded at AD-61.
 
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 16 findings — high 0, medium 7, low 7, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AC4's command-box check typed `classes`/`routines`, which the labels and routes match before any alias — the browser AC4 loop now types `source code` and `include files`; mutation observed.
+  - `[medium]` `[patch]` The index route's temporary file was never shown deleted — the fixture records each route's device; `AtelierPortDocument.TestTheIndexRouteWritesAPortOwnedFileItDeletes` asserts it gone after a read, a raise and an oversize answer; mutation observed (run 426).
+  - `[medium]` `[patch]` `FILEDEVICEROUTES` was pinned only by a chance crash — the same test asserts `Index` ran on its own file with no redirect and `GetDoc` under the capture; mutation observed.
+  - `[low]` `[patch]` Non-ASCII text through the file and the capture was never round-tripped — `ExplorerWire` asserts EntityId's U+2014 in `Description` and the source; its `Read` helper no longer re-decodes the already-decoded body, which had mangled it; mutation observed (run 428).
+  - `[medium]` `[patch]` `Invoke`'s caller contract (its CSP objects unchanged) was unpinned — `AtelierPortDocument.TestTheCallersCspObjectsAreUntouched`, the canned route now leaving `%SourceControl` set as the vendor's does; mutation observed (run 427).
+  - `[medium]` `[patch]` Intermediate code's not-available sentence had no client assertion — `document-viewer.page.spec.ts` case for a class that generates none; mutation observed.
+  - `[low]` `[patch]` `AtelierPortDenial`'s USER-leg mutation sentence named the routines pair alone, which the coinciding globals pair masks — corrected to both pairs.
+  - `[low]` `[reject]` A viewer read in flight across a namespace switch could land its document after the new one — needs out-of-order answers within one switch, and the fix adds a namespace guard to the viewer state.
+  - `[low]` `[reject]` Include/date filters, all six routine types and the old-instance and unlogged-404 rows are tested at the port, not over the wire — the port tests pin the behavior and the wire legs pin the pass-through; duplicating them over HTTP adds tests, not a defect.
+  - `[medium]` `[patch]` The oversize row was tested only on the capture path — the index-file test's oversize leg answers 503 with the file gone and the device and namespace restored.
+  - `[low]` `[patch]` `system=maybe` reached the length bound, never option membership — `ExplorerWire` also sends `system=yep` (400 `READ.CRITERION`).
+  - `[low]` `[patch]` A document read in a namespace holding none of OcuPilot's code (the request stub handed to the vendor there) was untested — `TestALiveClassReads` reads `%Library.RegisteredObject.cls` in USER, namespace restored.
+  - `[false]` `[reject]` Document text could reach screen context client-side — context is projected from the store's rows through `context.fields` (Kind, Name, Type, Flags, pinned by `ExplorerDescriptor`); the document lives in `SourceViewerState`, not the store.
+  - `[false]` `[reject]` "Including mapped ones" is asserted nowhere — `AtelierPort.TestTheReadExecutorAppliesDefaultsAndCarriesTheDocument` asserts `Beta.Mapped.cls` (LIBDB) under the defaults; the 1,000 cap is asserted by the browser AC1 cap notice and `code-list.page.spec.ts`.
+  - `[medium]` `[patch]` The three Fixed-strings rows and the state-matrix row shifted EXPERIENCE.md's own citations at or past :586 (:610, :617, :627, :647, :662, :664, :701, :728, :867) onto other rows — each moved by the inserted rows (+3, +4 past :800), no line inserted.
+  - `[low]` `[reject]` `Test/ReadTool.cls` :365 (criteria count 15 to 19) lies outside the approved :93-94 and :112 hunks — the count must follow the four criteria-bearing descriptors, and neither concurrent worktree touches the file; reported to the lead.
 
 ## Design Notes
 
@@ -458,30 +479,43 @@ docker exec -i ocupilot-ci iris session iris -U HSCUSTOM
 
 Record one `mutation: <change> → <test that reddened>` line per AC under this section as each is observed (Rule 19).
 
-- mutation: AC1, seed `filter` into `ListRows`' `GetDocNames` call → `AtelierPort.TestListFiltersApplyBeforeTheCapAndFilterIsNeverSent` (run 23785); drop the `default` line from `Read.SeedCriteria` → `AtelierPort.TestTheReadExecutorAppliesDefaultsAndCarriesTheDocument` (run 23794).
-- mutation: AC2, bind the viewer's text with `[innerHTML]` → `document-viewer.page.spec.ts` "opens a class on Source".
+- mutation: AC1, seed `filter` into `ListRows`' `GetDocNames` call → `AtelierPort.TestListFiltersApplyBeforeTheCapAndFilterIsNeverSent` (run 23785); drop the `default` line from `Read.SeedCriteria` → `AtelierPort.TestTheReadExecutorAppliesDefaultsAndCarriesTheDocument` (run 23794); send the atelier read's `maxRows` as the cap rather than the cap plus one in `Read.Execute` → `system-explorer.browser-spec.mjs` AC1 (no cap notice, `ocupilot-a2-ci`).
+- mutation: AC2, bind the viewer's text with `[innerHTML]` → `document-viewer.page.spec.ts` "opens a class on Source"; give Intermediate code the XML sentence in `NOT_AVAILABLE` → "a class that generates no intermediate code says so on Intermediate code".
 - mutation: AC3, copy `document` into `Tool/Read.View`'s result → `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 23788).
-- mutation: AC4, drop `system-explorer` from `AREA_ICONS` → three `rail-icons.test.mjs` tests.
+- mutation: AC4, drop `system-explorer` from `AREA_ICONS` → three `rail-icons.test.mjs` tests; empty both lists' `commandAliases`, regenerated, rebuilt and deployed → `system-explorer.browser-spec.mjs` AC4.
 - mutation: AC5, drop the namespace's own database pairs from `NamespacePairs` → `AtelierPortDenial.TestWithoutTheNamespacesDatabaseTheReadIsRefusedNamingIt` (run 23787); drop its mapped databases → `TestAMappedDatabaseIsGatedRatherThanReadEmpty` (run 23796); skip the `PAIRS` check → `TestWithoutDevelopmentEveryReadIsRefusedNamingIt` (run 23795) and `PortGate.TestEveryPortEvaluatesItsDeclaredGate` (run 23800).
 - mutation: AC6, declare a row action on `ExplorerClassList` → `ExplorerDescriptor.TestTheAreaIsReadOnly` (run 23790).
 - mutation: AC7, `.ocu-source-view { min-width: 1200px }`, rebuilt and deployed → both viewer tests of `system-explorer.browser-spec.mjs` (overflow entries outside the baseline).
 - mutation: AD-16, delete the restore from `Route`'s call `Catch` → `AtelierPort.TestTheNamespaceIsRestoredAfterSuccessAndAfterAFault` (run 23786).
+- mutation: AD-61 rule 1, `DatabaseResources` reads `findmappings^%R`'s third argument in place of its second → `AtelierPort.TestFindMappingsAnswersTheShapeThePortReads` (run 2, `ocupilot-a2-ci`).
+- mutation: AD-61 rule 3, drop `%session` and `%SourceControl` from `Route`'s `New` → `AtelierPortDocument.TestTheCallersCspObjectsAreUntouched` (run 427).
+- mutation: AD-61 rule 5, `FILEDEVICEROUTES` set to `""` → `AtelierPortDocument.TestTheIndexRouteWritesAPortOwnedFileItDeletes` (single-method run; the class run dies on signal 11 in `TestALiveClassReads`); delete the file's deletion from `Route` → the same test (run 426); read the file back `RAW` → `ExplorerWire.TestTheClassViewerAnswersRowsAndTheDocument` (run 428).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: AD-61 rule 5 names `%SYS.Capture` for every route, and the `Index` route under that capture ends the calling process with signal 11 (Design Notes › Task 0 results, T0.3), so `Port/AtelierPort` writes `Index`'s answer to a port-owned temporary file instead (`FILEDEVICEROUTES`). Recommended amendment to AD-61 rule 5: "...wrap the route call, except `Index`, whose answer is written to a port-owned temporary file (`%File.TempFilename`), read back under the same ceiling and deleted on every path, because `Index` under the capture ends the process (measured on `ocupilot-ci`, Story 19.1 Task 0)."
+Status: done
+Blocking condition: none
 
-This pass (implement, stopped at Verify before the review layers):
+**Change.** `Port/AtelierPort` (with its `AtelierRequest` stub) reads the source code API in process behind its own gate; System Explorer is the eighth rail area, with the Classes and Routines lists (classic filters as server criteria, declared defaults) and the class and routine viewers (Source, XML, Intermediate code, Structure, Documentation); four read tools, no write.
 
-- **Implemented:** every task in the spec. The handoff ran the spec's `(loop)` classes one at a time on `ocupilot-ci`, the client tiers, `npm test`, the build and the three browser files, and observed red for the mutations recorded under Verification. Not yet run: the full ObjectScript sweep, the Matrix Test Audit and the review.
-- **Evidence for the gap, checked by the stage:** `ocupilot-ci` `messages.log` holds 14 "caught signal 11" lines, from background jobs between 20:17 and 20:21 on 2026-10-01 (the handoff's bisection). A cross-namespace probe (USER and `%SYS`) of `Classes`, and of `Class` through the file path, answered 200 with the namespace restored.
-- **To fold with the amendment (AD-61 rule 1, Task 0 T0.1):**
-  - `PAIRS` is `%Development:USE`.
-  - Per namespace, the port also requires READ on the routines database, the globals database, and every database the namespace maps code from except IRISSYS.
-  - The mapped databases come from `findmappings^%R`, an internal vendor label the vendor's own namespace route calls. No test pins its signature.
-- **Bundle:** re-based under DW-1166, from 2391 kB to 2420 kB (measured 2,419,634 bytes), with `angular-json.test.mjs` updated to match.
-- **Environment on `ocupilot-ci`, for the lead:**
-  - IRISTEMP's directory holds no `IRIS.DAT`. The handoff hit `<FILEFULL>` there and killed `^IRIS.Temp.OcuPilotTurnProvider` to free space.
-  - A `%SYS` process, pid 231577, has run at about 99% CPU for 18 hours. It was not started by this stage, and it was left running.
-- **On re-dispatch:** amend AD-61 rule 5 and fold rule 1, set `status` back to `in-progress`, and commit the tree (Rule 16's rework commit). The working tree holds the whole implementation, uncommitted.
+**This pass (cycle 2, on `ocupilot-a2-ci`).**
+
+- Pinned `findmappings^%R` (`AtelierPort.TestFindMappingsAnswersTheShapeThePortReads`).
+- The full sweep reddened three area rosters the ninth area changes (`WireAreaAnyScreen`, `Wire`, `Navigation`); each now carries System Explorer (`%Development:USE`), with the two captured navigation payloads (`rail-wire.spec.ts`, `navigation-wire.test.mjs`) given its entry.
+- Review patches (triage log): the alias-only command-box check, the cap notice in the browser AC1 leg, the index file's device and deletion on every path, the caller's CSP objects, non-ASCII round trip (and `ExplorerWire.Read` no longer re-decoding a decoded body), the int not-available sentence, `system=yep`, a USER document read, EXPERIENCE.md's own shifted citations, one doc sentence.
+
+**Review.** 16 findings: 12 patched (medium 7, low 5), 0 deferred, 4 rejected (2 low not worth a guard or duplicate HTTP tests, 2 false), each with its reason in the triage log. Follow-up review: `false`; every patch's mutation was observed red and reverted byte-identical, so no named risk is left unverified.
+
+**Verification.**
+
+- `check-objectscript.py` 0 problems; its harness 144 passed.
+- Loop classes one at a time, green: AtelierPort, AtelierPortDenial, AtelierPortDocument, ExplorerDescriptor, ExplorerWire, PortGate, Descriptor, ReadTool, ToolRoundTrip, SurfaceCoverage, InjectionChannels, Smoke. `AdminPairCorpus`, `CriteriaCorpus` and `ReadSourceCorpus` are corpora `ReadTool` runs, not test cases.
+- Full sweep, 20 sequential shards: 397 classes, 3,280 tests; the 5 failures were the three rosters above, green after the fix (runs 149, 253, 355).
+- `npm test` 1,766 + 2,075 green; after the patches `test:tools` 1,766 and the story's component specs 109 green; `lint-docs.sh` clean.
+- Build 2,419,637 bytes, under the 2420kB warning. Browser, each file alone against the redeployed bundle: `system-explorer` 4/4, `a11y-structural-invariants` 12/12 (`structural-baseline.json` unchanged), `home-performance` 4/4.
+- Matrix Test Audit: all 15 rows covered by tests that ran green.
+
+**For the lead.**
+
+- Files outside the spec's footprint, none touched by Epic 18 or 23: `Test/WireAreaAnyScreen.cls`, `Test/Wire.cls`, `Test/Navigation.cls`, `ui/tools/navigation-wire.test.mjs`; and `Test/ReadTool.cls` :365 beside its approved hunks.
+- `ocupilot-a2-ci` `messages.log` holds one signal 11 at 23:37:37 from the `FILEDEVICEROUTES` mutation (the vendor crash reproduced); the mutation's temporary files were removed.

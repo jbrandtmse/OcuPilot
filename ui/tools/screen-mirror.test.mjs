@@ -110,7 +110,7 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
   const { entityTypes, areas, screens } = readSources();
   assert.ok(entityTypes.length >= 20, `expected the closed vocabulary, read ${entityTypes.length}`);
-  assert.equal(areas.length, 8);
+  assert.equal(areas.length, 9);
   assert.ok(screens.length >= 1, 'at least Home is declared');
   for (const screen of screens) {
     assert.ok(screen.className.startsWith('OcuPilot.Screen.Descriptor.'), screen.file);
@@ -1232,7 +1232,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // criterion each is the parent Databases route's directory; Story 16.9's log hub, whose one
   // criterion is its timeline's window; Story 18.14's three mapping lists, whose one criterion
   // each is the parent namespace, filled from the route id and seeded onto every row; and Story
-  // 16.10's Activity log, whose one criterion is the language server its route id names.
+  // 16.10's Activity log, whose one criterion is the language server its route id names; and Story
+  // 19.1's four System Explorer screens, whose criteria carry the classic page's defaults.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1240,6 +1241,10 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.ExplorerClassDocument',
+      'OcuPilot.Screen.Descriptor.ExplorerClassList',
+      'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
+      'OcuPilot.Screen.Descriptor.ExplorerRoutineList',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
@@ -2578,7 +2583,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2590,4 +2595,32 @@ test('Story 16.5: the Background tasks list reads through the background port, t
     ['cancel', 'pause', 'resume']
   );
   assert.deepEqual(background.declaration.ownPrivileges, [{ resource: '%Admin_Operate', permission: 'USE' }]);
+});
+
+// Story 19.1: the System Explorer's four screens read through the atelier port, the eighth read
+// source, which both engines admit with server criteria and refuse a per-row detail call on; each
+// list's criteria carry the classic page's defaults, which the instance seeds when a caller omits one.
+// Mutation (Rule 19): drop SOURCE_ATELIER from READ_SOURCE_PORTS -> this goes red on the roster pin
+// and on every explorer read.
+test('Story 19.1: the System Explorer reads through the atelier port, the eighth read source', () => {
+  const { screens } = readSources();
+  const expected = {
+    ExplorerClassList: ['Classes', 'pattern=*,system=no,generated=no,mapped=yes,from=,to='],
+    ExplorerRoutineList: ['Routines', 'pattern=*.mac,system=no,generated=yes,mapped=yes,from=,to='],
+    ExplorerClassDocument: ['Class', 'name=,form=udl'],
+    ExplorerRoutineDocument: ['Routine', 'name=,form=udl'],
+  };
+  for (const [name, [endpoint, defaults]] of Object.entries(expected)) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'atelier', endpoint, type: 'LIST' }, `${name} reads through the atelier port`);
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(criteriaProblem(screen.declaration), null, `${name}'s criteria pass`);
+    assert.equal(
+      screen.declaration.read.criteria.fields.map((field) => `${field.param}=${field.default ?? ''}`).join(','),
+      defaults,
+      `${name} declares its criteria and their defaults`
+    );
+    assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }], `${name} is gated on %Development:USE`);
+  }
 });

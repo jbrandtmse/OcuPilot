@@ -130,6 +130,10 @@ XData ReadShapes
 <screen name="Dashboard" filter="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" sort="Sensors.cpuUsage,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.GlobalRefs,Dashboard.Performance.GlobalSetKill,Dashboard.Performance.RoutineRefs,Dashboard.Performance.LogicalRequests,Dashboard.Performance.DiskReads,Dashboard.Performance.DiskWrites,Dashboard.Performance.CacheEfficiency,Dashboard.ECP.ECPClients,Dashboard.ECP.ECPClientTraffic,Dashboard.ECP.ECPServers,Dashboard.ECP.ECPServerTraffic,Dashboard.ECP.ShadowConnections,Dashboard.ECP.Shadows,Dashboard.Status.UpTime,Dashboard.Status.LastBackup,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.DatabaseJournal,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.JournalEntries,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon,Dashboard.SystemUsage.Processes,Dashboard.SystemUsage.CSPSessions,Dashboard.Alerts.SeriousAlerts,Dashboard.Alerts.ApplicationErrors,Dashboard.Licensing.LicenseLimit,Dashboard.Licensing.LicenseUse,Dashboard.Licensing.LicenseUseHigh" kinds="Sensors.cpuUsage:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.GlobalRefs:number,Dashboard.Performance.GlobalSetKill:number,Dashboard.Performance.RoutineRefs:number,Dashboard.Performance.LogicalRequests:number,Dashboard.Performance.DiskReads:number,Dashboard.Performance.DiskWrites:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.ECP.ECPClients:text,Dashboard.ECP.ECPClientTraffic:number,Dashboard.ECP.ECPServers:text,Dashboard.ECP.ECPServerTraffic:number,Dashboard.ECP.ShadowConnections:text,Dashboard.ECP.Shadows:text,Dashboard.Status.UpTime:name,Dashboard.Status.LastBackup:text,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.DatabaseJournal:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.JournalEntries:number,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text,Dashboard.SystemUsage.Processes:number,Dashboard.SystemUsage.CSPSessions:number,Dashboard.Alerts.SeriousAlerts:number,Dashboard.Alerts.ApplicationErrors:number,Dashboard.Licensing.LicenseLimit:number,Dashboard.Licensing.LicenseUse:number,Dashboard.Licensing.LicenseUseHigh:number"/>
 <screen name="LanguageServerList" filter="Name,Type" sort="Name" kinds="Name:name,Type:text,Port:number,CurrentlyRunning:status"/>
 <screen name="LanguageServerActivity" filter="DateTime,RecordType,Text" sort="ID" kinds="DateTime:name,RecordType:status,Job:number,Text:text"/>
+<screen name="ExplorerClassList" filter="Name,Database" sort="Name,Modified,Database" kinds="Name:name,Modified:text,Database:identifier,Generated:status"/>
+<screen name="ExplorerRoutineList" filter="Name,Database" sort="Name,Modified,Database" kinds="Name:name,Modified:text,Database:identifier,Generated:status"/>
+<screen name="ExplorerClassDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
+<screen name="ExplorerRoutineDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 </shapes>
 }
 
@@ -1387,7 +1391,7 @@ Method TestTheArchetypeVocabularyIsClosedAndClassified()
     Do $$$AssertTrue('##class(OcuPilot.Screen.Archetype).Exists(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with the size of List() restates Count()'s own
     ; definition and cannot fail, so a key dropped from the block would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).Count(), 16, "sixteen keys: EXPERIENCE.md's twelve state-matrix rows, the form row holding three, plus shell and external")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).Count(), 17, "seventeen keys: EXPERIENCE.md's thirteen state-matrix rows, the form row holding three, plus shell and external")
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("list"), "list", "a list archetype is classified list")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("log-viewer"), "list", "and so is a viewer of rows under another name")
@@ -1704,7 +1708,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 40, "the closed vocabulary holds forty values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3 and language-server in Story 16.10; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 42, "the closed vocabulary holds forty-two values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, and class and routine in Story 19.1; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -1823,7 +1827,7 @@ Method TestOnlyBuiltScreensReachASideBar()
     Do $$$AssertTrue('$ClassMethod("OcuPilot.Test.Screen.Unbuilt", "IsBuilt"), "and the excluded one is the unbuilt one")
 }
 
-/// <p>The area vocabulary is closed and ordered: eight entries in the rail order
+/// <p>The area vocabulary is closed and ordered: nine entries in the rail order
 /// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each at its declared rail
 /// position and carrying its
 /// own declared privilege pair set, Home the only one that navigates and Agent co-pilot the
@@ -1836,7 +1840,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 {
     Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
     Do $$$AssertStatusOK(tSC, "the area list reads")
-    Do $$$AssertEquals(tAreas.%Size(), 8, "eight rail entries")
+    Do $$$AssertEquals(tAreas.%Size(), 9, "nine rail entries")
 
     ; key, pair set, navigates, pinBottom
     Set tExpected = ""
@@ -1847,8 +1851,9 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("system-explorer", "%Development:USE", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
-    Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
+    Do $$$AssertEquals($ListLength(tExpected), 9, "the expectation names all nine areas")
 
     For tI = 1:1:$ListLength(tExpected) {
         Set tRow = $List(tExpected, tI)

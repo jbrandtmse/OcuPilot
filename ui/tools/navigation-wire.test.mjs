@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 // was touched; captured by driving OcuPilot.Test.Wire's own EnsurePrincipal/AbsoluteRequest
 // sequence through an ObjectScript command runner, not by hand-authoring a JSON literal).
 // OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal asserts the identical
-// nine facts (three allowed, five denied with a named pair, one classic exception) against the
+// ten facts (three allowed, six denied with a named pair, one classic exception) against the
 // real $System.Security.Check for this same principal, so the two are pinned against one known
 // state rather than against each other -- a field either side mis-reads breaks one of them. The
 // counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
@@ -35,7 +35,7 @@ import { dirname, join } from 'node:path';
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no
 // longer matches anything, so every area reads denied with an empty reason (not UNGATED -- the
-// map still lists all eight, just with the wrong field name) rather than its real value, and the
+// map still lists all nine, just with the wrong field name) rather than its real value, and the
 // assertions mirroring OcuPilot.Test.Wire's own reading go red. Demonstrated 2026-09-12: the
 // first assertion ("Home never gates") fails immediately with `false !== true`.
 const LIVE_PAYLOAD = {
@@ -510,7 +510,46 @@ const LIVE_PAYLOAD = {
         },
       ],
     },
-    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 8, navigates: false, pinBottom: true, allowed: true, screens: [] },
+    {
+      key: 'system-explorer',
+      labelKey: 'navAreaSystemExplorer',
+      railPosition: 8,
+      navigates: false,
+      pinBottom: false,
+      allowed: false,
+      failedPair: '%Development:USE',
+      screens: [
+        {
+          route: 'system-explorer/classes/document',
+          labelKey: 'explorerClassDocumentLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/routines/document',
+          labelKey: 'processColumnRoutine',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/classes',
+          labelKey: 'explorerClassListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/routines',
+          labelKey: 'explorerRoutineListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+      ],
+    },
+    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 9, navigates: false, pinBottom: true, allowed: true, screens: [] },
   ],
 };
 
@@ -528,7 +567,7 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   await service.load();
   assert.equal(service.loaded(), true);
 
-  // Same nine facts OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal
+  // Same ten facts OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal
   // asserts against the real $System.Security.Check for this exact principal.
   assert.equal(service.areaVerdict('home').allowed, true, 'Home never gates');
   assert.equal(service.areaVerdict('agent').allowed, true, 'and neither does the agent rail item');
@@ -544,6 +583,8 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.areaVerdict('security'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.areaVerdict('web-applications'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.areaVerdict('tasks'), { allowed: false, failedPair: '%Admin_Task:USE' }, 'which wants a different resource again');
+  // Story 19.1: System Explorer's screens all declare `%Development:USE`, which this principal lacks.
+  assert.deepEqual(service.areaVerdict('system-explorer'), { allowed: false, failedPair: '%Development:USE' });
 
   // The built screens, keyed by route the way the side bar looks them up: Home never gates, and
   // the web applications, users, task schedule and processes lists are each denied on the first

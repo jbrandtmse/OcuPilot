@@ -30,8 +30,9 @@
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
 /// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
 /// file's bounded tail, through <method>LogSourcePortClass</method>, whose endpoint is a source key
-/// from that port's own fixed enum (AD-21), and <code>port: "path"</code>, the instance's allowed
-/// directories, through <method>PathPortClass</method>. <code>port: "state"</code> is
+/// from that port's own fixed enum (AD-21), <code>port: "path"</code>, the instance's allowed
+/// directories, through <method>PathPortClass</method>, and <code>port: "atelier"</code>, the
+/// source-code API, through <method>AtelierPortClass</method> (AD-61). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -229,6 +230,18 @@ ClassMethod BackgroundPortClass() As %String
     Quit "OcuPilot.Port.BackgroundTaskPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's source-code API, reached through
+/// <method>AtelierPortClass</method> (AD-61), which is handed the route's scope as its
+/// namespace.</p>
+Parameter SOURCEATELIER = "atelier";
+
+/// <p>The port every <b>atelier</b> read is issued through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.AtelierPortFixture</class>; production never overrides it.</p>
+ClassMethod AtelierPortClass() As %String
+{
+    Quit "OcuPilot.Port.AtelierPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -264,7 +277,7 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// <p>On success <var>pResult</var> is <code>{fields, rows, truncated, banner, bannerRequires}</code>
 /// (<method>BannerKey</method>), plus
 /// <code>criteria</code> when the read declares criteria, <code>document</code> when a
-/// <code>mgmnt</code> source answered one and <code>sources</code> when a <code>timeline</code> read
+/// <code>mgmnt</code> or <code>atelier</code> source answered one and <code>sources</code> when a <code>timeline</code> read
 /// composed its members (<method>OcuPilot.Screen.Timeline.Compose</method>, whose rows, cut and
 /// summary pass through unchanged):
 /// <code>fields</code>
@@ -327,7 +340,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -408,6 +421,22 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             }
             Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
             Set tPortSC = $ClassMethod(..MgmntPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tDocument)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEATELIER {
+            ; The source-code API's rows (AD-61): the route's own scope travels as the port's
+            ; namespace, and a document read also answers the document's text, which rides beside
+            ; the rows and never reaches a tool's view.
+            Set tQuery("maxRows") = tMax + 1
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
+            Set tPortSC = $ClassMethod(..AtelierPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tDocument)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
@@ -888,7 +917,8 @@ ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
 /// what is wrong with one of those values, or <code>""</code>.</p>
 /// <p><b>Absent and empty differ</b> (AD-36). A criterion <var>pSupplied</var> does not define takes
 /// its declared <code>defaultHoursAgo</code>, when it declares one: the instance's local time that
-/// many hours earlier (<method>HoursAgo</method>). A criterion defined as <code>""</code> is unset
+/// many hours earlier (<method>HoursAgo</method>); a <code>text</code> or <code>choice</code>
+/// criterion takes its declared <code>default</code>. A criterion defined as <code>""</code> is unset
 /// and is omitted rather than sent, so the vendor's own default stands for it. Every value is
 /// bounded by its criterion's declared <code>maxLength</code> first, whatever the kind (DW-279);
 /// then a <code>choice</code> criterion's value must be one of its declared <code>options</code>
@@ -931,6 +961,7 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery,
             Set tValue = ""
             Set tHours = tField.%Get("defaultHoursAgo")
             If tHours > 0 Set tValue = ..HoursAgo(tHours)
+            If tField.%GetTypeOf("default") = "string" Set tValue = tField.%Get("default")
         }
         Do tApplied.%Set(tParam, tValue, "string")
         If tValue = "" Continue
