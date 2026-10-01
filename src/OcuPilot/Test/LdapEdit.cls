@@ -4,7 +4,8 @@
 /// /ldap/examples</code>), and the Save (<code>PUT /ldap/:id</code>) through the Matrix's rows -- a
 /// two-field save whose every other key reads back, the enable bit set with every other flag kept,
 /// a Kerberos-only save filled with the classic page's values, the rules, an undeclared key, a bare
-/// name refused by the form read and the Save, and an absent name that is refused rather than
+/// name refused by the form read and the Save, a stored dotless name admitted, the last retrieved
+/// attribute kept, and an absent name that is refused rather than
 /// created by the vendor's upsert; the list and its read
 /// tool reading Enabled from the flags (DW-1639); and a least-privileged principal holding exactly
 /// the form's pairs reading and saving.</p>
@@ -182,9 +183,9 @@ Method TestTheRulesRefuseTheSave()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99ldapnew.invalid"), 0, "and nothing is created")
 }
 
-/// <p>AD-13: a name the instance would store differently -- a bare name, which it extends with
-/// <code>.com</code> -- is refused 422 on <code>Name</code> by <code>LDAP.NAME.FORM</code> at the form
-/// read and at the Save, and the Save creates nothing.</p>
+/// <p>AD-13: a name the instance would store differently and does not hold -- a bare name, which it
+/// extends with <code>.com</code> -- is refused 422 on <code>Name</code> by <code>LDAP.NAME.FORM</code>
+/// at the form read and at the Save, and the Save creates nothing.</p>
 Method TestAShortNameIsRefusedByTheFormAndTheSave()
 {
     Set tShort = "OcuP99Ldap"
@@ -193,6 +194,65 @@ Method TestAShortNameIsRefusedByTheFormAndTheSave()
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tShort), .tStatus, .tAnswer, "{""Description"":""short""}", "application/json")
     Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "and so does the Save")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99ldap.com"), 0, "which creates nothing")
+}
+
+/// <p>AD-13: a Kerberos-only configuration created as the classic page creates one keeps its dotless
+/// name, which <code>FormatName</code> would store differently. The editor admits that stored name as
+/// it stands, in any case: the form read opens it, a Save writes it under the same name, Test
+/// authentication runs against it and the list's Delete removes it. A create of that name is still
+/// refused <code>LDAP.NAME.FORM</code>, and so is a dotless name the instance does not hold, at the
+/// form read, the Save and the test.</p>
+/// <p>Mutations (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Stored</method> answers 0 -- the
+/// stored legs go red; <method>OcuPilot.Area.Security.LdapSave.Create</method> admits a stored name
+/// -- the create leg goes red.</p>
+Method TestAStoredDotlessNameIsAdmitted()
+{
+    Set tName = "ocup99KRB"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 128, "UNKNOWNHOST"), "a Kerberos-only configuration is created with a dotless name")
+    Do $$$AssertEquals($ListFind($ListFromString(##class(OcuPilot.Test.LdapCreate).Residue()), tName) _ " " _ ..Formatted(tName), "1 ocup99krb.com", "which the instance keeps as typed, though FormatName would not")
+    For tSpelling = tName, $ZConvert(tName, "L") {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/form?name=" _ tSpelling, .tStatus, .tAnswer)
+        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("ldap") = "object"): tAnswer.ldap.%Get("LDAPFlags"), 1: ""), "200 128", tSpelling _ ": the form read opens it")
+    }
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tName), .tStatus, .tAnswer, "{""Description"":""stored""}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "a Save answers: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: "") _ " " _ $ListFind($ListFromString(##class(OcuPilot.Test.LdapCreate).Residue()), tName), "stored 1", "and writes it under the same name")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..Path(tName) _ "/test", .tStatus, .tAnswer, "{""Username"":""ocup99nobody"",""Password"":""ocup99""}", "application/json")
+    Set tLines = $Select($IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("lines") = "array"): tAnswer.lines.%ToJSON(), 1: "")
+    Do $$$AssertTrue((tStatus = 200) && (tLines [ tName), "Test authentication runs against it: " _ tStatus _ " " _ tLines)
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/ldap", .tStatus, .tAnswer, {"Name": (tName), "LDAPFlags": 128}.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "a create of that name is refused")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", $Parameter("OcuPilot.Test.LdapCreate", "ACTIONPATH"), .tStatus, .tAnswer, {"action": "delete", "id": (tName)}.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#PROBE, "LdapExists", tName), "200 0", "the list's Delete removes it: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    Set tNew = "ocup99NEW"
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", "/ldap/form?name=" _ tNew, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "the form read refuses a dotless name the instance does not hold")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(tNew), .tStatus, .tAnswer, "{""Description"":""new""}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "and so does the Save")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..Path(tNew) _ "/test", .tStatus, .tAnswer, "{""Username"":""ocup99nobody"",""Password"":""ocup99""}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ..FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.FORM", "and the test")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tNew), 0, "which creates nothing")
+}
+
+/// <p>AD-39: a Save that would leave the configuration retrieving no attribute -- an empty list,
+/// which the vendor's <code>PUT</code> ignores, or one empty name, which it fails on -- is refused 422
+/// on <code>LDAPAttributes</code> by <code>LDAP.ATTRIBUTES.LASTONE</code> with its sentence before
+/// anything is written: neither the attributes nor a description sent beside them change.</p>
+/// <p>Mutation (Rule 19): drop that rule from
+/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- both legs go red.</p>
+Method TestTheLastAttributeIsNotRemoved()
+{
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""cn"",""uid""]}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "two attributes are saved")
+    For tBody = "{""LDAPAttributes"":[],""Description"":""dropped""}", "{""LDAPAttributes"":[""""],""Description"":""dropped""}" {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, tBody, "application/json")
+        Set tRow = ""
+        If $IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("detail") = "object") Set tRow = tAnswer.detail.violations.%Get(0)
+        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tRow): tRow.field _ " " _ tRow.code _ " " _ tRow.reason, 1: ""), "422 LDAPAttributes LDAP.ATTRIBUTES.LASTONE " _ ##class(OcuPilot.Api.LdapError).#REASONATTRIBUTESLASTONE, tBody _ " is refused on the attributes by its sentence")
+    }
+    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON() _ " " _ tAfter.%Get("Description"), 1: ""), "[""cn"",""uid""] OcuPilot probe", "and nothing is written")
 }
 
 /// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form, a new

@@ -14,6 +14,9 @@
 /// <parameter>PROBE</parameter> and <parameter>BADPROBE</parameter>, and starts and stops the first.
 /// No vendor <code>%</code> server is started, stopped or deleted. Teardown stops each probe before it
 /// is removed, since a deleted running server keeps listening, and removes its activity rows.</p>
+/// <p>Both probes listen on ports below the instance's ephemeral port range, so no outbound
+/// connection's source port can hold one when it starts; the range is read from
+/// <parameter>PORTRANGEFILE</parameter> at run time, and a file that cannot be read is red.</p>
 Class OcuPilot.Test.LanguageServerWire Extends %UnitTest.TestCase
 {
 
@@ -32,12 +35,15 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// <p>The probe Java server this class starts and stops, and its port.</p>
 Parameter PROBE = "OcuPilotProbeELSWire";
 
-Parameter PROBEPORT = 53291;
+Parameter PROBEPORT = 31291;
 
 /// <p>The probe Java server whose <code>JavaHome</code> names no JVM, and its port.</p>
 Parameter BADPROBE = "OcuPilotProbeELSWireBad";
 
-Parameter BADPROBEPORT = 53292;
+Parameter BADPROBEPORT = 31292;
+
+/// <p>The kernel file whose first number is the low bound of the instance's ephemeral port range.</p>
+Parameter PORTRANGEFILE = "/proc/sys/net/ipv4/ip_local_port_range";
 
 Parameter BADJAVAHOME = "/nonexistent/ocupilot/jdk";
 
@@ -140,11 +146,20 @@ Method OnAfterOneTest() As %Status
 /// reads it running; a second Start is refused 400 with the published sentence and sends nothing; the
 /// Activity log reads the server's newest rows; its Stop answers 200 and the list reads it stopped;
 /// and a second Stop is refused with its own sentence.</p>
+/// <p>First, both probe ports read below the instance's ephemeral port range.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.LanguageServerStart.PrivilegePairs</method>
 /// add <code>%Admin_Manage:USE</code> -- the exact-pairs principal's Start is refused 403 and this goes
-/// red.</p>
+/// red. Set <parameter>PROBEPORT</parameter> to 53291 -- the port assertion goes red, naming the port and
+/// the range's low bound.</p>
 Method TestTheExactPairsPrincipalStartsAndStopsTheProbe()
 {
+    Set tLow = ..EphemeralLow()
+    Do $$$AssertTrue(tLow '= "", "the instance's ephemeral port range is read from " _ ..#PORTRANGEFILE)
+    If tLow '= "" {
+        For tPort = ..#PROBEPORT, ..#BADPROBEPORT {
+            Do $$$AssertTrue(tPort < tLow, "probe port " _ tPort _ " is below the instance's ephemeral port range, which starts at " _ tLow)
+        }
+    }
     Set tUser = ..#EXACTUSER
     Do $$$AssertEquals(..ListedRunning(..#PROBE, tUser), "false", "the principal reads the probe on the list, not running")
     Set tSC = ..Act("start", ..#PROBE, tUser, .tStatus, .tBody)
@@ -377,6 +392,31 @@ ClassMethod FailedPair(pBody) As %String
 ClassMethod Shown(pBody) As %String
 {
     Quit $Select($IsObject(pBody): pBody.%ToJSON(), 1: $Get(pBody))
+}
+
+/// <p>The low bound of the instance's ephemeral port range, the first number in
+/// <parameter>PORTRANGEFILE</parameter>, or <code>""</code> when that file cannot be read. The file is
+/// read through its device rather than a file stream, because the kernel reports its size as 0.</p>
+ClassMethod EphemeralLow() As %String
+{
+    Set tLow = ""
+    Set tIO = $IO
+    Set tFile = ..#PORTRANGEFILE
+    Try {
+        Open tFile:("RS"):2
+        If '$Test Quit
+        Use tFile
+        Read tLine:2
+        Use tIO
+        Close tFile
+        Set tFirst = $Piece($ZStrip($Translate(tLine, $Char(9), " "), "<=>W"), " ", 1)
+        If tFirst ? 1.N Set tLow = +tFirst
+    } Catch {
+        Use tIO
+        Close tFile
+        Set tLow = ""
+    }
+    Quit tLow
 }
 
 /// <p>Create probe Java server <var>pName</var> on <var>pPort</var> through

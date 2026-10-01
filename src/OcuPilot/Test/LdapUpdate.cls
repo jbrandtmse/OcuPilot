@@ -1,14 +1,15 @@
 /// <p>Pins <class>OcuPilot.Screen.Tool.LdapUpdate</class> as the agent reaches it (AD-3, AD-4, AD-6):
 /// what it advertises and declares; the mint's diff rows; the rules at the mint, the Kerberos flag
-/// pair, a missing host and the stored name's form among them; a Kerberos-only payload carrying the
+/// pair, a missing host, the last retrieved attribute and the stored name's form among them; a
+/// stored dotless name minted and confirmed; a Kerberos-only payload carrying the
 /// classic page's host and user; a confirmed two-field edit whose every other key
 /// reads back as it was; a configuration deleted between the mint and the confirm refused as changed
 /// rather than recreated by the vendor's upsert; the LDAP tools' pairs with the classic editor's
 /// resource; and the editor's descriptor, which links nowhere.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state readable,
-/// and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: the two confirm legs create
-/// <code>ocup99*</code> LDAP configurations (<class>OcuPilot.Test.ServiceLdapProbe</class>) and write
-/// them through the shipped confirm, each removed by exact name. The other legs mint over
+/// and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: the live legs create
+/// <code>ocup99*</code> LDAP configurations (<class>OcuPilot.Test.ServiceLdapProbe</class>) and mint
+/// or confirm through the shipped kernel, each removed by exact name. The other legs mint over
 /// <class>OcuPilot.Test.ProposalFixture</class>. <method>OnBeforeAllTests</method> refuses anywhere
 /// the variable does not read 1.</p>
 Class OcuPilot.Test.LdapUpdate Extends %UnitTest.TestCase
@@ -280,6 +281,47 @@ Method TestAShortNameIsRefusedAtTheMint()
     Do $$$AssertTrue(##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM, "by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
     Set tSC = ..FixtureMint({"Name": ($ZConvert(..#ABSENT, "U")), "Description": "case"}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "while the stored name in another case is minted: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+}
+
+/// <p>AD-13 on the agent's caller: a Kerberos-only configuration created as the classic page creates
+/// one keeps its dotless name, and the update's mint admits that stored name as it stands; its
+/// confirm writes the configuration under the same name. The create tool's rules still refuse that
+/// name <code>LDAP.NAME.FORM</code>.</p>
+/// <p>Mutations (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Stored</method> answers 0 -- the
+/// mint leg goes red; <method>OcuPilot.Screen.Tool.LdapCreate.ArgumentProblem</method> admits a
+/// stored name -- the create leg goes red.</p>
+Method TestAStoredDotlessNameIsMinted()
+{
+    Set tName = "ocup99KRB"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 128, "UNKNOWNHOST"), "a Kerberos-only configuration is created with a dotless name")
+    Set tSC = ##class(OcuPilot.Screen.Tool.LdapCreate).ArgumentProblem(tName, {"LDAPFlags": 128}, .tProblem)
+    Do $$$AssertTrue($$$ISOK(tSC) && ($Get(tProblem) [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM), "the create tool's rules refuse that name: " _ $Get(tProblem))
+    Set tSC = ..RealMint({"Name": (tName), "Description": "agent"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the update is minted against it: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals(tHttp, 200, "the confirm writes: " _ $Get(tCode))
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: "") _ " " _ $ListFind($ListFromString(##class(OcuPilot.Test.LdapCreate).Residue()), tName), "agent 1", "under the same name")
+}
+
+/// <p>AD-39 on the agent's caller: an update that would leave a configuration retrieving no
+/// attribute -- an empty list, or one empty name -- is refused at the mint by
+/// <code>LDAP.ATTRIBUTES.LASTONE</code>'s sentence, and the stored attributes are kept.</p>
+/// <p>Mutation (Rule 19): drop that rule from
+/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- both legs go red.</p>
+Method TestTheLastAttributeIsNotRemovedAtTheMint()
+{
+    Set tName = "ocup99ldapattrs.invalid"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 8, "ocup99.invalid", "cn,uid"), "a configuration retrieving two attributes is created")
+    For tJson = "[]", "[""""]" {
+        Set tArgs = {"Name": (tName)}
+        Do tArgs.%Set("LDAPAttributes", ##class(%DynamicArray).%FromJSON(tJson))
+        Set tSC = ..RealMint(tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertTrue(($Get(tHttp) = 400) && (##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONATTRIBUTESLASTONE), tJson _ " is refused at the mint by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    }
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[""cn"",""uid""]", "and the stored attributes are kept")
 }
 
 /// <p>AC11, AD-44: the update, create and password tools' pairs are the list's own with

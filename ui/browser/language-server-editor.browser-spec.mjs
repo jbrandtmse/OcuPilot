@@ -19,7 +19,9 @@
  *
  * **It creates, starts, stops and deletes probe servers**, so it runs on a throwaway only. Each is
  * named `OcuPilotProbeELS*`, and every one is stopped, deleted and its activity rows removed before
- * and after, whatever the tests answered. No vendor `%` server is touched.
+ * and after, whatever the tests answered. No vendor `%` server is touched. Every probe port sits
+ * below the container's ephemeral port range, which `before` reads and asserts, so no outbound
+ * connection's source port can hold the port a probe starts on.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test --test-concurrency=1
@@ -28,9 +30,10 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer';
 
-import { browserConfig, launchOptions } from '../browser.config.mjs';
+import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, saveAndSettle, signedInAt } from './panel-spec.mjs';
@@ -52,9 +55,11 @@ const ID = 'ocu-language-server';
 /** The server the create leg makes, and the one `before` seeds for the running and walk legs. */
 const CREATED = 'OcuPilotProbeELSEditor';
 const SEEDED = 'OcuPilotProbeELSSeeded';
-const CREATED_PORT = 53294;
-const EDITED_PORT = 53295;
-const SEEDED_PORT = 53296;
+const CREATED_PORT = 31294;
+const EDITED_PORT = 31295;
+const SEEDED_PORT = 31296;
+/** The kernel file whose first number is the low bound of the container's ephemeral port range. */
+const PORT_RANGE_FILE = '/proc/sys/net/ipv4/ip_local_port_range';
 const JVM_ARGS = '-Xmx48m';
 /** A start blocks until the Java server answers, about 11 s here. */
 const START_TIMEOUT_MS = 90000;
@@ -63,14 +68,77 @@ const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
 
 let browser = null;
 
-/** One call to the throwaway's own admin API as the configured account; answers the status. */
-async function adminApi(method, path, body = null) {
+/** One call to the throwaway's own admin API as the configured account; answers the status and the parsed body, `null` when it is not JSON. */
+async function adminAnswer(method, path, body = null) {
   const answer = await fetch(`${config.origin}/api/admin/v2${path}`, {
     method,
     headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
     body: body === null ? undefined : JSON.stringify(body),
   });
-  return answer.status;
+  const text = await answer.text();
+  let parsed = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = null;
+  }
+  return { status: answer.status, body: parsed };
+}
+
+/** The same call, answering the status alone. */
+async function adminApi(method, path, body = null) {
+  return (await adminAnswer(method, path, body)).status;
+}
+
+/** The admin API's HTML console text as plain lines: `<br>` ends a line and entities read as their characters. */
+function consoleLines(html) {
+  return String(html)
+    .split(/<br\s*\/?>/i)
+    .map((line) =>
+      line
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+        .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+        .replace(/&amp;/g, '&')
+        .trim()
+    )
+    .filter((line) => line !== '');
+}
+
+/** The vendor's own reason for a refused admin API call: its `status.errors` text and the console's last lines. */
+function vendorReason(body) {
+  const errors = (body?.status?.errors ?? []).map((entry) => String(entry?.error ?? '').replace(/\s+/g, ' ').trim()).filter((text) => text !== '');
+  const lines = (body?.console ?? []).flatMap(consoleLines).slice(-3);
+  return `${errors.join('; ') || 'no status.errors'} | console: ${lines.join(' / ') || 'none'}`;
+}
+
+/** An admin API answer to a refused start, in the shape AC5's held-port run returned, and the reason `vendorReason` gives for it. */
+const REFUSED_START = {
+  status: {
+    errors: [
+      { error: 'ERROR #5023: Remote Gateway Error: Connection cannot be established' },
+      { error: 'ERROR #5001: External Language Server:\n  invalid ping response' },
+    ],
+  },
+  console: [
+    'Starting Java Gateway Server &quot;OcuPilotProbeELSSeeded&quot;<br>',
+    'Executing OS command: java&nbsp;-Xmx48m<br/>Waiting &amp;lt;10 s&amp;gt;<BR>',
+    'An error occurred while trying to start the Gateway Server &lt;port&#x3d;31296&#62;',
+  ],
+};
+const REFUSED_START_REASON =
+  'ERROR #5023: Remote Gateway Error: Connection cannot be established; ERROR #5001: External Language Server: invalid ping response' +
+  ' | console: Executing OS command: java -Xmx48m / Waiting &lt;10 s&gt; / An error occurred while trying to start the Gateway Server <port=31296>';
+
+/** The low bound of `container`'s ephemeral port range, the first number in `PORT_RANGE_FILE`; fails naming the file when it cannot be read. */
+function ephemeralLow(container) {
+  const result = spawnSync('docker', ['exec', container, 'cat', PORT_RANGE_FILE], { encoding: 'utf8', timeout: 60000 });
+  const low = Number(/^\s*(\d+)/.exec(result.stdout ?? '')?.[1]);
+  assert.ok(result.status === 0 && Number.isInteger(low), `${PORT_RANGE_FILE} is read in ${container}: ${result.stderr ?? ''}${result.error?.message ?? ''}`);
+  return low;
 }
 
 /** Stop the probe server `name`, delete it and remove its activity rows, asserting none is left. */
@@ -170,8 +238,13 @@ async function filterTo(page, name) {
 }
 
 before(async () => {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
   assert.match(config.container, /-ci$/, `this spec creates, starts, stops and deletes probe servers, so it runs only in a throwaway; ${config.container} is not one`);
+  const low = ephemeralLow(config.container);
+  for (const port of [CREATED_PORT, EDITED_PORT, SEEDED_PORT]) {
+    assert.ok(port < low, `probe port ${port} is below ${config.container}'s ephemeral port range, which starts at ${low}`);
+  }
   for (const name of [CREATED, SEEDED]) await removeServer(name);
   const status = await adminApi('PUT', `/ext-lang-server?name=${encodeURIComponent(SEEDED)}`, { Type: 'Java', Port: SEEDED_PORT });
   assert.equal(status, 201, `the seeded probe server is created (HTTP ${status})`);
@@ -309,11 +382,13 @@ test('AC1: Python and .NET offer their own settings, with their file locations r
 });
 
 // AC3. Mutation (Rule 19): answer true from the store's `editable()` while running, rebuild and
-// redeploy -> the running editor's inputs take input and this goes red.
+// redeploy -> the running editor's inputs take input and this goes red. AC5: read `entry.message`
+// in `vendorReason` -> the reason check goes red before anything is started.
 test('AC3: a started probe\u2019s editor states the running sentence and reads only; the probe is then stopped', async () => {
+  assert.equal(vendorReason(REFUSED_START), REFUSED_START_REASON, 'AC5: a refused start names the vendor errors and the last three console lines, decoded');
   const query = encodeURIComponent(SEEDED);
-  const started = await adminApi('POST', `/ext-lang-server/start?name=${query}`);
-  assert.equal(started, 200, `the seeded probe starts (HTTP ${started})`);
+  const { status: started, body: answer } = await adminAnswer('POST', `/ext-lang-server/start?name=${query}`);
+  assert.equal(started, 200, `the seeded probe starts (HTTP ${started}): ${vendorReason(answer)}`);
   try {
     const { context, page } = await signedInAt(browser, config, `/ocupilot/${FORM_ROUTE}/${SEEDED}?ns=HSCUSTOM`, VIEWPORTS.wide);
     try {

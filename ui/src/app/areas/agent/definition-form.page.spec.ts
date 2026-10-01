@@ -2035,4 +2035,52 @@ describe('the Definition form', () => {
     await settle(fixture);
     expect(lastBody(calls, 'PUT')['temperature']).toBe('');
   });
+
+  it('DW-1192: Endpoint carries the model-unused note for a placeholder row whose endpoint omits {model}, named by aria-describedby', async () => {
+    // Mutation (Rule 19): make `showModelUnused` answer false -> this goes red on the note.
+    const geminiProviders = {
+      providers: [
+        PROVIDERS_BODY.providers[0],
+        {
+          ...PROVIDERS_BODY.providers[0],
+          key: 'gemini',
+          label: 'Google Gemini',
+          defaultModel: 'gemini-3.8-flash',
+          modelSuggestions: ['gemini-3.8-flash'],
+          defaultEndpoint: 'https://ocupilot.invalid/v1beta/models/{model}:generateContent',
+          keyPrefix: '',
+        },
+      ],
+    };
+    const { fixture, host } = await mount((path) =>
+      path.endsWith('/agent/providers') ? ok(geminiProviders) : ok({ definitions: [] })
+    );
+    const endpoint = () => host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+    const note = () => host.querySelector('#ocu-definition-endpointUrl-caption');
+    const typeEndpoint = async (value: string) => {
+      endpoint().value = value;
+      endpoint().dispatchEvent(new Event('input'));
+      await settle(fixture);
+    };
+
+    // A row whose canonical endpoint carries no placeholder never shows it.
+    await typeEndpoint('https://ocupilot.invalid/v1/pinned');
+    expect(note()).toBeNull();
+
+    // The placeholder row's own endpoint uses the Model.
+    await chooseProvider(fixture, host, 'gemini');
+    expect(endpoint().value).toContain('{model}');
+    expect(note()).toBeNull();
+    expect(endpoint().getAttribute('aria-describedby')).toBeNull();
+
+    await typeEndpoint('https://ocupilot.invalid/v1beta/models/pinned:generateContent');
+    expect(note()?.textContent?.trim()).toBe(STRINGS.agentDefinitionModelUnused);
+    expect(note()?.classList.contains('ocu-field-caption')).toBe(true);
+    expect(endpoint().getAttribute('aria-describedby')).toBe('ocu-definition-endpointUrl-caption');
+
+    // An empty endpoint is the catalog's, which carries the placeholder.
+    await typeEndpoint('');
+    expect(note()).toBeNull();
+    expect(endpoint().getAttribute('aria-describedby')).toBeNull();
+  });
 });

@@ -241,7 +241,7 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
     Set tSC = $$$OK
     Try {
         Set tClass = ..#CREATETOOL
-        Set tSC = $ClassMethod(..#RULES, "NameViolation", pName, .pViolations)
+        Set tSC = $ClassMethod(..#RULES, "NameViolation", pName, .pViolations, 0)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
 
         ; AD-54: the fresh read must find the name free.

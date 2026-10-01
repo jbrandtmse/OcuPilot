@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-01-2026 08:19'
+last_updated: '10-01-2026 11:33'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -235,7 +235,7 @@ development_status:
   15-10-the-header-logo-on-a-white-tile: done
   epic-15-retrospective: optional
 
-  epic-16: in-progress
+  epic-16: done
   16-1-the-try-it-request-console: done
   16-2-web-sessions-listed-and-ended: done
   16-3-effective-privileges-and-the-permission-check-tool: done
@@ -250,7 +250,7 @@ development_status:
   16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: done
   16-13-the-service-editor: done
   16-14-the-ldap-and-kerberos-editor: done
-  16-15-the-data-egress-line: in-progress
+  16-15-the-data-egress-line: done
   16-16-the-agent-audit-viewer: done
   16-17-the-read-back-line: done
   16-18-home-s-performance-row: done
@@ -261,6 +261,7 @@ development_status:
   16-23-any-table-downloaded-as-csv: done
   16-24-a-try-it-request-copied-as-curl: done
   16-25-the-external-language-server-editor: done
+  16-26-epic-16-burn-down: done
   epic-16-retrospective: optional
 
   epic-17: backlog
@@ -344,6 +345,7 @@ development_status:
   epic-23: in-progress
   23-1-the-range-end-cleanup: done
   23-2-the-range-end-cleanup-part-2: done
+  23-3-the-range-end-cleanup-part-3: backlog
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

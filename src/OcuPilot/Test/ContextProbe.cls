@@ -2,8 +2,8 @@
 /// <method>OcuPilot.Api.Context.Body</method> so the status projection can be asserted in process,
 /// with no HTTP request and no principal to create.</p>
 /// <p><b>It replaces nothing.</b> The body it answers is the shipped method's own -- the same
-/// <method>OcuPilot.Port.ProviderPort.ResolveEndpoint</method> and
-/// <method>OcuPilot.Kernel.Egress.LeavesInstance</method> calls a route makes -- so an assertion
+/// <method>OcuPilot.Port.ProviderPort.ResolveEndpoint</method> call, and through it
+/// <method>OcuPilot.Port.ProviderPort.EgressOf</method>, a route makes -- so an assertion
 /// over it is an assertion about what <code>GET /agent/context</code> projects. A private method is
 /// reachable from a subclass and from nowhere else, which is why this class exists rather than a
 /// caller.</p>

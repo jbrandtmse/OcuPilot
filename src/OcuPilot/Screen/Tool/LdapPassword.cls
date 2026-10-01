@@ -90,6 +90,14 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
+/// <p>The name's own rule asked again at the agent's confirm (AD-6, AD-13): a stored name that
+/// is gone by then can find another configuration by its short form, which the fingerprint's re-read
+/// does not tell apart.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Quit ..ArgumentProblem(pIdValue, pArgs, .pProblem)
+}
+
 /// <p>What the caller must hold: the screen's own pairs together with
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter> and the custom
 /// resource of the <parameter>CLASSICPAGES</parameter> page, each pair once.</p>

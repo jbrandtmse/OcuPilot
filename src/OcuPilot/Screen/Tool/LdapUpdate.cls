@@ -117,6 +117,20 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
+/// <p>The name's own rule asked again at the agent's confirm (AD-6, AD-13): a stored name that
+/// is gone by then can find another configuration by its short form, which the fingerprint's re-read
+/// does not tell apart.</p>
+ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Kill tViolations
+    Set tViolations = 0
+    Set tSC = ##class(OcuPilot.Area.Security.LdapRules).NameViolation(pIdValue, .tViolations)
+    If $$$ISERR(tSC) Quit tSC
+    Set pProblem = ##class(OcuPilot.Area.Security.LdapRules).Problem(.tViolations)
+    Quit $$$OK
+}
+
 /// <p>The kernel's merge over <var>pArgs</var> with a Kerberos-only configuration's empty host and
 /// search user filled (<method>OcuPilot.Area.Security.LdapRules.KerberosFilled</method>), so the
 /// mint, the confirm's re-merge and the Save take one payload and the diff shows what is sent.</p>

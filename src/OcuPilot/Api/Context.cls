@@ -109,11 +109,10 @@ ClassMethod Body(pUser As %String, Output pBody As %DynamicObject) As %Status [ 
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
         If $$$ISERR(tSC) Quit
         If tDefinitionId '= "" {
-            If ##class(OcuPilot.Port.ProviderPort).ResolveEndpoint(tDefinitionId, .tProvider, .tHost, .tMarkedLocal, .tProxyHost) {
-                Set tLeaves = ##class(OcuPilot.Kernel.Egress).LeavesInstance(tHost, tMarkedLocal, tProxyHost)
-            } Else {
+            If '##class(OcuPilot.Port.ProviderPort).ResolveEndpoint(tDefinitionId, .tProvider, .tHost, .tMarkedLocal, .tProxyHost, .tLeaves) {
                 Set tProvider = ""
                 Set tHost = ""
+                Set tLeaves = ""
             }
         }
 

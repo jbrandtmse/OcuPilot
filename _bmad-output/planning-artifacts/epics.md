@@ -6811,6 +6811,23 @@ So that a gateway's definition is managed where its status is.
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 - DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
 
+### Story 16.26: Epic 16 burn-down
+
+[ADDED 2026-10-01, Epic 16 burn-down gate, Rule 17 and Rule 27: the epic's two CI flakes, chartered at its close]
+
+As a maintainer of the CI suite,
+I want the two test flakes Epic 16's close found fixed at their cause,
+So that a red CI run means a regression again rather than an unlucky order or timing.
+
+**Acceptance Criteria:**
+
+- **Given** a test that flaked in CI
+- **When** this story lands
+- **Then** its cause is found and fixed in the test (or in the code, if the code is wrong), and the fix is shown by a run that reproduces the old failure and passes after it.
+
+- DW-1851: WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair answers LOG.ABSENT on a fresh instance that has no alerts.log yet, so it fails when it runs before anything has posted a severe line (ledger; chartered by burndown 2026-10-01)
+- DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once (ledger; chartered by burndown 2026-10-01)
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
@@ -8133,4 +8150,34 @@ So that every lane stops paying for the same flakes and the guardrails say what 
 - **Given** a fix that changes behavior a user can see
 - **When** it is proposed
 - **Then** the plan names it with the entry that asks for it, and a fix that contradicts a document corrects the document at origin.
+
+### Story 23.3: The range-end cleanup, part 3
+
+Chartered by the orchestrator on 2026-10-01, after the `release/1.0.5` cut, as the standing cleanup story Rule 27 charters after each release (owner restatement of 2026-09-29). It takes 12 entries from the `range-end-cleanup` queue by the owner's priority: CI health and flakes first, then security. DW-1782 heads the security group on the owner's instruction of 2026-09-30. DW-1827 waits, because the agent's task import key ships disabled.
+
+As the team keeping OcuPilot's CI fast and trustworthy between releases,
+I want the twelve highest-priority deferred entries fixed, or declined with a reason,
+So that every lane stops paying for the same flakes and slow runs, and secrets stay out of what the agent shows.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story (DW-1901, DW-1866, DW-1822, DW-1808, DW-1865, DW-1759, DW-1839, DW-1204, DW-434, DW-1782, DW-1881 and DW-1307)
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** DW-1901 (each of the three instance legs runs 38 to 46 minutes)
+- **When** it is fixed
+- **Then** CI runs the instance suite in four shard legs from refreshed timings, every class still runs in exactly one leg, `ui/tools/ci.test.mjs` holds the new shape, no `timeout-minutes` is lowered, and a green run's longest instance leg is reported.
+
+- **Given** the CI flakes and test-isolation entries (DW-1866, DW-1822, DW-1808, DW-1865, DW-1759, DW-1839, DW-1204, DW-434)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the test passing under that condition. A test that assumed instance state (agent definitions, a governance override, a seeded row, a monitor state) creates and restores the state it relies on, or asserts only on what its own action produced.
+
+- **Given** the security entries (DW-1782, DW-1881, DW-1307)
+- **When** each is fixed
+- **Then** a test reddens on the defect: a declared secret the model sends as an id never reaches a progress step's target, the stored transcript or the panel; a privileged role granted to a service address in either spelling is minted destructive; and the secret-residue sweep covers the log line its class header names.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
 

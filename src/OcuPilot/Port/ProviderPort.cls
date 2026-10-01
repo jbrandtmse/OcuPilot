@@ -91,10 +91,13 @@ Parameter SSLABSENTCODE = 979;
 /// <p><var>pStream</var>, when supplied, is the <class>OcuPilot.Kernel.Provider.StreamSink</class>
 /// the call's text so far is published to; a family that streams then streams (AD-42). A turn is
 /// the only caller that passes one.</p>
+/// <p><var>pEgress</var> is the call's egress fact (<method>EgressOf</method>) when the call was
+/// dispatched to its adapter, and <code>""</code> when a refusal ended it before dispatch.</p>
 /// <p><b>Caller contract:</b> must not be called from an escalated frame (AD-9); the caller's
 /// namespace is unchanged on return.</p>
-ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "", pStream As OcuPilot.Kernel.Provider.StreamSink = "") As %Status
+ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "", pStream As OcuPilot.Kernel.Provider.StreamSink = "", Output pEgress As %DynamicObject) As %Status
 {
+    Set pEgress = ""
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
@@ -125,7 +128,7 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault, pStream)
+        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault, pStream, .pEgress)
         Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
@@ -251,7 +254,10 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 /// (AC1).</p>
 /// <p><var>pStream</var> reaches the adapter as <code>tSettings("stream")</code>; a draft call
 /// passes none.</p>
-ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject, pStream As OcuPilot.Kernel.Provider.StreamSink = "") [ Private ]
+/// <p><var>pEgress</var> is set to the call's egress fact (<method>EgressOf</method>) immediately
+/// before the adapter is invoked, from the endpoint, marked-local flag and settings the call carries,
+/// and is left alone by every refusal above that point.</p>
+ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject, pStream As OcuPilot.Kernel.Provider.StreamSink = "", ByRef pEgress As %DynamicObject) [ Private ]
 {
     If '$ClassMethod(..CatalogClass(), "Row", $Get(pValues("provider")), .tRow) {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -351,6 +357,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     }
     Set tAdapter.SecretClassName = ..SecretClass()
     If $IsObject(pStream) Set tSettings("stream") = pStream
+    Set pEgress = ..EgressOf($Get(pValues("provider")), tEndpoint, tMarkedLocal, .tSettings)
     Do tAdapter.Invoke(.pValues, .pMessages, .pTools, pSystemPrompt, .tSettings, .pResponse, .pFault, .pHttpStatus)
     ; Dropped as soon as the call returns: the adapter clears its own key, and releasing the last
     ; reference to it is what ends the object's life rather than leaving it in this frame.
@@ -364,15 +371,18 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
 /// (<method>OcuPilot.Kernel.Egress.HostOf</method>), <var>pMarkedLocal</var> the definition's own
 /// flag and <var>pProxyHost</var> the configured proxy, or <code>""</code> where none is configured
 /// <b>or the definition is marked local</b> -- such a call bypasses the proxy, so reporting one
-/// would describe a hop it does not make (DW-441). Answers 0, with every
+/// would describe a hop it does not make (DW-441). <var>pLeaves</var> is the verdict the context
+/// chip shows. Host, proxy and verdict are <method>EgressOf</method>'s, the computation each
+/// dispatched call's egress fact is taken from. Answers 0, with every
 /// output <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose
 /// catalog row cannot be read.</p>
-ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String) As %Boolean
+ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String, Output pLeaves As %Boolean) As %Boolean
 {
     Set pProvider = ""
     Set pHost = ""
     Set pMarkedLocal = 0
     Set pProxyHost = ""
+    Set pLeaves = ""
     Set tOk = 0
     Try {
         If pDefinitionId = "" Quit
@@ -384,17 +394,41 @@ ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %Strin
         Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings)
         Set pProvider = $Get(tValues("provider"))
         Set pMarkedLocal = ''$Get(tValues("markedLocal"))
-        Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
-        Set pProxyHost = $Select(pMarkedLocal: "", 1: ..ProxyHostOf(.tSettings))
+        Set tFact = ..EgressOf(pProvider, tEndpoint, pMarkedLocal, .tSettings, .pProxyHost)
+        Set pHost = tFact.endpointHost
+        Set pLeaves = ''tFact.leavesInstance
         Set tOk = 1
     } Catch ex {
         Set pProvider = ""
         Set pHost = ""
         Set pMarkedLocal = 0
         Set pProxyHost = ""
+        Set pLeaves = ""
         Set tOk = 0
     }
     Quit tOk
+}
+
+/// <p>Where a call to <var>pEndpoint</var> under provider <var>pProvider</var> goes (AD-42), as
+/// <code>{provider, endpointHost, leavesInstance}</code>: the endpoint's authority
+/// (<method>OcuPilot.Kernel.Egress.HostOf</method>), and whether the call leaves the instance
+/// (<method>OcuPilot.Kernel.Egress.LeavesInstance</method>) through the proxy
+/// <var>pSettings</var> configures (<method>ProxyHostOf</method>), which a call marked local
+/// (<var>pMarkedLocal</var>) bypasses. <var>pProxyHost</var> is that proxy, <code>""</code> for none
+/// or for a marked-local call.</p>
+/// <p>The one egress computation: the context chip's forecast (<method>ResolveEndpoint</method>)
+/// and each dispatched call's recorded fact (<method>Dispatch</method>) both take their verdict
+/// from it. Resolves the endpoint and proxy hosts; opens no connection.</p>
+ClassMethod EgressOf(pProvider As %String, pEndpoint As %String, pMarkedLocal As %Boolean, ByRef pSettings, Output pProxyHost As %String) As %DynamicObject
+{
+    Set tMarkedLocal = ''pMarkedLocal
+    Set tHost = ##class(OcuPilot.Kernel.Egress).HostOf(pEndpoint)
+    Set pProxyHost = $Select(tMarkedLocal: "", 1: ..ProxyHostOf(.pSettings))
+    Set tFact = {}
+    Do tFact.%Set("provider", pProvider, "string")
+    Do tFact.%Set("endpointHost", tHost, "string")
+    Do tFact.%Set("leavesInstance", ''##class(OcuPilot.Kernel.Egress).LeavesInstance(tHost, tMarkedLocal, pProxyHost), "boolean")
+    Quit tFact
 }
 
 /// <p>The endpoint a call goes to: the stored <var>pEndpointUrl</var>, else the catalog row

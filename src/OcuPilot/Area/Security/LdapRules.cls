@@ -8,8 +8,9 @@
 /// refuse what the vendor would store wrongly or refuse late: an empty value for a setting
 /// <class>Security.LDAPConfigs</class> declares <code>Required</code>, a host entry the vendor's
 /// space-joined host list would split or lose, flags outside the eight declared bits or carrying both
-/// enabled and Kerberos-only, no host on an LDAP configuration, a description past the class's own
-/// bound, and a name the instance would store differently.</p>
+/// enabled and Kerberos-only, no host on an LDAP configuration, an edit that would leave no retrieved
+/// attribute, a description past the class's own bound, and a name the instance would store
+/// differently and does not already hold.</p>
 Class OcuPilot.Area.Security.LdapRules Extends %RegisteredObject
 {
 
@@ -31,6 +32,8 @@ Parameter FLAGSMAX As INTEGER = 255;
 
 /// <p>The two list fields, each an array of strings.</p>
 Parameter LISTFIELDS = "LDAPAttributes,LDAPHostNames";
+
+Parameter FIELDATTRIBUTES = "LDAPAttributes";
 
 /// <p>The three whole-number fields.</p>
 Parameter NUMBERFIELDS = "LDAPClientTimeout,LDAPFlags,LDAPServerTimeout";
@@ -139,6 +142,11 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, pFresh As %Dynam
         If ((tHostsType = "array") || (tHostsType = "unassigned")) && ((tHostsType '= "unassigned") || (tFlagsType '= "unassigned")) {
             If '..KerberosOnly(..Effective(pArgs, pFresh, ..#FIELDFLAGS)) && (..HostCount(pArgs, pFresh) = 0) Do ..Add(.pViolations, ..#FIELDHOSTS, ##class(OcuPilot.Api.LdapError).#HOSTREQUIRED)
         }
+        ; The vendor's PUT keeps the stored attributes when sent an empty list and fails on a list of
+        ; empty names (measured), so an edit that would leave none is refused rather than sent.
+        If ..Unnamed(pArgs.%Get(..#FIELDATTRIBUTES)) && $IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDATTRIBUTES) = "array") && '..Unnamed(pFresh.%Get(..#FIELDATTRIBUTES)) {
+            Do ..Add(.pViolations, ..#FIELDATTRIBUTES, ##class(OcuPilot.Api.LdapError).#ATTRIBUTESLASTONE)
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -190,6 +198,19 @@ ClassMethod Required(pField As %String, Output pRequired As %Boolean) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pList</var> is an array holding no name: every entry, if it has any, a string of
+/// white space alone. Any other value is not.</p>
+ClassMethod Unnamed(pList) As %Boolean
+{
+    If '$IsObject(pList) || 'pList.%IsA("%Library.DynamicArray") Quit 0
+    Set tUnnamed = 1
+    Set tIterator = pList.%GetIterator()
+    While tUnnamed && tIterator.%GetNext(.tIndex, .tEntry) {
+        If (pList.%GetTypeOf(tIndex) '= "string") || ($ZStrip(tEntry, "<>W") '= "") Set tUnnamed = 0
+    }
+    Quit tUnnamed
 }
 
 /// <p>Whether <var>pValue</var> is a whole number from <var>pLow</var> to <var>pHigh</var>.</p>
@@ -403,18 +424,49 @@ ClassMethod Canonical(pName As %String, Output pCanonical As %String, Output pBa
 /// <p>Add <var>pName</var>'s violation, on <parameter>FIELDNAME</parameter>, or none: an empty name
 /// is <parameter>OcuPilot.Api.Error.LDAPFIELDREQUIRED</parameter>, and a name
 /// <method>Canonical</method> refuses or would store differently other than by case is
-/// <parameter>OcuPilot.Api.LdapError.NAMEFORM</parameter> (AD-13): the instance stores only the
-/// canonical form, and its <code>Exists</code> also finds a configuration by its short name, so a
-/// non-canonical name would key a different spelling of a stored one.</p>
-ClassMethod NameViolation(pName As %String, ByRef pViolations) As %Status
+/// <parameter>OcuPilot.Api.LdapError.NAMEFORM</parameter> (AD-13) -- the instance's
+/// <code>Exists</code> also finds a configuration by its short name, so a non-canonical name would
+/// key a different spelling of a stored one -- unless <var>pAdmitStored</var> is 1 and this instance
+/// holds a configuration of exactly that name (<method>Stored</method>): a Kerberos-only
+/// configuration created on the classic page keeps its name as typed. A create passes 0, so a new
+/// name is always the canonical one. A look-up that fails refuses the name and answers its error.</p>
+ClassMethod NameViolation(pName As %String, ByRef pViolations, pAdmitStored As %Boolean = 1) As %Status
 {
     If pName = "" {
         Do ..Add(.pViolations, ..#FIELDNAME, ##class(OcuPilot.Api.Error).#LDAPFIELDREQUIRED)
         Quit $$$OK
     }
     Set tSC = ..Canonical(pName, .tCanonical, .tBaseDN)
-    If $$$ISERR(tSC) || ($ZConvert(tCanonical, "L") '= $ZConvert(pName, "L")) Do ..Add(.pViolations, ..#FIELDNAME, ##class(OcuPilot.Api.LdapError).#NAMEFORM)
-    Quit $$$OK
+    If $$$ISOK(tSC) && ($ZConvert(tCanonical, "L") = $ZConvert(pName, "L")) Quit $$$OK
+    Set tSC = $$$OK
+    Set tStored = 0
+    If pAdmitStored Set tSC = ..Stored(pName, .tStored)
+    If $$$ISERR(tSC) || 'tStored Do ..Add(.pViolations, ..#FIELDNAME, ##class(OcuPilot.Api.LdapError).#NAMEFORM)
+    Quit tSC
+}
+
+/// <p>Whether this instance holds an LDAP configuration named <var>pName</var>, in <var>pStored</var>:
+/// <code>Security.LDAPConfigs.Exists</code>, read in <code>%SYS</code> (AD-16), finding one whose
+/// stored name is <var>pName</var> without regard to case, which is how the instance keys it. A
+/// configuration <code>Exists</code> finds by <var>pName</var> as a short name is another name, and
+/// does not count.</p>
+ClassMethod Stored(pName As %String, Output pStored As %Boolean) As %Status
+{
+    Set pStored = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tConfig = ""
+        If $ClassMethod(..#CONFIGCLASS, "Exists", pName, .tConfig) && $IsObject(tConfig) Set pStored = ($ZConvert(tConfig.Name, "L") = $ZConvert(pName, "L"))
+        Set tConfig = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pStored = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Whether a configuration named <var>pName</var> exists, in <var>pTaken</var>, read through the
@@ -484,7 +536,8 @@ ClassMethod Problem(ByRef pViolations) As %String
 /// tool's fresh read with its <code>Name</code>, and whether the instance's Kerberos authentication
 /// is on (<method>KerberosEnabled</method>). The vendor's read carries no search password. A name
 /// this instance does not hold, or none, is 404 <parameter>OcuPilot.Api.Error.LDAPABSENT</parameter>;
-/// a name it would store differently is 422 <parameter>OcuPilot.Api.LdapError.NAMEFORM</parameter>.</p>
+/// a name it would store differently and does not hold is 422
+/// <parameter>OcuPilot.Api.LdapError.NAMEFORM</parameter> (<method>NameViolation</method>).</p>
 /// <p><code>GET /ldap/form?new=1</code> answers <code>{ldap, kerberos}</code> with a new
 /// configuration's values (<method>Defaults</method>) and an empty <code>Name</code>.</p>
 ClassMethod HandleForm() As %Status

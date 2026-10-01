@@ -866,9 +866,9 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 /// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Confirm</class> asks it inside its
 /// transition, after the fingerprint and before the claim, in the confirming user's own process; a
 /// non-empty <var>pProblem</var> is refused 400 <code>TOOL.ARGUMENTS</code> with nothing written and
-/// the proposal left live. It is for a rule that judges the caller's privilege against live state,
-/// which the mint asked in <method>ArgumentProblem</method>, so a privilege lost since the mint
-/// refuses the confirm. Empty here.</p>
+/// the proposal left live. It is for a rule over live state that the mint asked in
+/// <method>ArgumentProblem</method> -- the caller's privilege, or whether the id still names the
+/// target the mint read -- so a confirm is refused what the mint would now refuse. Empty here.</p>
 ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
