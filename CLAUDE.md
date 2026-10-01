@@ -144,7 +144,7 @@ The MCP-server rule above and the container detail below this block are the oper
   still one class or spec file at a time; the `instance` and `browser` roll-ups fail unless every
   class and spec ran in exactly one leg. Shares come longest-first from `ui/tools/ci-timings.json`;
   refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>`. A run
-  takes about 21 minutes (run 36376868939). A test that needs something a sibling test left, or an
+  takes about 39 minutes (run 36923461500). A test that needs something a sibling test left, or an
   instance older than a few minutes, fails in whichever leg it lands in. `gates` runs **once per Node band `engines.node` declares, at each
   band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
   `engines.node` equal in both directions, so a declared band with no leg is red. A single-version
