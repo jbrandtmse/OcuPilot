@@ -197,7 +197,7 @@ Method TestTheDevicesListStillOpensWithoutTheWritePair()
     Do $$$AssertEquals(tStatus, 200, "and the form's read")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ "/navigation", ..#READERUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the navigation map answers the principal")
-    Do $$$AssertTrue(tBody [ """route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":5,""allowed"":true", "and lists the Devices list allowed")
+    Do $$$AssertTrue(tBody [ """route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":6,""allowed"":true", "and lists the Devices list allowed")
 }
 
 /// <p>A create's body for <var>pName</var>: the three fields the vendor's create requires.</p>

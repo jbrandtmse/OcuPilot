@@ -107,7 +107,7 @@ Method TestTheFourTabsDeclareTheirReadsAndFormOneGroup()
 
         Set tTab = tDeclaration.tab
         Do $$$AssertEquals(tTab.group _ "|" _ tTab.position _ "|" _ tTab.labelKey, ..#GROUP _ "|" _ tI _ "|" _ ..Tab(tI, 6), tWhere _ "the group, its position and its tab label")
-        Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $Select(tI = 1: 7, 1: 0), tWhere _ "Summary is the seventh entry and the others are unlisted")
+        Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $Select(tI = 1: 8, 1: 0), tWhere _ "Summary is the eighth entry and the others are unlisted")
         Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", tWhere _ "in OS management")
         Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "detail", tWhere _ "on the detail archetype")
         Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, tWhere _ "built")

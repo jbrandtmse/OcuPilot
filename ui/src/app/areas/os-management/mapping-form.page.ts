@@ -289,7 +289,7 @@ export class MappingFormPage {
     return !this.store.canSave();
   }
 
-  /** Whether the name is a `%` global's, whose consequence shows under Name (AD-10). */
+  /** Whether the name reaches the `%` globals, whose consequence shows under Name (AD-10). */
   protected get systemGlobal(): boolean {
     this.generation();
     return this.store.systemGlobal();

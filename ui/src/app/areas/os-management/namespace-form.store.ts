@@ -251,7 +251,10 @@ export class NamespaceForm {
     return this.formDirty.dirty();
   }
 
-  /** Whether this store is being carried across the create's own route replacement. */
+  /**
+   * Whether this store is being carried across the create's own route replacement, or holds a
+   * create's buffer across the database wizard's hand-off.
+   */
   retaining(): boolean {
     return this.retainingValue;
   }
@@ -259,6 +262,17 @@ export class NamespaceForm {
   /** Keep this form's state across the one navigation that is not a departure. */
   retainAcrossRouteReplacement(): void {
     this.retainingValue = true;
+  }
+
+  /**
+   * Keep a create's buffer across the hand-off to the database wizard (Story 18.17), and mark the
+   * form clean, so the navigation there does not ask: the kept buffer carries what was typed, and a
+   * returning `open` restores it. `reset()` drops it. A no-op on an edit.
+   */
+  retainForHandOff(): void {
+    if (this.modeValue !== 'create') return;
+    this.retainingValue = true;
+    this.formDirty.setDirty(false);
   }
 
   // --- writes ----------------------------------------------------------------------------------
@@ -291,10 +305,16 @@ export class NamespaceForm {
    * Open the form: a create when `name` is empty, an edit of that namespace otherwise. The form read
    * is made on every open rather than cached. An arrival that is the create's own route replacement
    * opens the new namespace's edit and keeps the saved confirmation, with its read-back, on screen.
+   *
+   * **A create opened with `returning` is the return from the database wizard** (Story 18.17): its
+   * buffer is the one `retainForHandOff` kept, or empty when none is held, and Globals becomes the
+   * form read's spelling of `returning.database` when the read lists it, compared ignoring case.
+   * `opened` stays empty, and the form is dirty when anything is entered, so leaving asks.
    */
-  async open(name: string): Promise<void> {
+  async open(name: string, returning?: { readonly database: string }): Promise<void> {
     const arriving = this.retainingValue && name !== '' && name === this.createdIdValue;
     const readBack = this.readBackValue;
+    const kept = this.retainingValue ? this.buffer : EMPTY_BUFFER;
     this.reset();
     if (arriving) {
       this.savedValue = true;
@@ -307,6 +327,11 @@ export class NamespaceForm {
     const result = await this.api().requestJson<unknown>(path);
     if (generation !== this.generation) return;
     this.absorb(result, name);
+    if (returning !== undefined && name === '') {
+      const listed = this.databasesValue.find((entry) => entry.toLowerCase() === returning.database.toLowerCase());
+      this.buffer = listed === undefined ? kept : { ...kept, [GLOBALS_FIELD]: listed };
+      if (Object.values(this.buffer).some((value) => value !== '')) this.formDirty.setDirty(true);
+    }
     this.loadedValue = true;
     this.notify();
   }

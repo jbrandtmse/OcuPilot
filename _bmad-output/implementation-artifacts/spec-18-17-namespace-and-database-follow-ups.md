@@ -2,8 +2,8 @@
 title: 'Story 18.17: Namespace and database follow-ups'
 type: 'bugfix'
 created: '2026-09-30'
-baseline_revision: 'c771e4678918b9c24b19604b92dd3d04a0356fe1'
-status: 'ready-for-dev'
+baseline_revision: '693ef46d9866d93b708d1f904a237948fcbca75c'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -260,6 +260,37 @@ There is no admin-API write, no new tool and no observation step before the buil
 
 ## Review Triage Log
 
+### 2026-10-01 — Review pass
+
+- verdicts: 26 findings — high 0, medium 1, low 6, false 19, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Nothing pinned `retainForHandOff`'s no-op on an edit, which the page calls in both modes — added an edit leg to `namespace-form.page.spec` (a dirty edit stays dirty and unretained after the link), with its `mutation:` line.
+  - `[low]` `[patch]` AC3's no-leave-prompt half and the `kept` URL replacement had no `mutation:` line — applied both mutations, observed red, reverted byte-identically, recorded.
+  - `[low]` `[patch]` `formDirty.pending()` in the hand-off assertion cannot fail (the test router registers no leave guard) — element deleted; `dirty()` pins the half.
+  - `[low]` `[patch]` `database-wizard.page.spec`'s mutation comment named a nonexistent `returnsToNamespace` — corrected to `namespaceReturn` answers null.
+  - `[low]` `[reject]` Browser Back or a side-bar exit from a wizard opened by the hand-off drops what was typed, with no prompt — real, but Design Notes decide Back starts empty and Tasks keep `open` without `returning` as today; the fix edits this spec. Noted under residual risks.
+  - `[false]` `[reject]` The clean-before-replace ordering protects nothing because a query-only navigation skips `CanDeactivate` — no bad outcome: the intent requires the ordering and it holds either way.
+  - `[low]` `[patch]` `app.routes.spec`'s title and comment said an id route sits "beside" its route — reworded; the assertions were already order-free.
+  - `[false]` `[reject]` `:`, `:A` and `*X` are minted only at the predicate, not through the mint — the mint asks the same predicate (`Mint.cls:325-337`) and `MappingWrite` mints `:OcuProbe1817` and `*` through it.
+  - `[false]` `[reject]` An edit of a `:`/`*` mapping is never minted — minting an edit needs a held mapping, which the intent forbids confirming; `WeakensByEffect(..., 0)` covers create and change alike.
+  - `[false]` `[reject]` A delete's destructiveness is not re-run for `:` names — unchanged `DestructiveTool` path; the removal answers no effect (`MappingSystemGlobal`).
+  - `[false]` `[reject]` `MappingWrite` mints in `OCUPROBE1814A`, not an `OCUPROBE1817` namespace — the spec names `..#NS`; a mint creates nothing on the instance, and every created object carries `OCUPROBE1817`.
+  - `[false]` `[reject]` `*`, `*X` and `aria-describedby` are not checked in a browser — the store spec covers the names and the description follows the one getter the `%` leg pins.
+  - `[false]` `[reject]` Only the agent's mint reads the kernel; the screen's line is the client mirror — the intent says so ("mirrors the rule only to decide whether the published line shows"); pre-existing design.
+  - `[false]` `[reject]` The page spec reads `dirty()` at `navigateByUrl`, not at the guard — the browser leg shows no dialog either way.
+  - `[false]` `[reject]` A dirty wizard's Cancel on the return branch is not exercised — Cancel still leaves the form-page route, where the unchanged leave guard runs whatever `replaceUrl` says.
+  - `[low]` `[reject]` "Discards what was typed" read for every exit (reading B): Back or a side-bar exit restores nothing — same root cause as the Back row above; shares its route.
+  - `[false]` `[reject]` No-kept-buffer and unlisted cases have no browser leg — store spec covers both; no bad outcome.
+  - `[false]` `[reject]` Case folding is not exercised in a browser — the store and page specs fold `enslib` to `ENSLIB`.
+  - `[false]` `[reject]` The browser side-bar legs sign in as the configured user, not a minimal holder — `WireSecurityRead` pins the minimal holder at the payload.
+  - `[false]` `[reject]` A non-holder's `aria-disabled` entry has no browser leg — the payload carries `failedPair` (`Wire`, `WireSecurityRead`) and the side bar's rendering of it is unchanged.
+  - `[false]` `[reject]` Reaching the log is not shown to render a past check's rows — the log viewer is 18.4's, unchanged; the leg pins the route and the viewer.
+  - `[false]` `[reject]` `WireAreaAnyScreen` now lists `integrity-log=open` — expected; the area verdict string is unchanged.
+  - `[false]` `[reject]` `LanguageServerWire` and the language-servers browser leg depend on their principals' pairs — their role (`language-servers.browser-spec.mjs:97`) holds `%DB_IRISSYS:R` and `%Admin_Operate:U`; `LanguageServerWire` ran green (run 703).
+  - `[false]` `[reject]` `buildRoutes` reorders every screen's routes — literal-before-`:id` only changes which route wins where a literal has an id route's shape, which unlisted screens already won; the real-roster "no declared route is swallowed" test pins it.
+  - `[false]` `[reject]` The initial budget moves to 2351kB — the runner's prompt pre-authorized re-basing on a crossing (2,350,302 bytes measured).
+  - `[false]` `[reject]` EXPERIENCE.md :164 puts the Integrity log first in the polish-week cell — the spec's Tasks prescribe that exact cell start, and the cell was not in side-bar order before.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -351,7 +382,42 @@ No spine amendment: AD-10 already states DW-1813, and nothing here changes an AD
 | AC4 | `open` skips choosing `returning.database` | the `local-databases` DW-1824 test's Globals assertion |
 | AC5 | `DatabaseIntegrityLog` back at position 0 | `navigation.test.mjs`'s listed test; `Navigation`; the browser side-bar legs |
 
+Each mutation was reverted byte-identically (`git status --short` and `git diff --stat` unchanged), then reloaded or rebuilt and redeployed.
+
+- mutation: the `:`/`*` line removed from `IsSystemGlobalMapping`, reloaded on `ocupilot-b-ci` → `MappingSystemGlobal.TestANameReachingThePercentGlobalsCarriesTheEffect` (`:A`, `:`, `*`, `*X`, run 704) and `MappingWrite.TestAGlobalPartBeginningWithAColonOrAStarReachesThePercentGlobals` (`:OcuProbe1817`, `*`, run 705)
+- mutation: `systemGlobal()` back to `startsWith('%')` → `mapping-form.store.spec`'s AD-10 test (`:A`); rebuilt and redeployed, the `namespace-mappings` AC2/AC3 leg at its `:OcuProbe1817` wait
+- mutation: `open` clears `returning` → `namespace-form.store.spec`'s three restore legs and `namespace-form.page.spec`'s round trip; rebuilt and redeployed, the `local-databases` DW-1824 test at its Globals wait
+- mutation: the wizard's `namespaceReturn` answers `null` → `database-wizard.page.spec`'s Create and Cancel return legs
+- mutation: `open` keeps the kept buffer without choosing `returning.database` → `namespace-form.store.spec`'s two Globals legs and the page round trip; rebuilt and redeployed, the `local-databases` DW-1824 test at its Globals wait
+- mutation: `DatabaseIntegrityLog` back at position 0, mirror regenerated → `navigation.test.mjs`'s roster and listed tests; reloaded, `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` (run 708); rebuilt and redeployed, the `namespaces` and `license-usage` AC1 side-bar legs
+- mutation: `buildRoutes` pushes each `:id` route beside its own route → `app.routes.spec`'s "no declared route is swallowed", naming the Integrity log under `os-management/databases/:id`
+- mutation: `retainForHandOff` without its `setDirty(false)` → `namespace-form.page.spec`'s "a create hands its values to the wizard without asking" and `namespace-form.store.spec`'s `retainForHandOff` leg (AC3's no-leave-prompt half)
+- mutation: the page constructor without its `kept` URL replacement → `namespace-form.page.spec`'s "the return drops kept and database before restoring them"
+- mutation: `retainForHandOff` without its create-only check → `namespace-form.page.spec`'s "an edit's Create a database link ... keeps an unsaved change under the leave guard"
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** DW-1813: the kernel's `IsSystemGlobalMapping` (inserted lines only) and the form's `systemGlobal()` treat a global part beginning with `:` or `*` as reaching the `%` globals, so the agent's create is minted destructive with `MAPPING.SYSTEMGLOBAL` and the form shows its line. DW-1824: New Namespace's create hands its buffer to the store (`retainForHandOff`), opens the wizard with `returnTo=namespace`, and the wizard's Create or Cancel replaces the route with `kept=1` (and `database`); the page strips both before the store restores the buffer and chooses the created database as Globals, dirty. DW-1858: the Integrity log is OS management's fifth entry and the six after it moved up by one; `buildRoutes` now emits every declared route before every `:id` route so Databases' `:id` cannot take it.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` — the `:`/`*` arm and three doc paragraphs, inserted only.
+- `src/OcuPilot/Screen/Descriptor/{DatabaseIntegrityLog,DeviceList,NamespaceList,LicenseSummaryTab,Dashboard,LanguageServerList,LocalDatabaseList,DatabaseList}.cls` — positions and ordinals.
+- `src/OcuPilot/Test/MappingSystemGlobal.cls` (new) and `MappingWrite.cls` — the predicate and mint pins; `Navigation`, `Descriptor`, `DeviceWriteGate`, `NamespaceWriteGate`, `NamespaceDescriptor`, `LicenseUsage`, `Dashboard`, `LanguageServer`, `DatabaseDescriptor` (two methods renamed), `SurfaceCoverage` (three `method=`), `Wire`, `WireSecurityRead`, `WireAreaAnyScreen` — re-derived pins.
+- `ui/src/app/areas/os-management/{database-actions,namespace-form.store,namespace-form.page,database-wizard.page,mapping-form.store,mapping-form.page}.ts` — the hand-off and the form mirror; `ui/src/app/app.routes.ts` — route order.
+- `ui/src/app/core/screens.generated.ts` — regenerated.
+- Client specs and tools tests (`namespace-form.*.spec`, `database-wizard.page.spec`, `mapping-form.store.spec`, `app.routes.spec`, `area-verdict.spec`, `rail-wire.spec`, `navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `angular-json.test.mjs`) and four browser specs.
+- `ui/angular.json` — initial budget 2351kB (2,350,302 bytes measured; re-based under the runner's standing instruction).
+- EXPERIENCE.md — rows :164, :375, :377, :378, :584 in place, 993 lines.
+
+**Review.** 26 findings (medium 1, low 6, false 19). Patched: the edit-mode hand-off pin (medium), three mutation lines, a vacuous `pending()` element, two stale test comments. Rejected: the Back/side-bar exit loss (low, spec-bound: Design Notes decide Back starts empty) and 19 false. Deferred: none. Follow-up review recommended: false (patched: medium 1, low 4).
+
+**Verification.** Full ObjectScript sweep on `ocupilot-b-ci` (runs 710-1094): 385 classes, 3,182 tests, 1 failed, 0 probe leftovers, 0 overlaps. The failure is `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`'s "nothing is cut at 1,000" on `tasks.taskhistory`: the reused throwaway holds 1,031 task history rows. That is DW-1554 (wontfix-accepted, reopen_if a CI instance job fails it); the class ran 25/25 earlier in this pass (run 700), and this story touches only its OS management assertions. Targeted classes green (runs 689-709). `npm test`: 1,757/1,757 tools tests and 2,024/2,024 component tests. `npm run build`: green, initial total 2,350,302 bytes (2.35 MB) under the 2351kB warning. `smoke.sh --container ocupilot-b-ci`: executed 49, passed 49. Browser (rebuilt bundle on `ocupilot-b-ci`): namespace-mappings 4/4, local-databases 7/7, namespaces 5/5, license-usage 3/3. `check-objectscript` 0 problems; `lint-docs` clean. Contended edits outside the spec's list: `screen-mirror.test.mjs:788` (one pin) and `angular.json`/`angular-json.test.mjs` (budget), made after Epic 16's 16.14 merged to the feature branch, leaving Epic 16 changing neither.
+
+**Residual risks.**
+
+- Browser Back or a side-bar exit from a wizard opened by the hand-off returns to an empty New Namespace with no prompt, since the hand-off marks the form clean (the spec's Back decision; a candidate for a later story).
+- `angular.json`'s budget conflicts with the feature branch's 2384kB at the next forward integration; take the larger.

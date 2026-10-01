@@ -79,7 +79,7 @@ XData Coverage
 <screen name="RoutineMappingList" class="OcuPilot.Test.MappingDescriptor" method="TestTheListsAreParentScopedAndKeyedByNamespaceAndName" corpus="the three mapping lists are asserted together in one loop"/>
 <screen name="RoutineMappingForm" class="OcuPilot.Test.MappingDescriptor" method="TestTheFormsAreUnlistedOverTheirKindsDialog" corpus="the three mapping forms are asserted together in one loop"/>
 <screen name="NamespaceList" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheListDeclaresItsFourFieldsAndItsDelete"/>
-<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsTenthEntryKeyedByName"/>
+<screen name="LocalDatabaseList" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheListIsOsManagementsEleventhEntryKeyedByName"/>
 <screen name="Home" class="OcuPilot.Test.Descriptor" method="TestARefreshingScreenDeclaresItsRatesAndHomeDefaultsToTen"/>
 <screen name="LdapConfigList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="LockList" class="OcuPilot.Test.Descriptor" method="TestTheLocksListDeclaresExactlyItsNineFieldsAndSevenColumns"/>
@@ -132,8 +132,8 @@ XData Coverage
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="NamespaceForm" class="OcuPilot.Test.NamespaceDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="LocalDatabaseForm" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
-<screen name="DatabaseIntegrity" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
-<screen name="DatabaseIntegrityLog" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuiltUnlisted" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
+<screen name="DatabaseIntegrity" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuilt" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
+<screen name="DatabaseIntegrityLog" class="OcuPilot.Test.DatabaseDescriptor" method="TestTheIntegrityScreensAreBuilt" corpus="one declaration test pins both screens Story 18.4 adds, Check integrity and the Integrity log"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndLinksNowhere"/>
 <screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>

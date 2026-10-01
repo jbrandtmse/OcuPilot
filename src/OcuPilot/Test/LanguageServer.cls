@@ -63,7 +63,7 @@ Method TestTheDescriptorsRegister()
     Set tSC = $ClassMethod(..#ACTIVITY, "DeclarationJson", .tLog)
     Do $$$AssertStatusOK(tSC, "the Activity log's declaration parses")
     If '$IsObject($Get(tList)) || '$IsObject($Get(tLog)) Quit
-    Do $$$AssertEquals(tList.route _ " " _ tList.area _ " " _ tList.sideBarPosition _ " " _ tList.archetype _ " " _ tList.toolIdentifier, "os-management/language-servers os-management 9 list osmgmt.languageservers", "the ninth OS management entry, a list read as osmgmt.languageservers")
+    Do $$$AssertEquals(tList.route _ " " _ tList.area _ " " _ tList.sideBarPosition _ " " _ tList.archetype _ " " _ tList.toolIdentifier, "os-management/language-servers os-management 10 list osmgmt.languageservers", "the tenth OS management entry, a list read as osmgmt.languageservers")
     Do $$$AssertEquals(tList.entityType _ " " _ tList.scope _ " " _ tList.id.kind _ " " _ tList.refreshes, "language-server instance single 0", "an instance-scoped language server keyed by its name, with no auto-refresh")
     Do $$$AssertEquals(tList.rowActions.%ToJSON(), "[{""id"":""start"",""selfProtection"":""""},{""id"":""stop"",""selfProtection"":""""},{""id"":""delete"",""selfProtection"":""""}]", "three row actions, Story 16.25's delete last, none self-protected")
     Do $$$AssertEquals(tList.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""LanguageServer"",""type"":""LIST"",""rowGet"":{""key"":""Name"",""param"":""name"",""type"":""ACTIVITY"",""fields"":[""CurrentlyRunning""],""derived"":[]}}", "the vendor's list, with an ACTIVITY detail call merging CurrentlyRunning")

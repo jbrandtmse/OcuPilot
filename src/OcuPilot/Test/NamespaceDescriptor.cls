@@ -23,7 +23,7 @@ Method TestTheListDeclaresItsFourFieldsAndItsDelete()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "os-management:6", "OS management's sixth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition"), "os-management:7", "OS management's seventh side-bar entry")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Namespace.Namespace"",""type"":""LIST""}", "read through the vendor's namespace list")
     For tKey = "fields", "filter" {
         Do $$$AssertEquals(tDeclaration.read.%Get(tKey).%ToJSON(), "[""Name"",""Globals"",""Routines"",""TempGlobals""]", "read." _ tKey _ " is the four fields")

@@ -105,7 +105,7 @@ Method TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#TOOL), tClass, "and so does its tool identifier")
 
     Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", "in the OS management area")
-    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 8, "the eighth entry, after License usage")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 9, "the ninth entry, after License usage")
     Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "meters", "on the meters archetype")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ $ClassMethod(tClass, "IdKind"), "|instance|none", "no entity type, instance scope, no id")
     Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 1, "it refreshes")

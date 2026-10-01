@@ -2285,7 +2285,7 @@ Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
 Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.DeviceList"
-    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 5, "OS management's fifth side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "OS management's sixth side-bar entry")
     Set tRead = $ClassMethod(tClass, "Read")
     Do $$$AssertTrue($IsObject(tRead), "the Devices list declares a read")
     If '$IsObject(tRead) Quit

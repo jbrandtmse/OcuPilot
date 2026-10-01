@@ -365,8 +365,8 @@ async function assertStructure(page, route, dialog = false) {
 }
 
 // AC1. Mutation (Rule 19): give NamespaceList `sideBarPosition` 0, regenerate the mirror, rebuild and
-// redeploy -> the side-bar assertion goes red.
-test('AC1: Namespaces is the sixth OS management entry, and HSCUSTOM and USER show the databases the instance holds', async () => {
+// redeploy -> the side-bar assertion goes red; so does DatabaseIntegrityLog back at 0 (Story 18.17).
+test('AC1: Namespaces is the seventh OS management entry, after the Integrity log, and HSCUSTOM and USER show the databases the instance holds', async () => {
   const hscustom = stored('HSCUSTOM');
   const user = stored('USER');
   assert.ok(hscustom !== null && user !== null, 'the instance holds both namespaces');
@@ -375,11 +375,12 @@ test('AC1: Namespaces is the sixth OS management entry, and HSCUSTOM and USER sh
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries.slice(0, 6), [
+    assert.deepEqual(bar.entries.slice(0, 7), [
       STRINGS.processListLabel,
       STRINGS.lockListLabel,
       STRINGS.systemUsageLabel,
       STRINGS.databaseListLabel,
+      STRINGS.databaseIntegrityLogLabel,
       STRINGS.deviceListLabel,
       STRINGS.namespaceListLabel,
     ]);
@@ -387,6 +388,14 @@ test('AC1: Namespaces is the sixth OS management entry, and HSCUSTOM and USER sh
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.namespaceColumnGlobals, STRINGS.namespaceColumnRoutines, STRINGS.namespaceColumnTemp]);
     assert.deepEqual(await rowCells(page, 'HSCUSTOM'), ['HSCUSTOM', hscustom.Globals, hscustom.Routines, hscustom.TempGlobals]);
     assert.deepEqual(await rowCells(page, 'USER'), ['USER', user.Globals, user.Routines, user.TempGlobals]);
+
+    // DW-1858 (AC5): the Integrity log entry opens the log viewer on its own route.
+    await page.evaluate((label) => {
+      const items = Array.from(document.querySelectorAll('app-side-bar nav.ocu-side-bar .ocu-side-bar-item'));
+      items.find((item) => item.querySelector('.ocu-side-bar-label')?.textContent.trim() === label)?.click();
+    }, STRINGS.databaseIntegrityLogLabel);
+    await page.waitForFunction(() => location.pathname.endsWith('/os-management/databases/integrity-log'), { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-log-viewer-page .ocu-log-viewer', { visible: true, timeout: config.navigationTimeoutMs });
   } finally {
     await context.close();
   }

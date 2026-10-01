@@ -2,7 +2,7 @@
 /// its routines and its temporary globals from, read through the vendor's own
 /// <code>%Api.Admin.Endpoints.Namespace.Namespace</code> <code>LIST</code> (AD-2, AD-36) and rendered
 /// by the <code>list</code> archetype's page from the declared <code>table</code> (AD-5). It is OS
-/// management's sixth side-bar entry, after Devices.</p>
+/// management's seventh side-bar entry, after Devices.</p>
 /// <p><b>Its scope is <code>instance</code></b>: a namespace is CPF configuration, so the same rows
 /// answer whatever namespace the route names. Its id is <code>single</code>, the namespace's name,
 /// and the name cell opens <class>OcuPilot.Screen.Descriptor.NamespaceForm</class> at this route
@@ -25,7 +25,7 @@ XData Declaration
   "route": "os-management/namespaces",
   "area": "os-management",
   "labelKey": "namespaceListLabel",
-  "sideBarPosition": 6,
+  "sideBarPosition": 7,
   "archetype": "list",
   "built": true,
   "refreshes": false,

@@ -275,6 +275,25 @@ Method TestASystemGlobalMappingIsPermittedAtTheStrongestConfirmation()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", "global", ..#NS), "%OcuProbe1814,%OcuProbe1814S,%OcuProbe1814S(""a""):(""m""),%OcuProbe1814V", "the instance holds the system-global mappings, the subscript's base mapping among them")
 }
 
+/// <p>A global mapping whose global part begins with <code>:</code> (an empty low end, read as
+/// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals (AD-10): the agent's create is
+/// minted destructive with the system-global consequence, as a <code>%</code> name's is. A range
+/// beginning elsewhere and a routine mapping of the <code>:</code> shape carry none. Nothing is
+/// confirmed.</p>
+/// <p>Mutation (Rule 19): remove the <code>:</code>/<code>*</code> line from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsSystemGlobalMapping</method> -> the
+/// <code>:OcuProbe1817</code> and <code>*</code> legs go red.</p>
+Method TestAGlobalPartBeginningWithAColonOrAStarReachesThePercentGlobals()
+{
+    Set ^||OcuPilotNamespaceWritePort = ..#RECORD
+    For tCase = $ListBuild("global", ":OcuProbe1817", "1|" _ ..#EFFECT), $ListBuild("global", "*", "1|" _ ..#EFFECT), $ListBuild("global", "OcuProbe1817A:OcuProbe1817Z", "0|"), $ListBuild("routine", ":OcuProbe1817R", "0|") {
+        Set tLabel = $List(tCase, 1) _ " " _ $List(tCase, 2)
+        Set tSC = ..Mint(..Tool($List(tCase, 1), "Create"), {"Namespace": (..#NS), "Name": ($List(tCase, 2)), "Database": "USER"}, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertStatusOK(tSC, tLabel _ ": the agent's create is minted " _ tProblem)
+        Do $$$AssertEquals(..Marked(tProposal), $List(tCase, 3), tLabel _ ": minted " _ $Select($List(tCase, 3) = "0|": "without the system-global consequence", 1: "destructive, carrying the system-global consequence"))
+    }
+}
+
 /// <p>OcuPilot's own mappings (AD-10): in the namespace this process runs in, a create of a name
 /// beginning with OcuPilot in any case, and an edit and a delete of OcuPilot's own
 /// <code>OcuPilot*</code> global mapping, are refused <code>PROHIBITED.OCUPILOTMAPPING</code> on both

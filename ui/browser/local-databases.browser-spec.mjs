@@ -4,8 +4,8 @@
  *
  * What it pins, each on rendered DOM, on the request the page sent, or on the instance itself:
  *
- * 1. **The list and the wizard** (AC1): OS management's tenth side-bar entry reads "Local
- *    databases"; the wizard refuses an empty subdirectory of the manager directory with
+ * 1. **The list and the wizard** (AC1): OS management's eleventh side-bar entry reads "Local
+ *    databases", with the Integrity log fifth, right after Databases (Story 18.17); the wizard refuses an empty subdirectory of the manager directory with
  *    `PATH.MANAGERDIR`, drawn under the picker's field before any vendor call (DW-1807's field
  *    mapping), then creates a probe database that reads mounted, journaled and guarded by its own
  *    `%DB_<NAME>`, and replaces the route with its editor.
@@ -23,12 +23,17 @@
  *    passes the structural walk; a database with none says so.
  * 6. **DW-1337** (AC7): the list, the wizard's first and last steps, the editor and the Delete dialog
  *    pass the structural walk at wide light, narrow light and wide dark.
+ * 7. **New Namespace's Create a database** (Story 18.17, DW-1824): the link opens the wizard with
+ *    `returnTo=namespace` and no leave prompt; the wizard's Create of `OCUPROBE1817W` returns to New
+ *    Namespace with `kept` and `database` gone from the URL, the typed Name and Routines kept and
+ *    Globals the database the instance now holds; a Cancel in the wizard returns with the same values;
+ *    leaving the form then asks, and no namespace is created.
  *
  * **It refuses the live and development containers.** It seeds `OCUPROBE183BE` and `OCUPROBE183BD`
  * through OcuPilot's own create route, a probe namespace and a probe web application over the second
  * in `%SYS` (test-only), creates `OCUPROBE183BW` through the wizard, and removes every one of them --
  * configuration, file, directory and `%DB_*` resource -- by exact name before and after, including on
- * failure, asserting none survives. The AC8 leg seeds `BackgroundSeed`'s paused compact over
+ * failure, asserting none survives; the DW-1824 leg's `OCUPROBE1817W` is removed the same way. The AC8 leg seeds `BackgroundSeed`'s paused compact over
  * `docker exec -e OCUPILOT_ALLOW_PRINCIPALS=1` and removes it with that class's `Remove()`, in the
  * leg's own `finally` and again in `after` when the leg ran.
  *
@@ -72,7 +77,13 @@ const INUSE_REASON = serverSentence('Api/DatabaseError.cls', 'REASONINUSE');
 const WIZARD = 'OCUPROBE183BW';
 const EDITED = 'OCUPROBE183BE';
 const DELETED = 'OCUPROBE183BD';
-const DATABASES = [WIZARD, EDITED, DELETED];
+/** The database the DW-1824 leg creates from New Namespace (Story 18.17). */
+const RETURNED = 'OCUPROBE1817W';
+const DATABASES = [WIZARD, EDITED, DELETED, RETURNED];
+
+/** The namespace the DW-1824 leg types and never creates. */
+const UNCREATED = 'OCUPROBE1817N';
+const NAMESPACE_FORM_URL = '/ocupilot/os-management/namespaces/edit?ns=HSCUSTOM';
 
 /** The probe namespace and web application that use `DELETED`, seeded in `%SYS` (test-only). */
 const NAMESPACE = 'OCUPROBE183NS';
@@ -469,7 +480,7 @@ async function nextTo(page, label) {
 
 // AC1. Mutation (Rule 19): make the wizard store drop `path` violations, rebuild and redeploy -> the
 // PATH.MANAGERDIR reason never renders under the picker and this goes red.
-test('AC1: Local databases is the tenth OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
+test('AC1: Local databases is the eleventh OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
   const user = configured('USER');
   assert.ok(user !== null, 'the instance configures USER');
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
@@ -482,11 +493,12 @@ test('AC1: Local databases is the tenth OS management entry; the wizard refuses 
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries.slice(0, 10), [
+    assert.deepEqual(bar.entries.slice(0, 11), [
       STRINGS.processListLabel,
       STRINGS.lockListLabel,
       STRINGS.systemUsageLabel,
       STRINGS.databaseListLabel,
+      STRINGS.databaseIntegrityLogLabel,
       STRINGS.deviceListLabel,
       STRINGS.namespaceListLabel,
       STRINGS.licenseUsageLabel,
@@ -552,6 +564,81 @@ test('AC1: Local databases is the tenth OS management entry; the wizard refuses 
       ROW_SELECTOR,
       WIZARD
     );
+  } finally {
+    await context.close();
+  }
+});
+
+/** New Namespace's Name, Routines and Globals as the form shows them. */
+function namespaceValues(page) {
+  return page.evaluate(() => ['Name', 'Routines', 'Globals'].map((field) => document.querySelector(`#ocu-namespace-${field}`)?.value ?? null));
+}
+
+/** Wait until the page is on `route` and its query carries no `kept` and no `database`. */
+function returnedTo(page, route) {
+  return page.waitForFunction(
+    (wanted) => {
+      const url = new URL(window.location.href);
+      return url.pathname.endsWith(`/${wanted}`) && !url.searchParams.has('kept') && !url.searchParams.has('database');
+    },
+    { timeout: 90000 },
+    route
+  );
+}
+
+/** Open the wizard from New Namespace's link, with no leave prompt, and wait for its Name field. */
+async function openWizardFromNamespace(page) {
+  await page.click('[data-create-database] a');
+  await page.waitForFunction(
+    (route) => {
+      const url = new URL(window.location.href);
+      return url.pathname.endsWith(`/${route}`) && url.searchParams.get('returnTo') === 'namespace';
+    },
+    { timeout: config.navigationTimeoutMs },
+    FORM_ROUTE
+  );
+  await page.waitForSelector('#ocu-database-Name', { visible: true, timeout: config.navigationTimeoutMs });
+  assert.equal(await page.$('[role="dialog"]'), null, 'no leave prompt was raised on the way to the wizard');
+}
+
+// DW-1824 (AC3, AC4). Mutation (Rule 19): make the namespace store's `open` ignore `returning`, or skip
+// choosing `returning.database`, rebuild and redeploy -> the restored values or Globals go red.
+test('DW-1824: New Namespace\u2019s Create a database returns to the form with what was typed and the created database as Globals', async () => {
+  const { context, page } = await signedInAt(browser, config, NAMESPACE_FORM_URL, VIEWPORTS.wide);
+  try {
+    await page.waitForSelector('#ocu-namespace-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-namespace-Name', UNCREATED);
+    await page.select('#ocu-namespace-Routines', 'USER');
+    await openWizardFromNamespace(page);
+
+    // The wizard's Create returns with the created database chosen as Globals, through the router query.
+    await page.type('#ocu-database-Name', RETURNED);
+    await page.waitForFunction((wanted) => document.querySelector('#ocu-database-location-path')?.value === wanted, { timeout: config.navigationTimeoutMs }, RETURNED.toLowerCase());
+    await chooseManagerRoot(page, 'ocu-database-location');
+    await nextTo(page, STRINGS.databaseWizardStepSize);
+    await nextTo(page, STRINGS.webAppColumnResource);
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await returnedTo(page, 'os-management/namespaces/edit');
+    await page.waitForFunction((wanted) => document.querySelector('#ocu-namespace-Globals')?.value === wanted, { timeout: config.navigationTimeoutMs }, RETURNED);
+    assert.equal(configured(RETURNED)?.Directory, directoryOf(RETURNED), 'the instance holds the database the form now names');
+    assert.deepEqual(await namespaceValues(page), [UNCREATED, 'USER', RETURNED], 'Name and Routines as typed, Globals the created database');
+    assert.equal(await page.$('[role="dialog"]'), null, 'and no leave prompt was raised on the way back');
+
+    // Cancel in the wizard returns with the same values.
+    await openWizardFromNamespace(page);
+    await page.click('.ocu-form-bar-actions .ocu-button-text');
+    await returnedTo(page, 'os-management/namespaces/edit');
+    await page.waitForFunction((wanted) => document.querySelector('#ocu-namespace-Name')?.value === wanted, { timeout: config.navigationTimeoutMs }, UNCREATED);
+    assert.deepEqual(await namespaceValues(page), [UNCREATED, 'USER', RETURNED], 'the wizard\u2019s Cancel keeps what was typed and Globals unchanged');
+
+    // The restored form is dirty: leaving asks, and nothing is created.
+    await page.click('.ocu-form-bar-actions .ocu-button-text');
+    await page.waitForSelector('[role="dialog"] .ocu-dialog-title', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[role="dialog"] .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.formLeaveWithoutSaving);
+    await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
+    await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/os-management/namespaces'), { timeout: config.navigationTimeoutMs });
+    const absent = irisSys([mark('NS', `##class(Config.Namespaces).Exists("${UNCREATED}")`)], ['NS']);
+    assert.equal(absent.values.NS, '0', `no namespace was created:\n${absent.output}`);
   } finally {
     await context.close();
   }
