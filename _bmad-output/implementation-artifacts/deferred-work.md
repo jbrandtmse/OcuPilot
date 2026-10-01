@@ -8480,6 +8480,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Forward-merge roster run on a freshly recreated ocupilot-b-ci: run 3 red (LOG.ABSENT), alerts.log appeared at 23:13 during the sweep, re-run 17 green
 - 2026-09-29T23:16:25Z status=routed owner=burndown by=lead note=the test should seed or tolerate an absent alerts.log (Epic 16's log hub, 16.9)
 - 2026-10-01T11:09:47Z owner=16-26-epic-16-burn-down by=burndown note=chartered: CI flake (Rule 27); seed or tolerate an absent alerts.log
+- 2026-10-01T12:36:01Z status=resolved-by:16-26-epic-16-burn-down by=adjudication note=WireSecurityRead accepts 200 or 404 LOG.ABSENT on the alerts tail past the gate; reproduced red with alerts.log aside (r23754), green after
 
 ### DW-1858: Databases offers no way into the Integrity log: DatabaseIntegrityLog takes no side-bar position and only the Check integrity flow links to it after a send, so a past check (a task's, the classic portal's) is reachable only by running a new one; the classic OpDatabases has its own Integrity Log button
 - source: spec-18-4-the-deferred-disk-operations.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -8599,6 +8600,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T15:17:44Z status=routed owner=burndown by=orchestrator note=Epic 16's close gate: a CI flake in its own 16.25 spec (inference: the probe's start is read before it reports running); fix at the epic close under Rule 27 (CI flakes are chartered)
 - 2026-10-01T11:09:48Z owner=16-26-epic-16-burn-down by=burndown note=chartered: CI flake (Rule 27); wait for the probe's running state before asserting
 - 2026-10-01T11:30:24Z owner=16-26-epic-16-burn-down by=spec_gate note=evidence corrected: AC3 failed in its own setup (the probe start answered HTTP 500 at ~10 s, line 316), not a read before running; inference: probe port held
+- 2026-10-01T12:36:01Z status=resolved-by:16-26-epic-16-burn-down by=adjudication note=probe ports moved below the ephemeral range (asserted at run time); AC3 names the vendor's refusal; reproduced with a held port, green after
 ### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)

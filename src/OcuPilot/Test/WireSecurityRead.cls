@@ -1209,7 +1209,7 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
 /// <p>Story 16.8 (AD-8, DW-1755) -- the Logs area keeps Release 1's pair set, and the event log's
 /// <code>%Ens_EventLog:USE</code> gates that screen alone. <parameter>AUDITUSER</parameter> holds
 /// exactly the Logs area's three pairs and not that one: the Logs area opens, messages.log and
-/// alerts.log are served on their routes and read tools, and only the event log's route and read
+/// alerts.log pass their gates on their routes and read tools, and only the event log's route and read
 /// tool are refused, naming its pair.</p>
 /// <p>The alerts.log route has two outcomes past the gate (AD-21): 200 with the file's tail, or, on an
 /// instance that has raised no alert and so has no alerts.log, 404 <code>LOG.ABSENT</code>. Any other

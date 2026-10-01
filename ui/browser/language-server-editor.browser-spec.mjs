@@ -115,6 +115,24 @@ function vendorReason(body) {
   return `${errors.join('; ') || 'no status.errors'} | console: ${lines.join(' / ') || 'none'}`;
 }
 
+/** An admin API answer to a refused start, in the shape AC5's held-port run returned, and the reason `vendorReason` gives for it. */
+const REFUSED_START = {
+  status: {
+    errors: [
+      { error: 'ERROR #5023: Remote Gateway Error: Connection cannot be established' },
+      { error: 'ERROR #5001: External Language Server:\n  invalid ping response' },
+    ],
+  },
+  console: [
+    'Starting Java Gateway Server &quot;OcuPilotProbeELSSeeded&quot;<br>',
+    'Executing OS command: java&nbsp;-Xmx48m<br/>Waiting &amp;lt;10 s&amp;gt;<BR>',
+    'An error occurred while trying to start the Gateway Server &lt;port&#x3d;31296&#62;',
+  ],
+};
+const REFUSED_START_REASON =
+  'ERROR #5023: Remote Gateway Error: Connection cannot be established; ERROR #5001: External Language Server: invalid ping response' +
+  ' | console: Executing OS command: java -Xmx48m / Waiting &lt;10 s&gt; / An error occurred while trying to start the Gateway Server <port=31296>';
+
 /** The low bound of `container`'s ephemeral port range, the first number in `PORT_RANGE_FILE`; fails naming the file when it cannot be read. */
 function ephemeralLow(container) {
   const result = spawnSync('docker', ['exec', container, 'cat', PORT_RANGE_FILE], { encoding: 'utf8', timeout: 60000 });
@@ -364,8 +382,10 @@ test('AC1: Python and .NET offer their own settings, with their file locations r
 });
 
 // AC3. Mutation (Rule 19): answer true from the store's `editable()` while running, rebuild and
-// redeploy -> the running editor's inputs take input and this goes red.
+// redeploy -> the running editor's inputs take input and this goes red. AC5: read `entry.message`
+// in `vendorReason` -> the reason check goes red before anything is started.
 test('AC3: a started probe\u2019s editor states the running sentence and reads only; the probe is then stopped', async () => {
+  assert.equal(vendorReason(REFUSED_START), REFUSED_START_REASON, 'AC5: a refused start names the vendor errors and the last three console lines, decoded');
   const query = encodeURIComponent(SEEDED);
   const { status: started, body: answer } = await adminAnswer('POST', `/ext-lang-server/start?name=${query}`);
   assert.equal(started, 200, `the seeded probe starts (HTTP ${started}): ${vendorReason(answer)}`);

@@ -51,7 +51,7 @@ Epic 16 brought the classic portal's remaining second-tier screens and actions i
     - Seeding writes a severe line, which raises the instance's alert state. Another test could then observe that state, which is a new coupling (inference).
 - **DW-1867:** `ui/browser/language-server-editor.browser-spec.mjs`, AC3: "a started probe's editor states the running sentence and reads only; the probe is then stopped". This is 16.25's own spec.
   - **The failure.** It failed once, in CI run 36724473192 attempt 1 on `6de77ace`, browser shard 2/3: 3 passed, 1 failed. It passed in four other runs. The ledger does not record which assertion failed.
-  - **Suspected cause.** The ledger's inference is that the editor reads the probe's start before the server reports running. Its charter note: wait for the probe's running state before asserting.
+  - **Measured cause.** The failure was the test's own setup: the probe start answered HTTP 500 at about 10 s (spec-gate trailer on DW-1867); a probe port already held by another connection is the inference.
   - **Check the screen first.** A wait is the right fix only if the screen is right. If the editor can render editable controls while the server runs, the code is wrong and the fix goes there.
   - **Reproduce it.** One CI failure in five runs cannot be re-observed on demand. The reproduction has to force the race the fix closes (inference).
 

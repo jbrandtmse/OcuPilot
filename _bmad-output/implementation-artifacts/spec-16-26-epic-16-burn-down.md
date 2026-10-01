@@ -121,6 +121,21 @@ deferred: []
 - **AC4 (DW-1867).** Given each of the four start sites, when it runs, then it asserts that every port it starts a probe on is below the container's ephemeral low bound. Setting one port back to its 53xxx value reddens that assertion, naming the port and the bound.
 - **AC5 (DW-1867).** Given the fixed editor spec and its own seeded port held by hand, when AC3's start is refused, then the failure message carries the vendor's error text, such as "Connection cannot be established". The next recurrence names its cause.
 
+### Review Findings
+
+Code review 2026-10-01, layers verification-gap and acceptance-auditor (`full-opus`): 2 patch, 0 decision-needed, 0 defer, 5 rejected.
+
+- [x] [Review][Patch] AC5's reason text had no pin that could fail: nothing asserted `vendorReason`'s output, and the recorded mutation left AC3 red either way. AC3 now first checks it against a fixed refused-start answer's exact text [ui/browser/language-server-editor.browser-spec.mjs:388] (med, fix-risk low: one assertion on a pure helper; in-story; patched, mutation observed)
+- [x] [Review][Patch] The Logs-area test's doc said alerts.log is "served", which its new paragraph contradicts; corrected in place [src/OcuPilot/Test/WireSecurityRead.cls:1212] (low two-way door, fix-risk low: doc only; compiled on `ocupilot-ci`)
+
+Rejected:
+
+- `low` The list spec and `LanguageServerWire` cannot name a refused start's vendor reason: spec-bound (by-design), since AC5 and the intent name the editor spec's fixture start, where CI failed.
+- `low` The Auto Run Result's last bullet says DW-1867's ledger evidence repeats the refuted inference; the ledger's 11:30:24Z `spec_gate` trailer corrects it, and only `epic-16-context.md:54,56` still carry it. The fix edits the spec under review; reported to the lead.
+- `false` The full ObjectScript sweep was skipped: documented, on the lead's instruction for a test-only story; CI's instance shards run every class on the merged head (run 36860669576).
+- `low` `LanguageServerWire`'s port check runs in the class's last method, after two other starts: a full class run, which CI makes, still reddens on a port inside the range, naming port and bound; moving it ahead of every start adds a check per method.
+- `low` (inference) `vendorReason` assumes `status.errors` and `console` are arrays: the vendor answers arrays and a non-JSON body parses to `null`, which is handled; a TypeError would still redden AC3; the fix adds guards for an unshown case.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -205,7 +220,7 @@ Slot A only: every run and reproduction is on `ocupilot-ci`, one test call at a 
 - AC2: mutation: `ALERTSPAIRS` = `%Admin_Operate:USE,%Ens_EventLog:USE`, `LogSourcePort` and its three fixture subclasses recompiled → run 23756, `TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` red on the alerts tail's 403 `AUTH.NOPRIVILEGE` naming `%Ens_EventLog:USE`.
 - AC3: mutation: the fix reverted (unchanged spec), 127.0.0.1:53296 held by a client socket connected to 1972 → 3/4, AC3 red at "the seeded probe starts (HTTP 500)" in 10.30 s. Fixed spec, same occupant, established throughout → 4/4.
 - AC4: mutation: `SEEDED_PORT` 53296 → the editor spec's `before` red, "probe port 53296 is below ocupilot-ci's ephemeral port range, which starts at 32768". mutation: `SERVER_PORT` 53293 → the list spec's `before` red, same message. mutation: `PROBEPORT` 53291 → run 23758, `TestTheExactPairsPrincipalStartsAndStopsTheProbe` red on that assertion alone. mutation: the `PROBES` Java entry 53294 → single-method run 23759, `TestAStartedServerIsRefusedEditAndDelete` red on the port assertion and on the 31294 literal.
-- AC5: 127.0.0.1:31296 held by a client socket connected to 1972, fixed spec → 3/4, AC3 red: "the seeded probe starts (HTTP 500): ... #5023: Remote Gateway Error: Connection cannot be established > ... #5001: External Language Server: invalid ping response | console: ... Starting Java Gateway Server 'OcuPilotProbeELSSeeded' / ... An error occurred while trying to start the Gateway Server". mutation: `: ${vendorReason(answer)}` dropped from AC3's start message, same occupant → AC3 red on "the seeded probe starts (HTTP 500)" alone, no vendor text. An occupant socket set `SO_REUSEADDR` leaves the port bindable and AC3 green, so the occupant sets none.
+- AC5: 127.0.0.1:31296 held by a client socket connected to 1972, fixed spec → 3/4, AC3 red: "the seeded probe starts (HTTP 500): ... #5023: Remote Gateway Error: Connection cannot be established > ... #5001: External Language Server: invalid ping response | console: ... Starting Java Gateway Server 'OcuPilotProbeELSSeeded' / ... An error occurred while trying to start the Gateway Server". mutation: `vendorReason` reads `entry.message` instead of `entry.error`, over a rebuilt and redeployed bundle → AC3 red on its AC5 reason check ("no status.errors | console: ..." against the fixed refused-start answer's text), before anything is started; restored → `language-server-editor` 4/4, `language-servers` 2/2 (code review). An occupant socket set `SO_REUSEADDR` leaves the port bindable and AC3 green, so the occupant sets none.
 - Final: `LanguageServerWire` run 23760 4/4; `LanguageServerEditorWire` run 23761 7/7; `WireSecurityRead` run 23757 24/25, residue only; `language-servers` 2/2 and `language-server-editor` 4/4; `npm run test:tools` 1763/1763; `check-objectscript` 0 findings.
 - After each: the tree is byte-identical (`git status --short`, `git diff --stat`), and `ocupilot-ci` holds no occupant, no `OcuPilotProbeELS*` server, no activity row and a restored `alerts.log` (239,294 bytes, nothing appended).
 
@@ -246,4 +261,4 @@ Blocking condition: none
 
 - Whether CI stops flaking shows only in later CI runs. DW-1867's cause is an inference; AC4 pins the port rule, and AC5 makes any other cause name itself.
 - A port bound by hand below the range still refuses the start (AC5). The handoff also saw a TIME_WAIT left on the port by a closed connection refuse a start once.
-- For the lead: DW-1867's ledger evidence and the epic context still repeat the refuted inference ("read before running"). Correct them at their origin.
+- DW-1867's ledger evidence was corrected at the spec gate (11:30:24Z trailer) and the epic context by the lead.
