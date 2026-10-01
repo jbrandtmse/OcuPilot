@@ -709,3 +709,5 @@
 2026-10-01T11:08:27Z	Epic 16	spine_updated	ad=AD-13(stored_name_admitted),Deferred(DW-1888_decided) reason=decision_sheet(DW-1888,by=merge_gate) by=runner story=none lint=ok
 2026-10-01T11:09:48Z	Epic 16	ledger_burndown_chartered	story=16-26-epic-16-burn-down entries=2(DW-1851,DW-1867;both_CI_flakes,Rule_27) to_decision_sheet=1(DW-1886,decision-pending,human) note=burndown_gate_completes_after_16.26s_pipeline
 2026-10-01T11:09:48Z	Epic 16	deps_hash_rerecorded	reason=burndown_inserted(16.26) to=f2ccf07b
+2026-10-01T11:12:54Z	Epic 16	epic_context_compiled	reason=burndown_inserted(16.26) model=claude-opus-5-5 bytes=9793
+2026-10-01T11:12:54Z	Story 16.26	stage_spawned	stage=plan spawn_at=2026-10-01T11:12:54Z model=opus agent_name=16-26-epic-16-burn-down-plan-1 cycle_iteration=1
