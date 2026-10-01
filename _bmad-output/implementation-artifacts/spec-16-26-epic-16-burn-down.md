@@ -2,8 +2,9 @@
 title: 'Story 16.26: Epic 16 burn-down'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '5a2b16ad45a5eb032507d01bb269863603fb8d57'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-16-context.md'
@@ -123,6 +124,21 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-01 — Review pass
+
+- verdicts: 10 findings — high 0, medium 0, low 7, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (verification-gap) AC5's vendor reason in AC3's start message had no demonstrated mutation — demonstrated in the review pass: 127.0.0.1:31296 held, `vendorReason(answer)` dropped from the message → AC3 red on "(HTTP 500)" alone; reverted byte-identical, `mutation:` line written. The suggested new tools test file is outside the intent ("no new test class, browser spec").
+  - `[low]` `[patch]` (verification-gap) `## Verification` recorded the reproductions and mutations without the `mutation: <what> → <test>` form — the AC1-AC5 lines rewritten in that form.
+  - `[low]` `[reject]` (verification-gap) AC3's "fixed spec, same occupant → 4/4" cannot fail by construction: it shows the port moved, not that the rule is right — AC3 defines that run, so the fix edits this build's spec; the rule is pinned by AC4's four mutations, and the limit is named under residual risks.
+  - `[low]` `[reject]` (intent-alignment, R2) "no more CI flakes" is observable only in later CI runs, and DW-1867's cause is an inference — inherent to a flake fix; the spec labels the inference and AC5 makes a recurrence name its cause; named under residual risks.
+  - `[low]` `[reject]` (intent-alignment, R3) the after-fix run does not exercise the mechanism (the kernel never assigns a source port below the low bound) — same root cause as the AC3 row above, same route.
+  - `[low]` `[reject]` (intent-alignment, R4) `LanguageServerWire` checks the ports in one of the three methods that start a probe — the constants it checks are the ones every start reads, so a full class run, the unit CI runs, pins them; only a single-method run of another method skips it, the spec's Tasks name that method, and the fix adds assertions.
+  - `[false]` `[reject]` (intent-alignment) `vendorReason`'s reading of `status.errors[].error` and `console[]` is unconfirmed — the review pass's own AC5 run printed both halves: the `#5023`/`#5001` error text and the decoded console lines.
+  - `[low]` `[reject]` (intent-alignment) `ephemeralLow` and `PORT_RANGE_FILE` are copied into both browser specs — two five-line copies with no named caller to diverge; sharing them means a new export in a helper outside the Code Map.
+  - `[false]` `[reject]` (intent-alignment) the `LIVE_CONTAINER` guard in both specs goes beyond the task list — `ui/tools/angular-json.test.mjs:307-313` (DW-159) requires it in any spec that runs docker, and `npm run test:tools` is red without it.
+  - `[false]` `[reject]` (intent-alignment) the frontmatter reads `in-review` while the Auto Run Result section reads `ready-for-dev` — that section is written at finalize in this same pass.
+
 ## Design Notes
 
 **DW-1851: the product is right.** AD-21 makes an absent log file a named refusal, 404 `LOG.ABSENT`, after the gate. DW-1814 (AD-2) stopped a 404 read from logging, so a fresh instance can go a whole shard without creating `alerts.log`. The declared read already answers 200 with no rows (`LogSourcePort.Rows` :866-872, pinned by `LogSource:191-200`), so only the tail leg fails. Accepting `LOG.ABSENT` is the precedent in `LogSource` and `LogSourceDenial`: reaching it proves the gate admitted the caller. Seeding would raise the instance's alert state, which is a new coupling.
@@ -184,16 +200,49 @@ Slot A only: every run and reproduction is on `ocupilot-ci`, one test call at a 
 
 **Reproductions and mutations, recorded by the implement stage:**
 
-- AC1: `alerts.log` moved aside, unchanged tree → red on 404 `LOG.ABSENT`; fixed → green with the file still absent; restored → green.
-- AC2: mutation `ALERTSPAIRS` += `%Ens_EventLog:USE` → `TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` red on 403.
-- AC3: 127.0.0.1:53296 held, unchanged spec → AC3 red at "the seeded probe starts (HTTP 500)"; fixed, same occupant → 4/4.
-- AC4: mutation `SEEDED_PORT` 53296 → the editor spec's `before` assertion red; mutation `PROBEPORT` 53291 → `LanguageServerWire`'s assertion red.
-- AC5: 127.0.0.1:31296 held, fixed spec → AC3 red with the vendor's "Connection cannot be established" in its message.
-- After each: the tree is byte-identical (`git status --short`, `git diff --stat`), and `ocupilot-ci` holds no occupant, no `OcuPilotProbeELS*` server, no activity row and a restored `alerts.log`.
+- AC1: mutation: the fix reverted (unchanged tree), `alerts.log` moved aside → run 23754, `TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` red on the alerts tail's 404 `LOG.ABSENT`, the file still absent after the run. Fixed, file aside again → run 23755 green, the file still absent after. Restored → run 23757 green. Each run's only other failure is the known residue `TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (DW-1425/DW-1468).
+- AC2: mutation: `ALERTSPAIRS` = `%Admin_Operate:USE,%Ens_EventLog:USE`, `LogSourcePort` and its three fixture subclasses recompiled → run 23756, `TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` red on the alerts tail's 403 `AUTH.NOPRIVILEGE` naming `%Ens_EventLog:USE`.
+- AC3: mutation: the fix reverted (unchanged spec), 127.0.0.1:53296 held by a client socket connected to 1972 → 3/4, AC3 red at "the seeded probe starts (HTTP 500)" in 10.30 s. Fixed spec, same occupant, established throughout → 4/4.
+- AC4: mutation: `SEEDED_PORT` 53296 → the editor spec's `before` red, "probe port 53296 is below ocupilot-ci's ephemeral port range, which starts at 32768". mutation: `SERVER_PORT` 53293 → the list spec's `before` red, same message. mutation: `PROBEPORT` 53291 → run 23758, `TestTheExactPairsPrincipalStartsAndStopsTheProbe` red on that assertion alone. mutation: the `PROBES` Java entry 53294 → single-method run 23759, `TestAStartedServerIsRefusedEditAndDelete` red on the port assertion and on the 31294 literal.
+- AC5: 127.0.0.1:31296 held by a client socket connected to 1972, fixed spec → 3/4, AC3 red: "the seeded probe starts (HTTP 500): ... #5023: Remote Gateway Error: Connection cannot be established > ... #5001: External Language Server: invalid ping response | console: ... Starting Java Gateway Server 'OcuPilotProbeELSSeeded' / ... An error occurred while trying to start the Gateway Server". mutation: `: ${vendorReason(answer)}` dropped from AC3's start message, same occupant → AC3 red on "the seeded probe starts (HTTP 500)" alone, no vendor text. An occupant socket set `SO_REUSEADDR` leaves the port bindable and AC3 green, so the occupant sets none.
+- Final: `LanguageServerWire` run 23760 4/4; `LanguageServerEditorWire` run 23761 7/7; `WireSecurityRead` run 23757 24/25, residue only; `language-servers` 2/2 and `language-server-editor` 4/4; `npm run test:tools` 1763/1763; `check-objectscript` 0 findings.
+- After each: the tree is byte-identical (`git status --short`, `git diff --stat`), and `ocupilot-ci` holds no occupant, no `OcuPilotProbeELS*` server, no activity row and a restored `alerts.log` (239,294 bytes, nothing appended).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; no code changed. The plan's measurements ran on `ocupilot-ci`, and every probe server, activity row and helper file they made was removed.
+**Change.** Test-only fixes for two CI flakes; no product code.
+
+- DW-1851: `WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair` accepts 200 or 404 `LOG.ABSENT` on the alerts tail. Anything else is red, a 403 included.
+- DW-1867: every probe that is started listens on a 31xxx port. Each of the four start sites reads `/proc/sys/net/ipv4/ip_local_port_range` at run time and asserts its ports are below the low bound. An unreadable file is red and names the file. AC3's fixture start now reports the vendor's `status.errors` and last console lines.
+
+**Files.**
+
+- `src/OcuPilot/Test/WireSecurityRead.cls`: the alerts tail tolerance, and its doc.
+- `src/OcuPilot/Test/LanguageServerWire.cls`: ports 31291 and 31292, `PORTRANGEFILE` and `EphemeralLow()`, and the port check in the first start test.
+- `src/OcuPilot/Test/LanguageServerEditorWire.cls`: the started Java probe on 31294 (`PROBES` and three literals), checked against `EphemeralLow()`.
+- `ui/browser/language-server-editor.browser-spec.mjs`: ports 31294-31296, the range check in `before`, and the vendor reason in AC3's message.
+- `ui/browser/language-servers.browser-spec.mjs`: `SERVER_PORT` 31293 and the range check in `before`.
+- Both specs also gained the `LIVE_CONTAINER` guard that `angular-json.test.mjs` (DW-159) requires of a spec that runs docker. No path outside the Code Map.
+
+**Review.** 10 findings: 2 low patched, 5 low and 3 false rejected, none deferred (see the triage log).
+
+- Patched: AC5's mutation demonstrated and recorded, and the Verification lines put in `mutation:` form.
+- Follow-up review: `false`. Patched counts: high 0, medium 0, low 2.
+
+**Verification** (all on `ocupilot-ci`, one run at a time, after the handoff):
+
+- `check-objectscript`: 0 findings. `npm run test:tools`: 1763/1763.
+- ObjectScript, after a sync and compile: `WireSecurityRead` run 23762 24/25, the one failure the known residue `TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (DW-1425/DW-1468). `LanguageServerWire` run 23763 4/4. `LanguageServerEditorWire` run 23764 7/7.
+- Browser, after `npm run build` and a redeploy: `language-server-editor` 4/4, `language-servers` 2/2.
+- The handoff's runs 23754-23759 were read back from `%UnitTest_Result` and match `## Verification`.
+- The full ObjectScript sweep was skipped as test-only, on the lead's instruction. The full browser suite is CI's (Rule 29).
+- `ocupilot-ci` ends as found: no occupant, no `OcuPilotProbe*` server, 0 probe activity rows, and `alerts.log` at 239,294 bytes.
+
+**Residual risks.**
+
+- Whether CI stops flaking shows only in later CI runs. DW-1867's cause is an inference; AC4 pins the port rule, and AC5 makes any other cause name itself.
+- A port bound by hand below the range still refuses the start (AC5). The handoff also saw a TIME_WAIT left on the port by a closed connection refuse a start once.
+- For the lead: DW-1867's ledger evidence and the epic context still repeat the refuted inference ("read before running"). Correct them at their origin.

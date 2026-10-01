@@ -24,9 +24,10 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer';
 
-import { browserConfig, launchOptions } from '../browser.config.mjs';
+import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
@@ -42,7 +43,10 @@ const FORM_ROUTE = 'os-management/language-servers/edit';
 const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/osmgmt.languageservers/action';
 const SERVER = 'OcuPilotProbeELSBrowser';
-const SERVER_PORT = 53293;
+/** Below the container's ephemeral port range, so no outbound connection's source port can hold it when the probe starts. */
+const SERVER_PORT = 31293;
+/** The kernel file whose first number is the low bound of the container's ephemeral port range. */
+const PORT_RANGE_FILE = '/proc/sys/net/ipv4/ip_local_port_range';
 const OWN_PAIR = '%Admin_ExternalLanguageServerEdit:USE';
 const PRINCIPAL = 'OcuPilotELSBrowserArea';
 const PRINCIPAL_ROLE = 'OcuPilotELSBrowserAreaRole';
@@ -64,6 +68,14 @@ async function adminApi(method, path, body = null) {
     body: body === null ? undefined : JSON.stringify(body),
   });
   return answer.status;
+}
+
+/** The low bound of `container`'s ephemeral port range, the first number in `PORT_RANGE_FILE`; fails naming the file when it cannot be read. */
+function ephemeralLow(container) {
+  const result = spawnSync('docker', ['exec', container, 'cat', PORT_RANGE_FILE], { encoding: 'utf8', timeout: 60000 });
+  const low = Number(/^\s*(\d+)/.exec(result.stdout ?? '')?.[1]);
+  assert.ok(result.status === 0 && Number.isInteger(low), `${PORT_RANGE_FILE} is read in ${container}: ${result.stderr ?? ''}${result.error?.message ?? ''}`);
+  return low;
 }
 
 /** Seed the probe Java server, stopped, replacing one an earlier run left. */
@@ -208,8 +220,11 @@ async function waitForRunning(page, running, changed, timeout = config.navigatio
 }
 
 before(async () => {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
   assert.match(config.container, /-ci$/, `this spec starts and stops a probe server, so it runs only in a throwaway; ${config.container} is not one`);
+  const low = ephemeralLow(config.container);
+  assert.ok(SERVER_PORT < low, `probe port ${SERVER_PORT} is below ${config.container}'s ephemeral port range, which starts at ${low}`);
   await requireFreeSlot(config);
   browser = await puppeteer.launch(launchOptions(config));
   const definition = armProbeDefinition(probe);

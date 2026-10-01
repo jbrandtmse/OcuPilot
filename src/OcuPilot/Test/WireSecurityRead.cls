@@ -1211,18 +1211,30 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
 /// exactly the Logs area's three pairs and not that one: the Logs area opens, messages.log and
 /// alerts.log are served on their routes and read tools, and only the event log's route and read
 /// tool are refused, naming its pair.</p>
+/// <p>The alerts.log route has two outcomes past the gate (AD-21): 200 with the file's tail, or, on an
+/// instance that has raised no alert and so has no alerts.log, 404 <code>LOG.ABSENT</code>. Any other
+/// answer, a 403 included, is red. The other three paths answer 200 either way.</p>
 /// <p>Mutation (Rule 19): remove <code>%Ens_EventLog:USE</code> from
 /// <class>OcuPilot.Screen.Descriptor.LogEventViewer</class> and from
 /// <parameter>OcuPilot.Port.LogSourcePort.EVENTLOGPAIRS</parameter> -&gt; the event log's refusals stop
-/// naming it and go red.</p>
+/// naming it and go red. Add <code>%Ens_EventLog:USE</code> to
+/// <parameter>OcuPilot.Port.LogSourcePort.ALERTSPAIRS</parameter> -&gt; the alerts.log route answers 403
+/// and this goes red.</p>
 Method TestTheLogsAreaStaysOpenWithoutTheEventLogsPair()
 {
     Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, "%Ens_EventLog", "USE"), 1, ..#AUDITUSER _ " does not hold %Ens_EventLog:USE")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITUSER, "logs"), "true", "the Logs area opens")
-    For tPath = "/api/ocupilot/logs/messages", "/api/ocupilot/logs/alerts?maxBytes=4096", "/api/ocupilot/screens/logs.messages/read?maxRows=5", "/api/ocupilot/screens/logs.alerts/read?maxRows=5" {
+    Set tAlertsTail = "/api/ocupilot/logs/alerts?maxBytes=4096"
+    For tPath = "/api/ocupilot/logs/messages", tAlertsTail, "/api/ocupilot/screens/logs.messages/read?maxRows=5", "/api/ocupilot/screens/logs.alerts/read?maxRows=5" {
         Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ..#AUDITUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
         Do $$$AssertStatusOK(tSC, tPath _ ": the request completes")
-        Do $$$AssertEquals(tStatus, 200, tPath _ ": served: " _ $Extract(tBody, 1, 200))
+        If (tPath = tAlertsTail) && (tStatus = 404) {
+            Set tAbsent = ""
+            Try { Set tAbsent = ##class(%DynamicObject).%FromJSON(tBody) } Catch {}
+            Do $$$AssertEquals($Select($IsObject(tAbsent): tAbsent.code, 1: ""), "LOG.ABSENT", tPath _ ": a 404 names the file's absence, which is answered past the gate: " _ $Extract(tBody, 1, 200))
+        } Else {
+            Do $$$AssertEquals(tStatus, 200, tPath _ ": served: " _ $Extract(tBody, 1, 200))
+        }
     }
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/logs/eventlog", ..#AUDITUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the event log route request completes")
