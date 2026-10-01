@@ -2,7 +2,7 @@
 title: 'Story 16.14: The LDAP and Kerberos editor'
 type: 'feature'
 created: '2026-09-30'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -299,6 +299,8 @@ S = `src/OcuPilot/`, U = `ui/src/app/`. Anchors are at `ad1c21ff`.
 
 **Execution:**
 
+- **Task 0 (orchestrator condition, do first, before building on the synchronous test):** on `ocupilot-ci`, run `Security.LDAP` `TEST` on `AdminPort`'s synchronous path with a known probe password (a probe-named configuration pointing at an unreachable host is enough) and measure, the way the planner measured the queued path, that the password is left in **no** `%SYS.Task` or async task row (the vendor's `%Api.Admin` async task table included), **no** journal record you can find (search the current journal file for the probe password after the call), **no** `messages.log` line and no audit row, and **no** OcuPilot ledger or transcript row. Record the measurement under `## Design Notes`. **If the synchronous path also persists the password anywhere, HALT `blocked` with blocking condition `intent gap -- synchronous LDAP test persists the password: <where>`** -- option (c), leaving the test for a later story, becomes the fallback and is the orchestrator's call.
+
 Server:
 
 - `S/Api/LdapError.cls` (new), following the `ServiceError` pattern. Codes and their sentences:
@@ -416,6 +418,8 @@ Client:
 - **AC12 (hygiene).** Given any test in this story, when it ends, pass or fail, then no `ocup99*` configuration, probe principal or probe task row remains, and `ocupilot` was never touched.
 
 ## Spec Change Log
+
+- 2026-10-01, lead, spec gate (orchestrator merge gate 2026-10-01, Rule 5): the plan's intent gap answered with option (a) -- epics.md 16.14 criteria 2 and 4 amended at origin as written under Design Notes (the test runs on `AdminPort`'s synchronous path, never the vendor's queue), and a new criterion added at origin for create, search password and delete (approved; FR-45; delete takes the typed-name confirmation; their governance keys enabled); spine amendments (a)-(g) written; Task 0 added (measure the synchronous path first; HALT if it persists the password). Status reset from `blocked`.
 
 ## Review Triage Log
 
@@ -552,8 +556,8 @@ This runs on slot A. Every probe and test runs on `ocupilot-ci`, one test run at
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- AC2 and AC4 (epics.md :6518-6528) route the LDAP test through AdminPort's async path, but on ocupilot-ci the vendor's queue stores the test body, the tested user's password in plain text, in its task row (IRISLOCALDATA, readable by any user) and in the journal inside its save transaction, where no delete reaches it: the exposure AD-26's queued-write refusal and AD-35 exist to prevent. Recommended: amend AC2 and AC4 as written under Design Notes, so the test runs on AdminPort's synchronous path and writes no task row, and apply spine amendments (a)-(g). This spec implements that recommendation.
+Status: ready-for-dev
+Blocking condition: none
 
 - **Planned.**
   - A tabbed editor (General, Groups, Attributes) over every input of `%CSP.UI.Portal.LDAP`.

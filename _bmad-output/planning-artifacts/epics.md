@@ -6515,17 +6515,21 @@ So that the instance can be joined to an existing identity system from here.
 - **When** it opens
 - **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
 
-- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
+- **Given** the `Security.LDAP` endpoint's test request type, which the admin API would queue, carries the tested user's password
 - **When** this editor is built
-- **Then** list, get and put stay synchronous, and the test action below goes through the async path.
+- **Then** list, get and put stay synchronous, and the test runs on `AdminPort`'s synchronous path, never the vendor's queue [AMENDED 2026-10-01, orchestrator merge gate, Rule 5: was "the test action below goes through the async path"; the vendor's queue writes the tested user's password in plain text into a world-readable task row and the journal, measured on `ocupilot-ci`].
 
 - **Given** an LDAP configuration
 - **When** the user runs test authentication
 - **Then** the instance's own result text is reported.
 
-- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
-- **When** the test runs
-- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+- **Given** the test runs
+- **When** it answers
+- **Then** the port exposes it as an ordinary call - the slice writes no polling logic - and the password reaches no task row, journal, log line or ledger row [AMENDED 2026-10-01, orchestrator merge gate, Rule 5: was "it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later"].
+
+- **Given** the LDAP / Kerberos list
+- **When** the user creates a configuration from its command bar, sets or clears its search password, or deletes one from its row
+- **Then** each is a write the screen and the agent both reach, with its own governance key enabled; the search password is write-only and never read back; and the delete asks for the configuration's name to be typed, as the other editors' deletes do [ADDED 2026-10-01, orchestrator merge gate, Rule 5: completes FR-45; EXPERIENCE.md :173 already carries the LDAP delete confirmation].
 
 ### Story 16.15: The data-egress line
 
