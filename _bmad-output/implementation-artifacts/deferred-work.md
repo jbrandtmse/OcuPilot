@@ -8150,6 +8150,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-5-background-tasks.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: BackgroundTaskPort.AdminRows maps the caller's whole AsyncResult LIST, so rows labeled /v2/ocupilot/ (left for the sweep for a caller who cannot delete them) are listed and offered controls; AdminPort.AwaitTask treats only Finished and Failed as terminal, so an OcuPilot task canceled while Queued waits out PORT.TIMEOUT.
 - 2026-09-28T23:43:52Z status=wontfix-accepted owner=16-5-background-tasks by=cr note=reopen_if=a user reports /v2/ocupilot/ rows in Background tasks, or a canceled queued task holds a read to PORT.TIMEOUT
+- 2026-10-01T14:33:07Z occurrence=18-15-enable-interoperability-on-a-namespace
 ### DW-1795: PATH.INSTANCE refuses a database's volume files only beside its IRIS.DAT: an overwriting consumer can resolve an existing volume file in one of the database's additional volume directories (SYS.Database VolumeDirectoryList, NewVolumeDirectory)
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: PathPort.DatabaseDirectories reads Config.Databases, which carries no volume directories; every local database on ocupilot-b-ci is single-volume, so no reach today (inference)
@@ -8735,6 +8736,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: NamespaceInteropGate runs 1345/1562 on ocupilot-b-ci; admitting such users needs a role check in Operation.Holds and the gates (contended kernel files)
 - 2026-10-01T13:37:15Z status=decision-pending owner=burndown by=harvest note=product call: keep the stricter direct-%All rule (recommended; safe, classic portal remains) or add a role check
+- 2026-10-01T14:33:07Z occurrence=18-15-enable-interoperability-on-a-namespace
 
 ### DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8750,3 +8752,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: full sweep run 1437 on ocupilot-b-ci: ForeignExpired found _SYSTEM conversation entries from 2026-09-30T13:08Z; CI's fresh throwaways start empty (like DW-1554)
 - 2026-10-01T13:37:15Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=harvest note=reopen_if=a CI instance job fails TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest
+
+### DW-1902: Enable interoperability can be sent again on a namespace whose first enable is still running in the background: the Namespaces page clears its one-operation guard on a still-running answer
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: namespace-list.page.ts onEnable clears operation after continued(); no screen reads async-result (AD-26), so the page cannot know when the vendor's task ends; a second send needs the typed name again
+- 2026-10-01T14:33:07Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=cr note=reopen_if=two concurrent INTEROP tasks for one namespace are observed, or a user reports a doubled enable

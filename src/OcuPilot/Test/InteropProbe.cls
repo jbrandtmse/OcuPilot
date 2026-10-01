@@ -33,6 +33,12 @@ Parameter TASKLABEL = "/namespace/namespace";
 /// reference enable measured at Story 18.15's Task 0, and at least 300.</p>
 Parameter SETTLESECONDS = 300;
 
+/// <p>How old, in seconds, <method>RecordInstance</method>'s record may be when
+/// <method>RestoreInstance</method> applies it. A record lives from one test's <method>Add</method> to
+/// its <method>RemoveAll</method>; an older one was left by a run whose restore failed, and applying it
+/// would delete every role, resource and task created since.</p>
+Parameter RECORDSECONDS = 3600;
+
 /// <p>The application whose matching roles the vendor's enable adds the interoperability editors' role
 /// to once.</p>
 Parameter EDITORSAPP = "/api/interop-editors";
@@ -184,7 +190,9 @@ ClassMethod HoldsNamespace(pName As %String) As %Boolean
     Quit $$$ISOK(tSC) && $IsObject($Get(tResult))
 }
 
-/// <p>Whether <var>pNamespace</var> is enabled for interoperability, as the vendor answers it.</p>
+/// <p>Whether <var>pNamespace</var> is enabled for interoperability, as the vendor answers it. The
+/// vendor answers 1 once its mappings exist, early in an enable, so this does not say the enable has
+/// ended.</p>
 ClassMethod IsEnabled(pNamespace As %String) As %Boolean
 {
     Set tEnabled = 0
@@ -194,6 +202,29 @@ ClassMethod IsEnabled(pNamespace As %String) As %Boolean
         Set tEnabled = 0
     }
     Quit tEnabled
+}
+
+/// <p>Whether an enable of <var>pNamespace</var> ran its HealthShare half: the vendor's
+/// <code>%HS_DB_</code> role for the namespace exists, which Story 18.15's Task 0 measured after a full
+/// enable and not after one that skipped that half. 1 on an instance without the HealthShare
+/// libraries.</p>
+ClassMethod HasHealthShareHalf(pNamespace As %String) As %Boolean
+{
+    Set tHas = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If '##class(%Library.EnsembleMgr).IsHealthShareInstalled() {
+            Set tHas = 1
+            Quit
+        }
+        Set $NAMESPACE = "%SYS"
+        Set tHas = ''##class(Security.Roles).Exists("%HS_DB_" _ $ZConvert(pNamespace, "U"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tHas = 0
+    }
+    Quit tHas
 }
 
 /// <p>Whether a web application runs in <var>pNamespace</var>.</p>
@@ -501,7 +532,11 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
     Set pRemaining = 0
     Set tSC = $$$OK
     Try {
-        Set tSettle = ..SettleOwnTasks(.tSettled)
+        Set tSC = $$$ADDSC(tSC, ..SettleOwnTasks(.tSettled))
+        Set tIterator = tSettled.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tTask) {
+            If '..Ended(tTask.%Get("State")) Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "probe task " _ tTask.%Get("GUID") _ " was still " _ tTask.%Get("State") _ " after the settle's wait"))
+        }
         Set tNamespaces = ..ProbeNamespaces()
         Set tPointer = 0
         While $ListNext(tNamespaces, tPointer, tNamespace) {
@@ -694,6 +729,7 @@ ClassMethod RecordInstance() As %Status
         Set @..#RECORD@("N", tNodeCount) = tNode
     }
     Set @..#RECORD@("N") = tNodeCount
+    Set @..#RECORD@("T") = $ZTimeStamp
     Set @..#RECORD@("I") = tCount
     Quit $$$OK
 }
@@ -705,10 +741,17 @@ ClassMethod RecordInstance() As %Status
 /// <code>STOP</code>, each external language server that runs now and was stopped in it; kill each
 /// <parameter>SYSTEMCONFIG</parameter> node it lacks; and forget it once no probe namespace remains.
 /// A name holding <parameter>PREFIX</parameter> is <method>RemoveAll</method>'s own removal and is left
-/// to it, and nothing the record holds is removed.</p>
+/// to it, and nothing the record holds is removed. A record older than
+/// <parameter>RECORDSECONDS</parameter> is discarded unapplied, and the status says so.</p>
 ClassMethod RestoreInstance() As %Status
 {
     If '$Data(@..#RECORD@("I"), tTotal) Quit $$$OK
+    Set tTaken = $Get(@..#RECORD@("T"))
+    Set tNow = $ZTimeStamp
+    If (tTaken = "") || (((($Piece(tNow, ",", 1) - $Piece(tTaken, ",", 1)) * 86400) + $Piece(tNow, ",", 2) - $Piece(tTaken, ",", 2)) > ..#RECORDSECONDS) {
+        Kill @..#RECORD@("I"), @..#RECORD@("N"), @..#RECORD@("T")
+        Quit $$$ERROR($$$GeneralError, "the instance-wide record was left by an earlier run whose restore failed, more than " _ ..#RECORDSECONDS _ " seconds ago; it was discarded unapplied, so restore what that run's enable changed by hand")
+    }
     Set tSC = $$$OK
     Kill tRecord, tNow, tRecordNodes
     For tI = 1:1:tTotal {
@@ -795,7 +838,7 @@ ClassMethod RestoreInstance() As %Status
         Set tQuery("name") = tName
         Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PORT, "Invoke", "LanguageServer", "STOP", .tQuery, "", .tResult, .tHttp, .tFault))
     }
-    If $$$ISOK(tSC) && ($ListLength(..ProbeNamespaces()) = 0) Kill @..#RECORD@("I"), @..#RECORD@("N")
+    If $$$ISOK(tSC) && ($ListLength(..ProbeNamespaces()) = 0) Kill @..#RECORD@("I"), @..#RECORD@("N"), @..#RECORD@("T")
     Quit tSC
 }
 

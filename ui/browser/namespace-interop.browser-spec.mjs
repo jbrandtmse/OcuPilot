@@ -15,9 +15,9 @@
  *
  * **It refuses the live container.** `before` takes the probe's snapshot, keeping it in `SNAPSHOT_NODE`,
  * and creates `OCUPROBE1815A` over a probe database through `OcuPilot.Test.InteropProbe.Add`, which
- * records what the enable changes instance-wide first; `after` settles the session's own tasks and runs
- * `RemoveAll`, which removes the probe objects and restores those records, and asserts no probe object
- * remains and the snapshot equals the one `before` took.
+ * records what the enable changes instance-wide first; `after` settles the signed-in user's own tasks,
+ * as that user, and runs `RemoveAll`, which removes the probe objects and restores those records, and
+ * asserts no probe object remains and the snapshot equals the one `before` took.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test --test-concurrency=1
@@ -76,6 +76,12 @@ function iris(lines, names = []) {
   return { values, output };
 }
 
+/**
+ * The lines that make the session the user the browser signs in as, whose queued tasks only that user's
+ * session lists, then wait for each to end, read its finished result once and remove it.
+ */
+const SETTLE_AS_SIGNED_IN = [`Do $SYSTEM.Security.Login("${config.username}")`, `Set tSC = ##class(${PROBE_CLASS}).SettleOwnTasks(.tSettled)`];
+
 /** Whether the instance reports `PROBE` enabled for interoperability. */
 function enabled() {
   const { values, output } = iris([mark('ON', `##class(${PROBE_CLASS}).IsEnabled("${PROBE}")`)], ['ON']);
@@ -105,7 +111,7 @@ after(async () => {
   if (config.container === LIVE_CONTAINER) return;
   const { values, output } = iris(
     [
-      `Set tSC = ##class(${PROBE_CLASS}).SettleOwnTasks(.tSettled)`,
+      ...SETTLE_AS_SIGNED_IN,
       `Set tSC = $System.Status.AppendStatus(tSC, ##class(${PROBE_CLASS}).RemoveAll(.tRemaining))`,
       `Set tDiff = ##class(${PROBE_CLASS}).Diff(##class(%DynamicArray).%FromJSON($Get(${SNAPSHOT_NODE}, "[]")), ##class(${PROBE_CLASS}).Snapshot())`,
       `Kill ${SNAPSHOT_NODE}`,
@@ -268,10 +274,12 @@ test('AC2, AC5: Enable interoperability states its consequence behind the typed 
     while (!reads.slice(readsBefore).some((sentAfter) => sentAfter > 0) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
     assert.ok(reads.slice(readsBefore).some((sentAfter) => sentAfter > 0), `the list is read again after the enable: ${JSON.stringify(reads)}`);
     await assertStructure(page, LIST_ROUTE);
-    // An enable still running past the port's wait finishes on the instance; `after` removes the
-    // namespace only once it has.
-    const finished = Date.now() + 180000;
-    while (lines.at(-1) !== done && !enabled() && Date.now() < finished) await new Promise((resolve) => setTimeout(resolve, 2000));
+    // An enable still running past the port's wait finishes on the instance. The vendor reports the
+    // namespace enabled early in the run, so wait for the task itself, as the user who sent it.
+    if (lines.at(-1) !== done) {
+      const { values: settled, output: settleOutput } = iris([...SETTLE_AS_SIGNED_IN, mark('SETTLED', '$System.Status.IsOK(tSC)')], ['SETTLED']);
+      assert.equal(settled.SETTLED, '1', `the enable still running was waited for:\n${settleOutput}`);
+    }
     assert.equal(enabled(), true, 'the instance reports the namespace enabled');
   } finally {
     await context.close();

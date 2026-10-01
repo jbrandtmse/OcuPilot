@@ -2,7 +2,7 @@
 title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '575c65eecac99899324fd15d67a3cf5503a82108'
 baseline_commit: '575c65eecac99899324fd15d67a3cf5503a82108'
 review_loop_iteration: 0
@@ -327,6 +327,12 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - Proceed shows the running line, then the done line or the still-running line. Exactly one `enable-interop` POST is sent, and the list is read again afterwards.
   - The DW-1337 walk runs in both themes, with the dialog open and with the status line holding text.
 
+**Rework iteration 1 (trigger: CI run 36869954798 on `be4b1baf`):**
+
+- [ ] [CI] instance shard 1/3, instance shard 2/3, browser shard 3/3: on CI's fresh throwaway the enable creates and starts the language server `FHIR_Validation_Server`, which the record lacks; `RestoreInstance` only stops a server the record holds stopped, so `NamespaceInterop` and `NamespaceInteropGate` (`OnAfterAllTests`) and `namespace-interop.browser-spec.mjs:118` report `added ["languageserver|FHIR_Validation_Server|1"]`. Fix: `RestoreInstance` stops, then deletes, every language server the record lacks (exact name from the diff), and a mutation pins it. Reproduce first on `ocupilot-b-ci` by removing the `FHIR_Validation_Server` definition the earlier probe enables left there (stopped), since a fresh instance has none.
+- [ ] [CI] Throwaway hygiene: remove, as objects (`%DeleteId`, never an SQL `DELETE`, DW-1859), the two vendor async task rows QA's mutation runs left on `ocupilot-b-ci` for the deleted principal `OcuGate1815All` (one stuck `Running`, one `Failed` naming `OCUPROBE1815G`).
+- [ ] [Review] Stale spec text the code review named (Tasks :301-302, the `angular.json` statements, the Auto Run Result tally): state the delivered values.
+
 **Acceptance Criteria:**
 
 - **AC1:** Given `ocupilot-b-ci`, when the implement stage starts, then Task 1's proof shows that the throwaway's snapshot after `RemoveAll` equals the one before it, before any tool exists. That snapshot includes `Admin`'s roles, `%HS_Administrator`'s resources, the HealthShare roles, resources, task, language server and `SystemConfig` records. If the proof fails, the story halts.
@@ -344,6 +350,29 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces (for `%ALL` where the instance defines it; where it does not, the fresh read's 404 `PORT.NOTFOUND`, and the sentence is pinned through the recording seam), or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
 - **AC5:** Given the typed-name dialog and the status line, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3,800 kB.
 
+### Review Findings
+
+Code review 2026-10-01, `review_tier: full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor), none failed. 51 raw findings: 15 grouped into 8 patch and 2 defer entries, 36 rejected (below).
+
+- [x] [Review][Patch] (medium; fix-risk low, test-only) The completion checks read `IsEnsembleNamespace`, which the vendor sets once `createMappings` runs, early in `EnableNamespace`. The gate's admitted leg passes on an enable that has only started. The browser spec's still-running path waits on that check, then settles irisowner's tasks instead of the browser user's, so `RemoveAll` can delete the probe namespace mid-install. Evidence on `ocupilot-b-ci`: vendor task `8177754…` for `OcuGate1815All` has been `Running` since 13:50:33 (QA run 1568), and `5445061…` is `Failed`, "Namespace 'OCUPROBE1815G' does not exist" (run 1569) [src/OcuPilot/Test/NamespaceInteropGate.cls:223, ui/browser/namespace-interop.browser-spec.mjs:272]
+- [x] [Review][Patch] (medium; fix-risk low) No test checks that an allowed enable ran its HealthShare half, which is why the enable requires `%All` (Task 0: a narrower principal's enable skips it) [src/OcuPilot/Test/NamespaceInterop.cls:164]
+- [x] [Review][Patch] (medium; fix-risk low, add-only in a contended file) Nothing pins that the enable's pairs carry the classic page's custom resource (AD-44), because `%All:USE` fails first for every principal [src/OcuPilot/Test/ClassicPageGate.cls:199]
+- [x] [Review][Patch] (medium; fix-risk low) Any later `RemoveAll` applies a restore record a failed run left behind, deleting every role, resource and task created since [src/OcuPilot/Test/InteropProbe.cls:709]
+- [x] [Review][Patch] (low, two-way door) `RemoveAll` drops its settle status and does not report a task still unfinished [src/OcuPilot/Test/InteropProbe.cls:504]
+- [x] [Review][Patch] (low) The agent-facing description says a user "holding %All may confirm it", but only a direct `%All` holder may propose or confirm (DW-1897) [src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls:32]
+- [x] [Review][Patch] (low) The gate class header says it creates three users and three roles; it creates four of each and a scratch role [src/OcuPilot/Test/NamespaceInteropGate.cls:22]
+- [x] [Review][Patch] (low) This story's `NAMESPACE_CONFIG` comment lines do not say that the classes write `%SYS` objects directly and create their own probe database [scripts/ci-throwaway.sh:420]
+- [x] [Review][Defer] `AdminPort.AwaitTask` does not treat `Canceled` as terminal, so an enable canceled from Background tasks during the wait would be answered started and recorded applied [src/OcuPilot/Port/AdminPort.cls:2630] — deferred: pre-existing; DW-1805 occurrence appended (and DW-1897 for the granted-role wording the layers raised)
+- [x] [Review][Defer] A second enable can be sent on a namespace whose first is still running in the background, because the screen clears its one-operation guard on a still-running answer and reads no task [ui/src/app/areas/os-management/namespace-list.page.ts:216] — deferred: low and deliberate (typed name twice); DW-1902, wontfix-accepted with `reopen_if`
+
+**Rejected:**
+
+- Spec text (a review does not edit the spec under review; the lead owns it): the granted-role wording in Tasks :301-302; deferred item 1's stale line numbers; the `angular.json` statements at :422 and :457; the triage tally at :582; `followup_review_recommended`; the gap audit at :573; the garbled Restore proof clause; AC4's 404 wording against the mint's 400 "not present"; the Integration ACs' claim that the page spec observes the re-read (the browser spec does). The QA `BOUNDSECONDS` inference is corrected in `## Verification`, under the first patch.
+- by-design (spec-bound): the consequence sentence's ENSTEMP/SECONDARY naming, the USER exception and the `%SYS` mapping (prescribed text, EXPERIENCE.md :378); re-running the enable on a namespace already enabled, `HSCUSTOM` included (Design Notes: a re-run is the vendor's own path, and the install namespace is not refused); `%SYS`/`%ALL` not foreseen in the dialog (the spec prescribes `"selfProtection": ""` and no advisory); a `Finished` task whose `Console` reports a step failure, read as done (Never: no `Console` parsing); `BroadResidue` run only by the Task 1 proof (the suites compare `Snapshot()`).
+- false: the parked `.patch` files (the spec cites them as its record); `InteropProbe` with no arming (callers are armed, and `browserConfig` refuses `ocupilot` and `ocupilot-slot-*`); the `SETTLESECONDS` derivation (max(3 × 13 s, 300) is 300); a `Failed` enable reported done (`AwaitTask` answers it 500); CI timings (`ci-shards.mjs` assigns an unrecorded class, and the timings refresh from a green run); the granted-role legs pinning a defect (they pin AD-8's current rule); unauthenticated privileged applications (vendor source: `/bulkfhir/api` is password plus JWT, and `/bulkfhir` carries no role; `HS.BulkFHIR.Installer.CreateWebApp` runs only from a BFC configuration).
+- wontfix-theoretical: the port queues a nameless enable (the tool always sends its target, the fresh read precedes the write, and the vendor's `validateNamespace` refuses `""`); a resource named `%All` (creating one needs `%Admin_Secure`, whose holder may already grant itself the `%All` role, AD-10).
+- low, not worth the change: `ProbeNamespaces` reading a failed list as none, and a snapshot read error in `RestoreInstance` (each fails loudly through the after-all snapshot); the unguarded `%SYS` switch around `Security.Resources.Exists`; the page spec's `HSCUSTOM` target in the AC4 stub leg; the copy-named status-line hooks; `InteropProbe`'s length (a helper, not a test class); the 120-character snapshot cut and the restore's partial repair (both fail loudly); the two wide `RESIDUE` patterns (used by the Task 1 proof only).
+
 ## Spec Change Log
 
 - 2026-10-01, spec gate (runner): spine amendments 1-5 under Design Notes were written at the gate (AD-26, AD-44, AD-10 for DW-1813, AD-21, and AD-8's poll pair); Task 0 completes AD-8 with its measured pairs. AD-21's reading (vendor-derived ENSTEMP/SECONDARY directories accepted) is with the orchestrator for confirmation; if it is overruled, the change is a refusal leg on this tool.
@@ -358,6 +387,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - 2026-10-01, implement (Task 1): halted, `intent gap: the throwaway cannot be restored` (Design Notes › Restore proof): `%ALL` answers 404 on `ocupilot-b-ci`, and five broad residue lines are edit stamps. Task 1's code is parked as `spec-18-15-task1-interopprobe.patch` (it supersedes the Task 0 patch); nothing else was built.
 
 - 2026-10-01, spec gate after the Task 1 halt (runner, intent-preserving test approach, Rule 5 tier 1): (1) `%ALL` -- the tool's refusal is unchanged; where the instance has no `%ALL` namespace the fresh read's 404 already queues nothing, so the real-port leg accepts either answer and the sentence is pinned through the recording seam (Design Notes, the order bullet); Task 1's `%ALL` halt condition is dropped. (2) Residue -- the five measured edit stamps (web-application `LastUpdate`, four `SQLStatsSettings` edit stamps with unchanged settings) join `RESIDUE` by exact name. Task 1 resumes from `spec-18-15-task1-interopprobe.patch`. Status reset to `in-progress`.
+
+- 2026-10-01, rework iteration 1 (runner, trigger=ci): CI run 36869954798 on `be4b1baf` failed three legs on the restore's language-server gap on a fresh instance; the code review's patches are committed with this re-open; the open items are the `[CI]` and `[Review]` tasks under Tasks & Acceptance.
 
 ## Review Triage Log
 
@@ -564,6 +595,22 @@ Task 1 re-run, 2026-10-01, on `ocupilot-b-ci`, as the test process (`irisowner`,
 - mutation: `.ocu-typed-name-consequence` drawn in `--ocu-surface`, rebuilt and redeployed → `namespace-interop.browser-spec`'s dialog walk red in both themes (1.04:1 light, 1.08:1 dark).
 - mutation: the `NAMESPACE.INTEROP` branch dropped from `consequenceSentence` → `proposal-view.test.mjs` red; one word of `SYSTEMREASON` changed → `self-protection.test.mjs`'s Story 18.15 pin red; `ENABLE_INTEROP` dropped from `UNDRAWN_ACTIONS` → `screen-action-handler.spec`'s undrawn leg red.
 
+**QA pass, 2026-10-01 (the three review-patched assertions the implement stage never falsified):**
+
+- mutation: `NamespaceEnableInterop.SystemProblem` answers `""` (re-run, isolating the `WriteCount` guard) → `NamespaceInterop.TestSysAndAllAreRefusedThroughTheShippedPort` red on "no enable was sent, so nothing was queued" (`RECORDPORT.WriteCount` reads 1, not 0) alongside the sentence legs, and `TestSysAndAllAreRefusedThroughTheSeam` red the same way (run 1564); reverted byte-identical, `NamespaceInterop` 9/9 clean (run 1565).
+- mutation: `InteropProbe.RestoreInstance`'s language-server loop forced to `Continue` unconditionally (stops none) → `NamespaceInteropGate.OnAfterAllTests` red, `ERROR #5001`: `added ["languageserver|FHIR_Validation_Server|1"] removed ["languageserver|FHIR_Validation_Server|0"]` (run 1566); `FHIR_Validation_Server` stopped by hand (the record had already been forgotten by the mutated restore), reverted byte-identical, `NamespaceInteropGate` 4/4 clean (run 1567).
+- mutation: `NamespaceInteropRecordPort.BOUNDSECONDS` 150 → 0 → `NamespaceInteropGate.TestAnAllHolderIsAdmittedOnBothCallers` red on "and the namespace is enabled" (the route answered started before the vendor's worker finished; run 1569); reverted byte-identical, `NamespaceInteropGate` 4/4 clean (run 1570). At `BOUNDSECONDS` 3 (run 1568) the leg stayed green on an enable that had only started. `IsEnsembleNamespace` reads 1 once the vendor's mappings exist, early in the run. The cleanup then deleted the namespace mid-install, which left vendor task `8177754…` `Running`. The code review added the `continues` assertion below.
+
+Gap audit against AC1-AC5 and the I/O & Edge-Case Matrix found no row without a pinning test and no pinning assertion that cannot fail; no test was added.
+
+**Code review, 2026-10-01 (the patched assertions):**
+
+- mutation: `NamespacePort.Started` also answers a finished `INTEROP` as started → `NamespaceInteropGate.TestAnAllHolderIsAdmittedOnBothCallers` red on "the route answers the enable done" alone (run 1577); reverted byte-identical, the port tree recompiled.
+- mutation: `InteropProbe.HasHealthShareHalf` reads `%HS_DBX_` → the same leg red on "its HealthShare half included" alone (run 1578); reverted byte-identical.
+- mutation: `NamespaceEnableInterop.PrivilegePairs` skips `Gate.WithClassicPages` → `ClassicPageGate.TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller` red on the enable's page-resource read alone (run 1579); reverted byte-identical, `ClassicPageGate` 5/5 (run 1580) and `NamespaceInteropGate` 4/4 (run 1581).
+- The stale-record guard, run directly on `ocupilot-b-ci`: a fresh record was applied and forgotten; a record taken a day earlier was discarded unapplied, with its error, and nothing was left.
+- The browser spec's still-running branch, with `NamespacePort`'s bound set to 2 s on the throwaway: the enable's task was left `Running` at the bound (14:31:24), the spec settled it as `_SYSTEM`, and `after`'s diff was empty (1/1); the bound was reverted byte-identical.
+- Green after the patches: `NamespaceInteropGate` 4/4 (1571), `NamespaceInterop` 9/9 (1572), `ClassicPageGate` 5/5 (1573), `MappingWriteGate` 4/4 (1574), `ToolEmit` 11/11 (1575), `ToolRoundTrip` 2/2 (1576); `namespace-interop.browser-spec` 1/1 on the rebuilt bundle; `npm run test:tools` 1,759; `check-objectscript` 0; `lint-docs` 0.
 
 ## Auto Run Result
 
@@ -573,7 +620,7 @@ Blocking condition: none
 - **Built:** Task 1's restore (`Test/InteropProbe.cls`; proof passed, Design Notes › Restore proof); `Namespace.Namespace/INTEROP` in `AdminPort`'s three lists and `PortFixture`; `NamespacePort`'s INTEROP branch and shared `Started`; `Screen/Tool/NamespaceEnableInterop` (`%All:USE`, `%Admin_Operate:USE`, the classic page; `%SYS`/`%ALL` refused); the `enable-interop` row action and the baseline line `false`; the page's typed-name dialog and status line; EXPERIENCE.md (993 lines) and the strings; `NamespaceInterop`, `NamespaceInteropGate`, `SeamNamespaceEnableInterop`, `NamespaceInteropRecordPort`, the rosters and `namespace-interop.browser-spec`.
 - **Files:** `src/OcuPilot/Port/{AdminPort,NamespacePort}.cls`, `Screen/Tool/NamespaceEnableInterop.cls`, `Screen/Descriptor/NamespaceList.cls`, `Kernel/Governance/Baseline.cls`; 21 `src/OcuPilot/Test/*.cls` (5 new); `ui/src/app/areas/os-management/namespace-list.page{,.spec}.ts`, `core/{proposal-view,screen-actions,screens.generated,strings}.ts`, `shell/screen-action-handler{,.spec}.ts`; `ui/tools/{proposal-view,self-protection,strings,angular-json}.test.mjs`, `ui/angular.json`, `ui/browser/namespace-interop.browser-spec.mjs`; `scripts/ci-throwaway.sh`; EXPERIENCE.md.
 - **Review:** 25 findings: 3 entries patched (all medium: unfalsifiable "nothing queued" checks and the `SecondReads` floor; the gate class's and the browser spec's snapshot comparison; the admitted leg's bound), 4 deferred (frontmatter), 18 rejected with reasons in the triage log.
-- **Follow-up review recommended:** yes (3 medium patched). Unverified risk: the patched assertions (`WriteCount` 0 on the shipped-port and deleted legs, the gate class's after-all snapshot, the 150 s admitted bound) ran green but no mutation was run against them, and the admitted enable's duration on a CI runner is unmeasured.
+- **Follow-up review recommended:** was yes (3 medium patched, unfalsified). The QA pass above falsified all three (runs 1564, 1566, 1569) and reconfirmed green after each byte-identical revert (runs 1565, 1567, 1570); the admitted enable's duration on a CI runner is still unmeasured.
 - **Verification:** full ObjectScript sweep on `ocupilot-b-ci`, runs 1171-1560: 390 classes, 3,224 tests, 2 failures, both reused-throwaway noise (`WireSecurityRead`, DW-1554; `Retention`, `deferred` item 4). After the review patches: `NamespaceInterop` 9/9 (run 1561), `NamespaceInteropGate` 4/4 (run 1562), `namespace-interop.browser-spec` 1/1. The three browser specs 10/10 before the patches; `npm test` (1,759 tools, 2,058 components) and `npm run build` green; smoke 49/49; `check-objectscript` 0; `lint-docs` 0.
 - **Bundle:** initial total 2,387,861 bytes, over 2,386 kB; re-based to 2388kB in `ui/angular.json` and `angular-json.test.mjs` per the runner's dispatch direction (the Design Notes' "untouched" predates it). Epic 16's 16.15 edits the same line: an integrate-forward conflict to resolve to the larger measured figure.
 - **Throwaway after the last test:** no probe namespace, database or record node; `Admin`'s roles and `%HS_Administrator`'s resources as before; no `%HS_BFC_*` role, no FHIR task, `FHIR_Validation_Server` stopped, no gate principal; monitor state 2 as found, alert count 473 -> 861 across the sweep and the reruns.

@@ -29,7 +29,7 @@ Parameter TOOLNAME = "osmgmt.namespaces.enableinterop";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.NamespaceList";
 
-Parameter DESCRIPTION = "Propose enabling interoperability on one namespace. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace as the namespaces list reports it; %SYS and %ALL are refused. On InterSystems IRIS for Health the instance also runs the HealthShare Foundation install, which grants the Admin user an administrative role, creates roles, resources and a task, and starts a Java language server. It cannot be undone, and only a user holding %All may confirm it.";
+Parameter DESCRIPTION = "Propose enabling interoperability on one namespace. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the namespace as the namespaces list reports it; %SYS and %ALL are refused. On InterSystems IRIS for Health the instance also runs the HealthShare Foundation install, which grants the Admin user an administrative role, creates roles, resources and a task, and starts a Java language server. It cannot be undone, and only a user assigned the %All role itself may propose or confirm it.";
 
 /// <p>The port that sends the enable (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.NamespacePort";

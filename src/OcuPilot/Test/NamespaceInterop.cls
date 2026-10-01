@@ -140,9 +140,9 @@ Method TestTheDeclarations()
 }
 
 /// <p>AC2: the screen's enable on <code>OCUPROBE1815A</code>, the key at its baseline, answers
-/// <code>updated</code> on the namespace, done or continuing; the namespace is then enabled and a
-/// portal application serves it, its task read once and gone, no second read logged, and OcuPilot's
-/// own objects unchanged.</p>
+/// <code>updated</code> on the namespace, done or continuing; the namespace is then enabled, its
+/// HealthShare half included, and a portal application serves it, its task read once and gone, no
+/// second read logged, and OcuPilot's own objects unchanged.</p>
 /// <p>Mutation (Rule 19): remove <code>Namespace.Namespace/INTEROP</code> from
 /// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter> -> the port refuses the enable before it
 /// is queued and this goes red.</p>
@@ -162,6 +162,7 @@ Method TestTheScreensEnableRoundTrips()
     Do $$$AssertEquals($Select($IsObject(tBody) && (tBody.%GetTypeOf("target") = "object"): tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ $ZConvert(tBody.%Get("target").%Get("id"), "U"), 1: ""), "updated namespace " _ tName, "publishing updated on the namespace")
     If $IsObject(tBody) && tBody.%Get("continues") Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SettleOwnTasks", .tSettled), "an enable that continued is settled once")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "IsEnabled", tName) _ "|" _ $ClassMethod(..#PROBE, "HasPortal", tName), "1|1", "the namespace is enabled and a portal application serves it")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "HasHealthShareHalf", tName), 1, "its HealthShare half included")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "OwnTaskCount"), tTasks, "its finished task was read once and removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActionProbe).SecondReads(), tReads, "and no second read of it was logged (ERROR #7846)")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "OwnObjects", $ClassMethod(..#PROBE, "Snapshot")).%ToJSON(), tOwn, "OcuPilot's own objects are unchanged")
@@ -190,6 +191,7 @@ Method TestTheAgentsEnableRoundTrips()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tResult)): tResult.%Get("state") _ " " _ tResult.%Get("auditMarked") _ " " _ tResult.%Get("action"), 1: ""), "200 confirmed 1 updated", "applied and marked (AD-15)")
     If $IsObject($Get(tResult)) && tResult.%Get("continues") Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SettleOwnTasks", .tSettled), "an enable that continued is settled once")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "IsEnabled", tName), 1, "and the namespace is enabled")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "HasHealthShareHalf", tName), 1, "its HealthShare half included")
     Do $$$AssertEquals(##class(OcuPilot.Test.DatabaseActionProbe).SecondReads(), tReads, "with no second read of its task logged (ERROR #7846)")
 }
 

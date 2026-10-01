@@ -176,6 +176,9 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 /// principal's, reaching the port.</p>
 /// <p><parameter>ALLTOOL</parameter> is refused naming <code>%All:USE</code> for both principals, which
 /// hold every declared pair but not the <code>%All</code> role.</p>
+/// <p>Its pairs are read directly to carry the assigned page's resource, which neither refusal can
+/// show (AD-44). Mutation (Rule 19): its <method>PrivilegePairs</method> skips
+/// <method>OcuPilot.Screen.Gate.WithClassicPages</method> -> that read goes red.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Gate.WithClassicPages</method> answers
 /// <var>pPairs</var> unchanged -> the lacking principal is admitted and this goes red.</p>
 Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
@@ -184,6 +187,9 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
     Set tSC = ..Roster(.tRoster)
     Set tTools = ..Declared()
     Do $$$AssertStatusOK(..Assign(.tRoster), "the probe resource is assigned to every declared page")
+    Kill tAllTool
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#ALLTOOL, .tAllTool, 1)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tAllTool)) && $ListFind(##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tAllTool, .tAllResolved), $ListBuild(..#RESOURCE, "USE")), ..#ALLTOOL _ ": its pairs carry the assigned page's resource, though %All:USE fails first for every principal here")
     For tUser = ..#LACKINGUSER, ..#HOLDINGUSER {
         Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "running", .tTurnKey)
         Do $$$AssertStatusOK(tSC, tUser _ ": a running turn is seeded")

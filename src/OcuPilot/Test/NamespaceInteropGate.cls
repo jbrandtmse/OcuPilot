@@ -19,9 +19,10 @@
 /// so a dispatch leg's answer is read and its port calls are not.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>NAMESPACEVARIABLE</parameter> reading
-/// <code>1</code>, because the class creates and deletes three users and three roles, sets the
-/// governance policy, and creates, enables and deletes an <code>OCUPROBE1815*</code> namespace,
-/// restoring what the enable changes instance-wide (<class>OcuPilot.Test.InteropProbe</class>).</p>
+/// <code>1</code>, because the class creates and deletes four users, their four roles and a scratch
+/// role, sets the governance policy, and creates, enables and deletes an <code>OCUPROBE1815*</code>
+/// namespace, restoring what the enable changes instance-wide
+/// (<class>OcuPilot.Test.InteropProbe</class>).</p>
 Class OcuPilot.Test.NamespaceInteropGate Extends %UnitTest.TestCase
 {
 
@@ -201,7 +202,11 @@ Method TestALostGrantIsRefusedAtTheConfirm()
 
 /// <p>A principal holding the <code>%All</code> role is admitted at the agent's dispatch, which answers a
 /// proposal, and on the screen's route, whose recording port receives exactly one <code>INTEROP</code>
-/// call; the namespace is then enabled.</p>
+/// call and answers it done, not still running; the namespace is then enabled, its HealthShare half
+/// included. The vendor marks a namespace enabled early in the run, so only the done answer says the
+/// task has ended.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Test.NamespaceInteropRecordPort.BOUNDSECONDS</parameter>
+/// 0 -> the route answers still running and this goes red.</p>
 Method TestAnAllHolderIsAdmittedOnBothCallers()
 {
     Set tName = $ClassMethod(..#PROBE, "Name", "G")
@@ -220,7 +225,9 @@ Method TestAnAllHolderIsAdmittedOnBothCallers()
         If $Piece(tTypes, ",", tI) = "INTEROP" Set tInterop = tInterop + 1
     }
     Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http"), 1: "") _ " " _ tInterop, "200 1", "the screen's route is admitted, and the recording port receives exactly one INTEROP call (" _ $ClassMethod(..#NSGATE, "LegText", tRun, 2) _ ")")
+    Do $$$AssertEquals($Select($IsObject(tLeg): +tLeg.%Get("continues"), 1: ""), 0, "the route answers the enable done, so its task has ended")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "IsEnabled", tName), 1, "and the namespace is enabled")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "HasHealthShareHalf", tName), 1, "its HealthShare half included")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows its calls wrote")
 }
 

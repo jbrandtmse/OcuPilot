@@ -417,8 +417,9 @@ services:
       # custom resource to the classic namespace and mapping pages, restoring each.
       # classes: NamespaceRefusals, NamespaceWrite, NamespaceWriteGate
       # classes: ClassicPageGate, MappingCodeGlobals, MappingRefusals, MappingWrite, MappingWriteGate, NamespaceCopy
-      # It also enables interoperability on OCUPROBE1815* namespaces over a probe database and restores
-      # what the vendor's enable changes instance-wide, each object by its exact name.
+      # It also enables interoperability on OCUPROBE1815* namespaces over its own OCUPROBE1815D
+      # database and restores what the vendor's enable changes instance-wide, each object by its exact
+      # name, writing %SYS security objects, tasks and ^%SYS nodes directly to do so.
       # classes: NamespaceInterop, NamespaceInteropGate
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
