@@ -8740,6 +8740,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: docker inspect ocupilot-slot-b shows only OCUPILOT_DEMO=1; ../OcuPilot-slot-b/compose.yml has no OCUPILOT_LOAD_TESTS; 00724be8 deletes the test-scope package on any start without it
 - 2026-10-01T03:33:34Z status=decision-pending owner=burndown by=harvest note=human=add OCUPILOT_LOAD_TESTS: "1" to slot B's compose (and ocupilot's, if recreated) before the next refresh
 - 2026-10-01T04:00:14Z occurrence=23-2-the-range-end-cleanup-part-2
+- 2026-10-01T19:10:53Z status=dropped by=merge_gate note=action_item:epic-23-retro-item-3-add-ocupilot_load_tests-1-to-ocupilot-sl (human=owner adds OCUPILOT_LOAD_TESTS to slot B's compose before the next refresh)
 
 ### DW-1894: AD-33's Story 16.15 amendment and EXPERIENCE.md:609 say a turn's egress appears once a provider call is dispatched; it appears once the turn's first dispatched call returns
 - source: spec-16-15-the-data-egress-line.md | severity: low | fix-risk: low | footprint: in-story

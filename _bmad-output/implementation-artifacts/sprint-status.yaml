@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-01-2026 11:33'
+last_updated: '10-01-2026 12:10'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -367,3 +367,12 @@ action_items:
     ref: "DW-1527"
     resolution: "filed by the owner 2026-09-26 at github.com/intersystems-community/sysadmin-api-specification
       (issues #1 and #2, the second being DW-1640)"
+  - id: "epic-23-retro-item-3-add-ocupilot_load_tests-1-to-ocupilot-sl"
+    epic: 23
+    action: "Add OCUPILOT_LOAD_TESTS: \"1\" to ../OcuPilot-slot-b/compose.yml (and
+      to ocupilot's compose if it is ever recreated) before the next slot refresh;
+      without it the start hook deletes the instance's compiled OcuPilot.Test classes
+      (DW-1886)"
+    owner: "user"
+    status: open
+    ref: ""
