@@ -35,6 +35,7 @@ const USER_URL = '/ocupilot/security/auditing/user-events?ns=HSCUSTOM';
 const AUDITING_URL = '/ocupilot/security/auditing?ns=HSCUSTOM';
 const SYSTEM_ACTION = '/api/ocupilot/screens/security.auditsystemevents/action';
 const USER_ACTION = '/api/ocupilot/screens/security.audituserevents/action';
+const SYSTEM_READ = '/api/ocupilot/screens/security.auditsystemevents/read';
 const HELPER = 'OcuPilot.Test.AuditingUpdate';
 
 /** The granular SQL event the system and wizard legs toggle, and the one both put back. */
@@ -331,12 +332,21 @@ test('AC2: Selective SQL auditing sends exactly the one changed box, and the lis
       assert.equal(await page.$$eval('[role="dialog"] input[type="checkbox"]', (boxes) => boxes.length), 12, 'with the twelve granular SQL events');
       assert.equal(await page.$eval(box, (node) => node.checked), was === '1', 'each box starting as the list reads it');
       await page.click(box);
+      // The page re-reads the list once its POST has answered; awaited below, and caught here so a
+      // leg that fails first leaves no unhandled rejection.
+      const reread = page.waitForResponse(
+        (response) => response.request().method() === 'GET' && new URL(response.url()).pathname === SYSTEM_READ,
+        { timeout: config.navigationTimeoutMs }
+      );
+      reread.catch(() => {});
       await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
       await waitFor(() => posts.length === round + 1, `round ${round}: the one changed box was sent`);
       assert.equal(posts[round].action, was === '1' ? 'disable' : 'enable', `round ${round}: through the list\u2019s own action`);
       assert.equal(String(posts[round].id).toLowerCase(), SQL_ID.toLowerCase(), 'naming the XDBC Utility event');
       await waitFor(() => eventFlag(SQL_EVENT) === (was === '1' ? '0' : '1'), `round ${round}: the event moved`);
       await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+      await waitFor(() => statuses.length === round + 1, `round ${round}: the Apply answered`);
+      await reread;
     }
     assert.equal(posts.length, 2, 'one POST per Apply, and none for the unchanged boxes');
     assert.deepEqual(statuses, [200, 200], 'each answered 200');

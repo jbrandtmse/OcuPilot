@@ -2,15 +2,29 @@
 title: 'Story 23.3: The range-end cleanup, part 3'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'a0c415b776875300f944b6756313c8ff531cbbdb'
+baseline_revision: '4e05a61db02729d5d6ee24000f72ad7b656bab45'
 baseline_commit: 'a0c415b776875300f944b6756313c8ff531cbbdb'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      proposal-demo AC3 goes red on the post-sweep throwaway: the move to the audit screen after the user's "yes" exceeds its 30 s wait.
+    evidence: |-
+      Stage re-runs on ocupilot-b-ci (4.3M audit rows), 2026-10-01: AC3 red in 2 of 5 runs at proposal-demo.browser-spec.mjs:617 (TimeoutError, Waiting failed: 30000ms), green in the others. AC3 is untouched by batch b. Whether it reddens on a fresh CI container is unverified; the post-sweep audit volume as the cause is (inference). A DW-1204 candidate for batch c.
+    location: >-
+      ui/browser/proposal-demo.browser-spec.mjs:617
+    severity: medium
+  - summary: >-
+      browser.config.mjs's launchOptions doc comment says a spec states no launch option of its own, but two specs add one.
+    evidence: |-
+      ui/browser.config.mjs:99 reads "The launch options, so the spec states none of its own." data-table-columns.browser-spec.mjs:441 already spread it with ignoreDefaultArgs before this story, and batch b's a11y-structural-invariants.browser-spec.mjs:48 adds protocolTimeout. A comment-only correction outside batch b's files.
+    location: >-
+      ui/browser.config.mjs:99
+    severity: low
 ---
 
 <intent-contract>
@@ -182,7 +196,7 @@ deferred: []
 
 ### Batch b: CI flakes (DW-1866, DW-1865, DW-1808, DW-1822)
 
-- [ ] **DW-1866** — The test judges alerts instance-wide. A severe line from any other process inside the window fails `:103`, and an instance already at Warning fails `:106`.
+- [x] **DW-1866** — The test judges alerts instance-wide. A severe line from any other process inside the window fails `:103`, and an instance already at Warning fails `:106`.
   - **Reproduce** on `ocupilot-b-ci`, before the fix:
     - (i) While the class runs, a `Job` posts `##class(%SYS.System).WriteToConsoleLog("DW-1866 unrelated line",0,2)` every 5 s for 60 s. That rate stays under the monitor's limit of 3 alerts in 10 s per process.
     - (ii) `Do $SYSTEM.Monitor.SetState(1)` before the run.
@@ -193,19 +207,19 @@ deferred: []
     - Reword the header and the method doc to match.
   - Files: `Test/AdminPortAbsence.cls`. ADs: AD-2, AD-39, Conventions › Tests.
   - AC: Given (i) or (ii), when `TestAVerifiedDeletePostsNoAlert` runs, then it passes. Given the re-read's 404 is logged, then it fails.
-- [ ] **DW-1865** — AC1 reads the tool card at the moment the proposal card appears. A poll between the mint (`Loop.cls:580`) and the finish (`:605`) shows `running`.
+- [x] **DW-1865** — AC1 reads the tool card at the moment the proposal card appears. A poll between the mint (`Loop.cls:580`) and the finish (`:605`) shows `running`.
   - **Reproduce:** a temporary local edit, never committed, between `:283` and `:284`. It opens CDP `Fetch.enable` on `*/api/ocupilot/turn/*/progress*` at the Response stage. The first body whose `proposals` is non-empty is fulfilled with every tool step's `status` set to `running`; all other bodies pass unchanged. Before the fix, `:355` reads `running`.
   - **Fix:** before `:348`, `page.waitForFunction` until `app-tool-call-card .ocu-tool-call-status-word` reads `STRINGS.toolCallStatusDone`, within `config.navigationTimeoutMs`.
   - Files: `ui/browser/proposal-demo.browser-spec.mjs`. ADs: Conventions › Tests.
   - AC: Given that rewrite, when AC1 runs, then it waits for `done` and passes.
-- [ ] **DW-1808** — Round 1's POST response can land after the instance has changed and the dialog has closed, so `:342` sees `[200]`.
+- [x] **DW-1808** — Round 1's POST response can land after the instance has changed and the dialog has closed, so `:342` sees `[200]`.
   - **Reproduce:** a temporary local edit that holds the second paused `…/security.auditsystemevents/action` POST response for 3 s (CDP `Fetch` at the Response stage). Before the fix, `:342` is red.
   - **Fix:**
     - In each round, before clicking Apply, arm `page.waitForResponse` for the GET of `/api/ocupilot/screens/security.auditsystemevents/read`.
     - After the dialog closes, wait for `statuses.length === round + 1`, then await the re-read.
   - Files: `ui/browser/audit-events.browser-spec.mjs`. ADs: Conventions › Tests.
   - AC: Given that hold, when AC2 runs, then it passes with both 200s and the re-read received.
-- [ ] **DW-1822** — One protocol call in the walk exceeded puppeteer's 180 s default. The one awaiting evaluate is `settle`'s font wait; that CI's stall was a font fetch is (inference).
+- [x] **DW-1822** — One protocol call in the walk exceeded puppeteer's 180 s default. The one awaiting evaluate is `settle`'s font wait; that CI's stall was a font fetch is (inference).
   - **Reproduce:** a temporary local edit after the launch adds `browser.on('targetcreated')` request interception. It holds the first `.woff2` response for 200 s. Before the fix, `Runtime.callFunctionOn timed out` appears at about 180 s.
   - **Fix:** change `:48` to `puppeteer.launch({ ...launchOptions(config), protocolTimeout: 600_000 })`. A green walk takes 179 s, and the browser leg runs about 25 min against its 43 min timeout.
   - Files: `ui/browser/a11y-structural-invariants.browser-spec.mjs`, the launch line only (Design Notes › Contention). ADs: Conventions › Tests.
@@ -341,6 +355,28 @@ Rejected:
   - `[low]` `[patch]` (same root cause as the comment row above) The mutation comment overstates. — Same fix.
   - `[false]` `[reject]` DW-1901 is ticked before CI proof. — The tick marks this pass's implementation; the CI proof and the ledger trailer are the lead's (Tasks › Execution).
 
+### 2026-10-01 — Review pass (batch b)
+
+- verdicts: 17 findings — high 0, medium 1, low 9, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` DW-1808's re-read wait has no mutation of its own; the recorded red comes from the answered wait. — Mutation added: every re-read held 3 s and `await reread` deleted turns round 1's `:333` red; with the wait, green under the same hold.
+  - `[low]` `[patch]` proposal-demo's status assertion repeats the new wait's condition, so a stuck card fails as a bare 30 s timeout. — The wait's timeout now falls through to the assertions; a card left running reads red naming its state.
+  - `[low]` `[reject]` Condition (ii) alone is green before and after the fix, so it shows nothing. — The fix edits the spec; the contrast stands for (ii) with the poster (1613 red; 1623, 1628 green), recorded under Verification.
+  - `[low]` `[reject]` DW-1866's task ("fails `:103`") and its expected Verification line disagree with the runs. — The fix edits the spec; the observed lines beside them carry the measured result for the lead's DW-1866 trailer.
+  - `[low]` `[defer]` `ui/browser.config.mjs:99` says a spec states no launch option of its own. — Pre-existing (`data-table-columns.browser-spec.mjs:441` already adds one) and outside batch b's files; deferred.
+  - `[false]` `[reject]` DW-1866 moves the evidence from `alerts.log` and the monitor to this process's `messages.log` lines. — Spec-prescribed; the port's only emission is the caller's console line (`LogFault`, `Log.cls` `WriteToConsoleLog`), which is what `alerts.log` copies, and run 1625 shows the check catches it.
+  - `[false]` `[reject]` The filter ignores severity, so it is stricter than "no alert". — AD-2's rule is that the port logs nothing for a read answered 404; stricter is the AD's own claim.
+  - `[false]` `[reject]` The `$Job` filter would miss a port line another process writes. — The verified delete's re-read runs in-process (`VerifyGone` calls `Invoke`), not queued; run 1625 matched the line by `$Job`.
+  - `[low]` `[reject]` A log rotation inside the window returns the whole file, where a recycled pid could match an old port line. — Needs a rotation inside a millisecond window and a reused pid that once logged a port line; a guard would add branches to a shared helper.
+  - `[low]` `[reject]` (same root cause as rows 3 and 4) The literal (i) and (ii) did not reproduce, and `:103` never did. — The fix edits the spec; recorded under Verification.
+  - `[false]` `[reject]` DW-1865 weakens the old ordering claim to "eventually done". — The product mints at `Loop.cls:580` before it finishes at `:605`, so the ordering never held; the Fix waits for done by design.
+  - `[low]` `[patch]` (same root cause as row 2) The status and collapse assertions are implied by the wait. — Same fix as row 2.
+  - `[false]` `[reject]` DW-1865's rewrite also had to set the turn state. — No bad outcome; recorded under Verification.
+  - `[false]` `[reject]` DW-1808 proves a GET of the read arrived, not that the list shows the flag. — The AC's surface is "the re-read received"; round 1's start-state assertion (`:333`) reads the rendered list, and the new mutation shows it depends on the wait.
+  - `[low]` `[reject]` `protocolTimeout` raises the limit for every CDP call in that browser, so a real hang costs 600 s. — Spec-bound: Design Notes accept a 600 s failure against the 43 min leg.
+  - `[false]` `[reject]` A font held during a document's load stalls navigation at 30 s, which the fix does not cover. — CI's evidence (runs 36569407842, 36751724771) is a protocol timeout; the navigation path is outside DW-1822.
+  - `[medium]` `[defer]` proposal-demo AC3 is red at `:617` in 2 of 5 stage runs, recorded in Verification but not filed. — Pre-existing and outside this diff; deferred to frontmatter, a DW-1204 candidate.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
@@ -424,11 +460,18 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 - Class `AdminPortAbsence`:
   - Before the fix, red under (i) and under (ii). After the fix, green, clean and under each.
   - Afterwards, `Monitor.Clear()` and `State()` reads 0.
-- `mutation:` pass `0` for `pRead` at `AdminPort.cls:1100` → `TestAVerifiedDeletePostsNoAlert` goes red alone.
+  - Observed before the fix: (i) as written stays green (run 1609), because `messages.log` holds an identical repeated line, so the poster's lines are numbered. Numbered, (i) is red at `:106`, "the instance's state, 1 before, has not reached Alert" (run 1614; `Clear()` does not clear the monitor's memory of recent alerts, so the state was back at Warning). (ii) alone stays green (run 1610); (ii) with the poster is red on the same assertion (run 1613). `:103` was not reproduced: the delete window measures 6 to 9 ms.
+  - Observed after: green clean (1617), under the poster (1618, 1619), under a burst of severe lines every 3 ms inside each window (1620 to 1622), and under (ii) with and without the poster (1623, 1624). Stage re-runs: clean (1627) and under (ii) with the poster (1628). `State()` read 0 at the end, held over 45 s.
+- `mutation:` pass `0` for `pRead` at `AdminPort.cls:1100`, recompiled with `/subclasses` → `TestAVerifiedDeletePostsNoAlert` red on its last assertion, naming the `(282040) 2 [OcuPilot.Log]` adminport line for the 404, with `TestAReadAnsweredAbsentIsNotLogged`, whose own mutation it is (run 1625). Reverted, reloaded: 3/3 green (run 1626).
 - Specs `proposal-demo`, `audit-events` and `a11y-structural-invariants`: each red under its hold before the fix, and green clean and under its hold after it.
-- `mutation:` delete the `done` wait → `proposal-demo` AC1 red under the rewrite.
-- `mutation:` delete the answered and re-read waits → `audit-events` AC2 red under the hold.
-- `mutation:` remove `protocolTimeout` → red under the 200 s hold.
+  - `proposal-demo`: the first proposal-bearing poll already read `completed`, so the rewrite also sets the state to `running`, as a poll between the mint and the finish reads. AC1 red ("the read card reads done: running"), green under the rewrite after; the file 3/3 clean. Stage re-runs (5): AC1 green in every run whose log was kept; AC3, untouched here, red in 2 at `:617`, the move to the audit screen exceeding 30 s on the post-sweep throwaway. Not this batch's: a DW-1204 candidate for batch c. After the review patch, a wait that times out falls through to the assertions: AC1 green under the rewrite and the file 3/3 clean; with every proposal-bearing poll left running, AC1 red naming the card (`{"status":"running","expanded":"true"}`).
+  - `audit-events`: AC2 red at `:342` ("each answered 200": `[200]`), green under the hold after; the file 4/4 clean.
+  - `a11y-structural-invariants`: a font held during a document's load stalls the navigation (`Navigation timeout of 30000 ms exceeded`), so the hold takes the first `.woff2` requested after its document's load. Red: `Runtime.callFunctionOn timed out` at 182 s. Green under the hold after, 12/12 with the walk at 405 s; clean 12/12, the walk at 183 s.
+  - The bundle did not move: 2.39 MB initial.
+- `mutation:` delete the `done` wait → `proposal-demo` AC1 red under the rewrite ("the read card reads done: running").
+- `mutation:` delete the answered and re-read waits → `audit-events` AC2 red under the hold ("each answered 200").
+- `mutation:` hold every re-read of the System events list 3 s and delete only `await reread` → `audit-events` AC2 red in round 1, "each box starting as the list reads it" (`:333`); with the wait, green under the same hold. Reverted byte-identical.
+- `mutation:` remove `protocolTimeout` → red under the 200 s hold (`Runtime.callFunctionOn timed out` at 182 s).
 
 **Batch c (loop):**
 
@@ -457,16 +500,15 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 Status: done
 Blocking condition: none
 
-**Batch a (DW-1901) only;** batches b, c and d are untouched. CI now runs the ObjectScript suite as four legs (`instance shard 1/4` to `4/4`, roll-up `--shards 4`); the browser suite stays at three and no `timeout-minutes` changed.
+**Batch b only (DW-1866, DW-1865, DW-1808, DW-1822);** batches c and d are untouched. Batch a closed in `cd14a21f`..`06c9fa1b` (CI 36928231112 green). Test-only changes; no product code moved.
 
-- `ui/tools/ci-timings.json`: refreshed from run 36910157178 (392 classes, 134 spec files).
-- `.github/workflows/ci.yml`: instance matrix, name, `--shard` and roll-up to 4; comments at `:15` and `:131-133`.
-- `ui/tools/ci.test.mjs`: `SHARDED` carries `legs`; the shard-matrix test asserts `1..legs` and each job's `k/n` label; declared gates updated.
-- `ui/tools/ci-shards.test.mjs`: the checkout split test splits as CI does (4 and 3).
-- `ui/tools/ci-shards.mjs:6`, `ui/tools/ci-runner.mjs:42`: comments now `k/4`. `docs/DEVELOPMENT.md:451-452,466`: four-leg wording.
+- `src/OcuPilot/Test/AdminPortAbsence.cls`: the verified-delete test reads this process's `messages.log` lines from `SslSinks.LogOffset()`, asserts `Flush`, then no `(<$JOB>) ` `[OcuPilot.Log]` adminport line; the alert counter, the state check, `LOGMONITORWAIT`, the `Hang` and both `alerts.log` helpers are gone.
+- `ui/browser/proposal-demo.browser-spec.mjs`: AC1 waits for the tool card to read done; a timeout falls through to the assertions, which name the card's state.
+- `ui/browser/audit-events.browser-spec.mjs`: AC2 arms a wait for the list's re-read before each Apply, then waits for that round's POST answer and the re-read.
+- `ui/browser/a11y-structural-invariants.browser-spec.mjs:48`: the launch line sets `protocolTimeout: 600_000`.
 
-**Review:** 15 findings, 5 low patched, 5 low and 5 false rejected (Review Triage Log), none deferred. Follow-up review: false (no high or medium patched).
+**Review:** 17 findings: 3 low patched (2 entries: a re-read-wait mutation, a wait that falls through to its assertions), 2 deferred (1 medium, 1 low; frontmatter), 5 low and 7 false rejected (Review Triage Log › batch b). Follow-up review: false (follow-up pass; no high patched; patched: low 3).
 
-**Verification:** `assign --shards 4` gives 26.5 min per leg (largest under 37.6); browser 23.5. `npm run test:tools` 1,765 pass, 0 fail after the patches. Four mutations red and reverted byte-identical (Verification › Batch a). `bash scripts/lint-docs.sh` clean. No instance or container touched.
+**Verification:** each item red under its reproducing condition before the fix and green under it after (Verification › Batch b). Stage re-runs on `ocupilot-b-ci`: `AdminPortAbsence` 3/3 clean (run 1627) and under (ii) with the numbered poster (1628); `audit-events` 4/4; `a11y-structural-invariants` 12/12 (walk 183 s); `proposal-demo` 3/3 after the patch, AC1 green under the rewrite. Four `mutation:` lines for batch b plus the added re-read one, each red and reverted byte-identical. `check-objectscript`, `client-lint`, `browser-reset` and `lint-docs` clean; the bundle did not move (2.39 MB). Throwaway read-back: 0 agent definitions, 0 policy rows, 849 `OcuPilot.Test` of 1,291 `OcuPilot.*` classes, monitor state 0; every poster process gone.
 
-**Residual risk:** leg times are estimates from one run; the lead's CI run on this head is the proof and reports the longest leg and wall time.
+**Residual risk:** the DW-1866 reproductions needed numbered lines, and `:103` was not reproduced (the window is 6 to 9 ms). proposal-demo AC3 reddens on the post-sweep throwaway (deferred, a DW-1204 candidate). About 9,000 numbered severity-2 test lines were written to the throwaway's `messages.log`.

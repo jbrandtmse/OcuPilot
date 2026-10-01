@@ -1,11 +1,12 @@
 /// <p>Pins AD-2's rule on a 404 (DW-1814): a read the admin API answers 404 has found an absence,
 /// so <class>OcuPilot.Port.AdminPort</class> logs nothing for it and the caller still gets its
 /// <code>PORT.NOTFOUND</code> fault; a write answered 404 is still logged at error; and on the
-/// instance, a verified delete, whose re-read is answered 404, posts no alert.</p>
+/// instance, a verified delete, whose re-read is answered 404, writes no port line to
+/// <code>messages.log</code>, so it posts nothing the instance would copy to <code>alerts.log</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, a caller holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the
-/// last test creates and deletes a role through the real port and reads the instance's alert counter
-/// and <code>alerts.log</code>. The first two read and delete a role no instance holds through
+/// last test creates and deletes a role through the real port and reads the instance's
+/// <code>messages.log</code>. The first two read and delete a role no instance holds through
 /// <class>OcuPilot.Test.PortFixture</class>, whose log lines are captured rather than written.</p>
 Class OcuPilot.Test.AdminPortAbsence Extends %UnitTest.TestCase
 {
@@ -17,15 +18,10 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 /// <p>A role name no instance holds, and the role the live test creates and deletes.</p>
 Parameter PROBEROLE = "OcuPilotAbsenceProbeRole";
 
-/// <p>Seconds to wait for the instance's log monitor, which copies a severe
-/// <code>messages.log</code> line to <code>alerts.log</code> on its own cycle (about ten seconds,
-/// measured on <code>ocupilot-b-ci</code>).</p>
-Parameter LOGMONITORWAIT = 15;
-
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AdminPortAbsence creates and deletes a role and reads the instance's alert state, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AdminPortAbsence creates and deletes a role and reads the instance's messages.log, and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Quit ..RemoveProbeRole()
 }
@@ -80,82 +76,37 @@ Method TestAWriteAnswered404IsStillLogged()
 }
 
 /// <p>A role deleted through the real port is re-read (<parameter>OcuPilot.Port.AdminPort.VERIFIEDDELETES</parameter>),
-/// the re-read is answered 404, and the instance's alert counter does not move, no line
-/// <code>alerts.log</code> gains once the log monitor has run is an <code>adminport</code> entry, and a
-/// state below Alert stays below it. <code>alerts.log</code> is read by content, because the log
-/// monitor also copies severe lines posted before the delete, a fresh instance's among them.</p>
+/// the re-read is answered 404, and this process writes no <class>OcuPilot.Port.AdminPort</class> line
+/// to <code>messages.log</code> over the delete: a severe line there is what the instance copies to
+/// <code>alerts.log</code>. Only this process's port lines are read, so a line another process posts
+/// meanwhile, or the instance's own alert state, does not decide it.</p>
 /// <p>Mutation: pass <code>0</code> for <var>pRead</var> at <method>OcuPilot.Port.AdminPort.Invoke</method>'s
-/// <method>Fail</method> call -> the re-read's line is posted as an alert and the counter and
-/// <code>alerts.log</code> assertions go red.</p>
+/// <method>Fail</method> call -> the re-read's 404 is logged from this process and the last assertion
+/// goes red.</p>
 Method TestAVerifiedDeletePostsNoAlert()
 {
     Set tSC = ..CreateProbeRole()
     Do $$$AssertStatusOK(tSC, "the probe role is created")
     If $$$ISERR(tSC) Quit
-    Set tAlerts = $SYSTEM.Monitor.Alerts()
-    Set tState = $SYSTEM.Monitor.State()
-    Set tLines = ..AlertsLogLines()
-    Do $$$AssertTrue(tLines >= 0, "alerts.log can be read")
+    Set tOffset = ##class(OcuPilot.Test.SslSinks).LogOffset()
     Set tQuery("name") = ..#PROBEROLE
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.Role", "DELETE", .tQuery, "", .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the delete is made and its re-read finds the role gone: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     Do $$$AssertTrue('..ProbeRoleExists(), "the role is gone")
-    Do $$$AssertEquals($SYSTEM.Monitor.Alerts(), tAlerts, "the delete and its re-read post no alert")
-    Hang ..#LOGMONITORWAIT
-    Do $$$AssertEquals(..PortAlertsAfter(tLines), 0, "no line alerts.log gains once the log monitor has run is the port's")
-    If tState < 2 Do $$$AssertTrue($SYSTEM.Monitor.State() < 2, "and the instance's state, " _ tState _ " before, has not reached Alert")
+    Do $$$AssertTrue(##class(OcuPilot.Test.SslSinks).Flush(tOffset), "messages.log is written past the delete")
+    Set tLines = ..PortLines(##class(OcuPilot.Test.SslSinks).LogSince(tOffset), $Job)
+    Do $$$AssertEquals(tLines, "", "the delete and its re-read write no port line from this process: " _ tLines)
 }
 
-/// <p>The number of lines in the instance's <code>alerts.log</code>, 0 when there is none.</p>
-ClassMethod AlertsLogLines() As %Integer
+/// <p>The lines of <var>pText</var> that process <var>pJob</var> wrote as an
+/// <class>OcuPilot.Port.AdminPort</class> log entry, each ending in a line feed; <code>""</code> when
+/// there are none.</p>
+ClassMethod PortLines(pText As %String, pJob As %String) As %String
 {
-    Set tLines = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tFile = ##class(%File).ManagerDirectory() _ "alerts.log"
-        Set $NAMESPACE = tOrigNS
-        If '##class(%File).Exists(tFile) Quit
-        Set tStream = ##class(%Stream.FileCharacter).%New()
-        Set tSC = tStream.LinkToFile(tFile)
-        If $$$ISERR(tSC) Quit
-        While 'tStream.AtEnd {
-            Do tStream.ReadLine()
-            Set tLines = tLines + 1
-        }
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-        Set tLines = -1
-    }
-    Quit tLines
-}
-
-/// <p>How many of the <code>alerts.log</code> lines after the first <var>pSkip</var> are
-/// <class>OcuPilot.Port.AdminPort</class> log entries, -1 when the file cannot be read.</p>
-ClassMethod PortAlertsAfter(pSkip As %Integer) As %Integer
-{
-    Set tFound = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tFile = ##class(%File).ManagerDirectory() _ "alerts.log"
-        Set $NAMESPACE = tOrigNS
-        If '##class(%File).Exists(tFile) Quit
-        Set tStream = ##class(%Stream.FileCharacter).%New()
-        Set tSC = tStream.LinkToFile(tFile)
-        If $$$ISERR(tSC) {
-            Set tFound = -1
-            Quit
-        }
-        Set tLine = 0
-        While 'tStream.AtEnd {
-            Set tText = tStream.ReadLine()
-            Set tLine = tLine + 1
-            If (tLine > pSkip) && (tText [ """subsystem"":""adminport""") Set tFound = tFound + 1
-        }
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-        Set tFound = -1
+    Set tFound = ""
+    For tI = 1:1:$Length(pText, $Char(10)) {
+        Set tLine = $Piece(pText, $Char(10), tI)
+        If (tLine [ ("(" _ pJob _ ") ")) && (tLine [ "[OcuPilot.Log]") && (tLine [ """subsystem"":""adminport""") Set tFound = tFound _ tLine _ $Char(10)
     }
     Quit tFound
 }
