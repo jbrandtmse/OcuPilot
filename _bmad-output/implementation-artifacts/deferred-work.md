@@ -8531,6 +8531,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
 - 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
+- 2026-10-01T02:06:23Z status=routed owner=range-end-cleanup by=lead note=restores the orchestrator's 2026-09-30 merge-gate decision after a union merge duplicated this entry's block
 
 ### DW-1865: proposal-demo AC1 reads the read tool card's status with a bare evaluate once the proposal card shows, so a card still reading running at that instant turns it red (CI flake)
 - source: cycle-log-epic-23.md (CI run 36727128251) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8582,6 +8583,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
 - 2026-09-30T13:10:20Z status=escalated owner=burndown by=cr note=23.2 batch b review: DW-1210 bounds the poll, not the restore; fix touches the one response writer (AD-12)
 - 2026-09-30T16:00:04Z status=routed owner=range-end-cleanup by=merge_gate note=decided (orchestrator 2026-09-30): not in 23.2 (owner cap of 12); queued for the standing cleanup after the next release, priority p4, user-visible but rare (about nine tool-heavy turns); likely fix: write the response with the object's own device writer (Do pData.%ToJSON()) instead of one string - verify on the one AD-12 writer
+- 2026-10-01T02:06:23Z status=routed owner=range-end-cleanup by=lead note=restores the orchestrator's 2026-09-30 merge-gate decision after a union merge duplicated this entry's block
 
 ### DW-1870: A Windows clone (Git for Windows, core.autocrlf=true) checks scripts/*.sh out with CRLF, so durable-init dies at once ('set: Illegal option -') and docker compose up --wait fails in 1 s
 - source: owner, 2026-09-30, relayed by the Planner (clean first-run test on a fresh droplet) | severity: high | fix-risk: low | footprint: .gitattributes, plus a roster test
