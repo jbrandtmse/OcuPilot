@@ -3,7 +3,7 @@ title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
 baseline_revision: 'f83dfaf4194e5e95259303c7aac29d427fff5ad8'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -16,75 +16,54 @@ deferred: []
 
 ## Intent
 
-**Problem:** OcuPilot cannot enable interoperability on a namespace (catalog SA-13's `POST /namespace/enable-interop`, DW-1776). The classic New Namespace page offers the step, and the admin API route is asynchronous, takes no body and changes far more than the namespace. Three routed items ride with it:
+**Problem:** OcuPilot cannot enable interoperability on a namespace (catalog SA-13's `POST /namespace/enable-interop`, DW-1776). The classic New Namespace page offers the step. The admin API route takes no body and queues through `ShouldRunAsync`. On InterSystems IRIS for Health, the image this project ships on, the vendor's enable also runs the HealthShare Foundation install, whose effects reach across the instance (measured at Task 0 on `ocupilot-b-ci`, 2026-10-01; Design Notes › Measured at implement):
 
-- DW-1813: a global mapping range or pattern that reaches the `%` globals (`:A`, `*`) carries no `MAPPING.SYSTEMGLOBAL` consequence.
-- DW-1824: the New Namespace form's Create a database discards what was typed and never returns.
-- DW-1858: the Integrity log has no side-bar position.
+- the existing user `Admin` is granted `%HS_BFC_Administrator`, a role holding `%Admin_Manage`, `%Admin_Secure`, `%Admin_Task` and `%Admin_OAuth2_Client` at USE;
+- 13 resources and six `%HS_BFC_*` roles are created, and `%HS_Administrator`'s resources change;
+- the HSSYS task "FHIR Purge Expired Search Results Task" is scheduled, and the `FHIR_Validation_Server` Java language server is started;
+- about 235 HealthShare SystemConfig records are written;
+- the namespace's new applications match `%DB_HSCUSTOM` (the install database), and `/bulkfhir/api` also matches `%DB_IRISSYS` and `%HS_ImpersonateUser`.
 
-**Approach:** Task 0 observes the route's payload, effects, duration and required pairs on the throwaway before anything is built. Then:
+Every narrower principal measured either failed `<PROTECT>`, leaving the namespace half-enabled, or silently skipped the HealthShare half. Only `%All` reproduced the reference. OcuPilot cannot undo the enable. OcuPilot's own objects are unchanged by it.
 
-- The Namespaces list gains a page-owned **Enable interoperability** row action. It shows a warning dialog that states the consequence, then the same running, done and still-running line as Copy mappings.
-- Both callers reach one derived tool, `osmgmt.namespaces.enableinterop` (AD-53, AD-55), through `NamespacePort` and AdminPort's async path. AdminPort's `AwaitTask` is its one poller and reads the finished result once.
-- DW-1813 widens the kernel's system-global predicate and its client mirror.
-- DW-1824 carries the New Namespace form across the database wizard and back.
-- DW-1858 lists the Integrity log right after Databases.
+**Approach (orchestrator merge-gate decision 2026-10-01, option 2, following the owner's developer-tool-first direction):**
+
+- One tool, `osmgmt.namespaces.enableinterop`, reached by a page-owned **Enable interoperability** row action on the Namespaces list and by the agent (AD-53, AD-55), through `NamespacePort` and `AdminPort`'s async path. `AwaitTask` is the one poller and reads the finished result once.
+- **`%All` only (AD-8).** A caller who does not hold `%All` is refused by name before anything is queued, on both callers, so OcuPilot never leaves a half-enabled namespace. The poll's `%Admin_Operate:USE` is declared too.
+- **The strongest confirmation on both callers:** the typed-name confirm in the screen's dialog and on the agent's card, each stating the consequence sentence before anything is sent.
+- **The consequence sentence names every instance-wide effect measured:** the HealthShare Foundation install; the `Admin` user granted `%HS_BFC_Administrator`; the new roles and resources; the FHIR purge task and the FHIR_Validation_Server Java server; applications gaining access to the install database; and that it cannot be undone.
+- **Governance:** the key is disabled by default (`"osmgmt.namespaces.enableinterop": false`), like the other irreversible instance-wide actions; the screen action still works behind its confirmation.
 
 ## Boundaries & Constraints
 
 **Always:**
 
-- **Task 0 runs first, on `ocupilot-b-ci` only**, against a probe namespace and probe database it creates and removes. It sets the tool's pairs to exactly what it measures, and it halts on any observation that contradicts this plan (Tasks › Task 0).
-- **The enable is an AD-51 action:**
-  - `READTYPE` `GET`, `WRITETYPE` `INTEROP`, `SENDSBODY` 0.
-  - `FINGERPRINTSUBJECT` `Globals,Routines`, the databases the vendor's enable reads and grants on.
-  - `DESTRUCTIVE` 1 with consequence code `NAMESPACE.INTEROP`, because OcuPilot cannot undo it.
-  - Governance: `"osmgmt.namespaces.enableinterop": true` (AD-22 default; it removes nothing, and the agent's card takes the strongest confirmation).
-- **Queued write (AD-26):** `Namespace.Namespace/INTEROP` joins `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`.
-  - Past `AsyncTimeout` it has *started*: HTTP 202, recorded applied and marked, and both callers say it is still running.
-  - Nothing reads its task again. Only `AwaitTask`, or a test's `Settle`, ever reads a finished result, and only once.
-- **Pairs (AD-8, AD-29):**
-  - The Namespaces list's `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, plus `%Admin_Operate:USE` (the poll).
-  - Plus the pairs Task 0 measures from `{%DB_IRISSYS:WRITE, %Admin_Secure:USE}`, and, only if measured, WRITE on the namespace's own databases through `ArgumentPairs`.
-  - Plus the custom resource on `%CSP.UI.Portal.Namespace` (`CLASSICPAGES`, AD-44).
-  - A caller without one of them is refused by name before any port call.
-- **`%SYS` and `%ALL` are refused by the tool**, on both callers and before any task is queued, with "Interoperability cannot be enabled in %SYS or %ALL." The vendor refuses `%SYS`, and the classic page refuses `%ALL`.
-- **DW-1813:** a global mapping is a system-global mapping when its name part begins with `%`, or when its global part (the text before any `(`) begins with `:` or `*`. The vendor reads an empty low end as `%`, and a leading `*` as everything. The kernel and the form apply the one rule.
-- **DW-1824:** the database wizard returns to the New Namespace form only when it was opened with the closed marker `returnTo=namespace`. The router carries the created name back, and neither page touches the other's store (AD-19).
-- **DW-1858:** the Integrity log takes `sideBarPosition` 5, and Devices through Local databases shift up by one.
-- **Probes:** every probe object carries the prefix `OCUPROBE1815` (`ocuprobe1815` for directories). A probe database's resource is created before the database, in its own directory under the manager directory, never the manager directory itself.
-- **Contended files (Rule 11):**
-  - Edits are add-only wherever a file's structure allows (Design Notes › Footprint). EXPERIENCE.md keeps 993 lines, and `strings.ts` is appended to.
-  - `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged.
+- **The enable is an AD-51 action:** `READTYPE` `GET`, `WRITETYPE` `INTEROP`, `SENDSBODY` 0, `FINGERPRINTSUBJECT` `Globals,Routines`, `DESTRUCTIVE` 1 with consequence code `NAMESPACE.INTEROP`.
+- **Queued write (AD-26, written):** `Namespace.Namespace/INTEROP` joins `AdminPort`'s `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`. Past `AsyncTimeout` it has started: HTTP 202, recorded applied and marked, and both callers say it is still running. Nothing reads a finished task twice.
+- **`%SYS` and `%ALL` are refused by the tool** on both callers, before any task is queued, with "Interoperability cannot be enabled in %SYS or %ALL."
+- **`CLASSICPAGES` `%CSP.UI.Portal.Namespace`** (AD-44, written).
+- **Tests run on `ocupilot-b-ci` only, over probe namespaces and databases named `OCUPROBE1815*`, and remove every instance-wide object the vendor's enable created** (Task 0's test-only restore, kept in `_bmad-output/implementation-artifacts/spec-18-15-task0-interopprobe.patch` as `Test/InteropProbe.cls`): the probe's snapshot after cleanup equals the one before, `Admin`'s roles included. No test settles a task by reading it twice.
+- **Contended files** (Epic 16) are edited add-only; EXPERIENCE.md keeps its line count; `screens.generated.ts` and `ToolFields.cls` are regenerated; no new parameter in `Api/Error.cls`.
 
 **Never:**
 
-- No `%Api.Admin.*` name outside `AdminPort` or a port extending it. No product call to `%Library.EnsembleMgr`, `%ZHSLIB` or `HS.*` (test cleanup excepted).
+- No `%Api.Admin.*` name outside `AdminPort` or a port extending it; no product call to `%Library.EnsembleMgr`, `%ZHSLIB` or `HS.*` (test cleanup excepted).
 - No parsing of the vendor task's `Console`, and no second read of a finished task's result.
-- No new parameter in `Api/Error.cls`, and no new `Router.cls` route.
-- No disable-interop, no New Namespace checkbox, and no interoperability column on the list.
-- No test enables `USER`, `HSCUSTOM`, `%SYS`, `%ALL`, or any namespace over the `USER` or `HSCUSTOM` databases.
+- No pair set narrower than `%All` for the enable; no disable-interop; no New Namespace checkbox; no interoperability column.
+- No test enables `USER`, `HSCUSTOM`, `%SYS`, `%ALL` or any namespace over the `USER` or `HSCUSTOM` databases.
 - No stop, restart, recreate, `up` or `down` of `ocupilot-b-ci` or any other container.
-- No spine edit: the runner writes the amendments.
 
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 | --- | --- | --- | --- |
-| Enable (screen) | `OCUPROBE1815A` over probe database `OCUPROBE1815D`, not enabled. Enable interoperability on its row, then Proceed | The warning shows the consequence before anything is sent. The route sends `enable-interop` once. The list shows the running line, then the done line or the still-running sentence, and re-fetches. The namespace is enabled afterwards | none |
-| Enable (agent) | `osmgmt.namespaces.enableinterop` with `Name` `OCUPROBE1815B` | The card is destructive and states the `NAMESPACE.INTEROP` consequence. The confirm applies and marks the write. The read-back reads `unchecked` when started, and "no value sent" otherwise (AD-58) | none |
-| Past the bound | The vendor task outlasts `AsyncTimeout` (30 s) | 202 started: recorded applied and marked. Both callers say "Still running on the instance. It finishes in the background." The task row is never read again by the port | none |
-| Already enabled | A namespace already enabled | Permitted. The vendor runs its enable again, skipping the steps it keeps for a new namespace (read in `EnableNamespace`). Same dialog and card | none |
-| System namespace | `%SYS` or `%ALL`, on either caller | Refused before any task is queued. The agent gets `TOOL.ARGUMENTS`; the route gets 422. Both carry the sentence | tool refusal |
-| Deleted since the read | The namespace is deleted between mint and confirm, or before Proceed | The confirm is refused as target changed. The route answers 404 from its fresh read. No task is queued | fingerprint / `PORT.NOTFOUND` |
-| Missing pair | The caller lacks a declared pair, the custom resource assigned to `%CSP.UI.Portal.Namespace` included | 403 naming the pair, with zero port calls, on both callers | `AUTH.NOPRIVILEGE` |
-| Caller body | A body reaches `NamespacePort` with `INTEROP` | 500 `INTERNAL`, logged. The vendor is not called | port refusal |
-| `%` reach (DW-1813) | A global mapping create named `:A`, `:`, `*`, `*X`, `%X` or `%X("a")` | The agent's card is destructive with `MAPPING.SYSTEMGLOBAL`. The form shows the system-global line under Name | effect |
-| No `%` reach (DW-1813) | `A:`, `A:Z`, `X*`, `G("%a")`, `G(":")`, a routine `:A`, or a delete | No effect. The card is not destructive for that reason, and no line shows | none |
-| Create a database (DW-1824) | New Namespace with Name typed and Routines chosen, then Create a database, then the wizard's Create | No leave prompt. The person is back on New Namespace with Name and Routines as typed and the new database chosen as Globals | none |
-| Wizard Cancel (DW-1824) | The same hand-off, then Cancel in the wizard | Back on New Namespace with what was typed. Globals is unchanged | none |
-| Wizard elsewhere (DW-1824) | The wizard opened from Local databases, or with any other `returnTo` value | Unchanged: Create opens the new database's editor, and Cancel opens Local databases. New Namespace opened any other way starts empty | none |
-| Side bar (DW-1858) | OS management's side bar, for a holder of `%Admin_Operate:USE` and `%DB_IRISSYS:READ` | Processes · Locks · System usage · Databases · Integrity log · Devices · Namespaces · License usage · Dashboard · External language servers · Local databases. Integrity log opens the log | none |
+| Enable (screen) | `OCUPROBE1815A` over a probe database, not enabled; a `%All` holder chooses Enable interoperability, types the name, then Proceeds | The dialog states the consequence before anything is sent. The route sends `enable-interop` once. The list shows the running line, then the done line or the still-running sentence, and re-fetches. The namespace is enabled afterwards | none |
+| Enable (agent) | `osmgmt.namespaces.enableinterop` with `Name` `OCUPROBE1815B`, governance key enabled for the test | The card is destructive, takes the typed-name confirm and states the consequence. The confirm applies and marks the write | none |
+| Governance default | The key at its baseline value | The agent's tool is disabled by governance; the screen action still works behind its confirmation | governance refusal |
+| Not `%All` | A principal holding every other declared pair but not `%All`, on either caller | 403 naming `%All`, with zero port calls and no task queued | `AUTH.NOPRIVILEGE` |
+| Past the bound | The task outlasts `AsyncTimeout` | 202 started, recorded applied and marked; both callers say "Still running on the instance. It finishes in the background." | none |
+| System namespace | `%SYS` or `%ALL` | Refused before any task is queued, with the sentence | tool refusal |
+| Deleted since the read | The namespace is deleted between mint and confirm, or before Proceed | Refused as target changed, or 404 from the fresh read; no task is queued | fingerprint / `PORT.NOTFOUND` |
 | Integration | The Namespaces page and the agent call the tool; the mapping lists declare `secondaryEntityTypes` `["namespace"]` | An enable's change event re-fetches the Namespaces list and any open mapping list | the tool's gate |
 
 </intent-contract>
@@ -390,6 +369,8 @@ deferred: []
 - 2026-10-01, implement (Task 0): halted, `intent gap: observation contradicts the plan` (Design Notes › Measured at implement). No AD-8 sentence: the candidate pairs do not reproduce the reference. No AD-15/AD-53 case: the vendor audits the enable. AD-21's amendment holds on IRIS for Health: no database was created. Task 0's port plumbing was reverted; `Test/InteropProbe.cls` is kept.
 
 - 2026-10-01, orchestrator merge gate (by=merge_gate): the story is split for scope (Rule 5). DW-1813, DW-1824 and DW-1858 move to Story 18.17, which runs first; this story keeps the enable (DW-1776) and runs after release 1.0.5. The enable takes option 2: `%All` only (AD-8, written), the strongest typed-name confirmation, a consequence naming every instance-wide effect Task 0 measured, a refusal before anything is queued for a caller without `%All`, and its governance key disabled by default. On resume the runner rewrites the intent contract to that scope, sets `status: draft` and re-plans.
+
+- 2026-10-01, re-plan (runner, re-dispatch protocol): the intent contract is rewritten to the merge-gate decision (option 2: `%All` only, typed-name confirm, the measured consequence, governance disabled) and the split (DW-1813, DW-1824 and DW-1858 shipped in Story 18.17); status reset to `draft`. Design Notes › Measured at implement and this log are kept.
 
 ## Review Triage Log
 
