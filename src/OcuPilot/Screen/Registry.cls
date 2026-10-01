@@ -2197,8 +2197,9 @@ ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFi
     Quit tProblem
 }
 
-/// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36).</p>
-Parameter ROWGETRULES = "beforeToday";
+/// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36): <code>beforeToday</code>,
+/// and <code>bit64</code>, whether a whole number has bit 6 (64) set (Story 16.14, DW-1639).</p>
+Parameter ROWGETRULES = "beforeToday,bit64";
 
 /// <p>The request types a <code>read.source.rowGet</code> may issue (AD-36): <code>GET</code>, the
 /// default; <code>INFO</code>, where the list's own row is wrong; <code>CERTINFO</code>, where only

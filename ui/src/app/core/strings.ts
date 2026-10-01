@@ -2256,8 +2256,6 @@ export const STRINGS = {
   /** EXPERIENCE.md:505 */
   serviceFormBare: 'Open a service from the Services list to change it.',
   /** EXPERIENCE.md:505 */
-  ldapFormBare: 'Open an LDAP configuration from the LDAP / Kerberos list to change it.',
-  /** EXPERIENCE.md:505 */
   serviceGone: 'This service no longer exists.',
   /** EXPERIENCE.md:505 */
   ldapGone: 'This LDAP configuration no longer exists.',
@@ -4028,6 +4026,111 @@ export const STRINGS = {
   serviceAddressRolesEdit: 'Edit roles',
   /** EXPERIENCE.md:503 */
   serviceAddressRolesTitle: 'Roles for <address>',
+  // Story 16.14: the LDAP and Kerberos editor, its Test authentication dialog, and the list's Create and Delete.
+  /** EXPERIENCE.md:504 */
+  ldapFieldCopyFrom: 'Copy settings from',
+  /** EXPERIENCE.md:504 */
+  ldapFieldKerberos: 'Kerberos configuration',
+  /** EXPERIENCE.md:504 */
+  ldapFieldActiveDirectory: 'Active Directory server',
+  /** EXPERIENCE.md:504 */
+  ldapFieldSearchPassword: 'Search password',
+  /** EXPERIENCE.md:504 */
+  ldapPasswordLeave: 'Leave as is',
+  /** EXPERIENCE.md:504 */
+  ldapPasswordEnter: 'Enter a new password',
+  /** EXPERIENCE.md:504 */
+  ldapPasswordClear: 'Clear the password',
+  /** EXPERIENCE.md:504 */
+  ldapFieldPasswordConfirm: 'Confirm password',
+  /** EXPERIENCE.md:504 */
+  ldapPasswordMismatch: 'The two passwords do not match.',
+  /** EXPERIENCE.md:504 */
+  ldapFieldBaseDnGroups: 'Base DN for nested groups',
+  /** EXPERIENCE.md:504 */
+  ldapFieldServerTimeout: 'Server timeout',
+  /** EXPERIENCE.md:504 */
+  ldapFieldClientTimeout: 'Client timeout',
+  /** EXPERIENCE.md:504 */
+  ldapFieldTls: 'Use TLS/SSL encryption for LDAP sessions',
+  /** EXPERIENCE.md:504 */
+  ldapFieldCaFile: 'CA certificate file',
+  /** EXPERIENCE.md:504 */
+  ldapFieldAllowEnv: 'Allow ISC_LDAP_CONFIGURATION environment variable',
+  /** EXPERIENCE.md:504 */
+  ldapTabGroups: 'Groups',
+  /** EXPERIENCE.md:504 */
+  ldapFieldUseGroups: 'Use LDAP groups for roles, routines and namespaces',
+  /** EXPERIENCE.md:504 */
+  ldapFieldNestedGroups: 'Search nested groups',
+  /** EXPERIENCE.md:504 */
+  ldapFieldOrganizationId: 'Organization ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldGroupId: 'Group ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldInstanceId: 'Instance ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldRoleId: 'Role ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldEscalationRoleId: 'Escalation role ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldNamespaceId: 'Namespace ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldRoutineId: 'Routine ID prefix',
+  /** EXPERIENCE.md:504 */
+  ldapFieldDelimiterId: 'Delimiter',
+  /** EXPERIENCE.md:504 */
+  ldapFieldUniversalGroups: 'Allow universal group authorization',
+  /** EXPERIENCE.md:504 */
+  ldapExampleUniversal: 'Universal group examples',
+  /** EXPERIENCE.md:504 */
+  ldapFieldLdapGroupId: 'Authorization group ID',
+  /** EXPERIENCE.md:504 */
+  ldapExampleGroup: 'Authorization group examples',
+  /** EXPERIENCE.md:504 */
+  ldapFieldLdapInstanceId: 'Authorization instance ID',
+  /** EXPERIENCE.md:504 */
+  ldapExampleInstance: 'Authorization instance examples',
+  /** EXPERIENCE.md:504 */
+  ldapTabAttributes: 'Attributes',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeNamespace: 'User attribute to retrieve default namespace',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeRoutine: 'User attribute to retrieve default routine',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeRoles: 'User attribute to retrieve roles',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeEscalationRoles: 'User attribute to retrieve escalation roles',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeComment: 'User attribute to retrieve comment',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeFullName: 'User attribute to retrieve full name',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeMail: 'User attribute to retrieve mail address',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeMobile: 'User attribute to retrieve mobile phone',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeMobileProvider: 'User attribute to retrieve mobile provider',
+  /** EXPERIENCE.md:504 */
+  ldapFieldAttributes: 'Attributes to retrieve for each user',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeField: 'Attribute to add',
+  /** EXPERIENCE.md:504 */
+  ldapAttributeAdd: 'Add attribute',
+  /** EXPERIENCE.md:505 */
+  ldapPasswordRefused: 'Saved. The search password was not stored: <reason>',
+  /** EXPERIENCE.md:505 */
+  ldapTestAction: 'Test authentication',
+  /** EXPERIENCE.md:505 */
+  ldapTestOutput: 'Output from the instance',
+  /** EXPERIENCE.md:505 */
+  ldapTestNoAnswer: 'The request ended before the instance answered, so there is no output to show.',
+  /** EXPERIENCE.md:505 */
+  ldapTestSaveFirst: 'Save your changes before testing.',
+  /** EXPERIENCE.md:363 */
+  ldapListEmptyAgent: 'create an LDAP configuration',
+  /** EXPERIENCE.md:490 */
+  ldapDeleteConsequence: 'Anyone who signs in through this configuration can no longer sign in. This cannot be undone.',
 } as const;
 
 /**

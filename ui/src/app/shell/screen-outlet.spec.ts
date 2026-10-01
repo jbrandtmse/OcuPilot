@@ -20,8 +20,8 @@ import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
+import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { ListPage } from './list-page';
-import { ReducedFormPage } from './reduced-form.page';
 import {
   ARCHETYPE_PAGES,
   DESCRIPTOR_EDIT_PAGES,
@@ -429,16 +429,16 @@ describe('the descriptor map (DW-369)', () => {
     expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
   });
 
-  it('Story 9.9: the reduced LDAP form resolves to the reduced form page at its id route and at its bare route', () => {
+  it('Story 16.14: the LDAP form resolves to the LDAP editor at its id route and at its bare route', () => {
     // Mutation (Rule 19): drop LdapConfigForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
     const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
     const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(ReducedFormPage);
-    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(ReducedFormPage);
+    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
+    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
   });
 
   it('Story 16.13: the service form resolves to the service editor at its id route and at its bare route', () => {
-    // Mutation (Rule 19): register ServiceForm to `ReducedFormPage` in `DESCRIPTOR_EDIT_PAGES` -> the
+    // Mutation (Rule 19): register ServiceForm to `LdapEditorPage` in `DESCRIPTOR_EDIT_PAGES` -> the
     // id-route leg goes red.
     const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
     const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;

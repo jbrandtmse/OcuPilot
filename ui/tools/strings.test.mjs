@@ -647,7 +647,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
   // one by one; so does Story 18.14's Copy mappings row action on that list, and Story 18.3's four
-  // phrases of a database delete's impact that name the namespaces using the database.
+  // phrases of a database delete's impact that name the namespaces using the database. Story 16.14's
+  // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
@@ -661,6 +662,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'impactNamespacesUseNone',
       'impactNamespacesUseOne',
       'impactNamespacesUseUnchecked',
+      'ldapAttributeNamespace',
+      'ldapFieldNamespaceId',
       'namespaceColumnGlobals',
       'namespaceColumnRoutines',
       'namespaceColumnTemp',
@@ -682,7 +685,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, one field label and the Namespaces screens\' own copy'
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, three field labels and the Namespaces screens\' own copy'
   );
 });
 

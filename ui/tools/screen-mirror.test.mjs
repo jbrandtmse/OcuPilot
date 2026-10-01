@@ -627,6 +627,15 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
     derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
   });
 
+  // Story 16.14 (DW-1639): the LDAP / Kerberos list reads Enabled from bit 64 of each row's flags.
+  const ldap = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LdapConfigList');
+  assert.deepEqual(ldap.read.source.rowGet, {
+    key: 'Name',
+    param: 'name',
+    fields: ['LDAPFlags'],
+    derived: [{ field: 'Enabled', rule: 'bit64', from: 'LDAPFlags' }],
+  });
+
   // Story 6.3: the X.509 list's detail call declares CERTINFO, and the mirror carries it.
   const x509 = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.X509CredentialList');
   assert.deepEqual(x509.read.source.rowGet, {

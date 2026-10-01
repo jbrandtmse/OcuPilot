@@ -120,7 +120,7 @@ export interface ClassicRowLink {
 /** A field a detail call derives on the instance from one of its detail fields (AD-36). */
 export interface ReadDerived {
   readonly field: string;
-  readonly rule: 'beforeToday';
+  readonly rule: 'beforeToday' | 'bit64';
   readonly from: string;
 }
 
@@ -4679,7 +4679,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowActions": [],
     "context": {
       "fields": [],
-      "secretFields": []
+      "secretFields": [
+        "LDAPSearchPassword"
+      ]
     },
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -4701,10 +4703,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "classicPage": "%CSP.UI.Portal.LDAP",
     "classicLinkExemption": {
-      "exempt": true,
-      "reason": "Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1",
-      "label": "Security LDAP Configs",
-      "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "toolIdentifier": "security.ldapform",
     "refreshDefault": 0,
@@ -4745,19 +4747,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
         "Enabled",
         "Description",
-        "LDAPCACertFile"
+        "LDAPCACertFile",
+        "LDAPFlags"
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "LDAPSearchPassword"
+    ],
     "emptyStateKey": "ldapListEmpty",
     "commandAliases": [
       "kerberos"
@@ -4787,13 +4798,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "source": {
         "port": "admin",
         "endpoint": "Security.LDAP",
-        "type": "LIST"
+        "type": "LIST",
+        "rowGet": {
+          "key": "Name",
+          "param": "name",
+          "fields": [
+            "LDAPFlags"
+          ],
+          "derived": [
+            {
+              "field": "Enabled",
+              "rule": "bit64",
+              "from": "LDAPFlags"
+            }
+          ]
+        }
       },
       "fields": [
         "Name",
         "Enabled",
         "Description",
-        "LDAPCACertFile"
+        "LDAPCACertFile",
+        "LDAPFlags"
       ],
       "filter": [
         "Name",
@@ -4827,8 +4853,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "ldapListEmptyAgent"
     },
     "toolIdentifier": "security.ldap",
     "refreshDefault": 0,
@@ -4836,7 +4862,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "multiSelect": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },

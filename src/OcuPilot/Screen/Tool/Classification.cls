@@ -31,6 +31,13 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 {
 
 /// <p>The reviewed entries, one per write tool.</p>
+/// <p><b><code>security.ldap.create</code></b>, <b><code>security.ldap.update</code></b> and
+/// <b><code>security.ldap.password</code></b> (Stories 9.9 and 16.14) classify
+/// <code>Security.LDAP</code>'s every row <code>ordinary</code>; the instance stores the attributes to
+/// retrieve sorted and once each, so they are compared <code>unordered</code> (AD-58). The password
+/// tool authors <code>LDAPSearchPassword</code> as <code>secret</code>: its write sends that declared
+/// secret and nothing else, under the vendor's own <code>CHANGEPWD</code> key (AD-56), and the
+/// template never shows it. <code>LDAPCACertFile</code> is ordinary and no tool admits it (AD-21).</p>
 /// <p><b><code>osmgmt.languageservers.create</code></b> and <b><code>osmgmt.languageservers.update</code></b>
 /// (Story 16.25) classify the untyped <code>LanguageServer</code> list's literals
 /// <code>ordinary</code> and its member-less <code>Custom</code> <code>opaque</code>, compared by the
@@ -1006,8 +1013,83 @@ XData Entries
       "Enabled": "ordinary"
     }
   },
+  "security.ldap.create": {
+    "fieldList": "Security.LDAP",
+    "compare": {"LDAPAttributes": "unordered"},
+    "classification": {
+      "Description": "ordinary",
+      "LDAPAttributes[]": "ordinary",
+      "LDAPAttributeComment": "ordinary",
+      "LDAPAttributeFullName": "ordinary",
+      "LDAPAttributeMail": "ordinary",
+      "LDAPAttributeMobile": "ordinary",
+      "LDAPAttributeMobileProvider": "ordinary",
+      "LDAPAttributeNameSpace": "ordinary",
+      "LDAPAttributeRoutine": "ordinary",
+      "LDAPAttributeRoles": "ordinary",
+      "LDAPAttributeEscalationRoles": "ordinary",
+      "LDAPBaseDN": "ordinary",
+      "LDAPBaseDNForGroups": "ordinary",
+      "LDAPCACertFile": "ordinary",
+      "LDAPClientTimeout": "ordinary",
+      "LDAPFlags": "ordinary",
+      "LDAPGroupId": "ordinary",
+      "LDAPHostNames[]": "ordinary",
+      "LDAPInstanceId": "ordinary",
+      "OrganizationId": "ordinary",
+      "GroupId": "ordinary",
+      "InstanceId": "ordinary",
+      "RoleId": "ordinary",
+      "EscalationRoleId": "ordinary",
+      "RoutineId": "ordinary",
+      "NamespaceId": "ordinary",
+      "DelimiterId": "ordinary",
+      "LDAPSearchUsername": "ordinary",
+      "LDAPServerTimeout": "ordinary",
+      "LDAPUniqueDNIdentifier": "ordinary"
+    }
+  },
+  "security.ldap.password": {
+    "fieldList": "Security.LDAP",
+    "classification": {
+      "Description": "ordinary",
+      "LDAPAttributes[]": "ordinary",
+      "LDAPAttributeComment": "ordinary",
+      "LDAPAttributeFullName": "ordinary",
+      "LDAPAttributeMail": "ordinary",
+      "LDAPAttributeMobile": "ordinary",
+      "LDAPAttributeMobileProvider": "ordinary",
+      "LDAPAttributeNameSpace": "ordinary",
+      "LDAPAttributeRoutine": "ordinary",
+      "LDAPAttributeRoles": "ordinary",
+      "LDAPAttributeEscalationRoles": "ordinary",
+      "LDAPBaseDN": "ordinary",
+      "LDAPBaseDNForGroups": "ordinary",
+      "LDAPCACertFile": "ordinary",
+      "LDAPClientTimeout": "ordinary",
+      "LDAPFlags": "ordinary",
+      "LDAPGroupId": "ordinary",
+      "LDAPHostNames[]": "ordinary",
+      "LDAPInstanceId": "ordinary",
+      "OrganizationId": "ordinary",
+      "GroupId": "ordinary",
+      "InstanceId": "ordinary",
+      "RoleId": "ordinary",
+      "EscalationRoleId": "ordinary",
+      "RoutineId": "ordinary",
+      "NamespaceId": "ordinary",
+      "DelimiterId": "ordinary",
+      "LDAPSearchUsername": "ordinary",
+      "LDAPServerTimeout": "ordinary",
+      "LDAPUniqueDNIdentifier": "ordinary"
+    },
+    "authored": {
+      "LDAPSearchPassword": "secret"
+    }
+  },
   "security.ldap.update": {
     "fieldList": "Security.LDAP",
+    "compare": {"LDAPAttributes": "unordered"},
     "classification": {
       "Description": "ordinary",
       "LDAPAttributes[]": "ordinary",

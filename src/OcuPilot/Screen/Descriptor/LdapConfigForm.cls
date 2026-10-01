@@ -1,18 +1,19 @@
-/// <p>The LDAP configuration form: one LDAP configuration, edited at its id route as a reduced form --
-/// its description, whether it is enabled, its host names and how users are found -- rendered by the
-/// <code>form-page</code> archetype (AD-5) and ended by a <code>classic-link-card</code> to the
-/// classic LDAP configurations page, which keeps the group, attribute, Kerberos, TLS and search
-/// password settings until Story 16.14's full editor replaces this form and removes its exemption
-/// (AD-44). Its Save and the agent's confirmed <code>security.ldap.update</code> are two callers of
-/// one tool (AD-55).</p>
+/// <p>The LDAP and Kerberos editor: one LDAP configuration, created at its bare route and edited at its
+/// id route on one tabbed page -- General, Groups and Attributes, over every input of the classic
+/// <code>%CSP.UI.Portal.LDAP</code> in its own order -- rendered by the <code>form-page</code>
+/// archetype (AD-5). Its create Save and the agent's confirmed <code>security.ldap.create</code>, its
+/// edit Save and <code>security.ldap.update</code>, and its search password and
+/// <code>security.ldap.password</code> are each two callers of one tool (AD-55). Test authentication
+/// is a dialog on the editor, run in process (AD-26, AD-39).</p>
 /// <p><b>It is built and routable, and it takes no side-bar position</b> (<code>sideBarPosition</code>
-/// 0): it is reached from <class>OcuPilot.Screen.Descriptor.LdapConfigList</class>'s name cell, at
-/// that list's own route with <code>/edit</code> appended and the name as its one id segment. It
-/// edits and never creates.</p>
+/// 0): it is reached from <class>OcuPilot.Screen.Descriptor.LdapConfigList</class>'s Create and from a
+/// row's name cell, at that list's own route with <code>/edit</code> appended, with the name as its
+/// one id segment when it edits.</p>
 /// <p><b>It declares no <code>read</code> and no <code>table</code></b> (AD-36); its privilege set is
 /// the list's own (AD-8). Its classic equivalent is <code>%CSP.UI.Portal.LDAP</code>, in the class's
-/// own case (AD-44). It does not refresh (AD-43). No search password is read, so its context carries
-/// no secret.</p>
+/// own case (AD-44); it declares no exemption and does not refresh (AD-43). No search password is
+/// ever read, and the one being typed is secret-typed in its context (AD-24, AD-35). It declares
+/// three suggested prompts (Story 11.3's contract).</p>
 Class OcuPilot.Screen.Descriptor.LdapConfigForm Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -35,7 +36,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "context": {"fields": [], "secretFields": []},
+  "context": {"fields": [], "secretFields": ["LDAPSearchPassword"]},
   "secretArguments": [],
   "fingerprintExcludes": [],
   "emptyStateKey": "",
@@ -46,7 +47,7 @@ XData Declaration
     {"groupKey": "sslPromptGroupConnections", "textKey": "ldapPromptUsers"}
   ],
   "classicPage": "%CSP.UI.Portal.LDAP",
-  "classicLinkExemption": {"exempt": true, "reason": "Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1", "label": "Security LDAP Configs", "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"},
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "security.ldapform"
 }
 }

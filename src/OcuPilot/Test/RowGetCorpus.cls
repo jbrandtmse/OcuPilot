@@ -4,6 +4,9 @@
 /// off disk. Each case replaces <code>declaration.read.source.rowGet</code> with its own
 /// <code>rowGet</code> and names the exact sentence both engines return, or <code>null</code> for a
 /// sound shape. A later story that extends the grammar adds its cases here.</p>
+/// <p><code>bit64</code> is the value corpus of that derived rule (Story 16.14, DW-1639): each case's
+/// <code>value</code> as a detail field's JSON value, whether
+/// <method>OcuPilot.Screen.Read.Derive</method> reads it, and the boolean it derives.</p>
 Class OcuPilot.Test.RowGetCorpus Extends %RegisteredObject
 {
 
@@ -66,9 +69,19 @@ XData Cases
     {"name": "a detail field as a derived field", "rowGet": {"key": "Name", "param": "name", "fields": ["Roles", "ExpirationDate"], "derived": [{"field": "Roles", "rule": "beforeToday", "from": "ExpirationDate"}]}, "expected": "read.source.rowGet.derived entry #1 field 'Roles' is also a detail field, whose value the detail call supplies"},
     {"name": "a repeated derived field", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "beforeToday", "from": "ExpirationDate"}, {"field": "Expired", "rule": "beforeToday", "from": "ExpirationDate"}]}, "expected": "read.source.rowGet.derived entry #2 names the field 'Expired' twice"},
     {"name": "a derived entry with no rule", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "from": "ExpirationDate"}]}, "expected": "read.source.rowGet.derived entry #1 rule is not a string"},
-    {"name": "a rule outside the closed set", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "afterToday", "from": "ExpirationDate"}]}, "expected": "read.source.rowGet.derived entry #1 rule 'afterToday' is not one of beforeToday"},
+    {"name": "a rule outside the closed set", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "afterToday", "from": "ExpirationDate"}]}, "expected": "read.source.rowGet.derived entry #1 rule 'afterToday' is not one of beforeToday,bit64"},
     {"name": "a derived entry with no from", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "beforeToday"}]}, "expected": "read.source.rowGet.derived entry #1 from is not a string"},
-    {"name": "a from outside the detail fields", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "beforeToday", "from": "FullName"}]}, "expected": "read.source.rowGet.derived entry #1 from 'FullName' is not one of read.source.rowGet.fields"}
+    {"name": "a from outside the detail fields", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "beforeToday", "from": "FullName"}]}, "expected": "read.source.rowGet.derived entry #1 from 'FullName' is not one of read.source.rowGet.fields"},
+    {"name": "a bit64 rule is sound", "rowGet": {"key": "Name", "param": "name", "fields": ["ExpirationDate"], "derived": [{"field": "Expired", "rule": "bit64", "from": "ExpirationDate"}]}, "expected": null}
+  ],
+  "bit64": [
+    {"name": "64 alone", "value": 64, "readable": true, "expected": true},
+    {"name": "72, enabled and use groups", "value": 72, "readable": true, "expected": true},
+    {"name": "72 as decimal text", "value": "72", "readable": true, "expected": true},
+    {"name": "8, use groups alone", "value": 8, "readable": true, "expected": false},
+    {"name": "128, Kerberos only", "value": 128, "readable": true, "expected": false},
+    {"name": "the empty string", "value": "", "readable": false, "expected": false},
+    {"name": "a fraction", "value": 64.5, "readable": false, "expected": false}
   ]
 }
 }

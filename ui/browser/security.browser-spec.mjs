@@ -66,8 +66,9 @@ const LISTS = {
     url: '/ocupilot/security/ldap?ns=HSCUSTOM',
     read: `${READ_PREFIX}security.ldap/read`,
     label: STRINGS.ldapListLabel,
-    headers: [STRINGS.tableColumnName, STRINGS.tableColumnEnabled, STRINGS.tableColumnDescription],
-    literal: ['Name', 'Enabled', 'Description'],
+    // Story 16.14: the LDAP / Kerberos list declares Delete, so its table carries the row-actions column.
+    headers: [STRINGS.tableColumnName, STRINGS.tableColumnEnabled, STRINGS.tableColumnDescription, STRINGS.commandBoxGroupActions],
+    literal: ['Name', 'Enabled', 'Description', 'Actions'],
     listed: true,
   },
   wallet: {

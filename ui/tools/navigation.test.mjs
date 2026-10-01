@@ -218,7 +218,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
-      // Story 9.9: the unlisted reduced LDAP configuration form, reached from the LDAP / Kerberos list.
+      // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',
       'security/oauth/clients',
@@ -363,8 +363,8 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   assert.deepEqual([...CREATE_ONLY_FORMS], [], 'no form is create-only');
   assert.equal(editorScreenFor(schedule)?.route, 'tasks/schedule/edit', 'so a task opens Edit task at the form\'s id route');
   assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'beside the task\'s details');
-  // Story 9.9: the two reduced forms are the editors their lists' name cells open.
-  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its reduced form');
+  // Story 16.14 and Story 16.13: the two editors their lists' name cells open.
+  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its editor');
   assert.equal(editorScreenFor(screenForRoute('permissions/services'))?.route, 'permissions/services/edit', 'and the Services list its own');
   assert.equal(
     editorScreenFor(screenForRoute('os-management/locks')),

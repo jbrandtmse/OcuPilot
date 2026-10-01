@@ -7285,6 +7285,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured on ocupilot-ci at the 9.9 implement: after a PUT of LDAPFlags 72 (bit 64 set) the LIST row's Enabled was false while LDAPConfigs:List read Yes; pre-existing in LdapConfigList's read
 - 2026-09-25T00:07:29Z status=routed owner=16-14-the-ldap-and-kerberos-editor by=harvest note=derive the column from LDAPFlags bit 64 or the List query, as the reduced form does from GET
 - 2026-09-25T00:38:59Z occurrence=9-9-a-cut-editor-ships-reduced-never-half-working
+- 2026-10-01T05:47:04Z status=resolved-by:16-14-the-ldap-and-kerberos-editor by=adjudication note=list Enabled derived from LDAPFlags bit 64 (Read bit64 rule); LdapEdit.TestTheListReadsEnabledFromTheFlags (mutation run 22837)
 
 ### DW-1644: The OAuth 2.0 editors are built as sectioned forms because form-tabs.ts was on Epic 9's unmerged branch; switch them to app-form-tabs now that Epic 9 has merged
 - source: merge gate, Epic 9 (dc3e1b5e) | severity: low | fix-risk: low | footprint: in-epic
@@ -7922,6 +7923,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=verify the cause first; a compose change recreates the owner's live ocupilot container on its next up, so coordinate with the owner
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-09-30T17:16:05Z occurrence=1.0.4 upgrade check (orchestrator) 2026-09-30 note=docker compose restart iris logged '[ERROR] Status of instance IRIS is running' at the stop signal, the next start logged 'Previous system shutdown was abnormal' at severity 2 and Monitor.State went 0 to 1; nothing lost; same as 1.0.3's check
+- 2026-10-01T05:57:13Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=both the in-place restart and the env-change recreate logged 'Previous system shutdown was abnormal'; nothing lost
 
 ### DW-1763: The README does not say a user needs READ on the install namespace's database beyond %Manager; a %Manager-only user gets an empty 403 on every /api/ocupilot route
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: README.md
@@ -8586,6 +8588,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: instance shard 3/3: 'the delete and its re-read post no alert' failed at 13:51:56Z; a %SYS.WorkQueueMgr appendError #7802 was logged at 13:52:37Z; the DW-1861 change touches TaskCreate/TaskUpdate only; first occurrence in the last 40 failed runs
 - 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
+- 2026-10-01T05:57:12Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=a second failure mode: 'and the instance's state, 1 before, has not reached Alert' on an upgraded instance already at Warning from the restart (DW-1762), with the three preceding classes logging deliberate severity-2 lines (inference); the port's own assertions passed; 3/3 green on a fresh instance. The fix should assert on lines this delete posts, not the instance-wide state
 
 ### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
@@ -8647,6 +8650,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T23:16:38Z occurrence=23-2-the-range-end-cleanup-part-2
 - 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: real MED outside the cap of 12; queued for the standing cleanup after 1.0.5
 - 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
+- 2026-10-01T05:41:07Z occurrence=16-14-the-ldap-and-kerberos-editor
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
@@ -8682,6 +8686,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-13-the-service-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: README.md:491-493 says the LDAP and service editors cover the common fields and link to the classic page; :517 lists the full service editor as remaining. Story 16.13 shipped the full editor and dropped the link.
 - 2026-10-01T00:44:22Z status=wontfix-accepted owner=16-13-the-service-editor by=cr note=README is outside Epic 16's footprint; reopen_if=README.md still says the service editor links to the classic page at the next release cut
+- 2026-10-01T05:41:08Z occurrence=16-14-the-ldap-and-kerberos-editor
+
+### DW-1887: The deleted reduced form's two checkbox rules remain in _components.scss as dead CSS (app-reduced-form-page)
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: reduced-form.page.ts was deleted in 16.14; its 24px checkbox rules at _components.scss:6110 remain because the file is shared-append
+- 2026-10-01T05:05:02Z status=wontfix-accepted owner=16-14-the-ldap-and-kerberos-editor by=harvest note=reopen_if=a cleanup pass edits _components.scss in place, or client-lint flags selectors with no component
+
+### DW-1888: LDAP.NAME.FORM refuses a configuration the instance already stores under a non-canonical name (a classic-page Kerberos-only create keeps a dotless name as typed), so OcuPilot can neither open, edit, test nor delete it
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-10-01: Security.LDAPConfigs.Create("OCUP99KRB") with flags 128 stored Name OCUP99KRB while FormatName answers ocup99krb.com; the classic page canonicalizes only with LDAP configuration ticked (LDAP.cls:408). The spec's 'stores only the canonical form' premise behind AD-13's amendment does not hold for Create.
+- 2026-10-01T05:41:07Z status=decision-pending owner=burndown by=cr note=admit a name the instance already stores as typed (amend AD-13 and the Boundary), or keep refusing; Rule 20 Deferred mirror
+- 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided as recommended (orchestrator 2026-10-01): admit a name the instance already stores, exactly as stored, for open/edit/test/delete; a NEW name is still refused when the instance would store it differently; amend AD-13; Epic 16 fixes it before its close as its own commit
+
+### DW-1889: The LDAP editor cannot remove a configuration's last retrieved attribute: Security.LDAP PUT ignores LDAPAttributes [] (the Save answers 200, read-back differs) and [""] answers 500
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Measured on ocupilot-ci 2026-10-01 through PUT /ldap/:id on a probe: [] left [cn,uid] stored with verdict differs; [""] answered 500 INTERNAL; a non-empty list replaces the stored one whole. The classic page clears it with Properties("LDAPAttributes")="" through Security.LDAPConfigs.Modify.
+- 2026-10-01T05:41:07Z status=escalated owner=burndown by=cr note=needs an AD-27 named case (Modify in %SYS) or a refusal sentence for an empty list; decision sheet
+- 2026-10-01T07:16:53Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=decided (orchestrator 2026-10-01): now - a refusal with a plain sentence when the edit would remove the last retrieved attribute (the vendor PUT ignores LDAPAttributes []), instead of a silent no-op; the AD-27 named case (Modify in %SYS) is a later cleanup item - file it as a new range-end-cleanup entry (p4) when this one resolves
+
+### DW-1890: LdapTest's no-task-row assertions pass when PortFixture.TaskGuids cannot read the async task table, because it answers "" on any error
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: PortFixture.TaskGuids' Catch answers "", so a failed read before and after compares equal. AC2 stays pinned by TaskGlobalsCarry, which fails closed, and by the lines legs.
+- 2026-10-01T05:41:07Z status=wontfix-accepted owner=16-14-the-ldap-and-kerberos-editor by=cr note=reopen_if=TaskGlobalsCarry or LdapTest's lines legs are removed, leaving the row count as AC2's only pin
+
+### DW-1891: The agent's LDAP create refuses a taken name, or a short name whose stored form is taken, with the kernel's 'already present' sentence, not LDAP.NAME.TAKEN or LDAP.NAME.FORM
+- source: spec-16-14-the-ldap-and-kerberos-editor.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Kernel.Proposal.Mint reads the target before the tool's ArgumentProblem, so AC8's published-sentence clause holds for the Save alone; LdapCreate.TestTheMintRefusesTheCreatesRules asserts 'already present'. Nothing is sent either way.
+- 2026-10-01T05:41:07Z status=wontfix-accepted owner=16-14-the-ldap-and-kerberos-editor by=cr note=reopen_if=a create tool's agent refusal must carry its own code, or AC8 is re-read as binding the agent's wording
 
 ### DW-1886: A developer instance whose compose file does not set OCUPILOT_LOAD_TESTS=1 loses its compiled OcuPilot.Test classes on its next start from a tree carrying the DW-1885 delete; ocupilot-slot-b does not set it today, nor would ocupilot if recreated from the repository's compose file
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint

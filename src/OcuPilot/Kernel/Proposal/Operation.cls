@@ -131,8 +131,10 @@ ClassMethod SendsBody(pToolClass As %String) As %Boolean
 /// <p>The answer holds each <code>SECRETBODY</code> name that is also in <var>pSecretNames</var> --
 /// the descriptor's declared secrets, which is the one list the confirm channel and the screen's
 /// value channel are closed to -- and that <var>pSupplied</var> carries as a scalar, under that
-/// name and with that value exactly as supplied, and nothing else. A name either list lacks, and an
-/// empty value, is not sent.</p>
+/// name and with that value exactly as supplied, and nothing else. A name either list lacks is not
+/// sent, and neither is an empty value, unless the tool's
+/// <parameter>OcuPilot.Screen.Tool.Write.CLEARABLESECRETS</parameter> names it: then
+/// <code>""</code> is sent and clears the stored secret.</p>
 /// <p><b>Caller contract:</b> called at the write and nowhere earlier, so the secret exists as this
 /// request's local alone: it is never stored, digested, diffed or logged (AD-6, AD-35). A class that
 /// cannot be asked sends none.</p>
@@ -143,6 +145,7 @@ ClassMethod SecretBody(pToolClass As %String, pSupplied As %DynamicObject, pSecr
         If pToolClass = "" Quit
         Set tNames = $ClassMethod(pToolClass, "SecretBodyNames")
         If tNames = "" Quit
+        Set tClearable = $ListFromString($Parameter(pToolClass, "CLEARABLESECRETS"))
         Set tBody = {}
         If '$IsObject(pSupplied) || 'pSupplied.%IsA("%Library.DynamicObject") Quit
         For tI = 1:1:$ListLength(tNames) {
@@ -151,8 +154,9 @@ ClassMethod SecretBody(pToolClass As %String, pSupplied As %DynamicObject, pSecr
             Set tType = pSupplied.%GetTypeOf(tName)
             If (tType = "unassigned") || (tType = "object") || (tType = "array") Continue
             ; An empty secret is not a secret supplied: it is left out, so the vendor's own
-            ; required-field refusal answers rather than a blank password being set.
-            If pSupplied.%Get(tName) = "" Continue
+            ; required-field refusal answers rather than a blank password being set -- unless the
+            ; tool declares the name clearable, whose vendor type clears on "" (AD-56 (i)).
+            If (pSupplied.%Get(tName) = "") && '$ListFind(tClearable, tName) Continue
             Do tBody.%Set(tName, pSupplied.%Get(tName), tType)
         }
     } Catch {

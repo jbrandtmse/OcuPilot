@@ -275,6 +275,8 @@ services:
       # classes: TaskManagerLive, TaskRowWire
       # The lock removal class also starts processes that hold probe locks and removes those locks.
       # classes: LockRemoveLive
+      # The LDAP test class also tests authentication as a principal without the LDAP editor's pairs.
+      # classes: LdapTest
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -374,6 +376,8 @@ services:
       # through a port that records a PUT and never sends it.
       # Since Story 16.13 ServiceEdit also writes %Service_CacheDirect and %Service_ECP, each disabled, snapshotted and restored the same way.
       # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
+      # Since Story 16.14 the LDAP classes also create configurations through the editor's Save and the agent's create, set and clear their search password, delete them, and test authentication against 127.0.0.1:1.
+      # classes: LdapCreate, LdapPassword, LdapTest
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's

@@ -1186,9 +1186,20 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
 /// <p><code>beforeToday</code> is true exactly when the value is a <code>YYYY-MM-DD</code> date
 /// earlier than <code>+$Horolog</code>, the instance's own date, and false for <code>""</code>, a
 /// <code>null</code> or an absent key.</p>
+/// <p><code>bit64</code> is whether a whole number of 0 or more, as a JSON number or its decimal
+/// text, has bit 6 (64) set: the LDAP / Kerberos list's Enabled, read from <code>LDAPFlags</code>
+/// (DW-1639). Any other value, <code>""</code> and an absent key among them, is not readable.</p>
 ClassMethod Derive(pRule As %String, pDetail As %DynamicObject, pFrom As %String, Output pReadable As %Boolean) As %Boolean
 {
     Set pReadable = 0
+    If pRule = "bit64" {
+        Set tType = pDetail.%GetTypeOf(pFrom)
+        If (tType '= "number") && (tType '= "string") Quit 0
+        Set tValue = pDetail.%Get(pFrom)
+        If '$Match(tValue, "^[0-9]+$") Quit 0
+        Set pReadable = 1
+        Quit ''$ZBoolean(+tValue, 64, 1)
+    }
     If pRule '= "beforeToday" Quit 0
     Set tType = pDetail.%GetTypeOf(pFrom)
     If (tType = "unassigned") || (tType = "null") {
