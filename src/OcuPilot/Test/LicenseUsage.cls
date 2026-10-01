@@ -80,7 +80,7 @@ ClassMethod Arm(pAnswer As %DynamicAbstractObject)
 }
 
 /// <p>The four declarations pass the read and tab grammar and form one group: Summary is the side
-/// bar's seventh OS management entry at the group's route, the other three unlisted at positions 2
+/// bar's eighth OS management entry at the group's route, the other three unlisted at positions 2
 /// to 4. Each is a <code>detail</code> screen over <code>{admin, Monitor, LICENSEUSAGE}</code> naming
 /// its own member, with the two OS management pairs and no own pair, no entity type, instance scope,
 /// no id, no action, no refresh, <code>%CSP.UI.Portal.LicenseUsage</code> as its classic page with no
@@ -107,7 +107,7 @@ Method TestTheFourTabsDeclareTheirReadsAndFormOneGroup()
 
         Set tTab = tDeclaration.tab
         Do $$$AssertEquals(tTab.group _ "|" _ tTab.position _ "|" _ tTab.labelKey, ..#GROUP _ "|" _ tI _ "|" _ ..Tab(tI, 6), tWhere _ "the group, its position and its tab label")
-        Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $Select(tI = 1: 7, 1: 0), tWhere _ "Summary is the seventh entry and the others are unlisted")
+        Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $Select(tI = 1: 8, 1: 0), tWhere _ "Summary is the eighth entry and the others are unlisted")
         Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "os-management", tWhere _ "in OS management")
         Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "detail", tWhere _ "on the detail archetype")
         Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, tWhere _ "built")

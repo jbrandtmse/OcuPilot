@@ -200,7 +200,9 @@ ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
 }
 
 /// <p>Refuse a caller who does not hold <parameter>DESCRIPTORCLASS</parameter>'s declared pairs, or
-/// the pair the tool's write declares beyond them (AD-8), before anything is read or sent:
+/// every pair the tool's write declares (<method>OcuPilot.Screen.Tool.ServiceUpdate.PrivilegePairs</method>:
+/// its list's pairs, its own and the custom resource of each classic page it performs, AD-8, AD-44),
+/// before anything is read or sent, so the Save and the agent's mint and confirm refuse alike:
 /// <var>pRefused</var> 1 means the envelope is written.</p>
 ClassMethod Gate(Output pRefused As %Boolean) As %Status
 {
@@ -210,8 +212,12 @@ ClassMethod Gate(Output pRefused As %Boolean) As %Status
         Set pRefused = 1
         Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
     }
-    Set tPair = $ListBuild($Parameter(..#UPDATETOOL, "WRITERESOURCE"), $Parameter(..#UPDATETOOL, "WRITEPERMISSION"))
-    If ##class(OcuPilot.Screen.Gate).EvaluatePairs($ListBuild(tPair), .tFailedPair) Quit $$$OK
+    Set tPairs = $ClassMethod(..#UPDATETOOL, "PrivilegePairs", "", .tResolved)
+    If 'tResolved {
+        Set pRefused = 1
+        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the privilege pairs of " _ ..#UPDATETOOL _ " could not be read")))
+    }
+    If ##class(OcuPilot.Screen.Gate).EvaluatePairs(tPairs, .tFailedPair) Quit $$$OK
     Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
 }

@@ -515,6 +515,9 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'security.oauthserverclients.update': members,
     'tasks.schedule.create': { Settings: 'written' },
     'tasks.schedule.update': { Settings: 'written' },
+    // Story 16.14: the vendor stores the attributes to retrieve sorted, with duplicates dropped.
+    'security.ldap.create': { LDAPAttributes: 'unordered' },
+    'security.ldap.update': { LDAPAttributes: 'unordered' },
     // Story 16.25: the vendor answers a type's whole Custom object, its unsent members included.
     'osmgmt.languageservers.create': { Custom: 'members' },
     'osmgmt.languageservers.update': { Custom: 'members' },

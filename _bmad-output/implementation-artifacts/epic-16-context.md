@@ -4,10 +4,7 @@
 
 ## Goal
 
-This is the voting-week work: the classic portal's remaining second-tier screens and actions, each reached by a person and by the agent through one operation. The epic closes with stories deferred from the contest build. The last three finish Release 1's two reduced editors, the full service editor and the full LDAP and Kerberos editor, and make egress visible on every turn through a data-egress line in the agent panel. **Nothing here may break a Release 1 screen or agent write**; anything that risks either waits for Stage 2.
-
-- **Done:** 16.1 to 16.12 and 16.16 to 16.25. 16.12's merge waits on its CI run.
-- **Remaining, on slot A, in order:** 16.13, 16.14, 16.15, then the epic close.
+Epic 16 brought the classic portal's remaining second-tier screens and actions into OcuPilot. These include the try-it console, web sessions, effective privileges, task export and background tasks, the six secondary logs and the log hub, and external language servers. It also covers the editors deferred from the contest build and the additions from the owner's surveys. A person and the agent reach each action through one operation, and nothing in the epic may break a Release 1 screen or agent write. Stories 16.1 to 16.25 are done. The last, 16.26, is the epic's burn-down. It fixes the two CI flakes found at the epic's close at their cause, so that a red CI run once again means a regression and not an unlucky shard order or timing.
 
 ## Stories
 
@@ -36,109 +33,71 @@ This is the voting-week work: the classic portal's remaining second-tier screens
 - Story 16.23: Any table, downloaded as CSV
 - Story 16.24: A try-it request, copied as curl
 - Story 16.25: The external language server editor
+- Story 16.26: Epic 16 burn-down
 
 ## Requirements & Constraints
 
-- **Every write tool.** A registry test fails on any gap in the following.
-  - Its declared port has a `Snippet` for every `Invoke` branch.
-  - A field the instance normalizes on save declares a read-back `compare` in its Classification entry.
-  - Its entity type has a canonical-spelling rule. A type with no rule canonicalizes to itself.
-  - It is measured with auditing on. Where IRIS records nothing, it is named as the next unaudited case in both AD-15 and AD-53. There are nine so far; the ninth is 16.11's Task Manager start.
-  - Each classic page or Hidden dialog whose operation it performs beyond its descriptor's `classicPage` is named in `CLASSICPAGES`, read on the instance.
-- **Governance key.** Through 2026-10-04, a new write key joins `Kernel/Governance/Baseline.cls` in the same change. It is enabled unless the criteria say disabled.
-- **Refusal copy.** A self-protection sentence is published once in EXPERIENCE.md's Fixed strings. The kernel's reason is that sentence, pinned equal by a test.
-- **Copy.** New strings go into Fixed strings and `ui/src/app/core/strings.ts` in the same change. Other suites cite EXPERIENCE.md (993 lines) and epics.md by line, so edit in place. Run `cd ui && npm run test:tools` after touching either.
-- **Bundle.** `maximumWarning` is 2346kB and `maximumError` is 4000kB. A re-base updates the `angular-json.test.mjs` literal in the same change.
-- **Tests.** One test-runner call at a time, never two in one message.
-- **16.13, the service editor.**
-  - **Coverage.** Enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
-  - **Disabling `%Service_WebGateway`,** the only service serving OcuPilot on this build. The screen draws the control disabled with "OcuPilot is served through this service. Turning it off would cut off every user, including you." Both callers are refused `PROHIBITED.SERVINGSERVICE` on the instance, and the agent's disable is never advertised as a tool.
-  - **Address and authentication changes on that service are permitted.** They warn and refuse nothing.
-    - The agent's proposal is minted destructive, with the line "OcuPilot itself is served through this service, so a change here can cut off every user, including you."
-    - A person's Save shows the same line under the connection list.
-    - Letting any other service admit unauthenticated connections carries "Anyone who reaches this service can use it without signing in."
-  - **DW-1016.** An empty address list in a proposal diff row reads "Unrestricted", the Services column's `emptyKey` word, not "(none)".
-  - **Exemption.** The story lifts `ServiceForm`'s classic-link exemption.
-- **16.14, the LDAP and Kerberos editor.**
-  - **Fields.** The editor covers the fields of the classic `%CSP.UI.Portal.LDAP`. Its `irislib/` export is the field list, and Kerberos appears there as a connection flag carried in `LDAPFlags`.
-  - **Test authentication.** List, get and put stay synchronous. `Security.LDAP` `TEST` goes through `AdminPort`'s async path, which the slice sees as an ordinary call that resolves later, so the slice writes no polling. It reports the instance's own result text.
-  - **Search password.** It travels only as a declared secret through `Security.LDAP` `CHANGEPWD`, AD-56's secret-only body (inference).
-  - **DW-1639.** The list's Enabled column reads No for an enabled configuration, because the vendor LIST answers false. Derive it from `LDAPFlags` bit 64, or from `Security.LDAPConfigs:List`, as the reduced form does from GET.
-  - **Exemption.** The story lifts `LdapConfigForm`'s classic-link exemption.
-  - **Open questions (inference).** Settle each at the spec gate.
-    - AD-39 names only the SSL/TLS test as screen-only instance text, so the LDAP test likely needs its own named case there.
-    - Check whether AD-26's queued-write refusal classes `TEST` as mutating.
-    - Check whether the `AsyncResult` poll needs `%Admin_Operate:USE` declared under AD-8's endpoint clause, as the audit copy and purge and the copy-mappings did.
-    - `%CSP.UI.Portal.LDAPTest` exists in `irislib/` and is a `CLASSICPAGES` candidate for the test.
-    - The spine's Deferred table still lists the LDAP test among Stage 2 async paths. Correct it at origin if 16.14 takes it.
-- **16.15, the data-egress line.**
-  - **The line.** On a turn with context sharing on, the panel names the provider in use and says whether screen data left the instance. For a local provider on a private network it says the data did not leave, matching the chip's absent egress pill.
-  - **Source.** The line derives from the configuration the request actually uses, so it cannot disagree with the destination.
-  - **Copy.** The line's copy is not in Fixed strings yet, so add it there and to `strings.ts`.
-  - **DW-1076.** Add a fixture with a second enabled definition on a different endpoint host; `TurnWireFixture` has none today. Add a live browser leg in which the chip and the line follow a real default-marker move. Today that is pinned only at store level, in `agent-context.test.mjs`.
-  - **DW-1192 (decided).** A Gemini endpoint with no `{model}` placeholder is allowed, but never silently: at minimum, log that the definition's Model is unused, and say so where the endpoint is edited. A create-time model validation rule stays deferred; the wire already refuses an unusable model as `PROVIDER.EGRESS`.
-- **Epic-level DW-118.** Story 15.6 resolved it, so decline it with that reason.
+### 16.26, the burn-down
+
+- **Acceptance.** For each test that flaked, find the cause and fix it in the test, or in the code if the code is wrong. Show the fix with a run that reproduces the old failure and then passes. A green run alone proves nothing about a flake.
+- **Charter.** Exactly two ledger entries carry `owner=16-26-epic-16-burn-down`. Nothing else joins: under Rule 27, a cleanup story carries only release blockers, downstream blockers and CI flakes. DW-118, the epic-level entry, is already resolved by 15.6.
+- **DW-1851:** `src/OcuPilot/Test/WireSecurityRead.cls`, `TestTheLogsAreaStaysOpenWithoutTheEventLogsPair`.
+  - **What the test pins.** A principal without `%Ens_EventLog:USE` still opens Logs. Its messages.log and alerts.log routes and declared reads answer 200. The event log answers 403 `AUTH.NOPRIVILEGE` and names `%Ens_EventLog:USE`.
+  - **Cause.** A fresh instance has no `alerts.log` until something posts a severe line. Until then, the alerts.log route answers 404 `LOG.ABSENT`; whether the `logs.alerts` declared read in the same loop does too is not recorded. The test therefore fails whenever it runs first.
+    - Measured on a freshly recreated `ocupilot-b-ci`: red in run 3, the file appeared during the sweep, and the re-run was green.
+    - DW-1814 widened the window: a port read answered 404 now logs nothing, so deletes no longer post the severe line that used to create the file.
+  - **Charter note: seed or tolerate an absent alerts.log.**
+    - Tolerating has precedent. `Test/LogSource` and `Test/LogSourceDenial` already accept 404 `LOG.ABSENT` as an outcome, and treat it as evidence the gate admitted the caller.
+    - Seeding writes a severe line, which raises the instance's alert state. Another test could then observe that state, which is a new coupling (inference).
+- **DW-1867:** `ui/browser/language-server-editor.browser-spec.mjs`, AC3: "a started probe's editor states the running sentence and reads only; the probe is then stopped". This is 16.25's own spec.
+  - **The failure.** It failed once, in CI run 36724473192 attempt 1 on `6de77ace`, browser shard 2/3: 3 passed, 1 failed. It passed in four other runs. The ledger does not record which assertion failed.
+  - **Measured cause.** The failure was the test's own setup: the probe start answered HTTP 500 at about 10 s (spec-gate trailer on DW-1867); a probe port already held by another connection is the inference.
+  - **Check the screen first.** A wait is the right fix only if the screen is right. If the editor can render editable controls while the server runs, the code is wrong and the fix goes there.
+  - **Reproduce it.** One CI failure in five runs cannot be re-observed on demand. The reproduction has to force the race the fix closes (inference).
+
+### Test discipline (binds every fix here)
+
+- **No dependence on other tests.** A test class or spec file depends on nothing another test left on the instance. It also does not depend on which test ran before it, or on how long the instance has been up. All it may assume is the freshly installed instance every CI shard starts from.
+- **Shard composition.** Shards regroup and reorder classes and files whenever the suite or its timings change. A red that depends on shard composition is a coupling defect, fixed in the test and never by pinning an item to a shard.
+- **One run at a time.** Make one test-runner call at a time, never two in one message. A client-side timeout is not a failed run.
+  - The `%UnitTest_Result` global is ground truth.
+  - Report a class green only from a full class run, not from a single-method run.
+- **Browser specs.** A browser spec runs against the deployed bundle, not the working tree. If client code changes, rebuild and redeploy before reading any result.
+  - Run the story's own spec as a file: `cd ui && node --test --test-concurrency=1 browser/language-server-editor.browser-spec.mjs`, with `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` set.
+  - The full browser suite runs in CI's three shards. The ObjectScript sweep stays local.
+- **Mutations.** Prove each fix load-bearing with a mutation that reddens it (Rule 19). Recompile the whole package before reading an ObjectScript result.
+- **Prose.** A test class header says what it pins and what it needs from the environment. Why a test was rewritten belongs in the one-paragraph commit message, not in doc comments.
 
 ## Technical Decisions
 
-- **Two callers, one operation (AD-53, AD-55).**
-  - A screen Save resolves through the same tool class as the agent's write. Today those are the reduced `Area/Permissions/ServiceSave` and `Area/Security/LdapSave`.
-  - The screen caller mints no proposal and emits no marker. Read-only, the kill switch and governance do not gate it.
-  - Both callers share the declared port, the fresh read, the prohibited set, privileges, the change event, the read-back and removal impact.
-  - The prohibited set is judged by effect, never by payload shape, inside the single confirm transition (AD-10, AD-34, AD-40).
-  - Governance is asked at dispatch and again at Confirm (AD-22).
-  - The write base's `Write.ConfirmProblem` is asked inside the confirm transition, for a rule that must be judged again at Confirm (16.11, DW-1861).
-- **Write kinds.**
-  - **Merge (AD-4), both editors.** Read fresh, apply the diff and send the complete body. Neither `Security.Service` nor `Security.LDAP` is in AD-4's measured lists, so measure whether each keeps an omitted key and record it there (inference).
-  - **Field lists (AD-3)** are derived, never typed by hand. A derived string field matching the credential pattern must be classified secret, or the build fails.
-  - **Lists (AD-56).** A list field changes by a server-side delta over a fresh read, never by a client-computed list. A screen action accepts only the values its tool declares.
-  - **Secrets (AD-56, AD-35).** A secret travels only as a declared secret argument. It is never stored in a proposal, diffed, logged or sent as screen context, and the confirm channel admits no other key.
-  - **Create (AD-54).** The LDAP editor's Create fingerprints the target's absence under its canonical spelling, whether or not the PUT upserts. Measure whether it does.
-  - **Read-back (AD-58).** Sent top-level keys are compared, and a secret is reported written, never read back. A 202 continuation reads `unchecked`.
-- **Async (AD-26), 16.14.** An endpoint is async per request type, never per class, and `Security.LDAP` is async for its test connection only.
-  - The port polls `AsyncResult` once, with a bounded wait that fails `PORT.TIMEOUT` and never gives a partial result.
-  - A mutating type that would queue is refused unless it is on `QUEUEDWRITES`.
-  - A finished task's result is read once. A second `async-result` read logs #7846 and turns the instance to Warning.
-- **Privilege (AD-8, AD-29).**
-  - Pairs are checked at call time. An administrative resource is required at `USE`, never `WRITE`.
-  - **Known sets.** Services and LDAP both use `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. The classic pages are the service editor `%CSP.UI.Portal.Dialog.Service` (list `%CSP.UI.Portal.Services`) and the LDAP editor `%CSP.UI.Portal.LDAP` (list `%CSP.UI.Portal.LDAPs`).
-  - **Extra pairs.** A tool declares a pair beyond its screen's set only when its vendor class writes a database the screen's read does not, or an endpoint its call must reach names that resource (an async poll among them). Name each new case in AD-8. A caller without it is refused by name before any port call.
-  - **Establishing a set.** Read the backing class's own check in `irislib/`, then run a least-privileged principal on the throwaway. Never use `%Operator` to prove a denial.
-- **Classic-link exemptions (AD-44).** Exactly two remain, declared by `ServiceForm` and `LdapConfigForm` and counted against SM-C1. 16.13 and 16.14 each remove one and amend AD-44's count at its origin: two, then one, then zero.
-- **Provider egress (AD-42), 16.15.**
-  - A configured proxy is a destination, judged by the same policy. A marked-local endpoint bypasses any proxy and is not judged against it. A cloud metadata endpoint is refused even when marked local.
-  - The chip's "leaves the instance" statement is computed from the configuration the call uses. Story 10.3 pins that server-side `LeavesInstance` computation in `Test/EgressLocal`. The line reuses it rather than computing a second answer (inference).
-  - Moving the default marker is a security change, because it selects a turn's endpoint and credential.
-  - The context-sharing toggle is remembered per user, falling back to the instance default (AD-24).
-- **Spine amendments of 2026-09-30.** They are precedents for naming a new case: each is a named entry, never a general license.
-  - **16.11.** AD-5's banner case names its action and the read answers `bannerRequires`. AD-8 gives `tasks.schedule.startmanager` `%Admin_Secure:USE`. AD-15 and AD-53 record the ninth unaudited write.
-  - **16.12.** AD-2 leaves a `Lock` `DELETE` 409 unlogged; AD-5 adds a row target's `unless`; AD-8 adds `%DB_IRISSYS:WRITE`; AD-10 adds `PROHIBITED.OCUPILOTLOCK`; AD-44 names `%CSP.UI.Portal.Locks`; AD-51 and AD-52 name `LockPort`.
-  - **DW-1868 (decision-pending).** Whether an owner-scope lock removal re-lists before each `DELETE` goes to Epic 16's decision sheet.
-
-## UX & Interaction Patterns
-
-- **The two editors** are tabbed form pages at side-bar position 0. The tabs mirror the classic tab names, one Save applies every tab, and a validation error switches to the tab holding it. The service editor opens from the Services name cell; the LDAP editor from its name cell and the command bar's Create.
-- **The LDAP test** is a dialog attached to the editor (a P1 row in the UX screen inventory).
-- **The egress line** appears in the agent panel once per turn, beside the context chip.
-  - The chip reads `<Screen>, <NAMESPACE> · <N rows> · <provider> · <endpoint host>`, plus a "leaves the instance" pill when the host is not private.
-  - Color never carries egress alone.
-- **Dialogs and controls.** A dialog is one level deep, titled with the action and target, and a destructive one asks for the typed name. A gated control uses `aria-disabled` with "Requires <resource>".
-- **A stale UX row.** EXPERIENCE.md's "Warning before a write" row still lists a warning before disabling OcuPilot's web service. AD-10 and 16.13's amended criterion govern: the control is drawn disabled.
+- **CI shape.**
+  - The ObjectScript suite and the browser specs each run as three shard legs. Every leg runs on its own freshly installed throwaway, one class or spec file at a time.
+  - Shares are assigned longest-first from `ui/tools/ci-timings.json`.
+  - The `instance` and `browser` roll-ups fail unless every class and spec ran in exactly one leg and no shard executed zero tests.
+  - The smoke and the admin API drift check run once, in shard 1. `concurrency` is cancel-in-progress.
+- **Logs privileges (AD-8).**
+  - Logs' area set is `%Admin_Operate:USE`, `%Admin_Secure:USE` and `%DB_IRISSYS:READ`. The interoperability event log owns `%Ens_EventLog:USE` and the analytics log owns `%DeepSee_Portal:USE`.
+  - The area opens when any listed screen passes its own gate. Each screen keeps its own gate, and a refused screen names its failed pair.
+  - A stock instance grants `%DeepSee_Portal:USE` publicly.
+- **Log sources (AD-21).** A caller names a log source from a fixed enum, never a path. An absent file is a named refusal, 404 `LOG.ABSENT`, which comes after the gate has admitted the caller.
+- **Where alerts.log comes from (AD-2, AD-39).**
+  - Any port failure other than a read answered 404 is logged at error severity. The instance copies such lines to alerts.log and counts them toward its alert state.
+  - A port read answered 404 has found an absence and logs nothing (DW-1814). A write answered 404 is still logged.
+- **External language servers (AD-8, AD-36).**
+  - The list merges `CurrentlyRunning` through `LanguageServer` `ACTIVITY` as its per-row detail call, with `maxRows` 1, because the LIST lacks it. Check how the editor learns the running state before deciding where a wait belongs.
+  - The screen's own pair is `%Admin_ExternalLanguageServerEdit:USE`, beside OS management's `%DB_IRISSYS:READ`.
+  - Create, update and delete declare `%Admin_Manage:USE` and `%DB_IRISSYS:WRITE`. A Python server's delete also needs `%System_CallOut:USE`.
+- **ObjectScript workflow.** Load and compile through the IRIS MCP tools with the slot's `server` profile, never the VS Code extension. Check with `uv run scripts/check-objectscript.py`. The pre-commit hook runs it on staged paths.
 
 ## Cross-Story Dependencies
 
-- **Within the epic and beyond.**
-  - **16.13 and 16.14** replace Story 9.9's reduced forms and extend their Save tools and held fixtures.
-  - **16.15** builds on the context chip (`ui/src/app/shell/context-chip.ts`), Story 4.11's re-read of the agent definition, and Story 10.3's egress computation.
-  - **Keep intact.** 16.6's shared multi-select table, 16.8's shared log viewer, and Epic 14's baseline, sanitizer and per-user read-only.
-  - **DW-1827 is decided.** `tasks.schedule.import` ships disabled by default.
-- **Slot B.**
-  - **Its queue.** Story 23.2 merges batch by batch. Batches (a) and (b) have merged; (c) is security, DW-1663 and DW-1450; (d) is DW-48. Epic 18 resumes with 18.15 after 23.2.
-  - **Before editing a file,** check whether `.worktrees/epic-23` changes it: `diff --stat` against feature, plus `status -s`. Edit a contended file add-only, and stop and ask otherwise.
-  - **Shared rosters** are unioned at each merge, so keep edits to them additive. They are `EntityType`, the `Prohibited` codes and covered types, the `AdminPort` type lists (`QUEUEDWRITES` among them), the `CLASSICPAGES` rosters, the baseline and the screen mirror.
-- **Slot A.** It uses `ocupilot-slot-a` and the `ocupilot-ci` throwaway (52776/1975).
-- **Release 1.0.4.** It is cut 2026-09-30 at 14:00 PDT, and whatever is green on feature then ships.
-- **Epic close.** After 16.15, the Rule 27 burn-down gate runs.
-  - It charters only entries that block the next release or a downstream story, plus CI flakes. DW-1867, the language-server-editor browser flake, was filed for this close.
-  - Every other entry is re-owned to `range-end-cleanup`, and DW-1868 goes to the decision sheet.
-  - Epic 19 follows on slot A.
+- **Origins.** DW-1851's test is 16.8's own (AD-8, DW-1755): Logs keeps Release 1's pair set. The ledger routed it from Epic 16's log hub work (16.9). DW-1867 is 16.25's spec over 16.10's start and stop.
+- **Slot A.**
+  - Use the `ocupilot-slot-a` profile and the throwaway `ocupilot-ci`: web 52776, SuperServer 1975, browser origin `http://localhost:52776`.
+  - A throwaway sets `OCUPILOT_LOAD_TESTS=1`, so its start compiles `OcuPilot.Test`. A product start deletes those classes (DW-48, DW-1885).
+  - Reproducing DW-1851 needs an instance with no alerts.log, which is a freshly started throwaway. A long-lived `ocupilot-ci` likely already has the file (inference).
+  - Tear down only a throwaway this session started itself.
+- **Slot B.** Epic 18 runs in `.worktrees/epic-18`.
+  - Before editing a shared file (`ui/tools/ci-timings.json`, rosters), check it with `diff --stat` against feature and `status -s`.
+  - Keep edits to shared rosters additive.
+- **After 16.26.** The epic close follows: the merge gate, with the retrospective optional.

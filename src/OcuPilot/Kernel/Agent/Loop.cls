@@ -104,7 +104,9 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
 /// <p><var>pOutcome</var> comes back subscripted by <code>state</code>, <code>code</code>,
 /// <code>limit</code>, <code>reply</code>, <code>citations</code> (the reply's citations as JSON
 /// text, <method>OcuPilot.Kernel.Agent.Citations.Cite</method>; <code>""</code> for a turn with no
-/// reply) and <code>errorSeq</code>. An error status means the loop
+/// reply), <code>egress</code> (the egress fact <method>KeepEgress</method> kept from the turn's
+/// dispatched provider calls, as JSON text; <code>""</code> for a turn that dispatched none) and
+/// <code>errorSeq</code>. An error status means the loop
 /// itself failed; the outcome then reads <code>failed</code>.</p>
 /// <p><var>pContext</var> is the already-bounded screen-context payload JSON the turn request
 /// built, or <code>""</code> for a turn with none; with one, the messages this turn opens with
@@ -127,8 +129,10 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
     Set pOutcome("limit") = ""
     Set pOutcome("reply") = ""
     Set pOutcome("citations") = ""
+    Set pOutcome("egress") = ""
     Set pOutcome("errorSeq") = 0
     Set tLastSeq = 0
+    Set tKept = ""
     ; The turn a tool call is being made on behalf of, stashed once for the length of the job
     ; (AD-40). A write tool reads it to record which turn and which conversation minted a proposal;
     ; nothing else in the loop reads it, and it is cleared on every exit so a process reused for a
@@ -216,7 +220,10 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             ; pUser is the turn owner. The port gates on that account's live grants, never on this
             ; job's frozen $ROLES (AD-31, DW-1309). The sink writes the call's text so far onto this
             ; running step (AD-33).
-            Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault, pUser, ##class(OcuPilot.Kernel.Agent.StreamStep).%New(pKey, tSeq, tLimits))
+            Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault, pUser, ##class(OcuPilot.Kernel.Agent.StreamStep).%New(pKey, tSeq, tLimits), .tEgress)
+            ; The call's egress fact, when it was dispatched (AD-42), joins the turn's kept one.
+            Set tKept = ..KeepEgress(tKept, $Get(tEgress), pContext '= "")
+            Set pOutcome("egress") = tKept
             If $IsObject($Get(tResponse)) {
                 Set tInput = tInput + tResponse.RequestTokens
                 Set tOutput = tOutput + tResponse.ResponseTokens
@@ -232,7 +239,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED, "", "", .tFault, .tDeclinedHttp)
             }
             Do ..RecordProviderRow(pKey, pUser, tContextRoute, tProviderKey, tProviderModel, tIterations, $Get(tResponse), $Get(tFault), tLimits, +$Get(tHttpStatus))
-            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput)
+            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput, tKept)
             If $$$ISERR(tSC) Quit
             If $IsObject($Get(tFault)) {
                 Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tSeq, "error", tFault.reason, "", tFault.code, tLimits)
@@ -280,6 +287,35 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
     }
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Quit tSC
+}
+
+/// <p>The egress fact a turn keeps once a provider call answered <var>pEgress</var>
+/// (<method>OcuPilot.Port.ProviderPort.EgressOf</method>'s object, or <code>""</code> for a call
+/// refused before dispatch), given the fact <var>pKept</var> it kept so far, as JSON text
+/// <code>{provider, endpointHost, leavesInstance, contextSent}</code>. <var>pContextSent</var> is
+/// whether the turn carried screen context. The first dispatched call's fact is kept, and is
+/// replaced only by a later call's fact that leaves the instance while the kept one does not, so
+/// a turn whose data left never reads as having stayed. Pure: reads and writes nothing.</p>
+ClassMethod KeepEgress(pKept As %String, pEgress, pContextSent As %Boolean) As %String
+{
+    If '$IsObject(pEgress) Quit pKept
+    Set tFact = {}
+    Do tFact.%Set("provider", pEgress.%Get("provider"), "string")
+    Do tFact.%Set("endpointHost", pEgress.%Get("endpointHost"), "string")
+    Do tFact.%Set("leavesInstance", ''pEgress.%Get("leavesInstance"), "boolean")
+    Do tFact.%Set("contextSent", ''pContextSent, "boolean")
+    Set tKeptLeaves = ""
+    Try {
+        If pKept '= "" {
+            Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pKept)
+            If $IsObject(tParsed) && (tParsed.%GetTypeOf("leavesInstance") = "boolean") Set tKeptLeaves = ''tParsed.%Get("leavesInstance")
+        }
+    } Catch ex {
+        Set tKeptLeaves = ""
+    }
+    If tKeptLeaves = "" Quit tFact.%ToJSON()
+    If 'tKeptLeaves && tFact.%Get("leavesInstance") Quit tFact.%ToJSON()
+    Quit pKept
 }
 
 /// <p>Whether the turn stops here, and if so in which state and with which code. See this class's

@@ -210,6 +210,9 @@ interface FieldView {
             (blur)="onFieldBlur('endpointUrl')"
           />
         </div>
+        @if (showModelUnused) {
+          <p class="ocu-field-caption" [id]="endpointField.id + '-caption'">{{ STRINGS.agentDefinitionModelUnused }}</p>
+        }
         @if (endpointField.invalid) {
           <p class="ocu-form-error" [id]="endpointField.id + '-reason'">{{ endpointField.reason }}</p>
         }
@@ -942,6 +945,20 @@ export class DefinitionFormPage {
   }
 
   /**
+   * Whether Endpoint carries the note that the definition's Model is not used (DW-1192): the
+   * provider's canonical endpoint carries `{model}`, and the endpoint as typed is non-empty and does
+   * not, so calls go to the model the endpoint names. The instance logs the same predicate when the
+   * definition is saved; the save itself is never refused for it.
+   */
+  protected get showModelUnused(): boolean {
+    this.generation();
+    const canonical = this.store.provider()?.defaultEndpoint ?? '';
+    if (!canonical.includes(MODEL_PLACEHOLDER)) return false;
+    const endpoint = this.store.value('endpointUrl');
+    return endpoint !== '' && !endpoint.includes(MODEL_PLACEHOLDER);
+  }
+
+  /**
    * Whether the key field carries the published "Stored." caption.
    *
    * EXPERIENCE.md publishes it as the masked-secret field's state **after save**, and it says
@@ -1188,6 +1205,7 @@ export class DefinitionFormPage {
     const invalid = reason !== '';
     const described: string[] = [];
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
+    if (field === 'endpointUrl' && this.showModelUnused) described.push(`${id}-caption`);
     if (field === 'envVarName') described.push(`${id}-caption`);
     if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
     if (field === 'retentionDays') described.push(`${id}-caption`);
@@ -1227,6 +1245,9 @@ export class DefinitionFormPage {
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
 const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
+
+/** The token a provider's canonical endpoint carries where the definition's Model belongs. */
+const MODEL_PLACEHOLDER = '{model}';
 
 /** The published Test connection result's placeholder. */
 const REPLY_PLACEHOLDER = "<the model's first words>";

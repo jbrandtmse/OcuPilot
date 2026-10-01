@@ -17,6 +17,7 @@ import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
 import { SslForm } from './areas/security/ssl-form.store';
+import { LdapEditor } from './areas/security/ldap-editor.store';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { OAuthClientForm } from './areas/security/oauth-client-form.store';
 import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-form.store';
@@ -1270,6 +1271,13 @@ describe('the shell frame', () => {
     await sslForm.open('a-configuration-this-principal-opened');
     sslForm.setPassword('a-password-this-principal-typed');
     expect(sslForm.password()).not.toBe('');
+    // And the LDAP editor (Story 16.14): a search password THIS principal typed for a new
+    // configuration and has not saved (AD-35).
+    const ldapEditor = TestBed.inject(LdapEditor);
+    await ldapEditor.open('');
+    ldapEditor.setPasswordMode('enter');
+    ldapEditor.setPassword('a-password-this-principal-typed');
+    expect(ldapEditor.password()).not.toBe('');
 
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
@@ -1397,6 +1405,9 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.
     expect(sslForm.password()).toBe('');
+    // Mutation (Rule 19): delete `this.ldapEditor.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal's LDAP editor holds the previous one's typed search password.
+    expect(ldapEditor.password()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

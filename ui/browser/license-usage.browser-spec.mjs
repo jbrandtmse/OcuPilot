@@ -1,8 +1,9 @@
 /**
  * Story 16.7's License usage in a real browser, against the throwaway instance (AC1, AC6).
  *
- * What it pins: OS management's side bar lists its ten entries in order, License usage seventh,
- * the Dashboard eighth, External language servers (Story 16.10) ninth and Local databases tenth;
+ * What it pins: OS management's side bar lists its eleven entries in order, the Integrity log
+ * (Story 18.17) fifth, License usage eighth, the Dashboard ninth, External language servers
+ * (Story 16.10) tenth and Local databases eleventh;
  * License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
  * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
@@ -112,7 +113,7 @@ after(async () => {
 
 // AC1. Mutation (Rule 19): read the whole LICENSEUSAGE answer rather than its member in
 // `OcuPilot.Screen.Read` -> every tab's read fails, no row renders, and the row waits go red.
-test('AC1: OS management lists nine entries, License usage seventh; its strip shows four tabs; Summary lists the five vendor rows', async () => {
+test('AC1: OS management lists eleven entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -131,6 +132,7 @@ test('AC1: OS management lists nine entries, License usage seventh; its strip sh
         STRINGS.lockListLabel,
         STRINGS.systemUsageLabel,
         STRINGS.databaseListLabel,
+        STRINGS.databaseIntegrityLogLabel,
         STRINGS.deviceListLabel,
         STRINGS.namespaceListLabel,
         STRINGS.licenseUsageLabel,
@@ -138,7 +140,7 @@ test('AC1: OS management lists nine entries, License usage seventh; its strip sh
         STRINGS.languageServersLabel,
         STRINGS.localDatabaseListLabel,
       ],
-      'the side bar lists License usage seventh, the Dashboard eighth, External language servers ninth and Local databases tenth'
+      'the side bar lists the Integrity log fifth, License usage eighth, the Dashboard ninth, External language servers tenth and Local databases eleventh'
     );
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');

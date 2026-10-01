@@ -52,11 +52,11 @@ test('AC4: each of the five administering areas has at least one built form-page
   }
   assert.ok(
     builtFormPages('permissions').some((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ServiceForm'),
-    'the reduced service form is one of the permissions forms'
+    'the service editor is one of the permissions forms'
   );
   assert.ok(
     builtFormPages('security').some((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.LdapConfigForm'),
-    'and the reduced LDAP configuration form one of the security forms'
+    'and the LDAP editor one of the security forms'
   );
 });
 
@@ -83,16 +83,24 @@ test('AC4: no list-class archetype declares a classic-link exemption or a row li
   assert.ok(lists > 0, 'the check read at least one list screen');
 });
 
-test('AC2, AD-44: the two reduced forms each end with an honoured exemption to the classic page they name', () => {
-  for (const [descriptor, label, href] of [
-    ['OcuPilot.Screen.Descriptor.ServiceForm', 'Services', '/csp/sys/sec/%25CSP.UI.Portal.Services.zen'],
-    ['OcuPilot.Screen.Descriptor.LdapConfigForm', 'Security LDAP Configs', '/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen'],
+test('AC2, AD-44: neither the LDAP editor nor the service editor declares an exemption, so no form links out to a classic page', () => {
+  // Mutation (Rule 19): set LdapConfigForm's exemption to exempt and regenerate -> the LDAP leg goes red.
+  for (const [descriptor, story] of [
+    ['OcuPilot.Screen.Descriptor.LdapConfigForm', 'Story 16.14'],
+    ['OcuPilot.Screen.Descriptor.ServiceForm', 'Story 16.13'],
   ]) {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     assert.ok(screen !== undefined, `${descriptor} is mirrored`);
-    assert.equal(screen.classicLinkExemption.exempt, true, `${descriptor} is exempt`);
-    assert.equal(screen.classicLinkExemption.label, label, `${descriptor} names the classic page`);
-    assert.equal(screen.classicLinkExemption.href, href, `${descriptor} links to it`);
+    assert.deepEqual(
+      screen.classicLinkExemption,
+      { exempt: false, reason: '', label: '', href: '' },
+      `${descriptor} links out to no classic page (${story})`
+    );
     assert.equal(screen.sideBarPosition, 0, `${descriptor} takes no side-bar position`);
   }
+  assert.deepEqual(
+    SCREENS.filter((screen) => screen.classicLinkExemption.exempt).map((screen) => screen.descriptor),
+    [],
+    'and no descriptor is exempt, so SM-C1 counts zero'
+  );
 });

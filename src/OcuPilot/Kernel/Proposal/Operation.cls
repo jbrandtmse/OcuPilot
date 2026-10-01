@@ -10,6 +10,10 @@
 /// for the agent, the restraint verdict, the conversation, the definition, the fingerprint
 /// re-match, the atomic claim and the ledger row (AD-6, AD-30, AD-34, AD-41); for the screen,
 /// nothing at all.</p>
+/// <p><b>A confirm and a screen row action hold the target around the three halves</b> (AD-34,
+/// AD-53): <method>Hold</method> before the fresh read, <method>Release</method> after the write
+/// and its read-back, so the two on one target are ordered here and never interleave between one's
+/// read and its write. A screen's own Save (AD-55) takes no hold.</p>
 /// <p><b>Why the difference is principled rather than convenient</b> (AD-53). AD-6's proposal
 /// exists because a <i>model</i> asked for the write and a human must review a server-computed
 /// diff first; a person pressing a row action has expressed the intent directly, which is AD-49's
@@ -39,6 +43,28 @@ Parameter READTYPE = "GET";
 /// <p>The admin request type the write is issued with when the tool declares none: the merge
 /// write every body-taking tool makes (AD-51).</p>
 Parameter WRITETYPE = "PUT";
+
+/// <p>Hold scoped target <var>pTargetRef</var> for one write, waiting at most
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter>
+/// (<method>OcuPilot.Kernel.State.Propose.GuardedTargetHold</method>). <var>pHeld</var> 0 means
+/// another write kept the target that long: the caller writes nothing and answers 409
+/// <parameter>OcuPilot.Api.Error.WRITETARGETBUSY</parameter>, and a proposal stays live.
+/// <var>pKey</var> is what <method>Release</method> takes.</p>
+/// <p><b>Caller contract:</b> take it before the fresh read and release it after the port write
+/// and its read-back (AD-58) on every exit -- success, refusal, fault and exception alike -- in the
+/// same request, never across a turn or into a spawned job. A write the port answers as started
+/// (AD-26) goes on running on the instance after the release.</p>
+ClassMethod Hold(pTargetRef As %String, Output pHeld As %Boolean, Output pKey As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Propose).GuardedTargetHold(pTargetRef, .pHeld, .pKey)
+}
+
+/// <p>Release the hold <method>Hold</method> answered <var>pKey</var> for. <code>""</code>
+/// releases nothing.</p>
+ClassMethod Release(pKey As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Propose).GuardedTargetRelease(pKey)
+}
 
 /// <p>The port <var>pToolClass</var> declares its target lives behind (AD-52), or
 /// <var>pDefaultPort</var> where it declares the base's own default, names no class, or cannot be
@@ -105,8 +131,10 @@ ClassMethod SendsBody(pToolClass As %String) As %Boolean
 /// <p>The answer holds each <code>SECRETBODY</code> name that is also in <var>pSecretNames</var> --
 /// the descriptor's declared secrets, which is the one list the confirm channel and the screen's
 /// value channel are closed to -- and that <var>pSupplied</var> carries as a scalar, under that
-/// name and with that value exactly as supplied, and nothing else. A name either list lacks, and an
-/// empty value, is not sent.</p>
+/// name and with that value exactly as supplied, and nothing else. A name either list lacks is not
+/// sent, and neither is an empty value, unless the tool's
+/// <parameter>OcuPilot.Screen.Tool.Write.CLEARABLESECRETS</parameter> names it: then
+/// <code>""</code> is sent and clears the stored secret.</p>
 /// <p><b>Caller contract:</b> called at the write and nowhere earlier, so the secret exists as this
 /// request's local alone: it is never stored, digested, diffed or logged (AD-6, AD-35). A class that
 /// cannot be asked sends none.</p>
@@ -117,6 +145,7 @@ ClassMethod SecretBody(pToolClass As %String, pSupplied As %DynamicObject, pSecr
         If pToolClass = "" Quit
         Set tNames = $ClassMethod(pToolClass, "SecretBodyNames")
         If tNames = "" Quit
+        Set tClearable = $ListFromString($Parameter(pToolClass, "CLEARABLESECRETS"))
         Set tBody = {}
         If '$IsObject(pSupplied) || 'pSupplied.%IsA("%Library.DynamicObject") Quit
         For tI = 1:1:$ListLength(tNames) {
@@ -125,8 +154,9 @@ ClassMethod SecretBody(pToolClass As %String, pSupplied As %DynamicObject, pSecr
             Set tType = pSupplied.%GetTypeOf(tName)
             If (tType = "unassigned") || (tType = "object") || (tType = "array") Continue
             ; An empty secret is not a secret supplied: it is left out, so the vendor's own
-            ; required-field refusal answers rather than a blank password being set.
-            If pSupplied.%Get(tName) = "" Continue
+            ; required-field refusal answers rather than a blank password being set -- unless the
+            ; tool declares the name clearable, whose vendor type clears on "" (AD-56 (i)).
+            If (pSupplied.%Get(tName) = "") && '$ListFind(tClearable, tName) Continue
             Do tBody.%Set(tName, pSupplied.%Get(tName), tType)
         }
     } Catch {

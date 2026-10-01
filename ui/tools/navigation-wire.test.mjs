@@ -102,8 +102,8 @@ const LIVE_PAYLOAD = {
       // Story 16.7 License usage's three unlisted tabs among them and License usage and the
       // Dashboard after Namespaces; Story 16.10 its unlisted Activity log among them and External
       // language servers after the Dashboard, refused on its own pair; Story 18.3 the local
-      // database form among the unlisted ones and Local databases last; and Story 18.4 Check
-      // integrity and the Integrity log among the unlisted ones.
+      // database form among the unlisted ones and Local databases last; Story 18.4 Check integrity
+      // among the unlisted ones; and Story 18.17 the Integrity log right after Databases.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -125,13 +125,6 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
-        },
-        {
-          route: 'os-management/databases/integrity-log',
-          labelKey: 'databaseIntegrityLogLabel',
-          sideBarPosition: 0,
-          allowed: false,
-          failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/databases/volumes',
@@ -260,44 +253,51 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/databases/integrity-log',
+          labelKey: 'databaseIntegrityLogLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/devices',
           labelKey: 'deviceListLabel',
-          sideBarPosition: 5,
+          sideBarPosition: 6,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
         {
           route: 'os-management/namespaces',
           labelKey: 'namespaceListLabel',
-          sideBarPosition: 6,
+          sideBarPosition: 7,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
         {
           route: 'os-management/license-usage',
           labelKey: 'licenseUsageLabel',
-          sideBarPosition: 7,
+          sideBarPosition: 8,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/dashboard',
           labelKey: 'dashboardLabel',
-          sideBarPosition: 8,
+          sideBarPosition: 9,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/language-servers',
           labelKey: 'languageServersLabel',
-          sideBarPosition: 9,
+          sideBarPosition: 10,
           allowed: false,
           failedPair: '%Admin_ExternalLanguageServerEdit:USE',
         },
         {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
-          sideBarPosition: 10,
+          sideBarPosition: 11,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },

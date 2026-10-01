@@ -16,9 +16,10 @@
 /// <class>OcuPilot.Test.Http</class> and <class>OcuPilot.Test.OAuthIssuerFixture</class>, which is
 /// the control that the empty answers are a measurement.</p>
 /// <p><b>What the scan cannot see.</b> It matches OcuPilot's own method code, so a connection the
-/// vendor opens behind an admin-API type OcuPilot sends is outside it. Two ship:
-/// <code>Security.SSLConfig/TEST</code> (<class>OcuPilot.Port.AdminPort</class>'s
-/// <parameter>OcuPilot.Port.AdminPort.CONNECTIONTESTTYPES</parameter>, sent only by the SSL screen's
+/// vendor opens behind an admin-API type OcuPilot sends is outside it. Three ship:
+/// <code>Security.SSLConfig/TEST</code> and <code>Security.LDAP/TEST</code>
+/// (<class>OcuPilot.Port.AdminPort</class>'s
+/// <parameter>OcuPilot.Port.AdminPort.CONNECTIONTESTTYPES</parameter>, each sent only by its editor's
 /// own test route, which no tool issues) and <code>REGISTERCLIENT</code>
 /// (<class>OcuPilot.Port.OAuthClientPort</class>, a write tool's type, sent only at confirm).</p>
 /// <p><b>Live-safe.</b> It reads the class dictionary and writes nothing.</p>

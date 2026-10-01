@@ -100,6 +100,18 @@ Property ContextRoute As %String(MAXLEN = 512);
 /// older row is reinterpreted.</p>
 Property Citations As %String(MAXLEN = "");
 
+/// <p>Where the turn's screen data went, as JSON text <code>{provider, endpointHost,
+/// leavesInstance, contextSent}</code>: the egress fact
+/// <method>OcuPilot.Kernel.Agent.Loop.KeepEgress</method> kept from the turn's dispatched provider
+/// calls (AD-42), or <code>""</code> until the first dispatched call returns. A snapshot of the
+/// configuration the call used, stored as data and never as a reference to the definition
+/// (AD-37); under 1,000 characters, since its provider key and endpoint are bounded by the
+/// definition's own columns (AD-41).</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as <code>""</code>, which reads as no egress line, so
+/// no older row is reinterpreted.</p>
+Property Egress As %String(MAXLEN = 1000);
+
 Index TurnKeyIdx On TurnKey [ Unique ];
 
 Index TurnUserIdx On UserName;
@@ -342,8 +354,10 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
     Quit tSC
 }
 
-/// <p>Record a running turn's call count and token spend so far.</p>
-ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputTokens As %Integer, pOutputTokens As %Integer) As %Status
+/// <p>Record a running turn's call count and token spend so far, and its egress fact
+/// <var>pEgress</var> (<property>Egress</property>'s JSON text) when one is supplied; an empty
+/// <var>pEgress</var> leaves the stored fact as it is.</p>
+ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputTokens As %Integer, pOutputTokens As %Integer, pEgress As %String = "") As %Status
 {
     Set tSC = ..OpenByKey(pKey, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
@@ -351,6 +365,7 @@ ClassMethod GuardedProgress(pKey As %String, pIterations As %Integer, pInputToke
     Set tRow.Iterations = +pIterations
     Set tRow.InputTokens = +pInputTokens
     Set tRow.OutputTokens = +pOutputTokens
+    If pEgress '= "" Set tRow.Egress = pEgress
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC
@@ -529,9 +544,11 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 
 /// <p>The progress projection of turn <var>pKey</var> when <var>pUser</var> owns it:
 /// <code>{turnId, state, startedAt, endedAt, iterations, tokens{input,output}, limit, steps,
-/// stepsDropped, reply, citations, error, navigation?}</code>. <code>citations</code> is always an
+/// stepsDropped, reply, citations, error, egress, navigation?}</code>. <code>citations</code> is always an
 /// array (<method>CitationsArray</method>). <code>error</code> is <code>{seq, code}</code>
 /// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
+/// <code>egress</code> is <method>EgressObject</method>'s answer, <code>null</code> until the
+/// turn's first dispatched provider call returns.
 /// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
 /// it.</p>
 /// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is
@@ -576,6 +593,12 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
         Do tError.%Set("seq", +tRow.ErrorSeq, "number")
         Do tError.%Set("code", tRow.Code, "string")
         Do tView.%Set("error", tError)
+    }
+    Set tEgress = ..EgressObject(..Text(tRow.Egress))
+    If $IsObject(tEgress) {
+        Do tView.%Set("egress", tEgress)
+    } Else {
+        Do tView.%Set("egress", "", "null")
     }
     Set tRow = ""
 
@@ -678,6 +701,34 @@ ClassMethod CitationsArray(pJson As %String) As %DynamicArray
         Set tArray = []
     }
     Quit tArray
+}
+
+/// <p>The stored egress text <var>pJson</var> (<property>Egress</property>) as the wire object
+/// <code>{provider, endpointHost, leavesInstance, contextSent}</code>, typed and in that order, or
+/// <code>""</code> when it is empty, does not parse, or is not an object whose
+/// <code>provider</code> and <code>endpointHost</code> are strings and whose
+/// <code>leavesInstance</code> and <code>contextSent</code> are booleans.</p>
+ClassMethod EgressObject(pJson As %String) As %DynamicObject
+{
+    Set tEgress = ""
+    Try {
+        If (pJson = "") || (pJson = $Char(0)) Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pJson)
+        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicObject") Quit
+        If tParsed.%GetTypeOf("provider") '= "string" Quit
+        If tParsed.%GetTypeOf("endpointHost") '= "string" Quit
+        If tParsed.%GetTypeOf("leavesInstance") '= "boolean" Quit
+        If tParsed.%GetTypeOf("contextSent") '= "boolean" Quit
+        Set tOut = {}
+        Do tOut.%Set("provider", tParsed.%Get("provider"), "string")
+        Do tOut.%Set("endpointHost", tParsed.%Get("endpointHost"), "string")
+        Do tOut.%Set("leavesInstance", ''tParsed.%Get("leavesInstance"), "boolean")
+        Do tOut.%Set("contextSent", ''tParsed.%Get("contextSent"), "boolean")
+        Set tEgress = tOut
+    } Catch ex {
+        Set tEgress = ""
+    }
+    Quit tEgress
 }
 
 /// <p>Set <var>pKey</var> on <var>pObject</var> to <var>pValue</var>, or to JSON null when it is

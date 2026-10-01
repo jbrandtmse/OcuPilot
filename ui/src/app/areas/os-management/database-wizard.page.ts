@@ -23,7 +23,15 @@ import type { Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import { FormStepBody, FormStepper, type FormStepView } from '../../shell/form-stepper';
 import { ServerPathPicker, type ServerPath } from '../../shell/server-path-picker';
-import { LOCAL_DATABASE_LIST_ROUTE } from './database-actions';
+import {
+  CREATED_DATABASE_PARAM,
+  KEPT_PARAM,
+  LOCAL_DATABASE_LIST_ROUTE,
+  RETURN_PARAM,
+  RETURN_TO_NAMESPACE,
+  queryValue,
+  withParams,
+} from './database-actions';
 import {
   DATABASE_FIELD_ORDER,
   DatabaseWizard,
@@ -33,6 +41,7 @@ import {
   type ResourceChoice,
   stepOfDatabaseField,
 } from './database-wizard.store';
+import { NAMESPACE_FORM_ROUTE } from './namespace-form.page';
 
 /** The form both the wizard and the editor are drawn for; its id route is the editor. */
 export const LOCAL_DATABASE_FORM_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.LocalDatabaseForm';
@@ -80,6 +89,11 @@ interface FieldView {
  *
  * **An accepted Create replaces this route with the new database's editor**, so the address bar
  * names the entity and Back goes to where the wizard was opened from.
+ *
+ * **Opened by New Namespace with `returnTo=namespace`** (Story 18.17, AD-47: a closed marker, never a
+ * URL, and no other value is honored), Create and Cancel instead replace this route with New
+ * Namespace carrying `kept=1`, and Create also the created `database`. The hand-off is the router
+ * query alone (AD-19).
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -538,7 +552,7 @@ export class DatabaseWizardPage {
       return;
     }
     const name = this.store.createdId();
-    if (name !== '') void this.router.navigateByUrl(this.editorUrl(name), { replaceUrl: true });
+    if (name !== '') void this.router.navigateByUrl(this.namespaceReturn(name) ?? this.editorUrl(name), { replaceUrl: true });
   }
 
   /** Open the step that holds `field`, then focus it. */
@@ -553,7 +567,8 @@ export class DatabaseWizardPage {
   }
 
   protected cancel(): void {
-    void this.router.navigateByUrl(withQuery(LOCAL_DATABASE_LIST_ROUTE, this.router.url));
+    const back = this.namespaceReturn('');
+    void this.router.navigateByUrl(back ?? withQuery(LOCAL_DATABASE_LIST_ROUTE, this.router.url), { replaceUrl: back !== null });
   }
 
   protected answerLeave(leave: boolean): void {
@@ -603,6 +618,18 @@ export class DatabaseWizardPage {
   private focusControl(field: string): void {
     const id = field === 'ResourceName' && !this.choosesExisting ? this.resourceNewId : databaseControlId(field);
     document.getElementById(id)?.focus();
+  }
+
+  /**
+   * New Namespace's URL when it opened this wizard -- the URL's `returnTo` reads `namespace`, and
+   * nothing else counts -- carrying the data scope, `kept=1` and, after a Create, the created
+   * database as one encoded query value (AD-13); else `null`.
+   */
+  private namespaceReturn(database: string): string | null {
+    const url = this.router.url;
+    if (queryValue(url, RETURN_PARAM) !== RETURN_TO_NAMESPACE) return null;
+    const created = database && `&${CREATED_DATABASE_PARAM}=${encodeURIComponent(database)}`;
+    return withParams(withQuery(NAMESPACE_FORM_ROUTE, url), `${KEPT_PARAM}=1${created}`);
   }
 
   /** The new database's editor URL. The id is `encodeEntityId`'s, never `encodeURIComponent`'s (AD-13). */

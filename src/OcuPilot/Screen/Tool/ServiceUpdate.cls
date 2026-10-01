@@ -10,6 +10,9 @@
 /// is never turned off: the mint refuses it with the published sentence and the kernel refuses the
 /// write (AD-10). A change to its addresses or methods is permitted, minted destructive and named on
 /// the card (<method>Consequence</method>).</p>
+/// <p><b>An entry a write adds or changes is sent in one spelling</b>
+/// (<method>MergeUpdate</method>), so the kernel reads its roles; an entry the instance already
+/// holds is sent back exactly as read.</p>
 Class OcuPilot.Screen.Tool.ServiceUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -37,6 +40,14 @@ Parameter PERMITTEDFIELDS = "AutheEnabled,ClientSystems,Enabled";
 Parameter WRITERESOURCE = "%Admin_Secure";
 
 Parameter WRITEPERMISSION = "USE";
+
+/// <p>The classic Edit Service dialog, whose Save this tool performs beyond the Services list's own
+/// page (AD-44 as amended 2026-09-30).</p>
+Parameter CLASSICPAGES = "%CSP.UI.Portal.Dialog.Service";
+
+/// <p>An empty allowed-address list means any address may connect, so the proposal card reads it
+/// with the Services column's own word (DW-1016).</p>
+Parameter EMPTYKEYS = "ClientSystems=serviceAllowedUnrestricted";
 
 ClassMethod Endpoint() As %String
 {
@@ -76,7 +87,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         Do tProperties.%Set("AutheEnabled", {"type": "integer", "description": "The service's authentication methods as the vendor's bit mask: 16 operating system, 32 password, 64 unauthenticated, 2048 LDAP, 8192 delegated, among others. Only methods the service supports are accepted. Omit it to leave the methods as they are."})
     }
     If tProperties.%GetTypeOf("ClientSystems") = "object" {
-        Do tProperties.%Set("ClientSystems", {"type": "array", "items": {"type": "string"}, "description": "The whole list of addresses allowed to connect, replacing the current one; an empty list means any address. Each entry is one address, optionally followed by | and a comma-separated list of roles its connections receive, with no spaces or semicolons."})
+        Do tProperties.%Set("ClientSystems", {"type": "array", "items": {"type": "string"}, "description": "The whole list of addresses allowed to connect, replacing the current one; an empty list means any address. Each entry is one address -- an IP address, a range such as 10.0.0.1-20, a wildcard such as 10.0.0.*, or a host name -- optionally followed by | and a comma-separated list of roles its connections receive, with no spaces or semicolons; an entry written address:roles is sent as address|roles. Keep every entry the service already holds exactly as read. A service that does not check the address a connection comes from takes no entry, and one that gives no roles by address takes no roles."})
     }
     Quit tSchema
 }
@@ -122,15 +133,41 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit ""
 }
 
-/// <p>What the caller must hold: the screen's own pairs together with
-/// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>, each pair once.</p>
+/// <p>What the caller must hold: the screen's own pairs, then
+/// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>, then the custom
+/// resource of the <parameter>CLASSICPAGES</parameter> page, each pair once.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
     If 'pResolved Quit ""
     Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
-    If $ListFind(tPairs, tOwn) Quit tPairs
-    Quit tPairs _ $ListBuild(tOwn)
+    If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
+    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
+}
+
+/// <p>The merge both callers make (AD-4, AD-55): every <code>ClientSystems</code> entry of
+/// <var>pArgs</var> that is not exactly an entry of <var>pFresh</var>'s is rewritten to
+/// <method>OcuPilot.Area.Permissions.ServiceRules.Canonical</method>'s spelling, and the result is
+/// merged by the kernel's own merge. An entry the vendor's editor wrote as
+/// <code>address:role</code> and nobody touched is sent unchanged. <var>pArgs</var> itself is not
+/// changed.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set tArgs = pArgs
+    Set tField = "ClientSystems"
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf(tField) = "array") {
+        Set tRules = "OcuPilot.Area.Permissions.ServiceRules"
+        Set tHeld = $ClassMethod(tRules, "HeldEntries", pFresh)
+        Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
+        Set tEntries = tArgs.%Get(tField)
+        For tIndex = 0:1:(tEntries.%Size() - 1) {
+            If tEntries.%GetTypeOf(tIndex) '= "string" Continue
+            Set tEntry = tEntries.%Get(tIndex)
+            If $ListFind(tHeld, tEntry) Continue
+            Do tEntries.%Set(tIndex, $ClassMethod(tRules, "Canonical", tEntry), "string")
+        }
+    }
+    Quit ##super(pFresh, tArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
 }
 
 }

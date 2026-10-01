@@ -531,12 +531,12 @@ An OcuPilot administrator can test a definition before enabling it. Realizes UJ-
 
 #### FR-28: First-login gate
 
-When no agent definition is enabled, OcuPilot administrators are taken to agent configuration on login, and other users see the configuration-empty state in the panel. Realizes UJ-2. Catalog: CP-08.
+When no agent definition is enabled, an OcuPilot administrator is taken to agent configuration on their first sign-in, and other users see the configuration-empty state in the panel. Realizes UJ-2. Catalog: CP-08.
 
 **Consequences (testable):**
 
-- On login with no enabled definition, an OcuPilot administrator is taken to agent configuration and may leave it; a persistent banner in the panel reminds them on every screen until one definition is enabled.
-- The gate fires on every login until one definition is enabled, and never afterwards.
+- On their first sign-in with no enabled definition, an OcuPilot administrator is taken to agent configuration and may leave it (Cancel lands on Home); a persistent banner in the panel reminds them on every screen until one definition is enabled.
+- The gate fires on the administrator's first sign-in only, recorded per user on the instance; a later sign-in, reload or new tab lands on Home, with the panel's banner as the pointer until one definition is enabled. [AMENDED 2026-09-30, owner decision DW-1871: was "fires on every login until one definition is enabled"]
 - Non-administrators can use every screen while the gate is active; only the panel is in its empty state, naming who can configure it.
 
 #### FR-29: OcuPilot administrator privilege

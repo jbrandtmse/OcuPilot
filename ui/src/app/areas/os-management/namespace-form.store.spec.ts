@@ -218,6 +218,57 @@ describe('the namespace editor store', () => {
     expect([store.mode(), store.saved(), store.retaining(), store.value('Name')]).toEqual(['edit', true, false, 'OCUPROBE182']);
   });
 
+  it('DW-1824: retainForHandOff keeps the create retained across the wizard and leaves the form clean', async () => {
+    const { store, formDirty } = mount();
+    await store.open('');
+    store.setValue('Name', 'OCUPROBE1817N');
+    expect(formDirty.dirty()).toBe(true);
+    store.retainForHandOff();
+    expect([store.retaining(), formDirty.dirty()]).toEqual([true, false]);
+  });
+
+  it('DW-1824: the return restores what was typed and chooses the created database as Globals in the list\u2019s spelling, dirty', async () => {
+    const { store, formDirty } = mount();
+    await store.open('');
+    store.setValue('Name', 'OCUPROBE1817N');
+    store.setValue('Routines', 'USER');
+    store.retainForHandOff();
+    // Mutation (Rule 19): `open` ignores `returning` and resets -> Name and Routines read '' and this goes red.
+    await store.open('', { database: 'enslib' });
+    expect([store.mode(), store.value('Name'), store.value('Routines'), store.value('Globals')]).toEqual(['create', 'OCUPROBE1817N', 'USER', 'ENSLIB']);
+    expect([formDirty.dirty(), store.retaining()]).toEqual([true, false]);
+  });
+
+  it('DW-1824: a database the read does not list leaves Globals as typed', async () => {
+    const { store } = mount();
+    await store.open('');
+    store.setValue('Globals', 'HSCUSTOM');
+    store.retainForHandOff();
+    await store.open('', { database: 'OCUPROBE1817W' });
+    expect(store.value('Globals')).toBe('HSCUSTOM');
+  });
+
+  it('DW-1824: a return with nothing held is an empty create with the database chosen; an open without one resets', async () => {
+    const { store, formDirty } = mount();
+    await store.open('', { database: 'USER' });
+    expect([store.value('Name'), store.value('Globals'), formDirty.dirty()]).toEqual(['', 'USER', true]);
+    store.setValue('Name', 'OCUPROBE1817N');
+    store.retainForHandOff();
+    await store.open('');
+    expect([store.value('Name'), store.value('Globals'), store.retaining(), formDirty.dirty()]).toEqual(['', '', false, false]);
+  });
+
+  it('DW-1824: reset drops the held copy', async () => {
+    const { store } = mount();
+    await store.open('');
+    store.setValue('Name', 'OCUPROBE1817N');
+    store.retainForHandOff();
+    store.reset();
+    expect(store.retaining()).toBe(false);
+    await store.open('', { database: '' });
+    expect(store.value('Name')).toBe('');
+  });
+
   it('an edit of a namespace the instance does not hold blocks Save', async () => {
     TestBed.resetTestingModule();
     const api = {

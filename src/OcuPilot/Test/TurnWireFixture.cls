@@ -36,6 +36,13 @@ Parameter PROBEKEY = "sk-ant-ocupilotturnprobe0000000000";
 
 Parameter DEFINITIONNAME = "OcuPilotProbeAgentTurnWire";
 
+/// <p>The second <code>turnprobe</code> definition's endpoint, on a private address
+/// (<code>10.0.0.5</code>, RFC 1918) and not marked local, so a call to it does not leave the
+/// instance. <method>EnsureLocalDefinition</method> sets it. Nothing connects to it.</p>
+Parameter LOCALENDPOINTURL = "https://10.0.0.5/v1/messages";
+
+Parameter LOCALDEFINITIONNAME = "OcuPilotProbeAgentTurnWireLocal";
+
 Parameter APIBASE = "/api/ocupilot";
 
 /// <p>The two arming variables, and the one value that arms each.</p>
@@ -236,6 +243,67 @@ ClassMethod EnsureDefinition(pTag As %String, Output pId As %String) As %Status
     Set tSC = ##class(OcuPilot.Test.AgentFixture).SetFlags(pId, 1, 1)
     If $$$ISERR(tSC) Quit tSC
     Quit ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(pId)
+}
+
+/// <p>Create the second <code>turnprobe</code> definition, <parameter>LOCALDEFINITIONNAME</parameter>
+/// at <parameter>LOCALENDPOINTURL</parameter>, with model <var>pTag</var>, enabled and verified,
+/// naming the credential <method>EnsureDefinition</method> stored -- so call it after that one.
+/// The default marker is left where it is. <var>pId</var> is its id.</p>
+ClassMethod EnsureLocalDefinition(pTag As %String, Output pId As %String) As %Status
+{
+    Set pId = ""
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = ..#LOCALDEFINITIONNAME
+    Set tRow.Provider = "turnprobe"
+    Set tRow.Model = pTag
+    Set tRow.EndpointUrl = ..#LOCALENDPOINTURL
+    Set tRow.CredType = "creds"
+    Set tRow.CredentialName = ..#CREDENTIAL
+    Set tRow.MaxTokens = 1024
+    Set tRow.MaxIterationsPerTurn = 10
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
+    If $$$ISERR(tSC) Quit tSC
+    Set pId = tRow.%Id()
+    Set tRow = ""
+    Quit ##class(OcuPilot.Test.AgentFixture).SetFlags(pId, 1, 1)
+}
+
+/// <p>Move the default marker to definition <var>pId</var>.</p>
+ClassMethod MarkDefault(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(pId)
+}
+
+/// <p>Point definition <var>pId</var> at <var>pUrl</var>, and enable and verify it again: an
+/// endpoint edit is a security-field change, which disables the definition.</p>
+ClassMethod SetEndpoint(pId As %String, pUrl As %String) As %Status
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pId, .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
+    Set tRow.EndpointUrl = pUrl
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+    Set tRow = ""
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(OcuPilot.Test.AgentFixture).SetFlags(pId, 1, 1)
+}
+
+/// <p>Mark definition <var>pId</var> local, or not, per <var>pFlag</var>, and enable and verify it
+/// again (a security-field change). Writes nothing when the flag already reads so.</p>
+ClassMethod SetMarkedLocal(pId As %String, pFlag As %Boolean) As %Status
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pId, .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If ''tRow.MarkedLocal = ''pFlag {
+        Set tRow = ""
+        Quit $$$OK
+    }
+    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
+    Set tRow.MarkedLocal = ''pFlag
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+    Set tRow = ""
+    If $$$ISERR(tSC) Quit tSC
+    Quit ##class(OcuPilot.Test.AgentFixture).SetFlags(pId, 1, 1)
 }
 
 /// <p>Point definition <var>pId</var> at the stub script <var>pTag</var>.</p>

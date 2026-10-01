@@ -37,6 +37,8 @@ export interface ProposalDiffRow {
   readonly before: string;
   readonly after: string;
   readonly removed?: boolean;
+  /** The `STRINGS` key an empty value of this field reads as, the tool's own declaration (DW-1016). */
+  readonly emptyKey?: string;
 }
 
 /**
@@ -46,6 +48,8 @@ export interface ProposalDiffRow {
 export interface ProposalUnchangedRow {
   readonly field: string;
   readonly value: string;
+  /** As on a changed row (DW-1016). */
+  readonly emptyKey?: string;
 }
 
 /**

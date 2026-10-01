@@ -437,25 +437,13 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  // AD-44 honors two exemptions, the reduced service and LDAP forms, each under its own reason; no
-  // OAuth 2.0 descriptor declares one.
+  // AD-44 honors no exemption, so SM-C1 counts zero: the LDAP editor (Story 16.14), the service
+  // editor (Story 16.13) and every OAuth 2.0 descriptor declare none.
   //
-  // Mutation (Rule 19): restore any OAuth 2.0 tab's exemption -> the honored set and both counts go red.
-  const reduced = {
-    'LdapConfigForm.cls': 'Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1',
-    'ServiceForm.cls': 'Reduced until the full service editor ships (Story 16.13); counted against SM-C1',
-  };
-  assert.deepEqual(
-    result.honored.map((entry) => entry.file).sort(),
-    Object.keys(reduced).sort(),
-    'the honored set is exactly the two reduced forms'
-  );
-  for (const entry of result.honored) {
-    assert.equal(entry.archetype, 'form-page', `${entry.file} is a reduced form`);
-    assert.equal(entry.reason, reduced[entry.file], `${entry.file} carries its own reason`);
-  }
-  assert.match(result.report.join('\n'), /^classic-links: 2 exemption\(s\) honored \(SM-C1\)$/m);
-  assert.match(result.report.join('\n'), /^classic-links: 2 descriptor\(s\) declare them \(AD-44\)$/m);
+  // Mutation (Rule 19): restore LdapConfigForm's exemption -> the honored set and both counts go red.
+  assert.deepEqual(result.honored.map((entry) => entry.file), [], 'the honored set is empty');
+  assert.match(result.report.join('\n'), /^classic-links: 0 exemption\(s\) honored \(SM-C1\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 0 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

@@ -29,7 +29,7 @@ XData Declaration
   "route": "os-management/language-servers",
   "area": "os-management",
   "labelKey": "languageServersLabel",
-  "sideBarPosition": 9,
+  "sideBarPosition": 10,
   "archetype": "list",
   "built": true,
   "refreshes": false,

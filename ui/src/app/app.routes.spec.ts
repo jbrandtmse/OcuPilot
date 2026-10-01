@@ -53,11 +53,13 @@ describe('the route table', () => {
     // Angular takes the first route whose segments match, a `:id` matching any one segment. Story
     // 18.14 puts the mapping lists at `os-management/namespaces/<kind>-mappings`, the shape
     // `os-management/namespaces/:id` also matches, and each form at `<list>/edit`, the shape its
-    // list's `:id` matches: the unlisted screens sort first (`builtScreens`), which is what keeps each
-    // literal ahead of the parameter that would otherwise take it and drop the form's leave guard.
+    // list's `:id` matches; Story 18.17 lists the Integrity log, `os-management/databases/integrity-log`,
+    // after Databases, whose `:id` matches it. `buildRoutes` emits every declared route ahead of every
+    // `:id` route, which keeps each literal ahead of the parameter that would otherwise take it and
+    // drop the form's leave guard.
     //
-    // Mutation (Rule 19): sort `builtScreensForArea` by descending side-bar position -> the mapping
-    // lists and forms are taken by their parents' `:id` routes and this goes red naming them.
+    // Mutation (Rule 19): push each `:id` route right after its own route in `buildRoutes` -> the
+    // Integrity log is taken by Databases' `:id` route and this goes red naming it.
     const matches = (pattern: string, path: string): boolean => {
       const want = pattern.split('/');
       const got = path.split('/');
@@ -88,9 +90,9 @@ describe('the route table', () => {
   // both branches of `buildRoutes` over a roster chosen here, which is why it takes its screens.
   //
   // Mutation (Rule 19): delete the `/:id` push from `app.routes.ts` -> the third assertion
-  // below goes red; delete the non-root push beside it -> the first and second go red. Neither
+  // below goes red; delete the non-root push -> the first and second go red. Neither
   // turns any other test in this file red, which is the gap this case closes.
-  it('gives a non-root screen its route, and an id-keyed screen its /:id beside it', () => {
+  it('gives a non-root screen its route, and an id-keyed screen its /:id', () => {
     const screen = (route: string, kind: 'none' | 'single'): ScreenDeclaration =>
       ({ route, area: 'permissions', built: true, sideBarPosition: 1, id: { kind, parts: [] } }) as unknown as ScreenDeclaration;
 

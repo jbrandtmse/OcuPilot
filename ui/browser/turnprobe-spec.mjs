@@ -255,3 +255,22 @@ export async function requireFreeSlot(config) {
     );
   }
 }
+
+/**
+ * Create the second `turnprobe` definition for `tag`, on a private endpoint host, leaving the
+ * default marker where it is (`OcuPilot.Test.TurnWireFixture.EnsureLocalDefinition`, Story 16.15),
+ * and answer its id. Call it after `armProbeDefinition`, whose credential it names;
+ * `disarmProbeDefinition` removes it with the other probe definitions.
+ */
+export function ensureLocalDefinition(options, tag) {
+  const name = `${options.marker}-LOCALDEF`;
+  const output = runIris(options.container, [
+    `Set sc=##class(OcuPilot.Test.TurnWireFixture).EnsureLocalDefinition("${escapeOs(tag)}",.id)`,
+    `Write "OCU-${name}-START:"_$System.Status.IsOK(sc)_"|"_id_":OCU-${name}-END",!`,
+  ]);
+  const value = markerValue(output, name);
+  assert.ok(value, `EnsureLocalDefinition answered: ${output}`);
+  const [ok, id] = value.split('|');
+  assert.equal(ok, '1', `EnsureLocalDefinition succeeded: ${output}`);
+  return id;
+}

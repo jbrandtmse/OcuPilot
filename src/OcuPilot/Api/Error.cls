@@ -1211,6 +1211,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
 {
     If pCode = "" Quit ""
     If pCode = ..#AUTHNOPRIVILEGE Quit ..#REASONAUTHNOPRIVILEGE
+    If pCode = ..#WRITETARGETBUSY Quit ..#REASONWRITETARGETBUSY
     Set tReason = ..ReasonForTool(pCode)
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForRestraint(pCode)
@@ -4105,14 +4106,19 @@ Parameter REASONLDAPDESCRIPTIONLENGTH = "An LDAP configuration's description is 
 /// code; <method>ReasonForViolation</method> delegates the family here.</p>
 ClassMethod ReasonForService(pCode As %String) As %String
 {
+    Set tAddressReason = ##class(OcuPilot.Api.ServiceError).ReasonFor(pCode)
+    If tAddressReason '= "" Quit tAddressReason
     If '$ListFind(..ServiceViolationCodes(), pCode) Quit ""
     Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
 }
 
 /// <p>Every <code>SERVICE.*</code> field-level violation code, as a <class>%List</class>, for the
 /// reason <method>UserViolationCodes</method> exists.</p>
+/// <p>The address codes are <class>OcuPilot.Api.ServiceError</class>'s, because this class is at the compiler's limit of parameters.</p>
 ClassMethod ServiceViolationCodes() As %List
 {
+    Set tAddressCodes = ##class(OcuPilot.Api.ServiceError).ViolationCodes()
+    If tAddressCodes '= "" Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT) _ tAddressCodes
     Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT)
 }
 
@@ -4121,14 +4127,17 @@ ClassMethod ServiceViolationCodes() As %List
 ClassMethod ReasonForLdap(pCode As %String) As %String
 {
     If '$ListFind(..LdapViolationCodes(), pCode) Quit ""
+    Set tEditorReason = ##class(OcuPilot.Api.LdapError).ReasonFor(pCode)
+    If tEditorReason '= "" Quit tEditorReason
     Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
 }
 
 /// <p>Every <code>LDAP.*</code> field-level violation code, as a <class>%List</class>, for the
 /// reason <method>UserViolationCodes</method> exists.</p>
+/// <p>The editor's codes are <class>OcuPilot.Api.LdapError</class>'s, because this class is at the compiler's limit of parameters.</p>
 ClassMethod LdapViolationCodes() As %List
 {
-    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT)
+    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT) _ ##class(OcuPilot.Api.LdapError).ViolationCodes()
 }
 
 /// <p>Envelope code (Story 9.10): one 422 carrying every broken rule of a user audit event Save.</p>
@@ -4275,5 +4284,14 @@ Parameter REASONPROCESSBROADCASTRECIPIENT = "At least one of these processes has
 Parameter LANGUAGESERVERSTART = "LANGUAGESERVER.START";
 
 Parameter REASONLANGUAGESERVERSTART = "The server did not start. Its activity log records why.";
+
+/// <p>Machine code (AD-12, AD-34, AD-39, AD-53): a confirm or a screen row action whose scoped
+/// target another write held past <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter>,
+/// so nothing was written and a proposal stays live. Answered on the <parameter>CONFLICT</parameter>
+/// slug with 409 by <class>OcuPilot.Kernel.Proposal.Confirm</class> and
+/// <class>OcuPilot.Api.ScreenAction</class>.</p>
+Parameter WRITETARGETBUSY = "WRITE.TARGETBUSY";
+
+Parameter REASONWRITETARGETBUSY = "Another change to this target is being applied. Try again in a moment.";
 
 }

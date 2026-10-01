@@ -367,11 +367,7 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
 // (Rule 19): restore the tab's classic-link exemption -> the honored-set and in-app anchor assertions go red.
 test("AC4: a client configuration's name cell opens OcuPilot's own editor at the configuration's route, in this tab", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
-  assert.deepEqual(
-    honored,
-    ['LdapConfigForm.cls', 'ServiceForm.cls'],
-    'classic-links honors the two reduced editors alone: no OAuth 2.0 tab links out (AD-44)'
-  );
+  assert.deepEqual(honored, [], 'classic-links honors no exemption: no OAuth 2.0 tab links out (AD-44)');
 
   const tab = TABS[1];
   const { context, page, answers } = await signedInAt(urlOf(tab.route), config.username, config.password);

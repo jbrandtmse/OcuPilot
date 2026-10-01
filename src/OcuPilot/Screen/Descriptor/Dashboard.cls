@@ -27,7 +27,7 @@ XData Declaration
   "route": "os-management/dashboard",
   "area": "os-management",
   "labelKey": "dashboardLabel",
-  "sideBarPosition": 8,
+  "sideBarPosition": 9,
   "archetype": "meters",
   "built": true,
   "refreshes": true,

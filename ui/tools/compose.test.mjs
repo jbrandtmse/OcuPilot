@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { ROSTER_SOURCE, readRoster } from './ipm-manifest.mjs';
+import { stubEnv, writeStub } from './stub-bin.mjs';
 
 // docker-compose.yml is YAML, not JSON (unlike angular.json's own precedent in this
 // folder), so these are text-level assertions rather than a parsed-structure walk --
@@ -125,7 +128,8 @@ test('a one-shot durable-init service makes the durable root writable before iri
 // DW-197. OcuPilot.Test.Manifest reads /opt/ocupilot/module.xml and logs a skip when nothing
 // mounted one, so the mount is what makes its only document-level assertion run at all. The
 // throwaway's copy is pinned in ci.test.mjs; this one was pinned by nothing, and deleting it
-// returns the class to skipping silently on every container built from this file.
+// returns the class to skipping silently wherever it is loaded into a container from this file,
+// whose own start never compiles it.
 //
 // Mutation (Rule 19): drop the module.xml volume from docker-compose.yml -> this goes red.
 test('the committed manifest is mounted where OcuPilot.Test.Manifest reads it (DW-197)', () => {
@@ -254,7 +258,7 @@ test('no outcome of the pre-recompile mark fails the start (DW-72)', () => {
 // probe with `exit 1` and no stderr shut the instance down.
 //
 // Mutation (Rule 19): put a `>&2` back on any message in scripts/container-start.sh, or drop
-// a `2>&1` from either `iris session` -> this goes red. What it does to a container is
+// a `2>&1` from any `iris session` -> this goes red. What it does to a container is
 // observed on a throwaway, not here.
 test('the start hook never writes to stderr, its children included (Story 1.5)', () => {
   const lines = startHook.split('\n');
@@ -266,8 +270,9 @@ test('the start hook never writes to stderr, its children included (Story 1.5)',
 
   // A message of the hook's own is only half of it: `iris session` is a child process whose
   // stderr is inherited straight through to /iris-main unless it is captured.
-  const sessions = lines.filter((l) => /^\w+=\$\(iris session/.test(l));
-  assert.ok(sessions.length >= 2, 'expected the hook to capture both iris sessions');
+  // Indented too: the roster and delete sessions sit inside the product-start branch.
+  const sessions = lines.filter((l) => /^\s*\w+=\$\(iris session/.test(l));
+  assert.ok(sessions.length >= 4, 'expected the hook to capture all four iris sessions');
   for (const line of sessions) {
     assert.ok(
       line.includes('2>&1'),
@@ -579,5 +584,251 @@ test("container-start.sh's BUNDLE_DIR is the bundle source the roster declares",
     match[1],
     `/opt/ocupilot/${declared}`,
     "the start hook's bundle directory is the roster's bundle.source under the container's source mount"
+  );
+});
+
+// --- DW-48: a product start compiles no test class (AD-17) ------------------------------------
+//
+// The start hook compiles the roster's test-scope package only when PID 1's environment carries
+// OCUPILOT_LOAD_TESTS=1. scripts/ci-throwaway.sh sets it for the suite; this repository's compose
+// file does not, so a container started from it compiles no OcuPilot.Test class. These pin the
+// wiring as text, and the throwaway's environment by running its `up` against a stub docker; what
+// a product start actually compiled is counted by CI's images job (`ci-throwaway.sh product-check`).
+
+/** The roster's test-scope `.PKG` resources, each as the folder under the sources root it names. */
+function rosterTestFolders() {
+  const roster = readRoster(readFileSync(ROSTER_SOURCE, 'utf8'));
+  assert.ok(roster, 'the shipped roster parses');
+  return roster.resources
+    .filter((resource) => resource.scope === 'test')
+    .map((resource) => ({ name: resource.name, folder: resource.name.replace(/\.PKG$/, '').split('.').join('/') }));
+}
+
+/** The start hook's lines that are code, not `#` comments. */
+const startHookCode = startHook
+  .split('\n')
+  .filter((line) => !/^\s*#/.test(line))
+  .join('\n');
+
+// Mutation (Rule 19): set `OCUPILOT_LOAD_TESTS: "1"` in docker-compose.yml's environment -> red.
+test('docker-compose.yml leaves OCUPILOT_LOAD_TESTS unset, so its start compiles no test class (DW-48)', () => {
+  const settings = raw
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .filter((line) => line.includes('OCUPILOT_LOAD_TESTS'));
+  assert.deepEqual(settings, [], 'the repository\'s compose file sets no OCUPILOT_LOAD_TESTS, in any form');
+});
+
+// Mutations (Rule 19): load "$SRC_DIR" again in the load-and-start session -> red at the LoadDir
+// assertion. Compare the flag with `!=` -> red at the branch assertion. Name the test folder in the
+// hook (`TEST_DIRS="OcuPilot/Test"`) -> red at the no-literal assertion. Drop `exit 1` from the
+// roster outcome's FAILED arm -> red at the failure assertions.
+test('the start hook leaves the roster\'s test-scope folder out of a start without OCUPILOT_LOAD_TESTS=1 (DW-48)', () => {
+  // The flag, read from PID 1's own environment like OCUPILOT_DEMO and OCUPILOT_NAMESPACE.
+  assert.match(
+    startHookCode,
+    /\nLOAD_TESTS_FLAG=\$\(tr '\\0' '\\n' < \/proc\/1\/environ 2>\/dev\/null \| grep '\^OCUPILOT_LOAD_TESTS=' \| cut -d= -f2-\)\n/,
+    'the hook reads OCUPILOT_LOAD_TESTS from /proc/1/environ'
+  );
+
+  // The tree is the whole source unless the product branch replaces it, and only the literal "1"
+  // keeps the whole tree.
+  const defaultAt = startHookCode.indexOf('\nLOAD_DIR="$SRC_DIR"\n');
+  const branchAt = startHookCode.indexOf('\nif [ "$LOAD_TESTS_FLAG" = "1" ]; then\n');
+  assert.ok(defaultAt > 0, 'LOAD_DIR starts as the whole source tree');
+  assert.ok(branchAt > defaultAt, 'and the branch after it keeps that tree only for a flag of exactly "1"');
+  const branch = startHookCode.slice(branchAt, startHookCode.indexOf('\nfi\n', startHookCode.indexOf('\n    fi\n', branchAt)));
+  const elseAt = branch.indexOf('\nelse\n');
+  assert.ok(elseAt > 0, 'the flag check has a product branch');
+  assert.ok(!branch.slice(0, elseAt).includes('LOAD_DIR='), 'a start with the flag at 1 keeps the whole tree');
+  const product = branch.slice(elseAt);
+  assert.match(product, /\n {8}LOAD_DIR="\$PRODUCT_SRC"\n/, 'a product start loads the copy instead');
+
+  // The folders come from the roster, asked in the install namespace, through its own Get().
+  assert.match(product, /SCOPE_RAW=\$\(iris session iris -U "\$INSTALL_NS" 2>&1 <<EOF\n/, 'the roster is asked in the install namespace, stderr captured');
+  assert.match(product, /\$System\.OBJ\.Load\("\$SRC_DIR\/OcuPilot\/Install\/Roster\.cls", "ck-d"\)/, 'after compiling the roster this start ships');
+  assert.match(product, /##class\(OcuPilot\.Install\.Roster\)\.Get\(\.tRoster\)/, 'through the roster\'s own reader');
+  assert.match(product, /tRes\.scope = "test"/, 'keeping its test-scope resources');
+  assert.match(product, /\$Translate\(\\\$Piece\(tRes\.name, "\.PKG", 1\), "\.", "\/"\)/, 'each package named as its folder');
+  assert.match(product, /cp -R "\$SRC_DIR" "\$PRODUCT_SRC"/, 'the tree is copied');
+  assert.match(product, /for TEST_DIR in \$TEST_DIRS; do/, 'and every folder the roster names');
+  assert.match(product, /rm -rf "\$PRODUCT_SRC\/\$TEST_DIR" 2>&1/, 'is removed from the copy, stderr captured');
+
+  // A roster that cannot be read, or that names no folder the tree carries, fails the start.
+  // The session's verdict answers FAILED for an unread roster or a missing resources array
+  // before its default OK arm, so an unreadable roster never reads as "no test package".
+  const verdict = product.split('\n').find((line) => line.includes('"SCOPE-START:"'));
+  assert.ok(verdict, 'the roster session writes one verdict line');
+  assert.equal(verdict.split('"FAILED:').length - 1, 2, 'an unread roster and a missing resources array each answer FAILED');
+  const okArm = verdict.indexOf('1: "OK:" _ tDirs)');
+  assert.ok(okArm > verdict.lastIndexOf('"FAILED:'), 'and OK is the default arm, after both');
+  const outcome = product.slice(product.indexOf('case "$SCOPE" in'), product.indexOf('\n    esac\n'));
+  for (const arm of ['FAILED:*)', '*)']) {
+    const at = outcome.indexOf(`\n        ${arm}\n`);
+    assert.ok(at > 0, `the roster outcome has a ${arm} arm`);
+    assert.match(outcome.slice(at, outcome.indexOf(';;', at)), /exit 1/, `and ${arm} fails the start`);
+  }
+  assert.match(product, /if \[ ! -d "\$PRODUCT_SRC\/\$TEST_DIR" \]; then\n[^\n]*\n\s*exit 1\n/, 'a folder the tree does not carry fails the start');
+
+  // The load-and-start session compiles LOAD_DIR, never the source tree directly.
+  assert.match(startHookCode, /\$System\.OBJ\.LoadDir\("\$LOAD_DIR", "ck", \.tErrors, 1\)/, 'LoadDir compiles the tree chosen above');
+  assert.ok(!/LoadDir\("\$SRC_DIR"/.test(startHookCode), 'and no LoadDir names the whole source tree');
+  assert.ok(startHookCode.indexOf('$System.OBJ.LoadDir(') > branchAt, 'and it runs after the choice');
+
+  // A load error on either tree still fails the start: a LoadDir that does not answer OK is
+  // reported LOAD-FAILED, and that arm exits 1.
+  assert.match(
+    startHookCode,
+    /LoadDir\("\$LOAD_DIR", "ck", \.tErrors, 1\)\nSet tLoadOK = \\\$System\.Status\.IsOK\(tSC\)\n/,
+    'the load\'s own status decides tLoadOK'
+  );
+  assert.match(startHookCode, /\nSet tOutcome = \\\$Select\(tLoadOK: [^\n]*, 1: "LOAD-FAILED:" _ tLoadErr\)\n/, 'a failed load is reported LOAD-FAILED');
+  const loadFailed = startHookCode.indexOf('\n    LOAD-FAILED*)\n');
+  assert.ok(loadFailed > 0, 'the start\'s result has a LOAD-FAILED arm');
+  assert.match(startHookCode.slice(loadFailed, startHookCode.indexOf(';;', loadFailed)), /\n\s*exit 1\n/, 'and it fails the start');
+
+  // The roster is the one source: the hook's code names none of its test-scope packages.
+  const folders = rosterTestFolders();
+  assert.ok(folders.length > 0, 'the roster declares a test-scope package');
+  for (const { name, folder } of folders) {
+    const pkg = name.replace(/\.PKG$/, '');
+    assert.ok(!startHookCode.includes(folder), `the hook's code never names ${folder}; it reads it from the roster`);
+    assert.ok(!startHookCode.includes(pkg), `nor ${pkg}`);
+  }
+});
+
+// A product start also deletes the roster's test-scope packages from the install namespace, so a
+// reused volume keeps none an earlier start compiled (DW-1885). What the vendor delete removes was
+// measured on a throwaway; what a restart over such a volume deletes is CI's images job
+// (`ci-throwaway.sh product-reuse`).
+//
+// Mutations (Rule 19): move the delete session above `if [ "$LOAD_TESTS_FLAG" = "1" ]` -> red at the
+// flag assertion. Hand the session a literal package in place of "$TEST_DIRS" -> red at the roster
+// assertion. Drop the count from the OK arm's line -> red at the log-line assertion. Drop
+// `(tMapped = "") &&` -> red at the mapping assertion. Drop `exit 1` from the LEFT arm -> red at the
+// failure-arm assertion. Move the session below `LOAD_DIR="$PRODUCT_SRC"` -> red at the order
+// assertion. Hand the session no vendor delete -> red at the delete assertion. Drop the empty-name
+// guard before the folder loop -> red at the empty-folder assertion. Clear tMapped again before the
+// delete -> red at the mapped-list assertion. Drop `_ "."` from the first count -> red at the
+// prefix assertion.
+test('a product start deletes the roster\'s test-scope package before it compiles, and logs how many classes it deleted (DW-1885)', () => {
+  const sessionHead = 'PURGE_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF\n';
+  const purgeAt = startHookCode.indexOf(sessionHead);
+  assert.ok(purgeAt > 0, 'the hook runs a delete session in the install namespace, stderr captured');
+  assert.equal(startHookCode.split('DeletePackage(').length - 1, 1, 'and calls the vendor delete in that session only');
+  const body = startHookCode.slice(purgeAt + sessionHead.length, startHookCode.indexOf('\nEOF\n', purgeAt));
+
+  // The flag: the session sits in the product branch, never in the branch a flag of "1" takes.
+  const branchAt = startHookCode.indexOf('\nif [ "$LOAD_TESTS_FLAG" = "1" ]; then\n');
+  const elseAt = startHookCode.indexOf('\nelse\n', branchAt);
+  const branchEnd = startHookCode.indexOf('\nfi\n', startHookCode.indexOf('\n    fi\n', branchAt));
+  assert.ok(branchAt > 0 && elseAt > branchAt, 'the flag check has a product branch');
+  assert.ok(purgeAt > elseAt && purgeAt < branchEnd, 'the delete runs only on a start whose flag is not "1"');
+
+  // The roster: the packages are the folders the roster session read, once each has passed the
+  // folder checks, and nothing else.
+  const loopEnd = startHookCode.indexOf('\n        done\n', elseAt);
+  assert.ok(loopEnd > 0 && purgeAt > loopEnd, 'after every folder the roster names has been checked');
+  // Splitting on commas drops a trailing empty name, so the whole list is refused first when it
+  // names an empty folder, which would otherwise reach the delete as an empty package.
+  const emptyAt = startHookCode.indexOf('\n        case ",$TEST_DIRS," in\n            *,,*)\n', elseAt);
+  assert.ok(emptyAt > elseAt && emptyAt < startHookCode.indexOf('\n        for TEST_DIR in $TEST_DIRS; do\n', elseAt), 'a list naming an empty folder is refused before the folder loop');
+  assert.match(startHookCode.slice(emptyAt, startHookCode.indexOf('\n        esac\n', emptyAt)), /\n\s*exit 1\n/, 'and that fails the start');
+  assert.match(body, /^Set tPkgs = \\\$Translate\("\$TEST_DIRS", "\/", "\."\)\n/, 'the packages are the roster\'s test-scope folders');
+  assert.match(body, /\\\$System\.OBJ\.DeletePackage\(tPkgs, "-d"\)/, 'and the delete names those packages alone');
+  assert.match(startHookCode, /\n {8}TEST_PKGS=\$\(printf '%s' "\$TEST_DIRS" \| tr '\/' '\.'\)\n/, 'as does the log');
+
+  // A package mapped in from another database is never deleted: the vendor deletes through a mapping.
+  assert.match(body, /GetPackageDest\(, \\\$Piece\(tPkgs, ",", tI\)\)/, 'each package\'s database is read');
+  assert.match(body, /\\\$Select\(tDest = tHome: "", /, 'and compared with the namespace\'s own routines database');
+  assert.match(body, /\\\$Select\(\(tMapped = ""\) && tCounted: \\\$System\.OBJ\.DeletePackage/, 'and the delete runs only when none is mapped');
+  // The guard's inputs are set where they are computed and nowhere else.
+  const sets = (name) => [...body.matchAll(new RegExp(`(?:\\bSet|,) ?${name} ?= ?([^ ,\\n]+)`, 'g'))].map((m) => m[1]);
+  assert.deepEqual(sets('tHome'), ['##class(%SYS.Namespace).GetRoutineDest()'], 'the home database is the namespace\'s routines database');
+  assert.deepEqual(sets('tMapped'), ['""', 'tMapped'], 'the mapped list starts empty and only grows');
+  assert.deepEqual(sets('tLeft'), ['0', 'tLeft'], 'the left-over count starts at 0 and only grows');
+
+  // What is counted: definitions before, definitions and compiled classes after.
+  assert.match(body, /tCountSQL = "SELECT COUNT\(\*\) FROM %Dictionary\.ClassDefinition WHERE %EXACT\(ID\) %STARTSWITH \?"/, 'the classes are counted before the delete');
+  assert.match(body, /tLeftSQL = "[^"\n]*%Dictionary\.ClassDefinition[^"\n]*%Dictionary\.CompiledClass[^"\n]*"/, 'and every definition and compiled class left is counted after it');
+  const prefix = '\\$Piece(tPkgs, ",", tI) _ "."';
+  assert.ok(body.includes(`%ExecDirect(, tCountSQL, ${prefix})`), 'each package is counted by its prefix, dot included, so a sibling package is not');
+  assert.ok(body.includes(`%ExecDirect(, tLeftSQL, ${prefix}, ${prefix})`), 'before and after the delete');
+
+  // The verdict: unless a package is mapped (the outer arm), an uncounted or failed delete, then a
+  // class left, and OK, carrying the count, only by default.
+  const verdict = body.split('\n').find((line) => line.includes('"PURGE-START:"'));
+  assert.ok(verdict, 'the delete session writes one verdict line');
+  const order = ['"FAILED:the classes', '"FAILED:" _', '"LEFT:"', '1: "OK:" _ tBefore', '1: "MAPPED:"'].map((arm) => verdict.indexOf(arm));
+  assert.ok(order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1])), `the verdict's arms are in that order: ${verdict}`);
+
+  // The log line, and the start it fails.
+  const outcome = startHookCode.slice(startHookCode.indexOf('case "$PURGE" in'), startHookCode.indexOf('\n        esac\n', startHookCode.indexOf('case "$PURGE" in')));
+  const okAt = outcome.indexOf('\n            OK:*)\n');
+  assert.ok(okAt > 0, 'the delete outcome has an OK arm');
+  const okArm = outcome.slice(okAt, outcome.indexOf(';;', okAt));
+  assert.match(
+    okArm,
+    /\n {16}echo "container-start: OCUPILOT_LOAD_TESTS is not 1, so this start deleted \$\{PURGE#OK:\} class\(es\) of the roster's test-scope package \$TEST_PKGS from \$INSTALL_NS"\n/,
+    'which logs how many classes the start deleted, 0 included'
+  );
+  assert.ok(!/\bexit\b/.test(okArm), 'and carries on');
+  for (const arm of ['MAPPED:*)', 'LEFT:*)', 'FAILED:*)', '*)']) {
+    const at = outcome.indexOf(`\n            ${arm}\n`);
+    assert.ok(at > 0, `the delete outcome has a ${arm} arm`);
+    assert.match(outcome.slice(at, outcome.indexOf(';;', at)), /\n\s*exit 1\n/, `and ${arm} fails the start`);
+  }
+
+  // Before the compile, so no start reaches STARTPATH-OK with part of the package left.
+  assert.ok(purgeAt < startHookCode.indexOf('\n        LOAD_DIR="$PRODUCT_SRC"\n'), 'the delete comes before the product tree is chosen');
+  assert.ok(purgeAt < startHookCode.indexOf('$System.OBJ.LoadDir('), 'and before LoadDir compiles it');
+});
+
+// Mutation (Rule 19): rename a test-scope resource in the roster to a package with no folder
+// (`OcuPilot.Tests.PKG`) -> red, which is the start the hook would then refuse.
+test('every test-scope package the roster declares is a folder of the source tree (DW-48)', () => {
+  const sourcesRoot = join(repoRoot, readRoster(readFileSync(ROSTER_SOURCE, 'utf8')).module.sourcesRoot);
+  for (const { name, folder } of rosterTestFolders()) {
+    assert.match(name, /\.PKG$/, `${name} is a package resource, the only kind the hook maps to a folder`);
+    const at = join(sourcesRoot, folder);
+    assert.ok(existsSync(at) && statSync(at).isDirectory(), `${name} names ${folder}, a folder under the sources root`);
+  }
+});
+
+/**
+ * The compose file `ci-throwaway.sh up` writes, run against a stub docker that answers every call
+ * with success and removes nothing but what the script's own scrub asks for.
+ */
+function throwawayComposeFile(...args) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-load-tests-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    writeStub(bin, 'docker', ['exit 0']);
+    const run = spawnSync('sh', [join(repoRoot, 'scripts', 'ci-throwaway.sh'), 'up', '--dir', scratch, ...args], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: stubEnv(bin),
+    });
+    assert.equal(run.status, 0, `ci-throwaway.sh up ${args.join(' ')} failed: ${run.stdout}${run.stderr}`);
+    return readFileSync(join(scratch, 'compose.yml'), 'utf8').split(scratch).join('<scratch>');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// Mutations (Rule 19): empty LOAD_TESTS_ENV's default in ci-throwaway.sh -> red at the first
+// assertion. Make `--product` leave it set -> red at the second.
+test('ci-throwaway.sh sets OCUPILOT_LOAD_TESTS to "1", and `--product` leaves only that out (DW-48)', () => {
+  const suite = throwawayComposeFile();
+  const iris = serviceBlock(suite, 'iris');
+  assert.match(iris, /^ {6}OCUPILOT_LOAD_TESTS: "1"$/m, 'the suite\'s throwaway compiles the test package');
+
+  const product = throwawayComposeFile('--product');
+  assert.ok(!product.includes('OCUPILOT_LOAD_TESTS'), 'a --product throwaway carries no OCUPILOT_LOAD_TESTS');
+  assert.equal(
+    product,
+    suite.replace(/^ {6}OCUPILOT_LOAD_TESTS: "1"$/m, '      '),
+    'and differs from the suite\'s in that one line and nothing else'
   );
 });

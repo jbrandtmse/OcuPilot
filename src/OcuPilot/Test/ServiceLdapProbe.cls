@@ -1,12 +1,16 @@
-/// <p>The Story 9.9 probes: a snapshot and restore of <parameter>SERVICE</parameter>, the one service
-/// the service tests write, and the <code>ocup99*</code> LDAP configurations the LDAP tests create and
-/// delete through <class>Security.LDAPConfigs</class> in <code>%SYS</code> (AD-16). A configuration's
-/// name is a lower-case domain: the vendor stores a name given with <code>LDAPFlags</code> lower-cased
-/// with <code>.com</code> appended, and refuses a <code>Modify</code> of one that is not domain-shaped
-/// (ERROR #908, measured), so every probe name is <code>ocup99&lt;word&gt;.invalid</code>.</p>
+/// <p>The Story 9.9 and 16.13 probes: a snapshot and restore of each service the service tests write
+/// (<parameter>SERVICES</parameter>, <parameter>SERVICE</parameter> among them), and the
+/// <code>ocup99*</code> LDAP configurations the LDAP tests create and
+/// delete through <class>Security.LDAPConfigs</class> in <code>%SYS</code> (AD-16). An LDAP
+/// configuration's name is a lower-case domain: the vendor stores one lower-cased with
+/// <code>.com</code> appended, and refuses a <code>Modify</code> of one that is not domain-shaped
+/// (ERROR #908, measured), so every such probe is <code>ocup99&lt;word&gt;.invalid</code>. A
+/// Kerberos-only configuration (<code>LDAPFlags</code> 128) keeps its name as typed (measured), as the
+/// classic page creates it, so its probe may be a dotless <code>ocup99</code> name.</p>
 /// <p><b>Every write here refuses unless <parameter>ARMINGVARIABLE</parameter> reads 1</b>, so a
 /// runner pointed at an instance someone cares about writes nothing through this class, and a
-/// service write also refuses when <parameter>SERVICE</parameter> is enabled there. A configuration
+/// service write also refuses a service outside <parameter>SERVICES</parameter> or one that is
+/// enabled there. A configuration
 /// is deleted only after its exact name is read back and starts <parameter>PREFIX</parameter>.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.ServiceLdapProbe Extends %RegisteredObject
@@ -23,8 +27,14 @@ Parameter PRINCIPALSVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 /// <p>The prefix every throwaway principal's and role's name carries.</p>
 Parameter PRINCIPALPREFIX = "OcuPilotWire99";
 
-/// <p>The only service a test writes: disabled on every instance this suite runs on.</p>
+/// <p>The service the refusal tests write: disabled on every instance this suite runs on.</p>
 Parameter SERVICE = "%Service_CallIn";
+
+/// <p>Every service a test may write, each disabled on every instance this suite runs on:
+/// <parameter>SERVICE</parameter> for refusals, <code>%Service_CacheDirect</code> for addresses and
+/// methods (its <code>Capabilities</code> carry both, and no roles), and <code>%Service_ECP</code>
+/// for per-address roles (addresses with roles, and no methods).</p>
+Parameter SERVICES = "%Service_CallIn,%Service_CacheDirect,%Service_ECP";
 
 /// <p>The prefix every probe LDAP configuration's name carries.</p>
 Parameter PREFIX = "ocup99";
@@ -38,38 +48,65 @@ ClassMethod Armed() As %Status
     Quit $$$OK
 }
 
-/// <p><parameter>SERVICE</parameter>'s vendor read, as JSON, in <var>pSnapshot</var>. An enabled
-/// service is refused: the tests write only a disabled one.</p>
+/// <p><parameter>SERVICE</parameter>'s vendor read, as JSON, in <var>pSnapshot</var>
+/// (<method>SnapshotOf</method>).</p>
 ClassMethod Snapshot(Output pSnapshot As %String) As %Status
 {
+    Quit ..SnapshotOf(..#SERVICE, .pSnapshot)
+}
+
+/// <p>Put <parameter>SERVICE</parameter> back as <var>pSnapshot</var> held it
+/// (<method>RestoreOf</method>).</p>
+ClassMethod Restore(pSnapshot As %String) As %Status
+{
+    Quit ..RestoreOf(..#SERVICE, pSnapshot)
+}
+
+/// <p>Service <var>pName</var>'s vendor read, as JSON, in <var>pSnapshot</var>. A name outside
+/// <parameter>SERVICES</parameter>, and an enabled service, are refused: the tests write only these
+/// disabled ones.</p>
+ClassMethod SnapshotOf(pName As %String, Output pSnapshot As %String) As %Status
+{
     Set pSnapshot = ""
-    Set tSC = ..Armed()
+    Set tSC = ..Writable(pName)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..Read(..#SERVICE, .tFresh)
+    Set tSC = ..Read(pName, .tFresh)
     If $$$ISERR(tSC) Quit tSC
     If tFresh.%Get("Enabled") {
-        Quit $$$ERROR($$$GeneralError, ..#SERVICE _ " is enabled on this instance, so the service tests write nothing to it.")
+        Quit $$$ERROR($$$GeneralError, pName _ " is enabled on this instance, so the service tests write nothing to it.")
     }
     Set pSnapshot = tFresh.%ToJSON()
     Quit $$$OK
 }
 
-/// <p>Put <parameter>SERVICE</parameter> back as <var>pSnapshot</var> held it: its
+/// <p>Put service <var>pName</var> back as <var>pSnapshot</var> held it: its
 /// <code>AutheEnabled</code>, <code>ClientSystems</code> and <code>Enabled</code>, through the
-/// vendor's own <code>PUT</code>.</p>
-ClassMethod Restore(pSnapshot As %String) As %Status
+/// vendor's own <code>PUT</code>. A name outside <parameter>SERVICES</parameter>, and a snapshot of an
+/// enabled service, are refused.</p>
+ClassMethod RestoreOf(pName As %String, pSnapshot As %String) As %Status
 {
-    Set tSC = ..Armed()
+    Set tSC = ..Writable(pName)
     If $$$ISERR(tSC) Quit tSC
     If pSnapshot = "" Quit $$$OK
     Set tHeld = ##class(%DynamicObject).%FromJSON(pSnapshot)
+    If tHeld.%Get("Enabled") Quit $$$ERROR($$$GeneralError, "the snapshot of " _ pName _ " is of an enabled service, which the service tests never write.")
     Set tBody = {}
     Do tBody.%Set("AutheEnabled", tHeld.%Get("AutheEnabled"), "number")
     Do tBody.%Set("ClientSystems", tHeld.%Get("ClientSystems"))
     Do tBody.%Set("Enabled", tHeld.%Get("Enabled"), "boolean")
     Kill tQuery
-    Set tQuery("name") = ..#SERVICE
+    Set tQuery("name") = pName
     Quit ##class(OcuPilot.Port.AdminPort).Invoke("Security.Service", "PUT", .tQuery, tBody, .tAnswer, .tHttp, .tFault)
+}
+
+/// <p>An error status unless the arming variable reads 1 and <var>pName</var> is one of
+/// <parameter>SERVICES</parameter>, spelled exactly.</p>
+ClassMethod Writable(pName As %String) As %Status
+{
+    Set tSC = ..Armed()
+    If $$$ISERR(tSC) Quit tSC
+    If '$ListFind($ListFromString(..#SERVICES), pName) Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ServiceLdapProbe writes only " _ ..#SERVICES _ ", and not " _ pName _ ".")
+    Quit $$$OK
 }
 
 /// <p>Service or configuration <var>pName</var>'s vendor read, in <var>pFresh</var>.</p>
@@ -84,11 +121,12 @@ ClassMethod Read(pName As %String, Output pFresh As %DynamicObject, pEndpoint As
     Quit $$$OK
 }
 
-/// <p>Create the probe LDAP configuration <var>pName</var>, a lower-case domain starting
-/// <parameter>PREFIX</parameter>: disabled and not Active Directory (<code>LDAPFlags</code> 8, use
-/// groups), host <code>ocup99.invalid</code>, with a description, and every required setting the
-/// vendor's own default or a probe value.</p>
-ClassMethod CreateLdap(pName As %String) As %Status
+/// <p>Create the probe LDAP configuration <var>pName</var>, starting <parameter>PREFIX</parameter>,
+/// a lower-case domain unless it is Kerberos-only: by default disabled and not Active Directory (<code>LDAPFlags</code>
+/// <var>pFlags</var> 8, use groups), host <var>pHost</var> <code>ocup99.invalid</code>, with a
+/// description, the retrieved attributes <var>pAttributes</var> (comma-separated, by default the
+/// vendor's own), and every required setting the vendor's own default or a probe value.</p>
+ClassMethod CreateLdap(pName As %String, pFlags As %Integer = 8, pHost As %String = "ocup99.invalid", pAttributes As %String = "") As %Status
 {
     Set tSC = ..Armed()
     If $$$ISERR(tSC) Quit tSC
@@ -99,11 +137,12 @@ ClassMethod CreateLdap(pName As %String) As %Status
         If ##class(Security.LDAPConfigs).Exists(pName) Do ##class(Security.LDAPConfigs).Delete(pName)
         Kill tProperties
         Set tProperties("Description") = "OcuPilot probe"
-        Set tProperties("LDAPFlags") = 8
-        Set tProperties("LDAPHostNames") = "ocup99.invalid"
+        Set tProperties("LDAPFlags") = pFlags
+        Set tProperties("LDAPHostNames") = pHost
         Set tProperties("LDAPBaseDN") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPBaseDNForGroups") = "DC=ocup99,DC=invalid"
         Set tProperties("LDAPSearchUsername") = "CN=ocup99,DC=ocup99,DC=invalid"
+        If pAttributes '= "" Set tProperties("LDAPAttributes") = pAttributes
         Set tSC = ##class(Security.LDAPConfigs).Create(pName, .tProperties)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -179,6 +218,26 @@ ClassMethod LdapExists(pName As %String) As %Boolean
         Set $NAMESPACE = tOrigNS
     }
     Quit tExists
+}
+
+/// <p>Whether the LDAP configuration <var>pName</var> holds a search password, read in
+/// <code>%SYS</code> through <code>Security.LDAPConfigs.Get</code> by presence alone: the value is
+/// never returned, compared or written anywhere.</p>
+ClassMethod LdapPasswordSet(pName As %String) As %Boolean
+{
+    Set tSet = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProperties
+        If $$$ISOK(##class(Security.LDAPConfigs).Get(pName, .tProperties)) Set tSet = ($Get(tProperties("LDAPSearchPassword")) '= "")
+        Kill tProperties
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Kill tProperties
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tSet
 }
 
 /// <p>Create the throwaway principal <var>pUser</var> with password <var>pPassword</var>, holding one

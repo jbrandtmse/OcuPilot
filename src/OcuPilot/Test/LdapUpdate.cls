@@ -1,11 +1,15 @@
 /// <p>Pins <class>OcuPilot.Screen.Tool.LdapUpdate</class> as the agent reaches it (AD-3, AD-4, AD-6):
-/// what it advertises and declares; the mint's diff rows; the four rules at the mint; a confirmed
-/// two-field edit whose every other key reads back as it was; and a configuration deleted between
-/// the mint and the confirm refused as changed rather than recreated by the vendor's upsert.</p>
+/// what it advertises and declares; the mint's diff rows; the rules at the mint, the Kerberos flag
+/// pair, a missing host, the last retrieved attribute and the stored name's form among them; a
+/// stored dotless name minted and confirmed; a Kerberos-only payload carrying the
+/// classic page's host and user; a confirmed two-field edit whose every other key
+/// reads back as it was; a configuration deleted between the mint and the confirm refused as changed
+/// rather than recreated by the vendor's upsert; the LDAP tools' pairs with the classic editor's
+/// resource; and the editor's descriptor, which links nowhere.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state readable,
-/// and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: the two confirm legs create
-/// <code>ocup99*</code> LDAP configurations (<class>OcuPilot.Test.ServiceLdapProbe</class>) and write
-/// them through the shipped confirm, each removed by exact name. The other legs mint over
+/// and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: the live legs create
+/// <code>ocup99*</code> LDAP configurations (<class>OcuPilot.Test.ServiceLdapProbe</class>) and mint
+/// or confirm through the shipped kernel, each removed by exact name. The other legs mint over
 /// <class>OcuPilot.Test.ProposalFixture</class>. <method>OnBeforeAllTests</method> refuses anywhere
 /// the variable does not read 1.</p>
 Class OcuPilot.Test.LdapUpdate Extends %UnitTest.TestCase
@@ -187,11 +191,10 @@ Method TestTheKernelSweepsTheReviewedFew()
 }
 
 /// <p>AD-5, AD-44: the form is built, unlisted, at the list's own route with the editor suffix, over
-/// the list's own pairs, and ends with a honoured classic-portal exemption naming the classic page
-/// and its same-origin address, while the list declares none; every <code>LDAP.*</code> code
-/// carries a sentence.</p>
-/// <p>Mutation (Rule 19): set the list's exemption to exempt -- the list leg goes red.</p>
-Method TestTheFormDescriptorIsBuiltUnlistedAndExempt()
+/// the list's own pairs, names its classic page and declares no exemption, so it links nowhere and
+/// the list declares none either; every <code>LDAP.*</code> code carries a sentence.</p>
+/// <p>Mutation (Rule 19): set the form's exemption back to exempt -- this goes red.</p>
+Method TestTheFormDescriptorIsBuiltUnlistedAndLinksNowhere()
 {
     Set tForm = "OcuPilot.Screen.Descriptor.LdapConfigForm"
     Set tList = ..#LIST
@@ -204,16 +207,146 @@ Method TestTheFormDescriptorIsBuiltUnlistedAndExempt()
     Do $$$AssertStatusOK(tSC, "the form's declaration parses")
     If $$$ISERR(tSC) Quit
     Set tExemption = tDeclaration.%Get("classicLinkExemption")
-    Do $$$AssertEquals(tDeclaration.%Get("classicPage") _ " " _ tExemption.%Get("exempt") _ " " _ tExemption.%Get("label") _ " " _ tExemption.%Get("href"), "%CSP.UI.Portal.LDAP 1 Security LDAP Configs /csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen", "it names its classic page and links out to the classic list")
-    Do $$$AssertTrue(tExemption.%Get("reason") [ "Story 16.14", "its reason names the story that removes it")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and the registry honours it")
+    Do $$$AssertEquals(tDeclaration.%Get("classicPage") _ " " _ tExemption.%Get("exempt"), "%CSP.UI.Portal.LDAP 0", "it names its classic page and declares no exemption")
+    Do $$$AssertEquals(tExemption.%Get("reason") _ tExemption.%Get("label") _ tExemption.%Get("href"), "", "with no reason, label or link")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "which the registry accepts")
     Do $$$AssertEquals(tDeclaration.%Get("suggestedPrompts").%Size(), 3, "it declares three suggested prompts")
     Set tSC = $ClassMethod(tList, "DeclarationJson", .tListDeclaration)
     If $$$ISOK(tSC) Do $$$AssertEquals(tListDeclaration.%Get("classicLinkExemption").%Get("exempt"), 0, "while the list declares no exemption")
     Set tCodes = ##class(OcuPilot.Api.Error).LdapViolationCodes()
+    Do $$$AssertTrue($ListLength(tCodes) >= 11, "the editor's codes join Story 9.9's: " _ $ListLength(tCodes))
     For tI = 1:1:$ListLength(tCodes) {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a written sentence")
     }
+}
+
+/// <p>AC8: <code>LDAPFlags</code> carrying both 64 and 128, which the instance would store as 128, is
+/// refused at the mint by its published sentence, while 128 alone is minted.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Validate</method> skips
+/// <code>LDAP.FLAGS.KERBEROS</code> -- the 192 leg goes red.</p>
+Method TestKerberosOnlyIsNeverAlsoEnabled()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh())
+    Set tSC = ..FixtureMint({"Name": (..#ABSENT), "LDAPFlags": 192}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 400, "64 with 128 is refused at the mint")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONFLAGSKERBEROS, "by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    Set tSC = ..FixtureMint({"Name": (..#ABSENT), "LDAPFlags": 128}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "128 alone is minted: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
+}
+
+/// <p>AC8: emptying the host list of a configuration that is not Kerberos-only is refused at the
+/// mint by <code>LDAP.HOST.REQUIRED</code>'s sentence, and nothing is written.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Validate</method> skips
+/// <code>LDAP.HOST.REQUIRED</code> -- this goes red.</p>
+Method TestNoHostIsRefusedAtTheMint()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh())
+    Set tSC = ..FixtureMint({"Name": (..#ABSENT), "LDAPHostNames": []}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 400, "no host is refused at the mint")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONHOSTREQUIRED, "by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
+}
+
+/// <p>Matrix "Kerberos only" on the agent's caller: a Kerberos-only update of a configuration whose
+/// read holds no host and no search user mints a payload carrying the classic page's
+/// <code>["UNKNOWNHOST"]</code> and <code>UNKNOWNUSER</code>, the values the Save stores.</p>
+Method TestAKerberosOnlyUpdateCarriesTheClassicValues()
+{
+    Set tFresh = ##class(%DynamicObject).%FromJSON(..Fresh())
+    Do tFresh.%Set("LDAPHostNames", [])
+    Do tFresh.%Set("LDAPSearchUsername", "", "string")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(tFresh.%ToJSON())
+    Set tSC = ..FixtureMint({"Name": (..#ABSENT), "LDAPFlags": 136}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the Kerberos-only update is minted: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+    Set tPayload = ""
+    Try { Set tPayload = ##class(%DynamicObject).%FromJSON($Get(tValues("payload"))) } Catch {}
+    Do $$$AssertEquals($Select($IsObject(tPayload): tPayload.%Get("LDAPFlags") _ " " _ tPayload.%Get("LDAPHostNames").%ToJSON() _ " " _ tPayload.%Get("LDAPSearchUsername"), 1: ""), "136 [""UNKNOWNHOST""] UNKNOWNUSER", "its payload carries the classic page's host and user")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
+}
+
+/// <p>AC6, AD-13: a name the instance would store differently -- a bare name, which it extends with
+/// <code>.com</code> and whose short form its <code>Exists</code> also finds -- is refused at the
+/// update's mint by <code>LDAP.NAME.FORM</code>, before the tool's rules read the configuration; the
+/// same name in another case is not.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Canonical</method> answers its
+/// input -- this goes red.</p>
+Method TestAShortNameIsRefusedAtTheMint()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Fresh())
+    Set tSC = ..FixtureMint({"Name": "OcuP99New", "Description": "short"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 400, "a bare name is refused at the mint")
+    Do $$$AssertTrue(##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM, "by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    Set tSC = ..FixtureMint({"Name": ($ZConvert(..#ABSENT, "U")), "Description": "case"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "while the stored name in another case is minted: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+}
+
+/// <p>AD-13 on the agent's caller: a Kerberos-only configuration created as the classic page creates
+/// one keeps its dotless name, and the update's mint admits that stored name as it stands; its
+/// confirm writes the configuration under the same name. The create tool's rules still refuse that
+/// name <code>LDAP.NAME.FORM</code>.</p>
+/// <p>Mutations (Rule 19): <method>OcuPilot.Area.Security.LdapRules.Stored</method> answers 0 -- the
+/// mint leg goes red; <method>OcuPilot.Screen.Tool.LdapCreate.ArgumentProblem</method> admits a
+/// stored name -- the create leg goes red.</p>
+Method TestAStoredDotlessNameIsMinted()
+{
+    Set tName = "ocup99KRB"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 128, "UNKNOWNHOST"), "a Kerberos-only configuration is created with a dotless name")
+    Set tSC = ##class(OcuPilot.Screen.Tool.LdapCreate).ArgumentProblem(tName, {"LDAPFlags": 128}, .tProblem)
+    Do $$$AssertTrue($$$ISOK(tSC) && ($Get(tProblem) [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM), "the create tool's rules refuse that name: " _ $Get(tProblem))
+    Set tSC = ..RealMint({"Name": (tName), "Description": "agent"}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the update is minted against it: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    If '$IsObject($Get(tProposal)) Quit
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals(tHttp, 200, "the confirm writes: " _ $Get(tCode))
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: "") _ " " _ $ListFind($ListFromString(##class(OcuPilot.Test.LdapCreate).Residue()), tName), "agent 1", "under the same name")
+}
+
+/// <p>AD-39 on the agent's caller: an update that would leave a configuration retrieving no
+/// attribute -- an empty list, or one empty name -- is refused at the mint by
+/// <code>LDAP.ATTRIBUTES.LASTONE</code>'s sentence, and the stored attributes are kept.</p>
+/// <p>Mutation (Rule 19): drop that rule from
+/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- both legs go red.</p>
+Method TestTheLastAttributeIsNotRemovedAtTheMint()
+{
+    Set tName = "ocup99ldapattrs.invalid"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 8, "ocup99.invalid", "cn,uid"), "a configuration retrieving two attributes is created")
+    For tJson = "[]", "[""""]" {
+        Set tArgs = {"Name": (tName)}
+        Do tArgs.%Set("LDAPAttributes", ##class(%DynamicArray).%FromJSON(tJson))
+        Set tSC = ..RealMint(tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertTrue(($Get(tHttp) = 400) && (##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONATTRIBUTESLASTONE), tJson _ " is refused at the mint by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+    }
+    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[""cn"",""uid""]", "and the stored attributes are kept")
+}
+
+/// <p>AC11, AD-44: the update, create and password tools' pairs are the list's own with
+/// <code>%Admin_Secure:USE</code>, unioned with the custom resource of the classic editor through
+/// <method>OcuPilot.Screen.Gate.WithClassicPages</method>, and the delete's are the list's own.</p>
+Method TestThePairsUnionTheClassicEditorsResource()
+{
+    Set tListPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#LIST, .tResolved)
+    Do $$$AssertTrue(tResolved, "the list's pairs resolve")
+    Set tOwn = $ListBuild("%Admin_Secure", "USE")
+    If '$ListFind(tListPairs, tOwn) Set tListPairs = tListPairs _ $ListBuild(tOwn)
+    Set tExpected = ##class(OcuPilot.Screen.Gate).WithClassicPages(tListPairs, "%CSP.UI.Portal.LDAP")
+    For tTool = ..#UPDATE, "OcuPilot.Screen.Tool.LdapCreate", "OcuPilot.Screen.Tool.LdapPassword" {
+        Do $$$AssertEquals($Parameter(tTool, "CLASSICPAGES"), "%CSP.UI.Portal.LDAP", tTool _ " declares the classic editor")
+        Do $$$AssertEquals($ListToString(..Flat($ClassMethod(tTool, "PrivilegePairs", "", .tToolResolved))), $ListToString(..Flat(tExpected)), tTool _ ": its pairs are the list's with %Admin_Secure:USE; no page carries a custom resource here, so the classic page's union is ClassicPageGate's to pin")
+    }
+    Do $$$AssertEquals($Parameter("OcuPilot.Screen.Tool.LdapDelete", "CLASSICPAGES"), "", "the delete, performed on the list's own page, declares none")
+}
+
+/// <p><var>pPairs</var> as <code>resource:permission</code> strings.</p>
+ClassMethod Flat(pPairs As %List) As %List
+{
+    Set tOut = ""
+    For tI = 1:1:$ListLength(pPairs) Set tOut = tOut _ $ListBuild($ListToString($List(pPairs, tI), ":"))
+    Quit tOut
 }
 
 /// <p>The keys of <var>pBefore</var> outside <var>pSkip</var> whose rendered value <var>pAfter</var>

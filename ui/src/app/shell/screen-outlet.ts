@@ -40,10 +40,12 @@ import { RoleEditorPage } from '../areas/permissions/role-editor.page';
 import { UserEditorPage } from '../areas/permissions/user-editor.page';
 import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
+import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { AuditUserEventListPage } from '../areas/security/audit-user-event-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
 import { X509FormPage } from '../areas/security/x509-form.page';
 import { SslFormPage } from '../areas/security/ssl-form.page';
+import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
@@ -67,7 +69,6 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
-import { ReducedFormPage } from './reduced-form.page';
 import { ScreenDenied } from './screen-denied';
 
 /**
@@ -156,8 +157,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.DatabaseIntegrity': DatabaseIntegrityPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
-  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  // Story 16.13: the service editor serves its bare route and its id route.
+  'OcuPilot.Screen.Descriptor.ServiceForm': ServiceEditorPage,
+  // Story 16.14: the LDAP and Kerberos editor creates at its bare route and edits at its id route.
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': LdapEditorPage,
   'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
   'OcuPilot.Screen.Descriptor.AgentGovernance': GovernancePage,
   'OcuPilot.Screen.Descriptor.LogHub': LogHubPage,
@@ -187,10 +190,10 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
   'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskEditorPage,
-  // Story 9.9: the two reduced forms serve their bare route (one sentence back to the list) and
-  // their id route from the one page.
-  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
-  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  // Story 16.13's service editor serves its bare route (one sentence back to the list) and its id
+  // route from the one page, and Story 16.14's LDAP editor its create and its edit.
+  'OcuPilot.Screen.Descriptor.ServiceForm': ServiceEditorPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': LdapEditorPage,
   // Story 18.3: the local database form's id route is the properties editor beside the wizard.
   'OcuPilot.Screen.Descriptor.LocalDatabaseForm': DatabaseEditorPage,
 };

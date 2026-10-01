@@ -192,6 +192,11 @@ export interface TurnProposalDiffRow {
    * empty (AD-6). Present, and `true`, only on such a row; every other row carries no key.
    */
   readonly optional?: boolean;
+  /**
+   * The `STRINGS` key the tool declares its field's empty value reads as (DW-1016), such as
+   * `serviceAllowedUnrestricted`. Present only where the instance sent a non-empty key.
+   */
+  readonly emptyKey?: string;
 }
 
 /**
@@ -202,6 +207,8 @@ export interface TurnProposalDiffRow {
 export interface TurnProposalUnchangedRow {
   readonly field: string;
   readonly value: string;
+  /** As on a diff row: the declared word an empty value reads as, present only where sent (DW-1016). */
+  readonly emptyKey?: string;
 }
 
 /**
@@ -325,8 +332,42 @@ export interface TurnEntry {
    * runs, when it cites none, and on an entry stored before citations existed.
    */
   readonly citations: readonly Citation[];
+  /**
+   * Where the turn's screen data went (Story 16.15), as the instance recorded it for the turn's
+   * own provider call; `null` until its first dispatched call returns, for a turn whose every call was
+   * refused before dispatch, and on an entry stored before the fact existed.
+   */
+  readonly egress: TurnEgress | null;
   /** True only for the turn this tab is currently running. Never true for a restored entry. */
   readonly live: boolean;
+}
+
+/**
+ * A turn's egress fact (AD-42): the provider and endpoint host its call went to, whether that call
+ * left the instance, and whether the turn sent screen context. The instance judged all of it; this
+ * side only reads it.
+ */
+export interface TurnEgress {
+  readonly provider: string;
+  readonly endpointHost: string;
+  readonly leavesInstance: boolean;
+  readonly contextSent: boolean;
+}
+
+/**
+ * The wire `egress` member as a `TurnEgress`, or `null` when it is absent, `null`, or not an object
+ * carrying a non-empty `provider`, an `endpointHost` string and the two booleans.
+ */
+export function parseEgress(value: unknown): TurnEgress | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const provider = row['provider'];
+  const endpointHost = row['endpointHost'];
+  const leavesInstance = row['leavesInstance'];
+  const contextSent = row['contextSent'];
+  if (typeof provider !== 'string' || provider === '' || typeof endpointHost !== 'string') return null;
+  if (typeof leavesInstance !== 'boolean' || typeof contextSent !== 'boolean') return null;
+  return { provider, endpointHost, leavesInstance, contextSent };
 }
 
 export type SendOutcome = 'sent' | 'locked' | 'error';
@@ -540,6 +581,7 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       after: textAt(row, 'after'),
       removed: boolAt(row, 'removed'),
       ...(boolAt(row, 'optional') ? { optional: true } : {}),
+      ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
     });
   }
   return rows;
@@ -551,7 +593,11 @@ function parseProposalUnchanged(value: unknown): TurnProposalUnchangedRow[] {
   for (const raw of value) {
     const row = asRecord(raw);
     if (row === null) continue;
-    rows.push({ field: textAt(row, 'field'), value: textAt(row, 'value') });
+    rows.push({
+      field: textAt(row, 'field'),
+      value: textAt(row, 'value'),
+      ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+    });
   }
   return rows;
 }
@@ -688,6 +734,7 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
     stepsDropped: numberAt(row, 'stepsDropped'),
     proposals: restoredProposals(row['proposals']),
     citations: parseCitations(row['citations']),
+    egress: parseEgress(row['egress']),
     live: false,
   };
 }
@@ -1162,6 +1209,7 @@ export class TurnStore {
             stepsDropped: 0,
             proposals: [],
             citations: [],
+            egress: null,
             live: false,
           },
         ];
@@ -1186,6 +1234,7 @@ export class TurnStore {
       stepsDropped: 0,
       proposals: [],
       citations: [],
+      egress: null,
       live: true,
     };
     this.notify();
@@ -1616,8 +1665,9 @@ export class TurnStore {
     const proposals = parseProposals(body['proposals']);
     for (const proposal of proposals) this.proposalTurns.set(proposal.proposalId, turnId);
     const citations = parseCitations(body['citations']);
+    const egress = parseEgress(body['egress']);
     if (this.liveEntryValue !== null) {
-      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals, citations };
+      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals, citations, egress };
       this.notify();
     }
     // Published after the store's own state is settled and its subscribers told, so a screen

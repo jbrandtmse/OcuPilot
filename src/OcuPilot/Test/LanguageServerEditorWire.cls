@@ -16,6 +16,9 @@
 /// deletes three users, three roles and probe servers named <code>OcuPilotProbeELSEd*</code>, and starts
 /// and stops one. No vendor <code>%</code> server is touched. Teardown stops each probe before it is
 /// removed, since a deleted running server keeps listening, and removes its activity rows.</p>
+/// <p>The one probe it starts listens on a port below the instance's ephemeral port range, so no
+/// outbound connection's source port can hold it when it starts; the range is read at run time through
+/// <method>OcuPilot.Test.LanguageServerWire.EphemeralLow</method>.</p>
 Class OcuPilot.Test.LanguageServerEditorWire Extends %UnitTest.TestCase
 {
 
@@ -43,7 +46,7 @@ Parameter FORMPATH = "/language-server/form";
 Parameter NAMEPATH = "/language-server/name";
 
 /// <p>The probe servers, each <code>&lt;name&gt;:&lt;type&gt;:&lt;port&gt;</code>.</p>
-Parameter PROBES = "OcuPilotProbeELSEdJava:Java:53294,OcuPilotProbeELSEdPy:Python:53295,OcuPilotProbeELSEdNet:.NET:53296,OcuPilotProbeELSEdRemote:Remote:53297,OcuPilotProbeELSEdOdbc:ODBC:53298,OcuPilotProbeELSEdAgent:Java:53300,OcuPilotProbeELSEdTaken:Java:53301";
+Parameter PROBES = "OcuPilotProbeELSEdJava:Java:31294,OcuPilotProbeELSEdPy:Python:53295,OcuPilotProbeELSEdNet:.NET:53296,OcuPilotProbeELSEdRemote:Remote:53297,OcuPilotProbeELSEdOdbc:ODBC:53298,OcuPilotProbeELSEdAgent:Java:53300,OcuPilotProbeELSEdTaken:Java:53301";
 
 /// <p>The principals: the screen's two pairs; those and <code>%DB_IRISSYS:WRITE</code>; and exactly the
 /// tools' four pairs.</p>
@@ -181,7 +184,7 @@ Method TestTheExactPairsPrincipalCreatesEachTypeAndReadsItsForm()
     Do $$$AssertEquals(tStatus _ " " _ ..Violation(tAnswer), "422 Custom.JavaHome:LANGUAGESERVER.CUSTOM.PATH", "a file location is refused on its field")
     Set tSC = ..Call("POST", ..#CREATEPATH, tUser, {"Name": "OcuPilotProbeELSEdJava", "Type": "Java", "Port": 53300}, .tStatus, .tAnswer, .tHeaders)
     Do $$$AssertEquals(tStatus _ " " _ ..Violation(tAnswer), "422 Name:LANGUAGESERVER.NAME.TAKEN", "a taken name is refused on Name")
-    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdAgent", "Port") _ "|" _ ..Stored("OcuPilotProbeELSEdJava", "Port"), "|53294", "and neither refusal created or changed a server")
+    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdAgent", "Port") _ "|" _ ..Stored("OcuPilotProbeELSEdJava", "Port"), "|31294", "and neither refusal created or changed a server")
 }
 
 /// <p>AC2, AD-4's named exception: an edit of the port keeps every <code>Custom</code> member; a
@@ -252,7 +255,7 @@ Method TestEachMissingPairIsRefusedByName()
         }
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
     }
-    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdJava", "Port") _ "|" _ ..Stored("OcuPilotProbeELSEdAgent", "Port"), "53294|", "the instance is unchanged: the probe keeps its port and nothing was created")
+    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdJava", "Port") _ "|" _ ..Stored("OcuPilotProbeELSEdAgent", "Port"), "31294|", "the instance is unchanged: the probe keeps its port and nothing was created")
 }
 
 /// <p>AC4, AC6, AD-8 as amended: the exact-pairs principal's delete of a Python server is refused 403
@@ -288,9 +291,14 @@ Method TestAPythonDeleteNeedsCallOutAndAStoppedServerIsDeleted()
 /// <p>Mutation (Rule 19): drop the running refusal from
 /// <method>OcuPilot.Screen.Tool.LanguageServerUpdate.MergeUpdate</method> -- the edit reaches the vendor
 /// and this goes red. Let <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> store a proposal whose
-/// state diff refused -- the agent's delete is minted and this goes red.</p>
+/// state diff refused -- the agent's delete is minted and this goes red. Set the Java probe's port in
+/// <parameter>PROBES</parameter> to 53294 -- the port assertion goes red, naming the port and the
+/// range's low bound.</p>
 Method TestAStartedServerIsRefusedEditAndDelete()
 {
+    Set tLow = ##class(OcuPilot.Test.LanguageServerWire).EphemeralLow()
+    Set tPort = ..ProbePort("OcuPilotProbeELSEdJava")
+    Do $$$AssertTrue((tLow '= "") && (tPort < tLow), "probe port " _ tPort _ " is below the instance's ephemeral port range, " _ $Select(tLow '= "": "which starts at " _ tLow, 1: "which could not be read from " _ ##class(OcuPilot.Test.LanguageServerWire).#PORTRANGEFILE))
     Do $$$AssertStatusOK(..CreateProbe("OcuPilotProbeELSEdJava", ""), "a Java probe is created")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
     Set tSC = ..Mint(..#DELETE, "OcuPilotProbeELSEdJava", {"Name": "OcuPilotProbeELSEdJava"}, tTurn, .tStopped)
@@ -309,7 +317,7 @@ Method TestAStartedServerIsRefusedEditAndDelete()
     Do $$$AssertTrue($$$ISERR(tSC) && ($System.Status.GetErrorText(tSC) [ ..#RUNNING) && (tHttp = 400) && '$IsObject(tProposal), "the agent's delete is refused 400 at the mint: " _ tHttp _ " " _ $System.Status.GetErrorText(tSC))
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm($Select($IsObject($Get(tStopped)): tStopped.%Get("proposalId"), 1: ""), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the delete minted while stopped is refused at Confirm")
-    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdJava", "Port"), 53294, "and the server keeps its port and its definition")
+    Do $$$AssertEquals(..Stored("OcuPilotProbeELSEdJava", "Port"), 31294, "and the server keeps its port and its definition")
     Do ..StopOutOfBand("OcuPilotProbeELSEdJava")
     Do $$$AssertEquals(..Running("OcuPilotProbeELSEdJava"), 0, "the probe is stopped")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)

@@ -152,7 +152,6 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/databases/details',
       'os-management/database-free-space',
       'os-management/databases/integrity',
-      'os-management/databases/integrity-log',
       'os-management/databases/volumes',
       'os-management/devices/edit',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
@@ -180,15 +179,17 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/locks',
       'os-management/system-usage',
       'os-management/databases',
+      // Story 18.17: the Integrity log, the fifth OS management entry, right after Databases.
+      'os-management/databases/integrity-log',
       'os-management/devices',
-      // Story 18.2: Namespaces, the sixth OS management entry.
+      // Story 18.2: Namespaces, the seventh OS management entry.
       'os-management/namespaces',
-      // Story 16.7: License usage and the Dashboard, the seventh and eighth OS management entries.
+      // Story 16.7: License usage and the Dashboard, the eighth and ninth OS management entries.
       'os-management/license-usage',
       'os-management/dashboard',
-      // Story 16.10: External language servers, position 9.
+      // Story 16.10: External language servers, position 10.
       'os-management/language-servers',
-      // Story 18.3: Local databases, the tenth OS management entry.
+      // Story 18.3: Local databases, the eleventh OS management entry.
       'os-management/local-databases',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
@@ -217,7 +218,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
-      // Story 9.9: the unlisted reduced LDAP configuration form, reached from the LDAP / Kerberos list.
+      // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',
       'security/oauth/clients',
@@ -250,17 +251,18 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Integrity log, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
-// Story 18.2 (AC1): Namespaces is OS management's sixth side-bar entry, after Devices, and its
-// editor takes no position. Story 18.3 (AC1): Local databases is the tenth, after Story 16.10's
-// External language servers, and its form takes none.
+// Story 18.2 (AC1): Namespaces is OS management's seventh side-bar entry, after Devices, and its
+// editor takes no position. Story 18.3 (AC1): Local databases is the eleventh, after Story 16.10's
+// External language servers, and its form takes none. Story 18.17 (AC5): the Integrity log is the
+// fifth, right after Databases.
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
-// the built-screens roster above go red.
-test('OS management lists Processes, Locks, System usage, Databases, Devices, Namespaces, then License usage, Dashboard, External language servers and Local databases', () => {
+// the built-screens roster above go red; so does DatabaseIntegrityLog back at 0.
+test('OS management lists Processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, then License usage, Dashboard, External language servers and Local databases', () => {
   assert.deepEqual(
     listedScreensForArea('os-management').map((screen) => screen.route),
     [
@@ -268,14 +270,16 @@ test('OS management lists Processes, Locks, System usage, Databases, Devices, Na
       'os-management/locks',
       'os-management/system-usage',
       'os-management/databases',
+      // Story 18.17: the fifth entry.
+      'os-management/databases/integrity-log',
       'os-management/devices',
       'os-management/namespaces',
-      // Story 16.7: the seventh and eighth entries.
+      // Story 16.7: the eighth and ninth entries.
       'os-management/license-usage',
       'os-management/dashboard',
-      // Story 16.10: the ninth entry.
+      // Story 16.10: the tenth entry.
       'os-management/language-servers',
-      // Story 18.3: the tenth.
+      // Story 18.3: the eleventh.
       'os-management/local-databases',
     ]
   );
@@ -359,8 +363,8 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   assert.deepEqual([...CREATE_ONLY_FORMS], [], 'no form is create-only');
   assert.equal(editorScreenFor(schedule)?.route, 'tasks/schedule/edit', 'so a task opens Edit task at the form\'s id route');
   assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'beside the task\'s details');
-  // Story 9.9: the two reduced forms are the editors their lists' name cells open.
-  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its reduced form');
+  // Story 16.14 and Story 16.13: the two editors their lists' name cells open.
+  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its editor');
   assert.equal(editorScreenFor(screenForRoute('permissions/services'))?.route, 'permissions/services/edit', 'and the Services list its own');
   assert.equal(
     editorScreenFor(screenForRoute('os-management/locks')),

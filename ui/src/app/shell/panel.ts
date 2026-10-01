@@ -22,6 +22,7 @@ import {
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { type Citation, formatCitationAbsent } from '../core/citations';
 import type { ProposalDraft } from '../core/draft';
+import { egressLine, type EgressLine } from '../core/egress-line';
 import { decodeEntityId } from '../core/entity-id';
 import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
@@ -199,6 +200,8 @@ interface PanelTurnView {
   readonly citations: readonly Citation[];
   /** The absent sentence for each cited row a click found gone, in citation order. */
   readonly absent: readonly string[];
+  /** The data-egress line beneath the message (Story 16.15), or `null` when the turn has none. */
+  readonly egress: EgressLine | null;
 }
 
 /**
@@ -465,6 +468,9 @@ interface PanelTurnView {
           @for (turn of turns; track $index) {
             <div class="ocu-panel-turn">
               <p class="ocu-panel-message-user">{{ turn.message }}</p>
+              @if (turn.egress) {
+                <p class="ocu-panel-egress-line" [class.ocu-panel-egress-line-leaves]="turn.egress.leaves">{{ turn.egress.text }}</p>
+              }
               @for (step of turn.steps; track step.seq) {
                 @if (step.kind === 'announce') {
                   @if (step.status !== 'error') {
@@ -984,6 +990,7 @@ export class Panel {
       const citations = errorBanner === null ? entry.citations : [];
       return {
         message: entry.message,
+        egress: egressLine(entry.egress),
         streamed: errorBanner === null ? streamedText(entry) : null,
         citations,
         absent: citations

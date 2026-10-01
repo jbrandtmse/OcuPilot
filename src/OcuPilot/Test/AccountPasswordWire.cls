@@ -372,13 +372,28 @@ Method TestAWrongCurrentPasswordIsAViolationOnThatField()
 /// <p>AC4 -- a new password this instance's policy refuses is a 422 violation on
 /// <code>newPassword</code> carrying <b>the instance's own text</b>.</p>
 /// <p>Needs nothing of the instance beyond its shipped <code>PasswordPattern</code>: a
-/// two-character password is shorter than the three <code>3.255ANP</code> admits.</p>
-/// <p>Mutation: drop <code>845</code> from
+/// two-character password is shorter than the three <code>3.255ANP</code> admits. The leg reads the
+/// pattern first and stops red where it admits <parameter>TOOSHORTPASSWORD</parameter>, so the POST
+/// can never change the password. The expected sentence is derived from the code alone, the text
+/// <code>%SYSTEM.Status</code> carries for the 845 a pattern refusal embeds, never from a second
+/// change.</p>
+/// <p>Mutations: drop <code>845</code> from
 /// <parameter>OcuPilot.Api.Account.POLICYCODES</parameter> -&gt; the refusal falls through to the
-/// 500 arm and every assertion below goes red.</p>
+/// 500 arm and every assertion below goes red; have
+/// <method>OcuPilot.Api.Account.PolicyText</method> read index 1 -&gt; the reason is the outer
+/// error's text and the sentence assertion goes red.</p>
 Method TestAPolicyRefusalCarriesTheInstancesOwnText()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "the probe principal was prepared")
+    Set tPattern = ..PasswordPattern()
+    Set tAdmits = 1
+    Try {
+        If tPattern '= "" Set tAdmits = (..#TOOSHORTPASSWORD ? @tPattern)
+    } Catch {
+        Set tAdmits = 1
+    }
+    Do $$$AssertTrue('tAdmits, "this instance's PasswordPattern (" _ tPattern _ ") refuses the new password, so the POST cannot change it")
+    If tAdmits Quit
     Set tSC = ..Post(..Payload(..PreparedPassword, ..#TOOSHORTPASSWORD), .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 422, "the policy refusal is a validation failure")
@@ -392,11 +407,11 @@ Method TestAPolicyRefusalCarriesTheInstancesOwnText()
     Set tViolation = tFault.detail.violations.%Get(0)
     Do $$$AssertEquals(tViolation.field, "newPassword", "on the field that was refused")
     Do $$$AssertEquals(tViolation.code, "ACCOUNT.PASSWORD.POLICY", "with the published code")
-    ; The instance's own sentence, not OcuPilot's fallback: the same words $System.Security
-    ; reports for this build's pattern, taken from a status raised here rather than transcribed.
-    Set tProbe = $System.Security.ChangePassword(..#PROBEUSER, ..#TOOSHORTPASSWORD, ..PreparedPassword, .tProbeSC)
-    Do $$$AssertEquals(tProbe, 0, "the probe call is refused too, so its status is the same refusal")
-    Do $$$AssertEquals(tViolation.reason, $System.Status.GetOneStatusText(tProbeSC, 2), "and the instance's own policy sentence")
+    ; The instance's own sentence, not OcuPilot's fallback: the text $System.Status carries for
+    ; 845, the error the change embeds for a pattern refusal.
+    Set tExpected = $System.Status.GetOneStatusText($System.Status.Error(845), 1)
+    Do $$$AssertNotEquals(tExpected, "", "the instance has a sentence for 845")
+    Do $$$AssertEquals(tViolation.reason, tExpected, "and the instance's own policy sentence")
     Do $$$AssertNotEquals(tViolation.reason, ##class(OcuPilot.Api.Error).#REASONACCOUNTPASSWORDPOLICY, "rather than OcuPilot's fallback wording")
     Do $$$AssertEquals((tBody [ ..PreparedPassword), 0, "and no password value is anywhere in the response")
 }
@@ -614,6 +629,22 @@ Method TestZCorrectChangeSucceedsAndLeavesTheAccountAuthorized()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#INSTANCEPATH, ..#PROBEUSER, tOld, .tOldStatus, .tOldBody, .tOldHeaders)
     Do $$$AssertStatusOK(tSC, "the stale-credential request completes")
     Do $$$AssertEquals(tOldStatus, 401, "and the old password no longer authenticates")
+}
+
+/// <p>This instance's <code>PasswordPattern</code>, or <code>""</code> when it cannot be read.</p>
+ClassMethod PasswordPattern() As %String
+{
+    Set tPattern = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If $$$ISOK(##class(Security.System).Get("SYSTEM", .tSystem)) Set tPattern = $Get(tSystem("PasswordPattern"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tPattern = ""
+    }
+    Quit tPattern
 }
 
 }

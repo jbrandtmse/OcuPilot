@@ -407,6 +407,7 @@ ClassMethod HandleCreate() As %Status
         ; the create left at its default -- the read-only flag, the retention window and the two
         ; bounds among them -- from the record of the write that set them.
         Do ..LogChange("create", tRow.%Id(), .tNothing, .tAfter)
+        Do ..NoteModelUnused(tRow.%Id(), .tAfter)
         Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(201, ..FullProjection(tRow))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -487,6 +488,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tEntry = ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
         }
         Do ..LogChange("update", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
+        Do ..NoteModelUnused(pId, .tAfter)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(..FullProjection(tRow))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -1611,6 +1613,30 @@ ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAf
         If $IsObject(pEffects) Do tData.%Set("effects", pEffects)
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
         Do ..RecordAudit(pVerb, pId, tChanges, tSecurity, pEffects)
+    } Catch ex {
+    }
+}
+
+/// <p>Log one info line when definition <var>pId</var>, as saved (<var>pAfter</var>, subscripted by
+/// wire field name), stores an endpoint its provider's adapter calls without the definition's Model
+/// (DW-1192): the provider's catalog row's canonical endpoint carries
+/// <parameter>OcuPilot.Kernel.Provider.Gemini.MODELPLACEHOLDER</parameter>, and the stored endpoint
+/// is non-empty and does not (<method>OcuPilot.Kernel.Provider.Gemini.ModelUnused</method>). The
+/// line names the definition's id, name and Model, never its endpoint, key or credential (AD-35).
+/// The save stands whatever happens here.</p>
+ClassMethod NoteModelUnused(pId As %String, ByRef pAfter)
+{
+    Try {
+        Set tEndpoint = $Get(pAfter("endpointUrl"))
+        If tEndpoint = $Char(0) Set tEndpoint = ""
+        If '##class(OcuPilot.Kernel.Provider.Gemini).ModelUnused(tEndpoint) Quit
+        If '$ClassMethod(..CatalogClass(), "Row", $Get(pAfter("provider")), .tRow) Quit
+        If '$IsObject(tRow) || '(tRow.%Get("defaultEndpoint") [ ##class(OcuPilot.Kernel.Provider.Gemini).#MODELPLACEHOLDER) Quit
+        Set tData = {}
+        Do tData.%Set("id", pId, "string")
+        Do tData.%Set("name", $Get(pAfter("name")), "string")
+        Do tData.%Set("model", $Get(pAfter("model")), "string")
+        Do ..LogInfo(..#LOGSUBSYSTEM, "model unused: the endpoint carries no {model} placeholder, so calls go to the model it names", tData)
     } Catch ex {
     }
 }

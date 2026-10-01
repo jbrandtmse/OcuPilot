@@ -220,7 +220,11 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/services/form" path="/api/ocupilot/services/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/services/:id" path="/api/ocupilot/services/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ldap/form" path="/api/ocupilot/ldap/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ldap/name" path="/api/ocupilot/ldap/name" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ldap/examples" path="/api/ocupilot/ldap/examples" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/ldap/:id/test" path="/api/ocupilot/ldap/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="PUT" url="/ldap/:id" path="/api/ocupilot/ldap/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/ldap" path="/api/ocupilot/ldap" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/audit-events/form" path="/api/ocupilot/audit-events/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/audit-events/:id" path="/api/ocupilot/audit-events/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/audit-events" path="/api/ocupilot/audit-events" disposition="envelope" refusal="1"/>

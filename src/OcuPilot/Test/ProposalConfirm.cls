@@ -1,16 +1,20 @@
 /// <p>Pins the confirm path (Story 5.3, AD-40, AD-6, AD-8, AD-30, AD-34): the happy path sends the
 /// stored payload and nothing else, and each of the refusals -- from a turn, a closed channel, not
 /// the minting user, the conversation, the definition, a restraint, a revoked pair, a changed
-/// target -- is reachable on its own.</p>
+/// target -- is reachable on its own; and the scoped target is held from the fresh read through the
+/// port write, by a confirm and by a screen row action, and released on every exit (AD-34,
+/// AD-53).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot's protected state, an account holding
 /// <code>%All</code>, and, for <method>TestAnUpdateConfirmCarryingAPasswordIsRefused</method> alone,
 /// <code>OCUPILOT_ALLOW_PRINCIPALS</code> reading <code>1</code>, since that leg creates and removes
 /// its own probe account through <class>OcuPilot.Test.ProposalFixture</class>. Every other port call
 /// is that fixture's, so <b>no write reaches the instance</b>: the confirmed write goes to the
 /// fixture, which records the body it was sent; the probe account's leg mints through the shipped
-/// port's read, and its confirm is refused before any port call. Every row names the running
-/// account, because the claim's privilege re-check is against a
-/// real principal, and is removed in <method>OnAfterOneTest</method> by the turn it was minted
+/// port's read, and its confirm is refused before any port call; the row action's port is the same
+/// fixture, through <class>OcuPilot.Test.SslActionFixture</class>. The held-target legs start a
+/// short-lived process for each lock probe, which tries OcuPilot's target lock once and ends. Every
+/// row names the running account, because the claim's privilege re-check is against a real
+/// principal, and is removed in <method>OnAfterOneTest</method> by the turn it was minted
 /// on.</p>
 Class OcuPilot.Test.ProposalConfirm Extends %UnitTest.TestCase
 {
@@ -56,6 +60,15 @@ Parameter FRESH = "{""Name"":""/csp/ocupilotprobeconfirm"",""Description"":""bef
 /// refusal test below passes without ever reaching the assertion it exists for. Since the write's
 /// set is the screen's own two pairs, this is the first of them.</p>
 Parameter DENIEDPAIR = "%Admin_Secure:USE";
+
+/// <p>The screen whose list Delete drives the row-action hold leg.</p>
+Parameter X509LIST = "OcuPilot.Screen.Descriptor.X509CredentialList";
+
+/// <p>The alias that leg deletes; the fixture answers for it, so nothing is deleted.</p>
+Parameter X509PROBE = "OcuPilotProbeConfirmHold";
+
+/// <p>The certificate read that leg's fresh read answers.</p>
+Parameter X509INFO = "{""HasPrivateKey"":true,""SerialNumber"":""11"",""IssuerDN"":""CN=Issuer"",""SubjectDN"":""CN=Probe"",""ValidityNotBefore"":""2026-01-01 00:00:00"",""ValidityNotAfter"":""2126-01-01 00:00:00""}";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -216,6 +229,95 @@ Method TestTheConfirmedWriteSendsTheStoredPayload()
     Do $$$AssertNotEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ConfirmedAt"), "", "with the moment of the write recorded")
     Do $$$AssertEquals(tResult.%Get("state"), "confirmed", "the answer carries the terminal state")
     Do $$$AssertNotEquals(tResult.%Get("confirmedAt"), "", "and the confirmation stamp the card renders")
+}
+
+/// <p>AD-34, AD-53: a confirm holds its scoped target from its gates through the port write and
+/// the read-back, so no other write can take the target between the confirm's prohibited-set check
+/// or re-read and its write, and it lets go on every exit: after a write that succeeded, a refusal
+/// at the privilege gate, a write that raised, and a refusal by the prohibited set. The fixture's
+/// port asks a second process for the lock at the fresh read, at the write and at the read-back,
+/// and its prohibited set at the check, under the key the confirm holds
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>).</p>
+/// <p>Mutations (Rule 19): take the hold in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> after its fingerprint re-read --
+/// the second process takes the lock at the read and this goes red; take it after the gates,
+/// just before that re-read -- it takes the lock at the prohibited-set check and this goes red;
+/// release it before <method>OcuPilot.Kernel.Proposal.Operation.ApplyAt</method>, or before the
+/// read-back -- it takes the lock at the write, or at the read-back, and this goes red; drop the
+/// release after that method's <code>Catch</code> -- the lock is still held after each confirm
+/// answers and this goes red.</p>
+Method TestTheTargetIsHeldThroughThePortWriteAndReleased()
+{
+    Set tKey = ..Seed()
+    If tKey = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tStored), "the stored row reads back")
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey($Get(tStored("targetRef")))
+    Do $$$AssertNotEquals(tLockKey, "", "the proposal's target names a lock")
+    If tLockKey = "" Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "before the confirm another process can take the target's lock")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite(..#FRESH)
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLockProbe(tLockKey)
+    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode)
+    Do $$$AssertStatusOK(tSC, "the confirm succeeds: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, "the write is made once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtRead(), 0, "at the confirm's fresh read, another process cannot take the target's lock")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtWrite(), 0, "nor while the write is made")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtReadBack(), 0, "nor at the read-back")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "once the confirm answers, it can")
+
+    Set tRefused = ..Seed()
+    If tRefused = "" Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair(..#DENIEDPAIR)
+    Set tSC = ..Confirm(tRefused, "", .tHttp, .tCode)
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair("")
+    Do $$$AssertEquals(tHttp, 403, "a confirm refused at the privilege gate answers 403: " _ tCode)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "and lets go of the target")
+
+    Set tRaised = ..Seed()
+    If tRaised = "" Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWriteException()
+    Set tSC = ..Confirm(tRaised, "", .tHttp, .tCode)
+    Do $$$AssertEquals(tHttp, 500, "a confirm whose write raised answers 500")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "and lets go of the target too")
+
+    Set tProhibited = ..Seed()
+    If tProhibited = "" Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.ProposalFixture")
+    Set tSC = ..Confirm(tProhibited, "", .tHttp, .tCode)
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "403 AGENT.PROHIBITED", "a confirm the prohibited set refuses answers 403")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtGate(), 0, "at the prohibited-set check, another process cannot take the target's lock")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "and the refusal lets go of the target")
+}
+
+/// <p>AD-34, AD-53: a screen row action holds its target from its fresh read through its port
+/// write and its read-back, as a confirm does, and lets go when it answers. The X.509 list's
+/// Delete runs through <class>OcuPilot.Test.SslActionFixture</class>, whose port is this fixture's,
+/// so nothing is deleted; the port asks a second process for the lock at the fresh read, at the
+/// write and at the read-back, under the key the action holds.</p>
+/// <p>Mutations (Rule 19): take the hold in <method>OcuPilot.Api.ScreenAction.Run</method> after
+/// its fresh read -- the second process takes the lock at the read and this goes red; release it
+/// before the port write, or before the read-back -- it takes the lock at the write, or at the
+/// read-back, and this goes red; drop the release after that method's <code>Catch</code> -- the
+/// lock is still held once the action answers and this goes red.</p>
+Method TestARowActionHoldsItsTargetFromTheFreshReadThroughTheWrite()
+{
+    Set tType = $ClassMethod(..#X509LIST, "PrimaryEntityType")
+    Set tId = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, ..#X509PROBE)
+    Do ##class(OcuPilot.Kernel.EntityRef).Key(tType, ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(..#X509LIST, "Scope")), tId, .tRef)
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey($Get(tRef))
+    Do $$$AssertNotEquals(tLockKey, "", "the certificate names a lock")
+    If tLockKey = "" Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "before the action another process can take the target's lock")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#X509INFO)
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLockProbe(tLockKey)
+    Set tSC = ##class(OcuPilot.Test.SslActionFixture).Act($ClassMethod(..#X509LIST, "ToolIdentifier"), {"action": "delete", "id": (..#X509PROBE)}, .tAnswer, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the route runs")
+    Do $$$AssertEquals(tStatus, 200, "the list's Delete is applied: " _ $Get(tAnswer))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtRead(), 0, "at the action's fresh read, another process cannot take the target's lock")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtWrite(), 0, "nor while its write is made")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeAtReadBack(), 0, "nor at its read-back")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LockFreeInAnotherProcess(tLockKey), 1, "once the action answers, it can")
 }
 
 /// <p>AC1, AD-40: a process acting for the model cannot confirm, and the row is untouched.</p>

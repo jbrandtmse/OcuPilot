@@ -181,7 +181,11 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/services/form" Method="GET" Call="ServiceFormRead"/>
   <Route Url="/services/:id" Method="PUT" Call="ServiceUpdate"/>
   <Route Url="/ldap/form" Method="GET" Call="LdapFormRead"/>
+  <Route Url="/ldap/name" Method="GET" Call="LdapNameCheck"/>
+  <Route Url="/ldap/examples" Method="GET" Call="LdapExamples"/>
+  <Route Url="/ldap/:id/test" Method="POST" Call="LdapTest"/>
   <Route Url="/ldap/:id" Method="PUT" Call="LdapUpdate"/>
+  <Route Url="/ldap" Method="POST" Call="LdapCreate"/>
   <Route Url="/audit-events/form" Method="GET" Call="AuditEventFormRead"/>
   <Route Url="/audit-events/:id" Method="PUT" Call="AuditEventUpdate"/>
   <Route Url="/audit-events" Method="POST" Call="AuditEventCreate"/>
@@ -1509,6 +1513,34 @@ ClassMethod LdapFormRead() As %Status
 ClassMethod LdapUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Security.LdapSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ldap/name</code>: the LDAP editor's check of the
+/// name the instance would store and whether it is taken (Story 16.14).</p>
+ClassMethod LdapNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ldap/examples</code>: the LDAP editor's group
+/// name examples (Story 16.14).</p>
+ClassMethod LdapExamples() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleExamples()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ldap/:id/test</code>: the LDAP editor's Test
+/// authentication, run in process (Story 16.14). The sub-resource precedes <code>/ldap/:id</code>.</p>
+ClassMethod LdapTest(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleTest(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ldap</code>: the LDAP editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LdapCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /audit-events/form</code>: the user audit event

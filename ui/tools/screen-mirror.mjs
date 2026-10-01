@@ -2527,8 +2527,11 @@ export function rowTargetResolutionProblem(screens) {
   return null;
 }
 
-/** The rules a `read.source.rowGet` derived field may name (AD-36). */
-export const ROW_GET_RULES = ['beforeToday'];
+/**
+ * The rules a `read.source.rowGet` derived field may name (AD-36), byte for byte
+ * `OcuPilot.Screen.Registry`'s own `ROWGETRULES`: `beforeToday`, and `bit64` (Story 16.14, DW-1639).
+ */
+export const ROW_GET_RULES = ['beforeToday', 'bit64'];
 
 /**
  * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
@@ -3142,7 +3145,7 @@ export interface ClassicRowLink {
 /** A field a detail call derives on the instance from one of its detail fields (AD-36). */
 export interface ReadDerived {
   readonly field: string;
-  readonly rule: 'beforeToday';
+  readonly rule: 'beforeToday' | 'bit64';
   readonly from: string;
 }
 

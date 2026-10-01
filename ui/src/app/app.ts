@@ -23,6 +23,8 @@ import { AuditEventEditor } from './areas/security/audit-event-editor.store';
 import { WalletActions } from './areas/security/wallet-actions';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { SslActions } from './areas/security/ssl-actions';
+import { LdapActions } from './areas/security/ldap-actions';
+import { LdapEditor } from './areas/security/ldap-editor.store';
 import { TaskActions } from './areas/tasks/task-actions';
 import { SslForm } from './areas/security/ssl-form.store';
 import { X509Actions } from './areas/security/x509-actions';
@@ -329,6 +331,9 @@ export class App {
   // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
   private readonly sslActions = inject(SslActions);
   private readonly sslForm = inject(SslForm);
+  // The LDAP / Kerberos list's declared Create, the same way (`areas/security/ldap-actions.ts`).
+  private readonly ldapActions = inject(LdapActions);
+  private readonly ldapEditor = inject(LdapEditor);
   // The Task schedule's declared Create, which opens the New Task wizard, the same way
   // (`areas/tasks/task-actions.ts`). The wizard's store resets when its page is left.
   private readonly taskActions = inject(TaskActions);
@@ -643,6 +648,8 @@ export class App {
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
       this.sslForm.reset();
+      // The LDAP editor holds a search password THIS principal typed and has not saved (AD-35).
+      this.ldapEditor.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation

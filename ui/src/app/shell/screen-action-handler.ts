@@ -58,7 +58,8 @@ export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
  * list (Story 18.3), whose Delete types the name, states the removal's impact and offers to delete
  * the file too, and Database details (Story 18.4), whose five disk operations each warn first -- the
  * mount carrying its read-only flag, the truncate and the compact a size -- and whose Dismount states
- * the prohibited set's refusal of a protected database when its dialog opens.
+ * the prohibited set's refusal of a protected database when its dialog opens, and the LDAP / Kerberos
+ * list (Story 16.14), whose Delete types the name.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -79,6 +80,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.X509CredentialList',
   'OcuPilot.Screen.Descriptor.WalletSecretList',
   'OcuPilot.Screen.Descriptor.SslConfigList',
+  'OcuPilot.Screen.Descriptor.LdapConfigList',
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
   'OcuPilot.Screen.Descriptor.OAuthServerTab',
   'OcuPilot.Screen.Descriptor.NamespaceList',
@@ -347,6 +349,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.X509CredentialList': { delete: STRINGS.x509DeleteConsequence },
   'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.LdapConfigList': { delete: STRINGS.ldapDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
   [NAMESPACE_LIST]: { delete: STRINGS.namespaceDeleteConsequence },

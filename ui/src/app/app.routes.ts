@@ -33,7 +33,9 @@ const GUARDED_ARCHETYPE = 'form-page';
  * One route per **built** screen at its declared route, plus `<route>/:id` for the screens
  * whose id accessor says they are keyed by one (AD-13: the id is one segment, always), plus a
  * wildcard so a URL the client does not know renders the shell's not-found screen rather than a
- * blank page -- the server already answers `index.html` for it.
+ * blank page -- the server already answers `index.html` for it. **Every declared route precedes
+ * every `:id` route**, because Angular takes the first match and a `:id` matches any one segment:
+ * a screen routed under another's id route (the Integrity log under Databases) is never taken by it.
  *
  * **The roster is `builtScreens()`, not an area's listed screens.** A screen declaring
  * `sideBarPosition` 0 is routable and never advertised (`core/navigation.ts`), so the filter that
@@ -62,6 +64,7 @@ export const routes: Routes = buildRoutes(builtScreens());
  */
 export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
   const built: Routes = [];
+  const ids: Routes = [];
   for (const screen of screens) {
     if (screen.route === '') {
       // The root screen administers no entity -- Home's descriptor declares `id.kind` `none` --
@@ -76,9 +79,9 @@ export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
         : {};
     built.push({ path: screen.route, component: ScreenOutlet, ...guarded });
     if (hasIdRoute(screen)) {
-      built.push({ path: `${screen.route}/:id`, component: ScreenOutlet, ...guarded });
+      ids.push({ path: `${screen.route}/:id`, component: ScreenOutlet, ...guarded });
     }
   }
-  built.push({ path: '**', component: ScreenOutlet });
+  built.push(...ids, { path: '**', component: ScreenOutlet });
   return built;
 }

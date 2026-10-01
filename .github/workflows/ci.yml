@@ -23,9 +23,11 @@
 #   browser         the roll-up for the browser legs, over the spec files the checkout carries.
 #   images          both stock Community editions at the pinned version: src/OcuPilot/ compiles
 #                   and the admin API reports v2 through the port's own version read, then a
-#                   throwaway on that edition installs, drift-checks /api/admin, smokes with no
-#                   --namespace (HSCUSTOM, else USER) and reads the credentials rung as offered, so
-#                   no HealthShare-only dependency can go unnoticed (NFR-13).
+#                   product-start throwaway on that edition installs with no test class compiled,
+#                   drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else USER) and
+#                   reads the credentials rung as offered, so no HealthShare-only dependency can go
+#                   unnoticed (NFR-13); it then starts again over its volume with two test classes
+#                   compiled into it and deletes both.
 #   package         two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive
 #                   is built on the first and loaded on the second, which smoke then reports on. It
 #                   waits on nothing, so it runs beside the shards rather than after them.
@@ -133,7 +135,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 46
+    timeout-minutes: 61
     strategy:
       fail-fast: false
       matrix:
@@ -236,7 +238,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 40
+    timeout-minutes: 43
     strategy:
       fail-fast: false
       matrix:
@@ -345,10 +347,15 @@ jobs:
         run: npm run build
       - name: reserve the throwaway host ports
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
+      # A product start (`--product`): the throwaway omits OCUPILOT_LOAD_TESTS, as this
+      # repository's docker-compose.yml does, so the start hook leaves the roster's test-scope
+      # package out of the compile (AD-17). The instance and browser legs keep it and compile it.
       - name: bring up a throwaway container on this edition
-        run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}
+        run: sh scripts/ci-throwaway.sh up --product --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/
+      - name: the product start compiled no test class
+        run: sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci
       - name: admin API drift against the vendored table
         working-directory: ui
         run: node tools/admin-spec.mjs --origin http://localhost:52781
@@ -360,6 +367,13 @@ jobs:
       # form must offer the API key there and not the environment-variable rung (Story 8.9 AC2).
       - name: the credentials rung is offered in the install namespace
         run: curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'
+      # A product start over a volume an earlier compile left test classes on deletes them (DW-1885):
+      # two classes are compiled into the test package and the throwaway starts again over the same
+      # volume. It runs after the steps above, so they read a first install on a fresh volume.
+      - name: a product start over a reused volume deletes the test classes it finds
+        run: sh scripts/ci-throwaway.sh product-reuse --dir /tmp/ocupilot-images-ci
+      - name: the product start over the reused volume left no test class
+        run: sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci

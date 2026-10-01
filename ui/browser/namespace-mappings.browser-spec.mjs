@@ -9,8 +9,8 @@
  *    and shows the mapping the instance holds, none takes a side-bar position, and each list's
  *    locator leads back to Namespaces.
  * 2. **Create, edit and delete a global mapping through the screens** (AC2, AC3): the list's Create
- *    carries the namespace into the form, a name beginning with `%` shows the system-global line under
- *    Name, the create replaces the route with the new mapping's edit, the name cell opens that edit,
+ *    carries the namespace into the form, a name beginning with `%`, or with `:` (Story 18.17), shows
+ *    the system-global line under Name while one beginning with a letter does not, the create replaces the route with the new mapping's edit, the name cell opens that edit,
  *    whose Database change sends that field alone, and the typed-name Delete removes the mapping.
  * 3. **Copy mappings** (AC6): the Namespaces list's row action copies the source's mappings into the
  *    destination behind its dialog, the status line reads running then done, and the destination holds
@@ -351,6 +351,15 @@ test('AC2, AC3: a global mapping is created from the list, edited from its name 
     await page.type(`#${ID}-Name`, '%OcuProbe1814');
     await page.waitForFunction(() => document.querySelector('[data-mapping-system-global]') !== null, { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('[data-mapping-system-global]', (node) => node.textContent.trim()), STRINGS.mappingSystemGlobalConsequence);
+
+    // DW-1813: an empty low end reaches the % globals too, and a range beginning with a letter does not.
+    await page.click(`#${ID}-Name`, { clickCount: 3 });
+    await page.type(`#${ID}-Name`, ':OcuProbe1817');
+    await page.waitForFunction(() => document.querySelector('[data-mapping-system-global]') !== null, { timeout: config.navigationTimeoutMs });
+    await page.click(`#${ID}-Name`, { clickCount: 3 });
+    await page.type(`#${ID}-Name`, 'OcuProbe1817:');
+    await page.waitForFunction(() => document.querySelector('[data-mapping-system-global]') === null, { timeout: config.navigationTimeoutMs });
+
     await page.click(`#${ID}-Name`, { clickCount: 3 });
     await page.type(`#${ID}-Name`, CREATED);
     await page.waitForFunction(() => document.querySelector('[data-mapping-system-global]') === null, { timeout: config.navigationTimeoutMs });

@@ -83,16 +83,25 @@ Property DefinitionId As %String(MAXLEN = 32);
 /// takes as its conversation's <property>OcuPilot.Kernel.State.Convo.CreatedAt</property>.</p>
 Property AppendedAt As %String(MAXLEN = 32);
 
+/// <p>Where the turn's screen data went, as JSON text: the egress fact the turn's loop kept, the
+/// same text <property>OcuPilot.Kernel.State.Turn.Egress</property> holds, passed in at append time.
+/// A snapshot of the configuration its provider call used, never a reference to the definition
+/// (AD-37).</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>: an entry appended before this property
+/// existed reads <code>""</code>, which restores as no egress line.</p>
+Property Egress As %String(MAXLEN = 1000);
+
 Index ConvoSeqIdx On (ConvoKey, Seq) [ Unique ];
 
 /// <p>Append one entry to conversation <var>pConvoKey</var>. <var>pStepsJson</var> is the
 /// already-capped step array, serialized; <var>pTurnKey</var> is the turn it records, which a
 /// caller that has none may omit; <var>pCitations</var> is the reply's citations as JSON text;
 /// <var>pContextJson</var> is the turn's bounded screen-context payload as JSON text, or
-/// <code>""</code>; <var>pDefinitionId</var> is the definition the turn ran under.</p>
+/// <code>""</code>; <var>pDefinitionId</var> is the definition the turn ran under; <var>pEgress</var>
+/// is the turn's egress fact as JSON text, or <code>""</code> for a turn that dispatched no call.</p>
 /// <p>The new entry's <property>Seq</property> is one past the highest the conversation holds, so a
 /// conversation whose older entries retention removed keeps appending.</p>
-ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "") As %Status
+ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "", pCitations As %String = "", pContextJson As %String = "", pDefinitionId As %String = "", pEgress As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -112,6 +121,7 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
         Set tRow.StepsDropped = +pStepsDropped
         Set tRow.TurnKey = ##class(OcuPilot.Kernel.State.Turn).Cap(pTurnKey, 64, .tCutTurnKey)
         Set tRow.Citations = pCitations
+        Set tRow.Egress = pEgress
         If pStepsJson '= "" Do tRow.StepsJson.Write(pStepsJson)
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         Set tRow = ""
@@ -122,7 +132,9 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 }
 
 /// <p>Every entry of conversation <var>pConvoKey</var>, in sequence order, as <code>{seq, message,
-/// state, reply, citations, error, steps, stepsDropped}</code> -- <code>reply</code> and
+/// state, reply, citations, error, steps, stepsDropped, egress}</code> -- <code>egress</code> is
+/// <method>OcuPilot.Kernel.State.Turn.EgressObject</method>'s answer over the entry's own
+/// <property>Egress</property>, JSON null when it has none; <code>reply</code> and
 /// <code>error</code> are JSON null when the turn carries none, and <code>citations</code> is always
 /// an array; <code>error</code> is otherwise <code>{seq,
 /// code}</code>, with no <code>reason</code> (AD-9's re-entry rule: see
@@ -190,6 +202,12 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWi
         }
         Do tOut.%Set("steps", tSteps)
         Do tOut.%Set("stepsDropped", +tRow.StepsDropped, "number")
+        Set tEgress = ##class(OcuPilot.Kernel.State.Turn).EgressObject(..Text(tRow.Egress))
+        If $IsObject(tEgress) {
+            Do tOut.%Set("egress", tEgress)
+        } Else {
+            Do tOut.%Set("egress", "", "null")
+        }
         If pWithContext {
             Set tAppended = ..Text(tRow.AppendedAt)
             If tAppended = "" Set tAppended = tCreatedAt

@@ -866,13 +866,29 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 /// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Confirm</class> asks it inside its
 /// transition, after the fingerprint and before the claim, in the confirming user's own process; a
 /// non-empty <var>pProblem</var> is refused 400 <code>TOOL.ARGUMENTS</code> with nothing written and
-/// the proposal left live. It is for a rule that judges the caller's privilege against live state,
-/// which the mint asked in <method>ArgumentProblem</method>, so a privilege lost since the mint
-/// refuses the confirm. Empty here.</p>
+/// the proposal left live. It is for a rule over live state that the mint asked in
+/// <method>ArgumentProblem</method> -- the caller's privilege, or whether the id still names the
+/// target the mint read -- so a confirm is refused what the mint would now refuse. Empty here.</p>
 ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
     Quit $$$OK
 }
+
+/// <p>The word the proposal card reads for an empty value of a diff field, as comma-separated
+/// <code>Field=stringKey</code> pairs, each key a member of <file>ui/src/app/core/strings.ts</file>
+/// (Story 16.13, DW-1016). <code>""</code> here, so every empty value reads "(none)".</p>
+/// <p>For a declared field the mint sends an empty value (<code>""</code> or <code>[]</code>) of a
+/// changed row as <code>""</code> with the row's <code>emptyKey</code>, and the unchanged-field
+/// disclosure does the same for an unchanged row
+/// (<method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>).</p>
+Parameter EMPTYKEYS = "";
+
+/// <p>The <parameter>SECRETBODY</parameter> names whose explicitly supplied empty value is sent, as
+/// comma-separated names, so the vendor clears the stored secret (AD-56 (i) as amended by Story
+/// 16.14). <code>""</code> here, so an empty secret is not a secret supplied and is left out
+/// (<method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method>). A tool declares a name only where
+/// its vendor type clears the secret on <code>""</code>, measured.</p>
+Parameter CLEARABLESECRETS = "";
 
 }

@@ -108,7 +108,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 - FR-25: Four provider families including local models - Anthropic first, then OpenAI, Google Gemini and OpenAI-compatible (which covers local models), each an adapter behind one contract so adding a family changes no part of the loop, the tools or the screens; plain HTTP only with no credential or an explicit stored acknowledgment. Catalog: CP-04, CP-05.
 - FR-26: Credential resolution without storage - keys resolve at call time from an environment variable or an IRIS credential; the definition stores only type and name; a key entered in the form is written once and returned by no API call; per-provider shape checks catch paste errors. Catalog: CP-07.
 - FR-27: Test connection - one minimal provider call reporting the model's reply or the provider's error text, using the definition as edited before save, truncated to a bounded length, refusing link-local metadata endpoints while allowing loopback and private hosts. Catalog: CP-06.
-- FR-28: First-login gate - with no enabled definition an OcuPilot administrator is taken to agent configuration at every login and a banner persists on every screen until one is enabled; the gate is bypassable; non-administrators keep every screen with the panel in its configuration-empty state naming who can configure it. Catalog: CP-08.
+- FR-28: First-login gate - with no enabled definition an OcuPilot administrator is taken to agent configuration on their first sign-in only (later sign-ins land on Home) and a banner persists on every screen until one is enabled; the gate is bypassable; non-administrators keep every screen with the panel in its configuration-empty state naming who can configure it. Catalog: CP-08.
 - FR-29: OcuPilot administrator privilege - the installer creates the administrative resource and a role granting it; every configuration endpoint checks it server-side; every change to a definition, the kill switch, enforced read-only, the context-sharing default or the turn limits emits an audit event naming actor, target and old and new values; OcuPilot's persistent state is unreachable through SQL or direct global access to a holder of the install namespace's database rights without the resource, and a test proves it. Catalog: PK-13.
 
 #### PRD 5.5 - Web applications and REST API explorer
@@ -2498,7 +2498,7 @@ So that I reach a working agent without reading documentation to find out what i
 - **Given** no definition is enabled and the signing-in user holds the OcuPilot administrative resource
 - **When** they sign in
 - **Then** they are redirected to the Definition form under the banner "OcuPilot needs one agent definition before the panel can help. Anthropic is selected - paste a key and press Test connection. You can skip this and browse."
-- **And** the gate fires on **every** login until one definition is enabled, and never afterwards.
+- **And** the gate fires on the administrator's **first** sign-in only, recorded per user on the instance; a later sign-in, reload or new tab lands on Home with the panel banner as the pointer, and Cancel on the auto-opened form goes to Home [AMENDED 2026-09-30, owner decision DW-1871: was "fires on **every** login until one definition is enabled, and never afterwards"].
 
 - **Given** the administrator leaves the gate without enabling one
 - **When** they use any screen
@@ -6499,6 +6499,8 @@ So that service administration is complete here.
 - **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
 
 - DW-1016: a proposal diff row has no empty-cell word, so restricting a list reads as `(none) -> 10.0.0.1` (ledger; routed by merge_gate 2026-09-18)
+- DW-1879: in the Logs side bar, the gated Interoperability event log entry shows its "Requires %Ens_EventLog:USE" hint as a second column that pushes the label onto two lines; UX-DR22 puts the reason inline after the name (ledger; routed by merge_gate 2026-09-30, 16.13's fix pack)
+- DW-1880: Database details' Volume files table is unstyled, with a browser-default serif bold header; use the shared data-table styling and the shell font (ledger; routed by merge_gate 2026-09-30, 16.13's fix pack)
 
 ### Story 16.14: The LDAP and Kerberos editor
 
@@ -6513,17 +6515,21 @@ So that the instance can be joined to an existing identity system from here.
 - **When** it opens
 - **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
 
-- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
+- **Given** the `Security.LDAP` endpoint's test request type, which the admin API would queue, carries the tested user's password
 - **When** this editor is built
-- **Then** list, get and put stay synchronous, and the test action below goes through the async path.
+- **Then** list, get and put stay synchronous, and the test runs on `AdminPort`'s synchronous path, never the vendor's queue [AMENDED 2026-10-01, orchestrator merge gate, Rule 5: was "the test action below goes through the async path"; the vendor's queue writes the tested user's password in plain text into a world-readable task row and the journal, measured on `ocupilot-ci`].
 
 - **Given** an LDAP configuration
 - **When** the user runs test authentication
 - **Then** the instance's own result text is reported.
 
-- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
-- **When** the test runs
-- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+- **Given** the test runs
+- **When** it answers
+- **Then** the port exposes it as an ordinary call - the slice writes no polling logic - and the password reaches no task row, journal, log line or ledger row [AMENDED 2026-10-01, orchestrator merge gate, Rule 5: was "it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later"].
+
+- **Given** the LDAP / Kerberos list
+- **When** the user creates a configuration from its command bar, sets or clears its search password, or deletes one from its row
+- **Then** each is a write the screen and the agent both reach, with its own governance key enabled; the search password is write-only and never read back; and the delete asks for the configuration's name to be typed, as the other editors' deletes do [ADDED 2026-10-01, orchestrator merge gate, Rule 5: completes FR-45; EXPERIENCE.md :173 already carries the LDAP delete confirmation].
 
 ### Story 16.15: The data-egress line
 
@@ -6804,6 +6810,23 @@ So that a gateway's definition is managed where its status is.
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
 - DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts the verb (ledger; routed by merge_gate 2026-09-29)
+
+### Story 16.26: Epic 16 burn-down
+
+[ADDED 2026-10-01, Epic 16 burn-down gate, Rule 17 and Rule 27: the epic's two CI flakes, chartered at its close]
+
+As a maintainer of the CI suite,
+I want the two test flakes Epic 16's close found fixed at their cause,
+So that a red CI run means a regression again rather than an unlucky order or timing.
+
+**Acceptance Criteria:**
+
+- **Given** a test that flaked in CI
+- **When** this story lands
+- **Then** its cause is found and fixed in the test (or in the code, if the code is wrong), and the fix is shown by a run that reproduces the old failure and passes after it.
+
+- DW-1851: WireSecurityRead.TestTheLogsAreaStaysOpenWithoutTheEventLogsPair answers LOG.ABSENT on a fresh instance that has no alerts.log yet, so it fails when it runs before anything has posted a severe line (ledger; chartered by burndown 2026-10-01)
+- DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once (ledger; chartered by burndown 2026-10-01)
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
@@ -7373,9 +7396,7 @@ So that the namespace configuration the contest deferred includes the step the c
 - **Then** it round-trips through the admin API's async path, reading the finished task's result once, and states its consequence before it is confirmed.
 
 - DW-1776: SA-13's enable-interop (POST /namespace/enable-interop, async, writes interoperability code into the namespace's databases) is in no story's plan (ledger; routed by merge_gate 2026-09-28)
-- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
-- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
-- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
+- Decision 2026-10-01 (orchestrator merge gate, after Task 0 measured the enable on IRIS for Health): the enable needs `%All` and nothing less, takes the strongest (typed-name) confirmation, states every instance-wide effect it measured (the HealthShare Foundation install, the `Admin` user granted `%HS_BFC_Administrator`, the new roles and resources, the FHIR purge task and the FHIR_Validation_Server Java server, applications gaining access to the install database, and that it cannot be undone), refuses a caller without `%All` before anything is queued, and its governance key is disabled by default. [AMENDED 2026-10-01, orchestrator merge gate: split for scope, Rule 5 -- DW-1813, DW-1824 and DW-1858 moved to Story 18.17; this story keeps the enable and runs after release 1.0.5]
 
 ### Story 18.16: Remote databases
 
@@ -7392,6 +7413,30 @@ So that database administration also covers the databases an ECP data server hol
 - **Given** choosing a remote directory opens an ECP connection to its data server (a read blocked about 11 seconds on the throwaway)
 - **When** a remote directory is chosen or a remote database is written
 - **Then** AD-21 carries its own case for that connection, and the wait is bounded and stated before it starts.
+
+### Story 18.17: Namespace and database follow-ups
+
+As an operator,
+I want the namespace and database screens' follow-up fixes,
+So that a mapping that reaches the system globals says so, creating a database from New Namespace keeps what I typed, and the Integrity log is reachable from the side bar. [AMENDED 2026-10-01, orchestrator merge gate: split from 18.15 for scope, Rule 5]
+
+**Acceptance Criteria:**
+
+- **Given** a global mapping whose global part begins with `:` (an empty low end, which the instance reads as `%`) or `*`
+- **When** the agent proposes its create or a person types it in the global mapping form
+- **Then** it carries the system-global consequence a name beginning with `%` carries.
+
+- **Given** the New Namespace form with values typed
+- **When** the person chooses Create a database and then creates a database, or cancels, in the wizard
+- **Then** they return to New Namespace with what was typed kept, and a created database chosen as its globals database, as the classic portal does.
+
+- **Given** OS management's side bar
+- **When** it is drawn for a holder of the Integrity log's pairs
+- **Then** Integrity log is listed right after Databases and opens the log.
+
+- DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
+- DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
+- DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

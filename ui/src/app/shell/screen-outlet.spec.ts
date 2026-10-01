@@ -19,8 +19,9 @@ import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
+import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
+import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { ListPage } from './list-page';
-import { ReducedFormPage } from './reduced-form.page';
 import {
   ARCHETYPE_PAGES,
   DESCRIPTOR_EDIT_PAGES,
@@ -428,14 +429,21 @@ describe('the descriptor map (DW-369)', () => {
     expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
   });
 
-  it('Story 9.9: both reduced forms resolve to the one reduced form page at their id route and at their bare route', () => {
-    // Mutation (Rule 19): drop ServiceForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
+  it('Story 16.14: the LDAP form resolves to the LDAP editor at its id route and at its bare route', () => {
+    // Mutation (Rule 19): drop LdapConfigForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
     const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
     const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
-    for (const descriptor of ['OcuPilot.Screen.Descriptor.ServiceForm', 'OcuPilot.Screen.Descriptor.LdapConfigForm']) {
-      expect(resolveArchetypePage(editPages, descriptor)).toBe(ReducedFormPage);
-      expect(resolveArchetypePage(descriptorPages, descriptor)).toBe(ReducedFormPage);
-    }
+    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
+    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.LdapConfigForm')).toBe(LdapEditorPage);
+  });
+
+  it('Story 16.13: the service form resolves to the service editor at its id route and at its bare route', () => {
+    // Mutation (Rule 19): register ServiceForm to `LdapEditorPage` in `DESCRIPTOR_EDIT_PAGES` -> the
+    // id-route leg goes red.
+    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    expect(resolveArchetypePage(editPages, 'OcuPilot.Screen.Descriptor.ServiceForm')).toBe(ServiceEditorPage);
+    expect(resolveArchetypePage(descriptorPages, 'OcuPilot.Screen.Descriptor.ServiceForm')).toBe(ServiceEditorPage);
   });
 
   it('Story 18.14: the three mapping forms share one page, Namespaces takes its own, and the mapping lists stay the list page', () => {

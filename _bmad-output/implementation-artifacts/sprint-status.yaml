@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-30-2026 19:31'
+last_updated: '10-01-2026 12:34'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -248,9 +248,9 @@ development_status:
   16-10-external-language-servers: done
   16-11-start-suspend-and-resume-the-task-manager: done
   16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: done
-  16-13-the-service-editor: backlog
-  16-14-the-ldap-and-kerberos-editor: backlog
-  16-15-the-data-egress-line: backlog
+  16-13-the-service-editor: done
+  16-14-the-ldap-and-kerberos-editor: done
+  16-15-the-data-egress-line: done
   16-16-the-agent-audit-viewer: done
   16-17-the-read-back-line: done
   16-18-home-s-performance-row: done
@@ -261,6 +261,7 @@ development_status:
   16-23-any-table-downloaded-as-csv: done
   16-24-a-try-it-request-copied-as-curl: done
   16-25-the-external-language-server-editor: done
+  16-26-epic-16-burn-down: done
   epic-16-retrospective: optional
 
   epic-17: backlog
@@ -288,8 +289,9 @@ development_status:
   18-12-the-agent-grows-with-the-stage: backlog
   18-13-multi-namespace-install: backlog
   18-14-namespace-mappings-and-copy-mappings: done
-  18-15-enable-interoperability-on-a-namespace: backlog
-  18-16-remote-databases: backlog
+  18-15-enable-interoperability-on-a-namespace: in-progress
+  18-16-remote-databases: in-progress
+  18-17-namespace-and-database-follow-ups: done
   epic-18-retrospective: optional
 
   epic-19: backlog
@@ -342,7 +344,7 @@ development_status:
 
   epic-23: in-progress
   23-1-the-range-end-cleanup: done
-  23-2-the-range-end-cleanup-part-2: in-progress
+  23-2-the-range-end-cleanup-part-2: done
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

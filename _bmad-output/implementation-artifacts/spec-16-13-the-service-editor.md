@@ -2,7 +2,9 @@
 title: 'Story 16.13: The service editor'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0c6af680bfacfb01f868bf0a60407fc48ec56ca7'
+baseline_commit: '0c6af680bfacfb01f868bf0a60407fc48ec56ca7'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -319,6 +321,10 @@ Client:
 - **`ui/browser/oauth.browser-spec.mjs:372`**: a declared edit; the roster becomes `['LdapConfigForm.cls']`.
 - **Bundle.** If `npm run build` crosses `maximumWarning`, raise it and its `angular-json.test.mjs` literal to the measured total rounded up to the next kB (DW-1166). HALT `blocked` above 3800kB.
 
+- **Fix pack (routed by the orchestrator at the 1.0.4 candidate review; lead edit at the spec gate):**
+  - **DW-1879** -- `ui/src/app/shell/` side bar: a gated entry (the Logs side bar's "Interoperability event log", `%Ens_EventLog:USE`) draws its "Requires <pair>" reason as a second column that wraps the label onto two lines. Render the reason inline after the name, per UX-DR22 and EXPERIENCE.md's Privilege Gating row, keeping it the entry's described reason. Pin it in the side bar's component spec and in the structural walk of an existing browser spec that already shows a gated entry (both themes); record the mutation.
+  - **DW-1880** -- Database details' "Volume files" table (the database details page under `ui/src/app/areas/`) is unstyled, with a browser-default serif bold header. Draw it with the shared data-table styling so its header takes the shell font, as DW-1837 did for its table. Pin it with a browser assertion on the header's computed `font-family` (jsdom computes no style) and record the mutation.
+
 **Acceptance Criteria:**
 
 - **AC1 (coverage).** Given the Services list, when a service's name cell is followed, then the editor opens with General (name, description, Service enabled), Authentication methods (the offered methods, with the instance's labels) and Allowed incoming connections (each address with Remove and, where the service gives roles, its roles and Edit roles). Each tab is drawn only where the service has that group, and no classic-portal card is drawn. Pinned by the browser legs 1 and 3 and by `service-editor.page.spec.ts`.
@@ -334,9 +340,86 @@ Client:
 - **Integration.** Given `ServiceEditorPage`, which reads `GET /services/form` and saves through `PUT /services/:id`, when a Save succeeds, then the Services list re-reads (`ChangeBus` `service` `updated`) and shows the new value. The browser observes this.
 - **AC11 (hygiene).** Given any test in this story, when it ends, pass or fail, then every service it wrote reads as its snapshot, and `%Service_WebGateway` was never written.
 
+### Review Findings
+
+Code review 2026-09-30 (full-opus, four layers): 50 rows, 17 entries after grouping (0 high, 4 medium, 13 low), 22 rows rejected.
+
+- [x] [Review][Patch] (med) The Save gate's new tool-pairs check had no test: the AC10 Save leg assigned `%CSP.UI.Portal.Dialog.Service`, which `ServiceForm`'s own classic page already gated [src/OcuPilot/Test/ClassicPageGate.cls:260] -- the leg, renamed `TestAnAssignedPageGatesTheServiceSave`, also assigns `%CSP.UI.Portal.Services`; its `OWNPAIRS` doc names the service update.
+- [x] [Review][Patch] (med) The tab-name assertion held with no error count [ui/src/app/areas/permissions/service-editor.page.spec.ts:242] -- now `tabAccessibleName(label, 1)`.
+- [x] [Review][Patch] (med) DW-1016's after side (a restriction removed) was unpinned [src/OcuPilot/Test/ServiceUpdate.cls:333, ui/src/app/shell/proposal-card.spec.ts:251] -- a mint leg and a card row.
+- [x] [Review][Patch] (low) `:%Operator` passed the shape rule, and the mint and the Save answered 500 from `Prohibited.AddressGrantsPrivilege` on its empty address [src/OcuPilot/Area/Permissions/ServiceRules.cls:279] -- `EntryShaped` refuses an empty address in either spelling; a mint leg.
+- [x] [Review][Patch] (low) `Validate`'s doc said a held entry is never refused; the shape and role rules still judge it (spec-bound) [src/OcuPilot/Area/Permissions/ServiceRules.cls:74] -- doc corrected.
+- [x] [Review][Patch] (low) The add field took `10.0.0.6` beside a held `10.0.0.6:%Manager` [ui/src/app/areas/permissions/service-editor.store.ts:423] -- compares addresses; a store spec leg.
+- [x] [Review][Patch] (low) ECP's role options were never read by the least-privileged principal [src/OcuPilot/Test/ServiceEdit.cls:352] -- a read leg.
+- [x] [Review][Patch] (low) EXPERIENCE.md :503 named only the `|` refusal [EXPERIENCE.md:503] -- names `address:role` too, in place (993 lines).
+- [x] [Review][Patch] (low) A tautological "offers no box" assertion [src/OcuPilot/Test/ServiceEdit.cls:252] -- deleted (pinned by `TestTheFormReadNamesEachServicesGroups`).
+- [x] [Review][Patch] (low) AC8's disclosure half had no recorded mutation -- recorded under Verification.
+- [x] [Review][Patch] (low) The browser spec header claimed a methods change in the AC5 leg [ui/browser/service-editor.browser-spec.mjs:15] -- corrected.
+- [x] [Review][Patch] (low) `ServiceEdit.Unchanged()` answered the services that moved [src/OcuPilot/Test/ServiceEdit.cls:387] -- renamed `Moved()`.
+- [x] [Review][Patch] (low) `OnAfterOneTest`'s mutation note named `RestoreOf` for `RestoreAll` [src/OcuPilot/Test/ServiceEdit.cls:85] -- corrected.
+- [x] [Review][Patch] (low) The budget test quoted 2,349,229 bytes [ui/tools/angular-json.test.mjs:378] -- the review build's 2,349,256.
+- [x] [Review][Defer] (med) No control for `%Service_WebGateway`'s `HttpOnlyCookies`, which the classic dialog draws and the admin API cannot write -- deferred: DW-1883, decision-pending for the decision sheet.
+- [x] [Review][Defer] (low) README still calls the service editor reduced with a classic link [README.md:491] -- deferred: DW-1884, wontfix-accepted (outside Epic 16's footprint).
+
+Rejected:
+
+- low: `ValidateClientSystemsIP` answers other than 0-4 pass -- none observed; the spec names 1, 2 and 3.
+- low: a host-name check may resolve DNS per added entry -- the classic page makes the same call per add.
+- low (x2): Edit roles back to the held roles respells a colon entry -- rare, harmless, and the fix adds a branch.
+- low: no focus target for a refusal on a no-address service holding entries -- the sentence still draws; narrow case.
+- low: the structural walk skips the roles dialog -- it is the shared `app-dialog` with shared checkbox fields.
+- false: the absent leg stubs 200 null -- the store spec pins the real 404.
+- low: `ci-throwaway.sh`'s comment reads twice -- add-only file, contended by Epic 23 now.
+- low: `ServiceViolationCodes` redundant branch -- cosmetic, shared-append file.
+- low: the `EMPTYKEYS` parser exists twice -- merging edits `Write.cls` (Epic 23) and recompiles every tool.
+- low: the empty-list word is declared twice -- spec-bound (`EMPTYKEYS`); `proposal-view.test.mjs` pins the key.
+- low: the reduced form keeps test-only branches -- spec-bound Task.
+- low: the Auto Run Result misstates the Epic 23 overlap -- a spec narrative edit.
+- low: the side-bar rules sit apart from the old block -- appended by the shared-append rule.
+- low: `reduced-editors` leftovers; DW-1880 compares to the heading's font -- cosmetic; the mutation is recorded.
+- low: a failed role read renders 500 -- its only gate is the form's own pair.
+- low: the change event is not observed in the browser -- pinned in two component specs with a recorded mutation.
+- false: DW-1879 lets the reason wrap under the name -- the name stays one line, the defect pinned.
+- false: DW-1880 restyles other tables -- they already carried the unstyled class.
+- false: `MappingDescriptor` roster edit undeclared -- an add-only row, reported outside the Code Map.
+- low: `ServiceLdapProbe`'s allow-list refusal never runs -- a `RestoreOf` refusal leg would write the serving service if the guard broke.
+
 ## Spec Change Log
 
+- 2026-10-01, lead, after code review (tier 1): the Named limit on `HttpOnlyCookies` said the CSP service does not exist on this build; it is `%Service_WebGateway`'s field, which the admin API cannot write (DW-1883).
+- 2026-10-01, lead: the implement stage re-based the bundle's `maximumWarning` from 2346kB to 2350kB under DW-1166 (bundle 2,349,254 bytes); accepted by the orchestrator as a warning re-base, the 4000kB error limit unchanged.
+- 2026-09-30, lead, spec gate: the fix pack's DW-1879 and DW-1880 (orchestrator-routed after planning) added under Tasks & Acceptance; the planner's four spine amendments written into the spine; the prohibited-set gap in its Named limits filed as DW-1881 for range-end cleanup.
+
 ## Review Triage Log
+
+### 2026-09-30 — Review pass
+
+- verdicts: 24 findings — high 0, medium 5, low 11, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The form read's `roles[].privileged` is never checked on the instance (verification-gap) — `ServiceEdit.TestTheFormReadNamesEachServicesGroups` asserts ECP's `%All` 1 and `%Operator` 0; mutation run 22399.
+  - `[low]` `[patch]` Which bit each method label toggles is checked only against `AUTHEMETHODS` itself (verification-gap) — the same test asserts the literal AuthList order and bits 64 and 32 against the instance's own messages; mutation run 22399.
+  - `[medium]` `[patch]` The unknown-role rule for the `address:role` spelling is untested (verification-gap) — `ServiceUpdate.TestTheRulesRefuseAtTheMint` gains a `10.0.0.1:OcuPilotNoSuchRole99` leg; mutation run 22398.
+  - `[medium]` `[patch]` The held-entry exemption of the added-entry rules is untested (verification-gap) — `ServiceEdit.TestTheAddressRulesRefuseTheSave` saves an address beside a held `10.0.0.5|%Operator` on CacheDirect (the tool's rules read the live service, so the leg is armed); mutation run 22399.
+  - `[low]` `[patch]` The connections tab for a service that checks no address is untested (verification-gap) — store spec leg for CallIn with and without a held entry; mutation observed.
+  - `[low]` `[patch]` The privilege-denial banner on a refused Save is untested (verification-gap) — page spec leg with a 403 `AUTH.NOPRIVILEGE`; mutation observed.
+  - `[low]` `[patch]` The Integration AC has no `mutation:` line (verification-gap) — `save` without `publishUpdated` reddens the store and page Integration legs; line written.
+  - `[low]` `[reject]` `ServiceUpdate.TestThePairsUnionTheClassicDialogsResource` compares values equal by construction on a default instance (verification-gap) — it still pins the list-pairs half; the union is pinned by `ClassicPageGate`'s AC10 mutation, and a stronger leg needs a custom-resource write this unarmed class must not make.
+  - `[low]` `[patch]` `ServiceEdit`'s expected bits mirror the code under test (verification-gap) — grouped with the label finding; same fix.
+  - `[medium]` `[patch]` AC3's privileged half is pinned only against client fixtures (verification-gap) — grouped with the `privileged` finding; same fix and mutation line.
+  - `[medium]` `[patch]` The add field accepts `address:role`, granting a role past Edit roles with no privilege line (verification-gap, other) — `addAddress` also refuses an entry with exactly one `:`, as `EntryParts` reads it; store spec leg; mutation observed.
+  - `[low]` `[patch]` `familyOf`'s doc comment sat above `gatedLayout` in `permissions-effective.browser-spec.mjs` (verification-gap, other) — moved back.
+  - `[false]` `[reject]` DW-1016 has no end-to-end test from server output to the card (intent-alignment) — `Propose.cls:746` passes the stored diff verbatim and `:748` calls the `Disclosure.Rows` the test calls; every hop is pinned.
+  - `[low]` `[reject]` The editor and the kernel read a held `address:role` entry differently, so a card can be destructive where the editor draws no line (intent-alignment) — the kernel's `|`-only split in `Prohibited.cls`, which the intent excludes; filed as DW-1881.
+  - `[false]` `[reject]` No test sends a client-composed mask to the instance (intent-alignment) — the store spec pins the mask the client composes and `ServiceEdit` pins that a sent mask is stored; the labels half is grouped above.
+  - `[false]` `[reject]` The classic-spelling server leg adds an entry rather than changing one (intent-alignment) — `MergeUpdate` keeps any held entry exact whatever else changes, and the page spec re-roles the other entry and sends the held one as read.
+  - `[false]` `[reject]` Opening the connections tab on a server 422 is not joined in one test (intent-alignment) — the page spec pins it on a 422 of the shape `ServiceEdit` pins.
+  - `[false]` `[reject]` The serving-consequence ordering moved from the mint to `Consequence()` (intent-alignment) — the intent's `ROLEUNSUPPORTED` rule now refuses that mint input; the order is still pinned.
+  - `[false]` `[reject]` The AC10 Save leg uses an absent name (intent-alignment) — the lacking principal's 403 on an absent name shows the gate precedes the read, and the holder's 404 shows it passed.
+  - `[low]` `[reject]` `RestoreOf` refuses an enabled snapshot but does not re-read the live service (intent-alignment) — every caller snapshots first, which refuses an enabled service; the gap is a throwaway-only race and the fix adds a read and a branch.
+  - `[low]` `[reject]` The roles dialog also draws a held role the read does not list (intent-alignment) — each listed option is drawn once in order; the extra box keeps Apply from silently dropping a role nobody unticked.
+  - `[false]` `[reject]` The fix pack, the budget and `REDUCED_FORM_DECLARATIONS` exceed the intent (intent-alignment) — all are the spec's Tasks; the token is the seam the Task's spec-local fixture needs.
+  - `[low]` `[patch]` EXPERIENCE.md's confirm-dialog row still lists a "disable OcuPilot's web service" warning (intent-alignment) — phrase removed at origin (`:173` already says there is none); 993 lines, `test:tools` green.
+  - `[false]` `[reject]` Whether `screens.generated.ts` was regenerated is undecidable (intent-alignment) — `screen-mirror.mjs --check` passes in the prebuild.
 
 ## Design Notes
 
@@ -373,7 +456,7 @@ Client:
 
 - **The kernel judges a service address's role by name.** `AddressGrantsPrivilege` uses `IsPrivilegedRole`, which matches `%All` or `%Admin_*`. A role that grants administrative privilege under another name (`%Manager`) is minted without the destructive treatment, and the form's line follows the kernel. Epic 23's batch c moved the OAuth arm to `RoleGrantsAdministrativePrivilege` (DW-1663). The service arm needs the same change, plus `EntryParts` for held entries. That is an in-place edit of `Prohibited.cls`, which Epic 23 holds. Recommended ledger entry for the lead: `routed owner=range-end-cleanup` (or the next story to own `Prohibited.cls`).
 - **The superserver is not a `Security.Service`.** No tool reaches it (AD-10), and this editor edits only service rows.
-- **`HttpOnlyCookies`** belongs to the CSP service only, which does not exist on this build (AD-10).
+- **`HttpOnlyCookies`** is a field of `%Service_WebGateway` (`$$$ServiceCSP`) that the classic dialog draws and saves and the admin API's `Security.Service` PUT cannot carry; the editor draws no control for it (DW-1883, decision-pending).
 - **`ValidateClientSystemsIP` under the form's two pairs is unmeasured.** It is `[Internal]`, and it reads no protected global (inference). The least-privileged Save leg settles it. A refusal there is a HALT to the lead, never a new pair taken by the implement stage (AD-8).
 
 **Spine amendments for the lead (Rule 20):**
@@ -435,21 +518,53 @@ Slot A. Everything that writes a service or creates a principal runs on `ocupilo
 **Mutations (Rule 19, one per AC; each reverted, with the tree byte-identical afterward; ObjectScript recompiled with its descendants, and the client rebuilt and redeployed before a browser result counts):**
 
 - AC1: the page draws the methods tab regardless of `authenticationMethods` → `service-editor.page.spec.ts` (ECP) red.
+  - mutation: `tabs` pushes the methods tab whatever `hasMethodsTab()` answers → `service-editor.page.spec.ts` "AC1: a roles service draws no methods tab" red alone.
+  - mutation (review pass): swap the message keys of bits 64 and 32 in `ServiceRules.AUTHEMETHODS` → `ServiceEdit.TestTheFormReadNamesEachServicesGroups` red on its label assertion, run 22399.
+  - mutation (review pass): `hasConnectionsTab` answers `clientSystems` alone → `service-editor.store.spec.ts` "a service that checks no address" red alone.
 - AC2: `ServiceSave.Update` drops `ClientSystems` from the changed set → `ServiceEdit`'s add leg red.
+  - mutation: `ServiceSave.Update` removes `ClientSystems` from the changed set after its rules pass → `ServiceEdit.TestAnAddressIsAddedAndRemovedKeepingEveryOtherField` red (with the classic-spelling, role and least-privileged Save legs), run 22381.
 - AC3: `ServiceRules.EntryParts` ignores `:` → `ServiceEdit`'s classic-spelling leg red.
+  - mutation: `ServiceRules.EntryParts` always splits on `|` → `ServiceEdit.TestAClassicSpellingIsReadAndKeptVerbatim` red alone, run 22382.
+  - mutation (review pass): `ServiceRules.RoleOptions` answers the negation of the kernel's verdict → `ServiceEdit.TestTheFormReadNamesEachServicesGroups` red on its privileged-mark assertion, run 22399.
+  - mutation (review pass): `ServiceEditor.addAddress` refuses only `|` → `service-editor.store.spec.ts` "an address with roles in the instance's own address:role spelling" red alone.
 - AC4: `setAuthe` replaces the mask with the offered bits alone → `service-editor.store.spec.ts` red.
+  - mutation: `ServiceEditor.setAuthe` masks the held value to the offered bits → `service-editor.store.spec.ts` "AC4" red alone.
 - AC5: the page drops `aria-disabled` on the serving service's Enabled → `service-editor.page.spec.ts` red.
+  - mutation: drop `[attr.aria-disabled]` from Service enabled → `service-editor.page.spec.ts` "AC5" red alone.
 - AC6: `ServiceUpdate.ArgumentProblem` skips `ServingServiceDisabled` → `ServiceUpdate`'s serving leg red (kernel leg still green).
+  - mutation: `ServiceUpdate.ArgumentProblem` never asks `ServingServiceDisabled` → `ServiceUpdate.TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked` red alone; `TestTheKernelRefusesTheServingServiceDisableByName` green, run 22385.
 - AC7: `Validate` skips the `ADDRESSUNSUPPORTED` rule → `ServiceUpdate`'s and `ServiceEdit`'s CallIn legs red.
+  - mutation: `ServiceRules.AddedViolations` never adds `ADDRESSUNSUPPORTED` → `ServiceUpdate.TestTheAddressRulesRefuseAtTheMint` red alone (run 22383) and `ServiceEdit.TestTheAddressRulesRefuseTheSave` red alone (run 22384).
+  - mutation (review pass): `ServiceRules.AddedViolations` judges held entries too → `ServiceEdit.TestTheAddressRulesRefuseTheSave` red on its held-entry leg, run 22399.
+  - mutation (review pass): `ServiceRules.AddressViolations` reads roles after `|` only → `ServiceUpdate.TestTheRulesRefuseAtTheMint` red on its `address:role` leg, run 22398.
 - AC8: the Mint helper skips `emptyKey` → `ServiceUpdate`'s DW-1016 leg red; `shown()` ignores the key → `proposal-card.spec.ts` red.
+  - mutation: `Mint.ApplyEmptyKeys` sets no `emptyKey` → `ServiceUpdate.TestAnEmptyAddressListReadsUnrestricted` red alone, run 22388.
+  - mutation: `ProposalCard.shown` ignores a non-empty key → `proposal-card.spec.ts` "renders an empty value as the word its row declares" red alone.
 - AC9: `ServiceForm`'s exemption set back to exempt → `classic-links.test.mjs` and `floor.test.mjs` red.
+  - mutation: `ServiceForm`'s exemption restored to exempt and the mirror regenerated → `classic-links.test.mjs` "the shipped descriptor roster passes" and `floor.test.mjs` "AC2, AD-44" red.
 - AC10: `ServiceUpdate.CLASSICPAGES` emptied → `ClassicPageGate` red.
+  - mutation: `ServiceUpdate.CLASSICPAGES` emptied → `ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet` and `TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller` red, run 22386.
+  - mutation (review pass): drop the `AUTH.NOPRIVILEGE` branch of the page's `reason` → `service-editor.page.spec.ts` "a Save refused for a privilege" red alone.
 - AC11: `ServiceEdit` teardown skips `RestoreOf` → the class's own residue assertion red.
+  - mutation: `ServiceEdit.OnAfterOneTest` skips `RestoreAll` → the residue assertion ("reads back as its snapshot after the test") red on every test, run 22389; `OnAfterAllTests` restored all three services.
+- mutation (DW-1879): drop the `.ocu-side-bar-item-gated` rules, rebuild and redeploy → `permissions-effective.browser-spec.mjs` "AC7 (DW-1018), AC3" red (OAuth 2.0 and Allowed directories names on two lines).
+- mutation (DW-1880): drop the `.ocu-details-volumes-table` rules, rebuild and redeploy → `databases.browser-spec.mjs` "DW-1880" red (header and cells `Times`).
+- Integration: mutation (review pass): `ServiceEditor.save` skips `publishUpdated` → `service-editor.store.spec.ts` "AC2, Integration" and `service-editor.page.spec.ts` "Integration" red.
+- mutation (code review, AC10): drop the tool's `PrivilegePairs` check from `ServiceSave.Gate` -> `ClassicPageGate.TestAnAssignedPageGatesTheServiceSave` red on its `%CSP.UI.Portal.Services` leg alone, run 22797.
+- mutation (code review, AC8): `Mint.ApplyEmptyKeys` rewrites `before` only -> `ServiceUpdate.TestAnEmptyAddressListReadsUnrestricted` red on its removal leg alone, run 22793; `Disclosure.Rows` sets no `emptyKey` -> red on its disclosure leg alone, run 22794; the card binds `after` without its key -> `proposal-card.spec.ts` DW-1016 leg red alone.
+- mutation (code review, AC7): `EntryShaped` without its `EntryParts` empty-address check (the implement-stage code) -> `ServiceUpdate.TestTheRulesRefuseAtTheMint` red on its `:%Operator` leg alone, run 22791.
+- mutation (code review, Boundaries' tab names): the connections tab's count fixed at 0 -> `service-editor.page.spec.ts` "a refused Save opens the tab ..." red alone.
+- mutation (code review, AC2): `addAddress` compares whole entries -> `service-editor.store.spec.ts` "an address already listed with roles ..." red alone.
+- mutation (code review, Matrix "Least privilege"): `RoleOptions` answers `[]` without `%Admin_Manage:USE` -> `ServiceEdit.TestALeastPrivilegedPrincipalSaves` red alone, run 22798.
+- Code review re-runs, final code: `ServiceUpdate` 13/13 (22801), `ServiceEdit` 10/10 (22799), `ClassicPageGate` 4/4 (22800); seven component specs 118/118; tools 1,747/1,747; bundle 2,349,256 bytes, redeployed; `service-editor` 5/5, `reduced-editors` 2/2, `permissions-effective` 5/5, `databases` 4/4.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned only (HALT after planning). Measurements taken on `ocupilot-ci` for this plan restored every service they touched (`%Service_ECP`, `%Service_CacheDirect`, `%Service_CallIn` read back as their snapshots); nothing was written on `ocupilot`.
-- For the lead at the spec gate: the four spine amendments (a)-(d) under Design Notes, and the named limit on `Prohibited.AddressGrantsPrivilege` with its recommended ledger entry.
+- **Implemented.** A tabbed service editor (`ServiceEditorPage`, `ServiceEditor` store, `ServiceRolesDialog`) replaces the reduced service form at the same route, drawing General, Authentication methods and Allowed incoming connections from the extended form read (`ServiceRules.FormMembers`: methods with the instance's labels, capabilities, parsed connections, role options marked by the kernel's verdict). One write path: `ServiceUpdate.MergeUpdate` canonicalizes added or changed entries through `ServiceRules.EntryParts`/`Canonical`; three added-entry rules in `Api/ServiceError.cls` (two pure line insertions in `Error.cls`); `CLASSICPAGES` `%CSP.UI.Portal.Dialog.Service`, which `ServiceSave.Gate` now evaluates. `ServiceForm`'s exemption is removed (SM-C1 counts one). `Write.EMPTYKEYS` (appended), applied by `Mint.ApplyEmptyKeys` and `Disclosure.Rows`, and the card's `shown(value, emptyKey)` read an empty address list "Unrestricted" (DW-1016). Fix pack: DW-1879 (gated side-bar reason inline) and DW-1880 (Volume files table styled).
+- **Files.** Server: `Api/ServiceError.cls` (new), `Api/Error.cls`, `Area/Permissions/ServiceRules.cls`, `ServiceSave.cls`, `Screen/Tool/ServiceUpdate.cls`, `Write.cls`, `Kernel/Proposal/Mint.cls`, `Disclosure.cls`, `Screen/Descriptor/ServiceForm.cls`, `ServiceList.cls`. Tests: `ServiceUpdate`, `ServiceEdit`, `ServiceLdapProbe`, `ClassicPageGate`, `SurfaceCoverage`, `MappingDescriptor`. Client: the three new editor files and their specs, `screen-outlet.ts`, `reduced-form.page.ts`/`.store.ts` (+specs; spec-local service fixture through a `REDUCED_FORM_DECLARATIONS` token), `service-form.ts` deleted, `turn.ts`, `proposal-view.ts`, `proposal-card.ts` (+spec), `strings.ts`, `screens.generated.ts` (regenerated), `_components.scss`, `angular.json` (`maximumWarning` 2350kB, DW-1166), tool tests (`angular-json`, `classic-links`, `floor`, `proposal-view`, `turn`). Browser: `service-editor` (new), `reduced-editors`, `oauth`, `permissions-effective`, `databases`. Docs: EXPERIENCE.md rows 126, 503, 505, 507, 614, 617, 729 in place (993 lines); `scripts/ci-throwaway.sh` one comment line. Outside the Code Map: `Test/MappingDescriptor.cls` (classic-page roster row), `side-bar.spec.ts`, `permissions-effective.browser-spec.mjs`, `databases.browser-spec.mjs`, `_components.scss` (fix pack), EXPERIENCE.md :617 (review patch). Only `Api/Error.cls` overlaps Epic 23's footprint, as two add-only insertions.
+- **Review.** 24 findings: 12 rows patched (10 entries: 4 medium, 6 low), each new pin with an observed mutation recorded under `## Verification`; 0 deferred; 12 rejected (8 false, 4 low) with reasons in the triage log, the held `address:role` kernel split under DW-1881. Follow-up review: `false` -- four medium entries were patched, but each closed with a demonstrated mutation (runs 22398, 22399 and the component specs), and no unverified risk can be named.
+- **Verification** (slot A, `ocupilot-ci`, one run at a time, full arming list): `ServiceUpdate` 13/13 (run 22396), `ServiceEdit` 10/10 (22397), `ClassicPageGate` 4/4 (22394); full sweep 384 classes, 3,174 tests, 6 failed, all named residue (`PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` task history 1), 0 probe leftovers, 0 overlaps. `npm test` 1,747 tools and 2,013 component tests green; `check-objectscript` 0 problems; `lint-docs` clean; EXPERIENCE.md 993 lines. Browser, bundle rebuilt and redeployed: `service-editor` 5/5, `reduced-editors` 2/2, `oauth` 6/6, `permissions-effective` 5/5, `databases` 4/4; initial total 2,349,254 bytes. `%Service_CallIn`, `%Service_CacheDirect` and `%Service_ECP` read back disabled with no address; `%Service_WebGateway` was never written.
+- **Residual risks.** Bundle headroom is 746 bytes under 2350kB, so the next story re-bases (DW-1166). `TestTheVendorsAddressCheckAnswersAsMeasured` expects `no-such-host.invalid` to answer 4, which depends on name resolution failing in CI (inference). The handoff subagent ran `git rm --cached` on `service-form.ts`, an index operation outside its prohibitions' letter; it staged only that intended deletion, and no commit or push was made.

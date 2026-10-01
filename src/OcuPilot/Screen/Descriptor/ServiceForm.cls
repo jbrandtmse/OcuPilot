@@ -1,9 +1,9 @@
-/// <p>The service form: one service, edited at its id route as a reduced form -- whether it is enabled
-/// and the addresses allowed to connect -- rendered by the <code>form-page</code> archetype (AD-5)
-/// and ended by a <code>classic-link-card</code> to the classic Services page, which keeps the
-/// authentication methods and per-address roles until Story 16.13's full editor replaces this form
-/// and removes its exemption (AD-44). Its Save and the agent's confirmed
-/// <code>permissions.services.update</code> are two callers of one tool (AD-55).</p>
+/// <p>The service editor: one service, edited at its id route as a tabbed <code>form-page</code>
+/// (AD-5) whose tabs are the classic Edit Service dialog's groups -- General (whether it is
+/// enabled), Authentication methods, and Allowed incoming connections with each address's roles --
+/// each drawn only where the service has that group (Story 16.13). It links out to no classic page.
+/// Its Save and the agent's confirmed <code>permissions.services.update</code> are two callers of one
+/// tool (AD-55).</p>
 /// <p><b>It is built and routable, and it takes no side-bar position</b> (<code>sideBarPosition</code>
 /// 0): it is reached from <class>OcuPilot.Screen.Descriptor.ServiceList</class>'s name cell, at that
 /// list's own route with <code>/edit</code> appended and the name as its one id segment. It never
@@ -44,7 +44,7 @@ XData Declaration
     {"groupKey": "sslPromptGroupConnections", "textKey": "servicePromptUnauthenticated"}
   ],
   "classicPage": "%CSP.UI.Portal.Dialog.Service",
-  "classicLinkExemption": {"exempt": true, "reason": "Reduced until the full service editor ships (Story 16.13); counted against SM-C1", "label": "Services", "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"},
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "permissions.serviceform"
 }
 }

@@ -233,6 +233,12 @@ describe('the primary side bar', () => {
     expect(reason?.id).toBe(gated.getAttribute('aria-describedby'));
     // Inline AFTER the label, which is what the side bar does instead of a tooltip.
     expect(gated.textContent?.trim().startsWith(STRINGS.navAreaSecurity)).toBe(true);
+    // DW-1879: the reason is the label's next sibling inside the one entry, and the entry carries the
+    // gated class the stylesheet keeps the label on one line by; the layout itself is pinned in a
+    // real browser (`permissions-effective.browser-spec.mjs`), since jsdom computes none.
+    expect(gated.querySelector('.ocu-side-bar-label')?.nextElementSibling).toBe(reason);
+    expect(gated.classList.contains('ocu-side-bar-item-gated')).toBe(true);
+    expect(entries()[0].classList.contains('ocu-side-bar-item-gated')).toBe(false);
   });
 
   it('arrow keys move between entries and Enter opens, marking the current one aria-current', async () => {

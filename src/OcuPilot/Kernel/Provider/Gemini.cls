@@ -74,8 +74,11 @@ Method ProviderName() As %String
 /// <parameter>MODELPATTERN</parameter> admits -- which
 /// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> refuses
 /// <code>PROVIDER.EGRESS</code> before any socket is opened.</p>
-/// <p>An endpoint carrying no placeholder is answered unchanged, so an operator who stored a
-/// model-specific endpoint is not required to write one in.</p>
+/// <p>An endpoint carrying no placeholder (<method>ModelUnused</method>) is answered unchanged, so
+/// an operator who stored a model-specific endpoint is not required to write one in. The
+/// definition's Model is then not the model called: its save logs a line naming it
+/// (<method>OcuPilot.Api.Definitions.NoteModelUnused</method>), and the Definition form says so
+/// beneath Endpoint (DW-1192).</p>
 /// <p>A streamed call (<property>Streaming</property>) names <parameter>STREAMMETHOD</parameter> in
 /// place of <parameter>PLAINMETHOD</parameter> and adds <parameter>STREAMQUERY</parameter>, on the
 /// same scheme and authority, so the egress origin check is unchanged.</p>
@@ -85,7 +88,7 @@ Method RequestUrl(ByRef pValues) As %String
     Try {
         Set tEndpoint = $Get(pValues("endpointUrl"))
         If tEndpoint = "" Quit
-        If '(tEndpoint [ ..#MODELPLACEHOLDER) {
+        If ..ModelUnused(tEndpoint) {
             Set tUrl = tEndpoint
             Quit
         }
@@ -97,6 +100,14 @@ Method RequestUrl(ByRef pValues) As %String
     }
     If ..Streaming && (tUrl '= "") Set tUrl = ..StreamUrl(tUrl)
     Quit tUrl
+}
+
+/// <p>Whether a call to <var>pEndpoint</var> leaves a definition's Model unused: the endpoint is
+/// non-empty and carries no <parameter>MODELPLACEHOLDER</parameter>, so
+/// <method>RequestUrl</method> calls it as stored.</p>
+ClassMethod ModelUnused(pEndpoint As %String) As %Boolean
+{
+    Quit (pEndpoint '= "") && '(pEndpoint [ ..#MODELPLACEHOLDER)
 }
 
 /// <p><var>pUrl</var> with its method made the streaming one and the server-sent-events query
