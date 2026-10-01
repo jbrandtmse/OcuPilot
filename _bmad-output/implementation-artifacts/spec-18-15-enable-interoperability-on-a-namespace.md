@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-30'
 status: 'done'
 baseline_revision: '575c65eecac99899324fd15d67a3cf5503a82108'
+baseline_commit: '575c65eecac99899324fd15d67a3cf5503a82108'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -404,7 +405,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 **Decisions:**
 
 - **`%All` is declared as the pair `%All:USE`.** Every gate already evaluates pairs before any port call: the dispatch at :257, the confirm at :299 and the route at :249. The same pair set reaches the card's "requires" line and the ledger's row release, so nothing in the kernel, API or client changes.
-  - No resource is named `%All`. A pair naming an absent resource is passed only by a holder of the `%All` role, held directly or through a granted role: read on slot B, `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`.
+  - No resource is named `%All`. A pair naming an absent resource is passed only by a user assigned the `%All` role directly; a user whose role only grants `%All` is refused (measured on `ocupilot-b-ci`: `CheckUserPermission` reads 1 for a direct holder, 0 for a granted-role holder; ledger DW-1897).
   - The refusal therefore names `%All:USE`.
   - A dedicated role check was rejected. It would touch `Base`, `Operation.Gate`, `Dispatch`, `Confirm`, `Disclosure`, `Read.BannerRequires` and the ledger. `$ROLES` was rejected too, since no gate infers authorization from roles alone (AD-21).
   - The pair order is list pairs, `%All:USE`, the poll pair, then the classic page, so a principal without `%All` is refused naming it.
@@ -422,7 +423,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 **Proposed spine amendments.** Under Rule 20 the runner writes these at the spec gate; this stage does not edit the spine.
 
-1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a holder of the `%All` role, directly or through a granted role, passes it (read on slot B, 2026-10-01: `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
+1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a user assigned the `%All` role directly passes it, and a user whose role only grants `%All` is refused (measured on `ocupilot-b-ci`; ledger DW-1897), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
 2. (Withdrawn at the gate, option A: no AD-53 change.)
 
 **Integration ACs:**

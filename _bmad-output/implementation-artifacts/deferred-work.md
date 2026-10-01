@@ -8730,3 +8730,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-17-namespace-and-database-follow-ups.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Prohibited.cls:1961 copy arm asks CopiesOwnMapping only; NamespaceCopyMappings.cls:86 CONSEQUENCE NAMESPACE.COPYMAPPINGS; WeakensByEffect runs per create/change
 - 2026-10-01T09:21:03Z status=wontfix-accepted owner=18-17-namespace-and-database-follow-ups by=cr note=pre-existing (18.14), copy already DESTRUCTIVE=1. reopen_if=AD-10 is amended to name a copy for MAPPING.SYSTEMGLOBAL
+
+### DW-1897: The enable's %All:USE pair refuses a user whose role only grants %All (CheckUserPermission reads 0 for a granted-role %All holder, 1 for a direct one)
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: NamespaceInteropGate runs 1345/1562 on ocupilot-b-ci; admitting such users needs a role check in Operation.Holds and the gates (contended kernel files)
+- 2026-10-01T13:37:15Z status=decision-pending owner=burndown by=harvest note=product call: keep the stricter direct-%All rule (recommended; safe, classic portal remains) or add a role check
+
+### DW-1898: NamespaceInterop's started legs raise the instance alert state: AdminPort.AwaitTask logs the bound before NamespacePort answers the queued write as started
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: monitor state 1->2 across NamespaceInterop runs on ocupilot-b-ci; the same as 18.14's copy-mappings started legs (AdminPort :2641)
+- 2026-10-01T13:37:15Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; the port should not log a bound it converts to started
+
+### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: pre-existing: ClassicPageGate run 1099 showed it before Story 18.15 (MappingWriteGateProbe.QueuedCopies); test harness only
+- 2026-10-01T13:37:15Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=harvest note=reopen_if=a CI instance job fails or reports a <FUNCTION> BeginCapture alert from a gate probe
+
+### DW-1900: Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest fails on a reused throwaway once another suite's conversation entries are a day old
+- source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: full sweep run 1437 on ocupilot-b-ci: ForeignExpired found _SYSTEM conversation entries from 2026-09-30T13:08Z; CI's fresh throwaways start empty (like DW-1554)
+- 2026-10-01T13:37:15Z status=wontfix-accepted owner=18-15-enable-interoperability-on-a-namespace by=harvest note=reopen_if=a CI instance job fails TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest
