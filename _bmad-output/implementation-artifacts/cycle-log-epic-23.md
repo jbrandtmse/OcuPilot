@@ -174,3 +174,7 @@
 2026-10-01T02:06:35Z	Story 23.2	smoke_complete	batch=d method=other result=pass iterations=1 defects_caught=0 evidence=runner_step(product_restart_0_test_classes,436_product,smoke_49/49,restored_835);CI_images_both_editions_product-check_0 model=claude-opus-5-5
 2026-10-01T02:06:35Z	Story 23.2	committed	batch=d sha=aa098a24 code=93602359,aa098a24 ci=pending run=36804115324 superseded=36801722725 amendments=spine_AD-17;CLAUDE.md:266-269(OCUPILOT_LOAD_TESTS)
 2026-10-01T02:06:35Z	Epic 23	ledger_repaired	entry=DW-1864 cause=union_merge_duplicated_the_entry_block(8530,8580) slice_read_first_block_escalated_burndown restoring_trailer=routed_range-end-cleanup(landed_in_both_blocks) other_duplicates=none
+2026-10-01T02:49:23Z	Story 23.2	ci_resolved	batch=d story=23.2 run=36804115324 head=aa098a24 result=success attempt=1 images_product_start=0_test_classes_both_editions resolved_at=batch_boundary
+2026-10-01T02:49:23Z	Story 23.2	ledger_adjudicated	batch=d owned=1 resolved=1(DW-48) reowned=0 terminal=0 filed=DW-1885(decision-pending) slice_after=0
+2026-10-01T02:49:23Z	Story 23.2	batch_boundary_reported	batch=d to=main code_head=aa098a24 run=36804115324 feature_code_moved=yes(16.13,DW-1868_a5f2efc9)
+2026-10-01T02:49:23Z	Epic 23	ledger_reowned	entries=DW-1865,DW-1873(CI_flakes),DW-1869,DW-1882 from=burndown to=range-end-cleanup by=burndown reason=standing_cleanup_queue(Rule_27)
