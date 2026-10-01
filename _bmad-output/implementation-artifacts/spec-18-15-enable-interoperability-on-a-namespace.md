@@ -29,7 +29,7 @@ Every narrower principal measured either failed `<PROTECT>`, leaving the namespa
 
 - One tool, `osmgmt.namespaces.enableinterop`, reached by a page-owned **Enable interoperability** row action on the Namespaces list and by the agent (AD-53, AD-55), through `NamespacePort` and `AdminPort`'s async path. `AwaitTask` is the one poller and reads the finished result once.
 - **`%All` only (AD-8).** A caller who does not hold `%All` is refused by name before anything is queued, on both callers, so OcuPilot never leaves a half-enabled namespace. The poll's `%Admin_Operate:USE` is declared too.
-- **The strongest confirmation on both callers:** the typed-name confirm in the screen's dialog and on the agent's card, each stating the consequence sentence before anything is sent.
+- **The strongest confirmation each caller has:** the typed-name dialog on the screen, and on the agent's card the destructive treatment a delete gets, with no typed name (the owner's UX-DR56 ruling of 2026-09-25 stands); each states the consequence sentence before anything is sent. [AMENDED 2026-10-01, orchestrator merge gate, option A]
 - **The consequence sentence names every instance-wide effect measured:** the HealthShare Foundation install; the `Admin` user granted `%HS_BFC_Administrator`; the new roles and resources; the FHIR purge task and the FHIR_Validation_Server Java server; applications gaining access to the install database; and that it cannot be undone.
 - **Governance:** the key is disabled by default (`"osmgmt.namespaces.enableinterop": false`), like the other irreversible instance-wide actions; the screen action still works behind its confirmation.
 
@@ -57,7 +57,7 @@ Every narrower principal measured either failed `<PROTECT>`, leaving the namespa
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 | --- | --- | --- | --- |
 | Enable (screen) | `OCUPROBE1815A` over a probe database, not enabled; a `%All` holder chooses Enable interoperability, types the name, then Proceeds | The dialog states the consequence before anything is sent. The route sends `enable-interop` once. The list shows the running line, then the done line or the still-running sentence, and re-fetches. The namespace is enabled afterwards | none |
-| Enable (agent) | `osmgmt.namespaces.enableinterop` with `Name` `OCUPROBE1815B`, governance key enabled for the test | The card is destructive, takes the typed-name confirm and states the consequence. The confirm applies and marks the write | none |
+| Enable (agent) | `osmgmt.namespaces.enableinterop` with `Name` `OCUPROBE1815B`, governance key enabled for the test | The card is destructive, with no typed name, and states the consequence. The confirm applies and marks the write | none |
 | Governance default | The key at its baseline value | The agent's tool is disabled by governance; the screen action still works behind its confirmation | governance refusal |
 | Not `%All` | A principal holding every other declared pair but not `%All`, on either caller | 403 naming `%All`, with zero port calls and no task queued | `AUTH.NOPRIVILEGE` |
 | Past the bound | The task outlasts `AsyncTimeout` | 202 started, recorded applied and marked; both callers say "Still running on the instance. It finishes in the background." | none |
@@ -105,7 +105,6 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - Parameters :29-86: `DESTRUCTIVE` :50, `SCREENACTIONS` :54, `READANSWERS` :59, `PRECONDITIONFIELD` :61, `FINGERPRINTSUBJECT` :66, `POLLRESOURCE` and `POLLPERMISSION` :73/:75, `CLASSICPAGES` :83, `CONSEQUENCE` :86.
   - Methods: `InputSchema` :102-114, `StateDiff` :117-122, `ArgumentProblem` :164-170, `ScreenActionDelta` :175-188, `Consequence` :192-195, `PrivilegePairs` :201-209.
 - `Screen/Tool/AuditCopy.cls:121-150` is the precedent for a tool-level `%SYS` sentence. `NamespaceProblem` is applied by both `ArgumentProblem` and `ScreenActionDelta`; the screen route calls only the delta (`Api/ScreenAction.cls:291`).
-- `Screen/Tool/Write.cls`: `DESTRUCTIVE` :52 and `Destructive()` :503-506 are the model for `TYPEDNAME`.
 - `Kernel/Shell/Effective.cls:19` declares `ALLROLE` `"%All"`.
 - **Pair gates.** Every gate evaluates `$ListBuild(resource, permission)` pairs, refuses 403 `AUTH.NOPRIVILEGE` with `detail.failedPair` (`Kernel/Denial.cls:47-67`), and none reads `$ROLES`:
   - the agent's dispatch: `Kernel/Agent/Dispatch.cls:257-268`, before `InvokeTool` :295 and so before the mint's port read;
@@ -115,7 +114,6 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - `Kernel/Proposal/Mint.cls`:
   - the fresh read :167, then `ArgumentProblem` :216-228, then `consequence` and `destructive` :337-338;
   - `DestructiveTool` :511-523, and `ConsequenceOf` :758-767, which calls the tool's `Consequence` method (a parameter alone does nothing).
-- `Kernel/State/Propose.cls`: the `Destructive` property :128-136 is stored at :269, read at :758 and put on the wire at :810. The file has no Storage section.
 - `Kernel/Proposal/Prohibited.cls` `Namespace` :1956-1990 refuses no INTEROP write: it reads only a delete or a Globals or Routines change.
 - `Kernel/Governance/Baseline.cls:39-42` holds the namespace keys; `delete` is `false` at :41.
 
@@ -132,9 +130,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - `ui/src/app/core/screen-actions.ts:174-175`.
 - `ui/src/app/core/proposal-view.ts`: the codes :141-211 and `consequenceSentence` :217-250.
 - `ui/src/app/core/strings.ts`: the Story 18.14 block :3513-3610, `auditDatabaseStillRunning` :2674, `formTypedNameConfirm` and `formTypedNameMismatch`.
-- `ui/src/app/core/turn.ts`: the proposal type :247-252 and its parse :600.
-- `ui/src/app/shell/proposal-card.ts`: `destructive` :110, :336-337 and the doc :706-715.
-- EXPERIENCE.md (993 lines): :164 OS management's side bar, :173 Dialogs, :378 the Namespaces fixed strings, :618 `typed-name-field`, :672 Agent Write Lifecycle step 7, :728 the confirmation dialogs, :755 the destructive proposal.
+- `ui/src/app/shell/proposal-card.ts`: `destructive` :110, :336-337 (the card's destructive treatment, unchanged by this story).
+- EXPERIENCE.md (993 lines): :164 OS management's side bar, :173 Dialogs, :378 the Namespaces fixed strings, :728 the confirmation dialogs.
 
 **Test models and rosters:**
 
@@ -162,8 +159,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - `scripts/ci-throwaway.sh`: the NAMESPACE_CONFIG `# classes:` lines :416-417, and the PRINCIPALS lines :217-279, where `NamespaceWriteGate` is at :254.
   - `ui/tools/ci.test.mjs:2086-2207` derives both.
 - Client tests:
-  - `screen-action-handler.spec.ts:1576-1583`, `proposal-view.test.mjs:31-52,238-247`, `proposal.test.mjs`;
-  - `proposal-card.spec.ts`, `namespace-list.page.spec.ts` and `strings.test.mjs`.
+  - `screen-action-handler.spec.ts:1576-1583`, `proposal-view.test.mjs:31-52,238-247`;
+  - `namespace-list.page.spec.ts` and `strings.test.mjs`.
 - `ui/browser/namespace-mappings.browser-spec.mjs`: `irisSys` :90-103, `before` and `after` :129-158, `recordOperationLine` :225-232, `assertStructure` :247-278.
 
 ## Tasks & Acceptance
@@ -224,7 +221,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - **`src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls`** (new, `osmgmt.namespaces.enableinterop`), extending `Write` on the `NamespaceCopyMappings` model:
   - Parameters:
     - `DESCRIPTORCLASS` `NamespaceList`, `PORTCLASS` `NamespacePort`, `READTYPE` `GET`, `WRITETYPE` `INTEROP`, `SENDSBODY` 0.
-    - `CHANGEACTION` `updated`, `DESTRUCTIVE` 1, `TYPEDNAME` 1, `SCREENACTIONS` `enable-interop`, and no `SCREENVALUES`.
+    - `CHANGEACTION` `updated`, `DESTRUCTIVE` 1, `SCREENACTIONS` `enable-interop`, and no `SCREENVALUES`.
     - `READANSWERS` `Globals,Routines,TempGlobals,SourceNamespace`, `FINGERPRINTSUBJECT` `Globals,Routines`, `PRECONDITIONFIELD` `Globals`.
     - `CLASSICPAGES` `%CSP.UI.Portal.Namespace`, `CONSEQUENCE` `NAMESPACE.INTEROP`, the poll pair `%Admin_Operate:USE`, and `SYSTEMREASON` "Interoperability cannot be enabled in %SYS or %ALL."
   - `Endpoint` answers `Namespace.Namespace`. `SettableFields` is empty, and `StateDiff` answers no rows.
@@ -232,16 +229,6 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - `SystemProblem(pName)` answers `SYSTEMREASON` for `%SYS` or `%ALL`, ignoring case, and `""` otherwise. `ArgumentProblem` and `ScreenActionDelta` both apply it.
   - `Consequence()` answers `CONSEQUENCE`.
   - `PrivilegePairs`, in this order, each pair once: the list's pairs (`Gate.RequiredPairs`), then `$ListBuild(##class(OcuPilot.Kernel.Shell.Effective).#ALLROLE, "USE")`, then `%Admin_Operate:USE`, then `Gate.WithClassicPages`. It declares no `ArgumentPairs`.
-- **The card's typed name.** The tool declares it; nothing typed is sent.
-  - `src/OcuPilot/Screen/Tool/Write.cls` (add-only): `Parameter TYPEDNAME As BOOLEAN = 0`, and `TypedName()` beside `Destructive()`.
-  - `src/OcuPilot/Kernel/Proposal/Mint.cls`: after :338, set `typedName` from the tool's `TypedName()`, through a helper modeled on `DestructiveTool`.
-  - `src/OcuPilot/Kernel/State/Propose.cls`: add `Property TypedName As %Boolean [ InitialExpression = 0 ]`, with the no-`SCHEMAVERSION` doc line of :132-136. Store it beside :269, read it beside :758, and put it on the wire as `typedName` beside :810.
-  - `ui/src/app/core/turn.ts`: add `typedName: boolean` to the proposal type, and `boolAt(row, 'typedName')` at the parse.
-  - `ui/src/app/shell/proposal-card.ts`: when `typedName` is set, draw a typed-name field under the consequence.
-    - Its label is `formTypedNameConfirm` with the target's id. The match is exact and case-sensitive.
-    - On blur, a mismatch shows `formTypedNameMismatch` with `aria-invalid` and `aria-describedby`.
-    - Confirm stays `aria-disabled` until the name matches, and Enter confirms only then.
-    - The confirm request carries nothing typed. Rewrite the doc at :710-711 to say so.
 - **`src/OcuPilot/Screen/Descriptor/NamespaceList.cls`.** `rowActions` gains `{"id": "enable-interop", "selfProtection": ""}`. Regenerate with `cd ui && node tools/screen-mirror.mjs`, then `node tools/field-lists.mjs`, and never hand-merge the output.
 - **`src/OcuPilot/Kernel/Governance/Baseline.cls`.** Insert `  "osmgmt.namespaces.enableinterop": false,` between :41 and :42.
 - **`ui/src/app/areas/os-management/namespace-list.page.ts`.**
@@ -257,10 +244,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 - **:164.** The Namespaces entry becomes "Stories 18.2, 18.14 and 18.15: its editor links a namespace's global, routine and package mappings, and its list enables interoperability".
 - **:173.** "enable interoperability (Story 18.15, the typed-name confirmation)" follows "copy mappings (Story 18.14)".
-- **:618.** The applies-to cell becomes "destructive dialogs, and an agent proposal whose tool declares it (enabling interoperability, Story 18.15); every other agent proposal carries none".
-- **:672.** "...even on a destructive write" gains ", unless its tool declares one (enabling interoperability, Story 18.15)".
 - **:728.** "enable interoperability" joins the list.
-- **:755.** The row reads "with no typed-name-field unless the tool declares one (enabling interoperability, Story 18.15)".
 - **:378.** Its tail gains these strings and ends `[ADDED 2026-10-01 - Story 18.15]`:
   - "Enable interoperability" (`namespaceEnableInteropAction`)
   - "Enable interoperability in" (`namespaceEnableInteropVerb`)
@@ -275,8 +259,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - **Declarations:** the three port lists, the tool's parameters, `PrivilegePairs` holding `%All:USE` and `%Admin_Operate:USE`, the row action, and the baseline key `false`.
   - **Screen round trip on `A`,** with the key at its baseline: the route answers done or continues. Then `IsEnabled` and `HasPortal` hold, `SecondReads` is unchanged, and `OwnObjects` is unchanged.
   - **Agent round trip on `B`,** with the key enabled for this leg and restored afterwards:
-    - `Marked` reads `"1|NAMESPACE.INTEROP"`, and the wire row's `typedName` is true;
-    - a copy-mappings proposal reads `typedName` false;
+    - `Marked` reads `"1|NAMESPACE.INTEROP"`;
     - the confirm is applied and marked.
   - **Governance:** at the baseline, the agent's call answers `GOVERNANCE.DISABLED`, with no proposal and no task.
   - **`%SYS` and `%ALL` on both callers,** through `MappingAcceptPort` (its `Writes` :26 gains `INTEROP`) and a new seam `Test/SeamNamespaceEnableInterop.cls` on the `SeamNamespaceCopyMappings` pattern: each is refused with `SYSTEMREASON`, with zero recorded writes, and `OwnTaskCount` is unchanged.
@@ -306,12 +289,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - **Client specs:**
   - `namespace-list.page.spec.ts`: the registration; the dialog's consequence and target; Proceed unavailable until the name matches; running, then done; the list read again after the enable; continued; refusal; cancel; and one operation at a time.
   - `screen-action-handler.spec.ts`: enable-interop is undrawn.
-  - `proposal-view.test.mjs` for the code, and `proposal.test.mjs` for `typedName`.
-  - `proposal-card.spec.ts`:
-    - the field is drawn only with `typedName`;
-    - Confirm stays unavailable until an exact match;
-    - a mismatch shows on blur;
-    - a destructive card without `typedName` draws no field.
+  - `proposal-view.test.mjs` for the code.
   - `strings.test.mjs`.
 - **`ui/browser/namespace-interop.browser-spec.mjs`** (new, on the `namespace-mappings` model):
   - `before` runs `InteropProbe.Add("A")` through `docker exec ocupilot-b-ci iris session`. `after` runs `SettleOwnTasks` and `RemoveAll`, and asserts `Remaining()` is 0.
@@ -327,8 +305,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - exactly one `enable-interop` request was sent;
   - the list showed "Enabling interoperability in OCUPROBE1815A on the instance since <time>", then "Enabled interoperability in OCUPROBE1815A." or "Still running on the instance. It finishes in the background.", and then read the list again;
   - once the task ends, `IsEnsembleNamespace` answers 1 and an application serves the namespace.
-- **AC3:** Given another probe namespace and the key enabled, when the agent proposes `osmgmt.namespaces.enableinterop` and the person types the name and confirms, then:
-  - the card is destructive and states the consequence, and its Confirm stays unavailable until the exact name is typed;
+- **AC3:** Given another probe namespace and the key enabled, when the agent proposes `osmgmt.namespaces.enableinterop` and the person confirms, then:
+  - the card is destructive, with no typed name, and states the consequence;
   - the write took `AdminPort`'s async path, admitted by `QUEUEDWRITES`;
   - its finished result was read once, and `messages.log` gained no `ERROR #7846`;
   - a write still running at the bound is recorded applied and marked, and both callers say it is still running;
@@ -344,6 +322,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - 2026-10-01, orchestrator merge gate (by=merge_gate): the story is split for scope (Rule 5). DW-1813, DW-1824 and DW-1858 move to Story 18.17, which runs first; this story keeps the enable (DW-1776) and runs after release 1.0.5. The enable takes option 2: `%All` only (AD-8, written), the strongest typed-name confirmation, a consequence naming every instance-wide effect Task 0 measured, a refusal before anything is queued for a caller without `%All`, and its governance key disabled by default. On resume the runner rewrites the intent contract to that scope, sets `status: draft` and re-plans.
 
 - 2026-10-01, re-plan (runner, re-dispatch protocol): the intent contract is rewritten to the merge-gate decision (option 2: `%All` only, typed-name confirm, the measured consequence, governance disabled) and the split (DW-1813, DW-1824 and DW-1858 shipped in Story 18.17); status reset to `draft`. Design Notes › Measured at implement and this log are kept.
+
+- 2026-10-01, spec gate (runner): orchestrator ruling option A (by=merge_gate) -- the agent card takes the destructive treatment with no typed name (UX-DR56 stands); the screen keeps the typed-name dialog. The card's typed-name tasks, the `typedName` wire field and its tests, the EXPERIENCE.md :618/:672/:755 edits, the `TYPEDNAME` parameter and AD-53 amendment 2 are removed; the intent's Approach bullet and "Enable (agent)" row are amended. AD-8 amendment 1 (`%All:USE`) was written at the gate.
 
 ## Review Triage Log
 
@@ -367,17 +347,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - The pair order is list pairs, `%All:USE`, the poll pair, then the classic page, so a principal without `%All` is refused naming it.
   - Known limit (inference; not measured whether IRIS allows it): an administrator who creates a resource named `%All` and grants it would pass the pair. `NamespaceInteropGate` asserts no such resource exists.
 - **`CLASSICPAGES` is declared but cannot gate on its own.** A `%All` holder holds every custom resource, so the page's resource can never be the pair that fails. It is declared for AD-44's roster and for the card's "requires" line. `ClassicPageGate`'s custom-resource leg exempts this tool and tests its `%All:USE` refusal instead.
-- **The card's typed name is new, not reused.** The intent asks for the typed-name confirm on the agent's card too. No card has one today:
-  - `proposal-card.ts:710-711`;
-  - EXPERIENCE.md :618 ("an agent proposal carries none"), :672 and :755;
-  - AD-10 describes a delete's agent confirmation as "the destructive treatment, with no typed name".
-
-  This story therefore adds the field, declared per tool (`TYPEDNAME`), for this tool only:
-  - The gate is in the browser, as the screen dialog's is. The confirm request carries nothing typed, so AD-6's closed confirm channel is unchanged.
-  - `Propose.TypedName` defaults to 0, so `SCHEMAVERSION` does not move (Conventions).
-  - EXPERIENCE.md :618, :672 and :755 are amended in place.
-
-  The orchestrator's direction assumed the field already existed (inference). If the runner prefers the delete's treatment on the card (destructive, no typed name), the intent's I/O row "Enable (agent)" changes, and "The card's typed name" bullet, the Propose, turn and card tasks, the :618/:672/:755 edits, amendment 2 below, and the `typedName` and card-spec legs all drop.
+- **The agent card takes a delete's destructive treatment, with no typed name** (orchestrator merge gate 2026-10-01, option A). The owner's UX-DR56 ruling of 2026-09-25 (EXPERIENCE.md :618, :672, :755; AD-10) stands: a destructive agent proposal carries no typed-name field. The screen keeps the typed-name dialog. No AD-10, AD-53 or EXPERIENCE.md :618/:672/:755 change.
 - **Placement.** The enable is a page-owned row action on the Namespaces list, not a New Namespace checkbox. One Save carries one write (AD-55), and the lazily built handler overwrites registrations, so the page owns the action, as with 18.14's copy-mappings.
 - **The install namespace is not refused.** AD-10's install-namespace rule covers a delete and a Globals or Routines change, and `Prohibited.Namespace` reads only those. The enable's mappings name no OcuPilot package, routine or global (inference, from the source and Task 0's E1). No test enables the install namespace.
 - **No interoperability state on the list.** The admin API's read answers no enabled flag, and composing one would be a new AD-27 case. A re-run is the vendor's own path.
@@ -390,12 +360,12 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 **Proposed spine amendments.** Under Rule 20 the runner writes these at the spec gate; this stage does not edit the spine.
 
 1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a holder of the `%All` role, directly or through a granted role, passes it (read on slot B, 2026-10-01: `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
-2. **AD-53**, a new paragraph: "**Story 18.15's typed name on the card** [AMENDED 2026-10-01, Story 18.15 spec gate, Rule 20]: a write tool may declare that its agent proposal takes the typed-name field the screen's destructive dialog carries (`TYPEDNAME`); the card's Confirm stays unavailable until the target's name is typed exactly, in the browser, and nothing typed reaches the confirm request, so AD-6's closed confirm channel is unchanged. The one case is `osmgmt.namespaces.enableinterop`."
+2. (Withdrawn at the gate, option A: no AD-53 change.)
 
 **Integration ACs:**
 
 - AC2 is pinned by `NamespaceInterop`, `namespace-list.page.spec.ts` and the browser spec: the Namespaces page consumes the tool through the screen-action route.
-- AC3 is pinned by `NamespaceInterop` and `proposal-card.spec.ts`: the proposal, the card and the confirm consume the tool, `NamespacePort` and the `typedName` wire field.
+- AC3 is pinned by `NamespaceInterop`: the proposal and the confirm consume the tool and `NamespacePort`.
 - The mapping lists consume the `namespace` `updated` event through `secondaryEntityTypes`, the same event copy-mappings emits, routed as Story 18.14 pinned it. This story pins that the enable emits it: `namespace-list.page.spec.ts` asserts the list reads again after the enable, and so does the browser spec.
 
 **Consumes:**
@@ -417,12 +387,12 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 **Footprint (Rule 11).** Epic 16's in-flight 16.15 changes EXPERIENCE.md (:261, :335, :609), `scripts/ci-throwaway.sh` (one `# classes:` line at the end of the PRINCIPALS block and one in the test-provider block), `strings.ts` and `ui/angular.json`.
 
-- EXPERIENCE.md is edited in place at :164, :173, :378, :618, :672, :728 and :755.
+- EXPERIENCE.md is edited in place at :164, :173, :378 and :728.
 - `ci-throwaway.sh` takes two new lines, at :417 and :255, away from Epic 16's.
 - `strings.ts` takes a block after :3610.
 - `angular.json` is not touched.
 - These are one-element appends to one-line lists, which the integrate-forward merge resolves by union: `AdminPort` (`MUTATINGTYPES`, `BODYLESSTYPES`, `QUEUEDWRITES`), `PortFixture:21`, `ReadTool:93-94`, `ToolRoundTrip:51`, `MappingDescriptor:20`, `ClassicPageGate:62`, `GovernanceBaseline:11` and `screen-action-handler.ts:255`.
-- Kernel files take inserted lines only: `Write.cls`, `Mint.cls` (one line and a helper), `Propose.cls` (a property and three lines) and `Baseline.cls`.
+- Kernel files take inserted lines only: `Baseline.cls`. `Write.cls`, `Mint.cls` and `Propose.cls` are untouched.
 - `Error.cls`, `Router.cls`, `Prohibited.cls`, `Registry.cls` and `Classification.cls` are untouched.
 
 ### Measured at implement
@@ -490,7 +460,6 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
 | AC2 | the page sends on `confirmed` without the dialog (no typed name) | `namespace-list.page.spec`'s dialog leg; the browser spec's typed-name leg |
 | AC2/AC3 | `Namespace.Namespace/INTEROP` removed from `QUEUEDWRITES` | `NamespaceInterop`'s round trips (refused, no task); `AdminPortAsync` |
 | AC3 | `NamespaceEnableInterop.Consequence` answers `""` | `NamespaceInterop`'s agent leg (`"1\|"`); dropping the client map line reddens `proposal-view.test.mjs` |
-| AC3 | `TYPEDNAME` 0 on the tool | `NamespaceInterop`'s `typedName` leg; `proposal-card.spec`'s gate leg, with the field forced off |
 | AC3 | `NamespacePort`'s INTEROP branch skips the started conversion | `NamespaceInterop`'s started legs (503 `PORT.TIMEOUT`) |
 | AC3 | the baseline key set to `true` | `GovernanceBaseline`; `NamespaceInterop`'s governance leg |
 | AC4 | `SystemProblem` answers `""` | `NamespaceInterop`'s `%SYS` and `%ALL` legs (a recorded write) |
@@ -505,6 +474,6 @@ Blocking condition: none
 
 This pass re-planned the spec from Task 0's measurement, around the preserved intent contract, with the scope reduced to the enable (DW-1776). Three items need the runner's ruling at the spec gate:
 
-1. **The agent card has no typed-name field today.** This plan adds one, declared by the tool. EXPERIENCE.md :618, :672 and :755 are amended in place, and AD-53 amendment 2 is proposed. Giving the card the delete's treatment instead is the narrower alternative (Design Notes › Decisions).
+1. **The agent card's typed name:** resolved at the gate, option A -- the card takes the destructive treatment with no typed name (UX-DR56 stands).
 2. **`%All` is declared as the pair `%All:USE`**, so its refusal names that pair. AD-8 amendment 1 is proposed.
 3. **`CLASSICPAGES` is subsumed by `%All`** when the pairs are evaluated: a `%All` holder holds every custom resource.
