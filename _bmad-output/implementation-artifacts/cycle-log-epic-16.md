@@ -711,3 +711,6 @@
 2026-10-01T11:09:48Z	Epic 16	deps_hash_rerecorded	reason=burndown_inserted(16.26) to=f2ccf07b
 2026-10-01T11:12:54Z	Epic 16	epic_context_compiled	reason=burndown_inserted(16.26) model=claude-opus-5-5 bytes=9793
 2026-10-01T11:12:54Z	Story 16.26	stage_spawned	stage=plan spawn_at=2026-10-01T11:12:54Z model=opus agent_name=16-26-epic-16-burn-down-plan-1 cycle_iteration=1
+2026-10-01T11:30:36Z	Story 16.26	story_created	spawn_at=2026-10-01T11:12:54Z model=opus path=_bmad-output/implementation-artifacts/spec-16-26-epic-16-burn-down.md build_status=ready-for-dev epic_context=reused
+2026-10-01T11:30:36Z	Story 16.26	spec_validated	service_introducing=false integration_ac=n/a(test-only_burn-down) adr_constrained_acs=Conventions_Tests,AD-21(LOG.ABSENT_by_design) decision_dependency=none sections_created=none owned_ledger=DW-1851,DW-1867 addressed=2 declined=0 mutates_shared_runtime=true(alerts.log_moved_aside_and_restored;probe_ports_on_ocupilot-ci) note=DW-1867_evidence_corrected_in_the_ledger(setup_start_HTTP_500,not_a_read_race);probe_ports_moved_below_the_ephemeral_range model=claude-opus-5-5
+2026-10-01T11:30:36Z	Story 16.26	stage_spawned	stage=implement spawn_at=2026-10-01T11:30:36Z model=opus agent_name=16-26-epic-16-burn-down-implement-1 cycle_iteration=1 ci_prev=16.15_success_36848584031(feaefdb4) note=DW-1888/1889_run_36853410049_resolves_at_dev_complete

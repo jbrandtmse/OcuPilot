@@ -8598,6 +8598,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: browser shard 2/3 at 13:58:47Z: 3 passed, 1 failed; the spec is 16.25's own and passed in 36681132055, 36684985324, 36706426500 and 36722327485; DW-1861 touches no language-server code
 - 2026-09-30T15:17:44Z status=routed owner=burndown by=orchestrator note=Epic 16's close gate: a CI flake in its own 16.25 spec (inference: the probe's start is read before it reports running); fix at the epic close under Rule 27 (CI flakes are chartered)
 - 2026-10-01T11:09:48Z owner=16-26-epic-16-burn-down by=burndown note=chartered: CI flake (Rule 27); wait for the probe's running state before asserting
+- 2026-10-01T11:30:24Z owner=16-26-epic-16-burn-down by=spec_gate note=evidence corrected: AC3 failed in its own setup (the probe start answered HTTP 500 at ~10 s, line 316), not a read before running; inference: probe port held
 ### DW-1864: GET /conversation/:id serializes every entry's stored steps as one %ToJSON() string, so a conversation of enough tool-heavy turns raises <MAXSTRING> on restore
 - source: spec-23-2-the-range-end-cleanup-part-2.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Api/Response.cls:17 writes pData.%ToJSON() as one string (MaxLocalLength 3,641,144 on ocupilot-b-ci); Entry.StepsJson keeps each turn's step projection, up to about 410 KB of tool text per turn after DW-1210 (inference: about nine such turns exceed it)
