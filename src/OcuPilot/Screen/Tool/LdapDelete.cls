@@ -88,6 +88,23 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
     Quit $$$OK
 }
 
+/// <p>The list's Delete (AD-53) reaches this write without the mint's
+/// <method>ArgumentProblem</method>, so the name <var>pValues</var>' id argument carries is judged
+/// here by the same rule: a name the instance would store differently is refused with its published
+/// sentence before any port write (AD-13). Every other action is the base's.</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
+    If $$$ISERR(tSC) || '$IsObject(pValues) Quit tSC
+    Set tSC = ..ArgumentProblem(pValues.%Get(..IdArgument()), pValues, .tProblem)
+    If $$$ISERR(tSC) Quit tSC
+    If tProblem '= "" {
+        Set pArgs = {}
+        Set pProblem = tProblem
+    }
+    Quit $$$OK
+}
+
 /// <p>What the caller must hold: the screen's own pairs together with
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>, each pair once.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List

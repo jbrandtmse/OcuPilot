@@ -1,6 +1,6 @@
 /// <p>Pins the LDAP search password (AD-6, AD-35, AD-56 (i), AD-58): the editor's Save enters,
 /// clears or leaves it, on an edit and on a create, each read back by presence alone and the answer
-/// reporting it written, never read; a password write refused after the Save's configuration write is
+/// reporting it written, never read; a refused Save writes none; a password write refused after the Save's configuration write is
 /// answered as <code>secretsRefused</code>; the agent's <code>security.ldap.password</code> refuses a
 /// bare name and a password from the model, asks for the password at the confirm and stores it, while
 /// its proposal, draft, ledger row and agent marker carry only the placeholder; and
@@ -67,9 +67,9 @@ Method OnAfterAllTests() As %Status
 }
 
 /// <p>AC5 on the screen's caller: a Save carrying a new password stores it and answers it written,
-/// never carrying it; a Save without the key leaves it; a Save with the field and another change
-/// stores both; a Save carrying <code>""</code> clears it; a password that is not a string is 422 on
-/// its field. Each is read back by presence alone.</p>
+/// never carrying it; a Save without the key leaves it; a Save carrying <code>""</code> clears it; a
+/// Save with the field and another change, from no password, stores both; a password that is not a
+/// string is 422 on its field. Each is read back by presence alone.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapSave.HandleUpdate</method> writes the
 /// password only when it is non-empty -- the clear leg goes red.</p>
 Method TestTheSaveEntersClearsAndLeavesThePassword()
@@ -83,13 +83,14 @@ Method TestTheSaveEntersClearsAndLeavesThePassword()
     Set tSC = ..Save({"Description": "leave"}, .tStatus, .tRaw, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ ..Written($Get(tAnswer)), "200 0", "a Save without the key answers and writes no password")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapPasswordSet", ..#NAME), 1, "and the password is left as it is")
-    Set tSC = ..Save({"Description": "both", "LDAPSearchPassword": (..Secret("both"))}, .tStatus, .tRaw, .tAnswer)
-    Do $$$AssertEquals(tStatus _ " " _ ..Written($Get(tAnswer)), "200 1", "a Save carrying a field and a password writes both")
-    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
-    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: ""), "both", "the field reads back")
     Set tSC = ..Save({"LDAPSearchPassword": ""}, .tStatus, .tRaw, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ ..Written($Get(tAnswer)), "200 1", "a Save clearing the password answers it written")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapPasswordSet", ..#NAME), 0, "and the instance holds none")
+    Set tSC = ..Save({"Description": "both", "LDAPSearchPassword": (..Secret("both"))}, .tStatus, .tRaw, .tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ ..Written($Get(tAnswer)), "200 1", "a Save carrying a field and a password writes both")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapPasswordSet", ..#NAME), 1, "the instance holds the new password")
+    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: ""), "both", "the field reads back")
     Set tSC = ..Save({"LDAPSearchPassword": 7}, .tStatus, .tRaw, .tAnswer)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LdapEdit).FirstViolation($Get(tAnswer)), "422 LDAPSearchPassword PORT.FIELD.SHAPE", "a password that is not a string is refused on its field")
 }
@@ -112,6 +113,28 @@ Method TestACreateStoresItsPassword()
     Do $$$AssertEquals($Get(tRaw) [ tPassword, 0, "and its answer does not carry it")
     Do $$$AssertEquals(..Written(tAnswer), 1, "its read-back reports the password written")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tName) _ " " _ $ClassMethod(..#PROBE, "LdapPasswordSet", tName), "1 1", "the configuration is created holding a password")
+}
+
+/// <p>AC5, AC8: a Save the rules refuse, and a create of a name already taken, each carrying a
+/// password, answer 422 and write no password: the configuration they name holds none
+/// afterwards.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapSave.HandleUpdate</method> and
+/// <method>OcuPilot.Area.Security.LdapSave.HandleCreate</method> write the password whatever the
+/// violations -- both legs go red.</p>
+Method TestARefusedSaveWritesNoPassword()
+{
+    Set tBody = {"LDAPFlags": 192}
+    Do tBody.%Set(..#FIELD, ..Secret("refusedsave"), "string")
+    Set tSC = ..Save(tBody, .tStatus, .tRaw, .tAnswer)
+    Set tBody = ""
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LdapEdit).FirstViolation($Get(tAnswer)), "422 LDAPFlags LDAP.FLAGS.KERBEROS", "a Save the rules refuse answers 422")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapPasswordSet", ..#NAME), 0, "and writes no password")
+    Set tArgs = ##class(OcuPilot.Test.LdapCreate).Args(..#NAME)
+    Do tArgs.%Set(..#FIELD, ..Secret("taken"), "string")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tAnswer, tArgs.%ToJSON(), "application/json")
+    Set tArgs = ""
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LdapEdit).FirstViolation($Get(tAnswer)), "422 Name LDAP.NAME.TAKEN", "a create of a taken name answers 422")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapPasswordSet", ..#NAME), 0, "and writes no password over the configuration it names")
 }
 
 /// <p>The Save's password write refused after its configuration write: the edit's route answers 200
@@ -148,8 +171,8 @@ Method TestAPasswordRefusedAfterTheSaveIsAnswered()
 /// (AD-13) even where a configuration answers its target read
 /// (<method>OcuPilot.Test.LdapCreate.FixtureMint</method>); a password the model supplies is refused at the mint; the mint's one row names the
 /// secret, empty on both sides; its draft carries the placeholder; the confirm, supplied the
-/// password, stores it; the proposal, the ledger row and the agent marker never carry it; and a
-/// confirm supplied <code>""</code> clears it.</p>
+/// password, stores it; the proposal, the ledger row, the agent marker, the application error log and
+/// messages.log never carry it; and a confirm supplied <code>""</code> clears it.</p>
 Method TestTheAgentsPasswordIsAskedAtConfirmAndNeverStored()
 {
     Set tShort = {}
@@ -193,6 +216,8 @@ Method TestTheAgentsPasswordIsAskedAtConfirmAndNeverStored()
     Do $$$AssertEquals($Get(tLedger("Fields")) [ tPassword, 0, "which carries no password")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, """proposalId"":""" _ tProposal.%Get("proposalId") _ """", .tData), 1, "one agent marker names the proposal")
     Do $$$AssertEquals($Get(tData) [ tPassword, 0, "and carries no password")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LdapTest).ErrorsCarry(tPassword), 0, "the application error log carries none")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LdapTest).LogCarries(tPassword), 0, "and messages.log carries none")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows it wrote")
     Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, ..#NAME, tArgs, .tCleared, .tHttp, .tFault, .tClearTurn)
     If '$IsObject($Get(tCleared)) Quit

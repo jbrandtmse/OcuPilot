@@ -9,9 +9,11 @@ import { FormDirty } from '../../core/form-dirty';
 import { tabAccessibleName } from '../../core/form-tabs';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
+import { readBackOf, savedLine } from '../../core/read-back';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { LdapEditorPage } from './ldap-editor.page';
+import { LdapEditor } from './ldap-editor.store';
 
 /**
  * The LDAP editor over stubs of what an instance supplies -- the URL and the HTTP answers (Story
@@ -222,8 +224,30 @@ describe('the LDAP editor page (Story 16.14)', () => {
       STRINGS.ldapExampleInstance,
     ]);
     expect((host.querySelector('#ocu-ldap-example-universal') as HTMLTextAreaElement).value).toBe('U1');
+    click(fixture, host, '[aria-controls="ocu-ldap-advanced"]');
+    expect([...host.querySelectorAll('#ocu-ldap-advanced .ocu-field-label')].map((node) => node.textContent?.trim())).toEqual([
+      STRINGS.ldapFieldGroupId,
+      STRINGS.ldapFieldInstanceId,
+      STRINGS.ldapFieldRoleId,
+      STRINGS.ldapFieldEscalationRoleId,
+      STRINGS.ldapFieldNamespaceId,
+      STRINGS.ldapFieldRoutineId,
+      STRINGS.ldapFieldDelimiterId,
+    ]);
     openTab(fixture, host, 'attributes');
-    expect(labels(host).slice(-3)).toEqual([STRINGS.ldapAttributeMobileProvider, STRINGS.ldapFieldAttributes, STRINGS.ldapAttributeField]);
+    expect(labels(host)).toEqual([
+      STRINGS.ldapAttributeNamespace,
+      STRINGS.ldapAttributeRoutine,
+      STRINGS.ldapAttributeRoles,
+      STRINGS.ldapAttributeEscalationRoles,
+      STRINGS.ldapAttributeComment,
+      STRINGS.ldapAttributeFullName,
+      STRINGS.ldapAttributeMail,
+      STRINGS.ldapAttributeMobile,
+      STRINGS.ldapAttributeMobileProvider,
+      STRINGS.ldapFieldAttributes,
+      STRINGS.ldapAttributeField,
+    ]);
     expect(host.querySelector('app-classic-link-card')).toBeNull();
   });
 
@@ -281,6 +305,7 @@ describe('the LDAP editor page (Story 16.14)', () => {
     await settle(fixture);
     expect(input(host, 'ocu-ldap-Name').value).toBe('ocup99new.com');
     expect(input(host, 'ocu-ldap-LDAPBaseDN').value).toBe('DC=ocup99new,DC=com');
+    expect(input(host, 'ocu-ldap-LDAPBaseDNForGroups').value).toBe('DC=ocup99new,DC=com');
     input(host, 'ocu-ldap-LDAPHostNames').value = 'h1.invalid';
     click(fixture, host, '[data-action="add-host"]');
     click(fixture, host, '.ocu-form-bar .ocu-button-primary');
@@ -409,6 +434,34 @@ describe('the LDAP editor page (Story 16.14)', () => {
     expect(host.querySelector('app-dialog .ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.formLeaveWithoutSaving);
     formDirty.answer(false);
     expect(await leaving).toBe(false);
+  });
+
+  it('AC1: a Kerberos-only create draws only the name, the description and the pair', async () => {
+    const { fixture, host } = await mount('');
+    expect(host.querySelector('#ocu-ldap-copy-from')).not.toBeNull();
+    click(fixture, host, '#ocu-ldap-ldap-configuration');
+    await settle(fixture);
+    expect(labels(host)).toEqual([STRINGS.tableColumnName, STRINGS.tableColumnDescription, STRINGS.ldapFieldKerberos, STRINGS.ldapFormLabel]);
+    expect(host.querySelector('#ocu-ldap-copy-from')).toBeNull();
+  });
+
+  it('AC5: leaving the editor clears a typed password from its store', async () => {
+    const { fixture, host } = await mount(PROBE);
+    click(fixture, host, '#ocu-ldap-LDAPSearchPassword-enter');
+    type(fixture, host, 'ocu-ldap-password', 'fake-probe-value');
+    const store = TestBed.inject(LdapEditor);
+    expect(store.password()).toBe('fake-probe-value');
+    fixture.destroy();
+    expect(store.password()).toBe('');
+  });
+
+  it('Integration: an accepted Save says Saved with the instance\u2019s read-back', async () => {
+    const readBack = { verdict: 'differs', fields: ['Description'], written: [] };
+    const { fixture, host } = await mount(PROBE, { save: { kind: 'ok', status: 200, body: { name: PROBE, readBack } } });
+    type(fixture, host, 'ocu-ldap-Description', 'changed');
+    click(fixture, host, '.ocu-form-bar .ocu-button-primary');
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim()).toBe(savedLine(readBackOf(readBack)));
   });
 
   it('an absent name says the configuration no longer exists and draws no form', async () => {

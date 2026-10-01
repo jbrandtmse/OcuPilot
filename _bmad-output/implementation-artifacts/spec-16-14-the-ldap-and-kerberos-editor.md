@@ -2,7 +2,7 @@
 title: 'Story 16.14: The LDAP and Kerberos editor'
 type: 'feature'
 created: '2026-09-30'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '2c5da91e74965b1c373324a75704aaf908ffe926'
 baseline_commit: '2c5da91e74965b1c373324a75704aaf908ffe926'
 review_loop_iteration: 0
@@ -425,6 +425,9 @@ Client:
 - P11: `LdapUpdate.TestThePairsUnionTheClassicEditorsResource`'s pair leg message says what it checks (the list's pairs with `%Admin_Secure:USE`; the classic page's union is `ClassicPageGate`'s), since no page carries a custom resource there.
 - P12: `ldap-editor.store.ts`'s class doc says the Test authentication password is the dialog's, not the store's.
 
+- [ ] [CI] browser shard 3/3 (run 36818056858, head 1296bc45): `ui/browser/security.browser-spec.mjs:264` AC1 expects the LDAP / Kerberos list's headers `[Name, Enabled, Description]`; this story's row actions add an `Actions` column. Update that roster (and grep `ui/browser/` and `ui/tools/` for any other pin of the LDAP list's headers), run `security.browser-spec.mjs` green on a rebuilt, redeployed bundle.
+- [ ] [CI] browser shard 2/3 (same run): `ui/browser/ldap-editor.browser-spec.mjs:280` AC5 timed out waiting for `#ocu-ldap-password` on CI's fresh instance while green locally. Find the cause (what draws that field, and what on a fresh instance or a different shard order keeps it from rendering), fix the code or the leg, and run `ldap-editor.browser-spec.mjs` three times back to back on a rebuilt, redeployed bundle, green each time. The review's patches to `ldap-editor.page.ts`/`.store.ts` are already committed with this rework; account for them.
+
 **Acceptance Criteria:**
 
 - **AC1 (coverage).** Given the LDAP / Kerberos list, when a name cell is followed, then the editor opens on General, Groups and Attributes. It covers every input of `%CSP.UI.Portal.LDAP` in the classic order: the Kerberos pair where the instance has Kerberos, the couplings, the examples, and the CA file as text. No classic card is drawn. Pinned by browser leg 1 and `ldap-editor.page.spec.ts`.
@@ -441,8 +444,50 @@ Client:
 - **Integration.** Given `LdapEditorPage`, which reads `GET /ldap/form` and saves through `PUT /ldap/:id` or `POST /ldap`, when a Save succeeds, then the list re-reads (`ChangeBus` `ldap-configuration`) and shows the change. The browser observes this.
 - **AC12 (hygiene).** Given any test in this story, when it ends, pass or fail, then no `ocup99*` configuration, probe principal or probe task row remains, and `ocupilot` was never touched.
 
+### Review Findings
+
+Code review 2026-10-01 (`full-opus`; four layers; 60 rows into 24 entries: high 1, med 12, low 11; 32 rejected). Fields: severity / fix-risk / footprint.
+
+- [x] [Review][Patch] The list's Delete skipped `LDAP.NAME.FORM`: a screen action with id `OCUP99SHORT` deleted `ocup99short.com` under the key `ocup99short` (measured on `ocupilot-ci`). AD-13 as amended, so HIGH under Rule 6. Fixed by `LdapDelete.ScreenActionDelta` and a leg in `LdapCreate` [src/OcuPilot/Screen/Tool/LdapDelete.cls:95] -- high / low / in-story
+- [x] [Review][Patch] Nothing pinned that a refused Save or a create of a taken name writes no password. Fixed by `LdapPassword.TestARefusedSaveWritesNoPassword` [src/OcuPilot/Test/LdapPassword.cls:124] -- med / low / in-story
+- [x] [Review][Patch] The "both" password leg could not tell the old password from the new one. It now runs from a cleared password [src/OcuPilot/Test/LdapPassword.cls:91] -- med / low / in-story
+- [x] [Review][Patch] Closing the test dialog during a run neither dropped the late answer nor freed Run, so a reopened dialog showed the earlier run's lines. Fixed with a test ticket in `clearTest` [ui/src/app/areas/security/ldap-editor.store.ts:851] -- med / low / in-story
+- [x] [Review][Patch] AC1's "every input" was pinned for only part of the Advanced prefixes and the attributes. The page spec now lists both in full [ui/src/app/areas/security/ldap-editor.page.spec.ts:228] -- med / low / in-story
+- [x] [Review][Patch] The form's `kerberos` answer was pinned in one direction only, because the throwaway has Kerberos on. Fixed by the pure `LdapRules.KerberosIn` and a two-way corpus [src/OcuPilot/Test/LdapEdit.cls:329] -- med / low / in-story
+- [x] [Review][Patch] Nothing pinned that the name check fills Base DN for nested groups on blur [ui/src/app/areas/security/ldap-editor.page.spec.ts:308] -- med / low / in-story
+- [x] [Review][Patch] Copy settings from left Base DN for nested groups uncopied, but the fixture made that unfalsifiable. The source now holds a different value [ui/src/app/areas/security/ldap-editor.store.spec.ts:330] -- med / low / in-story
+- [x] [Review][Patch] Nothing tested that leaving the editor clears a typed password [ui/src/app/areas/security/ldap-editor.page.spec.ts:448] -- med / low / in-story
+- [x] [Review][Patch] The "Saved" line and its read-back were unpinned on the LDAP page [ui/src/app/areas/security/ldap-editor.page.spec.ts:458] -- med / low / in-story
+- [x] [Review][Patch] `LdapCreate`'s "nothing is written" after a mint could not fail. It now checks that the taken configuration keeps its own host [src/OcuPilot/Test/LdapCreate.cls:151] -- med / low / in-story
+- [x] [Review][Patch] The `unordered` read-back of `LDAPAttributes` had no leg on the instance [src/OcuPilot/Test/LdapEdit.cls:340] -- low / low / in-story
+- [x] [Review][Patch] A Kerberos-only create still drew Copy settings from [ui/src/app/areas/security/ldap-editor.page.ts:243] -- low / low / in-story
+- [x] [Review][Patch] The agent's password leg never checked `messages.log` or `^ERRORS` [src/OcuPilot/Test/LdapPassword.cls:220] -- low / low / in-story
+- [x] [Review][Patch] Two doc comments said the password lives in one frame alone [src/OcuPilot/Area/Security/LdapRules.cls:681] -- low / low / in-story
+- [x] [Review][Patch] A clean editor re-read after an outside change kept the old examples [ui/src/app/areas/security/ldap-editor.store.ts:579] -- low / low / in-story
+- [x] [Review][Patch] A Save made while the name check was in flight sent the raw name and empty base DNs. The Save now waits for the check [ui/src/app/areas/security/ldap-editor.store.ts:756] -- low / low / in-story
+- [x] [Review][Defer] `LDAP.NAME.FORM` refuses a configuration the instance stores as typed. Measured: `Security.LDAPConfigs.Create("OCUP99KRB")`, which the classic page uses for a Kerberos-only create, keeps the name, so OcuPilot cannot open, edit, test or delete such a configuration [src/OcuPilot/Area/Security/LdapRules.cls:409] -- deferred: DW-1888, decision-pending owner=burndown. The spec's "stores only the canonical form" premise and AD-13's amendment need the decision -- med / med / in-story
+- [x] [Review][Defer] The last retrieved attribute cannot be removed. Measured: the vendor PUT ignores `[]`, so the Save answers 200 and the read-back says differs; `[""]` answers 500 [ui/src/app/areas/security/ldap-editor.store.ts:488] -- deferred: DW-1889, escalated owner=burndown (needs an AD-27 case or a refusal sentence) -- med / high / in-story
+- [x] [Review][Defer] The no-task-row assertion passes when `PortFixture.TaskGuids` cannot read the table [src/OcuPilot/Test/PortFixture.cls] -- deferred: DW-1890, wontfix-accepted -- low / low / in-story
+- [x] [Review][Defer] The agent's create refuses a taken name with the kernel's "already present" sentence, not AC8's published sentence [src/OcuPilot/Kernel/Proposal/Mint.cls:177] -- deferred: DW-1891, wontfix-accepted -- low / high / out-of-footprint
+- [x] [Review][Defer] A concurrent create of the same name between `Taken` and the upsert PUT is overwritten and answered 201 [src/OcuPilot/Area/Security/LdapSave.cls:248] -- deferred: occurrence on DW-1882 (a Save takes no per-target hold) -- low / med / in-epic
+- [x] [Review][Defer] The README still calls the LDAP editor reduced [README.md:492] -- deferred: occurrence on DW-1884 -- low / low / out-of-footprint
+- [x] [Review][Defer] The Kerberos pair is drawn for an already Kerberos-only configuration where the instance's Kerberos is off. This departs from the Boundary's letter -- closed `by-design`: the alternative leaves a dead end, and the lead may record it in the Spec Change Log -- low / low / in-story
+
+Rejected (32):
+
+- `false`: the test ports' 9-formal `RunSequence` overrides do not break. Their compiled code carries all 11 formals, and RoleDelete, ResourceUpdate, NamespaceRefusals and DeviceDelete are green.
+- `false`: `GET /ldap/name` answering the canonical form is the spec's name check, not a missed refusal.
+- `false`: the browser legs leave no probe behind. The file's `after` hook removes probes whether the legs pass or fail.
+- `low`, spec-bound: a JSON `null` at the confirm clears the password as `""` does, which is the spec's named limit. A refused password-only Save answers "Saved. The search password was not stored: <reason>", OAuthClientSave's answer. The in-process test waits out the vendor's run (named limit, `ldapTestNoAnswer`). Only empty base DNs fill on blur (Boundary). The CA file is never set or copied (AD-21). No AD-10 arm refuses an LDAP delete or disable (Design Notes). The structural walk runs at the id route (Task). The "None" key is reused because a value has one key. Empty Enter sends nothing (Boundary letter; Copy sets Enter).
+- `low`, classic parity or precedent: no in-progress text during a test (the SSL precedent's `aria-disabled` alone). A Kerberos-only row reads Enabled No. `UNKNOWNHOST` counts as a host. The test route records no audit row, as the classic page records none.
+- `low`, unlikely, and the fix adds branches: a refusal on a field the Kerberos-only form hides; a failed copy, or None after a copy; the vendor's MAXLEN and delimiter bounds left to the vendor; one read per configuration for the copy names; blank output lines dropped; a test's `Kernel.Scope` left set if `View` throws; the answered `name` lowercased under foldcase identity.
+- `low`, theoretical: `Defaults()` answering `{}` on an exception; an exception in `Canonical` reported as `LDAP.NAME.FORM`; a port GET answering OK without an object.
+- Rejected because its fix edits the spec under review: the Auto Run Result's finding arithmetic (24 rows plus the harvested DW-1887).
+
 ## Spec Change Log
 
+- 2026-10-01, lead, rework iteration 1 (trigger: CI red, run 36818056858): re-opened for the two `[CI]` items under Tasks & Acceptance; nothing else changes.
+- 2026-10-01, lead, after code review (tier 1): the implement stage draws the Kerberos pair also when a configuration is already Kerberos-only, so such a configuration is not a dead end on an instance with Kerberos off; the review closed this departure from the Boundary's letter `by-design`, and the lead records it here. The premise that the instance stores only the canonical name is open as DW-1888 (decision-pending).
 - 2026-10-01, lead, spec gate (orchestrator merge gate 2026-10-01, Rule 5): the plan's intent gap answered with option (a) -- epics.md 16.14 criteria 2 and 4 amended at origin as written under Design Notes (the test runs on `AdminPort`'s synchronous path, never the vendor's queue), and a new criterion added at origin for create, search password and delete (approved; FR-45; delete takes the typed-name confirmation; their governance keys enabled); spine amendments (a)-(g) written; Task 0 added (measure the synchronous path first; HALT if it persists the password). Status reset from `blocked`.
 
 ## Review Triage Log
@@ -644,6 +689,20 @@ This runs on slot A. Every probe and test runs on `ocupilot-ci`, one test run at
 - mutation: `LdapEditorPage.onCopy` copies nothing → `ldap-editor.page.spec.ts` (Copy settings from).
 - mutation: `LdapEditor.save` keeps a 404'd edit present → `ldap-editor.store.spec.ts` (Matrix "Absent").
 - mutation: the leave dialog is never drawn → `ldap-editor.page.spec.ts` (the dirty guard).
+- mutation: `LdapDelete.ScreenActionDelta` returns before its name rule → `LdapCreate.TestBothCallersDeleteAConfiguration`, its bare-name list Delete leg (run 23281; AD-13, AC7).
+- mutation: `LdapSave.HandleUpdate` and `HandleCreate` write the password whatever the violations → `LdapPassword.TestARefusedSaveWritesNoPassword`, both legs (run 23283; AC5, AC8).
+- mutation: `LdapSave.HandleUpdate` skips the password when a field is also sent → `LdapPassword.TestTheSaveEntersClearsAndLeavesThePassword`, its both leg (run 23284; AC5).
+- mutation: `LdapRules.KerberosIn` answers 1 → `LdapEdit.TestTheKerberosAnswerIsBit128` (run 23286; AC1).
+- mutation: `ReadBack.Same` ignores `unordered` → `LdapEdit.TestTheAttributesReadBackInAnyOrder` (run 23286; AD-58).
+- mutation: `LdapEditor.test` keeps a late answer after `clearTest` → `ldap-editor.store.spec.ts` (a test answered after its dialog closed; AC3).
+- mutation: `LdapEditor.refresh` reads no examples → `ldap-editor.store.spec.ts` (the outside change).
+- mutation: `LdapEditor.save` does not wait for the name check → `ldap-editor.store.spec.ts` (AC6, the check in flight).
+- mutation: `UNCOPIED_FIELDS` drops the groups base DN → `ldap-editor.store.spec.ts` (Matrix "Copy from").
+- mutation: the name check fills Base DN alone → `ldap-editor.page.spec.ts` (AC6, Matrix "Short name").
+- mutation: `ATTRIBUTE_TEXT_FIELDS` drops Comment, and separately `ADVANCED_FIELDS` drops `RoleId` → `ldap-editor.page.spec.ts` (AC1, the id route).
+- mutation: the page's teardown skips the store reset → `ldap-editor.page.spec.ts` (AC5, leaving clears the password).
+- mutation: `savedText` answers `''` → `ldap-editor.page.spec.ts` (Integration, the Saved line).
+- mutation: Copy settings from drawn whatever `ldapShown` answers → `ldap-editor.page.spec.ts` (AC1, a Kerberos-only create).
 
 ## Auto Run Result
 

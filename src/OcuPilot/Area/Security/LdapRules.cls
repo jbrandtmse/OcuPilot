@@ -451,7 +451,7 @@ ClassMethod KerberosEnabled(Output pOn As %Boolean) As %Status
     Try {
         Set $NAMESPACE = "%SYS"
         Set tSystem = ##class(Security.System).%OpenId("SYSTEM")
-        If $IsObject(tSystem) Set pOn = ''$ZBoolean(+tSystem.AutheEnabled, ..#AUTHEKERBEROS, 1)
+        If $IsObject(tSystem) Set pOn = ..KerberosIn(tSystem.AutheEnabled)
         Set tSystem = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -459,6 +459,13 @@ ClassMethod KerberosEnabled(Output pOn As %Boolean) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether an <code>AutheEnabled</code> mask <var>pAutheEnabled</var> has Kerberos
+/// (<parameter>AUTHEKERBEROS</parameter>) on.</p>
+ClassMethod KerberosIn(pAutheEnabled) As %Boolean
+{
+    Quit ''$ZBoolean(+pAutheEnabled, ..#AUTHEKERBEROS, 1)
 }
 
 /// <p><var>pViolations</var> as one problem sentence naming each field and its published sentence,
@@ -671,8 +678,8 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// (<parameter>OcuPilot.Port.AdminPort.CONNECTIONTESTTYPES</parameter>), never queued (AD-26).</p>
 /// <p><b>Caller contract:</b> <var>pViolations</var> is the violation array; a non-zero count means
 /// nothing was tested. Otherwise an error status carries <var>pHttpStatus</var> and
-/// <var>pFault</var>, 404 for a configuration the instance does not hold. The password exists as this
-/// frame's local alone and is cleared before it returns (AD-35).</p>
+/// <var>pFault</var>, 404 for a configuration the instance does not hold. The password is cleared from
+/// this method's locals before it returns, and nothing here stores or logs it (AD-35).</p>
 ClassMethod Test(pName As %String, pBody As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
 {
     Set pResult = ""

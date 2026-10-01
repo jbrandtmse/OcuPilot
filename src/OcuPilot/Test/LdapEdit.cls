@@ -322,6 +322,29 @@ Method TestTheListReadsEnabledFromTheFlags()
     }
 }
 
+/// <p>AC1: the form's <code>kerberos</code> is <code>AutheEnabled</code> bit 128 in both directions,
+/// over a corpus holding the throwaway's own mask (Kerberos on) and that mask with the bit cleared.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.LdapRules.KerberosIn</method> answers 1 --
+/// the off legs go red.</p>
+Method TestTheKerberosAnswerIsBit128()
+{
+    For tCase = $ListBuild(33556471, 1), $ListBuild(33556343, 0), $ListBuild(128, 1), $ListBuild(2048, 0), $ListBuild("", 0) {
+        Do $$$AssertEquals(##class(OcuPilot.Area.Security.LdapRules).KerberosIn($List(tCase, 1)), $List(tCase, 2), "AutheEnabled " _ $List(tCase, 1) _ " reads Kerberos " _ $List(tCase, 2))
+    }
+}
+
+/// <p>AD-58: <code>LDAPAttributes</code> reads back by its members whatever their order: the instance
+/// stores the list sorted, and a Save sending it in another order reads back matching.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.ReadBack.Same</method> ignores the
+/// <code>unordered</code> mode -- the verdict reads differs and this goes red.</p>
+Method TestTheAttributesReadBackInAnyOrder()
+{
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""mail"",""cn""]}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("readBack") = "object"): tAnswer.%Get("readBack").%Get("verdict"), 1: ""), "200 matches", "a Save of two attributes out of order reads back matching")
+    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[""cn"",""mail""]", "where the instance stores them sorted")
+}
+
 /// <p>Whether the instance's Kerberos authentication is on: <class>Security.System</class>'s
 /// <code>AutheEnabled</code> bit 128, read in <code>%SYS</code>.</p>
 ClassMethod KerberosOn() As %Boolean

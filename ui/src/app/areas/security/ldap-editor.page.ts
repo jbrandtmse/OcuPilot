@@ -240,17 +240,19 @@ const ATTRIBUTE_TEXT_FIELDS: readonly string[] = [
                   <p class="ocu-form-error" [id]="nameField.id + '-reason'">{{ nameField.reason }}</p>
                 }
               </div>
-              <div class="ocu-field">
-                <label class="ocu-field-label" [attr.for]="copyId">{{ STRINGS.ldapFieldCopyFrom }}</label>
-                <div class="ocu-field-control">
-                  <select class="ocu-field-input" [id]="copyId" (change)="onCopy($event)">
-                    <option value="" [selected]="copiedFrom === ''">{{ STRINGS.sslVerifyPeerNone }}</option>
-                    @for (option of copyOptions; track option) {
-                      <option [value]="option" [selected]="option === copiedFrom">{{ option }}</option>
-                    }
-                  </select>
+              @if (ldapShown) {
+                <div class="ocu-field">
+                  <label class="ocu-field-label" [attr.for]="copyId">{{ STRINGS.ldapFieldCopyFrom }}</label>
+                  <div class="ocu-field-control">
+                    <select class="ocu-field-input" [id]="copyId" (change)="onCopy($event)">
+                      <option value="" [selected]="copiedFrom === ''">{{ STRINGS.sslVerifyPeerNone }}</option>
+                      @for (option of copyOptions; track option) {
+                        <option [value]="option" [selected]="option === copiedFrom">{{ option }}</option>
+                      }
+                    </select>
+                  </div>
                 </div>
-              </div>
+              }
             } @else {
               <div class="ocu-field">
                 <label class="ocu-field-label" [attr.for]="nameField.id">{{ STRINGS.tableColumnName }}</label>

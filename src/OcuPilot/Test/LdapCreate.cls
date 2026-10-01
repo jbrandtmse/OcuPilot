@@ -147,7 +147,8 @@ Method TestTheRulesRefuseAtTheMint()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", ..#NEWNAME), "the name is created")
     Set tSC = $ClassMethod(..#HELPER, "Mint", ..#CREATE, ..#NEWNAME, ..Args(..#NEWNAME), .tProposal, .tHttp, .tFault)
     Do $$$AssertTrue((tHttp = 400) && ($ClassMethod(..#HELPER, "Problem", $Get(tFault)) [ "already present"), "a taken name is refused by the absence read: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99new.com"), 0, "and nothing is written")
+    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NEWNAME, .tHeld, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tHeld)): tHeld.%Get("LDAPHostNames").%ToJSON(), 1: ""), "[""ocup99.invalid""]", "and the taken configuration keeps its own host")
 }
 
 /// <p>AC6, AC8 on the screen's caller: the create Save refuses a bare name, a taken name and no host
@@ -185,10 +186,13 @@ Method TestTheSaveCreatesUnderTheStoredName()
 /// <p>AC7, AD-51, AD-53: the delete tool's mint refuses a bare name by <code>LDAP.NAME.FORM</code>
 /// (AD-13) even where a configuration answers its target read (<method>FixtureMint</method>), lists
 /// the configuration's flags and hosts as removal rows, and its confirm removes it; the list's
-/// Delete through the screen-action route removes another; each reads back absent, and a Delete of an
-/// absent name answers 404.</p>
+/// Delete refuses a bare name the instance resolves, keeping that configuration, and removes another
+/// through the screen-action route; each reads back absent, and a Delete of an absent name answers
+/// 404.</p>
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.LdapDelete.WRITETYPE</parameter> set to
-/// <code>GET</code> -- the configurations survive and this goes red.</p>
+/// <code>GET</code> -- the configurations survive and this goes red; and
+/// <method>OcuPilot.Screen.Tool.LdapDelete.ScreenActionDelta</method> removed -- the bare name's
+/// configuration is deleted and its leg goes red.</p>
 Method TestBothCallersDeleteAConfiguration()
 {
     Set tAgent = "ocup99agentdelete.invalid"
@@ -212,6 +216,10 @@ Method TestBothCallersDeleteAConfiguration()
         Do $$$AssertEquals(tHttp, 200, "the confirm deletes: " _ $Get(tCode))
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tAgent), 0, "the agent's configuration is gone")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", "ocup99short.com"), "a probe is created whose bare name the instance resolves")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .tStatus, .tAnswer, {"action": "delete", "id": "OCUP99SHORT"}.%ToJSON(), "application/json")
+    Do $$$AssertTrue((tStatus = 400) && ($Select($IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("detail") = "object"): tAnswer.detail.%Get("problem"), 1: "") [ ##class(OcuPilot.Api.LdapError).#REASONNAMEFORM), "the list's Delete of a bare name is refused by LDAP.NAME.FORM: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", "ocup99short.com"), 1, "and the configuration it resolves to is kept")
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .tStatus, .tAnswer, {"action": "delete", "id": (tScreen)}.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus, 200, "the list's Delete answers: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tScreen), 0, "and its configuration is gone")

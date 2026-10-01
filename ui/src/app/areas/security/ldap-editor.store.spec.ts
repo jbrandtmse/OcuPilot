@@ -327,7 +327,7 @@ describe('the LDAP editor store (Story 16.14)', () => {
   });
 
   it('Copy settings from copies every setting but the name, the description and the base DNs, and asks for a new password', async () => {
-    const { store } = mount(defaults(config({ Description: 'source', LDAPFlags: 2 + 64, LDAPBaseDN: 'DC=source' })));
+    const { store } = mount(defaults(config({ Description: 'source', LDAPFlags: 2 + 64, LDAPBaseDN: 'DC=source', LDAPBaseDNForGroups: 'DC=sourcegroups' })));
     await store.open('');
     store.setName('ocup99new.com');
     store.setText('Description', 'mine');
@@ -337,6 +337,7 @@ describe('the LDAP editor store (Story 16.14)', () => {
     expect(store.name()).toBe('ocup99new.com');
     expect(store.text('Description')).toBe('mine');
     expect(store.text('LDAPBaseDN')).toBe('DC=mine');
+    expect(store.text('LDAPBaseDNForGroups')).toBe('DC=ocup99store,DC=invalid');
     expect(store.flags()).toBe(2 + 64);
     expect(store.hosts()).toEqual(['h1.invalid']);
     expect(store.text('LDAPSearchUsername')).toBe('CN=u,DC=ocup99store,DC=invalid');
@@ -389,6 +390,55 @@ describe('the LDAP editor store (Story 16.14)', () => {
     await store.test('u@x.com', 'x');
     expect(store.testNoAnswer()).toBe(false);
     expect(store.testViolationFor('Username')).toBe('Enter the user name without a domain; the test uses this configuration.');
+  });
+
+  it('AC6: a Save made while the name check is in flight waits for it and sends the stored form', async () => {
+    const base = defaults(config());
+    let release: () => void = () => undefined;
+    const held = (call: Call) =>
+      new Promise<JsonResult<unknown>>((resolve) => {
+        release = () => resolve(base(call) as JsonResult<unknown>);
+      }) as unknown as JsonResult<unknown>;
+    const { store, calls } = mount((call) => (call.path.startsWith('/api/ocupilot/ldap/name?') ? held(call) : base(call)));
+    await store.open('');
+    store.setText('LDAPBaseDN', '');
+    store.setText('LDAPBaseDNForGroups', '');
+    store.addEntry('LDAPHostNames', 'h1.invalid');
+    store.setName('OcuP99New');
+    void store.checkName();
+    const saving = store.save();
+    release();
+    expect(await saving).toBe(true);
+    const body = JSON.parse(calls.filter((call) => call.method === 'POST').at(-1)?.body ?? '{}') as Record<string, unknown>;
+    expect(body['Name']).toBe('ocup99new.com');
+    expect(body['LDAPBaseDN']).toBe('DC=ocup99new,DC=com');
+    expect(body['LDAPBaseDNForGroups']).toBe('DC=ocup99new,DC=com');
+  });
+
+  it('AC3: a test answered after its dialog closed is dropped, and the next test may run', async () => {
+    const base = defaults(config());
+    let release: (result: JsonResult<unknown>) => void = () => undefined;
+    const held = () =>
+      new Promise<JsonResult<unknown>>((resolve) => {
+        release = resolve;
+      }) as unknown as JsonResult<unknown>;
+    const { store } = mount((call) => (call.path.endsWith('/test') ? held() : base(call)));
+    await store.open(PROBE);
+    const running = store.test('u', 'fake-probe-value');
+    expect(store.testing()).toBe(true);
+    store.clearTest();
+    expect(store.testing()).toBe(false);
+    release(ok({ lines: ['Test completed'] }));
+    await running;
+    expect(store.testLines()).toBeNull();
+  });
+
+  it('AD-14: an outside change re-read by a clean editor reads the examples again', async () => {
+    const { store, calls } = mount(defaults(config()));
+    await store.open(PROBE);
+    const before = calls.filter((call) => call.path.startsWith('/api/ocupilot/ldap/examples?')).length;
+    await store.refresh();
+    expect(calls.filter((call) => call.path.startsWith('/api/ocupilot/ldap/examples?'))).toHaveLength(before + 1);
   });
 
   it('an absent configuration blocks Save and Test; reset forgets everything, the passwords first', async () => {

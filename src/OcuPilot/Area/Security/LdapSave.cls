@@ -285,8 +285,8 @@ ClassMethod Create(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
 /// <p>Write <var>pPassword</var> -- a new search password, or <code>""</code> to clear it -- for
 /// configuration <var>pName</var> through the password tool's own operation: its pairs, AD-10's set
 /// and its port, with a body of that secret alone (AD-56 (i)). Answer <code>""</code>, or the
-/// refusal's sentence. The password is held in this frame alone and cleared before it returns
-/// (AD-35).</p>
+/// refusal's sentence. The password is cleared from this method's locals before it returns, and
+/// nothing here stores or logs it (AD-35).</p>
 ClassMethod StorePassword(pName As %String, pPassword As %String) As %String
 {
     Set tReason = ""

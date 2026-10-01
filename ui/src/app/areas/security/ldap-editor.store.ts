@@ -258,6 +258,12 @@ export class LdapEditor {
 
   private testingValue = false;
 
+  /** Bumped when a test's dialog closes, so an answer arriving after it is dropped. */
+  private testTicket = 0;
+
+  /** The create's name check in flight, which a Save waits for. */
+  private nameCheck: Promise<void> | null = null;
+
   private testLinesValue: readonly string[] | null = null;
 
   private testViolationList: readonly Violation[] = [];
@@ -503,6 +509,7 @@ export class LdapEditor {
   reset(): void {
     this.clearPasswords();
     this.generation += 1;
+    this.nameCheck = null;
     this.modeValue = 'create';
     this.buffer = EMPTY_BUFFER;
     this.opened = EMPTY_BUFFER;
@@ -569,6 +576,7 @@ export class LdapEditor {
     if (generation !== this.generation || result.kind !== 'ok' || this.formDirty.dirty()) return;
     this.absorb(result, name);
     this.notify();
+    void this.readExamples();
   }
 
   setName(value: string): void {
@@ -658,9 +666,16 @@ export class LdapEditor {
   /**
    * On a create's name blur, ask the instance what it would store: the name becomes that form, and
    * each base DN still empty takes the base DN it derives. A name it refuses is marked on the field
-   * with its sentence; a look-up that could not be made leaves the field as it is.
+   * with its sentence; a look-up that could not be made leaves the field as it is. A Save made while
+   * it is in flight waits for it.
    */
-  async checkName(): Promise<void> {
+  checkName(): Promise<void> {
+    const pending = this.runNameCheck();
+    this.nameCheck = pending;
+    return pending;
+  }
+
+  private async runNameCheck(): Promise<void> {
     if (this.modeValue !== 'create') return;
     const name = this.buffer.name.trim();
     if (name === '') return;
@@ -738,6 +753,7 @@ export class LdapEditor {
    * keeps what was entered.
    */
   async save(): Promise<boolean> {
+    if (this.nameCheck !== null) await this.nameCheck;
     if (!this.canSave()) return false;
     if (this.passwordModeValue === 'enter' && this.passwordValue !== this.confirmValue) {
       this.violationList = [
@@ -804,6 +820,7 @@ export class LdapEditor {
   async test(user: string, password: string): Promise<void> {
     if (!this.canTest() || this.testingValue) return;
     const generation = this.generation;
+    const ticket = this.testTicket;
     this.testingValue = true;
     this.testLinesValue = null;
     this.testViolationList = [];
@@ -815,7 +832,7 @@ export class LdapEditor {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ Username: user, Password: password }),
     });
-    if (generation !== this.generation) return;
+    if (generation !== this.generation || ticket !== this.testTicket) return;
     this.testingValue = false;
     if (result.kind !== 'ok') {
       this.testViolationList = violationsOf(result);
@@ -829,8 +846,10 @@ export class LdapEditor {
     this.notify();
   }
 
-  /** Forget the last test's answer, when its dialog closes. */
+  /** Forget the last test's answer, and drop one still running, when its dialog closes. */
   clearTest(): void {
+    this.testTicket += 1;
+    this.testingValue = false;
     this.testLinesValue = null;
     this.testViolationList = [];
     this.testReasonValue = '';
