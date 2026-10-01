@@ -175,6 +175,26 @@ function headers(page) {
   return page.$$eval('[role="columnheader"]', (cells) => cells.map((cell) => cell.textContent.trim()));
 }
 
+/**
+ * Press the editor's control `selector` with the pointer, once it is brought clear of the sticky form
+ * bar. The editor scrolls inside itself under that bar (DW-1596), and a control lying in the scroll
+ * port beneath the bar takes no scroll from a click, which then lands on the bar. Where a control
+ * lies depends on the fonts and on whether the stale-bundle notice stands above the form (it does on
+ * a throwaway whose bundle was copied in after its install), so the point is checked to hit the
+ * control before it is pressed.
+ */
+async function press(page, selector) {
+  await page.waitForSelector(selector, { visible: true, timeout: config.navigationTimeoutMs });
+  await page.$eval(selector, (node) => node.scrollIntoView({ block: 'center' }));
+  const hit = await page.$eval(selector, (node) => {
+    const box = node.getBoundingClientRect();
+    const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return at !== null && (at === node || node.contains(at) || Array.from(node.labels ?? []).some((label) => label.contains(at)));
+  });
+  assert.ok(hit, `${selector} is clear of the form bar before it is pressed`);
+  await page.click(selector);
+}
+
 /** Clear the field `selector` and type `text` into it. */
 async function retype(page, selector, text) {
   await page.click(selector, { clickCount: 3 });
@@ -197,7 +217,7 @@ async function structural(page, tabs) {
   const surfaces = {};
   for (const tab of tabs) {
     await openTab(page, tab);
-    if (tab === 'groups' && (await page.$('#ocu-ldap-advanced')) === null) await page.click('app-ldap-editor-page .ocu-form-disclosure');
+    if (tab === 'groups' && (await page.$('#ocu-ldap-advanced')) === null) await press(page, 'app-ldap-editor-page .ocu-form-disclosure');
     for (const { viewport, theme, checks } of passes) {
       await page.setViewport(viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
@@ -259,7 +279,7 @@ test('Integration: a description and a flag are saved and read back, and the lis
   try {
     await editorReady(page);
     await retype(page, '#ocu-ldap-Description', 'browser save');
-    await page.click('#ocu-ldap-flag-2');
+    await press(page, '#ocu-ldap-flag-2');
     await saveAndSettle(page, config);
     assert.deepEqual(
       writes.map((write) => [write.method, write.path, JSON.parse(write.body)]),
@@ -283,7 +303,7 @@ test('AC5: a search password is entered, then cleared, each read back by presenc
   const { context, page, writes } = await signedIn(editUrl(PROBE));
   try {
     await editorReady(page);
-    await page.click('#ocu-ldap-LDAPSearchPassword-enter');
+    await press(page, '#ocu-ldap-LDAPSearchPassword-enter');
     await page.waitForSelector('#ocu-ldap-password', { visible: true, timeout: config.navigationTimeoutMs });
     await page.type('#ocu-ldap-password', FAKE_PASSWORD);
     await page.type('#ocu-ldap-password-confirm', FAKE_PASSWORD);
@@ -292,7 +312,7 @@ test('AC5: a search password is entered, then cleared, each read back by presenc
     assert.deepEqual(Object.keys(JSON.parse(writes[0].body)), ['LDAPSearchPassword'], 'carrying the password alone');
     assert.equal(passwordSet(PROBE), true, 'the instance holds a password');
     assert.equal(await page.$eval('#ocu-ldap-LDAPSearchPassword-leave', (node) => node.checked), true, 'and the form is back to Leave as is');
-    await page.click('#ocu-ldap-LDAPSearchPassword-clear');
+    await press(page, '#ocu-ldap-LDAPSearchPassword-clear');
     await saveAndSettle(page, config);
     assert.equal(writes.length, 2, 'a second Save was sent');
     assert.equal(JSON.parse(writes[1].body).LDAPSearchPassword, '', 'carrying an empty password');
@@ -313,7 +333,7 @@ test('AC6, AC7: Create from the command bar saves a configuration under its stor
     await page.focus('#ocu-ldap-Description');
     await page.waitForFunction(() => document.querySelector('#ocu-ldap-LDAPBaseDN')?.value === 'DC=ocup99created,DC=invalid', { timeout: config.navigationTimeoutMs });
     await page.type('#ocu-ldap-LDAPHostNames', UNREACHABLE);
-    await page.click('[data-action="add-host"]');
+    await press(page, '[data-action="add-host"]');
     await page.type('#ocu-ldap-LDAPSearchUsername', 'CN=ocup99,DC=ocup99created,DC=invalid');
     await saveAndSettle(page, config);
     await pathEnds(page, `/${ROUTE}/ocup99created%252Einvalid`);
@@ -353,7 +373,7 @@ test('AC3: Test authentication shows the instance\u2019s own lines for a configu
   const { context, page } = await signedIn(editUrl(PROBE));
   try {
     await editorReady(page);
-    await page.click('[data-action="ldap-test"]');
+    await press(page, '[data-action="ldap-test"]');
     await page.waitForSelector('app-ldap-test-dialog [role="dialog"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('app-ldap-test-dialog .ocu-dialog-title', (node) => node.textContent.trim()), STRINGS.ldapTestAction);
     await page.type('#ocu-ldap-test-user', 'ocup99user');

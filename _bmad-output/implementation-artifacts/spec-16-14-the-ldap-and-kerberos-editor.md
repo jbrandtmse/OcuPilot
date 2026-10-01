@@ -2,8 +2,8 @@
 title: 'Story 16.14: The LDAP and Kerberos editor'
 type: 'feature'
 created: '2026-09-30'
-status: 'in-progress'
-baseline_revision: '2c5da91e74965b1c373324a75704aaf908ffe926'
+status: 'done'
+baseline_revision: 'b12c5c68b4e43b7c886b3035dec7a36b412728c1'
 baseline_commit: '2c5da91e74965b1c373324a75704aaf908ffe926'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -425,8 +425,8 @@ Client:
 - P11: `LdapUpdate.TestThePairsUnionTheClassicEditorsResource`'s pair leg message says what it checks (the list's pairs with `%Admin_Secure:USE`; the classic page's union is `ClassicPageGate`'s), since no page carries a custom resource there.
 - P12: `ldap-editor.store.ts`'s class doc says the Test authentication password is the dialog's, not the store's.
 
-- [ ] [CI] browser shard 3/3 (run 36818056858, head 1296bc45): `ui/browser/security.browser-spec.mjs:264` AC1 expects the LDAP / Kerberos list's headers `[Name, Enabled, Description]`; this story's row actions add an `Actions` column. Update that roster (and grep `ui/browser/` and `ui/tools/` for any other pin of the LDAP list's headers), run `security.browser-spec.mjs` green on a rebuilt, redeployed bundle.
-- [ ] [CI] browser shard 2/3 (same run): `ui/browser/ldap-editor.browser-spec.mjs:280` AC5 timed out waiting for `#ocu-ldap-password` on CI's fresh instance while green locally. Find the cause (what draws that field, and what on a fresh instance or a different shard order keeps it from rendering), fix the code or the leg, and run `ldap-editor.browser-spec.mjs` three times back to back on a rebuilt, redeployed bundle, green each time. The review's patches to `ldap-editor.page.ts`/`.store.ts` are already committed with this rework; account for them.
+- [x] [CI] browser shard 3/3 (run 36818056858, head 1296bc45): `ui/browser/security.browser-spec.mjs:264` AC1 expects the LDAP / Kerberos list's headers `[Name, Enabled, Description]`; this story's row actions add an `Actions` column. Update that roster (and grep `ui/browser/` and `ui/tools/` for any other pin of the LDAP list's headers), run `security.browser-spec.mjs` green on a rebuilt, redeployed bundle.
+- [x] [CI] browser shard 2/3 (same run): `ui/browser/ldap-editor.browser-spec.mjs:280` AC5 timed out waiting for `#ocu-ldap-password` on CI's fresh instance while green locally. Find the cause (what draws that field, and what on a fresh instance or a different shard order keeps it from rendering), fix the code or the leg, and run `ldap-editor.browser-spec.mjs` three times back to back on a rebuilt, redeployed bundle, green each time. The review's patches to `ldap-editor.page.ts`/`.store.ts` are already committed with this rework; account for them.
 
 **Acceptance Criteria:**
 
@@ -520,6 +520,18 @@ Rejected (32):
   - `[false]` `[reject]` `LdapConfigForm` declares `context.secretFields` `LDAPSearchPassword` — `OAuthClientForm`'s precedent; it keeps the typed password out of context.
   - `[false]` `[reject]` `HandleTest` refuses short names — the Boundary refuses `LDAP.NAME.FORM` on every LDAP route.
   - `[low]` `[patch]` the store's doc said the test password is the store's — P12: it says the dialog's.
+
+### 2026-10-01 — Review pass (rework 1, follow-up)
+
+- verdicts: 7 findings — high 0, medium 0, low 2, false 5, maybe-false 0
+- findings:
+  - `[false]` `[reject]` the Auto Run Result does not record this pass — it is written at this pass's finalize, after review; the fix would edit this spec.
+  - `[low]` `[patch]` browser legs Integration, AC6/AC7 and AC3 were edited (their clicks now go through `press()`) but had no demonstrated mutation of their own — one bundle carrying three product mutations reddened each at its own assertion; lines added under Demonstrated.
+  - `[false]` `[reject]` AC5's cause may be in the product, not the leg — `1614-rw-ldap-repro.log`: with the stale-bundle notice removed (CI's layout) the unchanged leg times out exactly as CI did, because the click lands on the sticky bar; with `press()` the product draws `#ocu-ldap-password` and the leg passes three times in that layout. The sticky-bar scroll is DW-1596's settled design, which `device-editor.browser-spec.mjs` handles the same way.
+  - `[low]` `[patch]` `press()`'s doc stated as fact that a fresh CI instance lays the form out differently — the doc now names the mechanism read in `shell/stale-bundle-notice.ts`: the notice stands on a throwaway whose bundle was copied in after its install.
+  - `[false]` `[reject]` the `press()` mutation does not reproduce the CI symptom — the reproduction above does (the unchanged leg red in CI's layout), and the product mutations now pin each touched leg.
+  - `[false]` `[reject]` the requested runs are ticked but not recorded — recorded in the Auto Run Result at finalize; the fix would edit this spec.
+  - `[false]` `[reject]` the remaining plain clicks (tabs, Description, the bar's buttons, the dialog's Run) could miss the same way — they ran green three times in CI's layout, and none lies in the scroll port under the bar.
 
 ## Design Notes
 
@@ -703,6 +715,10 @@ This runs on slot A. Every probe and test runs on `ocupilot-ci`, one test run at
 - mutation: the page's teardown skips the store reset → `ldap-editor.page.spec.ts` (AC5, leaving clears the password).
 - mutation: `savedText` answers `''` → `ldap-editor.page.spec.ts` (Integration, the Saved line).
 - mutation: Copy settings from drawn whatever `ldapShown` answers → `ldap-editor.page.spec.ts` (AC1, a Kerberos-only create).
+- mutation: `screen-action-handler.ts` drops `LdapConfigList` from `SCREEN_ACTION_DESCRIPTORS` → `security.browser-spec.mjs` AC1, "ldap: the declared headers" (rework 1; rebuilt and redeployed).
+- mutation: `LdapEditor.changedFields` drops its Clear arm → `ldap-editor.browser-spec.mjs` AC5, "a second Save was sent" (rework 1; rebuilt and redeployed).
+- mutation: the spec's `press()` without its `scrollIntoView` → `ldap-editor.browser-spec.mjs` Integration, AC5 and AC3, "… is clear of the form bar before it is pressed" (rework 1).
+- mutation, one bundle (rework 1; rebuilt and redeployed): `LdapEditor.setFlag` ignores bit 2 → `ldap-editor.browser-spec.mjs` Integration (the `PUT` body lacks `LDAPFlags` 74); `createBody` adds a second host → AC6, AC7 ("with its host"); `LdapTestDialog.lines` answers `[]` → AC3 ("the dialog shows lines").
 
 ## Auto Run Result
 
@@ -716,3 +732,11 @@ Blocking condition: none
 - **Review.** 24 findings: 14 rows patched as 12 entries (9 medium, 3 low; Tasks P1-P12), each medium closed with an observed mutation under `## Verification`; 1 deferred (dead reduced-form CSS, `_components.scss` is append-only); 10 rejected (7 false, 3 low) with reasons in the triage log. Also corrected: one test doc phrase and `MUTATINGTYPES`' spacing. Follow-up review: `false` -- nine medium entries were patched, but each closed with a demonstrated mutation (runs 22874-22879, 23273, 23274 and the component specs), and no unverified risk can be named.
 - **Verification** (slot A, `ocupilot-ci`, one run at a time, full arming list). Targeted: `LdapUpdate` 12/12 (run 23275), `LdapEdit` 12/12 (23276), `LdapCreate` 5/5 (22882), `LdapPassword` 5/5 (22881), `LdapTest` 3/3 (22880), `MappingDescriptor` 6/6 (23272), and before the patches `ClassicPageGate`, `SecurityLists`, `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `ToolWrite`, `Descriptor`, `DraftRegistry`, `SslTest`, `ProposalConfirm`, `ReadBack` (runs 22856-22867). Full sweep: 387 classes, 3,204 tests, 7 failed -- `MappingDescriptor` 1 (this story's roster, fixed and green at 23272) and the named residue (`PathPortInstance` 1, `Retention` 1, `TaskHistory` 3, `WireSecurityRead` task history 1); 0 probe leftovers, 0 overlaps. `npm test` green; LDAP component specs 99/99 after the patches; `test:tools` 1,747/1,747; `check-objectscript` 0 problems; `lint-docs` clean; EXPERIENCE.md 993 lines. Browser, bundle rebuilt and redeployed: `ldap-editor` 6/6, `oauth` 6/6; initial total 2,383,623 bytes, `maximumWarning` re-based to 2384kB (DW-1166).
 - **Residual risks.** 377 bytes of bundle headroom, so the next story re-bases (DW-1166). On `ocupilot-ci`, mutation runs left a fake one-run password in the journal (a queued-path mutation) and fake text in `messages.log`; no real secret. `ui/tools/ci-timings.json` still names the deleted `reduced-editors` spec, which `ci-shards.mjs` ignores until the next `refresh`.
+
+**Rework 1 (CI run 36818056858, head `1296bc45`; baseline `b12c5c68`).**
+
+- **Changed.** Browser specs only; no product code or ObjectScript. `security.browser-spec.mjs`: the LDAP / Kerberos list's header roster gains Actions, as the X.509 entry does (no other pin of those headers in `ui/browser/` or `ui/tools/`). `ldap-editor.browser-spec.mjs`: a `press()` helper scrolls a control to the middle of the form and checks the click point hits it before clicking, used for the six form-control clicks (Use TLS/SSL, Enter, Clear, Add host name, Test authentication, the Advanced disclosure).
+- **Cause of the AC5 timeout.** On a throwaway whose bundle was copied in after its install, the stale-bundle notice (48 px) stands above the form; a fresh CI instance has none. Without it, at 1280x900 the Enter option lies inside the viewport under the sticky form bar, Puppeteer does not scroll it, and the click lands on the bar, so `#ocu-ldap-password` is never drawn. Reproduced on `ocupilot-ci` by pointing the version row at the deployed bundle: the unchanged leg timed out as CI did. The row was restored afterwards.
+- **Verified** (bundle rebuilt and redeployed, shim armed, one run at a time). In CI's layout (no notice): `security` 5/5; `ldap-editor` 6/6 three times back to back; `security` then `ldap-editor` 11/11. With the notice: `ldap-editor` 6/6. After this pass's doc patch: `ldap-editor` 6/6. `test:tools` 1,747/1,747. No `ocup99*` configuration remains. Bundle `main-LCID67XZ.js`, initial total unchanged (2.38 MB).
+- **Review (follow-up pass).** 7 findings: 2 low patched (the three touched legs' mutations, `press()`'s doc), 5 false rejected; nothing deferred. Six mutations demonstrated under Verification. Follow-up review: `false` (no high patched).
+- **Residual risk.** Local browser runs on a redeployed throwaway lay forms out 48 px lower than CI does; check that first on a red seen only in CI.
