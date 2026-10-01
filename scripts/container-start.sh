@@ -301,11 +301,11 @@ fi
 #
 # A product start also deletes those packages, subpackages included, from the install namespace
 # before it compiles, so test classes an earlier start compiled into a reused volume do not
-# survive it (DW-1885), and the compile runs against the class set a fresh volume has. It logs how
-# many classes it deleted, 0 included. A package mapped into the namespace from another database
-# is never deleted, since $System.OBJ.DeletePackage deletes through a mapping; that, a delete
-# that fails, or a class of the package still there afterwards fails the start before anything
-# is compiled, so no start reaches STARTPATH-OK with part of the package left.
+# survive it (DW-1885). It logs how many classes it deleted, 0 included. A package the namespace
+# maps in from another database is never deleted, since $System.OBJ.DeletePackage deletes through
+# a mapping; only each package's own mapping is read, not a subpackage's. That, a delete that
+# fails, or a class of the package still there afterwards fails the start before anything is
+# compiled, so no start reaches STARTPATH-OK with part of the package left.
 LOAD_TESTS_FLAG=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_LOAD_TESTS=' | cut -d= -f2-)
 LOAD_DIR="$SRC_DIR"
 PRODUCT_SRC="/tmp/ocupilot-product-src"

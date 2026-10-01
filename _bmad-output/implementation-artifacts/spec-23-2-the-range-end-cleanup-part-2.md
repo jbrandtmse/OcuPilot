@@ -573,6 +573,31 @@ Rejected:
   - **Runner step (lead):** on `ocupilot-b-ci`, with the test package compiled, a restart (flag unset) logs the removed count and leaves no `OcuPilot.Test` class; the loader then restores them.
   - AC: Given a volume holding compiled `OcuPilot.Test` classes, when a product start runs, then the package is gone and the log says how many classes it removed; given `OCUPILOT_LOAD_TESTS=1`, nothing is deleted.
 
+### Review Findings (DW-1885)
+
+- [x] [Review][Patch] medium: the `images` job's admin-API drift check, smoke and credentials check ran against the start over the reused volume, so no step smoked a first install on a fresh volume on either stock edition [.github/workflows/ci.yml:359] — `product-reuse` and the second `product-check` now run after the credentials check
+- [x] [Review][Patch] no readiness wait followed the recreate before the HTTP steps [.github/workflows/ci.yml:362] — closed by the same move: no HTTP step follows the recreate
+- [x] [Review][Patch] the delete session's guard inputs were unpinned: where `tHome` comes from, a reassignment of `tMapped` or `tLeft`, and the counts' `_ "."` prefix [ui/tools/compose.test.mjs:745]
+- [x] [Review][Patch] the hook comment said a mapped package is never deleted, while only each package's own mapping is read and `DeletePackage` deletes a separately mapped subpackage through its mapping [scripts/container-start.sh:305] — comment corrected; the behavior stays wontfix-theoretical as the review pass closed it
+- [x] [Review][Patch] the hook comment said the compile runs against the class set a fresh volume has, while only the test-scope packages are deleted [scripts/container-start.sh:304]
+- [x] [Review][Patch] `docker-compose.yml` said the start deletes what an earlier start left "on the volume", while the delete covers the install namespace only [docker-compose.yml:32]
+- [x] [Review][Defer] medium: a slot or developer instance without `OCUPILOT_LOAD_TESTS=1` loses its test classes on restart, `CLAUDE.md`'s slot paragraph says only that the flag makes a start compile them, and slot A's tracked compose file may not set it [CLAUDE.md:270] — deferred: DW-1886 (decision-pending, owner action), occurrence appended
+
+Rejected:
+
+- other (lead-owned): AD-17's last sentence contradicts the delete. The lead amends the spine (Rule 20); it is listed under the Auto Run Result's "Now false".
+- low, rejected: `README.md` says nothing about a first product start over an older volume. The start logs the count, and no operator action follows.
+- low, wontfix-theoretical: the `MAPPED` line names no remedy, and a mapped `OcuPilot` package with no test class still fails every product start. No product path creates a package mapping (no `Config.MapPackages` outside `Test/`). Real when an operator maps `OcuPilot` into the install namespace on the container path.
+- false: the mapping comparison might always read equal. The mapping check run alone on `ocupilot-b-ci` flagged `Ens` (`^/usr/irissys/mgr/enslib/`) and not `OcuPilot.Test` (Verification, DW-1885 (loop)), so the two destinations differ for a mapped package. The arms' text-only pins stay closed as the review pass left them, now with their inputs pinned.
+- low, rejected: the logged count is definitions while the left-over count adds compiled classes. The review pass closed the same claim: fail-closed, no everyday source.
+- low, wontfix-accepted (`reopen_if=` the `images` job's pinned IRIS tag changes, or a product start logs more classes than the definitions under `<package>.`): CI plants no sibling package to prove nothing outside is deleted. The vendor boundary was measured twice on 2026.2 (the stage probe kept `OcuPilot.TestX` and the parent package's class; the lead's restart kept `OcuPilot.TestProbe23`), the counts' prefix is now pinned, and the plant is about 30 lines in a file Epic 16 also edits.
+- low, wontfix-theoretical: a roster marking a product ancestor test-scope now deletes the installed product before the start fails. CI's `images` start reddens first, the next good start recompiles the whole tree, and `/deleteextent` 0 keeps data. Real when a roster change marks an ancestor of `OcuPilot.Install` test-scope.
+- low, rejected: the folder loop's `""` pattern is unreachable behind the new list guard. It is defensive and harmless.
+- low, wontfix-theoretical: a roster name with an empty segment (`OcuPilot..Test.PKG`) passes the folder check, and the count reads 0. Batch d closed the same guard. Real when a roster resource name carries `..`.
+- low, wontfix-theoretical: `product-reuse` acts on whatever compose file `--dir` holds; the `--project`, `--web` and `--super` refusals do not reach a file-driven action, while the scratch-root and `..` refusals do. `down`, which removes volumes, has had the same reach since before this change. Real when a compose file under a scratch root names the live or a slot project.
+- false: a socket can take the web port between the recreate's removal and bind. The `images` job reserves 52781 with `ip_local_reserved_ports` before bring-up, and 1980 is below the ephemeral floor.
+- low, wontfix-theoretical: an error inside a loop line leaves `tMapped`, `tCounted` or `tLeft` at a passing value. No call there is known to throw: `GetPackageDest` is two `$zu` reads on a checked name, and `%ExecDirect` reports SQL errors through the result `tCounted` reads. Real when a start log shows an error line from the delete session ahead of an `OK` verdict.
+
 ## Spec Change Log
 
 - 2026-09-30 batch b rework 1 (lead): CI run 36720188412 was red on `seeded-injection` (DW-1210's cut hid the seed's row); the leg now filters its scripted read to the probe role (47e15e2b).
@@ -831,6 +856,15 @@ Rejected:
   - `[patch]` Splitting on commas drops a trailing empty roster folder, which the per-folder `""` arm never sees and which would reach `DeletePackage` as an empty package; the hook now refuses a list naming an empty folder before the copy. Pinned in `compose.test.mjs`; mutation red, restored.
   - Incident: the stage's own probe of the two-class plant session ran in `ocupilot-b-ci`'s `HSCUSTOM` (a `sed` range matched two sessions), and its cleanup `DeletePackage("OcuPilot.Test")` then removed that instance's 835 compiled test classes. `LoadDir("/opt/ocupilot/src","ck-d",,1)` in `HSCUSTOM` restored them: 0 errors, 835 `OcuPilot.Test` and 1,272 `OcuPilot.*` compiled, readiness `installed`, `USER` 0 `OcuPilot*`.
 
+### 2026-09-30 — Code review (DW-1885)
+
+- layers: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor, all Opus; none failed. 27 raw rows grouped into 20 entries: high 0, medium 2, low 15, false 2, other 1. 6 patched, 1 deferred (a DW-1886 occurrence), 13 closed; see `### Review Findings (DW-1885)`.
+- `[medium]` `[patch]` The `images` job smoked the start over the reused volume, not a first install (blind-hunter). `product-reuse` and the second `product-check` now run after the credentials check, so smoke reads a clean container again (AD-45) and no HTTP step follows the recreate. Mutation red, restored.
+- `[medium]` `[defer]` Instances without the flag lose their test classes, and `CLAUDE.md`'s slot paragraph does not say so (blind-hunter, verification-gap). This is DW-1886; an occurrence was appended.
+- Runtime evidence (Rule 3): CI run 36811150267's `images` legs on `00724be8` logged "deleted 2 class(es) of the roster's test-scope package OcuPilot.Test from USER" (IRIS Community) and "from HSCUSTOM" (IRIS for Health), with 437 compiled and 0 `OcuPilot.Test` before and after, and smoke 49/49. The lead's runner step deleted 835, then 1 while keeping the sibling. The reordered job first runs on the lead's next push.
+- Hard constraints: the delete names only `$TEST_DIRS`, read from the roster; a flag of 1 never reaches it (the `else` branch); every failed, partial or unanswered outcome exits 1 with its own line before `LoadDir`; the hook parses under `sh -n`, `dash -n` and `bash -n` (3.2.57). `product-reuse` is bounded by the health check, `on-failure:3` and the job's unchanged `timeout-minutes: 30`, and the existing `if: always()` teardown removes it.
+- Rules: AD-17 (roster-read, test scope only; its last sentence is the lead's amendment), AD-18, AD-25, AD-38 and AD-45 match. No `timeout-minutes` changed. `npm run test:tools` 1,757/1,757; `lint-docs.sh` 0.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story: it is a defect-fix story and introduces no service, module or shared component. `BackgroundSeed.Hold`, the fixture's `Linger`, and `Operation.Hold`/`Release` each have their consumer in the same batch. Consumes: none.
@@ -1067,6 +1101,8 @@ Slot B (`_bmad/custom/parallel.yaml`, `slots: b`). MCP profile `ocupilot-slot-b`
 - `mutation:` the first start's 0-class check deleted → red alone at "a fresh start that did not log deleting 0 classes fails"; restored byte-identical.
 - `mutation:` the verb's `OCUPILOT_LOAD_TESTS` refusal deleted → red alone at "a throwaway whose start compiles the test package is refused"; restored byte-identical.
 - `mutation:` the hook's empty-name guard (`case ",$TEST_DIRS," in *,,*)`) deleted → `compose.test.mjs` red alone at "a list naming an empty folder is refused before the folder loop"; restored byte-identical. `npm run test:tools` 1,757/1,757 on the final tree.
+- `mutation:` `product-reuse` and the second `product-check` moved back above `admin-spec.mjs` in the `images` job → `ci.test.mjs` red on the DW-1885 test alone at '"node tools/admin-spec.mjs" runs against the first start, on a fresh volume'; the step and its declared gate dropped → still red at "the fresh product start is counted, then started again over its volume". Each restored byte-identical (`shasum -c`, `git status --short`, `git diff --stat`).
+- `mutation:` a second `Set tMapped = ""` before the delete → `compose.test.mjs` red on the DW-1885 test alone at "the mapped list starts empty and only grows"; `tHome` read with `GetPackageDest` → red at "the home database is the namespace's routines database"; `Set tLeft = 0` before the verdict → red at "the left-over count starts at 0 and only grows"; `_ "."` dropped from the first count → red at "each package is counted by its prefix, dot included, so a sibling package is not". Each restored byte-identical; `npm run test:tools` 1,757/1,757 after.
 
 **Once, before the last batch's dev_complete:**
 

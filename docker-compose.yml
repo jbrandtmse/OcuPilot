@@ -29,8 +29,8 @@ services:
       OCUPILOT_DEMO: "1"
       # OCUPILOT_LOAD_TESTS is deliberately not set: without it the start hook leaves the
       # roster's test-scope package out of the compile, so this container compiles no
-      # OcuPilot.Test class (AD-17), and deletes any an earlier start left on the volume.
-      # scripts/ci-throwaway.sh sets it to "1" for the suite.
+      # OcuPilot.Test class (AD-17), and deletes any an earlier start left in the install
+      # namespace. scripts/ci-throwaway.sh sets it to "1" for the suite.
     volumes:
       - ./iris-data:/durable
       # Read-only: the container never writes back into this repository's source tree.

@@ -708,7 +708,9 @@ test('the start hook leaves the roster\'s test-scope folder out of a start witho
 // `(tMapped = "") &&` -> red at the mapping assertion. Drop `exit 1` from the LEFT arm -> red at the
 // failure-arm assertion. Move the session below `LOAD_DIR="$PRODUCT_SRC"` -> red at the order
 // assertion. Hand the session no vendor delete -> red at the delete assertion. Drop the empty-name
-// guard before the folder loop -> red at the empty-folder assertion.
+// guard before the folder loop -> red at the empty-folder assertion. Clear tMapped again before the
+// delete -> red at the mapped-list assertion. Drop `_ "."` from the first count -> red at the
+// prefix assertion.
 test('a product start deletes the roster\'s test-scope package before it compiles, and logs how many classes it deleted (DW-1885)', () => {
   const sessionHead = 'PURGE_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF\n';
   const purgeAt = startHookCode.indexOf(sessionHead);
@@ -740,10 +742,18 @@ test('a product start deletes the roster\'s test-scope package before it compile
   assert.match(body, /GetPackageDest\(, \\\$Piece\(tPkgs, ",", tI\)\)/, 'each package\'s database is read');
   assert.match(body, /\\\$Select\(tDest = tHome: "", /, 'and compared with the namespace\'s own routines database');
   assert.match(body, /\\\$Select\(\(tMapped = ""\) && tCounted: \\\$System\.OBJ\.DeletePackage/, 'and the delete runs only when none is mapped');
+  // The guard's inputs are set where they are computed and nowhere else.
+  const sets = (name) => [...body.matchAll(new RegExp(`(?:\\bSet|,) ?${name} ?= ?([^ ,\\n]+)`, 'g'))].map((m) => m[1]);
+  assert.deepEqual(sets('tHome'), ['##class(%SYS.Namespace).GetRoutineDest()'], 'the home database is the namespace\'s routines database');
+  assert.deepEqual(sets('tMapped'), ['""', 'tMapped'], 'the mapped list starts empty and only grows');
+  assert.deepEqual(sets('tLeft'), ['0', 'tLeft'], 'the left-over count starts at 0 and only grows');
 
   // What is counted: definitions before, definitions and compiled classes after.
   assert.match(body, /tCountSQL = "SELECT COUNT\(\*\) FROM %Dictionary\.ClassDefinition WHERE %EXACT\(ID\) %STARTSWITH \?"/, 'the classes are counted before the delete');
   assert.match(body, /tLeftSQL = "[^"\n]*%Dictionary\.ClassDefinition[^"\n]*%Dictionary\.CompiledClass[^"\n]*"/, 'and every definition and compiled class left is counted after it');
+  const prefix = '\\$Piece(tPkgs, ",", tI) _ "."';
+  assert.ok(body.includes(`%ExecDirect(, tCountSQL, ${prefix})`), 'each package is counted by its prefix, dot included, so a sibling package is not');
+  assert.ok(body.includes(`%ExecDirect(, tLeftSQL, ${prefix}, ${prefix})`), 'before and after the delete');
 
   // The verdict: unless a package is mapped (the outer arm), an uncounted or failed delete, then a
   // class left, and OK, carrying the count, only by default.

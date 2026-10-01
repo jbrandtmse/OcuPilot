@@ -146,11 +146,11 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh up --product --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
   'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
   'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
-  'sh scripts/ci-throwaway.sh product-reuse --dir /tmp/ocupilot-images-ci',
-  'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
   'node tools/admin-spec.mjs --origin http://localhost:52781',
   'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
   `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
+  'sh scripts/ci-throwaway.sh product-reuse --dir /tmp/ocupilot-images-ci',
+  'sh scripts/ci-throwaway.sh product-check --dir /tmp/ocupilot-images-ci',
   'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci',
   'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}',
   // package -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
@@ -1857,7 +1857,7 @@ const plantAnswer = (verdict) => `%SYS>\nOCUPILOT-PLANT-START:${verdict}:OCUPILO
 const startLog = (count) => `ocupilot-images-ci  | ${hookDeletedLine(count)}`;
 
 // Mutations (Rule 19): drop the product-reuse step and its declared gate -> red at the order
-// assertion. Reword the hook's deleted-count line -> the passing row goes red. Grep the second
+// assertion. Move the two steps above smoke -> red at the first-start assertion. Reword the hook's deleted-count line -> the passing row goes red. Grep the second
 // start's log for 1 class -> the passing row and the one-class row go red. Drop the first start's
 // 0-class check -> the first-start row goes red. Drop its OCUPILOT_LOAD_TESTS refusal -> the
 // suite-throwaway row goes red.
@@ -1869,8 +1869,8 @@ test('the images job starts its product throwaway again over a volume holding te
   const secondCheck = at('sh scripts/ci-throwaway.sh product-check', firstCheck + 1);
   assert.ok(firstCheck > 0 && reuse > firstCheck, 'the fresh product start is counted, then started again over its volume');
   assert.ok(secondCheck > reuse, 'and counted again afterwards');
-  for (const after of ['node tools/admin-spec.mjs', 'sh scripts/smoke.sh']) {
-    assert.ok(at(after) > secondCheck, `and "${after}" runs against that second start`);
+  for (const first of ['node tools/admin-spec.mjs', 'sh scripts/smoke.sh', 'curl -fsS -u _SYSTEM:SYS']) {
+    assert.ok(at(first) > firstCheck && at(first) < reuse, `"${first}" runs against the first start, on a fresh volume`);
   }
 
   const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
