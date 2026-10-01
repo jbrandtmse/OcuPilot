@@ -2,7 +2,8 @@
 title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '6bcbea1da27d73d4094bd4f9ea4e4cf9bdc92a28'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -167,7 +168,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
 **Task 1: restore the probe and prove the cleanup.** It runs first, on `ocupilot-b-ci` only. No tool, port branch, descriptor or client code is written before it passes.
 
-1. Run `git apply _bmad-output/implementation-artifacts/spec-18-15-task0-interopprobe.patch`, which creates `src/OcuPilot/Test/InteropProbe.cls`.
+1. Run `git apply _bmad-output/implementation-artifacts/spec-18-15-task1-interopprobe.patch` (it supersedes the Task 0 patch): it restores the extended `src/OcuPilot/Test/InteropProbe.cls` and steps 2-3's `AdminPort` and `PortFixture:21` appends, cut against `6bcbea1d`. Update `AdminPortAsync`'s pair count with it. Then add the residue patterns of step 3's amendment and re-run the proof.
 2. `src/OcuPilot/Port/AdminPort.cls`:
    - Append `,Namespace.Namespace/INTEROP` to `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`.
    - Under `QUEUEDWRITES`' doc, add one line naming INTEROP as Story 18.15's: it has no body, is queued through `ShouldRunAsync`, and is read once.
@@ -188,8 +189,8 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
      - and it forgets the record once no probe namespace remains.
 
      Every removal uses an exact name taken from the diff, and nothing the record holds is removed.
-   - **`RESIDUE`** is a closed list of node patterns: the counter and HSSYS index nodes that the measurement in step 5 shows may differ after a restore, each one named. **`BroadResidue(pBefore, pAfter)`** answers the lines of the broad diff outside it.
-4. Load the code with `/tmp/epic-18-d4/load-throwaway.sh`. Then read through `NamespacePort` `GET` that `%SYS` and `%ALL` both answer on the throwaway.
+   - **`RESIDUE`** is a closed list of node patterns: the counter, edit-stamp and HSSYS index nodes that the measurement in step 5 shows may differ after a restore, each one named. The edit stamps are exactly the five Task 1 measured (Design Notes › Restore proof): the web-application `^%SYS("CSP","LastUpdate")` node and the four `SQLStatsSettings` rows' edit date, job, namespace and user, whose settings are unchanged [AMENDED 2026-10-01, runner, spec gate after the Task 1 halt]. **`BroadResidue(pBefore, pAfter)`** answers the lines of the broad diff outside it.
+4. Load the code with `/tmp/epic-18-d4/load-throwaway.sh`. Then read through `NamespacePort` `GET` that `%SYS` answers on the throwaway, and record whether `%ALL` exists there (`ocupilot-b-ci` has none; slot B's dev instance has one).
 5. Run the proof through `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`, as the test process, which holds `%All`:
    1. `RemoveAll`.
    2. Take S0 = `Snapshot()` and B0 = `Snapshot(1)`, and read `SecondReads()` and `$SYSTEM.Monitor.State()`.
@@ -204,10 +205,10 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
    - `SecondReads()` and the monitor state are unchanged.
 7. **HALT** `blocked`, with blocking condition `intent gap: the throwaway cannot be restored: <what>` and nothing else built, if any of these hold:
    - S2 differs from S0.
-   - A broad residue line is neither a counter nor an HSSYS index node.
+   - A broad residue line is not a counter, one of the five named edit stamps, or an HSSYS index node.
    - `SecondReads()` grows, or the monitor state rises.
    - A clause of the consequence sentence is false on the throwaway.
-   - `%SYS` or `%ALL` does not answer the `GET`, so the tool's sentence could not be reached.
+   - `%SYS` does not answer the `GET`, so the tool's sentence could not be reached.
    - The enable ends other than `Finished`, or with a non-empty `Console`.
 
 **Execution: the enable.**
@@ -311,7 +312,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
   - its finished result was read once, and `messages.log` gained no `ERROR #7846`;
   - a write still running at the bound is recorded applied and marked, and both callers say it is still running;
   - at the baseline, the agent's call is refused `GOVERNANCE.DISABLED`.
-- **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces, or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
+- **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces (for `%ALL` where the instance defines it; where it does not, the fresh read's 404 `PORT.NOTFOUND`, and the sentence is pinned through the recording seam), or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
 - **AC5:** Given the typed-name dialog and the status line, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3,800 kB.
 
 ## Spec Change Log
@@ -324,6 +325,10 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - 2026-10-01, re-plan (runner, re-dispatch protocol): the intent contract is rewritten to the merge-gate decision (option 2: `%All` only, typed-name confirm, the measured consequence, governance disabled) and the split (DW-1813, DW-1824 and DW-1858 shipped in Story 18.17); status reset to `draft`. Design Notes › Measured at implement and this log are kept.
 
 - 2026-10-01, spec gate (runner): orchestrator ruling option A (by=merge_gate) -- the agent card takes the destructive treatment with no typed name (UX-DR56 stands); the screen keeps the typed-name dialog. The card's typed-name tasks, the `typedName` wire field and its tests, the EXPERIENCE.md :618/:672/:755 edits, the `TYPEDNAME` parameter and AD-53 amendment 2 are removed; the intent's Approach bullet and "Enable (agent)" row are amended. AD-8 amendment 1 (`%All:USE`) was written at the gate.
+
+- 2026-10-01, implement (Task 1): halted, `intent gap: the throwaway cannot be restored` (Design Notes › Restore proof): `%ALL` answers 404 on `ocupilot-b-ci`, and five broad residue lines are edit stamps. Task 1's code is parked as `spec-18-15-task1-interopprobe.patch` (it supersedes the Task 0 patch); nothing else was built.
+
+- 2026-10-01, spec gate after the Task 1 halt (runner, intent-preserving test approach, Rule 5 tier 1): (1) `%ALL` -- the tool's refusal is unchanged; where the instance has no `%ALL` namespace the fresh read's 404 already queues nothing, so the real-port leg accepts either answer and the sentence is pinned through the recording seam (Design Notes, the order bullet); Task 1's `%ALL` halt condition is dropped. (2) Residue -- the five measured edit stamps (web-application `LastUpdate`, four `SQLStatsSettings` edit stamps with unchanged settings) join `RESIDUE` by exact name. Task 1 resumes from `spec-18-15-task1-interopprobe.patch`. Status reset to `in-progress`.
 
 ## Review Triage Log
 
@@ -352,7 +357,7 @@ Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 - **The install namespace is not refused.** AD-10's install-namespace rule covers a delete and a Globals or Routines change, and `Prohibited.Namespace` reads only those. The enable's mappings name no OcuPilot package, routine or global (inference, from the source and Task 0's E1). No test enables the install namespace.
 - **No interoperability state on the list.** The admin API's read answers no enabled flag, and composing one would be a new AD-27 case. A re-run is the vendor's own path.
 - **The `%SYS`/`%ALL` refusal is the tool's own sentence** (`SYSTEMREASON`, the `AuditCopy` precedent), because `Api/Error.cls` holds 989 of its 1,000 parameters. The sentence is published at EXPERIENCE.md :378, and `NamespaceInterop` asserts both callers answer exactly it.
-  - Order on both callers: the fresh read, then the sentence, then any write. `%ALL` exists on slot B, and Task 1 confirms that both `GET`s answer on the throwaway.
+  - Order on both callers: the fresh read, then the sentence, then any write. On an instance with no `%ALL` namespace (`ocupilot-b-ci`, and likely CI's fresh throwaways) the fresh read answers 404 `PORT.NOTFOUND` first and nothing is queued, which meets AC4's "nothing is queued"; the `%ALL` sentence is pinned through the recording seam (`SeamNamespaceEnableInterop` over `MappingAcceptPort`, the 18.14 `MappingAllTargetFixture` precedent), whose fresh read answers for `%ALL`. The real-port `%ALL` leg asserts either the sentence (where `%ALL` exists) or 404 (where it does not), and no task either way [AMENDED 2026-10-01, runner, spec gate after the Task 1 halt].
 - **Read once.** `AwaitTask` and the tests' `Settle` are the only readers of a finished task. The started legs inherit 18.14's known behavior: `AwaitTask` logs the bound (:2641) before `NamespacePort` converts it to started. If that raises the monitor state, the implement stage lists it under `deferred:`; `AdminPort` is not changed.
 - **The restore is test-only.** It works by diff against a record taken before the first probe namespace exists, on `ocupilot-b-ci` and CI's fresh throwaways, never on a dev instance. No test enables `USER`, `HSCUSTOM`, `%SYS`, `%ALL`, or a namespace over their databases.
 - **Bundle.** If the build crosses `maximumWarning` (2386kB), do not edit `ui/angular.json` or `angular-json.test.mjs`: Epic 16's 16.15 changes the same line. Report the measured size in `## Auto Run Result` for the runner, and stop and ask above 3,800 kB.
@@ -426,6 +431,27 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
 - **Cleanup.** After `RemoveAll` alone, S2 differs from S0 by every change outside E1-E6. A test-only restore deleted those resources, roles and the task, restored `%HS_Administrator` and `Admin`, removed the SystemConfig records and stopped the language server. S2 then equals S0, apart from counters and HSSYS index nodes.
 - **One incident.** The harness read an already-ended task a second time: the principal had not been able to delete its row. That read logged one `ERROR #7846`. `SettleOwnTasks` now deletes a task the list already shows ended without reading it. The monitor state, which that line and the vendor's own alert raised to 2, was set back to 0, and the two task rows were deleted as objects.
 
+### Restore proof
+
+Task 1, 2026-10-01, on `ocupilot-b-ci`, run as the test process (`irisowner`, `%All`). The enable went through an `AdminPort` subclass with a 300 s bound whose poll only recorded each answer, so `AwaitTask` read the finished result once and its `Console` was visible; `SettleOwnTasks` then found no task.
+
+- **The enable.** `OCUPROBE1815A` over `OCUPROBE1815D` ended `Finished` in 12.4 s (10:48:07 to 10:48:20), with HTTP 200 and an empty `FailureReason` and `Console`. `IsEnabled` and `HasPortal` read 1. `RemoveAll` took 2.5 s, and the whole proof 15.8 s.
+- **S2 equals S0.** Both hold 495 lines, identical, `Admin`'s roles included. The record held 344 instance lines and no `SystemConfig` node, and was forgotten after `RemoveAll`.
+- **Each clause, in `Diff(S0, S1)`:**
+  - 112 ENSLIB mappings, four applications, and `%EnsRole_ProdPrivs_OCUPROBE1815A` and `%HS_DB_OCUPROBE1815A` over the namespace's database;
+  - 52 HSLIB and 7 HSSYS mappings, the configuration item, 29 activation-log rows and 236 `SystemConfig*` nodes;
+  - `Admin` gains `%HS_BFC_Administrator`, which holds `%Admin_Manage`, `%Admin_OAuth2_Client`, `%Admin_Secure` and `%Admin_Task` at `U`;
+  - 13 HealthShare resources and six `%HS_BFC_*` roles created, and `%HS_Administrator`'s resources changed;
+  - task 1150 "FHIR Purge Expired Search Results Task" in HSSYS, and `FHIR_Validation_Server` from stopped to running;
+  - `/services` and the namespace's own application match `%DB_HSCUSTOM`, and `/bulkfhir/api` matches `%DB_HSCUSTOM`, `%DB_IRISSYS` and `%HS_ImpersonateUser`; `/bulkfhir`, a static UI application, matches none;
+  - no database created.
+- **Unchanged.** `SecondReads()` stayed 0, the monitor state 2, and `$SYSTEM.Monitor.Alerts()` 410.
+- **Broad residue.** `B0` and `B2` hold 1,669 lines each, and nine differ.
+  - Inside `RESIDUE`: `^%SYS("sql","cursor counter")` (3299 to 3302) and `("statement id")` (24998 to 25030); `HS.HC.Util.Installer.LogD`, whose ID counter reads 105 with its node count unchanged at 18; and `LogI`, its `$Log` bitmap extent chunk, node count unchanged at 7. `^%SYS("WQM","Repeat")` moves without an enable (4370 to 4372 over 70 s).
+  - **Outside it:** `^%SYS("CSP","LastUpdate")`, the web-application configuration's `$Horolog` stamp; and the four `^%SYS("sql","sys","SQLStatsSettings")` rows (`"curr"`, `"prev"`, `(1,"curr")`, `(1,"prev")`), whose edit date, job, namespace and user now read the enable's (`OCUPROBE1815A`, `irisowner`) while their settings fields are unchanged (`irislib/%SYS/PTools/Stats.inc:792-825`). Neither is a counter or an HSSYS index node.
+- **The `GET`s.** `%SYS` answers 200. `%ALL` answers 404 `PORT.NOTFOUND`: `ocupilot-b-ci` has no `%ALL` namespace (`Config.Namespaces.Exists("%ALL")` 0, where slot B's dev instance answers 1). CI's fresh throwaways start from the same image, so they lack it too (inference).
+- **After.** The throwaway holds no probe namespace, database, directory or record, no `%HS_BFC_*` role or resource, no FHIR purge task and no `SystemConfig*` node. `Admin`'s roles read as before, and `FHIR_Validation_Server` is stopped. The proof's scratch classes were deleted.
+
 ## Verification
 
 **Setup (slot B):**
@@ -469,11 +495,11 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: the throwaway cannot be restored: `%ALL` does not answer the `GET` on `ocupilot-b-ci` (404 `PORT.NOTFOUND`; the instance has no `%ALL` namespace), so the tool's `%ALL` sentence cannot be reached there; and the broad residue holds five lines that are neither a counter nor an HSSYS index node (`^%SYS("CSP","LastUpdate")` and four `SQLStatsSettings` edit stamps).
 
-This pass re-planned the spec from Task 0's measurement, around the preserved intent contract, with the scope reduced to the enable (DW-1776). Three items need the runner's ruling at the spec gate:
-
-1. **The agent card's typed name:** resolved at the gate, option A -- the card takes the destructive treatment with no typed name (UX-DR56 stands).
-2. **`%All` is declared as the pair `%All:USE`**, so its refusal names that pair. AD-8 amendment 1 is proposed.
-3. **`CLASSICPAGES` is subsumed by `%All`** when the pairs are evaluated: a `%All` holder holds every custom resource.
+- Implement pass, halted at Task 1 step 7. Only Task 1 steps 1-3 were built, and they are parked, not in the tree. `Test/InteropProbe.cls` is the applied patch, extended with `RecordInstance`, `RestoreInstance`, `BroadResidue` and `RESIDUE`, and its snapshot lists users, language servers and `SystemConfig` nodes. `Namespace.Namespace/INTEROP` is appended to `AdminPort`'s three lists, with its doc line, and mirrored in `PortFixture:21`. `AdminPortAsync` (nine pairs) is not updated and reddens once the patch is applied. The three files are parked as [spec-18-15-task1-interopprobe.patch](spec-18-15-task1-interopprobe.patch) against `6bcbea1d` (`git apply --check` clean); the source tree is back at baseline, and `ocupilot-b-ci` was reloaded from it (its `AdminPort` lists no INTEROP; the test-only `InteropProbe` stays compiled there). No tool, port branch, descriptor or client code exists.
+- Every other step-7 condition passed (Design Notes › Restore proof): S2 equals S0, each clause holds, `SecondReads` and the monitor state are unchanged, and the enable ended `Finished` with an empty `Console`. The throwaway is left as found.
+- Re-plan directions, for the runner (none measured):
+  - `%ALL`: run the `%ALL` legs only where `%ALL` exists, with AC4 accepting 404 `PORT.NOTFOUND` where it does not (nothing is queued either way); or answer the sentence before the fresh read on both callers, which changes `Mint` and `ScreenAction`; or answer the `%ALL` read through a test seam, as `MappingAllTargetFixture` did for Story 18.14.
+  - Residue: widen step 7's class to "a counter, an edit stamp or an HSSYS index node", and add the five prefixes to `RESIDUE`.

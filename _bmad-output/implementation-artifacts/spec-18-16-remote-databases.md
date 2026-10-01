@@ -2,7 +2,7 @@
 title: 'Story 18.16: Remote databases'
 type: 'feature'
 created: '2026-09-30'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '04ee4b12fef88ad1efe0ac684ed2cc07b3eb1ce5'
 followup_review_recommended: false
@@ -25,7 +25,7 @@ deferred: []
 - A new `Port/RemoteDatabasePort` runs that listing in a short-lived child job. The request waits for it against a stated bound, the `Kernel/Provider/TestCall.cls` model. The port re-checks the directory at every write, and the listing never runs in a turn.
 - Delete reuses `DatabasePort`'s configuration delete, with the typed-name dialog and a removal impact.
 - Task 0 observes every payload, effect, duration and pair on `ocupilot-b-ci` before anything is built.
-- **The license (read on `ocupilot-b-ci` at this plan).** The IRIS Community license enables no ECP: `$SYSTEM.License.NetworkEnabled()` is 0 and `MaxECPServers()` is 0. So on every instance this project has, CI included, no data server ever answers a listing. A remote database can be listed, opened and deleted there, but a create or re-point always ends at the bounded "cannot be reached" refusal. A test seam answers the successful listing.
+- **The license, and the pre-check (orchestrator merge gate 2026-10-01, option A).** The IRIS Community license enables no ECP: `$SYSTEM.License.NetworkEnabled()` is 0 and `MaxECPServers()` is 0, on every instance this project has, CI included. Task 0 measured that a listing there (`DBLIST`) blocks about 11 s, answers no rows, and starts ECP client daemons that outlive the call and reconnect about every 65 s until the data server is deleted. So when `NetworkEnabled()` is 0 the listing is never attempted: the form and the confirm answer `DATABASE.SERVER.UNREACHABLE` at once, with a sentence naming the license, and OcuPilot opens no connection. On a licensed instance the listing runs bounded in a child job, and the bound sentence says it connects to the data server; the daemons it starts are the vendor's normal ECP connection to a server the operator defined. A remote database can be listed, opened and deleted on Community, but a create or re-point is refused there by the pre-check. A test seam answers the successful listing.
 
 ## Boundaries & Constraints
 
@@ -47,6 +47,7 @@ deferred: []
 - **The bound.**
   - `RemoteDatabasePort` runs the listing in a child job on the `TestCall` model: a nonce, `$System.Event`, and an abandoned child's late answer discarded. It waits `LISTSECONDS`, which is 20 s, raised by Task 0's rule to at most 40 s.
   - The form states the bound before the listing starts and shows a running line while it runs. The agent's proposal card states it before the confirm (`Consequence`).
+  - **The license pre-check comes first:** when `$SYSTEM.License.NetworkEnabled()` is 0 the request answers `DATABASE.SERVER.UNREACHABLE` on Server at once, with the license sentence, and lists nothing. A test pins it and its mutation.
   - Past the bound, or when the listing finds the server not connected, the request answers `DATABASE.SERVER.UNREACHABLE` on Server and sends no write.
 - **Local and remote stay apart.** The remote `update` and `delete` refuse a configuration with an empty `Server` (`DATABASE.LOCAL`, 409) before any write. Local databases keeps `DATABASE.REMOTE` and every other 18.3 behavior unchanged.
 - **The removal impact (AD-8).** It names the namespaces that use the database (through `Globals`, `Routines`, `TempGlobals` or a mapping) and the web applications running in them, each through its own declared read. It has no shared-file part. The vendor refuses the delete while one remains (409 #429, which Task 0 confirms), answered as `DATABASE.INUSE`.
@@ -71,7 +72,8 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 | --- | --- | --- | --- |
 | List | Probe data server `OCUPROBE1816SRV`; remote configurations `OCUPROBE1816R` and `OCUPROBE1816S` | Remote databases and `osmgmt.remotedatabases.read` answer both rows from one read. Local databases answers neither. | none |
-| Choose a server it cannot reach | The form, with Data server `OCUPROBE1816SRV` chosen (the real vendor listing) | Before the listing starts, the form states it can take up to `LISTSECONDS`. A running line shows while it runs. Within the bound plus 5 s the field shows the reason and Directory offers nothing. | `DATABASE.SERVER.UNREACHABLE` |
+| Choose a server on an unlicensed instance | The form, with Data server `OCUPROBE1816SRV` chosen on `ocupilot-b-ci` (`NetworkEnabled()` 0) | At once, the field shows the reason naming the license and Directory offers nothing. No listing runs and no ECP daemon starts. | `DATABASE.SERVER.UNREACHABLE` |
+| Choose a server it cannot reach (licensed) | The seam: a licensed instance whose listing finds the server not connected | Before the listing starts, the form states it can take up to `LISTSECONDS` and connects to the data server. A running line shows while it runs. Within the bound the field shows the reason. | `DATABASE.SERVER.UNREACHABLE` |
 | Listing past the bound | A seam child that never answers; test bound 1 s | Answered at the bound, nothing sent. The abandoned child's late answer is discarded by the next listing. | `DATABASE.SERVER.UNREACHABLE` |
 | Create | Seam listing; Name `OCUPROBE1816C`, Directory `/ocuprobe1816x/` | Lists at the Save or the confirm, then sends `PUT /database?name=OCUPROBE1816C {Server, Directory}`. The row is listed after the change event, and the read-back reads `matches`. | none |
 | Owner's rule | Directory empty; or `/durable/iris/mgr/` (the listing's `IRISSYS` row) | Refused on Directory: an empty one before any vendor call, the `IRISSYS` one before any vendor write. Nothing is stored. | `DATABASE.REMOTEDIRECTORY.NONE`, `.MANAGER` |
@@ -190,7 +192,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 
 ## Tasks & Acceptance
 
-**Task 0: the implement stage's first task.** It runs before any form, tool or descriptor is built, on `ocupilot-b-ci` only. Record the results under Design Notes › Measured at implement, and put every AD sentence in `## Spec Change Log` for the runner.
+**Task 0: the implement stage's first task.** It runs before any form, tool or descriptor is built, on `ocupilot-b-ci` only. **Resumed 2026-10-01 after its step-e halt:** steps 1-4e are measured (Design Notes › Measured at implement) and the plumbing is parked in `_bmad-output/implementation-artifacts/spec-18-16-task0-plumbing.patch` (`git apply` it first). Do not run `DBLIST` against the real vendor again (the license pre-check now prevents it in product code); run steps 4f, 4g, 4h, 5 (without its `DBLIST` call) and 6, then 8. Step e's daemons are no longer a halt condition: they are the measured reason for the pre-check. Record the results under Design Notes › Measured at implement, and put every AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing:**
    - Add to `Port/AdminPort.cls`, add-only beside `CONNECTIONTESTTYPES`, a pair-keyed parameter `CONNECTIONREADTYPES = "ECP.DataServer/DBLIST"`. It is a non-mutating type that opens a connection and stores nothing. Add its admission in `Invoke`'s type check, answered as an ordinary read.
@@ -328,8 +330,8 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - **AC3:** Given a remote database, when its directory or server is re-pointed to one the listing answers, then the complete set read fresh is sent with one diff row.
 - **AC4:** Given a remote database, when it is deleted through the typed-name dialog or a confirmed proposal, then only `DELETE /database` is sent. If a namespace uses it, the advisory names that namespace first, and the delete is refused `DATABASE.INUSE`.
 - **AC5:** Given a data server that cannot be reached:
-  - When a person chooses it, then the form has stated the bound before the listing starts and shows the running line while it runs. The reason appears on Data server within the bound plus 5 s, and nothing is written.
-  - When the agent proposes against it, then the card states the bound before the confirm, the mint lists nothing, and the confirm answers `DATABASE.SERVER.UNREACHABLE` within the bound plus 5 s.
+  - On an instance whose license enables no ECP (`NetworkEnabled()` 0, as on `ocupilot-b-ci`), when a person chooses it or the agent's proposal is confirmed, then the answer is `DATABASE.SERVER.UNREACHABLE` at once, with the sentence naming the license; no listing runs, no ECP process starts, and nothing is written.
+  - On a licensed instance (the seam), when a person chooses it, then the form has stated the bound and that it connects to the data server before the listing starts, and shows the running line while it runs; the reason appears on Data server within the bound plus 5 s, and nothing is written. When the agent proposes against it, the card states the bound before the confirm, the mint lists nothing, and the confirm answers `DATABASE.SERVER.UNREACHABLE` within the bound plus 5 s.
 - **AC6:** Given an omitted directory, an unlisted one, or the one the listing names `IRISSYS`, when either caller saves or confirms, then each is refused on Directory: `NONE` before any vendor call, the other two before any vendor write.
 - **AC7:** Given a local configuration named to a remote tool, a protected name, or a caller lacking a declared pair, when the tool runs, then it is refused `DATABASE.LOCAL`, `PROHIBITED.OCUPILOTDATABASE` or `AUTH.NOPRIVILEGE` respectively, and nothing is sent.
 - **AC8:** Given the side bar, governance and rosters, when the story lands, then:
@@ -341,6 +343,8 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 ## Spec Change Log
 
 - 2026-10-01, spec gate (runner): Story 18.17 (merged into this branch at `c8dedb69`) listed the Integrity log at OS management position 5 and moved Devices through Local databases to 6-11, so Remote databases takes position 12 and is the twelfth entry (Intent, Boundaries, Tests, AC8 amended). Every Code Map line citation for a side-bar pin (`Navigation.cls`, `navigation.test.mjs`, `navigation-wire.test.mjs`, `rail-wire.spec.ts`, `license-usage`, `local-databases`, `namespaces` and `language-servers` browser specs) predates 18.17: re-derive each from the current tree at implement. Spine amendments 1, 2, 4 and 5 under Design Notes were written at the gate (AD-21 seventh case, AD-42, AD-44, AD-52); amendment 3 (AD-8) and, if needed, 6 (AD-15/AD-53) are written by the runner after Task 0 records them here. The orchestrator agreed (2026-10-01) that on Community the bounded unreachable refusal is the measured path and the listing's success leg is pinned at the port through the seam.
+
+- 2026-10-01, orchestrator merge gate (by=merge_gate), option A after the Task 0 step-e halt: the license pre-check (`NetworkEnabled()` 0 answers `DATABASE.SERVER.UNREACHABLE` at once with a sentence naming the license, no listing, no connection), pinned with a test and its mutation; on a licensed instance the bounded child-job listing runs as planned and the bound sentence says it connects to the data server; the success path is pinned at the port through the seam. Vendor `#5659` (no directory) maps to `DATABASE.REMOTEDIRECTORY.NONE` and `#420` (undefined server) to `DATABASE.SERVER.ABSENT`; the owner's directory rule still refuses an omitted directory before any vendor call. `Inventory` in Verification means `Inventory`. Status reset to `in-progress`; Task 0 resumes at step 4f.
 
 ## Review Triage Log
 
@@ -393,7 +397,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
   - A turn that opened an ECP connection would be a fourth AD-7 shape; on a licensed instance it would leave a live connection behind (inference). So the mint checks only the name and the server.
   - The card states the wait, and the confirm does the listing. A confirm whose listing fails burns its proposal, because Confirm's port call follows the commit.
 - **The bound is OcuPilot's own.** The vendor call takes no timeout, and `ClientReconnectDuration` (1200 s) may govern a dropped connection, past the gateway's 60 s (inference). A child job is the one bound OcuPilot can enforce, and AD-42's Test connection already uses it.
-- **There is no license pre-check.** The classic dialog tries and then reports. The unreachable sentence names the license, so Community users learn why.
+- **The license pre-check** (orchestrator option A, 2026-10-01, after Task 0 measured the daemons): `NetworkEnabled()` 0 answers `DATABASE.SERVER.UNREACHABLE` at once with a sentence naming the license, and lists nothing. The classic dialog tries and then reports; OcuPilot does not, because the try starts ECP daemons that outlive it.
 - **One entity type.** A local and a remote configuration share `Config.Databases`' name space and the AD-34 lock key. Separate tools follow the descriptor (AD-5). The delete inherits `DatabasePort.Delete`, which already skips the file for a remote entry.
 - **Not in this story:** data-server management, ECP settings and status (18.6), mount fields, rename, and `StreamLocation`.
 
@@ -420,7 +424,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 
 **Integration ACs.** `RemoteDatabasePort` is new, and its consumers are in this story:
 
-- The form consumes the bounded listing through `GET /remote-database/directories`. Its effect is the stated bound, the running line, and the reason on Data server: AC5, in the browser spec against the real vendor listing.
+- The form consumes the bounded listing through `GET /remote-database/directories`. Its effect is the license refusal at once on `ocupilot-b-ci` (AC5, in the browser spec against the real instance), and on a licensed instance the stated bound, the running line, and the reason on Data server (AC5, through the seam).
 - The Save and the confirm consume the listing and the `PUT`: AC2 and AC6 in `RemoteDatabaseWrite`, with the vendor writes real.
 - The delete's impact consumes `NamespaceList`'s, the mapping lists' and `WebAppList`'s declared reads: AC4.
 
@@ -455,7 +459,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time. Expected: 0 failures each, with totals checked against `%UnitTest_Result`.
   - The story's own classes: `RemoteDatabaseListing`, `RemoteDatabaseWrite`, `RemoteDatabaseWriteGate`, `RemoteDatabaseDescriptor`, `DatabaseRefusals`, `ClassicPageGate`.
-  - The rosters: `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Navigation`, `Wire`, `PortGate`, `DraftRegistry`, `ToolRoundTrip`, `ToolWrite`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ImpactRoute`, `AdminInventory`.
+  - The rosters: `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Navigation`, `Wire`, `PortGate`, `DraftRegistry`, `ToolRoundTrip`, `ToolWrite`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ImpactRoute`, `Inventory`.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/remote-databases.browser-spec.mjs browser/local-databases.browser-spec.mjs browser/license-usage.browser-spec.mjs browser/language-servers.browser-spec.mjs`. Expected: pass.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 993.
 - `(once, before dev_complete)`, expected green with a non-zero count:
@@ -472,6 +476,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - AC3: the update sends only the changed fields, and its complete-set leg goes red.
 - AC4: the remote delete drops its `LOCAL` refusal, and the local-target leg goes red.
 - AC5:
+  - the pre-check is skipped (the port lists despite `NetworkEnabled()` 0), and `RemoteDatabaseListing`'s license leg goes red;
   - the port lists in process instead of in the child, and `RemoteDatabaseListing`'s bound leg goes red;
   - the mint calls the listing, and its zero-listings leg goes red;
   - the form drops the hint, and the page spec goes red.
@@ -486,5 +491,5 @@ Blocking condition: intent gap: observation contradicts the plan: Task 0 step e 
 
 - Implement pass, halted at Task 0 step e. Built only Task 0's plumbing, uncommitted: `src/OcuPilot/Port/AdminPort.cls` (add-only `CONNECTIONREADTYPES`, `IsConnectionRead`, and its admission in `EndpointType`) and `src/OcuPilot/Test/RemoteDatabaseProbe.cls`. No form, tool, descriptor, rule, route, client code or EXPERIENCE.md edit exists. Steps f, g, h and the pairs (step 5) were not run.
 - Measurements are under Design Notes › Measured at implement; evidence in `/tmp/epic-18-d4/1816/t0/` and `messages.log` lines 7873-7889 on `ocupilot-b-ci`. Also differs from the plan: the starting monitor state was 1 (not 0), now 2 from steps c and d's severity-2 `adminport` lines; step d's undefined server is #420 at HTTP 500 (`INTERNAL`), not #425; step c's missing directory is #5659 at 500 (`PORT.VALIDATION`).
-- Verified by the stage after the halt: no `OCUPROBE1816*` database, namespace, data server, resource or user remains, pids 103740-103742 and 104037 are gone, `%Service_ECP` reads 0. Loader OK; `Inventory` 5/5 (run 1119) and `PortGate` 4/4 (run 1120). `AdminInventory` in `## Verification` is a fixture with no test methods (run 1118 ran 0); the roster entry likely means `Inventory`.
+- Verified by the stage after the halt: no `OCUPROBE1816*` database, namespace, data server, resource or user remains, pids 103740-103742 and 104037 are gone, `%Service_ECP` reads 0. Loader OK; `Inventory` 5/5 (run 1119) and `PortGate` 4/4 (run 1120). `Inventory` in `## Verification` is a fixture with no test methods (run 1118 ran 0); the roster entry likely means `Inventory`.
 - Re-plan directions (for the runner; neither measured): accept the daemons as part of the probe server's status (the classic dialog calls the same vendor query (inference)), or refuse `DATABASE.SERVER.UNREACHABLE` without listing when `$SYSTEM.License.NetworkEnabled()` is 0, which the plan rejected.
