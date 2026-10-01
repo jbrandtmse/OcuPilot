@@ -4,14 +4,14 @@
 
 ## Goal
 
-Take OcuPilot from the contest's Release 1 to System Administration and System Operation parity on the experimental `/api/admin` service: namespaces and their mappings, database configuration with its create, delete, properties and volume editors, the disk operations the contest list deferred, and then journals, licensing, ECP, superservers, authentication options, MFT, encryption, SQL privileges and the web-application extras. Each screen arrives with a read tool and confirmed single-write tools from one descriptor, so the agent grows with the portal. Stage 2 ships as the first versioned IPM release after the contest and deepens the dependency on an experimental API by about twenty screens, which is why containment, the endpoint inventory and self-protection carry most of the weight. 18.1 (the directory allow-list), 18.2 (namespaces), 18.14 (mappings and copy-mappings) and 18.3 (local databases) are done. The run order is 18.4 (disk operations), then 18.15 (enable interoperability), then 18.16 (remote databases, split from 18.3).
+Bring OcuPilot to System Administration and System Operation parity on the experimental `/api/admin` v2 service. That means namespaces, their mappings and interoperability enablement; local and remote databases and their disk operations; journals, licensing, ECP, encryption, superservers, authentication options and MFT; and the SQL-privilege, web-application and monitoring extras. Every screen arrives with a read tool and confirmed single-write tools from one descriptor, so the agent grows with the portal. Stage 2 is the first versioned IPM release after the contest. It deepens the dependency on an experimental API by about twenty screens, which is why containment, the endpoint inventory and self-protection carry most of the weight. Done so far: 18.1, 18.2, 18.14, 18.3 and 18.4. The run order from here is 18.15, then 18.16, then 18.5 to 18.13.
 
 ## Stories
 
 - Story 18.1: The directory allow-list (done)
 - Story 18.2: Namespaces and their mappings (done; namespaces only since the split)
 - Story 18.3: Databases - configuration, creation, properties and volumes (done; remote databases moved to 18.16)
-- Story 18.4: The deferred disk operations (runs next; owns expand-volume and size-grow)
+- Story 18.4: The deferred disk operations (done)
 - Story 18.5: Journals
 - Story 18.6: Licensing and ECP
 - Story 18.7: Encryption
@@ -22,82 +22,205 @@ Take OcuPilot from the contest's Release 1 to System Administration and System O
 - Story 18.12: The agent grows with the stage
 - Story 18.13: Multi-namespace install
 - Story 18.14: Namespace mappings and copy-mappings (done)
-- Story 18.15: Enable interoperability on a namespace (runs after 18.4)
+- Story 18.15: Enable interoperability on a namespace (runs next)
 - Story 18.16: Remote databases (runs after 18.15)
 
 ## Requirements & Constraints
 
-- **One contract, no second way to build a screen.** Every screen is one descriptor over one port, derives its read tool and its write tools' field lists from that descriptor with no hand-written tool code, and writes only through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker. No feature-level spec exists: a story's acceptance is this contract plus each catalog row's backing route, and finer criteria are written at the story's plan, never invented in advance.
-- **Gates.** Observe every write payload on the slot's throwaway before building its form; 18.4's probes mount, dismount, truncate, compact, defragment and expand databases, so they run only there. Async operations use the port's async path, and no slice writes polling logic. Stage 2 builds on the pinned 2026.2 image; the inventory is re-derived against 2027.1 when it ships.
-- **The instance, not the specification, is the contract.** The owner's "Admin API behavior to design for" notes come from a DC article on where the SysAdmin API specification and IRIS disagree; "reported" claims are verified on the throwaway before anything relies on them. 18.3 confirmed both of its notes (`/database-dirs` answers a plain array; `%Operator` gets 403 with an empty error list on `/databases`, `/database-dirs`, `/database` and `/volumes`).
-  - 18.4: the integrity check takes its databases in the body (`Databases[]`, each with `Directory`), while compact, defragment and the other operations take the `dir` query parameter. The specification agrees; the family is uneven.
-  - Measured at 18.3's plan: expand-volume, modify-size, truncate and info answer 202 with a v1 `async-result` `Location`, and the poll carries no progress figure.
-- **Async results are read once**, for every async write this epic builds (18.4's queued operations, 18.15's enable). A second `async-result` read of an ended task logs a severity-2 alert (ERROR #7846 from `TryToKillQueue^%Api.Admin.Util.AsyncTask`) and turns the instance state to Warning (reported); `AdminPort`'s single read-then-delete adds no alert (checked; one expand read once at 18.3's plan logged no #7846). Run one poller per task, share it between two views of one task, and stop polling at the end.
-- **Governance keys.**
-  - Every new write key gets its `Kernel/Governance/Baseline.cls` line in the same change; `GovernanceBaseline` fails naming a key without one. The disabled set is also held by `Governance` and `ToolDispatch`, the violation codes by `AuditingUpdate`, and a tool's pairs by `ToolEmit`; every write story so far had to extend all four.
-  - Enter `false`: every 18.4 operation (its own criterion: mount, dismount, truncate, compact, defragment, expand, integrity check), 18.7's encryption changes, and the shipped namespace and database deletes (`osmgmt.localdatabases.delete`).
-  - Enter `true`: through 2026-10-04, any other new write key unless its story's criteria say disabled (18.3's create and both updates shipped `true`; 18.16's remote-database writes); after that the owner decides. Enable-interop's key is 18.15's to settle.
-- **Catalog rows and their backing routes.**
-  - 18.4: OS-16 to OS-22, `POST /database-dir/{mount,dismount,truncate,compact,defragment,expand-volume,integrity-check}`, plus `/modify-size` for OS-21 (expand-volume and size-grow, including SA-18's save-and-expand, are 18.4's); OS-22 is the integrity wizard and its log viewer.
+- **One contract (FR-80).**
+  - Each screen is one descriptor over one port. Its read tool and its write tools' field lists derive from that descriptor, with no hand-written tool code.
+  - Every write is a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent marker.
+  - Every read is bounded and reports truncation, and every gate checks the caller's own privileges at call time.
+  - A story's acceptance is this contract plus each catalog row's backing route. Finer criteria are written at the story's plan and are never invented in advance.
+- **Observe before building.**
+  - Observe every write payload, its effects and the pairs it needs on the slot's throwaway before you build any form or tool. 18.15's Task 0 makes this explicit.
+  - Build on the pinned 2026.2 image. The inventory fixture is re-derived against 2027.1 when 2027.1 ships.
+  - Re-run the inventory audit before using an endpoint the fixture does not cover.
+- **The instance is the contract, not the specification.** Some claims come from the DC article on where the SysAdmin API specification and IRIS disagree. Verify a claim the article only reports on the throwaway before anything relies on it. Notes for later stories:
+  - 18.5: `POST /v2/journal/file/records` returns half its `maxRows` (checked). Ask for twice the page and mark the list when the limit is reached. It answers 202, so it runs through the async path. `switch-dir` takes no body, so it switches only to the alternate directory already configured.
+  - 18.9: sql-privilege rows name the object and action `Object` and `Action` (checked). A role owner's `AdminOption` arrives as the string `"0"` or `"1"` (reported), so compare the value.
+  - 18.11: the dashboard's `BusyProcesses` always has ten rows. Drop the empty ones.
+- **Async results are read once.**
+  - A second `async-result` read of an ended task logs ERROR #7846 and turns the instance state to Warning. `AdminPort`'s single read-then-delete adds no alert.
+  - Run one poller per task, share it between every view of that task, and stop it at the end. No slice writes polling logic.
+  - The port refuses a mutating type that would queue unless the type is named in `QUEUEDWRITES`. A type that queues itself is also named in `SELFQUEUEDTYPES`. A queued body carries no secret.
+  - Past the port's bound, a queued write answers "started", and its read-back is `unchecked`.
+  - The remaining Stage 2 async paths (AD-26) are `Namespace.Namespace` interop (18.15), `Journal.File`'s integrity check and `Journal.Record` LIST (self-queued, 18.5), and `ECP.DataServer`'s server action (18.6).
+- **Governance (AD-22).**
+  - Every new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change; `GovernanceBaseline` fails otherwise.
+  - Earlier write stories also had to extend the roster tests that pin the disabled set, the violation codes and the tool pairs. Search the test classes for a sibling key to find them.
+  - Destructive actions default to disabled: the namespace and database deletes, dismount, truncate and the rest of 18.4's operations, and the encryption changes.
+  - Through 2026-10-04, any other new key enters enabled unless its story's criteria say disabled. After that date, the owner decides.
+  - Enable-interop is not on the epic's destructive list, so 18.15's plan sets its value.
+- **Catalog rows next.**
   - 18.15: SA-13's `POST /namespace/enable-interop` (async).
-  - 18.16: SA-17 remote databases (`GET|PUT|DELETE /database` configuration, `/ecp/data-server/databases`). Choosing a remote directory opens an ECP connection (`GET /ecp/data-server/databases` blocked about 11 s on the throwaway), so it gets its own AD-21 case. A remote configuration is created without a live ECP link, and a data server a remote database uses cannot be deleted (409 #423).
-- **Routed ledger items.**
-  - DW-1821 (18.4): Database details lists only the background tasks the classic Background tasks page holds, so a compact or defragment started through the admin API is not attributed to its database. `EnumerateTasks` reads only the portal's task global, while `%SYS.BackgroundTask:DatabaseList` lists every compact and defragment (inference from the vendor source until 18.4 queues one).
-  - DW-1791 residual (18.4): a new volume directory naming another database's directory still resolves for the expand; whether the vendor accepts that collision is unmeasured. Measure it on the throwaway, then refuse it in the tool's rules (as 18.3's create does) or amend AD-21 if `PathPort` should.
-  - DW-1774 (every screen-adding story): extend every pinned side-bar list of your area (`grep -l ocu-side-bar-label ui/browser`, plus `ui/tools/navigation.test.mjs`).
-  - DW-1776 (18.15), DW-1797 (18.5, journal directories in `PathPort`), DW-236 (18.9), DW-219, DW-423 and DW-1788 (18.13), and 18.7's own routed items.
-- **Bundle budget.** `maximumWarning` is 2217kB, pinned in `ui/tools/angular-json.test.mjs`; 18.3's smoke bundle measured about 2.19 MB, so 18.4's screens may pass it (inference): re-base a passed warning under DW-1166. The hard stop is 4000kB; stop and ask above 3800kB.
-- **Planning documents cited by line.** EXPERIENCE.md (993 lines, edited in place) and epics.md are cited by line elsewhere, so an edit to either also runs `cd ui && npm run test:tools`.
+  - 18.16: SA-17, which is `GET|PUT|DELETE /database` (configuration) and `/ecp/data-server/databases`.
+- **Routed ledger items.** Address each one in its story or decline it with a reason.
+  - 18.15:
+    - DW-1776: enable-interop itself.
+    - DW-1813: a global mapping range with an empty low end (`:A`) covers the `%` globals, because the vendor reads the empty end as `%`. It needs the `MAPPING.SYSTEMGLOBAL` consequence, as does any range or pattern that reaches those globals.
+    - DW-1858: the Integrity log gets an OS management side-bar position right after Databases.
+    - DW-1824: the New Namespace form's Create a database keeps what was typed and returns to the form, as the classic portal does.
+  - 18.5: DW-1797, adding journal directories to `PathPort`'s refusal, history and WIJ included.
+  - 18.7: DW-1774, and DW-1555 for RSA and symmetric-key wallet secrets.
+  - 18.9: DW-236.
+  - 18.13: DW-219, DW-423 and DW-1788.
+  - Every screen-adding story (DW-1774): extend every pinned side-bar list of your area. Find them with `grep -l ocu-side-bar-label ui/browser`, plus `ui/tools/navigation.test.mjs`.
+- **Cited documents.** Other suites cite EXPERIENCE.md and epics.md by line, so after an edit to either, also run `cd ui && npm run test:tools`.
 
 ## Technical Decisions
 
-- **Containment (AD-2, AD-27).** Only `AdminPort`, or a port extending it, names an `%Api.Admin.*` class, reproducing `Main()`'s sequence (stub `%request`/`%response`/`%session` with `IsRunningAsync` 0, `ResourcesOR()` before the query parameters, `ValidateQueryParams()`, captured output, a non-2xx `%response.Status` failing even when `tSC` is OK). A read answered 404 is an absence: the port logs nothing and the caller still gets `PORT.NOTFOUND`; every other failure, a write's 404 included, is logged at error severity and reaches `alerts.log` (DW-1814). No direct `Config.Databases`, `SYS.Database` or `Config.Namespaces` write in product code (test-only `%SYS` seeding is allowed); a vendor-class call is allowed only as a named AD-27 case in the spine. Re-run the inventory audit before using an endpoint outside the fixture.
-- **Privilege pairs (AD-8, AD-29, AD-44).**
-  - `ResourcesOR()` is a lower bound. Establish each set from the backing class's own check plus a purpose-built least-privileged role on the throwaway, never `%Operator`, which carries `%DB_IRISSYS:RW`. Administrative resources are required at `USE`, never `WRITE`.
-  - A tool declares extra pairs only in AD-8's two cases (the vendor class writes a database the screen's read does not; an endpoint its call necessarily reaches, such as the async poll or `PathPort`, names the resource) and refuses a caller without them by name before any port call. Precedents: every namespace and mapping write `%DB_IRISSYS:WRITE`, the namespace delete also `%Admin_Secure:USE`, a queued write's poll `%Admin_Operate:USE`.
-  - 18.3's measured database pairs: reads, `PUT /database-dir` and `DELETE /database-dir` need `%Admin_Manage:USE` and `%DB_IRISSYS:READ`; `POST /database-dir`, `PUT /database` and `DELETE /database` also need `%DB_IRISSYS:WRITE` (a refused `POST` leaves an `IRIS.DAT` the API cannot remove). The create adds `%Admin_Secure:USE` (it makes the `%DB_<NAME>` resource) and `PathPort`'s `%Admin_FileSystemAccess:USE`; the mounting update adds `%Admin_Operate:USE` whenever its full set sends `MountRequired` true, changed or not (#921 without it); the file update adds `%Admin_Secure:USE` when it sends a resource name and `%Admin_FileSystemAccess:USE` when it sends a new volume directory.
-  - **Every replaced classic page's custom resource (AD-44).** A write tool names in its `CLASSICPAGES` parameter each classic page beyond its descriptor's `classicPage` whose operation it performs, as normalized class names spelled exactly; `PrivilegePairs` ends with `Gate.WithClassicPages`, read on every gate call. 18.3's: create `Dialog.DatabaseWizard`, mounting update `Database`, file update `Database` and `DatabaseVolumes`, delete `Dialog.DatabaseDelete`. 18.4's tools name their dialogs; the classic Database details page performs dismount itself, so a dismount on Database details' descriptor needs no entry. Confirm each class name on the instance.
-  - An area's pair set must cover its screens' pairs, unless a screen declares the extra pair in `ownPrivileges`.
+- **Containment (AD-2, AD-27, AD-52).**
+  - Only `AdminPort`, or a port extending it, names an `%Api.Admin.*` class, and it reproduces `Main()`'s sequence. A non-2xx `%response.Status` fails even when `tSC` is OK.
+  - A read answered 404 is an absence. The port does not log it, and the caller still gets `PORT.NOTFOUND`. Every other failure, including a write's 404, is logged at error severity and reaches `alerts.log`.
+  - A vendor-class call is allowed only as a named AD-27 case in the spine. Product code makes no direct `Config.*` or `SYS.Database` write; test seeding is the exception.
+  - A declared port may sequence several admin calls for one write. The proposal, fingerprint, gates, marker and ledger row stay those of the one write.
+- **Pairs (AD-8, AD-29, AD-44).**
+  - `ResourcesOR()` is a lower bound. Take each pair set from the backing class's own check, plus a purpose-built least-privileged role on the throwaway. Never use `%Operator`, which holds `%DB_IRISSYS:RW`.
+  - Administrative resources are required at `USE`.
+  - A tool may declare pairs beyond its screen's set in two cases only:
+    - the vendor writes a database that the screen's read does not (usually `%DB_IRISSYS:WRITE`);
+    - an endpoint the call necessarily reaches names the resource, such as `%Admin_Operate:USE` for the async poll, or `PathPort`'s `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`.
+  - A tool with extra pairs refuses a caller who lacks them, by name, before any port call. Record each case in AD-8, which holds 18.2's, 18.14's, 18.3's and 18.4's sets as precedents.
+  - In `CLASSICPAGES`, each write tool names every classic page beyond its descriptor's `classicPage` whose operation it performs, as normalized class names confirmed on the instance. `Screen.Gate.WithClassicPages` unions those pages' custom resources into the tool's pairs.
+  - An area's pair set covers its screens' pairs, except a pair a screen declares in `ownPrivileges`. An area opens when any of its listed screens is allowed.
+- **Write kinds.**
+  - Create (AD-54): fingerprint the name's absence.
+  - Merge (AD-4): read fresh and send the complete set. Measure whether the PUT keeps omitted keys or acts as an upsert.
+  - Action (AD-51): a declared request type, no body, and a fingerprint subject that names every field its precondition reads. When a vendor body carries a fixed or caller-chosen value, the port builds it under a named AD-51 entry. Examples: `NamespacePort` for `MAPPINGS`, and `DatabasePort` for `Database.Actions`, with a port-composed `STATE` fresh read.
+  - Both callers reach one tool (AD-53, AD-55). The screen's caller mints no proposal, emits no marker, and is not gated by read-only or the kill switch.
+  - Every write also gets:
+    - the read-back (AD-58);
+    - a `Snippet` that mirrors every port branch (AD-59);
+    - the change event and the agent marker (AD-14, AD-15);
+    - `%SYS` by explicit save and restore (AD-16);
+    - the per-target lock, held from the fresh read through the write and its read-back, with 409 `WRITE.TARGETBUSY` after 10 s (AD-34; a Save does not hold the lock yet, DW-1882);
+    - for a removal, an impact computed on the instance (AD-8).
+  - A write the vendor does not audit becomes a named case in AD-15 and AD-53. Measure it with auditing on.
+- **Field lists (AD-3).**
+  - Fields come from the endpoint's body-template method. A mutating endpoint without one derives its fields from the underlying class, pinned by a test.
+  - Classify every field `ordinary`, `secret` or `opaque` in `Classification.cls`. An unclassified field is emitted secret.
+  - Regenerate `ToolFields.cls` and `screens.generated.ts`; never hand-merge either.
+- **Self-protection (AD-10).** Predicates live once, in the kernel. Each is stated over the effect, so a bodyless write is covered. Each is evaluated inside the confirm's atomic transition, and each has a test that fails when it is removed.
+  - Shipped:
+    - `PROHIBITED.OCUPILOTNAMESPACE`: deleting the install namespace or `%SYS`, or changing its Globals or Routines database.
+    - `PROHIBITED.OCUPILOTMAPPING`: matched by pattern overlap, plus `Prohibited.CODEGLOBALS`.
+    - `PROHIBITED.OCUPILOTDATABASE`: OcuPilot's own database, the install namespace's globals and routines databases, and the seven system databases. These are matched by name ignoring case, or through another configuration name over their directories; a dismount is matched by directory.
+  - A `%`-global mapping is permitted at the strongest confirmation, carrying `MAPPING.SYSTEMGLOBAL`.
+  - AD-10 already refuses disabling `%Service_WebGateway` and the superserver (18.8). 18.8 must also refuse an authentication change that would break OcuPilot's own sign-in (the JWT issuer).
+  - 18.9's criterion refusing `%All` and `%Admin_*` grants predates AD-10's amendment, which permits every grant outside OcuPilot's own applications at the strongest confirmation. Reconcile the two at 18.9's plan; the spine is the contract.
 - **Server paths (AD-21's sixth case).**
-  - The caller names a root and a relative name, never a path. `Port/PathPort` computes the roots on every call and resolves through `Resolve(pRoot, pPath, pKind, ..., pOverwrite, pVendorWrites)`, the last two constants the consuming tool declares, never wire values. Kinds: `directory`, `file` (a new name unless the tool overwrites) and `source` (an existing file to read).
-  - Refusals: `PATH.ROOT`, `PATH.NAME`, `PATH.EXISTS`, `PATH.NOFILE`, `PATH.MANAGER`, `PATH.MANAGERDIR`, `PATH.SERVED`, and `PATH.INSTANCE` for an overwrite of any file beside the CPF, in a configured database directory or its additional volume directories, or in a journal directory, all read at call time. Each renders on the named field before any vendor call and never echoes a path.
-  - A consumer declares `root` and `path` arguments and the port's pairs `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`; resolves at the mint and again at the write; sends the composed path under the vendor's own field (`Directory`, `NewVolumeDirectory`), never a settable tool field; and embeds `app-server-path-picker` fed by a page-owned `AllowedDirectoriesStore`. Never add a client copy of the segment rule, a free-text path or subdirectory browsing.
-  - 18.3's create refuses a directory already holding an `IRIS.DAT` in its own rules (`DATABASE.DIRECTORY.INUSE`); the vendor's `POST /database-dir` refuses it too, while `PUT /database` accepts a second configuration name over it. 18.4's expand volume directory is a vendor-writes directory (inference) and carries DW-1791's residual. A remote database's directory lives on its data server, so the local allow-list cannot supply it (inference); that is 18.16's.
-- **Local databases (18.3, done).** A seventh OS management screen keyed by configuration name, entity type `database-configuration` (scope `instance`, id `Name`, `foldcase`), beside Epic 6's directory-keyed `database` type, which declares it secondary so both re-fetch. Four tools, `osmgmt.localdatabases.{create,updatemount,update,delete}`, over a new `DatabasePort` extending `AdminPort` (AD-52: a declared port may sequence several admin calls for one write, and the proposal, fingerprint, gates, marker and ledger row stay the one write's). The create makes `%DB_<NAME>` unless told to use an existing `%DB_*` resource, then `POST /database-dir`, then `PUT /database`, deleting the file if that `PUT` fails; the delete sends `DELETE /database` (the vendor refuses it 409 #429 while any namespace uses the database, directly or through a mapping) and then, only when asked and when no other configuration name shares the directory, `DELETE /database-dir`. The delete's impact names the using namespaces, the web applications running in them and the configuration names sharing the file. Both `PUT`s are upserts that keep omitted fields. The volumes view is read-only; `update` refuses a remote target (`DATABASE.REMOTE`) and the list's read is local-only. Its test classes arm under `OCUPILOT_ALLOW_DATABASE_CONFIG`.
-- **Disk operations (18.4).**
-  - `Database.Actions` answers async for every type except mount and dismount, and compact, defragment and integrity queue themselves (AD-26), so read the fixture first. The port refuses any mutating request that would queue unless its pair is in `QUEUEDWRITES`, so each queued operation adds its own entry, with no secret in its body. Past the port's bound a queued write answers started, never `PORT.TIMEOUT`, and its read-back is `unchecked`.
-  - Each queued tool declares `%Admin_Operate:USE` for the poll where its screen's set lacks it (AD-8's endpoint clause).
-  - The integrity check's body carries the caller's selection, so the port builds it under a new named AD-51 entry, as `AuditPort`, `ProcessPort` and 18.14's `NamespacePort` do. An operation taking only `dir` is an AD-51 action whose fingerprint subject names every field its precondition reads; a caller value such as truncate's target size or expand's size goes the same port-built way (inference until the payloads are observed).
-  - "Progress" is a running line, then done or still running (orchestrator ruling); no poll measured so far exposes a progress figure.
-  - The integrity output file is a `file` consumer and its log viewer a `source` consumer (inference).
-  - 18.4 acts on the databases Epic 6's read-only screens show, by directory. Database details' background tasks section reads `BackgroundTaskPort`'s `Database` field, filled only while a portal row's task has not ended (AD-27's 16.5 case, extended by 18.3); DW-1821 decides how an admin-API task is attributed, through that port, never a second reader.
-- **Self-protection (AD-10).** Predicates live in the kernel only, are stated over the effect so a bodyless delete or action is covered, are evaluated inside the confirm's atomic transition, and each carries a test that fails when its predicate is removed. `PROHIBITED.OCUPILOTDATABASE` (18.3) refuses deleting, or changing the directory, server, resource or read-only setting of, `OCUPILOT`, the install namespace's globals or routines database (read at the write) and the seven system databases the classic dialog refuses, by name without regard to case, including through a second configuration name over one of their directories. 18.4's candidates (inference): dismounting, truncating or compacting those same databases; hold every predicate over the whole effect.
-- **Write kinds.** Create (AD-54): fingerprint the name's absence. Merge (AD-4): read fresh, send the complete set. Action (AD-51): a declared request type, no body, a declared fingerprint subject; a vendor body carrying a fixed or caller-chosen value is built by the port under a named AD-51 entry. Both callers reach one tool (AD-53, AD-55); the screen's caller emits no marker and is not gated by read-only or the kill switch. Every write tool also gets the read-back (AD-58), a `Snippet` mirroring every port branch (AD-59; a step a script cannot carry answers no draft), the change event and marker (AD-14, AD-15), and `%SYS` by explicit save and restore (AD-16).
-- **Field lists (AD-3).** A tool's fields come from the endpoint's body-template method; a mutating endpoint without one derives its fields from the underlying class, pinned by a test. Classify every field `ordinary`, `secret` or `opaque` in `Classification.cls` (an unclassified field is emitted secret; a bodyless tool needs no entry) and regenerate `ToolFields.cls`.
-- **Descriptors (AD-5, AD-13, AD-36, AD-44).** References carry `(type, scope, id)`, and a new type joins the kernel's closed enum with its canonical-spelling rule. Each descriptor declares the classic page it replaces: 18.4 `Dialog.DBActions`, `Background.Dialog.Database{Truncate,Compact,Defragment}`, `Dialog.ExpandVolume`, `Dialog.Integ`, `IntegOutput`, `IntegLog`, `IntegLogContent`; 18.16 `.RemoteDatabases` and `Dialog.RemoteDatabase` (catalog shorthand under `%CSP.UI.Portal`; confirm on the instance). A list never links out, a tabbed editor is one descriptor per tab, and a form or wizard reached from its list takes `sideBarPosition` 0.
-- **Spine amendments at the spec gate (Rule 20).** Each story writes its own sentences, as 18.2, 18.14 and 18.3 did: AD-8 for extra pairs, AD-10 for new predicates, AD-26 for each `QUEUEDWRITES` entry, AD-44 for each tool's `CLASSICPAGES`, AD-51 for a port-built body, AD-21 if DW-1791's residual moves into `PathPort`, and AD-15/AD-53's named cases where an operation leaves no vendor audit event (measure it).
-- **Testing pattern.** A stateful class arms under its own `scripts/ci-throwaway.sh` variable, added to the rosters `ui/tools/ci.test.mjs` pins (18.3's `OCUPILOT_ALLOW_DATABASE_CONFIG` is the database model); a throwaway predating the block is armed per call with `docker exec -e`. Predicate legs run through a recording port (`DatabaseRecordPort` for 18.3), so a removed predicate records a call instead of writing. Probe objects carry a story prefix, never touch `USER`, `HSCUSTOM` or a system database, and are removed before, after each and after all tests. One test class runs at a time, and a database left mounted without its directory cannot be cleared.
-- **Later stories.** 18.5's journals stay in System Operation, and their directories are path consumers (DW-1797). 18.7 establishes the encryption subset first and settles its file kinds. 18.9's criteria predate AD-10's permitted grants; the spine governs. 18.13 keeps one idempotent installer and keeps the install-namespace, own-mapping and own-database predicates holding.
+  - The caller names a root and a relative name, never a path. `Port/PathPort` computes the roots on every call.
+  - It resolves a `directory`, `file` or `source` at the mint and again at the write. Overwrite and vendor-writes are constants of the tool.
+  - A refusal is a `PATH.*` code, rendered on the field it names, and never echoes a path. The composed path goes to the vendor under the vendor's own field.
+  - Consumers embed `app-server-path-picker` fed by a page-owned `AllowedDirectoriesStore`. Never add a client copy of the segment rule, free-text paths or subdirectory browsing.
+  - The owner's rule covers every operation that creates or moves a database file, including 18.16's remote databases: a database directory is always required and is never the manager directory. The tool refuses either by name before any vendor call.
+  - 18.5's journal directories and 18.7's key files are path consumers, and 18.7 decides each one's kind. A file the operation reads, such as a key to activate, is a `source`.
+- **Descriptors (AD-5, AD-13, AD-36, AD-44).**
+  - A new entity type joins the kernel's closed enum with its canonical-spelling rule. References carry `(type, scope, id)`.
+  - Each descriptor declares the classic page it replaces.
+  - A list never links out to the classic portal. A tabbed editor is one descriptor per tab.
+  - A form or wizard reached from its list takes `sideBarPosition` 0, so it is routable but not listed.
+  - A page may issue another built screen's declared read instead of writing a second query. A parent-scoped list may seed its parent's key onto its rows.
+- **Spine amendments at the spec gate (Rule 20).** Each story writes its own:
+  - AD-8 for extra pairs;
+  - AD-10 for new predicates;
+  - AD-26 for each `QUEUEDWRITES` entry;
+  - AD-44 for each tool's `CLASSICPAGES`;
+  - AD-51 for a port-built body;
+  - AD-21 for a new path case, such as 18.16's ECP connection;
+  - AD-15 and AD-53 for writes the vendor does not audit.
+- **Testing.**
+  - A stateful class arms under its own `scripts/ci-throwaway.sh` variable, added to the rosters `ui/tools/ci.test.mjs` pins. `OCUPILOT_ALLOW_DATABASE_CONFIG` is the database model.
+  - Throwaways compile the test classes because they set `OCUPILOT_LOAD_TESTS=1` (AD-17).
+  - Predicate legs run through a recording port (`DatabaseRecordPort`), so a removed predicate records a call instead of writing.
+  - Probe objects:
+    - carry a story prefix;
+    - never touch `USER`, `HSCUSTOM` or a system database;
+    - are removed before all tests, after each, and after all;
+    - create a `%DB_*` resource before its database.
+  - One test class runs at a time. A database left mounted without its directory cannot be cleared.
+  - No test depends on what another test left behind, because the CI shards reorder classes.
+  - OcuPilot's own finished async rows are swept as objects after 24 h, never by SQL (AD-37).
 
 ## UX & Interaction Patterns
 
-- **The screen contract.** Each screen registers the same 10 things; the side bar lists only built screens; every new string goes into EXPERIENCE.md's Fixed strings, extending existing rows in place (the side-bar table, the Dialogs line, the OS management and Databases literals, delete bodies, kernel refusals, impact phrases). A refusal sentence is published once and pinned to the kernel's copy (AD-53).
-- **Placement.** The classic portal separates database configuration (Local databases, by name, 18.3) from operations (Databases and Database details, by directory, Epic 6). 18.4's operations attach as actions to the operations screens (inference), reusing their field labels where they match.
-- **Destructive actions on a screen** use a one-level `confirm-dialog`: the title names the action and target, the body states the consequence and ends "This cannot be undone.", and a typed-name field requires an exact, case-sensitive match. An agent proposal carries no typed-name field. A delete with an impact shows it as the dialog's advisory in the removal-impact phrase pattern, not a stepper, when the vendor offers no choice; a kernel refusal the dialog can foresee is stated as its advisory when it opens (18.3's protected-database sentence). Disruptive non-destructive warnings (a dismount, inference) take button-primary with the consequence sentence.
-- **Wizards** follow the New Task precedent: a vertical, linear stepper; Next validates the step, Back keeps values, and a step with an error says "This step needs attention: <reason>". 18.3's create wizard has three steps. The integrity-check wizard and its log viewer form one flow replacing four classic dialogs.
-- **Multi-select.** A list may declare an action over a checked set (Processes' Broadcast, 16.6): row checkboxes, Space toggles, a header Check all, the action `aria-disabled` with its reason when none or too many are checked. The integrity check's database selection could use it (inference).
-- **Editors** are form pages whose tabs mirror the classic editor, with one form across all tabs and a sticky Save.
-- **The path picker** offers only the read's roots; its one text entry is the relative name, the composed path is display only, and a `PATH.*` reason renders on the field it names. A picker preselects a single root without marking its form dirty.
-- **Gated controls** stay focusable with `aria-disabled` and name their reason; a self-protection refusal is drawn the same way.
-- **Live data.** Databases and Database details auto-refresh, pausing while a proposal on the same entity type is live (AD-43). Async values render as skeleton cells until they resolve, and an async write shows a running line, then done or "Still running on the instance. It finishes in the background."
+- **Screen contract.**
+  - Each screen registers the same 10 things, and the side bar lists only built screens.
+  - Every new string goes into EXPERIENCE.md's Fixed strings, extending existing rows in place.
+  - A refusal sentence is published once and pinned to the kernel's copy (AD-53).
+- **Placement.**
+  - OS management's side bar holds Processes, Locks, System usage, Databases, Devices, Namespaces, Local databases, License usage, Dashboard and External language servers. The Integrity log gets a position right after Databases (DW-1858).
+  - Configuration (Local databases, keyed by name) stays separate from operations (Databases and Database details, keyed by directory).
+  - Journals stay in System Operation, not the Logs area.
+- **Dialogs are a closed set:**
+  - delete confirmations;
+  - the warnings that precede a non-delete write;
+  - the few named dialogs, copy mappings among them.
+
+  Everything else is a full-page route, and dialogs never stack. A new dialog joins EXPERIENCE.md's Dialogs line.
+- **Destructive actions on a screen** use a one-level `confirm-dialog`.
+  - The title names the action and the target.
+  - The body states the consequence and ends "This cannot be undone."
+  - A typed-name field requires an exact, case-sensitive match. An agent proposal carries no typed-name field.
+  - A removal's impact appears as the dialog's advisory. A kernel refusal the dialog can foresee is stated when it opens.
+  - 18.15's enable states its consequence before it is confirmed.
+- **Async writes** show a running line, such as "<operation> running on the instance since <time>" or the copy-mappings form, then a finished line or the still-running sentence. The read-back reads "not checked, the write is still running".
+- **Wizards and editors.**
+  - A wizard is a vertical, linear `form-stepper`. Next validates the step, Back keeps values, and a step with an error says so in text.
+  - An editor is a form page whose tabs mirror the classic editor: one form across all tabs, a sticky Save, and an unsaved-changes guard.
+- **Path picker.**
+  - It offers only the read's roots, and its one text entry is the relative name. The composed path is display only.
+  - A `PATH.*` reason renders on the field it names.
+  - A single root is preselected without marking the form dirty.
+- **Gated controls** stay focusable with `aria-disabled` and name their reason. Self-protection refusals use the same mechanism.
+- **Live data.**
+  - Auto-refresh is one framework over a fixed roster of nine screens, Databases and Database details among them. It pauses while a proposal on the same entity type is live (AD-43).
+  - A screen joins the roster only through both its descriptor and EXPERIENCE.md's roster row.
 
 ## Cross-Story Dependencies
 
-- **18.1 → later path consumers.** 18.1 shipped `PathPort`, Security › Allowed directories and its read tool, the picker and its store. 18.3 was the first consumer; next are 18.4's new volume directory, integrity output and log viewer (inference), then 18.5, 16.4, 19.2, 19.8 and 21.2.
-- **18.3 → 18.4.** 18.4 builds on `DatabasePort`, the Local databases descriptor and `database-configuration` type, the read-only volumes view (SA-18's save-and-expand and OS-21's expand share `POST /database-dir/expand-volume`; 18.4 owns it and size-grow, with its disabled key), Database details' background tasks section (DW-1821), `PROHIBITED.OCUPILOTDATABASE`, and DW-1791's residual.
-- **18.2, 18.14 and 18.3.** SA-13's inline create-database link on `NamespaceForm` and SA-15's optional database delete shipped in 18.3; neither delete chains into the other.
-- **18.4 → 18.15.** 18.15 starts with its Task 0 observation on the throwaway: enable-interop takes query `name` and no body, is queued, and (from the vendor source, inference) creates mappings and a web application, grants SQL and database privileges, and on a non-HealthShare instance creates ENSTEMP and SECONDARY databases unless the namespace is `USER`. It needs its own `QUEUEDWRITES` entry, its measured pairs, the read-once rule, and `CLASSICPAGES` `%CSP.UI.Portal.Namespace`.
-- **18.15 → 18.16.** 18.16 runs after 18.15, extending 18.3's database screens to remote configurations.
-- **18.13.** The install-namespace, own-mapping and own-database predicates must keep holding; DW-1788 becomes real if OcuPilot's applications span namespaces.
-- **Shipped machinery these stories build on:** governance (Epic 14), the copy-out draft (14.1), the sanitizer (14.3), the async write with a port-built body (12.3's `AuditPort`, 18.14's `NamespacePort`), the read-back (16.17), the removal impact (16.19), `Kernel.Shell.Effective` (16.3), `BackgroundTaskPort` (16.5), and Epic 6's database reads.
-- **Shared files.** Epics 16 and 23 are in progress elsewhere, so edits stay add-only: the kernel, the registry, `Error.cls`, `Router.cls`, `Baseline.cls`, the test rosters, `ci-throwaway.sh` and `ci.test.mjs`, `strings.ts` and EXPERIENCE.md. `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged.
+- **18.15 (next).** Task 0 runs on the throwaway first.
+  - Earlier research: the Part C plan in `spec-18-14`'s history (commit `4b73be11`) read the vendor source. Everything below is inference until Task 0 observes it.
+    - `INTEROP` takes the query parameter `name` and no body, and it queues through `ShouldRunAsync`.
+    - It answers 404 for an absent namespace and calls `%EnsembleMgr.EnableNamespace(name, 1)`.
+    - That call creates mappings and a portal application, adds SQL and database privileges, and modifies the Interop Editors API application.
+    - On a non-HealthShare instance, it also creates the ENSTEMP and SECONDARY databases unless the namespace is `USER`.
+    - Many of its step failures are only displayed, not returned.
+  - The plan halts if Task 0 contradicts this: a body, no queue, a change to any of OcuPilot's own objects, or an artifact the cleanup cannot remove.
+  - The enable needs:
+    - a `QUEUEDWRITES` entry;
+    - its measured pairs, plus `%Admin_Operate:USE` for the poll;
+    - the read-once rule;
+    - `CLASSICPAGES` `%CSP.UI.Portal.Namespace`;
+    - a consequence stated before it is confirmed.
+  - It reuses `NamespacePort`'s started conversion and the namespace list's page-owned action and running line.
+  - The ENSTEMP and SECONDARY databases it creates would appear on Local databases (inference).
+- **18.16.** It extends 18.3's database screens: `DatabasePort`, the `database-configuration` type and Local databases.
+  - Local databases' read is local-only, and its update refuses a remote target with `DATABASE.REMOTE`.
+  - Measured at 18.3's plan:
+    - A remote configuration is created without a live ECP link.
+    - `GET /ecp/data-server/databases` blocked about 11 s and opened an ECP connection attempt.
+    - A data server that a remote database uses cannot be deleted (409 #423).
+  - The ECP connection gets its own AD-21 case, and its wait is bounded and stated before it starts.
+  - The local allow-list cannot supply a remote directory (inference).
+  - Classic pages: `.RemoteDatabases` and `Dialog.RemoteDatabase`, catalog shorthand under `%CSP.UI.Portal`. Confirm both names on the instance.
+- **Later stories.**
+  - 18.5: the journal integrity check (`Journal.File`, self-queued) needs `SELFQUEUEDTYPES`, and its directories are `PathPort` consumers (DW-1797).
+  - 18.6: relies on the ECP routes alone.
+  - 18.7: establishes the reachable encryption subset before any UI, because `Security.Encryption.Settings` is excluded by the v2 pin. Key material is write-only.
+  - 18.10: spec-based REST services go through the management API.
+  - 18.11: reads through its own port and gate, and the monitoring API's anonymous reachability never becomes OcuPilot's (AD-29).
+  - 18.12: adds context-window management as the tool roster doubles, proxy and CA support as configuration, and a wallet-backed credential rung.
+  - 18.13: keeps one idempotent installer, and the install-namespace, own-mapping, own-database and dismount predicates must keep holding.
+- **Shipped machinery to build on:**
+  - governance (Epic 14);
+  - the copy-out draft (14.1);
+  - the sanitizer (14.3);
+  - port-built async writes: 12.3's `AuditPort`, 18.14's `NamespacePort` and 18.4's `DatabasePort`;
+  - the read-back (16.17) and the removal impact (16.19);
+  - `Kernel.Shell.Effective` (16.3);
+  - `BackgroundTaskPort` (16.5, extended by 18.3 and 18.4);
+  - `PathPort` and the path picker (18.1);
+  - Epic 6's database reads.
+- **Shared files.** Other epics run in parallel, so keep edits to these files add-only: the kernel, the registry, `Error.cls`, `Router.cls`, `Baseline.cls`, the test rosters, `ci-throwaway.sh`, `ci.test.mjs`, `strings.ts` and EXPERIENCE.md. Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
