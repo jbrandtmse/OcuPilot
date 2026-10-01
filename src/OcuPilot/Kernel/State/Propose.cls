@@ -372,8 +372,9 @@ ClassMethod GuardedRecordReadBack(pProposalKey As %String, pReadBack As %Dynamic
 /// <code>MAXLEN</code>.</p>
 Parameter READBACKMAX As %Integer = 4000;
 
-/// <p>How long a claim waits for its scoped target's lock before giving up. The transition it
-/// guards is two SQL statements, so a wait this long means a genuinely concurrent confirm.</p>
+/// <p>How long a hold (<method>GuardedTargetHold</method>) or a claim waits for its scoped target's
+/// lock before giving up. A hold covers one write from its fresh read through its port write, so a
+/// wait this long means another write to the target is still being applied.</p>
 Parameter CLAIMLOCKSECONDS As %Integer = 10;
 
 /// <p>The lock subscript a claim on <var>pTargetRef</var> serializes on -- a SHA-256 digest of the
@@ -386,6 +387,57 @@ ClassMethod TargetLockKey(pTargetRef As %String) As %String
 {
     If pTargetRef = "" Quit ""
     Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pTargetRef, "O", "UTF8"))), "L")
+}
+
+/// <p>The lock subscript a hold on <var>pTargetRef</var> takes: <method>TargetLockKey</method> of
+/// <method>OcuPilot.Kernel.EntityRef.Canonical</method>'s reading of it, the key
+/// <method>GuardedClaimAndClose</method> takes too, so every spelling of one target serializes on
+/// one lock and a claim inside a hold re-enters it. <code>""</code> for an unscoped reference.</p>
+ClassMethod TargetHoldKey(pTargetRef As %String) As %String
+{
+    Quit ..TargetLockKey(##class(OcuPilot.Kernel.EntityRef).Canonical(pTargetRef))
+}
+
+/// <p>Hold scoped target <var>pTargetRef</var>'s lock for one whole write (AD-34, AD-53), waiting
+/// at most <parameter>CLAIMLOCKSECONDS</parameter>. <var>pHeld</var> is 1 when this process now
+/// holds it, and <var>pKey</var> is then what <method>GuardedTargetRelease</method> takes; an
+/// unscoped reference takes no lock and answers <var>pHeld</var> 1 with <var>pKey</var>
+/// <code>""</code>. A timeout answers <var>pHeld</var> 0, <var>pKey</var> <code>""</code> and an OK
+/// status.</p>
+/// <p><b>Caller contract:</b> the lock outlives this frame, as the turn slot lock does, so the
+/// escalation that takes it has unwound before the caller reads or writes anything (AD-9). The
+/// caller releases it on every exit, in the same request, and never holds it across a turn or into
+/// a spawned job. A second take by the holding process re-enters it, so the claim inside a hold
+/// never waits on its own caller.</p>
+ClassMethod GuardedTargetHold(pTargetRef As %String, Output pHeld As %Boolean, Output pKey As %String) As %Status
+{
+    Set pHeld = 0
+    Set pKey = ""
+    Set tSC = $$$OK
+    Try {
+        Set tKey = ..TargetHoldKey(pTargetRef)
+        If tKey = "" {
+            Set pHeld = 1
+            Quit
+        }
+        Set tSC = ..GuardedTargetLock(tKey, ..#CLAIMLOCKSECONDS, .tHeld)
+        If $$$ISERR(tSC) Quit
+        If tHeld {
+            Set pHeld = 1
+            Set pKey = tKey
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold <method>GuardedTargetHold</method> took under <var>pKey</var>.
+/// <code>""</code> releases nothing.</p>
+ClassMethod GuardedTargetRelease(pKey As %String) As %Status
+{
+    If pKey = "" Quit $$$OK
+    Quit ..GuardedTargetUnlock(pKey)
 }
 
 /// <p>Claim proposal <var>pProposalKey</var> and close its siblings, in one transaction (AD-34).</p>
@@ -404,7 +456,9 @@ ClassMethod TargetLockKey(pTargetRef As %String) As %String
 /// do not order two claims of two different rows on one target: at IRIS's READ UNCOMMITTED default
 /// each sibling update reads the other's uncommitted claim as already confirmed, matches nothing
 /// and never asks for its lock. A claim that cannot take the target lock within
-/// <parameter>CLAIMLOCKSECONDS</parameter> answers an error and writes nothing.</p>
+/// <parameter>CLAIMLOCKSECONDS</parameter> answers an error and writes nothing. A confirm claims
+/// inside its own <method>GuardedTargetHold</method> on the same key, so there the take re-enters
+/// the lock the caller already holds.</p>
 /// <p><b>The stored ref is canonicalized here, not trusted.</b> The lock and the sibling cancel are
 /// taken on <method>OcuPilot.Kernel.EntityRef.Canonical</method>'s reading of
 /// <var>pTargetRef</var>, so a row carrying a second spelling of one target -- written into the

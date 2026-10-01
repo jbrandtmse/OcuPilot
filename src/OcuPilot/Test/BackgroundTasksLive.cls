@@ -33,8 +33,8 @@ Parameter SEED = "OcuPilot.Test.BackgroundSeed";
 Parameter RESUMEDSECONDS As INTEGER = 3;
 
 /// <p>How long <method>TestTheTeardownOutlastsAStalledCompact</method> stops its compact's job: past
-/// the vendor's cancel of a stopped job (which blocks about 18 s) plus a ten-second wait for its end,
-/// and well inside that cancel plus <parameter>OcuPilot.Test.BackgroundSeed.ENDSECONDS</parameter>.</p>
+/// the vendor's cancel of a stopped job (which blocks about 18 s) plus the ten-second wait for its end
+/// that the teardown allowed before, and well inside that cancel plus <parameter>OcuPilot.Test.BackgroundSeed.ENDSECONDS</parameter>.</p>
 Parameter STALLSECONDS As INTEGER = 35;
 
 /// <p>The purpose-built principal holding the install namespace's code read and the Tasks area's
@@ -338,13 +338,13 @@ Method TestTheAgentsConfirmPausesACompact()
 }
 
 /// <p>The seed's teardown ends the agent leg's compact after its job stops answering for a while, as
-/// a CI host whose writes stall stops it: the compact is held, resumed and paused through the port in
-/// that leg's order, its job is stopped for <parameter>STALLSECONDS</parameter>, and
+/// a CI host whose writes stall stops it (inference): the compact is held, resumed and paused through
+/// the port in that leg's order, its job is stopped for <parameter>STALLSECONDS</parameter>, and
 /// <method>OcuPilot.Test.BackgroundSeed.Remove</method> still removes the database and every task over
 /// it, so the next test's seed is not refused.</p>
 /// <p>Mutation (Rule 19): wait ten seconds for the canceled task's end in
 /// <method>OcuPilot.Test.BackgroundSeed.Remove</method>, or count a task that does not open as ended
-/// -- the removal answers that a task still runs and this goes red.</p>
+/// -- the removal answers #9501 and leaves the task over the seed, and this goes red.</p>
 Method TestTheTeardownOutlastsAStalledCompact()
 {
     Set tSC = $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId)

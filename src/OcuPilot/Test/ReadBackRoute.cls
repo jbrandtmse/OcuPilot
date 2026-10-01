@@ -3,9 +3,11 @@
 /// delete answers <code>notFound</code>, and an agent's confirmed role update whose
 /// <code>GrantedRoles</code> the vendor sorts and whose <code>"WR"</code> grant it stores
 /// <code>"RW"</code> answers <code>matches</code> through the declared modes, on the confirm's
-/// answer and on the proposal's wire row.</p>
+/// answer and on the proposal's wire row. A row action on a target another write holds answers 409
+/// <code>WRITE.TARGETBUSY</code> and writes nothing (AD-34, AD-53).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the suite's HTTP
-/// account holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading
+/// account and the running process holding <code>%All</code> (the busy leg takes OcuPilot's target
+/// lock itself), and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes two web applications and one role by exact name.
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not.</p>
 Class OcuPilot.Test.ReadBackRoute Extends %UnitTest.TestCase
@@ -93,6 +95,65 @@ Method TestARowActionReadsBackMatchesAndADeleteNotFound()
     Set tReadBack = ..ReadBackOf(.tBody)
     Do $$$AssertEquals(tReadBack.%Get("verdict"), "notFound", "the deleted application reads back not found: " _ tReadBack.%ToJSON())
     Do $$$AssertTrue('##class(OcuPilot.Test.WebAppWire).Exists(..#DOOMEDAPP), "and it is gone")
+}
+
+/// <p>AD-34, AD-53: a row action on a target another write holds waits out
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter>, at most 10 s, and answers
+/// 409 <code>WRITE.TARGETBUSY</code> with its published reason, and the application is left enabled;
+/// once the hold is released, the same action answers 200 and disables it. This process plays the
+/// other write, holding the lock under the key a write to the application takes
+/// (<method>OcuPilot.Kernel.State.Propose.TargetHoldKey</method>).</p>
+/// <p>Mutations (Rule 19): drop the hold from <method>OcuPilot.Api.ScreenAction.Run</method> -- the
+/// held disable answers 200 and disables the application, and this goes red; set
+/// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> to 20 -- the wait passes
+/// 10 s and this goes red.</p>
+Method TestARowActionOnAHeldTargetIsRefusedBusy()
+{
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#PROBEAPP, .tRef)
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetHoldKey(tRef)
+    Do $$$AssertNotEquals(tLockKey, "", "the application names a lock")
+    Do $$$AssertEquals(..EnabledOf(..#PROBEAPP), 1, "the application starts enabled")
+    Lock +^OcuPilotProposalTarget(tLockKey):5
+    Set tHeld = $Test
+    Do $$$AssertTrue(tHeld, "which this process holds, as another write's hold does")
+    If 'tHeld Quit
+    Set tStatus = 0
+    Set tBody = ""
+    Try {
+        Set tStarted = $ZHorolog
+        Do ..Action("disable", ..#PROBEAPP, .tStatus, .tBody)
+        Set tWaited = $ZHorolog - tStarted
+    } Catch {
+        Set tWaited = 0
+    }
+    Lock -^OcuPilotProposalTarget(tLockKey)
+    Set tAnswer = tStatus _ " " _ $Select($IsObject(tBody): tBody.%Get("code") _ " " _ tBody.%Get("reason"), 1: tBody)
+    Do $$$AssertEquals(tAnswer, "409 WRITE.TARGETBUSY " _ ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, "the held disable is refused busy, with the published reason")
+    Do $$$AssertTrue(tWaited >= ($Parameter("OcuPilot.Kernel.State.Propose", "CLAIMLOCKSECONDS") - 1), "after waiting for the hold (" _ $FNumber(tWaited, "", 1) _ " s)")
+    Do $$$AssertTrue(tWaited < 15, "and within the 10 s the wait allows, with 5 s for the round trip (" _ $FNumber(tWaited, "", 1) _ " s)")
+    Do $$$AssertEquals(..EnabledOf(..#PROBEAPP), 1, "and the application is still enabled")
+
+    Do ..Action("disable", ..#PROBEAPP, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "released, the same disable answers 200: " _ $Select($IsObject($Get(tBody)): tBody.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(..EnabledOf(..#PROBEAPP), 0, "and disables the application")
+}
+
+/// <p>Whether web application <var>pName</var> is enabled on the instance: 1, 0, or <code>""</code>
+/// when it cannot be read.</p>
+ClassMethod EnabledOf(pName As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pName, .tApp) Set tValue = +tApp.Enabled
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
 }
 
 /// <p>AD-58 over the agent's confirm: a role update whose <code>GrantedRoles</code> and

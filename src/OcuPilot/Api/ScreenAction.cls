@@ -212,12 +212,16 @@ ClassMethod Resolve(pDescriptor As %String, pBody As %DynamicObject, pPreviewOnl
 /// order, answering one envelope.</p>
 /// <p><b>Nothing sits between the gates and the write</b> (AD-34, AD-53): the prohibited set reads
 /// live state, so the answer cannot be separated from the effect it decides.</p>
+/// <p>The target is held (<method>OcuPilot.Kernel.Proposal.Operation.Hold</method>) from before
+/// the fresh read to the end, as a confirm holds it. A target another write keeps past the wait
+/// answers 409 <parameter>OcuPilot.Api.Error.WRITETARGETBUSY</parameter> and nothing is written.</p>
 /// <p>With <var>pPreviewOnly</var> it stops once the body is built, before the prohibited set, and
 /// answers <var>pPreview</var> instead of writing (<method>Preview</method>).</p>
 ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %String, pType As %String, pScope As %String, pId As %String, pTargetRef As %String, pValues As %DynamicObject, pSecrets As %DynamicObject, pPreviewOnly As %Boolean = 0, Output pPreview As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pPreview = ""
+    Set tHoldKey = ""
     Try {
         Set tEndpoint = $ClassMethod(pToolClass, "Endpoint")
         Set tIdParam = $ClassMethod(pToolClass, "IdParam")
@@ -250,6 +254,21 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         If tRefused {
             Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
             Quit
+        }
+
+        ; AD-34, AD-53: a write holds its target from the fresh read through the port write, as a
+        ; confirm does, so neither can land between the other's read and its write. A preview
+        ; writes nothing and holds nothing. Released after the Catch, on every exit.
+        If 'pPreviewOnly {
+            Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).Hold(pTargetRef, .tHeld, .tHoldKey)
+            If $$$ISERR(tHoldSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tHoldSC))
+                Quit
+            }
+            If 'tHeld {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONWRITETARGETBUSY, ##class(OcuPilot.Api.Error).#WRITETARGETBUSY)
+                Quit
+            }
         }
 
         Set tFreshSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, "", .tFresh, .tReadHttp, .tReadFault)
@@ -359,6 +378,7 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
+    If tHoldKey '= "" Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
     Quit tSC
 }
 
