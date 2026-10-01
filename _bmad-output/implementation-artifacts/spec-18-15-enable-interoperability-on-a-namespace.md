@@ -2,13 +2,12 @@
 title: 'Story 18.15: Enable interoperability on a namespace'
 type: 'feature'
 created: '2026-09-30'
-baseline_revision: 'f83dfaf4194e5e95259303c7aac29d427fff5ad8'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['oversized', 'multiple-goals']
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -70,298 +69,272 @@ Every narrower principal measured either failed `<PROTECT>`, leaving the namespa
 
 ## Code Map
 
-**Vendor.** Read-only: `iris_doc_get` and read-only commands on `ocupilot-slot-b` (2026-10-01), plus `irislib/` and `irissys/`. Everything here is from source until Task 0 observes it.
+Anchors are on `45d320fe` (after Story 18.17's merge at `c8dedb69`).
 
-- **`%Api.Admin.Endpoints.Namespace.Namespace`** (`[Hidden]`, not exported):
-  - `TYPEINTEROP` is 10. Query `name` is required, and `ValidateSemantics` answers 404 for an absent namespace.
-  - `NeedsRequestBody` is false for INTEROP, `ValidateRequest` answers OK, and `ShouldRunAsync` is true.
-  - `RunInterop` calls `%EnsembleMgr.EnableNamespace(name, 1)` and returns `{}`. A step failure is only displayed, so it lands in the task's `Console` and not in its status.
-  - `RunDelete` calls `DisableNamespace`, then deletes every application whose namespace is the target.
-- **`irislib/%Library/EnsembleMgr.cls`:**
-  - `EnableNamespace` (:1738-1889) runs these steps in order:
-    - `createMappings`, which maps Ens* to ENSLIB;
-    - on an instance where HealthShare is installed, `%ZHSLIB.HealthShareMgr.EnableHealthShareNamespace`;
-    - `createPortal`, which uses the `healthshare` prefix on such an instance;
-    - `addEnsembleSQLPrivileges`;
-    - `modifyInteropEditorsAPIApp` (:2825), which adds `:%EnsRole_InteropEditorsAPI` to `/api/interop-editors` once;
-    - `setEnsembleDBNSPrivs` (:4236), whose `makeProdPrivs` creates the role `%EnsRole_ProdPrivs_<NS>` (`%sySecurity.inc:226`);
-    - `dataUpgradeSteps` and `setConfigFlags`;
-    - and, only on an instance without HealthShare and never for `USER`, `createNewDBForEnsTemp` (:5935) and `CreateNewDBForSecondary` (:5705). These create `<Globals>ENSTEMP` and `<Globals>SECONDARY` in subdirectories of the globals database's directory.
-  - `validateNamespace` (:2102) refuses `""` and `%SYS`.
-  - `IsEnsembleNamespace` (:79) is public and reads `^|ns|oddCOM("Ens.StudioManager")`.
-  - `IsHealthShareInstalled` (:57) is `$D(^%SYS("HealthShare"))`. It reads 1 on slot B (`"0^IRISHealth^2026-06-26 18:00:35"`).
-  - `DisableNamespace` (:1892) clears only the vendor's markers.
-- **The HealthShare branch**, reached on IRIS for Health, the throwaway's image:
-  - `irislib/%ZHSLIB/HealthShareMgr.cls:1229` runs `HS.Util.Installer.Foundation.Install` (`irislib/HS/Util/Installer/Foundation.cls:35-150`).
-  - That install checks `%Admin_Manage:USE`, then escalates itself (`$$$AddAllRoleTemporary`).
-  - For an existing namespace, `CreateDatabaseAndNamespace` only runs `DefineHSRole` (`ConfigItem.cls:856-900`), which creates `%HS_DB_<NS>`.
-  - It maps HSSYS, `HS.Local` from HSCUSTOM, the HSLIB globals in `StandardGlobalMapping` (`irislib/HS/HC/Util/Installer.cls:619`: `IRIS.Msg` subscripts, `EnsHL7.*("HealthShare_2.5")`, `SchemaMap.*`), the packages `HS,HSMOD,SchemaMap,%pkg.isc`, and the matching INC routines.
-  - It also compiles HSLIB's XML projections into the namespace, runs the FHIR setup, saves a `HS.Util.Installer.ConfigItem` row in HSSYS, and activates the configuration.
-  - `ConfigItem.UnInstall` (:1104) is the vendor's own removal.
-- **Slot B state, read-only:** `^%SYS("Ensemble","InstalledNamespace")` holds `USER` only, no namespace is a HealthShare instance, and `IsEnsembleNamespace("HSCUSTOM")` reads 1.
-- **Classic `irissys/%CSP/UI/Portal/Namespace.cls`:**
-  - The "Enable namespace for interoperability productions" checkbox (:89) is checked by default and requires `%Admin_Manage:USE` (:365-375).
-  - The enable runs in the background, and never for `%ALL` (:341).
-  - "Create New Database..." (:69, :80; `doNew` :181-192) opens the wizard as a popup. `onPopupAction` (:196-212) refreshes both selects and selects the new database.
-- **`irissys/NSPMAP.int`:** `oneglob` :32-54. An empty low end becomes `%` (:54), and an empty upper end is open (:89, :137).
+**Vendor** (read-only; Design Notes › Measured at implement holds Task 0's observations):
+
+- `%Api.Admin.Endpoints.Namespace.Namespace` (`[Hidden]`): `INTEROP` takes no body, `ShouldRunAsync` is true, and `RunInterop` calls `%EnsembleMgr.EnableNamespace(name, 1)`. A step failure reaches only the task's `Console`.
+- `irislib/%Library/EnsembleMgr.cls`: `EnableNamespace` :1738-1889, `IsEnsembleNamespace` :79, `validateNamespace` :2102 (refuses `""` and `%SYS`). On IRIS for Health it runs `%ZHSLIB.HealthShareMgr.EnableHealthShareNamespace`, which runs `HS.Util.Installer.Foundation.Install` (`irislib/HS/Util/Installer/Foundation.cls:35-150`). That install is the source of the instance-wide effects.
+- Read on slot B's dev instance at this plan (read-only):
+  - `Config.Namespaces.Exists("%ALL")` is 1, and no resource is named `%All`.
+  - `$SYSTEM.Security.CheckUserPermission(u, "%All", "USE")` is 1 for `_SYSTEM` and 0 for `Admin`. `Admin` holds `%Manager` and is Task 0's grant target.
 
 **Port** (`src/OcuPilot/Port/`):
 
 - `AdminPort.cls`:
-  - Parameters: `MUTATINGTYPES` :402, `BODYLESSTYPES` :418, `QUEUEDWRITES` :630 (doc :613-629), `SELFQUEUEDTYPES` :639, `ASYNCTIMEOUT` 30 (:735).
-  - Behavior: a mutating type that is not bodyless and has no body is refused (:987-991). The `ShouldRunAsync` handoff and the queued-write refusal are in `Sequence` :2497-2518.
-  - `AwaitTask` :2546-2581 reads once, then `ForgetTask`. At the bound it answers 503 `PORT.TIMEOUT` and `LogFault`s (:2573-2577).
-  - `PollTask` :1351.
+  - Parameters:
+    - `MUTATINGTYPES` :408 (doc :125-407) and `BODYLESSTYPES` :424 (doc :410-423) are single-line comma lists of `Endpoint/TYPE`.
+    - `QUEUEDWRITES` :650 (doc :633-649; the MAPPINGS paragraph is :640-643).
+    - `SELFQUEUEDTYPES` :659 and `ASYNCTIMEOUT` 30 :755.
+  - Behavior:
+    - A mutating type with no body is refused at :1006-1010.
+    - The async handoff is at :1040-1045. `Sequence` :2514-2603 refuses a queued write that is not named (:2573-2576).
+    - `AwaitTask` :2612-2648 calls `LogFault` at the bound (:2641) before any caller converts the timeout to "started".
+    - `PollTask` :1373, `ForgetTask` :1391.
 - `AdminRoutes.cls:133` already maps `Namespace.Namespace` `INTEROP` to `POST /namespace/enable-interop`.
-- `NamespacePort.cls` (211 lines):
-  - `Invoke` :79-118: the mapping branch, then the `GET` adding `SourceNamespace` (:90-94), then the composed MAPPINGS branch with its caller-body refusal (:99-103) and its started conversion (:109-114).
-  - `Snippet` :196-209.
-- `DatabasePort.cls:437-467` uses the same started conversion. `DatabaseAction.TargetResourcePair` is the model for argument pairs that read a database's resource.
+- `NamespacePort.cls` (211 lines): doc :1-30, `COMPOSEDTYPES` :44, `STARTEDHTTP` 202 :63. `Invoke` :79-118:
+  - the mapping branch :81-89;
+  - the `GET` branch :90-94, which adds `SourceNamespace` `""` to every `Namespace.Namespace` `GET`, an INTEROP fresh read included;
+  - the MAPPINGS branch :95-116, with the caller-body refusal :99-103 and the started conversion :108-114 (202, with an empty result and fault; `continues` is set downstream at `Api/ScreenAction.cls:375` and `Kernel/Proposal/Confirm.cls:524`);
+  - the super call :117, and `Snippet` :196-209.
+- `DatabasePort.cls:458-464` keeps its own copy of the conversion and is not touched.
 
-**Tools** (`src/OcuPilot/Screen/Tool/`):
+**Tool and kernel:**
 
-- `NamespaceCopyMappings.cls` is the model. Every parameter is at :29-86, and the methods are `StateDiff` :117, `ArgumentProblem` :164, `ScreenActionDelta` :175, `Consequence` :192 and `PrivilegePairs` :201.
-- Other models: `NamespaceDelete.cls:94` for the pairs, `DatabaseCompact.cls:42` for `ArgumentPairs`, and `Base.cls:123`.
-- `Mint.cls:758` (`ConsequenceOf`) calls a tool's `Consequence` when it exists, and the destructive flag is set at :338. A bodyless tool needs no `Classification.cls` entry.
+- `Screen/Tool/NamespaceCopyMappings.cls` is the model.
+  - Parameters :29-86: `DESTRUCTIVE` :50, `SCREENACTIONS` :54, `READANSWERS` :59, `PRECONDITIONFIELD` :61, `FINGERPRINTSUBJECT` :66, `POLLRESOURCE` and `POLLPERMISSION` :73/:75, `CLASSICPAGES` :83, `CONSEQUENCE` :86.
+  - Methods: `InputSchema` :102-114, `StateDiff` :117-122, `ArgumentProblem` :164-170, `ScreenActionDelta` :175-188, `Consequence` :192-195, `PrivilegePairs` :201-209.
+- `Screen/Tool/AuditCopy.cls:121-150` is the precedent for a tool-level `%SYS` sentence. `NamespaceProblem` is applied by both `ArgumentProblem` and `ScreenActionDelta`; the screen route calls only the delta (`Api/ScreenAction.cls:291`).
+- `Screen/Tool/Write.cls`: `DESTRUCTIVE` :52 and `Destructive()` :503-506 are the model for `TYPEDNAME`.
+- `Kernel/Shell/Effective.cls:19` declares `ALLROLE` `"%All"`.
+- **Pair gates.** Every gate evaluates `$ListBuild(resource, permission)` pairs, refuses 403 `AUTH.NOPRIVILEGE` with `detail.failedPair` (`Kernel/Denial.cls:47-67`), and none reads `$ROLES`:
+  - the agent's dispatch: `Kernel/Agent/Dispatch.cls:257-268`, before `InvokeTool` :295 and so before the mint's port read;
+  - the confirm: `Kernel/Proposal/Confirm.cls:299` (`Operation.Gate`), before the write at :459; governance is at :313-322;
+  - the screen route: `Api/ScreenAction.cls:249`, before the read at :274. It never asks governance.
+  - `Operation.Holds` (`Kernel/Proposal/Operation.cls:490-506`) uses `$SYSTEM.Security.CheckUserPermission`. `Gate.ParsePairSpec` (`Screen/Gate.cls:316-337`) needs both halves of a pair.
+- `Kernel/Proposal/Mint.cls`:
+  - the fresh read :167, then `ArgumentProblem` :216-228, then `consequence` and `destructive` :337-338;
+  - `DestructiveTool` :511-523, and `ConsequenceOf` :758-767, which calls the tool's `Consequence` method (a parameter alone does nothing).
+- `Kernel/State/Propose.cls`: the `Destructive` property :128-136 is stored at :269, read at :758 and put on the wire at :810. The file has no Storage section.
+- `Kernel/Proposal/Prohibited.cls` `Namespace` :1956-1990 refuses no INTEROP write: it reads only a delete or a Globals or Routines change.
+- `Kernel/Governance/Baseline.cls:39-42` holds the namespace keys; `delete` is `false` at :41.
 
-**Kernel:**
+**Screens and client:**
 
-- `Kernel/Proposal/Prohibited.cls`: `EFFECTSYSTEMGLOBAL` :506-509, `WeakensByEffect` :1383-1395, `IsSystemGlobalMapping` :2411-2418.
-- In the same class, `Namespace` :1949-1984 lets a bodyless non-MAPPINGS write through `ReviewedFewOnly` (inference).
-- `Mint.cls:330-338` asks `WeakensByEffect` on a global-mapping create.
-- `Kernel/Governance/Baseline.cls:39-42` holds the namespace keys in name order.
+- `Screen/Descriptor/NamespaceList.cls:40` `rowActions` (`delete`, `copy-mappings`). The three mapping lists declare `secondaryEntityTypes ["namespace"]` (`GlobalMappingList.cls:35`, `RoutineMappingList.cls:35`, `PackageMappingList.cls:35`).
+- `ui/src/app/areas/os-management/namespace-list.page.ts` (175 lines):
+  - the status line :62, the copy dialog :64-70, `handler` :80 and the signals :89-98;
+  - the registration :105, `operationLine` :129-137, `onOpenCopy` :143-148 with its no-stacking guard :144;
+  - `onCopy` :159-174, where `continued()` is read at :167-168.
+  - Its spec is `namespace-list.page.spec.ts`.
+- `ui/src/app/shell/typed-name-dialog.ts` (`app-typed-name-dialog`): inputs `verb`, `target`, `consequence` and `advisory`; outputs `confirmed` and `cancelled`; an exact, case-sensitive match.
+- `ui/src/app/shell/screen-action-handler.ts`: `NAMESPACE_LIST` :128, `COPY_MAPPINGS` :135, `UNDRAWN_ACTIONS` :246-263 (the NamespaceList entry :255), `sendFor` :1117, `lastRefusal` :1129, `continued` :1137.
+- `ui/src/app/core/screen-actions.ts:174-175`.
+- `ui/src/app/core/proposal-view.ts`: the codes :141-211 and `consequenceSentence` :217-250.
+- `ui/src/app/core/strings.ts`: the Story 18.14 block :3513-3610, `auditDatabaseStillRunning` :2674, `formTypedNameConfirm` and `formTypedNameMismatch`.
+- `ui/src/app/core/turn.ts`: the proposal type :247-252 and its parse :600.
+- `ui/src/app/shell/proposal-card.ts`: `destructive` :110, :336-337 and the doc :706-715.
+- EXPERIENCE.md (993 lines): :164 OS management's side bar, :173 Dialogs, :378 the Namespaces fixed strings, :618 `typed-name-field`, :672 Agent Write Lifecycle step 7, :728 the confirmation dialogs, :755 the destructive proposal.
 
-**Screens:**
+**Test models and rosters:**
 
-- `Screen/Descriptor/NamespaceList.cls`: `rowActions` :40, `classicPage` :49, read :51-57.
-- `Screen/Descriptor/DatabaseIntegrityLog.cls`: `sideBarPosition` 0 :27, doc :14-15.
-- Side-bar positions 5-10 are `DeviceList`, `NamespaceList`, `LicenseSummaryTab`, `Dashboard`, `LanguageServerList` and `LocalDatabaseList`. Positions must be whole numbers (`Registry.cls:508-528`, `screen-mirror.mjs:1123`).
-
-**Client** (`ui/src/app/`):
-
-- `areas/os-management/namespace-list.page.ts` (175 lines):
-  - The status line is at :62 and the copy dialog at :64-71.
-  - Registration is at :105, after the handler is injected (:80). `operationLine` :129-137, `onOpenCopy` :143-148, `onCopy` :159-174.
-- `shell/warning-dialog.ts` (`app-warning-dialog`: `verb`, `consequence`, `confirmed`, `cancelled`). `areas/tasks/task-schedule.page.ts:155-196` shows a page using a warning.
-- `shell/screen-action-handler.ts`: `NAMESPACE_LIST` :126, `COPY_MAPPINGS` :133, `UNDRAWN_ACTIONS` :253, `sendFor` :1114, `continued()` :1134.
-- `core/screen-actions.ts:175` holds the NamespaceList labels.
-- `core/proposal-view.ts`: the codes are at :196-199 and `consequenceSentence` at :217-250.
-- `core/strings.ts` (4047 lines): the 18.14 block is at :3515-3564. `auditDatabaseStillRunning` :2676 and `actionProceed` :1726 are reused.
-- `areas/os-management/namespace-form.page.ts`:
-  - The Create a database link is at :176-180 and is drawn beside Globals only (:375). `createDatabaseLink` :380-385, `onCreateDatabase` :430-435.
-  - The destroy hook :254-261 resets unless `retaining()`.
-- `namespace-form.store.ts`: `retaining` :255, `retainAcrossRouteReplacement` :260, `reset` :267-288, `open` :295-312, and the databases read at :512.
-- `database-wizard.page.ts`: `onCreate` :533-542 replaces the route with the editor (:541), `cancel` :555-557 goes to Local databases, and destroy resets (:294-298).
-- `core/navigation.ts:696-704` (`withQuery`) carries only `ns`. `core/form-dirty.ts` (`setDirty`, `requestLeave`) and `app.routes.ts:24,73-76` hold the guard.
-- `areas/os-management/mapping-form.store.ts:262-264` `systemGlobal()` is the client copy of the DW-1813 rule. The page uses it at :129-131, :147-149 and :293-296.
-
-**EXPERIENCE.md** (993 lines): :164 is the OS management side bar and the Namespaces row, :173 the Dialogs line, and :378 the Namespaces fixed strings, including the `%` where-clause and Story 18.14's tail.
-
-**Rosters to re-derive** (from the code and each class's red, never hand-counted):
-
-- ObjectScript:
-  - `AdminPortAsync.cls:91`, `PortFixture.cls:21`, `ToolWrite.cls:1250-1325`.
-  - `ReadTool.cls:93-94` (188 tools, 119 writes), `SurfaceCoverage.cls` XData :54/:172, `ToolRoundTrip.cls:50`.
-  - `ProposalPrivilege.cls:95-111`, `MappingDescriptor.cls:20,123` (35 entries), `ClassicPageGate.cls:62,131` (31, "thirty-one"), `NamespaceDescriptor.cls:26,35`.
-  - DW-1858's pins: `Navigation.cls:459-480`, `Descriptor.cls:2288`, `DeviceWriteGate.cls:200`, `NamespaceWriteGate.cls:144`, `LicenseUsage.cls:110`, `Dashboard.cls:108`, `LanguageServer.cls:66`, `DatabaseDescriptor.cls:33,270-278`, `SurfaceCoverage.cls:136`, `Wire.cls:701`, `WireSecurityRead.cls:556,563,566`.
-- Client:
-  - `ui/tools/navigation.test.mjs:136-280`, `ui/tools/navigation-wire.test.mjs:129-135`, `ui/src/app/shell/rail-wire.spec.ts:126-132`.
-  - `ui/browser/namespaces.browser-spec.mjs:378-385`, `license-usage.browser-spec.mjs:126-141`, `local-databases.browser-spec.mjs:485-496`.
-  - `ui/tools/proposal-view.test.mjs:233-243`.
-
-**Test models:**
-
-- `Test/NamespaceCopy.cls`: arming :42, `TaskCount` :300.
-- `NamespaceStartedPort` (`AsyncTimeout` 0, `Settle` :42 reads once), `NamespaceStartedAction` (`Copy` :23), `NamespaceStartedConfirm`, `SeamNamespaceCopyMappings`.
-- `DatabaseActionProbe.cls`: `SettleOwnTasks` :314, `OwnTaskCount` :331, `SecondReads` :348.
-- `DatabaseWriteProbe.cls` (`Add` :74, `DirectoryFor` :58) and `MappingProbe.cls` (`Add` :33, `RemoveAll` :155).
-- `NamespaceWriteGate.cls` (`RunAs` :266) with `NamespaceWriteGateProbe.cls` (plan kinds :57-68), and `MappingWriteGate` with `DeviceRecordPort` for counting.
-- `MappingWrite.cls:256-276` (`Marked` :472-477, `Names` :275).
-- `ui/browser/namespace-mappings.browser-spec.mjs`: `irisSys` :90-103, `recordOperationLine` :225-232, `assertStructure` :251-278.
-- `scripts/ci-throwaway.sh`: the NAMESPACE_CONFIG block :403-414 and the PRINCIPALS `# classes:` lines :207-277. The rosters are derived in `ui/tools/ci.test.mjs:2097-2177`.
+- Probes:
+  - `_bmad-output/implementation-artifacts/spec-18-15-task0-interopprobe.patch` holds `Test/InteropProbe.cls`: `Add` :94, `Snapshot` :346, `Diff` :375, `EffectClasses` :409, `OwnObjects` :449, `RemoveAll` :474, `RemoveSystemRecords` :514, `RestoreEditorsApp` :624, `SnapSystem` :762 (patch lines).
+  - `DatabaseActionProbe.cls`: `SettleOwnTasks` :314, `OwnTaskCount` :331, `SecondReads` :348.
+  - `MappingWrite.cls`: `Marked` :472-477.
+- Copy-mappings test models:
+  - `NamespaceCopy.cls` (arming :40-48, `TaskCount` :300-306) and `SeamNamespaceCopyMappings.cls`;
+  - `NamespaceStartedPort.cls` (`AsyncTimeout` 0, `Settle` :42) and `NamespaceStartedAction.cls` (`Copy` :23);
+  - `NamespaceStartedConfirm.cls`;
+  - `MappingAcceptPort.cls`, whose `Writes` filter is at :26.
+- Write-gate test models:
+  - `MappingWriteGate.cls` (`RunAs` :216-244) and `MappingWriteGateProbe.cls` (the `dispatch`, `action` and `confirm` steps :87-93, which record through `DeviceRecordPort`);
+  - `NamespaceWrite.cls:281-295`, the governance model: the agent's call is refused, and the screen's proceeds.
+- Rosters a new tool trips (re-derive each from its class's red, never by hand count):
+  - `AdminPortAsync.cls:79-91` (9 pairs) and `PortFixture.cls:21`;
+  - `ReadTool.cls:93-94` (191 tools, 122 writes);
+  - `SurfaceCoverage.cls` XData (the copy row :172) and `ToolRoundTrip.cls:51`;
+  - `ProposalPrivilege.cls:95-111` and `MappingDescriptor.cls:20,115` (34, "thirty-four");
+  - `ClassicPageGate.cls` (`OWNPAIRS` :62, the count :131, the holding-user agent leg :171-194, `EnableDelete` :398-410);
+  - `NamespaceDescriptor.cls:35`;
+  - `GovernanceBaseline.cls:11,67`, `Governance.cls:17-29,110,114` and `ToolDispatch.cls:152`.
+- Throwaway rosters:
+  - `scripts/ci-throwaway.sh`: the NAMESPACE_CONFIG `# classes:` lines :416-417, and the PRINCIPALS lines :217-279, where `NamespaceWriteGate` is at :254.
+  - `ui/tools/ci.test.mjs:2086-2207` derives both.
+- Client tests:
+  - `screen-action-handler.spec.ts:1576-1583`, `proposal-view.test.mjs:31-52,238-247`, `proposal.test.mjs`;
+  - `proposal-card.spec.ts`, `namespace-list.page.spec.ts` and `strings.test.mjs`.
+- `ui/browser/namespace-mappings.browser-spec.mjs`: `irisSys` :90-103, `before` and `after` :129-158, `recordOperationLine` :225-232, `assertStructure` :247-278.
 
 ## Tasks & Acceptance
 
-**Task 0: the implement stage's first task. It runs before any form or tool is built, on `ocupilot-b-ci` only.** Record the results under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
+**Task 1: restore the probe and prove the cleanup.** It runs first, on `ocupilot-b-ci` only. No tool, port branch, descriptor or client code is written before it passes.
 
-1. **Plumbing needed to observe the route through `AdminPort`:**
-   - Append `Namespace.Namespace/INTEROP` to `AdminPort`'s `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`, and mirror `MUTATINGTYPES` in `Test/PortFixture.cls:21`.
-   - Write `src/OcuPilot/Test/InteropProbe.cls` (below), then run `/tmp/epic-18-d4/load-throwaway.sh`.
-2. **Read-only checks:** record `%Library.EnsembleMgr.IsHealthShareInstalled()` (expected 1) and the install namespace's `IsEnsembleNamespace`. Enable nothing outside probes.
-3. **Reference run, as the test process:**
-   - Setup: `InteropProbe.Add("A")` creates resource `%DB_OCUPROBE1815D`, then the database `OCUPROBE1815D` in `<mgr>ocuprobe1815d/`, then namespace `OCUPROBE1815A` over it for both Globals and Routines. Take `Snapshot()` S0.
-   - Call `AdminPort.Invoke("Namespace.Namespace","INTEROP",{name})`, and record its HTTP answer and the elapsed time.
-   - Wait for the terminal state through `InteropProbe.SettleOwnTasks`, which reads the finished result once and records its `State`, `FailureReason` and `Console`.
-   - Take S1 and classify `Diff(S0,S1)` into these effect classes:
-     - **E1:** mappings added to the probe namespace;
-     - **E2:** applications whose namespace is the probe namespace;
-     - **E3:** roles named for it (`%EnsRole_ProdPrivs_<NS>`, `%HS_DB_<NS>`) and `Security.SQLPrivileges` rows for its namespace;
-     - **E4:** the vendor's records keyed by it: `^%SYS("Ensemble",…)` and `^%SYS("HealthShare",…)` nodes, and HSSYS `ConfigItem` and activation-log rows;
-     - **E5:** `/api/interop-editors` `MatchRoles` gaining `:%EnsRole_InteropEditorsAPI`;
-     - **E6:** the configuration file's lines for it.
-   - Also record:
-     - `IsEnsembleNamespace` before and after;
-     - the change in `DatabaseActionProbe.SecondReads()`;
-     - `$SYSTEM.Monitor.State()` before and after;
-     - the vendor audit events written during the run, with auditing on;
-     - the probe database's size.
-4. **Cleanup proof:**
-   - `InteropProbe.RemoveAll()` deletes the namespace through `AdminPort` `DELETE`.
-   - It then removes, by exact probe name, the E3 roles and SQL privilege rows, the E4 rows and nodes, and any task whose namespace is the probe. It restores E5 to its value in S0 if it changed. Last it removes the probe database, its directory and its resource.
-   - S2 must equal S0.
-5. **Pairs, each run followed by step 4:**
-   - Use a principal holding the list's two pairs, `%Admin_Operate:USE`, `%DB_IRISSYS:WRITE` and `%Admin_Secure:USE`. Run the enable through `AdminPort` in a child process (the `NamespaceWriteGate.RunAs` idiom).
-   - Compare its effect classes, and its task `Console`, with the reference run.
-   - Then drop `%DB_IRISSYS:WRITE`, then `%Admin_Secure:USE`, one per run, and record what stops applying.
-   - If the full set fails to reproduce the reference, add `%DB_OCUPROBE1815D:RW` and run again.
-   - The tool declares exactly the pairs some effect needed.
-6. **HALT** `blocked`, with blocking condition `intent gap: observation contradicts the plan: <what>` and no form or tool built, if any of these hold:
-   - INTEROP needs a body.
-   - INTEROP does not queue through the `ShouldRunAsync` handoff.
-   - INTEROP cannot be reached through `AdminPort`.
-   - Any OcuPilot object in S1 differs from S0: its three applications, its roles, `OcuPilotAdmin`, `%DB_OCUPILOT`, the `OCUPILOT` database, the install namespace's or `%ALL`'s mappings.
-   - An effect falls outside E1-E6.
-   - The enable creates a database on the throwaway.
-   - A clause of the consequence sentence is false on the throwaway.
-   - The full effect needs a pair outside the candidates in step 5 (a role such as `%All`, or WRITE on an administrative resource).
+1. Run `git apply _bmad-output/implementation-artifacts/spec-18-15-task0-interopprobe.patch`, which creates `src/OcuPilot/Test/InteropProbe.cls`.
+2. `src/OcuPilot/Port/AdminPort.cls`:
+   - Append `,Namespace.Namespace/INTEROP` to `MUTATINGTYPES`, `BODYLESSTYPES` and `QUEUEDWRITES`.
+   - Under `QUEUEDWRITES`' doc, add one line naming INTEROP as Story 18.15's: it has no body, is queued through `ShouldRunAsync`, and is read once.
+   - Mirror the `MUTATINGTYPES` change in `Test/PortFixture.cls:21`.
+3. Extend `InteropProbe.cls` to every instance-wide object Task 0 listed:
+   - **`Snapshot()`** also lists:
+     - every user with its roles, as `user|<name>|<roles>`;
+     - every external language server and whether it runs, as `languageserver|<name>|<0|1>`;
+     - every `^%SYS("HealthShare", …)` node whose second subscript begins `SystemConfig`, not only the probe-named ones.
+
+     Resources, roles with their resources and granted roles, applications with their matching roles, and tasks are listed already.
+   - **`RecordInstance()`** stores those instance-wide lines under `RECORD`. `Add` calls it beside `RecordEditorsApp`, under the same condition: no probe namespace exists and nothing is recorded.
+   - **`RestoreInstance()`**, called by `RemoveAll` after the namespace deletes, works against the record:
+     - it deletes each resource, role and task the record lacks;
+     - it puts back each role's resources and granted roles, each user's roles and each application's matching roles that differ from the record (`%HS_Administrator` and `Admin` among them);
+     - it stops each language server that runs now but was stopped in the record, through `AdminPort` `LanguageServer` `STOP`;
+     - it kills each `SystemConfig*` node the record lacks;
+     - and it forgets the record once no probe namespace remains.
+
+     Every removal uses an exact name taken from the diff, and nothing the record holds is removed.
+   - **`RESIDUE`** is a closed list of node patterns: the counter and HSSYS index nodes that the measurement in step 5 shows may differ after a restore, each one named. **`BroadResidue(pBefore, pAfter)`** answers the lines of the broad diff outside it.
+4. Load the code with `/tmp/epic-18-d4/load-throwaway.sh`. Then read through `NamespacePort` `GET` that `%SYS` and `%ALL` both answer on the throwaway.
+5. Run the proof through `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`, as the test process, which holds `%All`:
+   1. `RemoveAll`.
+   2. Take S0 = `Snapshot()` and B0 = `Snapshot(1)`, and read `SecondReads()` and `$SYSTEM.Monitor.State()`.
+   3. `Add("A")`.
+   4. `AdminPort.Invoke("Namespace.Namespace", "INTEROP", {name})`.
+   5. `SettleOwnTasks`, which reads the result once.
+   6. Take S1, and find each clause of the consequence sentence (published below, at EXPERIENCE.md :378) in `Diff(S0, S1)`.
+   7. `RemoveAll`, then take S2 and B2.
+6. **Pass** when all of these hold. Record the result in a new `### Restore proof` subsection after Design Notes › Measured at implement, leaving that block as it is: the duration, each residue pattern with its lines, and each clause found.
+   - S2 equals S0 line for line, `Admin`'s roles included.
+   - `BroadResidue(B0, B2)` is empty.
+   - `SecondReads()` and the monitor state are unchanged.
+7. **HALT** `blocked`, with blocking condition `intent gap: the throwaway cannot be restored: <what>` and nothing else built, if any of these hold:
    - S2 differs from S0.
-   - `SecondReads()` grows.
-   - The reference run ends `Failed`, or its `Console` reports a step error.
-7. **Otherwise:**
-   - Set `PrivilegePairs`, and `ArgumentPairs` only if step 5 needed the namespace's own database, to the measured set.
-   - Set `InteropProbe`'s settle bound to three times the measured duration, at least 300 s.
-   - Write the AD-8 sentence, and the AD-15/AD-53 named case if the vendor wrote no audit event for the enable, into the Spec Change Log.
+   - A broad residue line is neither a counter nor an HSSYS index node.
+   - `SecondReads()` grows, or the monitor state rises.
+   - A clause of the consequence sentence is false on the throwaway.
+   - `%SYS` or `%ALL` does not answer the `GET`, so the tool's sentence could not be reached.
+   - The enable ends other than `Finished`, or with a non-empty `Console`.
 
-**Execution: the enable (AC2-AC5):**
+**Execution: the enable.**
 
-- `src/OcuPilot/Port/AdminPort.cls` (Task 0): append to each list's string. In `QUEUEDWRITES`' doc comment, add a line naming INTEROP as Story 18.15's: no body, queued through `ShouldRunAsync`, read once.
-- `src/OcuPilot/Port/NamespacePort.cls`, a branch for `Namespace.Namespace` `INTEROP` before the final super call:
-  - A caller body is refused, as the composed branch refuses one (:99-103).
-  - `name` is sent upper-cased, the spelling the instance stores (Story 18.2).
-  - The started conversion (:109-114) becomes one private method that both branches call.
-  - `Snippet` mirrors the upper-cased query (AD-59).
+- **`src/OcuPilot/Port/NamespacePort.cls`.** Add an `INTEROP` branch before the final super call:
+  - It refuses a caller body, as :99-103 do.
+  - It sends `name` upper-cased.
+  - Move the started conversion :108-114 into one private method that both branches call.
+  - `Snippet` gains the mirroring branch with the upper-cased query (AD-59).
   - Add one class-doc paragraph.
-- `src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls` (new, `osmgmt.namespaces.enableinterop`, on the `NamespaceCopyMappings` model):
-  - `DESCRIPTORCLASS` `NamespaceList`, `PORTCLASS` `NamespacePort`, `READTYPE` `GET`, `WRITETYPE` `INTEROP`, `SENDSBODY` 0.
-  - `CHANGEACTION` `updated`, `DESTRUCTIVE` 1, `SCREENACTIONS` `enable-interop`, no `SCREENVALUES`.
-  - `READANSWERS` `Globals,Routines,TempGlobals`, `FINGERPRINTSUBJECT` `Globals,Routines`, `PRECONDITIONFIELD` `Globals`.
-  - `CLASSICPAGES` `%CSP.UI.Portal.Namespace`, `CONSEQUENCE` `NAMESPACE.INTEROP`, and `SYSTEMREASON` "Interoperability cannot be enabled in %SYS or %ALL.".
-  - `SettableFields` is empty, and `StateDiff` answers no rows.
+- **`src/OcuPilot/Screen/Tool/NamespaceEnableInterop.cls`** (new, `osmgmt.namespaces.enableinterop`), extending `Write` on the `NamespaceCopyMappings` model:
+  - Parameters:
+    - `DESCRIPTORCLASS` `NamespaceList`, `PORTCLASS` `NamespacePort`, `READTYPE` `GET`, `WRITETYPE` `INTEROP`, `SENDSBODY` 0.
+    - `CHANGEACTION` `updated`, `DESTRUCTIVE` 1, `TYPEDNAME` 1, `SCREENACTIONS` `enable-interop`, and no `SCREENVALUES`.
+    - `READANSWERS` `Globals,Routines,TempGlobals,SourceNamespace`, `FINGERPRINTSUBJECT` `Globals,Routines`, `PRECONDITIONFIELD` `Globals`.
+    - `CLASSICPAGES` `%CSP.UI.Portal.Namespace`, `CONSEQUENCE` `NAMESPACE.INTEROP`, the poll pair `%Admin_Operate:USE`, and `SYSTEMREASON` "Interoperability cannot be enabled in %SYS or %ALL."
+  - `Endpoint` answers `Namespace.Namespace`. `SettableFields` is empty, and `StateDiff` answers no rows.
   - `InputSchema` describes the id as "the namespace to enable, as this instance's namespaces list reports it; %SYS and %ALL are refused".
-  - `SystemProblem(pName)` answers `SYSTEMREASON` for `%SYS` or `%ALL`, ignoring case. `ArgumentProblem` and `ScreenActionDelta` both apply it, before any read.
-  - `Consequence` answers `CONSEQUENCE`. `PrivilegePairs` is the `NamespaceCopyMappings` shape with Task 0's set. `ArgumentPairs` is used only if Task 0 needed it, and then follows `DatabaseAction.TargetResourcePair`, unresolved refusing.
-- `src/OcuPilot/Screen/Descriptor/NamespaceList.cls`: `rowActions` gains `{"id":"enable-interop"}`. Regenerate with `cd ui && node tools/screen-mirror.mjs`, then `node tools/field-lists.mjs`.
-- `src/OcuPilot/Kernel/Governance/Baseline.cls`: insert `"osmgmt.namespaces.enableinterop": true,` after the delete line.
-- `ui/src/app/areas/os-management/namespace-list.page.ts`:
-  - Add `ENABLE_INTEROP = 'enable-interop'` and register it beside `copy-mappings`.
-  - One operation runs at a time, and the status line serves both operations.
-  - `<app-warning-dialog [verb]="namespaceEnableInteropAction" [consequence]="namespaceEnableInteropConsequence">` opens for the selected row. Proceed calls `sendFor(NAMESPACE_LIST, ENABLE_INTEROP, name, {})`.
-  - The running line becomes the done line, or `auditDatabaseStillRunning` when `continued()`. A refusal leaves the handler's refusal on the list.
-- `ui/src/app/shell/screen-action-handler.ts`: `ENABLE_INTEROP` joins `UNDRAWN_ACTIONS[NAMESPACE_LIST]`.
-- `ui/src/app/core/screen-actions.ts:175` gains `'enable-interop': STRINGS.namespaceEnableInteropAction`.
-- `ui/src/app/core/proposal-view.ts`: add `CONSEQUENCE_ENABLEINTEROP = 'NAMESPACE.INTEROP'`, mapped to `namespaceEnableInteropConsequence`.
+  - `SystemProblem(pName)` answers `SYSTEMREASON` for `%SYS` or `%ALL`, ignoring case, and `""` otherwise. `ArgumentProblem` and `ScreenActionDelta` both apply it.
+  - `Consequence()` answers `CONSEQUENCE`.
+  - `PrivilegePairs`, in this order, each pair once: the list's pairs (`Gate.RequiredPairs`), then `$ListBuild(##class(OcuPilot.Kernel.Shell.Effective).#ALLROLE, "USE")`, then `%Admin_Operate:USE`, then `Gate.WithClassicPages`. It declares no `ArgumentPairs`.
+- **The card's typed name.** The tool declares it; nothing typed is sent.
+  - `src/OcuPilot/Screen/Tool/Write.cls` (add-only): `Parameter TYPEDNAME As BOOLEAN = 0`, and `TypedName()` beside `Destructive()`.
+  - `src/OcuPilot/Kernel/Proposal/Mint.cls`: after :338, set `typedName` from the tool's `TypedName()`, through a helper modeled on `DestructiveTool`.
+  - `src/OcuPilot/Kernel/State/Propose.cls`: add `Property TypedName As %Boolean [ InitialExpression = 0 ]`, with the no-`SCHEMAVERSION` doc line of :132-136. Store it beside :269, read it beside :758, and put it on the wire as `typedName` beside :810.
+  - `ui/src/app/core/turn.ts`: add `typedName: boolean` to the proposal type, and `boolAt(row, 'typedName')` at the parse.
+  - `ui/src/app/shell/proposal-card.ts`: when `typedName` is set, draw a typed-name field under the consequence.
+    - Its label is `formTypedNameConfirm` with the target's id. The match is exact and case-sensitive.
+    - On blur, a mismatch shows `formTypedNameMismatch` with `aria-invalid` and `aria-describedby`.
+    - Confirm stays `aria-disabled` until the name matches, and Enter confirms only then.
+    - The confirm request carries nothing typed. Rewrite the doc at :710-711 to say so.
+- **`src/OcuPilot/Screen/Descriptor/NamespaceList.cls`.** `rowActions` gains `{"id": "enable-interop", "selfProtection": ""}`. Regenerate with `cd ui && node tools/screen-mirror.mjs`, then `node tools/field-lists.mjs`, and never hand-merge the output.
+- **`src/OcuPilot/Kernel/Governance/Baseline.cls`.** Insert `  "osmgmt.namespaces.enableinterop": false,` between :41 and :42.
+- **`ui/src/app/areas/os-management/namespace-list.page.ts`.**
+  - Register `ENABLE_INTEROP` beside copy-mappings, and unregister it on destroy.
+  - Its row opens `<app-typed-name-dialog>` with `verb` `namespaceEnableInteropVerb`, `target` the namespace and `consequence` `namespaceEnableInteropConsequence`. `confirmed` calls `sendFor(NAMESPACE_LIST, ENABLE_INTEROP, name, {})`.
+  - One operation runs at a time: the :144 guard covers both actions, so neither dialog opens while either action runs. One status line serves both.
+  - The status line shows `namespaceEnableInteropRunning`, then `namespaceEnableInteropDone`, or `auditDatabaseStillRunning` when `continued()`. A refusal leaves the handler's refusal on the list.
+- **`ui/src/app/shell/screen-action-handler.ts`.** Add an `ENABLE_INTEROP` constant beside :135, and add it to `UNDRAWN_ACTIONS[NAMESPACE_LIST]`.
+- **`ui/src/app/core/screen-actions.ts:175`** gains `'enable-interop': STRINGS.namespaceEnableInteropAction`.
+- **`ui/src/app/core/proposal-view.ts`.** Add `CONSEQUENCE_NAMESPACEINTEROP = 'NAMESPACE.INTEROP'` after :211, and its `if` before :249, answering `namespaceEnableInteropConsequence`.
 
-**Execution: DW-1813 (AC6):**
+**EXPERIENCE.md and `strings.ts`.** Write these before the client edits above that read the keys, and set the tool's `SYSTEMREASON` from the same sentence. EXPERIENCE.md is edited in place and stays 993 lines. `strings.ts` gets a Story 18.15 block inserted after :3610, each key citing its EXPERIENCE line.
 
-- `Prohibited.cls`, add-only: in `IsSystemGlobalMapping`, insert before its last `Quit`:
+- **:164.** The Namespaces entry becomes "Stories 18.2, 18.14 and 18.15: its editor links a namespace's global, routine and package mappings, and its list enables interoperability".
+- **:173.** "enable interoperability (Story 18.15, the typed-name confirmation)" follows "copy mappings (Story 18.14)".
+- **:618.** The applies-to cell becomes "destructive dialogs, and an agent proposal whose tool declares it (enabling interoperability, Story 18.15); every other agent proposal carries none".
+- **:672.** "...even on a destructive write" gains ", unless its tool declares one (enabling interoperability, Story 18.15)".
+- **:728.** "enable interoperability" joins the list.
+- **:755.** The row reads "with no typed-name-field unless the tool declares one (enabling interoperability, Story 18.15)".
+- **:378.** Its tail gains these strings and ends `[ADDED 2026-10-01 - Story 18.15]`:
+  - "Enable interoperability" (`namespaceEnableInteropAction`)
+  - "Enable interoperability in" (`namespaceEnableInteropVerb`)
+  - the consequence (`namespaceEnableInteropConsequence`): "Enabling interoperability maps the interoperability code into this namespace, creates its portal applications and gives the interoperability roles access to its databases. On InterSystems IRIS for Health it also runs the HealthShare Foundation install, which changes the whole instance: it maps the HealthShare libraries into this namespace; grants the Admin user the %HS_BFC_Administrator role, which holds %Admin_Manage, %Admin_Secure, %Admin_Task and %Admin_OAuth2_Client; creates HealthShare roles and resources and changes %HS_Administrator's resources; schedules the FHIR purge task and starts the FHIR_Validation_Server Java language server; and gives the new applications access to the HSCUSTOM database, and /bulkfhir/api access to IRISSYS and %HS_ImpersonateUser. Elsewhere it creates two databases, ENSTEMP and SECONDARY, beside this namespace's globals database. This cannot be undone."
+  - "Enabling interoperability in <namespace> on the instance since <time>" (`namespaceEnableInteropRunning`)
+  - "Enabled interoperability in <namespace>." (`namespaceEnableInteropDone`)
+  - "Interoperability cannot be enabled in %SYS or %ALL." (`namespaceEnableInteropSystem`, equal to the tool's `SYSTEMREASON`)
 
-  ```objectscript
-      Set tGlobal = $Piece($ListGet(tParts, 2), "(")
-      If ($Extract(tGlobal) = ":") || ($Extract(tGlobal) = "*") Quit 1
-  ```
+**Tests.**
 
-  Then insert one doc paragraph each after the doc comments of `IsSystemGlobalMapping`, `EFFECTSYSTEMGLOBAL` and `WeakensByEffect`, saying that a name whose global part begins with `:` or `*` reaches the `%` globals.
-- `ui/src/app/areas/os-management/mapping-form.store.ts` `systemGlobal()`: kind `global`, and either the name begins with `%`, or the text before its first `(` begins with `:` or `*`.
-
-**Execution: DW-1824 (AC7):**
-
-- `namespace-form.page.ts`, `onCreateDatabase`:
-  - Retain the store and clear the form-dirty flag, so no leave prompt is raised.
-  - Navigate to the wizard's URL with `returnTo=namespace` added after `withQuery`'s `ns`.
-  - On open in create mode, with the route carrying `kept=1`, the store restores the retained create buffer instead of resetting.
-  - After its form read re-lists the databases, the store sets Globals to the route's `database` when the list holds it (ignoring case, in the list's spelling).
-  - The page then replaces the URL without `kept` and `database`.
-  - An open without `kept=1` resets as today.
-- `namespace-form.store.ts`: add `retainForHandOff()`, plus a restore path in `open` keyed by an argument the page passes. The store reads no route itself.
-- `database-wizard.page.ts`: read `returnTo`. Only the value `namespace` is honored.
-  - Create navigates (`replaceUrl`) to the New Namespace route with `kept=1&database=<created name>`.
-  - Cancel navigates to it with `kept=1`.
-  - Without the marker, nothing changes.
-
-**Execution: DW-1858 (AC8):**
-
-- `DatabaseIntegrityLog.cls` takes `sideBarPosition` 5. Rewrite its doc sentence to say it is listed right after Databases and the Check integrity flow also opens it.
-- `DeviceList`, `NamespaceList`, `LicenseSummaryTab`, `Dashboard`, `LanguageServerList` and `LocalDatabaseList` move 5-10 to 6-11.
-- Regenerate the mirror, then update every pin the Code Map lists.
-
-**EXPERIENCE.md (in place, still 993 lines) and `strings.ts` (appended, each key citing :378):**
-
-- `:164`:
-  - The second cell becomes "Processes · Locks · System usage · Databases · Integrity log (Story 18.15) · Devices".
-  - The Namespaces entry reads "Stories 18.2, 18.14 and 18.15: its editor links a namespace's global, routine and package mappings, and its list enables interoperability".
-- `:173`: "enable interoperability (Story 18.15)" joins the warnings that precede a non-delete write.
-- `:378`:
-  - The `%` where-clause becomes "a global mapping whose name, pattern or range reaches the % globals (its name begins with %, or its global part with : or *)".
-  - The tail gains these strings, and ends `[ADDED 2026-09-30 - Story 18.15]`:
-    - "Enable interoperability"
-    - "Enabling interoperability maps the interoperability code into this namespace, creates its Interoperability portal application and gives the interoperability roles access to its databases. Where the HealthShare libraries are installed, as on InterSystems IRIS for Health, it also maps those libraries into the namespace; elsewhere it can create two databases beside its globals database. OcuPilot cannot undo it."
-    - "Enabling interoperability in <namespace> on the instance since <time>"
-    - "Enabled interoperability in <namespace>."
-    - "Interoperability cannot be enabled in %SYS or %ALL."
-  - The tail also states DW-1824's return: Create a database from New Namespace returns to the form with what was typed and the new database chosen as its globals database.
-- `strings.ts` adds `namespaceEnableInteropAction`, `namespaceEnableInteropConsequence`, `namespaceEnableInteropRunning` and `namespaceEnableInteropDone`.
-
-**Tests:**
-
-- `src/OcuPilot/Test/InteropProbe.cls` (new, not a test case, on the `DatabaseWriteProbe` and `MappingProbe` model):
-  - Methods: `Add(pSuffix)`, `Snapshot()`, `Diff(pBefore, pAfter)`, `IsEnabled(pNamespace)`, `HasPortal(pNamespace)` (an application whose namespace is it), `SettleOwnTasks()`, `RemoveAll()` and `OwnObjects()`.
-  - `Snapshot()` is a canonical sorted list covering: namespaces; databases and their directories; applications with their namespace and `MatchRoles`; roles with their resources and granted roles; resources; `Security.SQLPrivileges` rows for a probe namespace; tasks with their namespace; the mappings of each probe namespace, of the install namespace and of `%ALL`; the `^%SYS("Ensemble")` and `^%SYS("HealthShare")` nodes subscripted by a probe; HSSYS `ConfigItem` ids; and probe directories.
-- `src/OcuPilot/Test/NamespaceInterop.cls` (new; armed by `OCUPILOT_ALLOW_NAMESPACE_CONFIG`). It takes a snapshot before all tests, runs `RemoveAll` after each test and after all tests, and fails if the after-all snapshot differs.
-  - The declarations: the three port lists, the tool's parameters, and the row action.
-  - The screen round trip on `A`: the route answers done or continues. Then `IsEnabled` and `HasPortal`, `SecondReads` unchanged, and OcuPilot's objects unchanged.
-  - The agent round trip on `B`: `Marked` reads `"1|NAMESPACE.INTEROP"`, and the confirm is applied and marked.
-  - `%SYS` and `%ALL` on both callers, through `MappingAcceptPort` (it reads through and records writes) and a new seam tool `Test/SeamNamespaceEnableInterop.cls` (the `SeamNamespaceCopyMappings` pattern): refused with `SYSTEMREASON`, with zero recorded writes and `OwnTaskCount` unchanged.
-  - Deleted since the read, on probe `C`: the confirm is refused as target changed, and no task is queued.
-  - The started legs, as re-runs on `A` and `B` through `NamespaceStartedPort`, a new `NamespaceStartedAction.Enable` (over `SeamNamespaceEnableInterop`) and `NamespaceStartedConfirm`: the confirm answers continues, the route answers `continues: true`, and each task is settled once.
-- `src/OcuPilot/Test/NamespaceInteropGate.cls` with `NamespaceInteropGateProbe.cls` (new, on the `MappingWriteGate` model; armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_NAMESPACE_CONFIG`):
-  - A caller missing each declared extra pair, one leg per pair, is refused 403 naming it, with zero port calls, on the mint and on the route.
-  - A holder of exactly the declared set enables probe `G` through the route. Its effect classes equal the reference.
-- `src/OcuPilot/Test/MappingSystemGlobal.cls` (new, stateless): `IsSystemGlobalMapping` and `WeakensByEffect` over composite ids, covering every DW-1813 matrix name, with removal answering `""`.
-- `MappingWrite.cls`: agent mints in the probe namespace for `:A` and `*` read `"1|MAPPING.SYSTEMGLOBAL"`, and for `A:` read `"0|"`. Each proposal is canceled, so no such mapping is ever created.
-- Rosters: `ClassicPageGate` gains the tool with `%CSP.UI.Portal.Namespace` and adds a page-gate leg for the enable on both callers. Also update `MappingDescriptor`'s `CLASSICROSTER` and every roster in the Code Map.
-- `scripts/ci-throwaway.sh`, add-only: a new `# classes: NamespaceInterop, NamespaceInteropGate` line in the NAMESPACE_CONFIG block, and a new `# classes: NamespaceInteropGate` line in the PRINCIPALS block.
-- Client specs:
-  - `namespace-list.page.spec.ts`: registration, dialog consequence, running then done, continued, refusal and cancel.
-  - `proposal-view.test.mjs` for the code; `mapping-form.store.spec.ts` for the DW-1813 names.
-  - `namespace-form.page.spec.ts` and `namespace-form.store.spec.ts` for the hand-off, kept values, the selected database, and an open without `kept` resetting; `database-wizard.page.spec.ts` for both returns and no marker.
-  - `navigation.test.mjs`, `navigation-wire.test.mjs` and `rail-wire.spec.ts` for the position; `strings.test.mjs`.
-- `ui/browser/namespace-interop.browser-spec.mjs` (new, on the `namespace-mappings` model):
-  - `before` creates `OCUPROBE1815A` through `docker exec ocupilot-b-ci iris session` calling `InteropProbe.Add("A")`. `after` calls `SettleOwnTasks` then `RemoveAll`, and asserts no probe survives.
-  - The row menu's Enable interoperability opens the warning with the consequence. Proceed shows the running line, then the done line or the still-running line. Exactly one `enable-interop` POST is sent.
-  - The DW-1337 walk runs in both themes with the warning open and with the status line holding text.
-- `namespaces.browser-spec.mjs`:
-  - The DW-1824 leg types a Name, chooses Create a database, and creates probe database `OCUPROBE1815W` in the wizard. It is back on New Namespace with the Name kept and Globals `OCUPROBE1815W`, then cancels; cleanup is by `RemoveAll`.
-  - The side-bar assertion reads Integrity log right after Databases.
-- `license-usage` and `local-databases` browser specs: update the pinned side-bar lists.
+- **`src/OcuPilot/Test/NamespaceInterop.cls`** (new; armed by `OCUPILOT_ALLOW_NAMESPACE_CONFIG`). It takes a snapshot before all tests, runs `InteropProbe.RemoveAll` after each test and after all tests, and fails if the after-all snapshot differs. Each test adds its own probe.
+  - **Declarations:** the three port lists, the tool's parameters, `PrivilegePairs` holding `%All:USE` and `%Admin_Operate:USE`, the row action, and the baseline key `false`.
+  - **Screen round trip on `A`,** with the key at its baseline: the route answers done or continues. Then `IsEnabled` and `HasPortal` hold, `SecondReads` is unchanged, and `OwnObjects` is unchanged.
+  - **Agent round trip on `B`,** with the key enabled for this leg and restored afterwards:
+    - `Marked` reads `"1|NAMESPACE.INTEROP"`, and the wire row's `typedName` is true;
+    - a copy-mappings proposal reads `typedName` false;
+    - the confirm is applied and marked.
+  - **Governance:** at the baseline, the agent's call answers `GOVERNANCE.DISABLED`, with no proposal and no task.
+  - **`%SYS` and `%ALL` on both callers,** through `MappingAcceptPort` (its `Writes` :26 gains `INTEROP`) and a new seam `Test/SeamNamespaceEnableInterop.cls` on the `SeamNamespaceCopyMappings` pattern: each is refused with `SYSTEMREASON`, with zero recorded writes, and `OwnTaskCount` is unchanged.
+  - **Deleted since the read, on `C`:** the confirm is refused as target changed, and a route call after the delete is answered 404. No task is queued.
+  - **The started legs, on `A` and `B`,** through `NamespaceStartedPort`, a new `NamespaceStartedAction.Enable` (over the seam) and `NamespaceStartedConfirm`: the confirm answers continues, the route answers `continues: true`, and each task is settled once.
+- **`src/OcuPilot/Test/NamespaceInteropGate.cls`** (new; armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_NAMESPACE_CONFIG`). It runs on the `MappingWriteGate` model, through `MappingWriteGateProbe`'s `dispatch`, `action` and `confirm` steps; a probe class of its own is added only if those steps cannot carry the enable.
+  - It asserts `Security.Resources.Exists("%All")` is 0.
+  - A principal holding the list's pairs, `%Admin_Operate:USE` and every other resource, but not `%All`, is refused 403 `AUTH.NOPRIVILEGE` with `failedPair` `%All:USE`, with zero port calls, on the dispatch and on the route.
+  - On the confirm, the principal mints while its role grants `%All`, loses that grant, and is then refused the same way.
+  - A principal whose role grants `%All` is admitted on the dispatch and on the route, and the recording port receives exactly one `INTEROP` call.
+- **Rosters**, each updated from its class's red:
+  - `AdminPortAsync` (10 pairs and its message) and `PortFixture:21`;
+  - `ReadTool:93-94`;
+  - `SurfaceCoverage`: a row naming `NamespaceInterop`;
+  - `ToolRoundTrip:51`;
+  - `ProposalPrivilege`: a block for `%All:USE` and `%Admin_Operate:USE`;
+  - `MappingDescriptor:20,115`: 35 and "thirty-five";
+  - `ClassicPageGate`:
+    - `OWNPAIRS` gains `osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE`, and the count becomes thirty-five;
+    - the holding user's agent leg and its custom-resource leg exempt this tool, with the reason in one doc line, and a `%All:USE` refusal leg takes their place;
+    - `EnableDelete` enables the key;
+  - `NamespaceDescriptor:35`: three row actions;
+  - `GovernanceBaseline:11,67`, `Governance:17-29,110,114` and `ToolDispatch:152`.
+- **`scripts/ci-throwaway.sh`** (add-only):
+  - a new line `# classes: NamespaceInterop, NamespaceInteropGate` after :417;
+  - a new line `# classes: NamespaceInteropGate` after :255, away from Epic 16's insertion at the end of the PRINCIPALS block.
+- **Client specs:**
+  - `namespace-list.page.spec.ts`: the registration; the dialog's consequence and target; Proceed unavailable until the name matches; running, then done; the list read again after the enable; continued; refusal; cancel; and one operation at a time.
+  - `screen-action-handler.spec.ts`: enable-interop is undrawn.
+  - `proposal-view.test.mjs` for the code, and `proposal.test.mjs` for `typedName`.
+  - `proposal-card.spec.ts`:
+    - the field is drawn only with `typedName`;
+    - Confirm stays unavailable until an exact match;
+    - a mismatch shows on blur;
+    - a destructive card without `typedName` draws no field.
+  - `strings.test.mjs`.
+- **`ui/browser/namespace-interop.browser-spec.mjs`** (new, on the `namespace-mappings` model):
+  - `before` runs `InteropProbe.Add("A")` through `docker exec ocupilot-b-ci iris session`. `after` runs `SettleOwnTasks` and `RemoveAll`, and asserts `Remaining()` is 0.
+  - The row menu's Enable interoperability opens the typed-name dialog with the consequence, and its button stays unavailable until the name is typed.
+  - Proceed shows the running line, then the done line or the still-running line. Exactly one `enable-interop` POST is sent, and the list is read again afterwards.
+  - The DW-1337 walk runs in both themes, with the dialog open and with the status line holding text.
 
 **Acceptance Criteria:**
 
-- **AC1:** Given SA-13's enable-interop on `ocupilot-b-ci`, when the implement stage starts, then Task 0's observations of the payload, effects, duration and pairs are recorded under Design Notes before any form or tool exists, and the throwaway's snapshot after the cleanup equals the one before. A contradiction halts the story.
-- **AC2:** Given a probe namespace that is not enabled, when a holder of the declared pairs chooses Enable interoperability on its row and presses Proceed, then:
-  - the warning stated the consequence sentence before anything was sent;
-  - the list showed "Enabling interoperability in OCUPROBE1815A on the instance since <time>", then "Enabled interoperability in OCUPROBE1815A." or "Still running on the instance. It finishes in the background.";
-  - once the task ends, `IsEnsembleNamespace` answers 1 and an application serves that namespace.
-- **AC3:** Given another probe namespace, when the agent proposes `osmgmt.namespaces.enableinterop` and the person confirms, then:
-  - the card is destructive and states the same consequence;
+- **AC1:** Given `ocupilot-b-ci`, when the implement stage starts, then Task 1's proof shows that the throwaway's snapshot after `RemoveAll` equals the one before it, before any tool exists. That snapshot includes `Admin`'s roles, `%HS_Administrator`'s resources, the HealthShare roles, resources, task, language server and `SystemConfig` records. If the proof fails, the story halts.
+- **AC2:** Given probe `OCUPROBE1815A`, not enabled, and a `%All` holder with the key at its baseline `false`, when they choose Enable interoperability, type the namespace's name and confirm, then:
+  - the dialog stated the consequence before anything was sent, and its button stayed unavailable until the exact name was typed;
+  - exactly one `enable-interop` request was sent;
+  - the list showed "Enabling interoperability in OCUPROBE1815A on the instance since <time>", then "Enabled interoperability in OCUPROBE1815A." or "Still running on the instance. It finishes in the background.", and then read the list again;
+  - once the task ends, `IsEnsembleNamespace` answers 1 and an application serves the namespace.
+- **AC3:** Given another probe namespace and the key enabled, when the agent proposes `osmgmt.namespaces.enableinterop` and the person types the name and confirms, then:
+  - the card is destructive and states the consequence, and its Confirm stays unavailable until the exact name is typed;
   - the write took `AdminPort`'s async path, admitted by `QUEUEDWRITES`;
   - its finished result was read once, and `messages.log` gained no `ERROR #7846`;
-  - a write still running at the bound is recorded applied and marked, and both callers say it is still running.
-- **AC4:** Given `%SYS`, `%ALL`, or a caller missing a declared pair, when either caller enables, then it is refused before any task is queued: with the sentence, or 403 naming the pair with zero port calls. A holder of exactly the declared pairs enables a probe namespace with the reference effects.
-- **AC5:** Given a probe custom resource assigned to `%CSP.UI.Portal.Namespace`, when a principal holding every other declared pair enables through the mint or the route, then it is refused 403 naming `<resource>:USE`. A holder of it is admitted, and the page's assignment reads afterwards as before.
-- **AC6 (DW-1813):** Given a global mapping named `:A`, `:`, `*` or `*X` in a probe namespace, when the agent proposes its create, then the card is destructive with `MAPPING.SYSTEMGLOBAL`. When a person types such a name in the global mapping form, then the system-global line shows under Name. `A:`, `A:Z`, `G("%a")` and a routine `:A` carry neither.
-- **AC7 (DW-1824):** Given the New Namespace form with a typed Name, when the person chooses Create a database and creates a database in the wizard, then no leave prompt appears, and they return to New Namespace with the Name kept and the new database chosen as Globals. Cancel returns with the Name kept, and the wizard opened from Local databases behaves as before.
-- **AC8 (DW-1858):** Given OS management's side bar, when a holder of the Integrity log's pairs views it, then Integrity log is listed right after Databases and opens the Integrity log, and every other listed screen keeps its relative order.
-- **AC9:** Given the warning dialog and the status line, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3,800 kB, with `maximumWarning` (2,350 kB) re-based if crossed.
+  - a write still running at the bound is recorded applied and marked, and both callers say it is still running;
+  - at the baseline, the agent's call is refused `GOVERNANCE.DISABLED`.
+- **AC4:** Given `%SYS`, `%ALL`, or a caller who does not hold `%All`, when either caller enables, then nothing is queued. The answer is "Interoperability cannot be enabled in %SYS or %ALL." for the namespaces, or 403 `AUTH.NOPRIVILEGE` naming `%All:USE` with zero port calls, on the mint, the confirm and the route.
+- **AC5:** Given the typed-name dialog and the status line, when the DW-1337 structural walk runs in both themes, then no violation outside the baseline appears. The production build stays below 3,800 kB.
 
 ## Spec Change Log
 
@@ -378,57 +351,58 @@ Every narrower principal measured either failed `<PROTECT>`, leaving the namespa
 
 **Governing ADs:**
 
-- AD-2, AD-27, AD-52: `NamespacePort` extends `AdminPort`, and nothing else names the admin API.
-- AD-26: the queued write, read once by the one poller, started past the bound. AD-51: the action, its declared subject, no body.
-- AD-6, AD-34, AD-40: the proposal, the confirm, and the gates at the write.
-- AD-8, AD-29: the pairs. AD-44: `CLASSICPAGES`.
-- AD-53, AD-55: two callers of one tool. AD-58: the read-back. AD-59: the `Snippet` branch.
-- AD-14: the change event, with mapping lists re-fetching through `secondaryEntityTypes`. AD-15: the marker. AD-22: the baseline line.
-- AD-10: DW-1813's widening. AD-21: the database-directory rule, read below.
-- AD-5, AD-13, AD-19: the row action, the namespace id, and the router hand-off.
-- AD-36, AD-43: the Integrity log, listed.
+- AD-8's 2026-10-01 sentence binds the pairs: `%All` and the poll's `%Admin_Operate:USE`. AD-29 adds that the vendor's check is only a lower bound. AD-44 binds `CLASSICPAGES`.
+- AD-26 (written) binds the queued write: it is read once by the one poller, and past the bound it has started. AD-51 makes it an action write with a declared subject and no body.
+- AD-2, AD-27 and AD-52: `NamespacePort` extends `AdminPort`, and nothing else names the admin API. AD-59 binds `Snippet`.
+- AD-6, AD-34 and AD-40: the proposal, the confirm and the gates at the write. AD-53 and AD-55 make the screen and the agent two callers of one tool. AD-58 binds the read-back (`unchecked` when the write has started).
+- AD-14: the change event, with the mapping lists re-reading through `secondaryEntityTypes`. AD-15: the marker; the vendor audits the enable, so no named case is needed. AD-22: the baseline line, `false`.
+- AD-10: no predicate applies. AD-21 (confirmed by the orchestrator): the enable names no directory. AD-5, AD-13 and AD-19: the row action, the namespace id and the router.
 
 **Decisions:**
 
-- **Placement.** The enable is a row action on the Namespaces list, as 18.14's Consumed-by and the epic context direct, and not a New Namespace checkbox.
-  - The classic checkbox also runs the enable as a separate background step after the create.
-  - One Save carries one write (AD-55).
-  - The page owns the action because the lazily built handler overwrites registrations and `ListPage` hosts no status line (18.14).
-- **Not refused on the install namespace.** AD-10's install-namespace rule covers a delete and a Globals or Routines change, and the enable does neither.
-  - Its mappings name no OcuPilot package, routine or global: Ens* to ENSLIB, and the HealthShare list in the Code Map.
-  - Its roles and applications are the vendor's.
-  - This is read in the source (inference). No test enables the install namespace.
-- **AD-21's database-directory rule.** The owner's rule (DW-1820's origin: a database pointed at the manager directory lands among IRISSYS's files) is enforced by refusing an omitted directory and the manager directory.
-  - The enable names no directory. Only on an instance without HealthShare does the vendor create `<Globals>ENSTEMP` and `<Globals>SECONDARY`.
-  - Those are subdirectories of the namespace's globals database's directory: a fixed derivation, never the manager directory. So neither refusal is reached (read in the source; plain IRIS is not measured).
-  - On the throwaway's IRIS for Health no database is created, and Task 0 halts if one is.
-- **No interoperability state on the list.** The admin API's read answers no enabled flag, and composing one would be a new AD-27 case. A re-run is the vendor's own path, and the dialog and card state the consequence either way.
-- **The refusal sentence lives on the tool** (`SYSTEMREASON`), because `Api/Error.cls` is at its parameter limit. It is published at EXPERIENCE `:378`, and `NamespaceInterop` asserts both callers answer exactly it.
-- **Read once.** `AwaitTask` and the tests' `Settle` are the only readers of a finished task, and nothing reads a started task. Known: `AwaitTask` logs the bound before `NamespacePort` converts it to started (`AdminPort.cls:2574-2575`). Task 0 records whether that raises the instance state. This story leaves `AdminPort`'s log line unchanged, and the implement stage lists it under `deferred:` if the state rises.
-- **DW-1824 through the router (AD-19).** The wizard never reads or writes the namespace form's store. `returnTo` takes one closed value and is never a URL (AD-47). The created name travels as a query value, and the form keeps its own buffer across the hand-off.
-- **DW-1858.** Positions are whole numbers, so every listed OS management screen after Databases shifts by one.
+- **`%All` is declared as the pair `%All:USE`.** Every gate already evaluates pairs before any port call: the dispatch at :257, the confirm at :299 and the route at :249. The same pair set reaches the card's "requires" line and the ledger's row release, so nothing in the kernel, API or client changes.
+  - No resource is named `%All`. A pair naming an absent resource is passed only by a holder of the `%All` role, held directly or through a granted role: read on slot B, `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`.
+  - The refusal therefore names `%All:USE`.
+  - A dedicated role check was rejected. It would touch `Base`, `Operation.Gate`, `Dispatch`, `Confirm`, `Disclosure`, `Read.BannerRequires` and the ledger. `$ROLES` was rejected too, since no gate infers authorization from roles alone (AD-21).
+  - The pair order is list pairs, `%All:USE`, the poll pair, then the classic page, so a principal without `%All` is refused naming it.
+  - Known limit (inference; not measured whether IRIS allows it): an administrator who creates a resource named `%All` and grants it would pass the pair. `NamespaceInteropGate` asserts no such resource exists.
+- **`CLASSICPAGES` is declared but cannot gate on its own.** A `%All` holder holds every custom resource, so the page's resource can never be the pair that fails. It is declared for AD-44's roster and for the card's "requires" line. `ClassicPageGate`'s custom-resource leg exempts this tool and tests its `%All:USE` refusal instead.
+- **The card's typed name is new, not reused.** The intent asks for the typed-name confirm on the agent's card too. No card has one today:
+  - `proposal-card.ts:710-711`;
+  - EXPERIENCE.md :618 ("an agent proposal carries none"), :672 and :755;
+  - AD-10 describes a delete's agent confirmation as "the destructive treatment, with no typed name".
 
-**Proposed spine amendments (Rule 20; the runner writes them at the spec gate).** Task 0 adds its AD-8 and AD-15/AD-53 sentences through the Spec Change Log.
+  This story therefore adds the field, declared per tool (`TYPEDNAME`), for this tool only:
+  - The gate is in the browser, as the screen dialog's is. The confirm request carries nothing typed, so AD-6's closed confirm channel is unchanged.
+  - `Propose.TypedName` defaults to 0, so `SCHEMAVERSION` does not move (Conventions).
+  - EXPERIENCE.md :618, :672 and :755 are amended in place.
 
-1. **AD-26, after Story 18.4's queued writes:** "**Story 18.15's queued write** [AMENDED 2026-09-30, Story 18.15 spec gate, Rule 20]: `QUEUEDWRITES` also names `Namespace.Namespace` `INTEROP` (enable interoperability), which takes no body and queues through `ShouldRunAsync()` (read on this build); its finished result is read once, by the port's one poller, and past the bound it has started."
-2. **AD-44, after Story 16.13's `CLASSICPAGES`:** "**Story 18.15's `CLASSICPAGES`** [AMENDED 2026-09-30, Story 18.15 spec gate, Rule 20]: the enable-interop tool declares the classic New Namespace page `%CSP.UI.Portal.Namespace`, whose interoperability step it performs."
-3. **AD-10, replacing the own-mappings bullet's last sentence (:250):** "A global mapping whose name, pattern or range reaches the `%` globals -- its name beginning with `%`, or its global part with `:` (an empty low end, which the vendor reads as `%`) or `*` -- shadows system globals for its namespace; it is **permitted at the strongest confirmation** (effect `MAPPING.SYSTEMGLOBAL`: the agent's proposal is minted destructive with the consequence, a person's Save shows it at the field), for a create as for a change, because the vendor creates a subscript mapping's base mapping too [AMENDED 2026-09-30, Story 18.15 spec gate, DW-1813, Rule 20]."
-4. **AD-21, after the owner's database-directory rule:** "Story 18.15's enable-interop names no directory: only on an instance without the HealthShare libraries does the vendor create `<Globals>ENSTEMP` and `<Globals>SECONDARY`, in subdirectories of the namespace's globals database directory, a derivation it fixes and never the manager directory, so neither refusal is reached; on InterSystems IRIS for Health it creates no database (measured at Story 18.15's Task 0) [AMENDED 2026-09-30, Story 18.15 spec gate, Rule 20]."
-5. **AD-8, the poll pair now; Task 0 completes it:** "**Story 18.15's enable-interop declares pairs beyond its screen's set** [AMENDED <date>, Story 18.15, Rule 20]: `osmgmt.namespaces.enableinterop` declares `%Admin_Operate:USE` under the endpoint clause, the `AsyncResult` gate the port polls the queued `Namespace.Namespace` `INTEROP` through, and <Task 0's measured pairs, each with its measured reason>. Each is refused by name before any port call."
+  The orchestrator's direction assumed the field already existed (inference). If the runner prefers the delete's treatment on the card (destructive, no typed name), the intent's I/O row "Enable (agent)" changes, and "The card's typed name" bullet, the Propose, turn and card tasks, the :618/:672/:755 edits, amendment 2 below, and the `typedName` and card-spec legs all drop.
+- **Placement.** The enable is a page-owned row action on the Namespaces list, not a New Namespace checkbox. One Save carries one write (AD-55), and the lazily built handler overwrites registrations, so the page owns the action, as with 18.14's copy-mappings.
+- **The install namespace is not refused.** AD-10's install-namespace rule covers a delete and a Globals or Routines change, and `Prohibited.Namespace` reads only those. The enable's mappings name no OcuPilot package, routine or global (inference, from the source and Task 0's E1). No test enables the install namespace.
+- **No interoperability state on the list.** The admin API's read answers no enabled flag, and composing one would be a new AD-27 case. A re-run is the vendor's own path.
+- **The `%SYS`/`%ALL` refusal is the tool's own sentence** (`SYSTEMREASON`, the `AuditCopy` precedent), because `Api/Error.cls` holds 989 of its 1,000 parameters. The sentence is published at EXPERIENCE.md :378, and `NamespaceInterop` asserts both callers answer exactly it.
+  - Order on both callers: the fresh read, then the sentence, then any write. `%ALL` exists on slot B, and Task 1 confirms that both `GET`s answer on the throwaway.
+- **Read once.** `AwaitTask` and the tests' `Settle` are the only readers of a finished task. The started legs inherit 18.14's known behavior: `AwaitTask` logs the bound (:2641) before `NamespacePort` converts it to started. If that raises the monitor state, the implement stage lists it under `deferred:`; `AdminPort` is not changed.
+- **The restore is test-only.** It works by diff against a record taken before the first probe namespace exists, on `ocupilot-b-ci` and CI's fresh throwaways, never on a dev instance. No test enables `USER`, `HSCUSTOM`, `%SYS`, `%ALL`, or a namespace over their databases.
+- **Bundle.** If the build crosses `maximumWarning` (2386kB), do not edit `ui/angular.json` or `angular-json.test.mjs`: Epic 16's 16.15 changes the same line. Report the measured size in `## Auto Run Result` for the runner, and stop and ask above 3,800 kB.
+
+**Proposed spine amendments.** Under Rule 20 the runner writes these at the spec gate; this stage does not edit the spine.
+
+1. **AD-8**, appended to its 2026-10-01 Story 18.15 sentence: "It is declared as the pair `%All:USE`: no resource is named `%All`, so only a holder of the `%All` role, directly or through a granted role, passes it (read on slot B, 2026-10-01: `CheckUserPermission` answered 1 for `_SYSTEM` and 0 for `Admin`), and its refusal names that pair; the classic page's custom resource it also declares is held by every such caller."
+2. **AD-53**, a new paragraph: "**Story 18.15's typed name on the card** [AMENDED 2026-10-01, Story 18.15 spec gate, Rule 20]: a write tool may declare that its agent proposal takes the typed-name field the screen's destructive dialog carries (`TYPEDNAME`); the card's Confirm stays unavailable until the target's name is typed exactly, in the browser, and nothing typed reaches the confirm request, so AD-6's closed confirm channel is unchanged. The one case is `osmgmt.namespaces.enableinterop`."
 
 **Integration ACs:**
 
 - AC2 is pinned by `NamespaceInterop`, `namespace-list.page.spec.ts` and the browser spec: the Namespaces page consumes the tool through the screen-action route.
-- AC3 is pinned by `NamespaceInterop`: the proposal and confirm consume the tool and `NamespacePort`.
-- The mapping lists consume the namespace change event through `secondaryEntityTypes`, as copy-mappings did.
-- AC7 is pinned by the browser leg: New Namespace consumes the wizard's return.
+- AC3 is pinned by `NamespaceInterop` and `proposal-card.spec.ts`: the proposal, the card and the confirm consume the tool, `NamespacePort` and the `typedName` wire field.
+- The mapping lists consume the `namespace` `updated` event through `secondaryEntityTypes`, the same event copy-mappings emits, routed as Story 18.14 pinned it. This story pins that the enable emits it: `namespace-list.page.spec.ts` asserts the list reads again after the enable, and so does the browser spec.
 
 **Consumes:**
 
-- 18.14: `NamespacePort`'s started conversion, the `namespace-list.page.ts` wrapper and its status line, `NamespaceStarted*` and `ClassicPageGate`.
-- 18.2: `NamespaceList` and the New Namespace form.
-- 18.3: the database wizard. 18.4: `DatabaseIntegrityLog`, and `DatabaseActionProbe`'s settle and `SecondReads`.
-- 16.17's read-back, 14.1's `Snippet` and 14.2's baseline.
+- 18.14: `NamespacePort`'s started conversion, the `namespace-list.page.ts` wrapper and its status line, `NamespaceStarted*`, `MappingAcceptPort`, `MappingWriteGate` and `ClassicPageGate`.
+- 18.2: `NamespaceList` and `NamespaceWriteGate`. 18.4: `DatabaseActionProbe`'s settle and `SecondReads`.
+- 16.17's read-back, 14.1's `Snippet`, 14.2's baseline, and Task 0's `InteropProbe`.
 
 **Consumed-by:**
 
@@ -438,24 +412,18 @@ Every narrower principal measured either failed `<PROTECT>`, leaving the namespa
 
 **Ledger inbox:**
 
-- DW-1776 is addressed by Task 0, the enable tasks and AC1-AC5.
-- DW-1813 by its tasks and AC6, DW-1824 by its tasks and AC7, and DW-1858 by its tasks and AC8.
-- DW-1774 is met: the screen-adding obligation is the DW-1858 pins.
+- DW-1776 is addressed by Task 1, the enable tasks, and AC1-AC4.
+- DW-1813, DW-1824 and DW-1858 shipped in Story 18.17 (`3cc32b04`) and are not this story's.
 
-**Footprint (Rule 11), for the spec gate.** Epic 16's branch changes several files this story touches (checked 2026-09-30, its tree clean).
+**Footprint (Rule 11).** Epic 16's in-flight 16.15 changes EXPERIENCE.md (:261, :335, :609), `scripts/ci-throwaway.sh` (one `# classes:` line at the end of the PRINCIPALS block and one in the test-provider block), `strings.ts` and `ui/angular.json`.
 
-- **Add-only here:**
-  - `Baseline.cls` and `Prohibited.cls` take inserted lines only.
-  - `ci-throwaway.sh` takes new `# classes:` lines.
-  - EXPERIENCE.md is edited in place at 993 lines.
-  - `strings.ts`, `proposal-view.ts` and `SurfaceCoverage.cls` are appended to.
-  - `Error.cls`, `Router.cls`, `Read.cls`, `Registry.cls`, `Write.cls`, `Classification.cls` and `Operation.cls` are untouched.
-- **A one-element append to a one-line list, which the integrate-forward merge resolves by union:**
-  - `AdminPort` `MUTATINGTYPES` and `BODYLESSTYPES` (Epic 16 also rewrote both), and `QUEUEDWRITES`;
-  - `PortFixture.cls:21`, `ReadTool.cls:93-94`, `ToolRoundTrip.cls:50`;
-  - `MappingDescriptor.cls:20`, `ClassicPageGate.cls:62,131`;
-  - `screen-action-handler.ts:253`.
-- **A non-add-only edit to a file Epic 16 changed:** DW-1858's move of `integrity-log` from the unlisted block (:155) to the listed block (:179-192) of `ui/tools/navigation.test.mjs`. Epic 16's two hunks there are in Security (:217-222 and :359-363). This edit needs the gate's approval.
+- EXPERIENCE.md is edited in place at :164, :173, :378, :618, :672, :728 and :755.
+- `ci-throwaway.sh` takes two new lines, at :417 and :255, away from Epic 16's.
+- `strings.ts` takes a block after :3610.
+- `angular.json` is not touched.
+- These are one-element appends to one-line lists, which the integrate-forward merge resolves by union: `AdminPort` (`MUTATINGTYPES`, `BODYLESSTYPES`, `QUEUEDWRITES`), `PortFixture:21`, `ReadTool:93-94`, `ToolRoundTrip:51`, `MappingDescriptor:20`, `ClassicPageGate:62`, `GovernanceBaseline:11` and `screen-action-handler.ts:255`.
+- Kernel files take inserted lines only: `Write.cls`, `Mint.cls` (one line and a helper), `Propose.cls` (a property and three lines) and `Baseline.cls`.
+- `Error.cls`, `Router.cls`, `Prohibited.cls`, `Registry.cls` and `Classification.cls` are untouched.
 
 ### Measured at implement
 
@@ -492,52 +460,51 @@ Task 0, 2026-10-01, on `ocupilot-b-ci` (IRIS for Health). The enable went throug
 
 **Setup (slot B):**
 
-- Load code with `/tmp/epic-18-d4/load-throwaway.sh`, never the MCP loader, which reaches the dev instance. MCP calls carry `server: "ocupilot-slot-b"`.
+- Load code with `/tmp/epic-18-d4/load-throwaway.sh`, never with the MCP loader, which reaches the dev instance. Every MCP call carries `server: "ocupilot-slot-b"`.
 - Every enable, probe and principal stays on `ocupilot-b-ci`. Never restart it.
-- If a class's arming variable reads unset in the container, arm it per call with `docker exec -e OCUPILOT_ALLOW_NAMESPACE_CONFIG=1`, adding `-e OCUPILOT_ALLOW_PRINCIPALS=1` for the gate class.
+- If a class's arming variable reads unset in the container, arm it per call with `docker exec -e OCUPILOT_ALLOW_NAMESPACE_CONFIG=1`. Add `-e OCUPILOT_ALLOW_PRINCIPALS=1` for the gate class.
 - Run one test class per call, and wait until each run has landed in `%UnitTest_Result`.
 - Before any browser run: `cd ui && npm run build`, then `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci` exported.
 
 **Commands:**
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time. Expect 0 failures each, with totals checked against `%UnitTest_Result`. The classes:
-  - `NamespaceInterop`, `NamespaceInteropGate`, `MappingSystemGlobal`, `MappingWrite`, `ClassicPageGate`;
-  - `NamespaceCopy`, `MappingRefusals`, `NamespaceDescriptor`, `MappingDescriptor`, `ProposalPrivilege`;
-  - `AdminPortAsync`, `ToolWrite`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `ToolRoundTrip`, `DraftRegistry`, `ToolEmit`, `GovernanceBaseline`, `Governance`, `ToolDispatch`;
-  - `Navigation`, `Descriptor`, `DatabaseDescriptor`, `Wire`, `WireSecurityRead`, `DeviceWriteGate`, `NamespaceWriteGate`, `LicenseUsage`, `Dashboard`, `LanguageServer`.
-- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-interop.browser-spec.mjs browser/namespaces.browser-spec.mjs browser/namespace-mappings.browser-spec.mjs browser/license-usage.browser-spec.mjs browser/local-databases.browser-spec.mjs browser/language-servers.browser-spec.mjs`. Expect a pass.
+  - `NamespaceInterop`, `NamespaceInteropGate`, `NamespaceCopy`, `NamespaceWrite`, `NamespaceWriteGate`, `MappingWriteGate`, `ClassicPageGate`;
+  - `AdminPortAsync`, `ToolWrite`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `ToolRoundTrip`, `ProposalPrivilege`, `DraftRegistry`, `ToolEmit`;
+  - `MappingDescriptor`, `NamespaceDescriptor`, `GovernanceBaseline`, `Governance`, `ToolDispatch`.
+- `(loop)` `cd ui && node --test --test-concurrency=1 browser/namespace-interop.browser-spec.mjs browser/namespaces.browser-spec.mjs browser/namespace-mappings.browser-spec.mjs`. Expect a pass.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expect clean, with `wc -l` on EXPERIENCE.md reading 993.
 - `(once, before dev_complete)`:
   - the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time;
   - then `cd ui && npm test && npm run build`;
   - then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`.
-  - Expect green with a non-zero count.
+  - Expect green, with a non-zero count.
 - `(CI)` The full browser suite runs in CI's three browser shards (Rule 29), not locally.
 
 **Planned pinning mutations (Rule 19).** Apply each to the throwaway's source copy, or to a rebuilt and redeployed bundle. Observe red, revert byte-identical, and record a `mutation:` line here. Refusal mutations run only through the recording port.
 
 | AC | Mutation | Expected red |
 | --- | --- | --- |
+| AC1 | `RestoreInstance` skips users' roles | the proof's S2 differs on `Admin`'s line; `NamespaceInterop`'s after-all snapshot |
 | AC2 | `namespace-list.page.ts` drops the `enable-interop` registration | `namespace-list.page.spec`'s AC2 legs; the browser spec |
+| AC2 | the page sends on `confirmed` without the dialog (no typed name) | `namespace-list.page.spec`'s dialog leg; the browser spec's typed-name leg |
 | AC2/AC3 | `Namespace.Namespace/INTEROP` removed from `QUEUEDWRITES` | `NamespaceInterop`'s round trips (refused, no task); `AdminPortAsync` |
-| AC3 | `NamespaceEnableInterop.Consequence` answers `""` | `NamespaceInterop`'s agent leg (`"1|"`); the client map drop reddens `proposal-view.test.mjs` |
-| AC3 | `NamespacePort`'s started conversion skips INTEROP | `NamespaceInterop`'s started legs (503 `PORT.TIMEOUT`) |
+| AC3 | `NamespaceEnableInterop.Consequence` answers `""` | `NamespaceInterop`'s agent leg (`"1\|"`); dropping the client map line reddens `proposal-view.test.mjs` |
+| AC3 | `TYPEDNAME` 0 on the tool | `NamespaceInterop`'s `typedName` leg; `proposal-card.spec`'s gate leg, with the field forced off |
+| AC3 | `NamespacePort`'s INTEROP branch skips the started conversion | `NamespaceInterop`'s started legs (503 `PORT.TIMEOUT`) |
+| AC3 | the baseline key set to `true` | `GovernanceBaseline`; `NamespaceInterop`'s governance leg |
 | AC4 | `SystemProblem` answers `""` | `NamespaceInterop`'s `%SYS` and `%ALL` legs (a recorded write) |
-| AC4 | `PrivilegePairs` drops `%Admin_Operate:USE` | `NamespaceInteropGate` (the port is called) |
-| AC5 | `CLASSICPAGES` `""` | `ClassicPageGate`'s enable legs; `MappingDescriptor`'s roster |
-| AC6 | The inserted `:`/`*` line removed | `MappingSystemGlobal`; `MappingWrite`'s `:A` and `*` legs |
-| AC6 | `systemGlobal()` reverted to `startsWith('%')` | `mapping-form.store.spec`'s DW-1813 legs |
-| AC7 | The store's restore path resets instead | `namespace-form.page.spec`'s hand-off legs; the browser leg |
-| AC7 | The wizard ignores `returnTo` | `database-wizard.page.spec`'s return legs |
-| AC8 | `DatabaseIntegrityLog` back at position 0 | `navigation.test.mjs`'s listed test; `Navigation`; the browser side-bar legs |
-| AC9 | The warning's consequence drawn in `--ocu-surface` | the interop browser spec's DW-1337 legs, in both themes |
+| AC4 | `PrivilegePairs` drops `%All:USE` | `NamespaceInteropGate` (the non-`%All` principal is admitted, and the port is called); `ProposalPrivilege` |
+| AC5 | the dialog's consequence drawn in `--ocu-surface` | the interop browser spec's DW-1337 legs, in both themes |
+
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: observation contradicts the plan: on IRIS for Health the enable's HealthShare branch makes instance-wide changes outside E1-E6 (13 resources, six `%HS_BFC_*` roles, user `Admin` granted `%HS_BFC_Administrator` holding `%Admin_Secure`, an HSSYS FHIR purge task, the `FHIR_Validation_Server` started, about 235 HealthShare SystemConfig records, application roles on `%DB_HSCUSTOM` and `%DB_IRISSYS`) that `RemoveAll` cannot remove by probe name, and the candidate pairs, with the namespace database's RW added, do not reproduce the reference enable (a `<PROTECT>` failure, then the HealthShare half skipped silently)
+Status: ready-for-dev
+Blocking condition: none
 
-- Task 0 ran on `ocupilot-b-ci` (Design Notes › Measured at implement). It met three halt conditions: effects outside E1-E6, a needed pair outside the candidates, and S2 differing from S0 after `RemoveAll` alone. No form, tool, port branch, roster or client code was built.
-- The tree holds only this spec and the Task 0 helper `src/OcuPilot/Test/InteropProbe.cls`, uncommitted. The `AdminPort` and `PortFixture` plumbing was reverted to HEAD.
-- The throwaway is back at S0. A test-only restore removed the vendor's instance-wide objects; checked at halt: `Admin`'s roles equal slot B's, no probe namespace, database, role, task or application remains, and the monitor state reads 0. One `ERROR #7846` from the harness's second read of an ended task stays in the throwaway's `messages.log`.
-- Decision needed before a resume: scope the enable to instances without HealthShare, widen the effect classes, consequence and pairs to the HealthShare branch, or refuse SA-13. The `Admin` grant and the `%DB_HSCUSTOM` application role bear on AD-8, AD-9 and AD-10.
+This pass re-planned the spec from Task 0's measurement, around the preserved intent contract, with the scope reduced to the enable (DW-1776). Three items need the runner's ruling at the spec gate:
+
+1. **The agent card has no typed-name field today.** This plan adds one, declared by the tool. EXPERIENCE.md :618, :672 and :755 are amended in place, and AD-53 amendment 2 is proposed. Giving the card the delete's treatment instead is the narrower alternative (Design Notes › Decisions).
+2. **`%All` is declared as the pair `%All:USE`**, so its refusal names that pair. AD-8 amendment 1 is proposed.
+3. **`CLASSICPAGES` is subsumed by `%All`** when the pairs are evaluated: a `%All` holder holds every custom resource.
