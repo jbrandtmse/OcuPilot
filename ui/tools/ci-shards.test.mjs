@@ -87,7 +87,7 @@ test('more shards than items leaves the later shards empty', () => {
   assert.deepEqual(assignShards(['a'], {}, 3).shares.map((share) => share.items), [['a'], [], []]);
 });
 
-test("the checkout's classes split four ways and its spec files three, as CI runs them, each once, within one largest item of each other", () => {
+test("the checkout's classes split four ways and its spec files three, each once, within one largest item of each other", () => {
   const timings = readTimings();
   for (const [suite, items, legs] of [
     ['objectscript', testClassesOnDisk(), 4],

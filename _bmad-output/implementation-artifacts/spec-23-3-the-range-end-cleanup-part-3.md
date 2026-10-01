@@ -293,6 +293,30 @@ deferred: []
   - Files: `Test/TurnSecretResidue.cls`. ADs: AD-35, Conventions › Secrets.
   - AC: Given a completed turn and a failed turn, when the sweep runs, then the `messages.log` lines written over each turn hold no canary. A change that logs the key reddens the sweep.
 
+### Review Findings (batch a)
+
+Code review 2026-10-01 of `a0c415b7..98e71205`: four layers, tier `full-opus`. 25 raw findings make 5 entries, all low; none high or medium. Rule 3: exempt (build pipeline). Checked: the timings are byte-identical to a fresh `refresh --run 36910157178`; `ci-shards.mjs` and `ci-runner.mjs` take the shard count as a parameter; the job-name mutation was re-applied, went red, and was reverted.
+
+- [x] [Review][Patch] The README says both long suites run across three containers [README.md:442]
+- [x] [Review][Patch] The memlog's DW-1901 entry says four legs prevent wall-time growth; they cut it once [.memlog.md:301]
+- [x] [Review][Patch] The checkout split test's title says "as CI runs them", but its literal counts tie to nothing in `ci.yml` [ui/tools/ci-shards.test.mjs:90]
+- [x] [Review][Patch] Verification reports the `assign` estimate of 26.5 min as "Observed", which reads as a measurement [spec Verification › Batch a]
+- [x] [Review][Defer] Operational Envelope › Build and CI lists the client unit tests as container-run and never introduces the browser specs [ARCHITECTURE-SPINE.md:1050] — deferred: the subject list predates this diff, and the spine is contended with Epic 19 (add-only); DW-1904 `wontfix-accepted`.
+
+Rejected:
+
+- `false`: `epics.md:5670` and `epic-dependencies.yaml:181` say three shards. Both are Story 13.5's history, and the binding row (Stack › CI) is amended.
+- `low`: comments hard-code `k/4` and `k/3`. The Fix asks for `k/4` (spec-bound).
+- `low`: the AC sets no wall-time target. The fix would edit the spec; the lead reports the longest leg.
+- `false`: the browser reshuffle goes unrecorded. `refresh --run` rewrites both suites as the Fix asks, and Verification records 134 spec-file timings and the three-leg estimate.
+- `low`: there is no guidance for a red caused by the new split. The fix would edit the spec; Conventions › Tests already makes such a red a coupling defect.
+- `maybe-false`: the concurrent-job cap queues legs when two runs overlap. The plan is unverified, all 13 jobs of run 36923461500 started within 2 s, and two runs of 12 jobs already exceeded 20. At most low.
+- `low`: a triage row says the lead edits were "applied with this commit", but they landed in `98e71205`. The fix would edit the spec; `resolved-by` should cite `98e71205`.
+- `low`: the triage log counts one finding twice. The fix would edit the spec.
+- `false`: `CLAUDE.md` still says 21 minutes. Lead edits schedules that change after the green run.
+- `low`: three clauses have no mutation line of their own: no lowered `timeout-minutes`, the refreshed timings, and the roll-up's runtime check. Rule 19 asks for one mutation per AC, and the shard-matrix test carries four. The timeouts 61 and 43 are untouched (`ci.yml:139,242`), and the timings reproduce byte-identical.
+- `false`: "reports the longest instance leg" has no test. That is the lead's reporting step.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -386,7 +410,7 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 **Batch a (loop):**
 
 - Timings: `ci-timings.json` refreshed with `refresh --run 36910157178` (`33d325da`, green): 392 class and 134 spec-file timings.
-- `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 4`. Expected: four legs, the largest at most 37.6 min. Observed: 96, 97, 97 and 100 classes, 26.5 min each; browser over 3 legs 23.5 min.
+- `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 4`. Expected: four legs, the largest at most 37.6 min. Observed: 96, 97, 97 and 100 classes, an estimated 26.5 min each; browser over 3 legs an estimated 23.5 min.
 - `cd ui && npm run test:tools`. Expected: green. Observed: 1,765 pass, 0 fail. `bash scripts/lint-docs.sh`: 0 issues.
 - `mutation:` delete `4` from the instance matrix → `ci.test.mjs`'s shard-matrix test alone red: "instance-shard runs legs 1 to 4; it declares [1,2,3]".
 - `mutation:` set the instance roll-up's `--shards 3` → the shard-matrix test red ("and over the same 4 shards"), with the three declared-gates equality tests. Both reverted; `git status --short` and `git diff --stat` unchanged.

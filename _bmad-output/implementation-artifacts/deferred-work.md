@@ -8801,3 +8801,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance shard 3/3 was cancelled by its 46-min timeout with every class green (13:24:34, run 36862943319); refreshed timings estimate the largest leg at 37.5 min, so AC9 needed 60.7; the timeout was raised to 61 meanwhile
 - 2026-10-01T13:39:04Z status=routed owner=range-end-cleanup by=harvest note=priority p1 (CI health), orchestrator 2026-10-01: add a fourth instance shard (and a browser one if its legs follow) so a run's wall time falls
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+
+### DW-1904: The spine's Operational Envelope Build and CI row lists the client unit tests among the suites run against throwaway containers and never names the browser specs it then splits across three shards
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:1050 (amended in 98e71205): the client unit tests run in gates with no container; Stack > CI (:913) states both suites correctly
+- 2026-10-01T20:58:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=cr note=reopen_if=a plan or review cites the Build and CI row for where client unit tests or browser specs run (spine contended: add-only)
