@@ -198,3 +198,8 @@
 2026-10-01T04:46:18Z	Epic 23	ledger_burndown_complete	partial=true(story_23.2_dispatch;epic_continues_with_standing_cleanup) open_before=12 resolved=15(DW-1829,1831,1289,1210,1669,1440,1663,1450,1870,1497,1451,1290,48,1885,1366_side_effect) terminal=2(DW-1876,1877) chartered=0 chartered_size=0 overflow=0 reowned=4(DW-1865,1869,1873,1882_to_range-end-cleanup) to_decision_sheet=1(DW-1886) open_after=0 cap=8 story_max=12 filed_this_epic=10(DW-1864,1865,1869,1873,1875,1876,1877,1882,1885,1886) closed_this_epic=17 drain_ratio=1.70 load_after=total1348,routed87,decision_pending1
 2026-10-01T04:46:18Z	Story 23.2	story_done	batches=a,b,c,e,d+DW-1870,DW-1829_followup,DW-1885 merged=a,b,c+DW-1870,DW-1829_followup,e,d ready=DW-1885(e94bc50e,run_36813220551) sprint=done spec=done
 2026-10-01T04:46:18Z	Epic 23	epic_runner_complete	stories_completed=1(23.2) ready_for_merge=true code_head=e94bc50e ci=success(36813220551) decisions_for_user=DW-1886
+2026-10-01T19:45:41Z	Epic 23	lead_model_gate	model=claude-opus-5-5[1m] action=proceed dispatch=23.3_only slot=b
+2026-10-01T19:45:41Z	Epic 23	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-10-01T19:45:41Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-10-01T19:45:41Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@298057f9 kind=fast_forward from_head=12f501e3 conflicts=none before=story_23.3
+2026-10-01T19:45:41Z	Epic 23	slot_verified	slot=b mcp_profile=ocupilot-slot-b baseUrl=52775 docker_port=52775 throwaway=ocupilot-b-ci_healthy(not_restarted) bootstrap=node_modules_ok,irislib_ok
