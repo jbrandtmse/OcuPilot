@@ -8656,6 +8656,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Runner step 2026-10-01 01:34Z on ocupilot-b-ci: product start compiled 0 test classes after the package was deleted by hand; without that delete the volume kept 835 (the hook only narrows what it compiles)
 - 2026-10-01T01:35:37Z status=decision-pending owner=burndown by=harvest note=human=decide whether a product start deletes the OcuPilot.Test package (recommended: yes, logged, only when the flag is unset)
 - 2026-10-01T00:46:55Z status=resolved-by:16-13-the-service-editor by=adjudication note=Volume files table uses the shared data-table styling; databases browser leg asserts the header font
+- 2026-10-01T02:51:51Z status=routed owner=23-2-the-range-end-cleanup-part-2 by=merge_gate note=decided (orchestrator): product start deletes the roster's test-scope package, flag unset only, logs the count
 
 ### DW-1881: A privileged role granted to a service address under a non-%Admin name (%Manager) or in the classic 'address:roles' spelling is not minted destructive: Prohibited.AddressGrantsPrivilege splits on | only and IsPrivilegedRole matches %All or %Admin_* by name
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint

@@ -178,3 +178,7 @@
 2026-10-01T02:49:23Z	Story 23.2	ledger_adjudicated	batch=d owned=1 resolved=1(DW-48) reowned=0 terminal=0 filed=DW-1885(decision-pending) slice_after=0
 2026-10-01T02:49:23Z	Story 23.2	batch_boundary_reported	batch=d to=main code_head=aa098a24 run=36804115324 feature_code_moved=yes(16.13,DW-1868_a5f2efc9)
 2026-10-01T02:49:23Z	Epic 23	ledger_reowned	entries=DW-1865,DW-1873(CI_flakes),DW-1869,DW-1882 from=burndown to=range-end-cleanup by=burndown reason=standing_cleanup_queue(Rule_27)
+2026-10-01T02:51:51Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@636fe280(16.13,DW-1868) merge=3a4ad5a7 conflicts=sprint-status.yaml(theirs+regenerate+23-2_done_reapplied,valid) verify=LoadDir_OK_errors=0(1272);smoke_49/49;test:tools_1755;spine_60_lint_ok ci=pending run=36807780246 rule22=yes
+2026-10-01T02:51:51Z	Story 23.2	decision_recorded	entry=DW-1885 by=merge_gate(orchestrator) decision=product_start_deletes_roster_test-scope_package_flag_unset_only_logs_count scope=DW-48_follow-up_in_23.2 target=1.0.5_by_13:00_PDT_2026-10-01 tracker=23-2_stays_done(no_lead_downgrade)
+2026-10-01T02:51:51Z	Story 23.2	rework_opened	cycle_iteration=9 iteration=DW-1885 trigger=orchestrator_decision items=DW-1885 scope_baseline=HEAD push_held_until=run_36807780246_resolves
+2026-10-01T02:51:51Z	Story 23.2	stage_spawned	stage=implement batch=DW-1885 spawn_at=2026-10-01T02:51:51Z model=opus agent_name=23-2-the-range-end-cleanup-part-2-implement-dw1885 cycle_iteration=9
