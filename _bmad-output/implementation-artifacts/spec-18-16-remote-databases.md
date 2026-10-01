@@ -2,8 +2,9 @@
 title: 'Story 18.16: Remote databases'
 type: 'feature'
 created: '2026-09-30'
-status: 'ready-for-dev'
+status: 'blocked'
 review_loop_iteration: 0
+baseline_revision: '04ee4b12fef88ad1efe0ac684ed2cc07b3eb1ce5'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -372,6 +373,19 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - On `ocupilot-slot-b` the reads matched: the license reads Community, `%Service_ECP` is disabled, and ECP is not configured.
 - Story 18.3 measured (`spec-18-3-…:708`) that a remote configuration is created without a live link, that `DBLIST` blocked about 11 s and opened a connection attempt, and that a data server a remote database uses cannot be deleted (409 #423).
 
+**Measured at implement (Task 0 on `ocupilot-b-ci`, 2026-10-01 UTC, halted at step e).** Every call went through `AdminPort` as a `%All` holder.
+
+- Read-only: `NetworkEnabled()` 0, `MaxECPServers()` 0, `KeyServer()` Single, `%Service_ECP` `Enabled` 0, `Config.ECP` 1200, 5 and 60, `MaxServers` 2, `MaxServerConn` 1, auditing on. At the start the monitor state was 1, `messages.log` held 7,872 lines, `alerts.log` 21, and ERROR #7846 none.
+- `SeedServer` adds `^%SYS("SERVICE","ECPCLU","OCUPROBE1816SRV")`; the server reads "Not Connected", connection state 1.
+- a. `ECP.DataServer` `LIST` in 0.008 s (`Status` "Not Connected") and `GET` in 0.001 s. No effect.
+- b. `PUT {Server, Directory}` answered 201 in 0.142 s. `GET` answers the template's six keys. `LIST remoteOnly=1` answers the row with `Status` "Unmounted"; `localOnly=1` omits it; with both, `remoteOnly` wins. Effects: the configuration and `^%SYS("DBRefByName","OCUPROBE1816R")`. Vendor event: `%System/%System/ConfigurationChange` "Create section Database OCUPROBE1816R".
+- c. A `PUT` with no `Directory` is refused 500 (#5659, `Directory` required), and nothing is stored.
+- d. A `PUT` naming `OCUPROBE1816NOSRV` is refused 500 (#420, not #425), and nothing is stored.
+- e. `DBLIST` answered 200 `[]` twice, in 11.160 s and 11.121 s. After each, the server read "Connection in Progress", connection state 2. Neither call raised the monitor state or wrote `alerts.log`, and no `Config.*`, `Security.*` or OcuPilot object changed. (The state rose from 1 to 2 when the System Monitor posted steps c and d's three severity-2 `adminport` lines.)
+- **e, the halt: processes outlive the call.** The first listing started the ECP client daemons `ECPCliR` (job type 32) and `ECPCliW` (33). Because the probe server is this instance's own superserver, it also started a server-side `ECPSvrR` (type 2), which dropped the connection ("ECP Service is not enabled", severity 1). They stayed after the call. The client reconnected 5 s after each 60 s trouble cycle, so `messages.log` kept gaining ECP lines of severity 0 and 1 about once a minute. The second listing reused `ECPCliR`. The daemons ended 29 s after `RemoveAll` deleted the data server.
+- Not run, because of the halt: f, g, h and the pairs (step 5).
+- Cleanup: `RemoveAll` left no probe object. S2 equals the pre-seed snapshot apart from counters (`messages.log` lines, the monitor state 1 to 2, process ids), and `%Service_ECP` reads 0.
+
 **Decisions:**
 
 - **The directory comes from the listing.** AD-21 forbids a caller path, and the epic context forbids free-text paths. A directory is an enum value the instance answers, as the sixth case's root is.
@@ -467,11 +481,10 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: Task 0 step e -- `ECP.DataServer` `DBLIST` (through `AdminPort`) leaves processes running after the call. The first listing of `OCUPROBE1816SRV` started the ECP client daemons `ECPCliR` (pid 103740, job type 32) and `ECPCliW` (type 33), plus a server-side `ECPSvrR` (type 2) because the probe server is this instance; `ECPCliR` outlived both listings, reconnected every ~65 s, logged severity 0-1 ECP lines to `messages.log` each cycle, and ended only 29 s after `RemoveAll` deleted the data server (10:28:42 to 10:30:47 UTC). "A process outlives the call" is a Task 0 item-7 halt condition.
 
-- Planned only; nothing was implemented. The plan stage wrote no IRIS instance: one read-only `docker exec` session on `ocupilot-b-ci` wrote only to stdout, and the slot B dev reads went through MCP.
-- **For the spec gate.** The throwaway's IRIS Community license enables no ECP (`NetworkEnabled()` 0, `MaxECPServers()` 0). So no data server can ever answer a directory listing on any instance here, CI included.
-  - Under AD-21 (no typed path), create and re-point therefore end at the bounded `DATABASE.SERVER.UNREACHABLE` on Community. List, open and delete work.
-  - The successful listing is pinned only through a test seam (Design Notes › Named limits).
-  - Proposed amendments 1-2 (AD-21's seventh case, AD-42's spawn sites) carry that decision.
+- Implement pass, halted at Task 0 step e. Built only Task 0's plumbing, uncommitted: `src/OcuPilot/Port/AdminPort.cls` (add-only `CONNECTIONREADTYPES`, `IsConnectionRead`, and its admission in `EndpointType`) and `src/OcuPilot/Test/RemoteDatabaseProbe.cls`. No form, tool, descriptor, rule, route, client code or EXPERIENCE.md edit exists. Steps f, g, h and the pairs (step 5) were not run.
+- Measurements are under Design Notes › Measured at implement; evidence in `/tmp/epic-18-d4/1816/t0/` and `messages.log` lines 7873-7889 on `ocupilot-b-ci`. Also differs from the plan: the starting monitor state was 1 (not 0), now 2 from steps c and d's severity-2 `adminport` lines; step d's undefined server is #420 at HTTP 500 (`INTERNAL`), not #425; step c's missing directory is #5659 at 500 (`PORT.VALIDATION`).
+- Verified by the stage after the halt: no `OCUPROBE1816*` database, namespace, data server, resource or user remains, pids 103740-103742 and 104037 are gone, `%Service_ECP` reads 0. Loader OK; `Inventory` 5/5 (run 1119) and `PortGate` 4/4 (run 1120). `AdminInventory` in `## Verification` is a fixture with no test methods (run 1118 ran 0); the roster entry likely means `Inventory`.
+- Re-plan directions (for the runner; neither measured): accept the daemons as part of the probe server's status (the classic dialog calls the same vendor query (inference)), or refuse `DATABASE.SERVER.UNREACHABLE` without listing when `$SYSTEM.License.NetworkEnabled()` is 0, which the plan rejected.
