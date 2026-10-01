@@ -55,7 +55,7 @@
 #   from this container start's install and the version row (the gate still reads the
 #   row, so a later failed install still turns it unhealthy).
 #
-# NO MESSAGE OF THIS HOOK'S OWN REACHES STDERR, and neither does either `iris session`:
+# NO MESSAGE OF THIS HOOK'S OWN REACHES STDERR, and neither does any `iris session`:
 # every message below is written to stdout, and every `iris session` is captured with `2>&1`,
 # so a session that writes to stderr puts that text into the captured output (where
 # print_tail can show it) instead of into /iris-main's. Those are the two things
@@ -159,11 +159,11 @@ export OCUPILOT_NAMESPACE="$NS_OVERRIDE"
 #
 # DW-195 (closed, Story 1.17): the system-namespace refusal happens HERE, in the resolution
 # session, and not in OcuPilot.Install.Installer.GuardInstallNamespace alone. That guard is
-# reached only once StartPath runs -- in the load-and-start session below, whose own
-# $System.OBJ.LoadDir has by then already compiled the whole src/OcuPilot/ tree into whatever
-# namespace was resolved first, unconditionally. An override naming an existing system
-# namespace (%SYS.Namespace.Exists("%SYS") answers true on every instance) therefore reached
-# the compile before anything could refuse it.
+# reached only once StartPath runs -- in the load-and-start session below, by which point the
+# sessions below have already compiled src/OcuPilot/ (less the roster's test-scope package on a
+# product start) into whatever namespace was resolved first, unconditionally. An override
+# naming an existing system namespace (%SYS.Namespace.Exists("%SYS") answers true on every
+# instance) therefore reached the compile before anything could refuse it.
 #
 # The refusal list is a LITERAL here, and it has to be. This session runs in %SYS and decides
 # the namespace before switching into it -- the decision is what selects the namespace, so it
@@ -207,8 +207,8 @@ case "$NS_RESULT" in
     SYSTEM:*)
         # DW-195: refused HERE, before $System.OBJ.LoadDir compiles anything. The same refusal
         # exists in OcuPilot.Install.Installer.GuardInstallNamespace, but that one is reached
-        # only once StartPath runs -- by which point the load-and-start session below has
-        # already compiled the whole source tree into the namespace named here.
+        # only once StartPath runs -- by which point the sessions below have already compiled
+        # OcuPilot's code into the namespace named here.
         echo "container-start: OCUPILOT_NAMESPACE names ${NS_RESULT#SYSTEM:}, which is a namespace OcuPilot refuses to install into; refusing before anything is compiled into it. Name an ordinary namespace, or leave the variable unset to use the HSCUSTOM-then-USER default"
         exit 1
         ;;
@@ -285,7 +285,80 @@ else
     echo "container-start: no built client bundle at $BUNDLE_DIR -- install will report it and the shell will answer STATIC.NOBUNDLE until one is built and the container restarted"
 fi
 
-# Load and compile the read-only-mounted source tree, then invoke the one hook entry
+# Whether this start compiles the roster's test-scope package (AD-17): only when PID 1's
+# environment carries OCUPILOT_LOAD_TESTS=1, read the way OCUPILOT_DEMO is above.
+# scripts/ci-throwaway.sh sets it for the suite; this repository's docker-compose.yml does not,
+# so a product start compiles no test class. Any other value, or none, is a product start.
+#
+# A product start compiles a copy of the source tree that leaves out each folder the roster
+# declares `scope: test` (OcuPilot.Install.Roster, AD-17's one source). The folders are asked
+# of the roster this start is about to compile: Roster.cls is loaded and compiled on its own,
+# its Get() is read, and each test-scope `.PKG` resource's package names its folder under the
+# sources root. A roster that cannot be read, or a folder it names that the tree does not
+# carry, fails the start rather than compiling test classes into it. Every command here
+# captures its own stderr, for the reason the header gives. No `##class` on a piped line follows
+# a space: bash 3.2 reads ` #` inside `$( )` as a comment and the file then fails to parse.
+LOAD_TESTS_FLAG=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null | grep '^OCUPILOT_LOAD_TESTS=' | cut -d= -f2-)
+LOAD_DIR="$SRC_DIR"
+PRODUCT_SRC="/tmp/ocupilot-product-src"
+rm -rf "$PRODUCT_SRC" >/dev/null 2>&1 || true
+if [ "$LOAD_TESTS_FLAG" = "1" ]; then
+    echo "container-start: OCUPILOT_LOAD_TESTS is 1, so this start compiles the whole source tree, the roster's test-scope package included"
+else
+    SCOPE_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF
+Set tSC = \$System.OBJ.Load("$SRC_DIR/OcuPilot/Install/Roster.cls", "ck-d")
+Set tSC = \$Select(\$System.Status.IsOK(tSC):##class(OcuPilot.Install.Roster).Get(.tRoster), 1: tSC)
+Set tIt = \$Select('\$System.Status.IsOK(tSC): "", '\$IsObject(tRoster.resources): "", 1: tRoster.resources.%GetIterator())
+Set tDirs = "" If \$IsObject(tIt) { While tIt.%GetNext(.tKey, .tRes) { If \$IsObject(tRes) && (tRes.scope = "test") { Set tDirs = tDirs _ \$Select(tDirs = "": "", 1: ",") _ \$Translate(\$Piece(tRes.name, ".PKG", 1), ".", "/") } } }
+Write "OCUPILOT-"_"SCOPE-START:"_\$Select('\$System.Status.IsOK(tSC): "FAILED:" _ \$System.Status.GetErrorText(tSC), '\$IsObject(tIt): "FAILED:the roster declares no resources array", 1: "OK:" _ tDirs)_":OCUPILOT-"_"SCOPE-END",!
+Halt
+EOF
+) || { echo "container-start: iris session failed while reading the roster's test-scope package"; print_tail "roster" "$SCOPE_RAW"; exit 1; }
+    SCOPE=$(printf '%s' "$SCOPE_RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-SCOPE-START:.*:OCUPILOT-SCOPE-END' | sed -e 's/^OCUPILOT-SCOPE-START://' -e 's/:OCUPILOT-SCOPE-END$//')
+    case "$SCOPE" in
+        OK:*)
+            TEST_DIRS="${SCOPE#OK:}"
+            ;;
+        FAILED:*)
+            echo "container-start: could not read the roster's test-scope package (${SCOPE#FAILED:}); failing the start rather than compiling test classes into a product start"
+            exit 1
+            ;;
+        *)
+            echo "container-start: the roster session wrote no verdict on the test-scope package; failing the start rather than compiling test classes into a product start"
+            print_tail "roster" "$SCOPE_RAW"
+            exit 1
+            ;;
+    esac
+    if [ -z "$TEST_DIRS" ]; then
+        echo "container-start: the roster declares no test-scope package, so this start compiles the whole source tree"
+    else
+        COPY_OUT=$( { cp -R "$SRC_DIR" "$PRODUCT_SRC" && chmod -R u+w "$PRODUCT_SRC"; } 2>&1 ) || { echo "container-start: could not copy $SRC_DIR to $PRODUCT_SRC ($COPY_OUT); failing the start rather than compiling test classes into a product start"; exit 1; }
+        # The list is split on commas with globbing off, so a name is never expanded against
+        # whatever directory this script runs in.
+        set -f
+        OLD_IFS="$IFS"
+        IFS=','
+        for TEST_DIR in $TEST_DIRS; do
+            case "$TEST_DIR" in
+                ""|/*|*[!A-Za-z0-9/]*)
+                    echo "container-start: the roster's test-scope package maps to '$TEST_DIR', which is not a folder name; failing the start"
+                    exit 1
+                    ;;
+            esac
+            if [ ! -d "$PRODUCT_SRC/$TEST_DIR" ]; then
+                echo "container-start: the roster's test-scope package maps to $TEST_DIR, which is not a folder of $SRC_DIR; failing the start rather than guessing what to leave out"
+                exit 1
+            fi
+            RM_OUT=$(rm -rf "$PRODUCT_SRC/$TEST_DIR" 2>&1) || { echo "container-start: could not leave $TEST_DIR out of $PRODUCT_SRC ($RM_OUT); failing the start"; exit 1; }
+            echo "container-start: OCUPILOT_LOAD_TESTS is not 1, so this start leaves the roster's test-scope folder $TEST_DIR out of the compile"
+        done
+        IFS="$OLD_IFS"
+        set +f
+        LOAD_DIR="$PRODUCT_SRC"
+    fi
+fi
+
+# Load and compile the source tree chosen above, then invoke the one hook entry
 # point, entirely inside a single `iris session` so the compile and the call share one
 # resolved namespace. %SYSTEM.OBJ.LoadDir is deprecated but still the documented,
 # supported way to load-and-compile a directory tree from ObjectScript itself; "ck"
@@ -305,9 +378,9 @@ fi
 # guarded "would only print if IsOK" line printed even when the guard should have
 # suppressed it). Every branch below is one single-line `$Select(...)` assignment
 # instead. Every `$` is backslash-escaped so this here-doc's own shell leaves it for IRIS
-# to interpret, except `$SRC_DIR`, `$DEMO_ARG` and `$BUNDLE_ARG`, which the shell substitutes.
+# to interpret, except `$LOAD_DIR`, `$DEMO_ARG` and `$BUNDLE_ARG`, which the shell substitutes.
 RESULT_RAW=$(iris session iris -U "$INSTALL_NS" 2>&1 <<EOF
-Set tSC = \$System.OBJ.LoadDir("$SRC_DIR", "ck", .tErrors, 1)
+Set tSC = \$System.OBJ.LoadDir("$LOAD_DIR", "ck", .tErrors, 1)
 Set tLoadOK = \$System.Status.IsOK(tSC)
 Set tLoadErr = \$Select(tLoadOK: "", 1: \$System.Status.GetErrorText(tSC))
 Set tSC2 = \$Select(tLoadOK:##class(OcuPilot.Install.Installer).StartPath($DEMO_ARG, "$BUNDLE_ARG"), 1: tSC)
@@ -318,6 +391,8 @@ Write "OCUPILOT-"_"RESULT-START:"_tOutcome_":OCUPILOT-"_"RESULT-END",!
 Halt
 EOF
 ) || { echo "container-start: iris session failed while loading and starting OcuPilot"; print_tail "load and start" "$RESULT_RAW"; exit 1; }
+# The product copy has been read; a later start makes its own.
+rm -rf "$PRODUCT_SRC" >/dev/null 2>&1 || true
 # Fix Pack F-2: grep -o matches only within one line, and $System.Status.GetErrorText
 # on a multi-document compile failure can span lines -- collapsing CR/LF to spaces
 # BEFORE the marker search means a multi-line error no longer defeats it (a multi-line
