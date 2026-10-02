@@ -9059,3 +9059,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
 - 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)
+
+### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
+- 2026-10-02T18:45:35Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=harvest note=reopen_if=a deleted document is reported reappearing after a Save, or the vendor gains a conditional put that refuses a missing document; the window is one PresentSet-to-PutDoc call
+
+### DW-1949: A save or import text whose JSON-escaped form passes the instance's longest string reaches the screen route's payload serialization as a 500, not EXPLORER.SAVE.TOOLARGE (inference)
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check; Story 19.13's import shares the limit
+- 2026-10-02T18:45:35Z status=routed owner=burndown by=harvest note=Epic 19 burn-down: check the length before serialization, or map the <MAXSTRING> to the port's too-large code
