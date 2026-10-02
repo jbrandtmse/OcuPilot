@@ -372,3 +372,29 @@ test('AD-13: the directoryset rule keeps a directory exactly and folds a set to 
     'so two spellings of one set build one key'
   );
 });
+
+// Story 19.2: a class or routine id may name a set of documents -- a compile's or a delete's
+// target. The client answers what `OcuPilot.Kernel.EntityRef.DocumentSet` answers for the same
+// corpus (`OcuPilot.Test.EntityRef`).
+//
+// Mutation (Rule 19): keep the pieces' order in `documentset` -> the sorted rows go red.
+test('AD-13: the documentset rule keeps one document exactly and folds a set to its unique, sorted names', () => {
+  for (const type of ['class', 'routine']) {
+    assert.equal(ENTITY_ID_RULES[type], 'documentset', `the mirrored table declares the rule for ${type}`);
+  }
+  for (const [spelling, canonical] of [
+    ['B.cls,A.cls,,B.cls', 'A.cls,B.cls'],
+    ['a.cls,B.cls,%Z.cls', '%Z.cls,B.cls,a.cls'],
+    ['Z.mac,', 'Z.mac'],
+    [',,', ''],
+    ['12.mac,9.mac', '12.mac,9.mac'],
+    ['A.cls', 'A.cls'],
+    [' A.cls ', ' A.cls '],
+    ['import', 'import'],
+    ['Caf\u00e9.cls,Cafe.cls', 'Cafe.cls,Caf\u00e9.cls'],
+  ]) {
+    assert.equal(normalizeEntityId('class', spelling), canonical, `'${spelling}' reads '${canonical}'`);
+  }
+  assert.equal(normalizeEntityId('routine', 'B.mac,A.inc'), 'A.inc,B.mac', 'a routine set sorts the same way');
+  assert.equal(entityRefKey('class', 'USER', 'B.cls,A.cls'), entityRefKey('class', 'USER', 'A.cls,B.cls'), 'so two spellings of one set build one key');
+});

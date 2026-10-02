@@ -2,8 +2,9 @@
 title: 'Story 19.2: Compile, delete, export and import'
 type: 'feature'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '4eb3fd50534271e5802f53da31b786438f5352b5'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -289,6 +290,31 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
 
 ## Review Triage Log
 
+### 2026-10-01 — Review pass
+
+- verdicts: 20 findings — high 0, medium 5, low 12, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` No test told KeepSource from SkipUpToDate, so a swap of `k` and `u` stayed green — added `100`→`ck` and `001`→`cu` at the port and over HTTP, and the page spec finds the checkbox by its label; both swaps observed red.
+  - `[medium]` `[patch]` The panel's `[output]` binding to the card was untested — `panel.spec.ts` test added; dropping the binding goes red.
+  - `[low]` `[patch]` AC2's agent half had no `mutation:` line — observed (delete key true in the baseline, run 944) and recorded.
+  - `[medium]` `[patch]` AC7's "still compiled" check could not fail and its delete legs named absent documents — rebuilt on an uncompiled `OcuPilotProbe192.Own` probe in USER, asserting it is neither compiled nor deleted; arm-drop observed red.
+  - `[low]` `[patch]` The "no console line for the model" check read the mint before any compile — the agent legs now call the tool's `View` (the model's tool result), and the stored proposal and its turn's ledger rows are checked for console text after the confirm.
+  - `[medium]` `[patch]` AC3 was exercised by calling the mint directly rather than the model-reachable surface — same fix as the row above (`View` under a stashed turn).
+  - `[low]` `[reject]` The confirm's HTTP route is not exercised for `output` — `Api/Confirm.cls:43-48` renders `Confirm.Confirm`'s answer whole; an HTTP leg adds no behavior.
+  - `[low]` `[reject]` "Stays advertised" is not asserted for the delete keys — advertising is key-independent and pinned by `ToolDispatch.TestAGateDenialReachesNothingAndTheToolStaysAdvertised` and `Governance.TestADisabledKeyIsRefusedAtDispatchAndStaysAdvertised`.
+  - `[false]` `[reject]` The HTTP legs cannot tell the tool's pair gate from the port's — both refuse 403 naming the pair before any vendor call; the tool's declaration is pinned on its own (`AtelierPortWriteDenial.TestTheToolsDeclareTheRequestNamespacesWritePair`, run 923).
+  - `[low]` `[patch]` Ledger rows were not asserted free of console text — covered by the stored-rows check above.
+  - `[low]` `[reject]` A document gone between mint and confirm answers 409 target-changed, not 404 — AD-6's fingerprint refusal precedes every confirm's write and nothing is sent; the 404 is answered at the mint and the screen's write.
+  - `[low]` `[reject]` A compile's privilege soft error is untested as such — AD-61 rule 6 makes it the compile's output (`errors` true) on the same path `TestACompileErrorIsTheCompilesOwnOutput` pins.
+  - `[low]` `[patch]` No HTTP leg for a screen set above 100 — added to `TestTheMintRefusesAnOversizedOrMissingSet` (400).
+  - `[low]` `[patch]` No successful routine delete or include compile — added a routine-set delete leg and an `.inc` compile leg to `ExplorerWrite`.
+  - `[false]` `[reject]` "The list re-fetches" tested only in a browser — that is the tier for it; `system-explorer-write.browser-spec.mjs` asserts the rows leave.
+  - `[low]` `[reject]` A confirmed delete's card shows no per-document lines — the spec renders `output.lines`; the card's read-back line reports the delete.
+  - `[medium]` `[patch]` `ExplorerWrite`'s AC7 compile leg targeted a real OcuPilot class — legs now target probes; install-namespace legs name absent documents.
+  - `[low]` `[reject]` DW-1922 has no browser leg — the jsdom viewer spec and the live `EnsJob.mac` port read cover both halves.
+  - `[false]` `[reject]` Code-point, UTF-16 and local-array orders may differ — document names are ASCII (`AtelierPort.cls` `CLASSNAMEPATTERN`/`ROUTINENAMEPATTERN`), where they agree.
+  - `[low]` `[patch]` The object-only 404 keyed on `status` alone — now `status` and `ts` empty, as the matrix states; `AtelierPortDocument` green.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -319,6 +345,9 @@ Per-document requests reach the same end state as one call over the set, in any 
 
   `%Development:USE` plus `%DB_USER:RW` sufficed. `xml/export` and `xml/list` answer even without `%Development`.
 - **M8.** With the default event set, compile, delete, load and PUT record no audit row. `%System/%System/RoutineChange`, disabled by default, records a compile only.
+- **T0.2** (`ocupilot-a2-ci`, 2026-10-02): one `docnames` read with `generated=1`, parsed and filtered to a three-name set, took 0.33-0.36 s on HSCUSTOM `CLS` (14,698 rows, 1.96 MB) and 0.25-0.31 s on `RTN` (9,914 rows). Under 0.5 s, so `DOCS` reads `docnames`.
+- **T0.4**: compiling an `.inc` through the route answered 200 with no error and compiled nothing (`cuk` and `ck`). `.inc` rows stay in a compile sequence.
+- **T0.5**: on the throwaway's stock event set, all five `%System/%SMPExplorer/*` events (`Change`, `ExecuteQuery`, `Export`, `Import`, `ViewContents`) read `Enabled` 0, as does `%System/%System/RoutineChange`.
 
 **Proposed spine amendments**, for the lead's spec gate (Rule 20):
 
@@ -401,7 +430,35 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it. R
 
 Record one `mutation: <change> → <test that reddened>` line per AC here as each is observed (Rule 19).
 
+- mutation: AC1, drop `k` from `AtelierPort.CompileFlags` → `ExplorerWrite.TestTheScreenCompilesADocumentWithItsFlags` and `TestTheAgentCompilesThroughConfirm` (run 919).
+- mutation: AC1, ignore the answer's `output` in `code-list.page.ts` `onCompile` → `code-list.page.spec.ts` "AC1: Compile opens on the checked rows…" and "AC1: Stop…"; drop the stop check in `CodeListWrite.runCompile` → "AC1: Stop…".
+- mutation: AC2, `ExplorerDelete.ReadBackGone` answers 1 → `ExplorerWrite.TestTheScreenDeletesASetAndReadsItBack` (run 920); a set typed by its first name in `deleteTarget` → `code-list.page.spec.ts` "AC2: Delete over a set…".
+- mutation: AC3, `output` set on the mint's answer in `ExplorerMint.Mint` → `ExplorerWrite.TestTheAgentCompilesThroughConfirm` (run 921); `confirmed` dropped from `proposal-card.ts` `outputVisible` → `proposal-card.spec.ts` "Story 19.2 AC3…"; the `output` spread dropped from `turn.ts` `recordProposalState` → `tools/turn.test.mjs` "a confirm's console lines…".
+- mutation: AC6, the WRITE pair dropped from `ExplorerWrite.PrivilegePairs` → `AtelierPortWriteDenial.TestTheToolsDeclareTheRequestNamespacesWritePair` (run 923); `NamespacePairs` in place of `WritePairs` in `AtelierPort.Invoke` → `AtelierPortWrite.TestAWriteRequiresTheRoutinesDatabasesWritePair` (run 924).
+- mutation: AC7, the class/routine arm dropped from `Prohibited.Prohibits` → `ExplorerWrite.TestOcuPilotsOwnCodeIsRefusedOnBothCallers`, on its `OcuPilotProbe192` probe legs (run 944).
+- mutation: AC8, the object-only branch disabled in `AtelierPort.Document` → `AtelierPortDocument.TestARoutineKeptOnlyAsObjectCodeReadsAsSo` (run 925); the `objectonly` branch dropped from `document-viewer.page.ts` `notAvailable` → `document-viewer.page.spec.ts` "Story 19.2 AC8…".
+- mutation: AC9, `explorer.classes.delete` true in `Baseline.cls` → `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndFourWrites` (run 926).
+- mutation: AC1, `CompileFlags(tSkip, tDependents, tKeep)` in `AtelierPort.CompileSet` → `AtelierPortWrite.TestACompileSendsCPlusTheDeclaredFlags` (run 945) and `ExplorerWrite.TestTheScreenCompilesADocumentWithItsFlags` (run 944); the KeepSource and SkipUpToDate labels swapped in `explorer-compile-dialog.ts` → `code-list.page.spec.ts` "AC1: Compile opens…".
+- mutation: AC2 (agent), `explorer.classes.delete` true in `Baseline.cls` → `ExplorerWrite.TestTheAgentsDeleteIsGovernedAndThenConfirmed` (run 944).
+- mutation: AC3, the `[output]` binding dropped from `panel.ts` → `panel.spec.ts` "Story 19.2 AC3: a confirmed card carries the console lines…".
+- mutation: matrix "Document gone" (mint), the absent check skipped in `ExplorerMint.Mint` → `ExplorerWrite.TestTheMintRefusesAnOversizedOrMissingSet` (run 934).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change (Part A).** `AtelierPort` gains `DOCS`, `COMPILE` and `DELETE` on both lists, gated on the namespace's routines WRITE pair; four action-style tools (`explorer.{classes,routines}.{compile,delete}`) over a `documentset` target, reached by the lists' Compile and Delete over checked rows and by the agent's proposal; `PROHIBITED.OCUPILOTCODE`; `output` on the screen and confirm answers only; DW-1922's `objectonly`; the delete keys ship disabled.
+
+**Files.**
+
+- Server: `Port/AtelierPort.cls`, `Api/AtelierError.cls` (new), `Screen/Tool/Explorer{Write,Compile,Delete,Mint,ClassCompile,ClassDelete,RoutineCompile,RoutineDelete}.cls` (new), `Kernel/Proposal/{Prohibited,Operation,Confirm}.cls`, `Api/ScreenAction.cls`, `Kernel/EntityRef.cls`, `Kernel/Governance/Baseline.cls`, `Screen/Registry.cls`, the two Explorer list descriptors.
+- Client: `code-list.page.ts`/`.store.ts`, `explorer-compile-dialog.ts` (new), the viewer page and store, `multi-select.ts`, `data-table.ts`, `screen-action-handler.ts`, `screen-actions.ts`, `proposal-card.ts`, `panel.ts`, `turn.ts`, `entity-ref.ts`, `strings.ts`, `screens.generated.ts`, `_components.scss`, `angular.json` (warning re-based 2420→2433 kB, DW-1166).
+- Docs and tools: EXPERIENCE.md (two Fixed-strings rows at :589-590, dialog set at :173, citations moved +2), `screen-mirror.mjs`, `scripts/ci-throwaway.sh` (`# classes:` line).
+- Tests: new `AtelierPortWrite`, `AtelierPortWriteDenial`, `ExplorerWrite`, `ExplorerProbe`, `system-explorer-write.browser-spec.mjs`; rosters moved in `ExplorerDescriptor`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ToolWrite`, `MappingDescriptor`, `ClassicPageGate` (principals gain `%Development:U` and code-database WRITE), `AuditingUpdate`, `Prohibited`, `RefusalCopy`, `EntityRef`, `MultiSelectCorpus`, `AtelierPort`, `AtelierPortDocument`, and the client tool and component specs.
+
+**Review.** 20 findings: 11 patched (5 medium, 6 low), 9 rejected (6 low, 3 false), 0 deferred; reasons in the triage log. Follow-up review: `false` — the five medium patches are test-only, each with its mutation observed red, and the sweep ran after them.
+
+**Verification.** `check-objectscript` 0 problems, harness 144 OK; `lint-docs` 0. Full ObjectScript sweep on `ocupilot-a2-ci`: 405 classes, 3,322 tests, 2 red, both rosters this story tripped (`AuditingUpdate` code count, `ToolWrite` other-port count), fixed and re-run green (runs 1352, 1353); no probe leftovers. `npm test`: 1,770 tool tests and 2,088 component tests green. Browser, after build and deploy: `system-explorer-write` 1/1, `system-explorer` 4/4, `a11y-structural-invariants` 12/12, `structural-baseline.json` unchanged. The spec's `ng test --include 'src/app/areas/system-explorer/**'` also matches non-spec files; `**/*.spec.ts` was run. Probe documents, globals and principals are gone from USER and HSCUSTOM.
+
+**Residual risk.** The full browser suite is CI's. Export and import (AC4, AC5) are Story 19.13's.

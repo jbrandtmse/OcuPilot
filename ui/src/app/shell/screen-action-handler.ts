@@ -517,6 +517,11 @@ interface ScreenActionAnswer {
   readonly continues?: boolean;
   /** The instance's read-back of the write (AD-58), carried onto the change event as it came. */
   readonly readBack?: unknown;
+  /**
+   * What the write answered for the screen alone (AD-39's fifth exception, Story 19.2): a compile's
+   * console lines, a delete's per-document results. Read right after the send by `lastOutput`.
+   */
+  readonly output?: unknown;
 }
 
 /** Which dialog a pending row action is waiting on. */
@@ -1055,6 +1060,7 @@ export class ScreenActionHandler {
     sink: ActionSink | null = null
   ): Promise<boolean> {
     this.lastRefused = null;
+    this.lastOutputValue = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -1074,6 +1080,7 @@ export class ScreenActionHandler {
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
+    this.lastOutputValue = result.kind === 'ok' ? (result.body?.output ?? null) : null;
     this.progressSignal.set({
       descriptor,
       actionId,
@@ -1129,6 +1136,17 @@ export class ScreenActionHandler {
   private lastContinues = false;
 
   private lastRefused: ActionRefusal | null = null;
+
+  private lastOutputValue: unknown = null;
+
+  /**
+   * The `output` the last action this handler sent was answered with, or `null` when it carried none
+   * or was refused (Story 19.2). Read right after the `sendFor` that sent it, as `continued` is; the
+   * caller renders it as text and keeps it nowhere else.
+   */
+  lastOutput(): unknown {
+    return this.lastOutputValue;
+  }
 
   /**
    * The refusal the last action this handler sent was answered with, or `null` when it was applied

@@ -3700,8 +3700,11 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
     Quit tProblem
 }
 
-/// <p>The keys a declared <code>multiSelect</code> carries (AD-5, Story 16.6).</p>
-Parameter MULTISELECTKEYS = "action,eligible,max,ineligibleKey";
+/// <p>The keys a declared <code>multiSelect</code> carries (AD-5, Stories 16.6 and 19.2).</p>
+Parameter MULTISELECTKEYS = "action,eligible,max,ineligibleKey,extraActions";
+
+/// <p>The archetypes whose page draws the shared table a multi-select checks rows in.</p>
+Parameter MULTISELECTARCHETYPES = "list,list (server criteria)";
 
 /// <p>The most rows a <code>multiSelect</code> may let a person check.</p>
 Parameter MULTISELECTMAX = 1000;
@@ -3711,11 +3714,14 @@ Parameter MULTISELECTMAX = 1000;
 /// multi-select is a list's one checked-set action: the table draws a checkbox on each row whose
 /// <code>eligible</code> read field is true, and the declared <code>action</code> acts on the
 /// checked rows from the command bar and the command box.</p>
-/// <p>Declarable only on a <code>list</code> archetype that declares a <code>read</code> and a
-/// <code>table</code>. Its <code>action</code> is one of the screen's <code>rowActions</code>, its
-/// <code>eligible</code> one of <code>read.fields</code>, its <code>max</code> a whole number from 1
-/// to <parameter>MULTISELECTMAX</parameter>, and its <code>ineligibleKey</code> a non-empty string
-/// key, the reason an ineligible row's checkbox carries.
+/// <p>Declarable only on a <parameter>MULTISELECTARCHETYPES</parameter> archetype that declares a
+/// <code>read</code> and a <code>table</code>. Its <code>action</code> is one of the screen's
+/// <code>rowActions</code>, its <code>max</code> a whole number from 1 to
+/// <parameter>MULTISELECTMAX</parameter>. <code>eligible</code>, one of <code>read.fields</code>, and
+/// <code>ineligibleKey</code>, a non-empty string key, the reason an ineligible row's checkbox
+/// carries, are declared together or not at all; absent, every row is checkable (Story 19.2).
+/// <code>extraActions</code>, where declared, is an array of further <code>rowActions</code> that
+/// also act on the checked set, each named once and none the <code>action</code> itself.
 /// <file>ui/tools/screen-mirror.mjs</file>'s <code>multiSelectProblem</code> returns the same
 /// sentence for every case in <class>OcuPilot.Test.MultiSelectCorpus</class>, and its tests hold the
 /// key to the string source.</p>
@@ -3732,7 +3738,7 @@ ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
         Set tMulti = pDeclaration.%Get("multiSelect")
         Set tProblem = ..UnknownKeyProblem(tMulti, "multiSelect", $ListFromString(..#MULTISELECTKEYS))
         If tProblem '= "" Quit
-        If pDeclaration.%Get("archetype") '= "list" {
+        If '$ListFind($ListFromString(..#MULTISELECTARCHETYPES), pDeclaration.%Get("archetype")) {
             Set tProblem = "multiSelect is declared on a '" _ pDeclaration.%Get("archetype") _ "' archetype, and a multi-select is a list's own (AD-5)"
             Quit
         }
@@ -3760,7 +3766,17 @@ ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "multiSelect.action '" _ tMulti.%Get("action") _ "' is not one of rowActions"
             Quit
         }
-        If (tMulti.%GetTypeOf("eligible") '= "string") || (tMulti.%Get("eligible") = "") {
+        ; Story 19.2: eligible and ineligibleKey are declared together or not at all.
+        Set tEligibleType = tMulti.%GetTypeOf("eligible")
+        Set tHasEligible = (tEligibleType '= "unassigned") && (tEligibleType '= "null")
+        If 'tHasEligible {
+            Set tIneligibleType = tMulti.%GetTypeOf("ineligibleKey")
+            If (tIneligibleType '= "unassigned") && (tIneligibleType '= "null") {
+                Set tProblem = "multiSelect.ineligibleKey is declared without multiSelect.eligible, and the two are declared together"
+                Quit
+            }
+        }
+        If tHasEligible && ((tEligibleType '= "string") || (tMulti.%Get("eligible") = "")) {
             Set tProblem = "multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable"
             Quit
         }
@@ -3772,7 +3788,7 @@ ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
                 If '$IsObject(tFieldValue) Set tFields = tFields _ $ListBuild(tFieldValue)
             }
         }
-        If '$ListFind(tFields, tMulti.%Get("eligible")) {
+        If tHasEligible && '$ListFind(tFields, tMulti.%Get("eligible")) {
             Set tProblem = "multiSelect.eligible '" _ tMulti.%Get("eligible") _ "' is not one of read.fields"
             Quit
         }
@@ -3781,9 +3797,36 @@ ClassMethod MultiSelectProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "multiSelect.max must be a whole number from 1 to " _ ..#MULTISELECTMAX
             Quit
         }
-        If (tMulti.%GetTypeOf("ineligibleKey") '= "string") || (tMulti.%Get("ineligibleKey") = "") {
+        If tHasEligible && ((tMulti.%GetTypeOf("ineligibleKey") '= "string") || (tMulti.%Get("ineligibleKey") = "")) {
             Set tProblem = "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"
             Quit
+        }
+        Set tExtraType = tMulti.%GetTypeOf("extraActions")
+        If (tExtraType = "unassigned") || (tExtraType = "null") Quit
+        If tExtraType '= "array" {
+            Set tProblem = "multiSelect.extraActions is not an array of row action ids"
+            Quit
+        }
+        Set tSeen = ""
+        Set tExtraIterator = tMulti.%Get("extraActions").%GetIterator()
+        While tExtraIterator.%GetNext(.tExtraIndex, .tExtra) {
+            If $IsObject(tExtra) || (tMulti.%Get("extraActions").%GetTypeOf(tExtraIndex) '= "string") || (tExtra = "") {
+                Set tProblem = "multiSelect.extraActions is not an array of row action ids"
+                Quit
+            }
+            If '$ListFind(tActions, tExtra) {
+                Set tProblem = "multiSelect.extraActions names '" _ tExtra _ "', which is not one of rowActions"
+                Quit
+            }
+            If tExtra = tMulti.%Get("action") {
+                Set tProblem = "multiSelect.extraActions names '" _ tExtra _ "', which is the multi-select's own action"
+                Quit
+            }
+            If $ListFind(tSeen, tExtra) {
+                Set tProblem = "multiSelect.extraActions names '" _ tExtra _ "' more than once"
+                Quit
+            }
+            Set tSeen = tSeen _ $ListBuild(tExtra)
         }
     } Catch ex {
         Set tProblem = "multiSelect could not be read: " _ ex.DisplayString()

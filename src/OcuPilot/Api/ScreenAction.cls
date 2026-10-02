@@ -374,6 +374,10 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         ; AD-26: a queued write the port answered 202 was made and continues on the instance.
         If +$Get(tWriteHttp) = 202 Do tResult.%Set("continues", 1, "boolean")
         Do tResult.%Set("readBack", tReadBack)
+        ; AD-39's fifth exception: what the write answered for the screen -- a compile's console lines,
+        ; a delete's per-document results -- rides on this answer and is stored nowhere.
+        Set tOutput = ##class(OcuPilot.Kernel.Proposal.Operation).OutputOf(pToolClass, $Get(tWritten))
+        If $IsObject(tOutput) Do tResult.%Set("output", tOutput)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

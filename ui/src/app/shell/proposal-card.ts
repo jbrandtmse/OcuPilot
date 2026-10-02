@@ -33,6 +33,7 @@ import {
   formatProposalTitle,
   formatUnchangedCaption,
 } from './example-proposal';
+import { CodeBlock } from './code-block';
 
 /**
  * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
@@ -105,6 +106,7 @@ export interface ProposalConfirmRequest {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CodeBlock],
   template: `<article
     class="ocu-proposal-card"
     [class.ocu-proposal-card-destructive]="destructive"
@@ -298,6 +300,9 @@ export interface ProposalConfirmRequest {
             @if (readBackText !== '') {
               <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
             }
+            @if (outputVisible) {
+              <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
+            }
           }
         }
         @if (buttonsVisible) {
@@ -404,6 +409,12 @@ export class ProposalCard {
    * renders the line under its confirmed status line and compares nothing itself.
    */
   readonly readBack = input<ReadBack | null>(null);
+
+  /**
+   * The confirmed write's console lines, as the confirm answered them (AD-39's fifth exception,
+   * Story 19.2): a compile's. Rendered as text in a code block under the confirmed status line.
+   */
+  readonly output = input<readonly string[]>([]);
 
   /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
@@ -838,6 +849,15 @@ export class ProposalCard {
   /** The read-back line under a confirmed card's status line, or `''` (AD-58). */
   protected get readBackText(): string {
     return this.confirmed ? readBackLine(this.readBack()) : '';
+  }
+
+  protected get outputVisible(): boolean {
+    return this.confirmed && this.output().length > 0;
+  }
+
+  /** The console lines as one output step, which the code block renders as text (AD-11). */
+  protected get outputSteps(): readonly { readonly kind: string; readonly text: string }[] {
+    return [{ kind: 'output', text: this.output().join('\n') }];
   }
 
   /**

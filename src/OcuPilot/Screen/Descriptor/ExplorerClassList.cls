@@ -12,7 +12,13 @@
 /// <p><b>Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter></b>; the port
 /// also requires READ on the namespace's code databases, resolved at call time (AD-29, AD-61). It
 /// replaces <code>%CSP.UI.Portal.ClassList</code>, whose custom resource also gates it (AD-44). It
-/// declares no action and does not refresh (AD-43).</p>
+/// does not refresh (AD-43).</p>
+/// <p><b>Its two row actions act on the checked rows</b> (AD-5, Story 19.2): <code>compile</code>,
+/// its <code>multiSelect</code> action, and <code>delete</code>, its one extra action, each over at
+/// most <parameter>OcuPilot.Port.AtelierPort.MAXDOCUMENTS</parameter> documents, every row checkable.
+/// Their tools are <class>OcuPilot.Screen.Tool.ExplorerClassCompile</class> and
+/// <class>OcuPilot.Screen.Tool.ExplorerClassDelete</class>; the page sends one compile per checked
+/// document and one delete for the whole set.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerClassList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -34,7 +40,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "compile", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Modified", "Database", "Generated"], "secretFields": []},
   "emptyStateKey": "explorerClassListEmpty",
   "commandAliases": ["classes", "class list", "source code"],
@@ -69,10 +75,11 @@ XData Declaration
       {"field": "Database", "labelKey": "systemInfoDatabase", "kind": "identifier"},
       {"field": "Generated", "labelKey": "explorerColumnGenerated", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerClassListEmptyAgent"
   },
-  "toolIdentifier": "explorer.classes"
+  "toolIdentifier": "explorer.classes",
+  "multiSelect": {"action": "compile", "max": 100, "extraActions": ["delete"]}
 }
 }
 

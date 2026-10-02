@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { checkedSetReason, checkedSetTarget } from '../../core/multi-select';
 import { NavigationService } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
@@ -11,9 +12,17 @@ import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
+import { rowKey } from '../../core/table-model';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
-import { CodeListSearch, isYesNo } from './code-list.store';
+import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
+import { TypedNameDialog } from '../../shell/typed-name-dialog';
+import { CodeListSearch, CodeListWrite, compileLinesOf, deletedDocumentsOf, fillPlaceholders, isYesNo } from './code-list.store';
+import { ExplorerCompileDialog, type CompileChoice } from './explorer-compile-dialog';
+
+/** The two write actions the Classes and Routines lists declare (Story 19.2). */
+export const COMPILE_ACTION = 'compile';
+export const DELETE_ACTION = 'delete';
 
 /** The screen this page renders and the store its table reads. */
 interface CodeListView {
@@ -50,6 +59,20 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): C
   return search;
 }
 
+/** One `CodeListWrite` per screen store, so a sequence still running is shown on a return. */
+const HELD_WRITES = new WeakMap<ScreenStore, CodeListWrite>();
+
+function writeFor(store: ScreenStore | null): CodeListWrite {
+  const known = store === null ? undefined : HELD_WRITES.get(store);
+  if (known !== undefined) return known;
+  const write = new CodeListWrite();
+  if (store !== null) HELD_WRITES.set(store, write);
+  return write;
+}
+
+/** A compile's refusal is a line in the output pane, so the list's banner is left alone. */
+const PANE_SINK: ActionSink = { setRefusal: () => undefined };
+
 /**
  * System Explorer's Classes and Routines lists (Story 19.1): a criteria form drawn from the
  * descriptor's declared criteria above the shared table, registered for both descriptors because
@@ -61,7 +84,16 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): C
  *
  * **It opens on the default read**: nothing is sent, so the instance applies the declared defaults
  * and echoes them. A return re-runs the last Search, or the default; an agent arrival runs its own
- * criteria once. Read-only: no action and no refresh rate (AD-43).
+ * criteria once. No refresh rate (AD-43).
+ *
+ * **Compile and Delete act on the checked rows** (Story 19.2), registered by this page after it
+ * injects `ScreenActionHandler`, as the Namespaces page registers Copy mappings. Compile opens the
+ * compile dialog, then sends one `compile` per checked document in list order through `sendFor`,
+ * appending each answer's console lines, or its refusal, to the output pane before the next is sent;
+ * Stop sends nothing further. Delete opens the typed-name dialog -- one document typed by its name,
+ * a set by its count -- sends one `delete` over the canonical set (AD-13), and lists each document's
+ * result. `CodeListWrite` holds the sequence (AD-19); the pane is a focusable `pre` on the code
+ * surface under a polite status line.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -69,7 +101,7 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): C
 @Component({
   selector: 'app-code-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable],
+  imports: [DataTable, ExplorerCompileDialog, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" data-ocu-explorer="criteria" (submit)="onSearch($event)">
@@ -117,7 +149,33 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): C
           <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
         </div>
       </form>
+      <p class="ocu-explorer-status" role="status" data-explorer-write="status">{{ statusLine }}</p>
+      @if (stoppable) {
+        <div class="ocu-explorer-output-controls">
+          <button type="button" class="ocu-button-secondary" data-explorer-write="stop" (click)="onStop()">{{ STRINGS.actionStop }}</button>
+        </div>
+      }
+      @if (hasOutput) {
+        <pre
+          class="ocu-source-text ocu-explorer-output"
+          tabindex="0"
+          data-explorer-write="output"
+          [attr.aria-label]="STRINGS.explorerOutputLabel"
+        >{{ outputText }}</pre>
+      }
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      @if (compileCount; as count) {
+        <app-explorer-compile-dialog [count]="count" (confirmed)="onCompile($event)" (cancelled)="onCloseCompile()" />
+      }
+      @if (deleteTarget; as target) {
+        <app-typed-name-dialog
+          [verb]="STRINGS.actionDelete"
+          [target]="target"
+          [consequence]="deleteConsequence"
+          (confirmed)="onDelete()"
+          (cancelled)="onCloseDelete()"
+        />
+      }
     }
   </section>`,
 })
@@ -130,6 +188,9 @@ export class CodeListPage {
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
 
+  /** What sends each compile and delete, and answers each one's output and refusal. */
+  private readonly handler = inject(ScreenActionHandler);
+
   /** An agent navigation's hand-off. Optional, so a spec that needs none provides none. */
   private readonly arrivals = inject(ScreenArrivals, { optional: true });
 
@@ -139,6 +200,14 @@ export class CodeListPage {
 
   private readonly search: CodeListSearch;
 
+  private readonly write: CodeListWrite;
+
+  /** The documents the open compile dialog compiles, in list order, or `[]` while none is open. */
+  private readonly compiling = signal<readonly string[]>([]);
+
+  /** The documents the open delete dialog deletes, in list order, or `[]` while none is open. */
+  private readonly deleting = signal<readonly string[]>([]);
+
   /** Bumped by the two stores, so the form and the table re-render under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -146,11 +215,13 @@ export class CodeListPage {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
       this.search = heldFor(null, null);
+      this.write = writeFor(null);
       this.list = null;
       return;
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.search = heldFor(store, screen);
+    this.write = writeFor(store);
     this.list = { screen, store };
 
     this.refresh.bind(screen, this.boundRead(screen));
@@ -175,13 +246,19 @@ export class CodeListPage {
         this.search.useArrival(next);
         this.readNow();
       }) ?? null;
+    const stopCompile = this.actions.register(screen.descriptor, COMPILE_ACTION, () => this.onOpenCompile());
+    const stopDelete = this.actions.register(screen.descriptor, DELETE_ACTION, () => this.onOpenDelete());
     const stopStore = store.subscribe(() => this.bump());
     const stopSearch = this.search.subscribe(() => this.bump());
+    const stopWrite = this.write.subscribe(() => this.bump());
 
     const generation = this.search.takeGeneration();
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopSearch();
+      stopWrite();
+      stopCompile();
+      stopDelete();
       stopRefreshAction();
       stopArrivals?.();
       if (!this.search.isCurrentGeneration(generation)) return;
@@ -254,6 +331,122 @@ export class CodeListPage {
 
   protected onFocusFilter(): void {
     document.getElementById(COMMAND_BAR_FILTER_ID)?.focus();
+  }
+
+  /** The polite status line: the step in flight, else the summary the last write left. */
+  protected get statusLine(): string {
+    this.generation();
+    return this.write.status();
+  }
+
+  protected get stoppable(): boolean {
+    this.generation();
+    return this.write.stoppable();
+  }
+
+  protected get hasOutput(): boolean {
+    this.generation();
+    return this.write.lines().length > 0;
+  }
+
+  protected get outputText(): string {
+    this.generation();
+    return this.write.lines().join('\n');
+  }
+
+  /** The open compile dialog's count, `0` (falsy) while none is open. */
+  protected get compileCount(): number {
+    return this.compiling().length;
+  }
+
+  /** What the open delete dialog asks to be typed: one document's name, or a set's count; `''` while none is open. */
+  protected get deleteTarget(): string {
+    const names = this.deleting();
+    if (names.length === 0) return '';
+    return names.length === 1 ? names[0] : String(names.length);
+  }
+
+  protected get deleteConsequence(): string {
+    const names = this.deleting();
+    return names.length === 1
+      ? STRINGS.explorerDeleteConsequence
+      : fillPlaceholders(STRINGS.explorerDeleteSetConsequence, { n: names.length });
+  }
+
+  /** Compile on the checked rows: opens the dialog, never over another or while a write runs. */
+  protected onOpenCompile(): void {
+    const names = this.checkedNames();
+    if (names.length === 0) return;
+    this.compiling.set(names);
+  }
+
+  protected onCloseCompile(): void {
+    this.compiling.set([]);
+  }
+
+  /** One `compile` per document, in list order, with the dialog's three flags. */
+  protected async onCompile(choice: CompileChoice): Promise<void> {
+    const names = this.compiling();
+    this.compiling.set([]);
+    const screen = this.list?.screen;
+    if (screen === undefined || names.length === 0) return;
+    const values = {
+      KeepSource: String(choice.KeepSource),
+      CompileDependents: String(choice.CompileDependents),
+      SkipUpToDate: String(choice.SkipUpToDate),
+    };
+    await this.write.runCompile(names, async (name) => {
+      const applied = await this.handler.sendFor(screen.descriptor, COMPILE_ACTION, name, values, PANE_SINK);
+      const output = compileLinesOf(this.handler.lastOutput());
+      const reason = this.handler.lastRefusal()?.reason || STRINGS.connectivityRequestRefused;
+      return { applied, lines: output.lines, errors: output.errors, reason };
+    });
+  }
+
+  protected onStop(): void {
+    this.write.stop();
+  }
+
+  /** Delete on the checked rows: opens the typed-name dialog, under the same conditions as Compile. */
+  protected onOpenDelete(): void {
+    const names = this.checkedNames();
+    if (names.length === 0) return;
+    this.deleting.set(names);
+  }
+
+  protected onCloseDelete(): void {
+    this.deleting.set([]);
+  }
+
+  /** One `delete` over the checked set; its refusal is the list's banner, and an applied one clears the checks. */
+  protected async onDelete(): Promise<void> {
+    const names = this.deleting();
+    this.deleting.set([]);
+    const view = this.list;
+    if (view === null || names.length === 0) return;
+    const applied = await this.write.runDelete(names, async () => {
+      const sent = await this.handler.sendFor(view.screen.descriptor, DELETE_ACTION, checkedSetTarget(view.screen, names));
+      return { applied: sent, documents: deletedDocumentsOf(this.handler.lastOutput()) };
+    });
+    if (applied) view.store.setChecked([]);
+  }
+
+  /**
+   * The checked documents in list order, or `[]` where no write may open: one is running, a dialog
+   * is open, or the checked set is empty or over the declared most.
+   */
+  private checkedNames(): readonly string[] {
+    const view = this.list;
+    if (view === null || this.write.running() || this.compiling().length > 0 || this.deleting().length > 0) return [];
+    const checked = view.store.checked();
+    if (checkedSetReason(view.screen, checked.size) !== '') return [];
+    const names: string[] = [];
+    for (const row of view.store.data()) {
+      const key = rowKey(row, view.screen);
+      if (checked.has(key)) names.push(key);
+    }
+    for (const key of checked) if (!names.includes(key)) names.push(key);
+    return names;
   }
 
   private readNow(): void {

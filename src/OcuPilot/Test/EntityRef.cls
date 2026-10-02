@@ -288,6 +288,20 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("routine-mapping", "OcuProbe" _ tSeparator _ "Probe*_MAC"), "ocuprobe" _ tSeparator _ "Probe*_MAC", "a mapping folds its namespace part and keeps its name's spelling")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("global-mapping", "USER" _ tSeparator _ "Probe(""A"")"), "user" _ tSeparator _ "Probe(""A"")", "a global mapping's subscript keeps its case")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("package-mapping", "OcuProbe"), "ocuprobe", "and a value with no separator folds whole")
+    ; Story 19.2's rule: a class or routine id may name a set of documents, split on commas, empty
+    ; pieces dropped, each once, sorted by character code; a value with no comma, the literal import
+    ; among them, is kept exactly. The same corpus runs through the client twin
+    ; (ui/tools/entity-ref.test.mjs).
+    For tType = "class", "routine" {
+        Do $$$AssertTrue($ListFind(tRuled, tType) > 0, "the " _ tType _ " pair is one Story 19.2 added")
+    }
+    For tCase = $ListBuild("B.cls,A.cls,,B.cls", "A.cls,B.cls"), $ListBuild("a.cls,B.cls,%Z.cls", "%Z.cls,B.cls,a.cls"), $ListBuild("Z.mac,", "Z.mac"), $ListBuild(",,", ""), $ListBuild("12.mac,9.mac", "12.mac,9.mac"), $ListBuild("A.cls", "A.cls"), $ListBuild(" A.cls ", " A.cls "), $ListBuild("import", "import"), $ListBuild("Caf" _ $Char(233) _ ".cls,Cafe.cls", "Cafe.cls,Caf" _ $Char(233) _ ".cls") {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("class", $List(tCase, 1)), $List(tCase, 2), "'" _ $List(tCase, 1) _ "' is the set '" _ $List(tCase, 2) _ "'")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("routine", "B.mac,A.inc"), "A.inc,B.mac", "a routine set sorts the same way")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("class", "USER", "B.cls,A.cls", .tDocKey), "a spelled document set builds a key")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("class", "USER", "A.cls,B.cls", .tDocCanonical), "and so does the canonical one")
+    Do $$$AssertEquals(tDocKey, tDocCanonical, "and the two are one key")
 
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.

@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:629 */
+  /** EXPERIENCE.md:631 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4234,6 +4234,63 @@ export const STRINGS = {
   explorerRoutineDocumentPrompt2: 'Which database holds this routine?',
   /** EXPERIENCE.md:588 */
   explorerRoutineDocumentPrompt3: 'Which intermediate routines does this routine generate?',
+  // Story 19.2: System Explorer's compile and delete, and their published refusals.
+  /** EXPERIENCE.md:589 */
+  explorerCompileAction: 'Compile',
+  /** EXPERIENCE.md:589 */
+  explorerCompileTitle: 'Compile <n> documents',
+  /** EXPERIENCE.md:589 */
+  explorerCompileTitleOne: 'Compile 1 document',
+  /** EXPERIENCE.md:589 */
+  explorerCompileKeepSource: 'Keep generated source code',
+  /** EXPERIENCE.md:589 */
+  explorerCompileDependents: 'Compile dependent classes',
+  /** EXPERIENCE.md:589 */
+  explorerCompileSkipUpToDate: 'Skip documents that are up to date',
+  /** EXPERIENCE.md:589 */
+  explorerOutputLabel: 'Output',
+  /** EXPERIENCE.md:589 */
+  explorerCompileRunning: 'Compiling <i> of <n> \u00b7 <name>',
+  /** EXPERIENCE.md:589 */
+  explorerCompileSummary: 'Compiled <done> of <n> documents, <errors> with errors.',
+  /** EXPERIENCE.md:589 */
+  explorerCompileStopped: 'Stopped after <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDocumentResult: '<name>: <reason>',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteDeleted: '<name>: deleted',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteRunning: 'Deleting <n> documents',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSummary: 'Deleted <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteConsequence: 'The document\'s source and compiled code are removed and cannot be restored from OcuPilot. A persistent class\'s stored data is kept.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot, and a persistent class\'s stored data is kept.',
+  /** EXPERIENCE.md:589 */
+  explorerClassListEmptyAgent: 'compile or delete classes',
+  /** EXPERIENCE.md:589 */
+  explorerRoutineListEmptyAgent: 'compile or delete routines',
+  /** EXPERIENCE.md:589 */
+  explorerViewerObjectOnly: 'This instance holds only this routine\'s object code, so it has no source to show.',
+  /** EXPERIENCE.md:590 */
+  explorerRefusalOcuPilot: 'This is OcuPilot\'s own code. It cannot be compiled or deleted from OcuPilot.',
+  /** EXPERIENCE.md:590 */
+  explorerDocumentAbsent: 'This namespace no longer holds a document this change names.',
+  /** EXPERIENCE.md:590 */
+  explorerImportUnreadable: 'The file holds no document this instance can read.',
+  /** EXPERIENCE.md:590 */
+  explorerImportChanged: 'The file no longer holds the documents this import was proposed with.',
+  /** EXPERIENCE.md:590 */
+  explorerImportTooLarge: 'The file is longer than 3,000,000 characters, the most one import reads.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteAccess: 'This account cannot change the database that holds this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteLocked: 'Another process is editing this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteAbsent: 'This namespace no longer holds this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteFailed: 'The source code API could not delete this document.',
 } as const;
 
 /**
