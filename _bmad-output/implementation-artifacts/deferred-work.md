@@ -8909,3 +8909,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
 - 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story
+
+### DW-1926: IRIS defect candidate: the Atelier work routes' poll checks no owner, and the queue runs a caller-named routine
+- source: spec-19-2-compile-delete-export-and-import.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.2 plan on ocupilot-a2-ci: PollAsync answers another caller's queued job (no owner check) and QueueAsync accepts a caller-named routine (testrtn) to run; AtelierPort never calls the work routes (AD-61 rule 7)
+- 2026-10-02T04:52:52Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905

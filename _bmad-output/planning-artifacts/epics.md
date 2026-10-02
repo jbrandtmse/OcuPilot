@@ -7476,11 +7476,11 @@ So that the Explorer is not read-only.
 
 - **Given** delete, export to XML, and import from a server or local file
 - **When** each runs
-- **Then** it round-trips, each write through a confirmed proposal.
+- **Then** it round-trips, each write through a confirmed proposal. [SPLIT to 19.13 2026-10-02: export and import moved; delete stays in 19.2]
 
 - **Given** export and import are Atelier v7 routes
 - **When** the instance is older
-- **Then** the version gate reports it rather than failing obscurely.
+- **Then** the version gate reports it rather than failing obscurely. [SPLIT to 19.13 2026-10-02]
 
 - DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER) (ledger; routed by harvest 2026-10-02)
 
@@ -7664,6 +7664,25 @@ So that OcuPilot does not shut out the people the explorer is for.
 - **Then** it reaches System Explorer and is refused everywhere a classic `%Developer` is refused, and a Rule 19 mutation that restores the old floor reddens that test.
 
 - DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor? (ledger; routed by merge_gate 2026-10-01)
+
+
+### Story 19.13: XML export and import
+
+As a developer,
+I want to export and import the code I am browsing,
+So that code moves in and out of a namespace without leaving the portal.
+
+[ADDED 2026-10-02, Rule 5 split of Story 19.2 by=merge_gate: its export and import criteria moved here verbatim; run right after 19.2.]
+
+**Acceptance Criteria:**
+
+- **Given** delete, export to XML, and import from a server or local file
+- **When** each runs
+- **Then** it round-trips, each write through a confirmed proposal.
+
+- **Given** export and import are Atelier v7 routes
+- **When** the instance is older
+- **Then** the version gate reports it rather than failing obscurely.
 
 ---
 
