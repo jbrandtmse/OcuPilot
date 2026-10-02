@@ -53,7 +53,7 @@ deferred: []
 - **The removal impact (AD-8).** It names the namespaces that use the database (through `Globals`, `Routines`, `TempGlobals` or a mapping) and the web applications running in them, each through its own declared read. It has no shared-file part. The vendor refuses the delete while one remains (409 #429, which Task 0 confirms), answered as `DATABASE.INUSE`.
 - **Kernel.** `PROHIBITED.OCUPILOTDATABASE` already refuses deleting OcuPilot's and the instance's own databases, or changing their `Server` or `Directory`, whatever the tool. The reviewed `database-configuration` create and change lists admit `Server` and `Directory` for the remote tools.
 - **Governance.** `create` and `update` join the baseline `true`; `delete` joins it `false` (epic preamble).
-- **Contended files are edited add-only** (Epic 16): `AdminPort.cls`, `Router.cls`, `Prohibited.cls`, `Baseline.cls`, `strings.ts`, `screen-action-handler.ts`, `screen-outlet.ts`, the rosters, `ci-throwaway.sh` and `ci.test.mjs`. EXPERIENCE.md is edited in place and stays 993 lines. New error codes go in `Api/DatabaseError.cls`, never `Error.cls`. `screens.generated.ts` and `ToolFields.cls` are regenerated.
+- **Contended files are edited add-only** (Epic 19, concurrent on slot A): `AdminPort.cls`, `Router.cls`, `Prohibited.cls`, `Baseline.cls`, `strings.ts`, `screen-action-handler.ts`, `screen-outlet.ts`, the rosters, `ci-throwaway.sh` and `ci.test.mjs`. EXPERIENCE.md is edited in place and keeps its line count (997 on the merged tree). New error codes go in `Api/DatabaseError.cls`, never `Error.cls`. `screens.generated.ts` and `ToolFields.cls` are regenerated.
 
 **Never:**
 
@@ -165,7 +165,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - `areas/os-management/`: `database-actions.ts` :42-57, and `database-editor.page.ts`/`.store.ts` (the form model).
 - `core/impact.ts`; `core/strings.ts` (local keys :3731-3797, running and finished :3943-3945); `app.ts` (injection :323-325, sign-out resets :639-641).
 
-**EXPERIENCE.md** (993 lines): :164 OS management side bar, :377 the Databases and Local databases strings, :479 delete bodies; :173 Dialogs is unchanged.
+**EXPERIENCE.md** (997 lines): :164 OS management side bar, :377 the Databases and Local databases strings, :479 delete bodies; :173 Dialogs is unchanged.
 
 **Tests to model:**
 
@@ -296,7 +296,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
   - The reason renders on its field, and the unsaved-changes guard applies.
 - `ui/src/app/areas/os-management/remote-database-actions.ts` (Create navigates to the form).
 - `ui/src/app/shell/screen-outlet.ts`, `ui/src/app/shell/screen-action-handler.ts` (the delete is destructive with its impact and no file flag), `ui/src/app/core/impact.ts` (the new kind), `ui/src/app/core/strings.ts` (new keys) and `ui/src/app/app.ts` (store injection and sign-out reset). Regenerate `core/screens.generated.ts`.
-- EXPERIENCE.md, in place, keeping 993 lines:
+- EXPERIENCE.md, in place, keeping 997 lines:
   - :164 gains "Remote databases (Stage 2, Story 18.16)".
   - :377 gains every new label, the hint "Choosing a data server lists its databases over ECP, which can take up to <n> seconds.", the running line "Listing the databases on <server> since <time>", "<server> lists no databases.", the empty state "No remote databases on this instance.", the card consequence "Confirming lists the databases on <server> to check the directory, which can take up to <n> seconds." and the three prompts.
   - :479 gains "Deleting this remote database removes it from this instance's configuration. Its file on the data server stays. This cannot be undone."
@@ -345,6 +345,8 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - 2026-10-01, spec gate (runner): Story 18.17 (merged into this branch at `c8dedb69`) listed the Integrity log at OS management position 5 and moved Devices through Local databases to 6-11, so Remote databases takes position 12 and is the twelfth entry (Intent, Boundaries, Tests, AC8 amended). Every Code Map line citation for a side-bar pin (`Navigation.cls`, `navigation.test.mjs`, `navigation-wire.test.mjs`, `rail-wire.spec.ts`, `license-usage`, `local-databases`, `namespaces` and `language-servers` browser specs) predates 18.17: re-derive each from the current tree at implement. Spine amendments 1, 2, 4 and 5 under Design Notes were written at the gate (AD-21 seventh case, AD-42, AD-44, AD-52); amendment 3 (AD-8) and, if needed, 6 (AD-15/AD-53) are written by the runner after Task 0 records them here. The orchestrator agreed (2026-10-01) that on Community the bounded unreachable refusal is the measured path and the listing's success leg is pinned at the port through the seam.
 
 - 2026-10-01, orchestrator merge gate (by=merge_gate), option A after the Task 0 step-e halt: the license pre-check (`NetworkEnabled()` 0 answers `DATABASE.SERVER.UNREACHABLE` at once with a sentence naming the license, no listing, no connection), pinned with a test and its mutation; on a licensed instance the bounded child-job listing runs as planned and the bound sentence says it connects to the data server; the success path is pinned at the port through the seam. Vendor `#5659` (no directory) maps to `DATABASE.REMOTEDIRECTORY.NONE` and `#420` (undefined server) to `DATABASE.SERVER.ABSENT`; the owner's directory rule still refuses an omitted directory before any vendor call. `Inventory` in Verification means `Inventory`. Status reset to `in-progress`; Task 0 resumes at step 4f.
+
+- 2026-10-02, runner (dispatch 6, Rule 5 tier 1): integrate-forward `04409070` brought Stories 19.1, 19.12 and 23.3. EXPERIENCE.md is 997 lines on the merged tree (19.1 added four), so the line-count checks read 997 (Boundaries, Code Map, Tasks, Verification); :164, :377 and :479 are still the side-bar row, the Databases strings and the delete bodies. The concurrent epic is now Epic 19 on slot A: it also changes `Router.cls`, `Baseline.cls`, `Prohibited.cls`, `Screen/Gate.cls`, `ci-throwaway.sh`, `ui/angular.json`, EXPERIENCE.md (:173, :314, :321, :376, :380, :383-384, :392, :584-590) and the rosters `ReadTool`, `SurfaceCoverage`, `Wire`, `PortGate`, `Governance`, `GovernanceBaseline`, `ToolDispatch`, `ToolEmit`, `ToolRoundTrip`, `ClassicPageGate` and `Test/Prohibited.cls`; each stays add-only here. Side-bar pins are re-derived from the merged tree (19.1 added a ninth rail area).
 
 ## Review Triage Log
 
@@ -461,7 +463,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
   - The story's own classes: `RemoteDatabaseListing`, `RemoteDatabaseWrite`, `RemoteDatabaseWriteGate`, `RemoteDatabaseDescriptor`, `DatabaseRefusals`, `ClassicPageGate`.
   - The rosters: `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Navigation`, `Wire`, `PortGate`, `DraftRegistry`, `ToolRoundTrip`, `ToolWrite`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ImpactRoute`, `Inventory`.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/remote-databases.browser-spec.mjs browser/local-databases.browser-spec.mjs browser/license-usage.browser-spec.mjs browser/language-servers.browser-spec.mjs`. Expected: pass.
-- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 993.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 997.
 - `(once, before dev_complete)`, expected green with a non-zero count:
   1. the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time;
   2. `cd ui && npm test && npm run build`;
