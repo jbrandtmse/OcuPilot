@@ -408,3 +408,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-01T19:40:38Z	Story 18.15	boundary_reported	to=main code_head=33d325da ci=success run=36910157178 note=release_1.0.6_cut_Fri_2026-10-02_14:00_PDT_noted;Epic_19_waits_on_this_merge(ReadTool.cls_:93-94)
 2026-10-01T19:40:38Z	Epic 18	ledger_dispatch_summary	dispatch=5 open_before=89 resolved=1(DW-1776) terminal=1(DW-1897_by-design_by=merge_gate) chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=1(DW-1886_carried,23.2-sourced,human) open_after=82(feature_merge_included) filed_this_dispatch=0 closed_this_dispatch=2 drain_ratio=n/a(filed_0) note=burndown_gate_not_run(epic_continues)
 2026-10-01T19:40:38Z	Epic 18	runner_returned	dispatch=5 state=18.15_boundary_done(code_33d325da_ci_success_36910157178);18.16_spec_in-progress(not_started;plumbing_patch_parked);next=slot_B_runs_23.3,then_Epic_18_resumes_at_18.16 throwaway=ocupilot-b-ci_up,never_restarted,no_FHIR_Validation_Server,no_probes
+2026-10-02T07:30:10Z	Epic 18	lead_model_gate	model=claude-opus-5-5[1m] action=proceed dispatch=6
+2026-10-02T07:30:10Z	Epic 18	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-10-02T07:30:10Z	Epic 18	telemetry_gate	pending=0 action=none
+2026-10-02T07:30:10Z	Epic 18	runner_resumed	dispatch=6 branch_head=00071f01 feature=dae680d0 scope=integrate_forward,18.16,18.5..18.13,epic_close slot=b(docker_port_52775,profile_baseUrl_52775) bootstrap=ok(node_modules,irislib) throwaway=ocupilot-b-ci_up_healthy_never_restart concurrent=epic-19_slot_A
