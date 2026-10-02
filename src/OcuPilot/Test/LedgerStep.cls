@@ -6,7 +6,9 @@
 /// <p><b>Live-safe.</b> It spawns nothing, creates no principal and touches no registration. Every
 /// turn it reserves names a user starting with
 /// <parameter>OcuPilot.Test.TurnFixture.PROBEPREFIX</parameter>, and
-/// <method>OnAfterOneTest</method> asserts none survives.</p>
+/// <method>OnAfterOneTest</method> asserts none survives. Its secret-as-id test makes the ledger log,
+/// at error severity, that it withheld a call's arguments, which the instance counts toward its
+/// alert state.</p>
 Class OcuPilot.Test.LedgerStep Extends %UnitTest.TestCase
 {
 
@@ -86,20 +88,22 @@ Method TestAToolStepsPreDispatchArgumentsAreDeclarationRedacted()
 
 /// <p>The tool step's target where the model sends a declared secret's value as the call's
 /// <code>id</code>, at each write <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> makes
-/// before a call is dispatched: the step a refused dispatch keeps from its pre-dispatch write
-/// (<class>OcuPilot.Test.LedgerRunningProbe</class>), the reply-budget refusal
-/// (<class>OcuPilot.Test.LedgerLoopProbe</class>) and the boundary stop
+/// before a call is dispatched: the running append, read as the dispatch begins, and the finish a
+/// refused dispatch writes (<class>OcuPilot.Test.LedgerRunningProbe</class>), the reply-budget
+/// refusal (<class>OcuPilot.Test.LedgerLoopProbe</class>) and the boundary stop
 /// (<class>OcuPilot.Test.LedgerLoopStopProbe</class>). Each stores the redaction mark as its target
 /// and the value in no column. The dispatched call's own finish is
 /// <class>OcuPilot.Test.TurnConversation</class>'s.</p>
-/// <p>Mutation (Rule 19): set any one of those three targets from
-/// <method>OcuPilot.Kernel.Agent.Dispatch.TargetOf</method> again -- that probe's leg goes red.</p>
+/// <p>Mutation (Rule 19): set any one of those targets from
+/// <method>OcuPilot.Kernel.Agent.Dispatch.TargetOf</method> again -- that probe's leg goes red; the
+/// running append's alone -- the running-append assertion alone goes red.</p>
 Method TestEachPreDispatchStepWriteMarksASecretSentAsTheId()
 {
     Set tUser = ..#PROBEUSER
     For tCase = $ListBuild("OcuPilot.Test.LedgerRunningProbe", ..#LIMITS), $ListBuild("OcuPilot.Test.LedgerLoopProbe", $Parameter("OcuPilot.Test.Ledger", "BUDGET")), $ListBuild("OcuPilot.Test.LedgerLoopStopProbe", ..#LIMITS) {
         Set tProbe = $List(tCase, 1)
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), tProbe _ ": a turn is reserved")
+        Do $$$AssertEquals(tBusy, 0, tProbe _ ": and is not busy")
         If $Get(tKey) = "" Continue
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), tProbe _ ": and begun")
         Set tBlock = {"id": "toolu_target"}
@@ -112,7 +116,9 @@ Method TestEachPreDispatchStepWriteMarksASecretSentAsTheId()
         Do tUses.%Push(tBlock)
         Set tLog = []
         Set tMessages = 0
+        Do ##class(OcuPilot.Test.LedgerRunningProbe).Forget()
         Do $ClassMethod(tProbe, "AnswerTools", tKey, tUser, "1", "", tUses, $List(tCase, 2), .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+        If tProbe = "OcuPilot.Test.LedgerRunningProbe" Do $$$AssertEquals(##class(OcuPilot.Test.LedgerRunningProbe).RunningTarget(), ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, tProbe _ ": the running append's target, read as the dispatch begins, is the redaction mark")
         Set tTargets = ""
         If $$$ISOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows)) {
             Set tIterator = tRows.%GetIterator()

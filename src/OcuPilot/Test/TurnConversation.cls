@@ -264,9 +264,9 @@ Method TestToolTargetPrefersIdOverEntityOverRoute()
 
 /// <p>AD-33, AD-41: where the model sends a declared secret's value as a call's <code>id</code>
 /// (<code>permissions.users.password</code> declares <code>Password</code>), the step's
-/// <code>target</code> is the redaction mark in the poll, and the value is in neither the poll, the
-/// stored transcript nor any step column; a target that holds no declared secret's value is kept as
-/// sent.</p>
+/// <code>target</code> is the redaction mark in the poll and in the stored transcript, and the value
+/// is in neither the poll, the stored transcript nor any step column; a target that holds no
+/// declared secret's value is kept as sent.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Agent.Dispatch.StepTarget</method> answer
 /// <method>OcuPilot.Kernel.Agent.Dispatch.TargetOf</method> alone -- this goes red.</p>
 Method TestADeclaredSecretSentAsTheIdIsNotTheStepTarget()
@@ -300,6 +300,7 @@ Method TestADeclaredSecretSentAsTheIdIsNotTheStepTarget()
     Do ..Call("GET", ..ConversationPath(tConvId), tUser, "", .tStatus, .tConvText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the conversation reads back")
     Do $$$AssertEquals(tConvText [ tSecret, 0, "the stored transcript carries it nowhere")
+    Do $$$AssertTrue(tConvText [ ("""target"":""" _ ##class(OcuPilot.Kernel.Audit.Log).#REDACTED _ """"), "and its step reads the redaction mark as its target")
     Set tStepText = ##class(OcuPilot.Test.Ledger).StepText(tId)
     Do $$$AssertEquals(tStepText [ tSecret, 0, "nor does any step column: " _ tStepText)
 }

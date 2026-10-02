@@ -5,13 +5,16 @@
 /// The in-memory holder is asked directly whether it is empty when the call returns.</p>
 /// <p><b>The sibling this does not duplicate.</b> <class>OcuPilot.Test.ProviderSecret</class> pins
 /// the key out of the two logs and the envelope under forced failures, from the adapter's own call
-/// stack. What is new here is the turn's own storage: the rows and steps a completed turn and a
-/// failed turn leave behind, which no failure test writes.</p>
+/// stack. What is new here is the turn's own storage -- the rows and steps a completed turn and a
+/// failed turn leave behind, which no failure test writes -- and the log lines written over a whole
+/// turn.</p>
 /// <p><b>The canary is fabricated and has no value.</b> It is shaped like a real key so it passes
 /// the shape gate and reaches every point a real one would, and it is unmistakable in a sweep. No
 /// provider is called: the adapter is a transport stub.</p>
 /// <p><b>Live-safe.</b> It spawns nothing and creates no principal; the rows it writes name
-/// <parameter>PROBEUSER</parameter> and <method>OnAfterOneTest</method> asserts none survives.</p>
+/// <parameter>PROBEUSER</parameter> and <method>OnAfterOneTest</method> asserts none survives. It
+/// needs <code>messages.log</code> readable, and writes two informational lines of its own to it per
+/// turn, waiting up to 30 s for each (<method>OcuPilot.Test.SslSinks.Flush</method>).</p>
 Class OcuPilot.Test.TurnSecretResidue Extends %UnitTest.TestCase
 {
 

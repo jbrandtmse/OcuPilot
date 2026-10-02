@@ -610,9 +610,10 @@ ClassMethod SettleClient(pDetail As %DynamicObject, pOutcome As %String, pCode A
 
 /// <p>A tool step's target (Story 4.5): <var>pInput</var>'s <code>id</code>, else
 /// <code>entity</code>, else <code>route</code>, else <code>""</code> -- whichever is present
-/// first and is a non-empty string. Public so <class>OcuPilot.Kernel.Agent.Loop</class> can
-/// derive the same target for a step that never reached dispatch (the size-budget refusal, and a
-/// stop that trips before the call).</p>
+/// first and is a non-empty string, raw: a step stores <method>StepTarget</method>'s answer. Public so
+/// <class>OcuPilot.Kernel.Agent.Loop</class> can hand the same raw target to the ledger row of a
+/// call that never reached dispatch (the size-budget refusal, and a stop that trips before the
+/// call).</p>
 ClassMethod TargetOf(pInput As %DynamicObject) As %String
 {
     Set tTarget = ""
@@ -636,8 +637,10 @@ ClassMethod TargetOf(pInput As %DynamicObject) As %String
 /// answer, or <parameter>OcuPilot.Kernel.Audit.Log.REDACTED</parameter> where that answer carries the
 /// value of a name in <var>pSecretNames</var>
 /// (<method>OcuPilot.Kernel.Audit.Ledger.CarriesSecretValue</method>, which fails closed), set at
-/// write time as the ledger row's target is (AD-33, AD-41). Every step write takes its target here.
-/// <method>TargetOf</method> stays raw: a ledger row makes the same decision itself
+/// write time as the ledger row's target is (AD-33, AD-41). Every step write takes its target here,
+/// except a call refused before its tool resolves, which has no declaration to read and keeps
+/// <method>TargetOf</method>'s answer, the one this gives for no names. <method>TargetOf</method>
+/// stays raw: a ledger row makes the same decision itself
 /// (<method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method>).</p>
 ClassMethod StepTarget(pInput As %DynamicAbstractObject, pSecretNames As %List) As %String
 {

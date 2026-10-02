@@ -389,6 +389,32 @@ Rejected:
 - `low`: the spec grew while flagged oversized. The added lines are its tracking sections.
 - `false`: `browser-reset` is missing from batch c's checks. It runs in `prebuild`, and `node tools/browser-reset.mjs` is clean on the committed tree.
 
+### Review Findings (batch d)
+
+Code review 2026-10-01 of `29baebbe..f2168084` and the lead's `4c061202`: four layers, tier `full-opus`. 30 raw findings make 11 entries, 1 medium and 10 low; none high. Rule 3: met (DW-1782: `TurnConversation` over HTTP and `agent-ledger` in a browser; DW-1881: `ServiceEdit`'s form read over HTTP marks `%Manager` and `%Operator`, and the mint asks the same predicate). Checked: every tool-step target write goes through `StepTarget`, or keeps `TargetOf`'s answer for a call refused before its tool resolves; the mark is `Log.#REDACTED` and the decision `Ledger.CarriesSecretValue`, as the ledger row's; `Prohibited.EntryParts` reads an entry as the vendor's `DrawConnectionTable` does (`irissys/%CSP/UI/Portal/Dialog/Service.cls:391`); `IsPrivilegedRole`'s four remaining callers judge a resource name, or short-cut a role before its resources are read, so none has DW-1881's defect; `RoleOptions` asks `GrantsPrivilegeByEffect`'s service arm (AD-53); Prohibited names no Area class; the log sweep reads from an offset taken before `Drive`, through `Flush`.
+
+- [x] [Review][Patch] The running append's target is observed by no test: `LedgerRunningProbe`'s leg reads the refusal's finish, which rewrites it, so `Loop.cls:563` alone back on `TargetOf` stayed green [src/OcuPilot/Test/LedgerStep.cls:100]
+- [ ] [Review][Patch] (lead edit, spine) AD-33's amendment ends "the ledger still decides from the raw target", but a client-fulfilled row is handed the step's marked target (`Loop.cls:573` into `RecordClientRow`); the stored mark is the same. Suggested: "; a ledger row makes the same decision itself (`Ledger.RecordToolCall`)" [ARCHITECTURE-SPINE.md:526]
+- [x] [Review][Patch] `TargetOf`'s doc says `Loop` derives a step's target with it [src/OcuPilot/Kernel/Agent/Dispatch.cls:617]
+- [x] [Review][Patch] `StepTarget`'s doc says every step write takes its target there; a call refused before its tool resolves keeps `TargetOf`'s [src/OcuPilot/Kernel/Agent/Dispatch.cls:640]
+- [x] [Review][Patch] LedgerStep's new legs are skipped silently when the reserve answers busy [src/OcuPilot/Test/LedgerStep.cls:106]
+- [x] [Review][Patch] LedgerStep's header calls it live-safe without saying its secret-as-id test logs at error severity (DW-1928 occurrence) [src/OcuPilot/Test/LedgerStep.cls:6]
+- [x] [Review][Patch] TurnSecretResidue's header leaves the log sweep out of what is new and of what it needs and writes [src/OcuPilot/Test/TurnSecretResidue.cls:14]
+- [x] [Review][Patch] A red card assertion in `agent-ledger` left the turn's ledger rows, since the keys are collected only from the later ledger search [ui/browser/agent-ledger.browser-spec.mjs:199]
+- [x] [Review][Patch] `agent-ledger`'s header does not mention the card check [ui/browser/agent-ledger.browser-spec.mjs:5]
+- [x] [Review][Patch] "In either spelling" is pinned only for a target holding the classic spelling [src/OcuPilot/Test/ServiceUpdate.cls:230]
+- [x] [Review][Patch] The stored transcript is checked only for the value's absence, not for the mark [src/OcuPilot/Test/TurnConversation.cls:303]
+
+Rejected:
+
+- `low` (2): the amendment's date differs from the memlog's `updated:` and from the planned text, and "never show it" overclaims for rows written before the fix. The spine dates by UTC, as Story 19.12's amendment does; the rule is a write-time one, and DW-1927 holds the old rows.
+- `low` (3): Lead edits and Residual risk still read as before the spine commit, and the full sweep's 8 reds rest on an inference. Each fix edits the spec; the lead's CI gate on the exact head (run 36972401405) settles the second.
+- `low` (3): a declaration that cannot be read, or a registry read that fails in `AnswerOne` after `Loop` resolved the tool, leaves the target raw. `ProviderTools` refuses a tool whose declaration cannot be read, so none is offered; real if a declaration or registry read fails between the offer and the call.
+- `low` (2): a value sent as `id` and under a case-variant or undeclared credential-named key keeps the target raw while the arguments are pattern-redacted. The ledger's target decides the same way (AD-33, "as the ledger row's is"); real if a model sends a declared secret under another spelling and as the id.
+- `low`: ServiceEdit's and ServiceUpdate's mutation notes name `ServiceRules.EntryParts`, and `Prohibited.EntryParts`' doc says the rules "answer it". A mutation of the delegating method still reddens them; `Prohibited.cls` takes add-only edits while Epic 19 changes it.
+- `low`: the control call's own password (V2) is not swept. It rides the declared `Password`, whose drop LedgerStep's argument test pins.
+- `low` (2): `service-editor` AC3 saves a privileged role without asserting the consequence line, and the component fixtures mark `%Manager` and `%Operator` unprivileged. The page renders the server's flag, which ServiceEdit pins over HTTP; the Verification sentence is the spec's.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -489,6 +515,15 @@ Rejected:
   - `[low]` `[reject]` The new method and `agent-ledger` raise the alert state on every run. — The input is the spec's (V as `id` and `Password`); `agent-ledger` sent it before this story; named for filing; the throwaway reads 0 at the end.
   - `[low]` `[reject]` No read-back is recorded for the removed `agent-ledger` rows, and the mutation's canary lines stay in `messages.log`. — The fix edits this spec; the canary is fabricated, and a log line cannot be removed.
   - `[false]` `[reject]` The full sweep's result and the Auto Run Result are missing. — Finalize writes both, after the sweep.
+
+### 2026-10-01 — Code review (batch d)
+
+- verdicts: 30 findings — high 0, medium 1, low 29, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The running append's target is unobserved; this batch's review-pass rows on it ("Same fix as row 2") closed it on a mutation of the shared `tRunningTarget`, which the finish also writes. — `LedgerRunningProbe.RunningTarget` and LedgerStep's assertion; mutation 2134.
+  - `[low]` `[patch]` AD-33's last clause says the ledger decides from the raw target; client rows get the marked one. — Reported to the lead; the spine is the lead's.
+  - `[low]` `[patch]` Eight low patches (two Dispatch docs, LedgerStep's busy check and header, TurnSecretResidue's header, `agent-ledger`'s assertion order and header, ServiceUpdate's held-`|` row, TurnConversation's transcript mark). — Review Findings (batch d).
+  - `[low]` `[reject]` Fourteen rows in seven groups. — Review Findings (batch d) › Rejected.
 
 ## Design Notes
 
@@ -640,6 +675,10 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 - After every revert, `git status --short` and `git diff --stat` read as before the mutation.
 - Review patch: `LedgerStep.TestEachPreDispatchStepWriteMarksASecretSentAsTheId` drives the refused dispatch, the reply-budget refusal and the boundary stop with V as `id` and `Value`; each tool step's target reads the mark and V is in no column. Observed: LedgerStep 5/5 (1729, 1733).
 - `mutation:` set the stop, the budget or the running target from `TargetOf` again, `Loop` recompiled with `/subclasses` → that probe's leg alone red (1730, 1731, 1732). Reverted (`shasum` and `git diff --stat` unchanged), recompiled. `agent-ledger` re-run by the stage: 2/2.
+- Code review (batch d): `LedgerRunningProbe` records the latest step's target as the dispatch begins, and LedgerStep asserts it is the mark. Observed: LedgerStep 5/5 (runs 2133, 2135), ServiceUpdate 14/14 with the held-`|` row (2136, 2138), TurnConversation 10/10 with the transcript's mark asserted (2139), TurnSecretResidue 2/2 (2140); bundle rebuilt and redeployed (2.42 MB initial), `agent-ledger` 2/2 before and after the mutation below.
+- `mutation:` set only the running append's target (`Loop.cls:563`) from `TargetOf` → LedgerStep red on the running-append assertion alone (2134). Reverted (`shasum`, `git status --short` and `git diff --stat` unchanged), Loop recompiled with `/subclasses`.
+- `mutation:` read the held entries on `:` only → ServiceUpdate red on the held-`|` row alone (2137). Reverted the same way, Prohibited recompiled with `/subclasses`.
+- `mutation:` make `StepTarget` answer `TargetOf` alone → `agent-ledger` AC1 red on the card, now asserted after the ledger search, and its cleanup still removed the turn's ledger rows. Reverted the same way, Dispatch recompiled with `/subclasses`. The three runs' `_SYSTEM` turns and conversations were removed by exact key, and the monitor state cleared to 0.
 
 **Full sweep (once, before dev_complete of batch d):** `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci` with no seeded state present. Expected: 0 failed, totals from `%UnitTest_Result`.
 

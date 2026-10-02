@@ -523,7 +523,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A tool step's `text` is its result cut to `Limits.TOOLSTEPTEXTMAXLENGTH` (4,096) characters**: 4,095 and U+2026 when cut (one fewer where the cut would split a surrogate pair), marked truncated, so a poll carries at most that per tool step. The result the dispatcher hands the model is not cut by it [AMENDED 2026-09-30, Story 23.2, DW-1210, Rule 20].
 
-  **A tool step's `target` carries the redaction mark where it holds a declared secret's value**, set at write time through `Dispatch.StepTarget`, as the ledger row's is (AD-46), so the poll, the stored transcript and the panel's tool-call card never show it; the ledger still decides from the raw target [AMENDED 2026-10-02, Story 23.3, DW-1782, Rule 20].
+  **A tool step's `target` carries the redaction mark where it holds a declared secret's value**, set at write time through `Dispatch.StepTarget`, as the ledger row's is (AD-46), so the poll, the stored transcript and the panel's tool-call card never show it; a ledger row makes the same decision itself (`Ledger.RecordToolCall`) [AMENDED 2026-10-02, Story 23.3, DW-1782, Rule 20].
 
 ### AD-34 — Confirmation is a single atomic transition
 

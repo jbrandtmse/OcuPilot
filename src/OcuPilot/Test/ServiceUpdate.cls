@@ -223,11 +223,11 @@ Method TestAWeakeningOrPrivilegedChangeIsMintedDestructive()
 /// and writes nothing.</p>
 /// <p>Mutation (Rule 19): judge each added role by name alone -- the <code>%Manager</code>,
 /// <code>%Operator</code> and armed rows go red. Read the held entries on <code>|</code> only -- the held
-/// classic rows go red. Read the payload's on <code>|</code> only -- the classic
-/// <code>10.0.0.9:%All</code> row goes red.</p>
+/// classic rows go red; on <code>:</code> only -- the held <code>|</code> row goes red. Read the
+/// payload's on <code>|</code> only -- the classic <code>10.0.0.9:%All</code> row goes red.</p>
 Method TestAnAddressRoleIsJudgedByEffectInEitherSpelling()
 {
-    For tCase = $ListBuild("[""10.0.0.9|%Manager""]", "[]", 1), $ListBuild("[""10.0.0.9|%Operator""]", "[]", 1), $ListBuild("[""10.0.0.9:%All""]", "[]", 1), $ListBuild("[""10.0.0.6|%All,%Developer""]", "[""10.0.0.6:%All""]", 0), $ListBuild("[""10.0.0.9|%Developer""]", "[]", 0), $ListBuild("[""10.0.0.6:%All"",""10.0.0.7""]", "[""10.0.0.6:%All""]", 0) {
+    For tCase = $ListBuild("[""10.0.0.9|%Manager""]", "[]", 1), $ListBuild("[""10.0.0.9|%Operator""]", "[]", 1), $ListBuild("[""10.0.0.9:%All""]", "[]", 1), $ListBuild("[""10.0.0.6|%All,%Developer""]", "[""10.0.0.6:%All""]", 0), $ListBuild("[""10.0.0.9|%Developer""]", "[]", 0), $ListBuild("[""10.0.0.6:%All"",""10.0.0.7""]", "[""10.0.0.6:%All""]", 0), $ListBuild("[""10.0.0.6:%All""]", "[""10.0.0.6|%All""]", 0) {
         Set tPayload = {}
         Do tPayload.%Set("ClientSystems", ##class(%DynamicArray).%FromJSON($List(tCase, 1)))
         Set tTarget = {}

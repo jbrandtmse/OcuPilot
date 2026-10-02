@@ -8949,3 +8949,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 23.3 batch d full sweep on ocupilot-b-ci: monitor state rose to 2; the method's provider-path refusals log at error severity (AD-39)
 - 2026-10-02T06:12:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=a test or check that reads the instance alert state reddens after TurnConversation runs on the same container
+- 2026-10-02T06:39:17Z occurrence=23-3-the-range-end-cleanup-part-3
+
+### DW-1929: agent-ledger.browser-spec.mjs deletes only its own ledger rows, so each run leaves a _SYSTEM turn and conversation on the container
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
+- 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
