@@ -375,5 +375,5 @@ action_items:
       without it the start hook deletes the instance's compiled OcuPilot.Test classes
       (DW-1886)"
     owner: "user"
-    status: open
-    ref: ""
+    status: done
+    ref: "slot B compose.yml set 2026-10-01 by the orchestrator on the owner's instruction; takes effect at the next docker compose up -d --wait (a restart keeps the old environment)"
