@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-10-01'
+updated: '2026-10-02'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -522,6 +522,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A turn's egress joins the progress payload** [AMENDED 2026-10-01, Story 16.15 spec gate, Rule 20]: `egress`, `{provider, endpointHost, leavesInstance, contextSent}` or `null` until the turn's first dispatched provider call has returned, is the fact `ProviderPort` derived for that call (AD-42), kept by the job on the turn row and on its conversation entry and carried by the conversation read too. It is configuration, never model or tool content, and is rendered as text.
 
   **A tool step's `text` is its result cut to `Limits.TOOLSTEPTEXTMAXLENGTH` (4,096) characters**: 4,095 and U+2026 when cut (one fewer where the cut would split a surrogate pair), marked truncated, so a poll carries at most that per tool step. The result the dispatcher hands the model is not cut by it [AMENDED 2026-09-30, Story 23.2, DW-1210, Rule 20].
+
+  **A tool step's `target` carries the redaction mark where it holds a declared secret's value**, set at write time through `Dispatch.StepTarget`, as the ledger row's is (AD-46), so the poll, the stored transcript and the panel's tool-call card never show it; the ledger still decides from the raw target [AMENDED 2026-10-02, Story 23.3, DW-1782, Rule 20].
 
 ### AD-34 — Confirmation is a single atomic transition
 
