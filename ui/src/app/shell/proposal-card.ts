@@ -14,6 +14,7 @@ import {
   type ProposalPrivilegeLine,
   consequenceSentence,
   remoteListSentence,
+  journalSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -270,6 +271,17 @@ export interface ProposalConfirmRequest {
       >
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ remoteListText }}</span>
+      </p>
+    }
+
+    @if (journalVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ journalText }}</span>
       </p>
     }
 
@@ -737,6 +749,18 @@ export class ProposalCard {
 
   protected get remoteListVisible(): boolean {
     return this.phase() !== null && this.remoteListText !== '';
+  }
+
+  /**
+   * A journal proposal's sentence (Story 18.5): its warning dialog's own, naming the file a switch
+   * closes or a check reads. `''` for every other proposal.
+   */
+  protected get journalText(): string {
+    return journalSentence(this.view());
+  }
+
+  protected get journalVisible(): boolean {
+    return this.phase() !== null && this.journalText !== '';
   }
 
   /**

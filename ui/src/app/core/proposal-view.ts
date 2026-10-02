@@ -243,6 +243,35 @@ export function remoteListSentence(view: Pick<ProposalCardView, 'consequence' | 
 }
 
 /**
+ * Story 18.5: Journals' three writes, each stating its warning dialog's own sentence on the card.
+ * `consequenceSentence` answers `''` for them; the card states each through `journalSentence`, which
+ * names the file.
+ */
+export const CONSEQUENCE_JOURNALSWITCHFILE = 'JOURNAL.SWITCHFILE';
+export const CONSEQUENCE_JOURNALSWITCHDIRECTORY = 'JOURNAL.SWITCHDIRECTORY';
+export const CONSEQUENCE_JOURNALINTEGRITY = 'JOURNAL.INTEGRITY';
+
+/** The field a switch file proposal's diff names the file the instance writes now in. */
+const JOURNAL_CURRENT_FIELD = 'CurrentFile';
+
+/**
+ * The card's sentence for a journal proposal, or `''` for any other consequence: a switch file names
+ * the file it closes, its `CurrentFile` row's before value; an integrity check names the file it
+ * reads, the proposal's own target; a directory switch's sentence names no file, and its diff row
+ * names the directory it moves to. Each value is inserted through a replacer, so a name holding a
+ * placeholder is shown as written.
+ */
+export function journalSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'name'>): string {
+  if (view.consequence === CONSEQUENCE_JOURNALSWITCHFILE) {
+    const current = view.changed.find((row) => row.field === JOURNAL_CURRENT_FIELD)?.before ?? '';
+    return STRINGS.journalSwitchFileConsequence.replace('<file>', () => current);
+  }
+  if (view.consequence === CONSEQUENCE_JOURNALSWITCHDIRECTORY) return STRINGS.journalSwitchDirectoryConsequence;
+  if (view.consequence === CONSEQUENCE_JOURNALINTEGRITY) return STRINGS.journalIntegrityConsequence.replace('<file>', () => view.name);
+  return '';
+}
+
+/**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
  */

@@ -2075,11 +2075,15 @@ export const MONITOR_SENSORS_TYPE = 'SENSORS';
 /** The shape a `read.source.rows` member name takes, byte for byte `OcuPilot.Screen.Registry`'s `ROWSMEMBERPATTERN`. */
 export const ROWS_MEMBER_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
+/** The single-object type a `rows` read may also name (AD-36 as amended, Story 18.5). */
+export const OBJECT_ROWS_GET = 'GET';
+
 /**
  * What is wrong with `source.rows`, or `null` (AD-36 as amended, Story 16.7). A declared `rows` is a
  * member name (`ROWS_MEMBER_RE`) on an `admin` source whose `type` is an upper-case bare type
- * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, with no `parts`, `forEach` or `rowGet`:
- * the read issues that type once, with `maxRows` the cap plus one, and lists the answer's one member.
+ * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, or a single-object `GET` (Story 18.5),
+ * with no `parts`, `forEach` or `rowGet`: the read issues that type once, with `maxRows` the cap plus
+ * one, and lists the answer's one member.
  * `OcuPilot.Screen.Registry.RowsProblem` returns the same sentence for every case in
  * `OcuPilot.Test.ReadSourceCorpus`.
  */
@@ -2091,7 +2095,9 @@ export function rowsProblem(source) {
   if (source.port !== SOURCE_ADMIN) {
     return `${where} is declared on a '${shown(source.port)}' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)`;
   }
-  if (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type)) {
+  // AD-36 as amended (Story 18.5): a single-object GET may also be read as a list over one member.
+  const objectRows = source.type === OBJECT_ROWS_GET;
+  if (!objectRows && (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type))) {
     return `read.source.type '${shown(source.type)}' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)`;
   }
   const declared = ['parts', 'forEach', 'rowGet'].find((key) => source[key] !== undefined && source[key] !== null);

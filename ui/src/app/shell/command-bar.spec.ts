@@ -15,6 +15,8 @@ import {
   ScreenActions,
   TASK_IMPORT_ACTION_ID,
   TASK_MANAGER_SUSPEND_ACTION_ID,
+  JOURNAL_SWITCH_FILE_ACTION_ID,
+  JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
 } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
@@ -1346,6 +1348,34 @@ describe('the command bar', () => {
     expect(suspend()?.getAttribute('aria-disabled')).toBeNull();
     suspend()?.click();
     expect(ran).toBe(1);
+  });
+
+  it('Story 18.5: the bar draws Switch file and Switch directory at screen level on the screen that registered them', () => {
+    // Mutation (Rule 19): drop `hasJournalSwitchFileAction` from the template -> the drawn assertion goes red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.JournalList',
+      rowActions: [
+        { id: 'switchfile', selfProtection: '' },
+        { id: 'switchdirectory', selfProtection: '' },
+        { id: 'integrity', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    const file = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-journal-switch-file');
+    const directory = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-command-bar-journal-switch-directory');
+    fixture.detectChanges();
+    expect(file()).toBeNull();
+    expect(directory()).toBeNull();
+    const ran: string[] = [];
+    actions.register(declared.descriptor, JOURNAL_SWITCH_FILE_ACTION_ID, () => ran.push('file'));
+    actions.register(declared.descriptor, JOURNAL_SWITCH_DIRECTORY_ACTION_ID, () => ran.push('directory'));
+    fixture.detectChanges();
+    expect(file()?.textContent?.trim()).toBe(STRINGS.journalSwitchFileAction);
+    expect(directory()?.textContent?.trim()).toBe(STRINGS.journalSwitchDirectoryAction);
+    expect(file()?.getAttribute('aria-disabled')).toBeNull();
+    file()?.click();
+    directory()?.click();
+    expect(ran).toEqual(['file', 'directory']);
   });
 
   // --- Story 16.23: Download CSV --------------------------------------------------------------

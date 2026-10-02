@@ -292,6 +292,9 @@ services:
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate
+      # The journal classes sign in as probe principals holding Journals' pairs, with and without
+      # the system database's write, and switch the journal as them (Story 18.5).
+      # classes: JournalWrite, JournalWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -455,6 +458,13 @@ services:
       # probe database, a namespace and a mapping over them (Story 18.16).
       # classes: RemoteDatabaseDescriptor, RemoteDatabaseListing, RemoteDatabaseWrite, RemoteDatabaseWriteGate
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
+      # Switches this instance's journal file and journal directory through the shipped screen and
+      # confirm paths, and seeds an alternate journal directory to switch into. Its own variable
+      # because no narrower one names that effect: a switch closes the file every process is
+      # writing. Each class restores the current directory, the primary and the alternate it
+      # found and asserts the restore; the journal files a switch creates stay (Story 18.5).
+      # classes: JournalWrite, JournalWriteGate, PathPortInstance
+      OCUPILOT_ALLOW_JOURNAL: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

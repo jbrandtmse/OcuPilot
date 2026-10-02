@@ -1,0 +1,185 @@
+/// <p>Pins Story 18.5's declarations: Journals and its two unlisted screens, their pairs, prompts,
+/// reads and replaced classic pages; the three journal tools' kinds, ports, request types, pairs and
+/// replaced pages; their baseline lines; and the read grammar's single-object <code>GET</code> read
+/// over one member (AD-5, AD-8, AD-22, AD-36, AD-44).</p>
+/// <p>It reads declarations only and needs OcuPilot installed with no custom resource assigned to the
+/// replaced classic pages.</p>
+Class OcuPilot.Test.JournalDescriptor Extends %UnitTest.TestCase
+{
+
+Parameter LIST = "OcuPilot.Screen.Descriptor.JournalList";
+
+Parameter DETAILS = "OcuPilot.Screen.Descriptor.JournalFileDetails";
+
+Parameter DATABASES = "OcuPilot.Screen.Descriptor.JournalFileDatabaseList";
+
+Parameter SCREENPAIRS = "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
+
+/// <p>The groups of <var>pDeclaration</var>'s prompts, joined by commas.</p>
+ClassMethod PromptGroups(pDeclaration As %DynamicObject) As %String
+{
+    Set tOut = ""
+    Set tIterator = pDeclaration.suggestedPrompts.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tPrompt) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tPrompt.groupKey
+    }
+    Quit tOut
+}
+
+/// <p>AC1, AC11: Journals is OS management's thirteenth entry over the vendor's journal file list,
+/// newest first, with three row actions, three Capacity prompts and the classic Journals page.</p>
+/// <p>Mutation (Rule 19): give Journals a fourth prompt group or drop a prompt -&gt; the prompt leg
+/// goes red.</p>
+Method TestJournalsIsOsManagementsThirteenthEntry()
+{
+    Set tClass = ..#LIST
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey _ ":" _ tDeclaration.archetype, "os-management:13:journalListLabel:list", "OS management's thirteenth side-bar entry, a list")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Journal.File"",""type"":""LIST""}", "read through the vendor's journal file list")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Name"",""Size"",""CreationTime"",""Reason"",""DataSize""]", "its five fields")
+    Do $$$AssertEquals(tDeclaration.read.sort.default _ " " _ tDeclaration.read.sort.direction, "CreationTime desc", "newest first")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#SCREENPAIRS, "OS management's operate pair and the system database's read")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ tDeclaration.id.%ToJSON(), "journal-file|instance|{""kind"":""composite"",""parts"":[""Name""]}", "one journal file per row, keyed by its name")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "switchfile,switchdirectory,integrity", "Switch file, Switch directory and Check integrity")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%cspapp.op.utilsysjournals", "the classic Journals page, spelled as NormalizePage answers it (AD-44)")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("%cspapp.op.utilsysjournals"), $ClassMethod(tClass, "ClassicPage"), "which NormalizePage answers unchanged")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
+    Do $$$AssertEquals(..PromptGroups(tDeclaration), "promptGroupCapacity,promptGroupCapacity,promptGroupCapacity", "three Capacity prompts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("os-management/journals") _ "|" _ ##class(OcuPilot.Screen.Registry).DescriptorForTool("osmgmt.journals"), tClass _ "|" _ tClass, "its route and tool identifier resolve to it")
+}
+
+/// <p>AC2, AC11: Journal file details and Journal file databases are built, unlisted children of
+/// Journals with its pairs, each with three Troubleshooting prompts over the classic summary page;
+/// details read the file's <code>GET</code> by its route criterion, and the databases list reads that
+/// <code>GET</code>'s <code>Databases</code> member.</p>
+/// <p>Mutation (Rule 19): drop <code>"rows"</code> from the databases read -&gt; it reads the
+/// <code>GET</code> as one row and the read leg goes red.</p>
+Method TestDetailsAndDatabasesAreUnlistedChildrenOfJournals()
+{
+    For tCase = $ListBuild(..#DETAILS, "os-management/journals/details", "detail", "journal-file", "{""port"":""admin"",""endpoint"":""Journal.File"",""type"":""GET""}", "osmgmt.journalfile"), $ListBuild(..#DATABASES, "os-management/journals/databases", "list", "journal-file-database", "{""port"":""admin"",""endpoint"":""Journal.File"",""type"":""GET"",""rows"":""Databases""}", "osmgmt.journalfiledatabases") {
+        Set tClass = $List(tCase, 1)
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ " parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", tClass _ " validates")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ "'s read validates")
+        Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.parentScope, $List(tCase, 2) _ "|" _ $List(tCase, 3) _ "|0|os-management/journals", tClass _ " is built, unlisted, under Journals")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), $List(tCase, 4), tClass _ "'s entity type")
+        Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#SCREENPAIRS, tClass _ " carries Journals' pairs")
+        Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), $List(tCase, 5), tClass _ "'s read")
+        Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Get(0).param _ "|" _ tDeclaration.read.criteria.fields.%Size(), "file|1", tClass _ " takes the file as its one criterion")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%cspapp.op.utilsysjournalsummary", tClass _ " replaces the classic summary page (AD-44)")
+        Do $$$AssertEquals(..PromptGroups(tDeclaration), "promptGroupTroubleshooting,promptGroupTroubleshooting,promptGroupTroubleshooting", tClass _ " has three Troubleshooting prompts")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool($List(tCase, 6)), tClass, tClass _ "'s tool identifier resolves to it")
+    }
+}
+
+/// <p>AC9, AD-8, AD-44: each journal tool is a write on Journals through
+/// <class>OcuPilot.Port.JournalPort</class>, with its own read and request types, no body, nothing
+/// destructive; it requires Journals' pairs, the directory switch also the system database's write and
+/// <code>%Admin_Manage:USE</code>; and each names its replaced classic page, spelled as
+/// <code>NormalizePage</code> answers it.</p>
+/// <p>Mutation (Rule 19): drop <code>%DB_IRISSYS:WRITE</code> from
+/// <parameter>OcuPilot.Screen.Tool.JournalSwitchDirectory.EXTRAPAIRS</parameter> -&gt; that tool's pair
+/// leg goes red.</p>
+Method TestTheToolsDeclareTheirKindsPortsAndPairs()
+{
+    Set tScreen = "%Admin_Operate:USE,%DB_IRISSYS:READ"
+    Set tCases = $ListBuild($ListBuild("osmgmt.journals.switchfile", "Journal.Settings|STATE|SWITCHFILE|id", tScreen, "%cspapp.op.utilsysjournalproperties", "switchfile"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.journals.switchdirectory", "Journal.Settings|DIRSTATE|SWITCHDIR|id", tScreen _ ",%DB_IRISSYS:WRITE,%Admin_Manage:USE", "%cspapp.op.utilsysjournalswitchdirectory", "switchdirectory"))
+    Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.journals.integrity", "Journal.File|GET|INTEGRITYCHECK|file", tScreen, "%cspapp.op.utilsysjournalintegrity", "integrity"))
+    For tC = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tC)
+        Set tName = $List(tCase, 1)
+        Kill tTool
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool, 1)
+        Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tTool)), tName _ " is registered")
+        If '$IsObject($Get(tTool)) Continue
+        Set tClass = tTool.class
+        Do $$$AssertEquals(tTool.kind _ "|" _ $Parameter(tClass, "DESCRIPTORCLASS") _ "|" _ $ClassMethod(tClass, "PortClass"), "write|" _ ..#LIST _ "|OcuPilot.Port.JournalPort", tName _ " is a write on Journals through the journal port")
+        Do $$$AssertEquals($ClassMethod(tClass, "Endpoint") _ "|" _ $ClassMethod(tClass, "ReadType") _ "|" _ $ClassMethod(tClass, "WriteType") _ "|" _ $ClassMethod(tClass, "IdParam"), $List(tCase, 2), tName _ ": endpoint, read type, request type and id parameter")
+        Do $$$AssertEquals($ClassMethod(tClass, "SendsBody") _ "|" _ $ClassMethod(tClass, "Destructive") _ "|" _ $ClassMethod(tClass, "Creates") _ "|" _ $ClassMethod(tClass, "ChangeAction"), "0|0|0|updated", tName _ " sends no body, removes nothing and updates")
+        Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+        Set tText = ""
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tText = tText _ $Select(tText = "": "", 1: ",") _ $ListToString($List(tPairs, tI), ":")
+        }
+        Do $$$AssertEquals(tResolved _ " " _ tText, "1 " _ $List(tCase, 3), tName _ " requires exactly its pairs (AD-8)")
+        Do $$$AssertEquals($Parameter(tClass, "CLASSICPAGES"), $List(tCase, 4), tName _ " names its replaced classic page (AD-44)")
+        Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($List(tCase, 4)), $List(tCase, 4), tName _ "'s page is spelled as NormalizePage answers it")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), $List(tCase, 5), tName _ " carries its screen action")
+    }
+}
+
+/// <p>AC10, AD-22: the three journal keys are in the baseline, enabled.</p>
+/// <p>Mutation (Rule 19): drop one from <class>OcuPilot.Kernel.Governance.Baseline</class> -&gt; this
+/// and <class>OcuPilot.Test.GovernanceBaseline</class> go red.</p>
+Method TestTheBaselineEnablesTheThreeKeys()
+{
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Kernel.Governance.Baseline", "Keys")
+    Do $$$AssertTrue($IsObject(tXData), "the baseline's keys are read")
+    If '$IsObject(tXData) Quit
+    Set tKeys = ##class(%DynamicObject).%FromJSON(tXData.Data)
+    For tKey = "osmgmt.journals.switchfile", "osmgmt.journals.switchdirectory", "osmgmt.journals.integrity" {
+        Do $$$AssertEquals(tKeys.%GetTypeOf(tKey) _ " " _ tKeys.%Get(tKey), "boolean 1", tKey _ " is enabled in the baseline")
+    }
+}
+
+/// <p>AD-36 as amended: a single-object <code>GET</code> may be read over one member, and nothing else
+/// changes about the rule -- a detail call beside it is still refused, and the mirror's
+/// <code>rowsProblem</code> answers each case alike (<class>OcuPilot.Test.ReadSourceCorpus</class>).</p>
+/// <p>Mutation (Rule 19): drop the <code>GET</code> admission from
+/// <method>OcuPilot.Screen.Registry.RowsProblem</method> -&gt; the sound leg goes red.</p>
+Method TestAGetMayBeReadOverOneMember()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowsProblem({"port": "admin", "endpoint": "Journal.File", "type": "GET", "rows": "Databases"}), "", "a GET over one member is sound")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowsProblem({"port": "admin", "endpoint": "Journal.File", "type": "GET", "rows": "Databases", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}]}), "read.source.parts is declared with read.source.rows, and a list over one member issues one call and projects its rows (AD-36)", "beside parts it is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowsProblem({"port": "admin", "endpoint": "Journal.File", "type": "LIST", "rows": "Databases"}), "read.source.type 'LIST' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)", "and a LIST over one member is still refused")
+}
+
+/// <p>AD-59, AD-21's eighth case: the integrity check's script reads the journal file list first, as
+/// the guard does, then sends the body the port builds from the flag; a switch's script sends its
+/// call alone.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Port.AdminPort.JournalListStep</method> push from
+/// <method>OcuPilot.Port.AdminPort.Snippet</method> -&gt; the first-step leg goes red; have
+/// <method>OcuPilot.Port.JournalPort.Snippet</method> pass the caller body -&gt; the body leg goes red.</p>
+Method TestTheIntegrityScriptReadsTheListFirstAndSendsTheBuiltBody()
+{
+    Set tContext = {"origin": "http://host:1", "user": "u"}
+    Kill tQuery
+    Set tQuery("file") = "/j/20261002.001"
+    Set tQuery("CheckDetails") = "true"
+    Set tSteps = ##class(OcuPilot.Port.JournalPort).Snippet("Journal.File", "INTEGRITYCHECK", .tQuery, "", tContext)
+    Do $$$AssertEquals(tSteps.%Size(), 2, "two steps: " _ tSteps.%ToJSON())
+    If tSteps.%Size() '= 2 Quit
+    Do $$$AssertEquals(tSteps.%Get(0).%Get("text"), "curl -u 'u' -X GET 'http://host:1/api/admin/v2/journal/files?maxRows=0'", "the guard's read of the journal file list comes first")
+    Do $$$AssertTrue(tSteps.%Get(1).%Get("text") [ "/journal/file/integrity-check?file=/j/20261002.001", "then the check of the named file")
+    Do $$$AssertTrue(tSteps.%Get(1).%Get("text") [ "-d '{""CheckDetails"":true}'", "sending the body the port builds from the flag: " _ tSteps.%Get(1).%Get("text"))
+    Kill tQuery
+    Set tQuery("id") = "current"
+    Set tSteps = ##class(OcuPilot.Port.JournalPort).Snippet("Journal.Settings", "SWITCHFILE", .tQuery, "", tContext)
+    Do $$$AssertEquals(tSteps.%Size(), 1, "a switch's script is its one call: " _ tSteps.%ToJSON())
+}
+
+/// <p>AD-39: every <code>JOURNAL.*</code> code reads its own sentence through the one writer, on a
+/// refused tool call and on a field violation alike, never the generic unavailable sentence.</p>
+/// <p>Mutation (Rule 19): drop the <code>JOURNAL.</code> line from
+/// <method>OcuPilot.Api.Error.ReasonForToolCode</method> -&gt; this goes red.</p>
+Method TestEveryJournalCodeReadsItsOwnSentence()
+{
+    Set tCodes = ##class(OcuPilot.Api.JournalError).Codes()
+    Do $$$AssertEquals($ListLength(tCodes), 3, "Part A declares three codes")
+    For tI = 1:1:$ListLength(tCodes) {
+        Set tCode = $List(tCodes, tI)
+        Set tReason = ##class(OcuPilot.Api.JournalError).ReasonFor(tCode)
+        Do $$$AssertTrue(tReason '= "", tCode _ " has a sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ " reads it on a refused tool call")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ " and on a violation")
+    }
+}
+
+}

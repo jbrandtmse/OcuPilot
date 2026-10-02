@@ -11,14 +11,20 @@
 /// <method>OnBeforeAllTests</method> refuses unless <parameter>ARMINGVARIABLE</parameter> arms it.
 /// The refusal legs only resolve names and write nothing to the instance's own files. The
 /// permitting leg creates a scratch directory under the manager directory, and the seam legs one
-/// under <parameter>TMPROOT</parameter>; each removes what it created. Needs a process holding
-/// <code>%All</code>, journaling on, and a configured database outside the manager directory.</p>
+/// under <parameter>TMPROOT</parameter>; each removes what it created. The former-directory leg
+/// switches journaling to a probe alternate and back (<class>OcuPilot.Test.JournalProbe</class>) and
+/// restores the journal settings it found; the journal files it creates are kept, which is why
+/// <parameter>JOURNALVARIABLE</parameter> arms it too. Needs a process holding <code>%All</code>,
+/// journaling on, and a configured database outside the manager directory.</p>
 Class OcuPilot.Test.PathPortInstance Extends %UnitTest.TestCase
 {
 
 /// <p>The environment variable that arms this class, and the one value that arms it:
 /// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+/// <p>The environment variable that arms the former-directory leg's journal switches.</p>
+Parameter JOURNALVARIABLE = "OCUPILOT_ALLOW_JOURNAL";
 
 /// <p>The port under test.</p>
 Parameter PORT = "OcuPilot.Port.PathPort";
@@ -60,6 +66,9 @@ Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.PathPortInstance changes this instance's %GUIFileSelector allow-list and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    If $System.Util.GetEnviron(..#JOURNALVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.PathPortInstance switches this instance's journal directory and runs on a throwaway container only. " _ ..#JOURNALVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Quit $$$OK
 }
@@ -276,7 +285,11 @@ Method TestAnOverwriteNeverReachesAJournalFile()
         Set tFiles = $ClassMethod(..#HELPERS, "NamesIn", tDirectory, 0)
         Do $$$AssertTrue($ListLength(tFiles) > 0, tDirectory _ " holds journal files: " _ $ListToString(tFiles, " "))
         For tJ = 1:1:$ListLength(tFiles) {
-            Do $$$AssertEquals(..Overwrite(tDirectory, $List(tFiles, tJ)), tRefused, "'" _ tDirectory _ $List(tFiles, tJ) _ "' is refused to a caller that overwrites")
+            Set tGot = ..Overwrite(tDirectory, $List(tFiles, tJ))
+            ; A journal file closed moments ago is compressed under a new name (CompressFiles), so a
+            ; name that no longer exists by the time it resolves names no instance file.
+            If (tGot '= tRefused) && '##class(%File).Exists(tDirectory _ $List(tFiles, tJ)) Continue
+            Do $$$AssertEquals(tGot, tRefused, "'" _ tDirectory _ $List(tFiles, tJ) _ "' is refused to a caller that overwrites")
         }
         If $ListLength(tFiles) {
             Do $$$AssertEquals($ClassMethod(..#HELPERS, "ResolveOf", tDirectory, $List(tFiles, 1), "file"), $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHEXISTS, "path"), "and to a caller that does not overwrite, as a taken name")
@@ -332,6 +345,10 @@ Method TestEveryJournalSourceIsAJournalDirectory()
     Try {
         Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
         Do $$$AssertStatusOK(..WriteFile(tScratch _ "alternate/20260101.001"), "a scratch journal-like file in the alternate")
+        ; The journal history and the write-image journal name none here, so the three sources are
+        ; the whole list (TestTheWriteImageJournalsDirectoryIsRefused pins those two).
+        Do $ClassMethod(tPort, "UseJournalHistory", "")
+        Do $ClassMethod(tPort, "UseWijDirectory", "")
         Do $ClassMethod(tPort, "UseJournalSources", tScratch _ "primary", tScratch _ "alternate", tScratch _ "current/20260101.002")
         Do $$$AssertStatusOK($ClassMethod(tPort, "JournalDirectories", .tDirectories), "the port reads the three sources")
         Do $$$AssertEquals($ListToString(tDirectories, " "), tScratch _ "primary/ " _ tScratch _ "alternate/ " _ tScratch _ "current/", "the primary, the alternate and the current file's directory, in that order")
@@ -474,12 +491,148 @@ Method TestThePortReadsTheInstancesDirectories()
         Set tCurrent = ##class(%File).NormalizeDirectory(##class(%File).GetDirectory(tCurrent))
         If '$ListFind(tJournals, tCurrent) Set tJournals = tJournals _ $ListBuild(tCurrent)
     }
-    Do $$$AssertEquals($ListToString(tPortJournals, " "), $ListToString(tJournals, " "), "the primary, the alternate and the current file's directory, each once")
+    Set tHistory = ..HistoryDirectories()
+    For tI = 1:1:$ListLength(tHistory) {
+        If '$ListFind(tJournals, $List(tHistory, tI)) Set tJournals = tJournals _ $ListBuild($List(tHistory, tI))
+    }
+    Set tWij = ..WijDirectory()
+    If '$ListFind(tJournals, tWij) Set tJournals = tJournals _ $ListBuild(tWij)
+    Do $$$AssertEquals($ListToString(tPortJournals, " "), $ListToString(tJournals, " "), "the primary, the alternate and the current file's directory, then every directory the history lists and the write-image journal's, each once")
+    Do $$$AssertStatusOK(##class(OcuPilot.Port.PathPort).JournalHistoryDirectories(.tPortHistory), "the port reads the journal history")
+    Do $$$AssertEquals($ListToString(tPortHistory, " "), $ListToString(tHistory, " "), "naming each listed file's directory, newest first, once")
+    Do $$$AssertStatusOK(##class(OcuPilot.Port.PathPort).WijDirectory(.tPortWij), "the port reads the write-image journal's directory")
+    Do $$$AssertEquals(##class(%File).NormalizeDirectory(tPortWij), tWij, "as Config.config names it, the manager directory when empty")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Port.PathPort).JournalSources(.tPrimary, .tAlternate, .tCurrentFile), "the port reads the three journal sources")
     Do $$$AssertEquals(tPrimary, ##class(%SYS.Journal.System).GetPrimaryDirectory(), "its primary is the instance's")
     Do $$$AssertEquals(tAlternate, ##class(%SYS.Journal.System).GetAlternateDirectory(), "its alternate is the instance's")
     Do $$$AssertEquals(tCurrentFile, ##class(%SYS.Journal.System).GetCurrentFileName(), "its current file is the instance's")
+}
+
+
+/// <p>The directory of every file the instance's journal history lists, read here from
+/// <code>%SYS.Journal.File:ByTimeReverseOrder</code> in <code>%SYS</code> rather than through the
+/// port, normalized and named once, newest first.</p>
+ClassMethod HistoryDirectories() As %List
+{
+    Set tOut = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("%SYS.Journal.File:ByTimeReverseOrder")
+        Set tSC = tRS.Execute()
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tDirectory = ##class(%File).NormalizeDirectory(##class(%File).GetDirectory(tRS.Get("Name")))
+            If '$ListFind(tOut, tDirectory) Set tOut = tOut _ $ListBuild(tDirectory)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tOut
+}
+
+/// <p>The write-image journal's directory, read here from <code>Config.config</code> in
+/// <code>%SYS</code>, normalized: the manager directory when <code>wijdir</code> is empty.</p>
+ClassMethod WijDirectory() As %String
+{
+    Set tDirectory = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProperties
+        Do ##class(Config.config).Get(.tProperties)
+        Set tDirectory = $Get(tProperties("wijdir"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    If tDirectory = "" Set tDirectory = $System.Util.ManagerDirectory()
+    Quit ##class(%File).NormalizeDirectory(tDirectory)
+}
+
+/// <p>AC6, DW-1797: a former journal directory -- the probe alternate journaling was switched to and
+/// back from, no longer configured -- is named by the journal history alone, and an existing journal
+/// file there is refused <code>PATH.INSTANCE</code> to a caller that overwrites, from that directory as
+/// the root; through the fixture's history seam naming no directory, the same file resolves. The
+/// journal settings found are restored and the files the switches wrote are kept.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.PathPort.JournalHistoryDirectories</method> from
+/// <method>OcuPilot.Port.PathPort.JournalDirectories</method> -&gt; the former directory's file
+/// resolves and this goes red.</p>
+Method TestAFormerJournalDirectoryStaysRefused()
+{
+    Set tProbe = "OcuPilot.Test.JournalProbe"
+    Set tSaved = $ClassMethod(tProbe, "JournalSettings")
+    Set tAlternate = $ClassMethod(tProbe, "AlternateDirectory")
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(tProbe, "SeedAlternate"), "the probe alternate is configured")
+        Set tOrigNS = $NAMESPACE
+        Set $NAMESPACE = "%SYS"
+        Set tSwitchSC = ##class(%SYS.Journal.System).SwitchDirectory(.tThere)
+        Set tBackSC = ##class(%SYS.Journal.System).SwitchDirectory(.tBack)
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertStatusOK(tSwitchSC, "journaling switched to the alternate: " _ $Get(tThere))
+        Do $$$AssertStatusOK(tBackSC, "and back: " _ $Get(tBack))
+        Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreJournal", tSaved), "the journal settings found are restored")
+        Do $$$AssertTrue('$ListFind(..Journals(), tAlternate), "the alternate is no longer configured")
+        Do $$$AssertTrue($ListFind(..HistoryDirectories(), tAlternate) > 0, "while the journal history still names it")
+        Set tFiles = $ClassMethod(..#HELPERS, "NamesIn", tAlternate, 0)
+        Set tJournal = ""
+        For tI = 1:1:$ListLength(tFiles) {
+            If $Match($List(tFiles, tI), "[0-9]{8}\.[0-9]{3}z?") Set tJournal = $List(tFiles, tI)
+        }
+        Do $$$AssertTrue(tJournal '= "", "a journal file stands in the former directory: " _ $ListToString(tFiles, " "))
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(tAlternate)), "the purpose is restricted to the former directory")
+        Set tRefused = $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path")
+        Do $$$AssertEquals(..Overwrite(tAlternate, tJournal), tRefused, "'" _ tAlternate _ tJournal _ "' is refused to a caller that overwrites")
+        Do $ClassMethod(..#FIXTURE, "UseJournalHistory", "")
+        Do $$$AssertEquals(..Overwrite(tAlternate, tJournal, ..#FIXTURE), "200|" _ tAlternate _ tJournal, "and resolves while the history names no directory, so the history read is what refuses it")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the former-directory legs ran to the end")
+    }
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreJournal", tSaved), "the journal settings found are in place")
+    Do $$$AssertEquals($ClassMethod(tProbe, "JournalSettings").%ToJSON(), tSaved.%ToJSON(), "and read as found")
+}
+
+/// <p>AC6, DW-1797: an existing file directly in the write-image journal's directory is refused
+/// <code>PATH.INSTANCE</code> to a caller that overwrites, through the fixture's seam naming a scratch
+/// directory under <parameter>TMPROOT</parameter>, while a file in a subdirectory resolves; it resolves
+/// once the seam names another directory; and a failed read refuses. The same holds for a directory
+/// the journal history names. Creates and removes its scratch directory.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.PathPort.WijDirectory</method> from
+/// <method>OcuPilot.Port.PathPort.JournalDirectories</method> -&gt; the write-image journal's file
+/// resolves and this goes red.</p>
+Method TestTheWriteImageJournalsDirectoryIsRefused()
+{
+    Set tScratch = ..#TMPROOT _ "ocupilot-pathport-wij-" _ $Job _ "/"
+    Set tPort = ..#FIXTURE
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "SetUp", 1, $ListBuild(..#TMPROOT)), "the purpose is restricted to /tmp/")
+        Do $$$AssertStatusOK(..WriteFile(tScratch _ "IRIS.WIJ"), "a scratch write-image journal file")
+        Do $$$AssertStatusOK(..WriteFile(tScratch _ "sub/t.xml"), "and a file in a subdirectory")
+        Set tName = $Piece(tScratch, "/", *-1) _ "/IRIS.WIJ"
+        Set tRefused = $ClassMethod(..#HELPERS, "Refusal", ##class(OcuPilot.Api.Error).#PATHINSTANCE, "path")
+        Do $ClassMethod(tPort, "UseJournalHistory", "")
+        Do $ClassMethod(tPort, "UseWijDirectory", tScratch)
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), tRefused, "a file directly in the write-image journal's directory is refused")
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, $Piece(tScratch, "/", *-1) _ "/sub/t.xml", tPort), "200|" _ tScratch _ "sub/t.xml", "but one in a subdirectory of it resolves")
+        Do $ClassMethod(tPort, "UseWijDirectory", ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory()))
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), "200|" _ tScratch _ "IRIS.WIJ", "and the same file resolves once the write-image journal is elsewhere")
+        Do $ClassMethod(tPort, "UseWijDirectory", "", 1)
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), tRefused, "while its directory cannot be read, the overwrite is refused")
+        Do $ClassMethod(tPort, "UseWijDirectory", ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory()))
+        Do $ClassMethod(tPort, "UseJournalHistory", $ListBuild(tScratch))
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), tRefused, "a file in a directory the journal history names is refused the same way")
+        Do $ClassMethod(tPort, "UseJournalHistory", "", 1)
+        Do $$$AssertEquals(..Overwrite(..#TMPROOT, tName, tPort), tRefused, "and while the history cannot be read, the overwrite is refused")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the write-image journal legs ran to the end")
+    }
+    Do ##class(%File).Delete(tScratch _ "IRIS.WIJ")
+    Do ##class(%File).Delete(tScratch _ "sub/t.xml")
+    Do ##class(%File).RemoveDirectory(tScratch _ "sub/")
+    Do ##class(%File).RemoveDirectory(tScratch)
+    Do $$$AssertTrue('##class(%File).Exists(tScratch), "the scratch directory is removed")
 }
 
 }

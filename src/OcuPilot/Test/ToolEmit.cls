@@ -249,6 +249,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 16.11: the Task Manager's start declares %Admin_Secure:USE after the write's own,
             ; without which the vendor's start runs it as the caller (AD-8 as amended 2026-09-30).
             If $Parameter(tTool.class, "STARTRESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "STARTRESOURCE"), $Parameter(tTool.class, "STARTPERMISSION")))
+            ; Story 18.5: the journal directory switch declares the system database's write and
+            ; %Admin_Manage:USE after the write's own (AD-8 as amended 2026-10-02).
+            Set tExtras = $Parameter(tTool.class, "EXTRAPAIRS")
+            For tExtraIndex = 1:1:$Length(tExtras, ",") {
+                Set tExtra = $ZStrip($Piece(tExtras, ",", tExtraIndex), "<>W")
+                If tExtra '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Piece(tExtra, ":", 1), $Piece(tExtra, ":", 2)))
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {

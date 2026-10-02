@@ -79,8 +79,8 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 /// <p>AD-26 as amended 2026-09-24, 2026-09-28, 2026-09-29 and 2026-10-01: the queued writes the port
 /// admits are exactly <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>,
 /// <code>Namespace.Namespace</code> <code>MAPPINGS</code>, Story 18.4's six
-/// <code>Database.Actions</code> operations and <code>Namespace.Namespace</code> <code>INTEROP</code>,
-/// each a mutating pair, and the probe pair the refusal above
+/// <code>Database.Actions</code> operations, <code>Namespace.Namespace</code> <code>INTEROP</code> and
+/// Story 18.5's <code>Journal.File</code> <code>INTEGRITYCHECK</code>, each a mutating pair, and the probe pair the refusal above
 /// is driven with is not one of them, so the refusal is still what every other mutating request that
 /// would queue meets.</p>
 /// <p>Mutation (Rule 19): add <code>OcuPilotProbeAsyncWrite/PUT</code> to
@@ -89,7 +89,7 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 Method TestOnlyTheNamedQueuedWritesAreAdmitted()
 {
     Set tQueued = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
-    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings, the six disk operations and the enable of interoperability")
+    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP,Journal.File/INTEGRITYCHECK", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings, the six disk operations, the enable of interoperability and the journal integrity check")
     For tI = 1:1:$ListLength(tQueued) {
         Set tPair = $List(tQueued, tI)
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), tPair _ " is a mutating pair")
@@ -181,6 +181,47 @@ Method TestTheSelfQueuedAuditListIsPolledToAnOrdinarySuccess()
     }
     Do $$$AssertTrue($Extract(##class(OcuPilot.Test.PortFixture).Recorded("taskName"), 1, 17) = "GET /v2/ocupilot/", "the task is labelled under the stub URL: " _ ##class(OcuPilot.Test.PortFixture).Recorded("taskName"))
     Do $$$AssertEquals(..TaskCount(), tBefore, "the queued row is gone")
+}
+
+/// <p>AD-26, AD-39's fifth exception (Story 18.5): a real queued journal integrity check, its finished
+/// poll answered by <class>OcuPilot.Test.JournalConsolePort</class>, answers 200 with
+/// <code>{Result, console}</code>: two lines as written; 201 lines cut to
+/// <parameter>OcuPilot.Port.AdminPort.CONSOLEMAXLINES</parameter>, the last U+2026; and a failed check
+/// that wrote lines its lines with <code>failed</code> true. No task row is left.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.AdminPort.AwaitTask</method>'s failed-with-lines
+/// branch -&gt; the failed leg answers a fault and goes red; drop the cut from
+/// <method>OcuPilot.Port.AdminPort.Consoled</method> -&gt; the 201-line leg goes red.</p>
+Method TestAJournalChecksConsoleIsAnsweredCutAndOnFailure()
+{
+    Set tPort = "OcuPilot.Test.JournalConsolePort"
+    Set tTaskClass = $Parameter("OcuPilot.Port.AdminPort", "ASYNCTASKCLASS")
+    Set tFile = ##class(OcuPilot.Test.JournalIntegrity).ClosedFile()
+    Do $$$AssertTrue(tFile '= "", "a closed journal file is listed")
+    If tFile = "" Quit
+    Set tBefore = ..TaskCount()
+    ; state parameter, lines armed, failed flag expected, lines kept, last line expected
+    Set tCases = $ListBuild($ListBuild("STATEFINISHED", 2, 0, 2, "line 2"), $ListBuild("STATEFINISHED", 201, 0, 200, $Char(8230)), $ListBuild("STATEFAILED", 3, 1, 3, "line 3"))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tLabel = $List(tCase, 1) _ " with " _ $List(tCase, 2) _ " lines"
+        Do $ClassMethod(tPort, "Clear")
+        Do $ClassMethod(tPort, "Arm", $Parameter(tTaskClass, $List(tCase, 1)), $List(tCase, 2))
+        Kill tQuery
+        Set tQuery("file") = tFile
+        Set tResult = ""
+        Set tSC = $ClassMethod(tPort, "Invoke", "Journal.File", "INTEGRITYCHECK", .tQuery, {"CheckDetails": false}, .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, tLabel _ " answers")
+        Do $$$AssertEquals(tHttp, 200, tLabel _ " as a 200")
+        Set tConsole = []
+        If $IsObject(tResult) && (tResult.%GetTypeOf("console") = "array") Set tConsole = tResult.%Get("console")
+        Do $$$AssertEquals(tConsole.%Size(), $List(tCase, 4), tLabel _ ": the lines kept")
+        Do $$$AssertEquals(tConsole.%Get(0), "line 1", tLabel _ ": in order")
+        Do $$$AssertEquals($Select(tConsole.%Size() > 0: tConsole.%Get(tConsole.%Size() - 1), 1: ""), $List(tCase, 5), tLabel _ ": a cut console ends with U+2026")
+        Do $$$AssertEquals(''$Select($IsObject(tResult): tResult.%Get("failed"), 1: 0), $List(tCase, 3), tLabel _ ": failed only when the check failed")
+        Do $$$AssertTrue($IsObject(tResult) && $IsObject(tResult.%Get("Result")), tLabel _ ": with the task's result")
+    }
+    Do $ClassMethod(tPort, "Clear")
+    Do $$$AssertEquals(..TaskCount(), tBefore, "no queued row is left")
 }
 
 }

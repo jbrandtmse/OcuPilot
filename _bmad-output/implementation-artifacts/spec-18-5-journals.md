@@ -2,14 +2,22 @@
 title: 'Story 18.5: Journals'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
-baseline_revision: '8f06ee016f2ed388ee32c7f6e3284b270985f2a8'
+status: 'done'
+baseline_revision: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A switch-directory proposal confirmed after the alternate directory stops being distinct answers 500 INTERNAL instead of a target-changed refusal.
+    evidence: |-
+      Reproduced on ocupilot-b-ci 2026-10-02: mint osmgmt.journals.switchdirectory with a probe alternate, restore the settings, confirm -> 500 INTERNAL "the prohibited set could not be read: JOURNAL.SWITCHDIR.NOOTHER".
+      Prohibited.Target treats any non-404 read refusal as an error, and JournalPort's DIRSTATE refuses 409 NOOTHER. It fails closed: nothing switches.
+    location: >-
+      src/OcuPilot/Port/JournalPort.cls State; src/OcuPilot/Kernel/Proposal/Prohibited.cls Target
+    severity: medium
 ---
 
 <intent-contract>
@@ -518,7 +526,46 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 
 - 2026-10-02, spec gate (runner, Rule 5 tier 1): epics.md's 18.5 block (:7184-7185) and `epic-18-context.md` corrected at origin. Was: "`switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees." Now: it swaps between the configured primary and alternate directories and answers 409 when they are the same (vendor source `System.cls:81-126`; Task 0 measures it). The record list's halving gains its cause (the counter steps twice per kept row, `ListTask.cls:88,93`), so doubling is exact only when no row is skipped. The split (Design Notes › Size) and the spine amendments wait for the orchestrator's decision.
 
+- 2026-10-02, implement Part A, for the runner (Rule 5; each a choice the spec left open or a deviation, none contradicting an AD):
+  - **AD-51:** switch directory's fresh read is a second port-composed type, `Journal.Settings/DIRSTATE`: `STATE` plus `OtherDirectory`, read from the settings `GET` by the vendor's `GetTheOtherDirectory` rule (its `%Admin_Manage:USE` admits the read). It refuses 409 `JOURNAL.SWITCHDIR.NOOTHER` at the fresh read, so the screen and the mint are refused before anything is sent; the vendor's own 409 is still mapped for a race. The subject is `CurrentFile,CurrentDirectory,OtherDirectory`, and the card's diff row is `CurrentDirectory` from the current to the other directory.
+  - **AD-36:** a single-object `GET` read answers no rows for a vendor 404 (or `PORT.NOTFOUND`) only; any other 404 code, `JOURNAL.FILE.UNLISTED` among them, fails the read (`Screen/Read.cls` `IsAbsence`). The integrity tool mints through `Screen/Tool/JournalMint.cls`, which passes that refusal through rather than reading it as absent.
+  - **AD-13, AD-10:** Part A adds only `journal-file` and `journal-file-database` to `TYPES`, and only `journal-file` to `COVEREDTYPES`; `journal-record`, `journal-settings` and its `IDRULES` singleton are 18.19's and 18.18's.
+  - **Routes:** Journal file details and Journal file databases are `os-management/journals/details` and `os-management/journals/databases`, each opened at `<route>/<file>` with the one `file` criterion (the `DatabaseDetails` convention), not `:id` patterns. View records is 18.19's.
+  - **Strings:** the `JournalError` sentences are the instance's envelope reasons and are not client strings, as `DatabaseError`'s are not. The details screen's databases section reuses the Databases row's "Databases"; "Size", "Reason", "Maximum size", "Database", "Check integrity", "Integrity check" and the 18.4 running and finished lines are reused keys.
+
 ## Review Triage Log
+
+### 2026-10-02 — Review pass
+
+- verdicts: 27 findings — high 0, medium 7, low 8, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `AwaitTask`'s console paths (lines, the 200-line cut, a failed check with lines) ran only against an empty console — added `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` over the new `Test/JournalConsolePort.cls` poll seam; red under both mutations (run 2717).
+  - `[medium]` `[patch]` the unchecked flag reaching the port as `false` was never observed — `JournalIntegrity` asserts the seam's bodies after each caller (false from the screen, true from the proposal) and the Journals page spec asserts the clean leg's request body; both red under their mutations.
+  - `[medium]` `[patch]` the integrity check's AD-59 script (the guard's list read first, the built body) was untested — added `JournalDescriptor.TestTheIntegrityScriptReadsTheListFirstAndSendsTheBuiltBody` (run 2718 red).
+  - `[medium]` `[patch]` the card's journal warning block had no component test — added a Story 18.5 case to `proposal-card.spec.ts`; red with the block hidden.
+  - `[medium]` `[patch]` `ReasonForToolCode`'s `JOURNAL.` dispatch was untested — added `JournalDescriptor.TestEveryJournalCodeReadsItsOwnSentence` (run 2718 red).
+  - `[low]` `[patch]` the rows-over-GET absence branch (`tObjectGone`) never ran — added `JournalRead.TestAnAbsentFileReadsAsNoDatabases` with `JournalCountPort.AnswerAbsent` (run 2719 red).
+  - `[medium]` `[patch]` the agent mint's refusal of a switch id other than `current` was never exercised — added the leg to `JournalWrite.TestTheFileIsSwitchedOnBothCallers` (run 2721 red).
+  - `[low]` `[patch]` `JournalIntegrity`'s mint-answer and read-tool no-line assertions could not fail (neither path issues the check) — deleted both; the stored-proposal and ledger leg is the pinning one, and the planned AC5 mutation now reddens it (run 2720).
+  - `[medium]` `[patch]` `JournalRead`'s row-projection assertion ran only when the second-newest file held databases — the leg now picks a closed file whose `GET` names databases and asserts unconditionally.
+  - `[low]` `[reject]` `ToolEmit`'s `EXTRAPAIRS` expectation is derived from the parameter it checks — `JournalDescriptor.TestTheToolsDeclareTheirKindsPortsAndPairs` pins the literal pairs (run 2700 red), so an edit is caught there.
+  - `[false]` `[reject]` AC0 has no pinning test — AC0 is Task 0's recorded measurement (Design Notes › Measured at implement), not code.
+  - `[false]` `[reject]` AC1's "Journal settings 14th" has no test — Journal settings is Story 18.18's under the split the intent provides for (Design Notes › Size).
+  - `[low]` `[patch]` AC5's planned "the result carries output" mutation was unrecorded — run: `Confirm` storing the output with the read-back reddens the stored-proposal leg (run 2720); line recorded in `## Verification`.
+  - `[low]` `[patch]` `IsAbsence` sat between `ApplyView`'s doc comment and `ApplyView` — moved above the doc comment in `Screen/Read.cls`.
+  - `[false]` `[reject]` the pass-1 Auto Run Result was still in place — finalize rewrites it for this pass.
+  - `[low]` `[reject]` AC1's text was not amended at the split — the fix is a spec edit; left for the runner.
+  - `[false]` `[reject]` (intent) Parts B and C are absent — the intent provides for the split along its parts, decided 2026-10-02.
+  - `[false]` `[reject]` (intent) the guard ships the file rule only — Design Notes › Size puts the filter, doubling and offset in AC8 (Part C), and no Part A surface reaches `Journal.Record` `LIST`.
+  - `[low]` `[reject]` (intent) the details and databases routes are `journals/details` and `journals/databases`, not `:id` patterns — a journal file name holds slashes, so the codebase's `<route>/<id>` convention is the working form; AC2 holds in the browser; the runner corrects the Boundaries table at origin.
+  - `[false]` `[reject]` (intent) switch directory reads `DIRSTATE` with `OtherDirectory` in its subject — AC4's "the card names the other directory" needs it, and NOOTHER still answers 409 on both callers (`JournalWrite`).
+  - `[false]` `[reject]` (intent) the integrity subject adds `CheckDetails` and `JournalPort`'s `GET` carries it null — the fresh read is still the file's `GET` with `FileGUID` as precondition; the member exists only on the tool's port.
+  - `[false]` `[reject]` (intent) the server answers 200 with `continues` where the client spec mocks 202 — the client reads `continues` from the body (`screen-action-handler.ts:1135`).
+  - `[false]` `[reject]` (intent) the card shows the lines but no verdict — AC5 puts the verdict on the page and the lines on the page and the card, which renders `output.lines` (`proposal-card.ts:327`).
+  - `[false]` `[reject]` (intent) an unlisted file on details renders the gone state — the server refuses `JOURNAL.FILE.UNLISTED` before the vendor call (`JournalRead`), and the page maps that code to its published empty state.
+  - `[false]` `[reject]` (intent) `IsAbsence` changes every GET-sourced read — reads go through `AdminPort`, whose vendor 404s all map to `PORT.NOTFOUND` (`Kernel/Fault.cls:129`; `TYPEFAULTS` names no `GET`); only the journal guard answers another 404 code.
+  - `[low]` `[patch]` (intent) `JournalError` said its sentences are published in EXPERIENCE.md — they are not (the `DatabaseError` precedent); the two clauses are deleted.
+  - `[false]` `[reject]` (intent) the pass-1 Auto Run Result was stale — same as above; finalize rewrites it.
 
 ## Design Notes
 
@@ -630,6 +677,12 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 - **Step 5:** `SWITCHFILE` 0.004-0.005 s, answering `{CurrentFile}` (the new newest listed file), needs Journals' two pairs only. One-directory `SWITCHDIR` is a vendor 409, answered `PORT.CONFLICT` and logged at error severity by `AdminPort`. `_SYSTEM`'s `SWITCHDIR` goes to `ocuprobe185alt/` and back (0.004-0.006 s). Neither switch records a vendor audit event with auditing on. Each `Config.Journal.Modify` of a directory (`SeedAlternate`, `RestoreJournal`) itself switches the file ("to activate journal changes").
 - **Step 7:** `ByTimeReverseOrder` names every file the switches wrote in `ocuprobe185alt/` (144 files, 0.279 s).
 - **Step 8:** `Config.Journal` and `Config.config` equal S0; journaling writes in `/durable/iris/mgr/journal/`; no probe principal; async task rows 337 as at S0. The rest differs: 34 new journal files (current `20261002.080`); `ocuprobe185alt/` holds four of them and the vendor's `iris.lck`, all kept; `messages.log` +140 lines, `alerts.log` +5 lines (OcuPilot's logged refusals); monitor state 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Step 10 (set from the record, implement 2026-10-02):**
+  - Extra pairs: switch file none; switch directory `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE`; the integrity check none.
+  - Console member: `Console`; `AwaitTask` answers `{Result, console}` for `CONSOLEDTYPES`, at most 200 lines.
+  - Classic pages, as `NormalizePage` spells them: `%cspapp.op.utilsysjournals`, `%cspapp.op.utilsysjournalsummary`, `%cspapp.op.utilsysjournalproperties`, `%cspapp.op.utilsysjournalswitchdirectory`, `%cspapp.op.utilsysjournalintegrity` (Part A's five); `%cspapp.op.utilsysjournal` and `%CSP.UI.Portal.Journal` stay with 18.19 and 18.18.
+  - AD-15/AD-53: the three Part A writes record no vendor event (the runner's twelfth named case).
+  - The doubling factor, the next-page rule and the directories' `compare` are 18.19's and 18.18's. No Part A read or check exceeded `ASYNCTIMEOUT` (the largest file's check, every record, 1.085 s), so no named limit is added.
 
 ## Verification
 
@@ -676,27 +729,51 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 - AC9: `%Admin_Journal:USE` is dropped from `JournalSettings`' pairs → `JournalWriteGate` and `JournalDescriptor` go red.
 - AC10: a baseline key is dropped → `GovernanceBaseline` goes red.
 
+**Mutations run (Rule 19, implement 2026-10-02, `ocupilot-b-ci`; each reverted byte-identical and the tree reloaded):**
+
+- mutation: Journals' read declares `Journal.File` `GET` in place of `LIST` → `JournalRead.TestJournalsAndItsToolAnswerOneRead` red (run 2691)
+- mutation: `AdminPort.JournalGuard` answers OK for an unlisted file → `JournalRead.TestAnUnlistedFileIsRefusedBeforeTheVendorIsCalledForIt` red on its zero vendor calls (run 2692)
+- mutation: `JournalPort` `STATE` answers a constant `CurrentFile` → `JournalWrite.TestASwitchSinceTheMintRefusesTheConfirm` and `TestTheFileIsSwitchedOnBothCallers` red (run 2693)
+- mutation: `JournalSwitchFile.FINGERPRINTSUBJECT` emptied → the tool registry refuses it, `JournalDescriptor.TestTheToolsDeclareTheirKindsPortsAndPairs` red (run 2694)
+- mutation: `JournalPort` drops the vendor 409 mapping → `JournalWrite.TestOneDirectoryIsRefusedOnBothCallers` red on its code (run 2695)
+- mutation: `JournalPort` drops the unmoved check → `JournalWrite.TestASwitchThatStaysIsRefusedUnmoved` red (run 2696)
+- mutation: `JournalIntegrityCheck.WriteOutput` answers `""` → `JournalIntegrity.TestErrorsReachThePageAndTheCardOnly` red (run 2697)
+- mutation: `PathPort.JournalDirectories` drops `JournalHistoryDirectories` → `PathPortInstance.TestAFormerJournalDirectoryStaysRefused` red, with the directory roster and the history leg (run 2698)
+- mutation: `PathPort.JournalDirectories` drops `WijDirectory` → `PathPortInstance.TestTheWriteImageJournalsDirectoryIsRefused` red, with the directory roster (run 2699)
+- mutation: `%Admin_Manage:USE` dropped from `JournalSwitchDirectory.EXTRAPAIRS` → `JournalWriteGate.TestEachMissingPairIsRefusedByNameBeforeAnyPortCall` red (run 2700)
+- mutation: `osmgmt.journals.integrity` dropped from `Baseline.cls` → `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red (run 2701)
+- mutation: Journals' `sideBarPosition` 0, mirror regenerated → `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 2702) and `ui/tools/navigation.test.mjs`'s two side-bar rosters red
+- mutation: the handler's `<file>` fill dropped → `journal-list.page.spec.ts`'s switch and integrity legs red (vitest)
+- mutation: `JournalFileDetails` dropped from `DESCRIPTOR_PAGES`, rebuilt and redeployed → `journals.browser-spec.mjs`'s details leg red (browser)
+- mutation: `AdminPort.AwaitTask`'s failed-with-lines branch and `Consoled`'s cut disabled → `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` red on its failed and 201-line legs (run 2717)
+- mutation: `AdminPort.Snippet` drops the `JournalListStep` push → `JournalDescriptor.TestTheIntegrityScriptReadsTheListFirstAndSendsTheBuiltBody` red (run 2718)
+- mutation: `Error.ReasonForToolCode`'s `JOURNAL.` line disabled → `JournalDescriptor.TestEveryJournalCodeReadsItsOwnSentence` red (run 2718)
+- mutation: `Read.Execute`'s `tObjectGone` forced to 0 → `JournalRead.TestAnAbsentFileReadsAsNoDatabases` red (run 2719)
+- mutation: `JournalIntegrityCheck.ScreenActionDelta` sends true for any flag → `JournalIntegrity.TestACheckPastTheBoundHasStarted` red on the false body (run 2720)
+- mutation (AC5, planned): `Confirm` stores the write's output with the read-back → `JournalIntegrity.TestErrorsReachThePageAndTheCardOnly` red on its stored-proposal and ledger leg (run 2720)
+- mutation: `JournalSwitch.ArgumentProblem` answers no problem → `JournalWrite.TestTheFileIsSwitchedOnBothCallers` red on the agent's other-id leg (run 2721)
+- mutation: the handler sends a flag as `'true'` whatever was chosen → `journal-list.page.spec.ts`'s clean-check leg red (vitest)
+- mutation: `ProposalCard.journalVisible` answers false → `proposal-card.spec.ts`'s Story 18.5 leg red (vitest)
+
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: observation contradicts the plan: `osmgmt.journals.switchdirectory` needs `%Admin_Manage:USE` beyond Journals' pairs and `%DB_IRISSYS:WRITE` (Task 0 step 9, "any step needs a pair outside the tables plus `%DB_IRISSYS:WRITE`"); without it the vendor answers 200 and switches to a new file in the same directory.
+Status: done
+Blocking condition: none
 
-- **Implement pass 1 (2026-10-02), halted at Task 0 step 9.** Built only Task 0 step 1's plumbing; no tool, descriptor, form or test class exists. The measurements are under Design Notes › Measured at implement; the AD-8 sentence and the AD-15/AD-53 named cases are in the Spec Change Log for the runner.
-- **Evidence.** The handoff measured the four pair combinations in Measured at implement. The stage agent re-measured the deciding row on its own: principal `OCUPROBE185STAGEV` with `%Admin_Operate:U` and `%DB_IRISSYS:RW`, alternate seeded to `ocuprobe185alt/`, `SWITCHDIR` answered 200 `{CurrentFile:"/durable/iris/mgr/journal/20261002.082"}` and journaling stayed in the primary. The cause inside `JRNSWTCH` is not readable (the routine ships without source); the `<PROTECT>` without `%DB_IRISSYS:WRITE` follows from `SwitchDirectory` calling `$$INT^JRNSWTCH` with directory arguments (`irissys/%SYS/Journal/System.cls:105-126`).
-- **Recommended amendment (Rule 5).**
-  - Boundaries › Tools: switch directory's extra pairs become `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE`, each refused by name before any port call.
-  - `JournalPort` faults a `SWITCHDIR` whose answered `CurrentFile` sits in the directory journaling wrote in before, so the vendor's silent 200 never reads as a switch.
-  - With `%Admin_Manage` held, the decision "The switches act on `current`" (Design Notes) may name the other directory on the card. That is the runner's call.
-- **Secondary, for the same ruling.** Step 9 also lists "a task row outlives the port's read". That held for the least-privileged integrity caller, whose finished row it cannot delete. This is the port's documented behavior (`AwaitTask`: `ForgetTask` leaves such a row for `SweepOwnTasks`), so it was recorded, not halted on.
-- **Uncommitted in the tree (the HALT commits nothing):**
-  - `Port/AdminPort.cls`: Execution A's list entries, `CONSOLEDTYPES`, `JOURNALFILETYPES`, `JournalGuard` and a `Snippet` line. `AwaitTask` gained a trailing `pType`, and its call site passes it; that is the only change to existing lines, and the file is not contended.
-  - `Api/Error.cls`: two dispatch lines, add-only, no parameter.
-  - New: `Api/JournalError.cls` (two codes) and `Test/JournalProbe.cls`.
-  - This spec.
-  - Committed alone, `MUTATINGTYPES` names three pairs no tool reaches, so `SurfaceCoverage` and `ToolWrite` may redden (inference, not run).
-- **Throwaway `ocupilot-b-ci`:**
-  - It is compiled at this tree, with no restart.
-  - `Config.Journal` and `Config.config` equal S0, journaling writes in `/durable/iris/mgr/journal/`, and the monitor reads 0. The handoff cleared it with `$SYSTEM.Monitor.Clear()`.
-  - No probe principal, role or database remains, and the async task rows read 337 as at S0.
-  - Kept by design: the journal files the switches created, about 37 in all, four of them with `iris.lck` in `ocuprobe185alt/`.
-  - `messages.log` gained about 140 lines and `alerts.log` 5, from OcuPilot's logged refusals.
+- **Implement pass 2 (2026-10-02), Part A.** Task 0 resumed at step 10 on the parked plumbing (Design Notes › Measured at implement). Built: `Port/JournalPort.cls` (`STATE`, `DIRSTATE`, the integrity body and started answer, NOOTHER and UNMOVED); `AdminPort`'s journal file guard, `CONSOLEDTYPES` and the guard's script step; `PathPort`'s DW-1797 directories (journal history, write-image journal); three descriptors (Journals 13th, Journal file details, Journal file databases) with nine prompts; three tools over `JournalAction`/`JournalSwitch` and `JournalMint`; `Api/JournalError.cls`; rows over a `GET` in `Read`, `Registry` and the mirror; the Journals and details pages; strings and EXPERIENCE.md :164, :173, :378 (999 lines); the baseline's three keys; the rosters; `OCUPILOT_ALLOW_JOURNAL`.
+- **Review pass:** 27 findings (medium 7, low 8, false 12): 12 patched, 15 rejected, none deferred; rows in `## Review Triage Log`. The patches are tests, plus moving `Read.IsAbsence` above `ApplyView`'s doc comment and deleting `JournalError`'s false EXPERIENCE.md claim. Patched by verdict: medium 7, low 5. Follow-up review: false; each patch is a test whose red was observed (runs 2717-2721, vitest), so no unverified risk can be named.
+- **Deferred (frontmatter, from the handoff's report, reproduced):** a switch-directory confirm after the alternate stops being distinct answers 500 INTERNAL; it fails closed.
+- **Verification:**
+  - Full ObjectScript sweep, once, one class at a time on `ocupilot-b-ci` (runs 2722-3135, totals from `%UnitTest_Result`): 414 classes, 3,381 tests, 3,379 passed, 2 failed. Both failures are the throwaway's age: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` hits the 1,000-row cap on the task history, and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` finds expired rows that other suites left on this 37-hour-old instance (inference: both pass on a fresh CI instance).
+  - `npm test`: tools 1,776/1,776, components 2,126/2,126 in 159 files. `npm run build`: green. The initial bundle measures 2,479,753 bytes, so `maximumWarning` is re-based from 2459kB to 2480kB (DW-1166), with its history row.
+  - Browser, rebuilt and redeployed: `journals`, `license-usage` and `remote-databases`, 11/11.
+  - `check-objectscript`: 0 problems. `lint-docs`: 0. `smoke.sh --container ocupilot-b-ci`: 50/50.
+- **Throwaway end state:** journal settings and `Config.config` (`wijdir` "", `targwijsz` 0) as found; journaling in `/durable/iris/mgr/journal/`; no `OCUPROBE185*` object or `^OcuProbe185`; 0 agent definitions; 0 policy rows. The monitor read 2 and was cleared to 0 with `$SYSTEM.Monitor.Clear()`. Async task rows: 348 against 337 at S0, all from the Wire suites' principals (their 24-hour sweep removes them). The switches' journal files are kept.
+- **Footprint:**
+  - Value edits to shared files beyond adding lines: the sanctioned budget pair (`ui/angular.json`, `angular-json.test.mjs`); `ui/tools/strings.test.mjs`'s literal bound, 2000 to 2100, which Epic 19 is not editing; roster counts, for this story's additions only; one member added to `Prohibited.cls`'s type-gate line.
+  - EXPERIENCE.md :173 is edited in place, and Epic 19 also edits :173, so it unions at the second merge.
+- **For the runner:**
+  - Boundaries' routes `journals/:id` and `:id/databases` are built as `journals/details` and `journals/databases` (Spec Change Log).
+  - AC1's "Journal settings 14th" belongs to Story 18.18.
+  - The NOOTHER and UNMOVED sentences follow the `DatabaseError` precedent and are not published in EXPERIENCE.md; the Locks precedent would publish them.
+  - `ReasonFor(UNMOVED)` would render `<directory>` unfilled on the confirm route (inference: unreachable while the tool requires `%Admin_Manage:USE`).

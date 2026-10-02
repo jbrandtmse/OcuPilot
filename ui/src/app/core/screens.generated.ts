@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -496,7 +496,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "database-configuration",
   "language-server",
   "class",
-  "routine"
+  "routine",
+  "journal-file",
+  "journal-file-database"
 ];
 
 /**
@@ -4990,6 +4992,503 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.JournalFileDatabaseList",
+    "route": "os-management/journals/databases",
+    "area": "os-management",
+    "labelKey": "journalFileDatabaseListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "journal-file-database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/journals",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "SFN"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "SFN",
+        "DatabasePathOrAlias"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "journalFileDatabaseListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDatabaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDatabaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDatabaseListPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysjournalsummary",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Journal.File",
+        "type": "GET",
+        "rows": "Databases"
+      },
+      "fields": [
+        "SFN",
+        "DatabasePathOrAlias"
+      ],
+      "filter": [
+        "DatabasePathOrAlias"
+      ],
+      "sort": {
+        "fields": [
+          "SFN",
+          "DatabasePathOrAlias"
+        ],
+        "default": "SFN",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "file",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 1024
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "DatabasePathOrAlias",
+          "labelKey": "systemInfoDatabase",
+          "kind": "name"
+        },
+        {
+          "field": "SFN",
+          "labelKey": "journalColumnSfn",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.journalfiledatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.JournalFileDetails",
+    "route": "os-management/journals/details",
+    "area": "os-management",
+    "labelKey": "journalFileDetailsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "journal-file",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/journals",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "CreationTime",
+        "FileCount",
+        "MaxSize",
+        "FileGUID",
+        "FirstRecordAddress",
+        "LastRecordAddress",
+        "End",
+        "EncryptionKeyID",
+        "MinTransFileCount",
+        "MinTransFileIndex",
+        "ClusterStartTime",
+        "PrevFile.File",
+        "NextFile.File"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "journalFileDetailsGone",
+    "commandAliases": [
+      "journal file details"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDetailsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDetailsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalFileDetailsPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysjournalsummary",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Journal.File",
+        "type": "GET"
+      },
+      "fields": [
+        "Name",
+        "CreationTime",
+        "FileCount",
+        "MaxSize",
+        "FileGUID",
+        "FirstRecordAddress",
+        "LastRecordAddress",
+        "End",
+        "EncryptionKeyID",
+        "MinTransFileCount",
+        "MinTransFileIndex",
+        "ClusterStartTime",
+        "PrevFile.File",
+        "NextFile.File"
+      ],
+      "filter": [
+        "Name",
+        "CreationTime",
+        "FileGUID",
+        "EncryptionKeyID",
+        "PrevFile.File",
+        "NextFile.File"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "CreationTime"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "file",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 1024
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "CreationTime",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "FileGUID",
+          "labelKey": "journalDetailsGuid",
+          "kind": "identifier"
+        },
+        {
+          "field": "FileCount",
+          "labelKey": "journalDetailsFileCount",
+          "kind": "number"
+        },
+        {
+          "field": "MaxSize",
+          "labelKey": "databaseColumnMaxSize",
+          "kind": "number"
+        },
+        {
+          "field": "FirstRecordAddress",
+          "labelKey": "journalDetailsFirstRecord",
+          "kind": "number"
+        },
+        {
+          "field": "LastRecordAddress",
+          "labelKey": "journalDetailsLastRecord",
+          "kind": "number"
+        },
+        {
+          "field": "End",
+          "labelKey": "journalDetailsEnd",
+          "kind": "number"
+        },
+        {
+          "field": "EncryptionKeyID",
+          "labelKey": "journalDetailsEncryption",
+          "kind": "identifier",
+          "emptyKey": "journalDetailsNotEncrypted"
+        },
+        {
+          "field": "MinTransFileCount",
+          "labelKey": "journalDetailsMinTransCount",
+          "kind": "number"
+        },
+        {
+          "field": "MinTransFileIndex",
+          "labelKey": "journalDetailsMinTransIndex",
+          "kind": "number"
+        },
+        {
+          "field": "ClusterStartTime",
+          "labelKey": "journalDetailsClusterStart",
+          "kind": "text"
+        },
+        {
+          "field": "PrevFile.File",
+          "labelKey": "journalDetailsPrevious",
+          "kind": "identifier"
+        },
+        {
+          "field": "NextFile.File",
+          "labelKey": "journalDetailsNext",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.journalfile",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.JournalList",
+    "route": "os-management/journals",
+    "area": "os-management",
+    "labelKey": "journalListLabel",
+    "sideBarPosition": 13,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "journal-file",
+    "entityLabelKey": "aboutJournalFile",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Name"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "switchfile",
+        "selfProtection": ""
+      },
+      {
+        "id": "switchdirectory",
+        "selfProtection": ""
+      },
+      {
+        "id": "integrity",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Size",
+        "CreationTime",
+        "Reason",
+        "DataSize"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "journalListEmpty",
+    "commandAliases": [
+      "journals",
+      "journal files"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalListPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysjournals",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Journal.File",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Size",
+        "CreationTime",
+        "Reason",
+        "DataSize"
+      ],
+      "filter": [
+        "Name",
+        "CreationTime",
+        "Reason"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Size",
+          "CreationTime",
+          "Reason",
+          "DataSize"
+        ],
+        "default": "CreationTime",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "CreationTime",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Size",
+          "labelKey": "databaseColumnSize",
+          "kind": "number"
+        },
+        {
+          "field": "DataSize",
+          "labelKey": "journalColumnDataSize",
+          "kind": "number"
+        },
+        {
+          "field": "Reason",
+          "labelKey": "agentSwitchesFieldReason",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "journalListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.journals",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LanguageServerActivity",

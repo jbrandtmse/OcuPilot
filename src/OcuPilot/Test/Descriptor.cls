@@ -135,6 +135,9 @@ XData ReadShapes
 <screen name="ExplorerClassDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 <screen name="ExplorerRoutineDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 <screen name="RemoteDatabaseList" filter="Name,Server,Directory,Status" sort="Name,Server,Directory,Status" kinds="Name:name,Server:identifier,Directory:identifier,Status:text"/>
+<screen name="JournalList" filter="Name,CreationTime,Reason" sort="Name,Size,CreationTime,Reason,DataSize" kinds="Name:name,CreationTime:text,Size:number,DataSize:number,Reason:text"/>
+<screen name="JournalFileDetails" filter="Name,CreationTime,FileGUID,EncryptionKeyID,PrevFile.File,NextFile.File" sort="Name,CreationTime" kinds="Name:name,CreationTime:text,FileGUID:identifier,FileCount:number,MaxSize:number,FirstRecordAddress:number,LastRecordAddress:number,End:number,EncryptionKeyID:identifier,MinTransFileCount:number,MinTransFileIndex:number,ClusterStartTime:text,PrevFile.File:identifier,NextFile.File:identifier"/>
+<screen name="JournalFileDatabaseList" filter="DatabasePathOrAlias" sort="SFN,DatabasePathOrAlias" kinds="DatabasePathOrAlias:name,SFN:number"/>
 </shapes>
 }
 
@@ -1709,7 +1712,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 42, "the closed vocabulary holds forty-two values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, and class and routine in Story 19.1; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 44, "the closed vocabulary holds forty-four values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, and journal-file and journal-file-database in Story 18.5; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

@@ -4332,6 +4332,90 @@ export const STRINGS = {
   explorerDeleteAbsent: 'This namespace no longer holds this document.',
   /** EXPERIENCE.md:590 */
   explorerDeleteFailed: 'The source code API could not delete this document.',
+  // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
+  // empty states and prompts; the two screen-level switches and the integrity check, their warnings
+  // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,
+  // Database, Check integrity and its running and finished lines reuse 18.4's and earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalListLabel: 'Journals',
+  /** EXPERIENCE.md:378 */
+  journalColumnCreated: 'Created',
+  /** EXPERIENCE.md:378 */
+  journalColumnDataSize: 'Data size',
+  /** EXPERIENCE.md:378 */
+  journalListEmpty: 'No journal files on this instance.',
+  /** EXPERIENCE.md:378 */
+  journalListEmptyAgent: 'switch the journal file or check a journal file\'s integrity',
+  /** EXPERIENCE.md:378 */
+  journalSwitchFileAction: 'Switch file',
+  /** EXPERIENCE.md:378 */
+  journalSwitchDirectoryAction: 'Switch directory',
+  /** EXPERIENCE.md:378 */
+  journalSwitchFileConsequence: 'The instance closes <file> and starts a new journal file.',
+  /** EXPERIENCE.md:378 */
+  journalSwitchDirectoryConsequence: 'The instance starts writing its journal in the other configured journal directory.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityConsequence: 'The instance reads <file>. Checking every record takes longer.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityEveryRecord: 'Check every record',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityClean: 'No errors were found in <file>.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityErrors: 'Errors were found in <file>.',
+  /** EXPERIENCE.md:378 */
+  journalSwitchNewFile: 'A new journal file',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsLabel: 'Journal file details',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsGone: 'This journal file is no longer listed.',
+  /** EXPERIENCE.md:378 */
+  journalDetailsGuid: 'File GUID',
+  /** EXPERIENCE.md:378 */
+  journalDetailsFileCount: 'File count',
+  /** EXPERIENCE.md:378 */
+  journalDetailsFirstRecord: 'First record',
+  /** EXPERIENCE.md:378 */
+  journalDetailsLastRecord: 'Last record',
+  /** EXPERIENCE.md:378 */
+  journalDetailsEnd: 'End offset',
+  /** EXPERIENCE.md:378 */
+  journalDetailsEncryption: 'Encryption key',
+  /** EXPERIENCE.md:378 */
+  journalDetailsNotEncrypted: 'Not encrypted',
+  /** EXPERIENCE.md:378 */
+  journalDetailsMinTransCount: 'Minimum transaction file count',
+  /** EXPERIENCE.md:378 */
+  journalDetailsMinTransIndex: 'Minimum transaction file index',
+  /** EXPERIENCE.md:378 */
+  journalDetailsClusterStart: 'Cluster start time',
+  /** EXPERIENCE.md:378 */
+  journalDetailsPrevious: 'Previous file',
+  /** EXPERIENCE.md:378 */
+  journalDetailsNext: 'Next file',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListLabel: 'Journal file databases',
+  /** EXPERIENCE.md:378 */
+  journalColumnSfn: 'System file number',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListEmpty: 'This journal file holds no database records.',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt1: 'Which journal file is the instance writing now?',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt2: 'How much space do the journal files use?',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt3: 'Why was the journal last switched?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt1: 'When was this journal file created?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt2: 'Which journal files come before and after this one?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt3: 'Is this journal file encrypted?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt1: 'Which databases have records in this journal file?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt2: 'How many databases does this journal file cover?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt3: 'Does this journal file hold records for IRISSYS?',
 } as const;
 
 /**

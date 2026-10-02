@@ -1244,6 +1244,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // each is the parent namespace, filled from the route id and seeded onto every row; and Story
   // 16.10's Activity log, whose one criterion is the language server its route id names; and Story
   // 19.1's four System Explorer screens, whose criteria carry the classic page's defaults.
+  // Story 18.5's Journal file details and Journal file databases, whose one criterion each is the
+  // journal file the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1256,6 +1258,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineList',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
+      'OcuPilot.Screen.Descriptor.JournalFileDetails',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',

@@ -26,6 +26,8 @@ import {
   ScreenActions,
   TASK_IMPORT_ACTION_ID,
   TASK_MANAGER_SUSPEND_ACTION_ID,
+  JOURNAL_SWITCH_FILE_ACTION_ID,
+  JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -520,6 +522,10 @@ export class CommandBox {
     // Suspend Task Manager on Task schedule (Story 16.11), by the same test: screen-level too.
     if (this.actions.has(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID)) {
       declared.push({ id: TASK_MANAGER_SUSPEND_ACTION_ID, rowScoped: false });
+    }
+    // Switch file and Switch directory on Journals (Story 18.5), by the same test: screen-level too.
+    for (const id of [JOURNAL_SWITCH_FILE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID]) {
+      if (this.actions.has(screen.descriptor, id)) declared.push({ id, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });

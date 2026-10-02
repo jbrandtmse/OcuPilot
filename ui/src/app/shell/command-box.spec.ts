@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PERMISSION_CHECK_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } from '../core/screen-actions';
+import { JOURNAL_SWITCH_DIRECTORY_ACTION_ID, JOURNAL_SWITCH_FILE_ACTION_ID } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -653,6 +654,28 @@ describe('the command box', () => {
     stop();
     chord();
     expect(option()).toBeNull();
+  });
+
+  it('Story 18.5: Journals\u2019 two switches are listed at screen level, never held for want of a selection', () => {
+    // Mutation (Rule 19): drop the journal loop from `actionCandidates` -> neither option is listed.
+    const journals = screen('os-management/journals', 'journalListLabel', 'os-management', {
+      descriptor: 'OcuPilot.Screen.Descriptor.JournalList',
+      rowActions: [
+        { id: 'switchfile', selfProtection: '' },
+        { id: 'switchdirectory', selfProtection: '' },
+      ],
+    });
+    navigation.current = journals;
+    const ran: string[] = [];
+    for (const id of [JOURNAL_SWITCH_FILE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID]) actions.register(journals.descriptor, id, () => ran.push(id));
+    chord();
+    const option = (id: string): HTMLElement | null => fixture.nativeElement.querySelector(`#ocu-command-box-action-${id}`);
+    expect(option(JOURNAL_SWITCH_FILE_ACTION_ID)?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.journalSwitchFileAction);
+    expect(option(JOURNAL_SWITCH_DIRECTORY_ACTION_ID)?.querySelector('.ocu-command-box-option-label')?.textContent?.trim()).toBe(STRINGS.journalSwitchDirectoryAction);
+    expect(option(JOURNAL_SWITCH_FILE_ACTION_ID)?.getAttribute('aria-disabled')).toBeNull();
+    option(JOURNAL_SWITCH_DIRECTORY_ACTION_ID)?.click();
+    fixture.detectChanges();
+    expect(ran).toEqual([JOURNAL_SWITCH_DIRECTORY_ACTION_ID]);
   });
 
   it('Story 16.11: the Task Manager\u2019s three actions are listed at screen level, the raised one held by the read\u2019s requirement', () => {

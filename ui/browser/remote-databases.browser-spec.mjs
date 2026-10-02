@@ -310,6 +310,8 @@ test('AC1, AC8: Remote databases is the twelfth OS management entry and lists th
       STRINGS.languageServersLabel,
       STRINGS.localDatabaseListLabel,
       STRINGS.remoteDatabaseListLabel,
+      // Story 18.5: Journals follows, the thirteenth.
+      STRINGS.journalListLabel,
     ]);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.remoteDatabaseServer, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);

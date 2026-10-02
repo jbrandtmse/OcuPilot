@@ -792,6 +792,33 @@ describe('the proposal card', () => {
     expect(other.card.textContent).not.toContain(sentence('DATASRV'));
   });
 
+  it('Story 18.5, AC3-AC5: a journal proposal states its warning on the card, naming the file a switch closes or a check reads', () => {
+    // Mutation (Rule 19): drop the journal block from the template, or make `journalVisible` answer
+    // false -> the three journal legs go red.
+    const file = '/durable/iris/mgr/journal/20261002.090';
+    const switchFile = mount(
+      liveView({ consequence: 'JOURNAL.SWITCHFILE', name: 'current', changed: [{ field: 'CurrentFile', before: file, after: '' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    const lines = switchFile.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.journalSwitchFileConsequence.replace('<file>', file));
+    expect(lines[0].getAttribute('role')).toBe('status');
+
+    const switchDirectory = mount(
+      liveView({ consequence: 'JOURNAL.SWITCHDIRECTORY', name: 'current', changed: [{ field: 'CurrentDirectory', before: '/a/', after: '/b/' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(switchDirectory.card.querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.journalSwitchDirectoryConsequence);
+
+    const integrity = mount(liveView({ consequence: 'JOURNAL.INTEGRITY', name: file, changed: [], maskedFields: [] }), { phase: 'live' });
+    expect(integrity.card.querySelector('[data-slot="consequence"]')?.textContent).toContain(STRINGS.journalIntegrityConsequence.replace('<file>', file));
+
+    // Another consequence states no journal sentence.
+    const other = mount(liveView({ consequence: 'WEBAPP.UNAUTHENTICATED', name: file, changed: [], maskedFields: [] }), { phase: 'live' });
+    expect(other.card.textContent).not.toContain(STRINGS.journalIntegrityConsequence.replace('<file>', file));
+  });
+
   it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
     // The kernel marks the proposal destructive and carries the code; an unauthenticated
     // application that is also privileged carries one combined code, never two lines.
