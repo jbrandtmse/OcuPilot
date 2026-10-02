@@ -5007,6 +5007,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: TurnSecretResidue sweeps messages.log over each turn; reddens on a logged key; run 36975211472
 
 ### DW-1308: The matrix's exactly-one-refused-ledger-row-per-refused-call is asserted nowhere
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -8103,6 +8104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 - 2026-09-30T07:53:11Z status=routed owner=range-end-cleanup by=owner note=owner 2026-09-30 via the Planner: leave it where it is - top of the 23.3 queue (p2 security); 23.2 stays at its 12
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: Dispatch.StepTarget marks the step target at write time; red first (run 1706); AD-33 amended; run 36975211472
 
 ### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
@@ -8709,6 +8711,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 16.13 plan: the service arm uses IsPrivilegedRole (by name) and '|' only; 23.2 batch c moved the OAuth arm to RoleGrantsAdministrativePrivilege (DW-1663); 16.13 canonicalizes only entries a write adds or changes
 - 2026-09-30T21:35:51Z status=routed owner=range-end-cleanup by=harvest note=orchestrator 2026-09-30: service arm to RoleGrantsAdministrativePrivilege plus EntryParts for held entries; Prohibited.cls held by Epic 23
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: Prohibited.EntryParts reads both spellings, roles judged by privilege; red first (run 1707); run 36975211472
 
 ### DW-1883: The service editor has no control for %Service_WebGateway's HttpOnlyCookies, which the classic Edit Service dialog draws and saves for that service, and the admin API's Security.Service PUT cannot carry it
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -8904,6 +8907,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: scripts/ci-throwaway.sh:264 vs src/OcuPilot/Test/AdminPortAbsence.cls (6e6b8dcc): the class no longer reads $SYSTEM.Monitor or alerts.log
 - 2026-10-01T23:37:15Z status=open owner=23-3-the-range-end-cleanup-part-3 by=cr note=one-word comment fix; Epic 19 is editing ci-throwaway.sh (add-only), so not patched in batch b's review
+- 2026-10-02T07:26:27Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084: ci-throwaway.sh:264 comment corrected after Epic 19's edit reached feature; run 36975211472
 
 ### DW-1915: CI flake: OAuthResourceServerAuditMask.TestARowCarryingAProbeKeyReadsMasked's audit-screen read answered 200 without the key but not the expected '1 3' masked counts (AssertMasked+7)
 - source: CI run 36949919497 attempt 1, instance shard 4/4 (OCU-1-staging-19-1 abb61579) | severity: med | fix-risk: low | footprint: out-of-footprint
