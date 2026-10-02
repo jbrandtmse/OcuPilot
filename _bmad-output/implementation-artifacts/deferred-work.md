@@ -9059,3 +9059,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
 - 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)
+
+### DW-1951: The empty Remote databases screen offers 'Or ask the agent: create a remote database.' with a chip labelled by the raw lowercase action id 'create' instead of its display label
+- source: Planner observation on the 1.0.7 demo (517e6af4) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
+- 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
