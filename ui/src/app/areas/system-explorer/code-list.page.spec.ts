@@ -594,6 +594,27 @@ describe('System Explorer export and import (Story 19.13)', () => {
     expect(status(host)).toBe('Imported 1 documents, with compile errors.');
   });
 
+  it('a local file read before the source was switched away and back is not sent: Import waits for a file again', async () => {
+    // Mutation (Rule 19): keep `local` in `ExplorerImportDialog.onSource` -> Import stays available and this goes red.
+    const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await pickLocal(fixture, host, new File(['Class A.B\n{\n}\n'], 'B.cls'));
+    const server = host.querySelector('input[data-explorer-import-source="server"]') as HTMLInputElement;
+    server.checked = true;
+    server.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const local = host.querySelector('input[data-explorer-import-source="local"]') as HTMLInputElement;
+    local.checked = true;
+    local.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const confirm = host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement;
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    confirm.click();
+    await settle(fixture);
+    expect(calls).toHaveLength(0);
+  });
+
   it('a local file above three million characters is refused in the dialog before anything is sent', async () => {
     // Mutation (Rule 19): drop the length check in `ExplorerImportDialog.onFile` -> the file is sent and this goes red.
     const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);

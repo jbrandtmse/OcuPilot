@@ -8965,6 +8965,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: code-list.page.ts deleteConsequence uses explorerDeleteConsequence and explorerDeleteSetConsequence on both lists; strings.ts and EXPERIENCE.md:589 carry one wording
 - 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=Story 19.13 revises the Routines list's dialogs and the delete warning still names a persistent class
 - 2026-10-02T09:17:52Z status=routed owner=19-13-xml-export-and-import by=spec_gate note=reopen_if met: 19.13 adds dialogs to the Routines list; its Task 8 rewords the Routines delete warning
+- 2026-10-02T13:19:43Z status=resolved-by:19-13-xml-export-and-import by=adjudication note=Routines delete warning reworded to source and compiled code (Task 8, EXPERIENCE.md fixed strings, strings.ts)
 
 ### DW-1933: A DeleteDocs envelope error raised after some documents were deleted is answered as a fault, with no change event or read-back
 - source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
@@ -9001,3 +9002,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-19.md (Story 19.2 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
 - 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
+
+### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
+- source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
+- 2026-10-02T13:19:43Z status=routed owner=burndown by=cr note=move ExplorerWrite's AC3 calls to Dispatch.Answer, as ExplorerTransfer now does

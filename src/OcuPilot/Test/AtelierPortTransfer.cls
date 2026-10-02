@@ -97,7 +97,7 @@ Method TestAnExportWritesTheVendorsLines()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "WriteFile", "set.xml", "an older file"), "a file stands at the name")
     Set tSC = ..Act("Classes", "EXPORT", $ListBuild("names=OcuProbe1913.Alpha.cls,OcuProbe1913.Beta.cls", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "set.xml")), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 " _ {"root": (tRoot), "path": ($ClassMethod(..#PROBE, "RelativeName", "set.xml"))}.%ToJSON(), "an export to a server file answers its root and path")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "ReadFile", "set.xml"), tText, "and the file holds the same lines, each ended by a line feed, replacing the older one")
+    Do $$$AssertEquals(..Unstamped($ClassMethod(..#PROBE, "ReadFile", "set.xml")), ..Unstamped(tText), "and the file holds the same lines, each ended by a line feed, replacing the older one")
     Set tSC = ..Act("Classes", "EXPORT", $ListBuild("names=OcuProbe1913.Alpha.cls", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "none/set.xml")), .tResult, .tHttp, .tFault)
     Set tViolation = $Select($IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")): tFault.detail.violations.%Get(0), 1: {})
     Do $$$AssertEquals(tHttp _ " " _ tViolation.%Get("field") _ " " _ tViolation.%Get("code") _ " " _ tViolation.%Get("reason"), "400 path EXPLORER.EXPORT.DIRECTORY " _ ##class(OcuPilot.Api.AtelierError).#REASONEXPORTDIRECTORY, "a name whose directory does not exist is refused on path")
@@ -107,6 +107,18 @@ Method TestAnExportWritesTheVendorsLines()
     Set tSC = ..Act("Routines", "EXPORTDOCS", $ListBuild("names=OcuProbe1913Mac.mac"), .tResult, .tHttp, .tFault)
     Do $$$AssertTrue((tHttp = 200) && (tResult.%Get("Present") = "OcuProbe1913Mac.mac") && (tResult.%GetTypeOf("root") = "null") && (tResult.%GetTypeOf("path") = "null") && (tResult.%GetTypeOf("KeepSource") = "unassigned"), "the export's fresh read answers the set with root and path empty: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertEquals($Namespace, tNamespace, "the caller's namespace is restored")
+}
+
+/// <p><var>pText</var>, an XML export, without its first <code> ts="..."</code> attribute: the
+/// <code>Export</code> element stamps the second each export ran, so two exports of the same
+/// documents differ there alone.</p>
+ClassMethod Unstamped(pText As %String) As %String
+{
+    Set tStart = $Find(pText, " ts=""")
+    If tStart = 0 Quit pText
+    Set tEnd = $Find(pText, """", tStart)
+    If tEnd = 0 Quit pText
+    Quit $Extract(pText, 1, tStart - 6) _ $Extract(pText, tEnd, *)
 }
 
 /// <p>The probe directory's file names, comma-separated.</p>
@@ -143,17 +155,25 @@ Method TestAnXmlImportLoadsWhatItsPreviewNamed()
     Do $$$AssertEquals(tHttp, 200, "the preview answers: " _ ..Said(.tHttp, .tPreview, .tFault))
     If '$IsObject($Get(tPreview)) Quit
     Set tSummary = tPreview.documents
+    Set tText = $ClassMethod(..#PROBE, "ReadFile", "all.xml")
     Do $$$AssertTrue(($Piece(tSummary, ", ", 1) = "OcuProbe1913.Alpha.cls new") && ($Piece(tSummary, ", ", 2) [ "OcuProbe1913.Beta.cls replaces ") && (tPreview.count = 2), "it names Alpha new and Beta replacing its version, sorted: " _ tSummary)
+    Do $$$AssertTrue(tBeta '= "", "Beta's version is read")
     Do $$$AssertTrue($Extract($Piece($Piece(tSummary, ", ", 2), " replaces ", 2), 1, $Length(tBeta)) = tBeta, "Beta's version is the instance's own: " _ tBeta)
+    Do $$$AssertEquals($Piece(tSummary, " (", 2), "sha256 " _ ##class(OcuPilot.Port.AtelierPort).Digest(..Lines(tText)) _ ")", "and the summary ends with the digest of the file's lines")
     Set tSC = ..Act("Classes", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ tPath, "documents=" _ tSummary _ " ", "Compile=1"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "409 EXPLORER.IMPORT.CHANGED", "a summary that differs is refused")
     Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls"), "and nothing is loaded")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "WriteFile", "all.xml", tText _ $Char(10)), "the file is rewritten with the same documents and one more line")
+    Set tSC = ..Act("Classes", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ tPath, "documents=" _ tSummary, "Compile=1"), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "409 EXPLORER.IMPORT.CHANGED", "a file whose text changed under the same documents is refused")
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls"), "and nothing is loaded from it")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "WriteFile", "all.xml", tText), "the file is put back")
     Set tSC = ..Act("Classes", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ tPath, "documents=" _ tSummary, "Compile=0"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON() _ " " _ tResult.errors, 1: ""), "200 [""OcuProbe1913.Alpha.cls"",""OcuProbe1913.Beta.cls""] 0", "the reviewed summary loads both: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls") && '$ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe1913.Alpha"), "without compiling when Compile is off")
     Set tSC = ..Act("Routines", "PREVIEW", $ListBuild("id=import", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "mac.xml")), .tPreview, .tHttp, .tFault)
     Set tSC = ..Act("Routines", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "mac.xml"), "documents=" _ tPreview.documents, "Compile=1"), .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals(tPreview.documents _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON(), 1: ""), "OcuProbe1913Mac.MAC new [""OcuProbe1913Mac.MAC""]", "a routine is named and loaded as the list spells it")
+    Do $$$AssertEquals($Piece(tPreview.documents, " (", 1) _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON(), 1: ""), "OcuProbe1913Mac.MAC new [""OcuProbe1913Mac.MAC""]", "a routine is named and loaded as the list spells it")
     Do $$$AssertTrue($IsObject($Get(tResult)) && (tResult.lines.%ToJSON() [ "Compiling routine : OcuProbe1913Mac"), "compiling it when Compile is on: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertEquals($Namespace, tNamespace, "the caller's namespace is restored")
 }
@@ -176,7 +196,7 @@ Method TestTheLoadIsSentTheListedNames()
     Do $ClassMethod(..#FIXTURE, "Arm", "ListDocumentsInXMLFiles", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[{""file"":""a.xml"",""status"":"""",""documents"":[{""name"":""Probe.R.MAC"",""ts"":-1},{""name"":""Probe.A.cls"",""ts"":""2026-10-02 08:59:19.69""}]}]}}")
     Do $ClassMethod(..#FIXTURE, "Arm", "LoadXMLFiles", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[""Load started""],""result"":{""content"":[{""file"":""a.xml"",""status"":""ERROR #5475: probe"",""imported"":[""Probe.A.cls"",""Probe.R.MAC""]}]}}")
     Set tContent = $Char(65279) _ "<?xml version=""1.0""?>" _ $Char(13, 10) _ "<Export>" _ $Char(10)
-    Set tSC = ..Act("Classes", "IMPORT", $ListBuild("namespace=" _ $Namespace, "id=import", "fileName=a.xml", "content=" _ tContent, "documents=Probe.A.cls replaces 2026-10-02 08:59:19.69, Probe.R.MAC new", "Compile=true"), .tResult, .tHttp, .tFault)
+    Set tSC = ..Act("Classes", "IMPORT", $ListBuild("namespace=" _ $Namespace, "id=import", "fileName=a.xml", "content=" _ tContent, "documents=Probe.A.cls replaces 2026-10-02 08:59:19.69, Probe.R.MAC new" _ ..Note(tContent), "Compile=true"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {""imported"":[""Probe.A.cls"",""Probe.R.MAC""],""lines"":[""Load started""],""errors"":true}", "a file status sets errors and is not a fault")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ "#5475", "its text is logged")
     Set tList = $ClassMethod(..#FIXTURE, "CallAt", 1)
@@ -215,21 +235,28 @@ Method TestTheUdlHeaderNamesTheDocument()
     }
 }
 
-/// <p>A UDL file is previewed new, written with <code>PUT</code> and compiled, and previewed again
-/// as replacing its version; a header that does not parse is <code>UNREADABLE</code> with nothing
-/// put.</p>
+/// <p>A UDL file is previewed new, written with <code>PUT</code> and compiled, previewed again as
+/// replacing its version, and replaced by a second text of the same class; a header that does not
+/// parse is <code>UNREADABLE</code> with nothing put.</p>
+/// <p>Mutation (Rule 19): drop <code>ignoreConflict</code> from the UDL branch of
+/// <method>OcuPilot.Port.AtelierPort.ImportSet</method> -- the replacement leg goes red.</p>
 Method TestAUdlFileIsPutAndCompiled()
 {
     Set tText = "/// Probe" _ $Char(13, 10) _ "Class OcuProbe1913.Udl Extends %RegisteredObject" _ $Char(13, 10) _ "{" _ $Char(13, 10) _ "}" _ $Char(13, 10)
     Do ..Act("Classes", "PREVIEW", $ListBuild("id=import", "fileName=Udl.CLS", "content=" _ tText), .tPreview, .tHttp, .tFault)
-    Do $$$AssertEquals(..Said(.tHttp, .tPreview, .tFault), "200 {""documents"":""OcuProbe1913.Udl.cls new"",""count"":1}", "a UDL class previews new")
-    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=Udl.CLS", "content=" _ tText, "documents=OcuProbe1913.Udl.cls new", "Compile=true"), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tPreview, .tFault), "200 {""documents"":""OcuProbe1913.Udl.cls new" _ ..Note(tText) _ """,""count"":1}", "a UDL class previews new")
+    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=Udl.CLS", "content=" _ tText, "documents=OcuProbe1913.Udl.cls new" _ ..Note(tText), "Compile=true"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON() _ " " _ tResult.errors, 1: ""), "200 [""OcuProbe1913.Udl.cls""] 0", "is put: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe1913.Udl"), "and compiled")
     Set tSource = $ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Udl.cls")
     Do $$$AssertEquals($Piece(tSource, $Char(10), 1, 3), "/// Probe" _ $Char(10) _ "Class OcuProbe1913.Udl Extends %RegisteredObject" _ $Char(10) _ "{", "with the file's lines: " _ tSource)
     Do ..Act("Classes", "PREVIEW", $ListBuild("id=import", "fileName=Udl.cls", "content=" _ tText), .tPreview, .tHttp, .tFault)
-    Do $$$AssertTrue($IsObject($Get(tPreview)) && (tPreview.documents = ("OcuProbe1913.Udl.cls replaces " _ $Piece(..DocsModified("Classes", "OcuProbe1913.Udl.cls"), "=", 2))), "and previews again as replacing its version")
+    Do $$$AssertTrue($IsObject($Get(tPreview)) && (tPreview.documents = ("OcuProbe1913.Udl.cls replaces " _ $Piece(..DocsModified("Classes", "OcuProbe1913.Udl.cls"), "=", 2) _ ..Note(tText))), "and previews again as replacing its version")
+    Set tSecond = "/// Probe replaced" _ $Char(10) _ "Class OcuProbe1913.Udl Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}" _ $Char(10)
+    Do ..Act("Classes", "PREVIEW", $ListBuild("id=import", "fileName=Udl.cls", "content=" _ tSecond), .tPreview, .tHttp, .tFault)
+    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=Udl.cls", "content=" _ tSecond, "documents=" _ $Select($IsObject($Get(tPreview)): tPreview.documents, 1: ""), "Compile=false"), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON() _ " " _ tResult.errors, 1: ""), "200 [""OcuProbe1913.Udl.cls""] 0", "a second text of the class replaces it: " _ ..Said(.tHttp, .tResult, .tFault))
+    Do $$$AssertEquals($Piece($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Udl.cls"), $Char(10), 1), "/// Probe replaced", "with that text's lines")
     Do ..Act("Routines", "PREVIEW", $ListBuild("id=import", "fileName=x.mac", "content=OcuProbe1913X ; no header"), .tPreview, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(.tHttp, .tPreview, .tFault), "422 EXPLORER.IMPORT.UNREADABLE", "a header that does not parse is unreadable")
     Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=bad.xml", "content=<Export><Class name=""OcuProbe1913.Stub"">", "documents=OcuProbe1913.Stub.cls new", "Compile=true"), .tResult, .tHttp, .tFault)
@@ -265,7 +292,7 @@ Method TestAFileIsCheckedBeforeAnyRoute()
 Method TestAUdlFileThatDoesNotCompileIsPutWithErrors()
 {
     Set tText = "Class OcuProbe1913.Broken Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "Property Broken As OcuProbe1913.NoSuchType;" _ $Char(10) _ "}" _ $Char(10)
-    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=Broken.cls", "content=" _ tText, "documents=OcuProbe1913.Broken.cls new", "Compile=true"), .tResult, .tHttp, .tFault)
+    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=Broken.cls", "content=" _ tText, "documents=OcuProbe1913.Broken.cls new" _ ..Note(tText), "Compile=true"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.imported.%ToJSON() _ " " _ tResult.errors, 1: ""), "200 [""OcuProbe1913.Broken.cls""] 1", "the document is put and the import reports errors: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertTrue($IsObject($Get(tResult)) && (tResult.lines.%ToJSON() [ "ERROR"), "with the compiler's lines")
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Broken.cls") && '$ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe1913.Broken"), "it is saved, uncompiled")
@@ -279,8 +306,9 @@ Method TestFilesAreReadAndWrittenAsUtf8()
     Set tRoot = $ClassMethod(..#PROBE, "Root")
     Set tText = "/// caf" _ $Char(233) _ $Char(10) _ "Class OcuProbe1913.Accent Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}" _ $Char(10)
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "WriteFile", "Accent.cls", tText), "a UTF-8 file is written")
-    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "Accent.cls"), "documents=OcuProbe1913.Accent.cls new", "Compile=false"), .tResult, .tHttp, .tFault)
+    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "Accent.cls"), "documents=OcuProbe1913.Accent.cls new" _ ..Note(tText), "Compile=false"), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "it imports: " _ ..Said(.tHttp, .tResult, .tFault))
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe1913.Accent"), "without compiling, as Compile is off")
     Do $$$AssertEquals($Piece($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Accent.cls"), $Char(10), 1), "/// caf" _ $Char(233), "its comment keeps the character")
     Do ..Act("Classes", "EXPORT", $ListBuild("names=OcuProbe1913.Accent.cls", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "accent.xml")), .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "it exports: " _ ..Said(.tHttp, .tResult, .tFault))
@@ -293,6 +321,94 @@ Method TestFilesAreReadAndWrittenAsUtf8()
 ClassMethod Lines(pText As %String) As %DynamicArray
 {
     Quit ##class(OcuPilot.Port.AtelierPort).Lines(pText)
+}
+
+/// <p>AC1: a class holding a line longer than the vendor's export reads whole is exported with that
+/// line whole, and imports back from the exported text as it was.</p>
+/// <p>Mutation (Rule 19): answer the vendor's lines unchanged from
+/// <method>OcuPilot.Port.AtelierPort.WholeLines</method> -- this goes red.</p>
+Method TestALongLineIsExportedWhole()
+{
+    Set tOrigNS = $Namespace
+    Try {
+        Set $Namespace = ..#PROBENAMESPACE
+        Set tClass = ##class(%Dictionary.ClassDefinition).%New()
+        Set tClass.Name = "OcuProbe1913.Long"
+        Set tClass.Super = "%RegisteredObject"
+        Set tMethod = ##class(%Dictionary.MethodDefinition).%New()
+        Set tMethod.Name = "Big"
+        Set tMethod.ClassMethod = 1
+        Set tMethod.ReturnType = "%String"
+        Do tMethod.Implementation.WriteLine(" Quit """ _ $Translate($Justify("", 40000), " ", "a") _ """")
+        Do tClass.Methods.Insert(tMethod)
+        Set tSC = tClass.%Save()
+        Set $Namespace = tOrigNS
+    } Catch ex {
+        Set $Namespace = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Do $$$AssertStatusOK(tSC, "a class with a 40,000-character line is saved")
+    Set tBefore = $ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Long.cls")
+    Do ..Act("Classes", "EXPORT", $ListBuild("names=OcuProbe1913.Long.cls"), .tLines, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "it exports: " _ ..Said(.tHttp, .tLines, .tFault))
+    If '$IsObject($Get(tLines)) Quit
+    Set tExported = ""
+    Set tLongest = 0
+    Set tIterator = tLines.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tExported = tExported _ tLine _ $Char(10)
+        If $Length(tLine) > tLongest Set tLongest = $Length(tLine)
+    }
+    Do $$$AssertTrue(tLongest > 40000, "the long line is answered whole: " _ tLongest)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#PROBENAMESPACE), "the class is removed")
+    Do ..Act("Classes", "PREVIEW", $ListBuild("id=import", "fileName=long.xml", "content=" _ tExported), .tPreview, .tHttp, .tFault)
+    Do ..Act("Classes", "IMPORT", $ListBuild("id=import", "fileName=long.xml", "content=" _ tExported, "documents=" _ $Select($IsObject($Get(tPreview)): tPreview.documents, 1: ""), "Compile=0"), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "the exported text imports: " _ ..Said(.tHttp, .tResult, .tFault))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Long.cls"), tBefore, "and the class reads back as it was")
+}
+
+/// <p>The digest note an import's summary of the text <var>pText</var> ends with.</p>
+ClassMethod Note(pText As %String) As %String
+{
+    Quit " (sha256 " _ ##class(OcuPilot.Port.AtelierPort).Digest(..Lines(pText)) _ ")"
+}
+
+/// <p>The matrix row "Export to this browser above the capture ceiling": an export whose answer passes
+/// the capture's ceiling is refused 503 <code>PORT.UNAVAILABLE</code>, with the caller's namespace
+/// restored (canned routes).</p>
+/// <p>Mutation (Rule 19): carry on after a failed route in
+/// <method>OcuPilot.Port.AtelierPort.ExportSet</method> -- this goes red.</p>
+Method TestAnExportAboveTheCeilingIsUnavailable()
+{
+    Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
+    Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
+    Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[{""name"":""Probe.A.cls"",""ts"":""2026-01-10 10:00:00.000"",""db"":""HOME"",""gen"":false}]}}")
+    Do $ClassMethod(..#FIXTURE, "ArmOversize", "ExportToXMLFile")
+    Set tNamespace = $Namespace
+    Do ..Act("Classes", "EXPORT", $ListBuild("namespace=" _ $Namespace, "names=Probe.A.cls"), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "503 PORT.UNAVAILABLE", "an export above the ceiling is unavailable")
+    Do $$$AssertEquals($Namespace, tNamespace, "with the caller's namespace restored")
+}
+
+/// <p>An export whose file cannot be written answers 500 <code>INTERNAL</code>, deleting a file it
+/// created and leaving one that already stood at the name (canned routes, the fixture's failing
+/// write).</p>
+/// <p>Mutation (Rule 19): drop the delete in <method>OcuPilot.Port.AtelierPort.ExportSet</method> --
+/// the new-file leg goes red; drop its <code>tAbsent</code> guard -- the existing-file leg goes
+/// red.</p>
+Method TestAFailedExportWriteDeletesOnlyTheFileItCreated()
+{
+    Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
+    Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
+    Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[{""name"":""Probe.A.cls"",""ts"":""2026-01-10 10:00:00.000"",""db"":""HOME"",""gen"":false}]}}")
+    Do $ClassMethod(..#FIXTURE, "Arm", "ExportToXMLFile", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[""<Export>"",""</Export>""]}}")
+    Do $ClassMethod(..#FIXTURE, "FailWrites")
+    Set tRoot = $ClassMethod(..#PROBE, "Root")
+    Do ..Act("Classes", "EXPORT", $ListBuild("namespace=" _ $Namespace, "names=Probe.A.cls", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "new.xml")), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#PROBE, "FileExists", "new.xml"), "500 INTERNAL 0", "a failed write answers 500 and deletes the file it created")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "WriteFile", "old.xml", "an older file"), "a file stands at the name")
+    Do ..Act("Classes", "EXPORT", $ListBuild("namespace=" _ $Namespace, "names=Probe.A.cls", "root=" _ tRoot, "path=" _ $ClassMethod(..#PROBE, "RelativeName", "old.xml")), .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#PROBE, "ReadFile", "old.xml"), "500 INTERNAL an older file", "and leaves a file that already stood there")
 }
 
 /// <p>An import requires WRITE on the namespace's routines database before any route; an export, its

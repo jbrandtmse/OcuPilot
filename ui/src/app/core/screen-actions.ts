@@ -41,10 +41,10 @@ export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
 
 /**
- * Import on Task schedule (Story 16.4): screen-level like Check permission. It names a server file,
- * not a row, so it is never held back for want of a selection. The descriptor declares `import` so
- * the action route admits it; this id is what the Task schedule's page registers and the two
- * surfaces draw.
+ * Import on Task schedule (Story 16.4), and on System Explorer's Classes and Routines lists (Story
+ * 19.13): screen-level like Check permission. It names a file, not a row, so it is never held back
+ * for want of a selection. Each descriptor declares `import` so the action route admits it; this id
+ * is what those pages register and the two surfaces draw.
  */
 export const TASK_IMPORT_ACTION_ID = 'task-import';
 

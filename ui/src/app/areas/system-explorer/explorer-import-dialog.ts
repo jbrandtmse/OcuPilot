@@ -139,8 +139,11 @@ export class ExplorerImportDialog {
     return this.refusal();
   }
 
+  /** Switch the source; a local file read earlier is let go, since its input is drawn afresh and empty. */
   protected onSource(source: 'server' | 'local'): void {
     this.source.set(source);
+    this.local.set(null);
+    this.localRefusal.set('');
   }
 
   protected onChanged(change: ServerPath): void {

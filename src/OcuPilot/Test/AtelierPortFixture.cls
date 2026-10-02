@@ -174,6 +174,27 @@ ClassMethod DeleteDocs(pNamespace As %String) As %Status
     Quit ..Answer("DeleteDocs", pNamespace, "", 0)
 }
 
+/// <p>Make every export's file write fail from now on (<method>WriteLines</method>).</p>
+ClassMethod FailWrites()
+{
+    Set ^||OcuPilotAtelierFixture("writefails") = 1
+}
+
+/// <p>The port's file write, or, once <method>FailWrites</method> is armed, a write that fails after
+/// creating a short file at a name where none stood, and touching none that did.</p>
+ClassMethod WriteLines(pFile As %String, pLines As %DynamicArray) As %Status [ Private ]
+{
+    If '$Get(^||OcuPilotAtelierFixture("writefails")) Quit ##super(pFile, pLines)
+    If '##class(%File).Exists(pFile) {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tSC = tStream.LinkToFile(pFile)
+        If $$$ISOK(tSC) Set tSC = tStream.Write("partial")
+        If $$$ISOK(tSC) Set tSC = tStream.%Save()
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Quit $$$ERROR($$$GeneralError, "the canned file write fails")
+}
+
 /// <p>The canned <code>ExportToXMLFile</code> route.</p>
 ClassMethod ExportToXMLFile(pNamespace As %String) As %Status
 {

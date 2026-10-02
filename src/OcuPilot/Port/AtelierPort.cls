@@ -94,7 +94,7 @@ Parameter TYPECOMPILE = "COMPILE";
 Parameter TYPEDELETE = "DELETE";
 
 /// <p>The list endpoints' read of a set of documents an export makes: <method>Docs</method>, with
-/// <code>root</code> and <code>path</code> empty beside it.</p>
+/// <code>root</code> and <code>path</code> answered <code>null</code> beside it.</p>
 Parameter TYPEEXPORTDOCS = "EXPORTDOCS";
 
 /// <p>The list endpoints' export of a set of documents (<method>ExportSet</method>).</p>
@@ -133,7 +133,7 @@ Parameter FILENAMEKEY = "fileName";
 Parameter CONTENTKEY = "content";
 
 /// <p>The query key carrying the reviewed summary an import's write compares
-/// (<method>Summary</method>).</p>
+/// (<method>Examine</method>).</p>
 Parameter DOCUMENTSKEY = "documents";
 
 /// <p>The query key carrying whether an import compiles what it loads, <code>1</code> or
@@ -159,6 +159,19 @@ Parameter IMPORTCOMPILEFLAGS = "cuk";
 
 /// <p>The separator between two entries of an import's summary.</p>
 Parameter SUMMARYSEPARATOR = ", ";
+
+/// <p>The label of the digest that ends an import's summary (<method>Digest</method>).</p>
+Parameter SUMMARYDIGEST = "sha256";
+
+/// <p>How many characters of one line <method>Digest</method> converts to UTF-8 at a time, so a long
+/// line never becomes one string longer than the instance's longest.</p>
+Parameter DIGESTCHUNK As INTEGER = 32000;
+
+/// <p>The longest line the vendor's export route answers whole: it reads its stream with
+/// <code>ReadLine</code>'s default length, so a longer line arrives as pieces of exactly this many
+/// characters followed by the rest (measured on this build, 2026-10-02). <method>WholeLines</method>
+/// puts such a line back together.</p>
+Parameter VENDORLINE As INTEGER = 32000;
 
 /// <p>The query key carrying a set of documents: their names, comma-separated.</p>
 Parameter NAMESKEY = "names";
@@ -1093,9 +1106,10 @@ ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %
     Quit $$$OK
 }
 
-/// <p>Export the documents <var>pNames</var> in one call, after <method>PresentSet</method>. When
+/// <p>Export the documents <var>pNames</var> in one call, after <method>PresentSet</method>, its lines
+/// the vendor's with each long line put back whole (<method>WholeLines</method>). When
 /// <var>pQuery</var> names <code>root</code> or <code>path</code>, the file is resolved and checked
-/// (<method>ExportFile</method>) before the vendor call, the vendor's XML lines are written to it
+/// (<method>ExportFile</method>) before the vendor call, the lines are written to it
 /// (<method>WriteLines</method>), and <var>pResult</var> is <code>{root, path}</code>; a file the call
 /// created is deleted when the write fails. Otherwise nothing is written and <var>pResult</var> is
 /// <code>{lines}</code>.</p>
@@ -1125,6 +1139,7 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
             Set tSC = ..Fail("ExportToXMLFile answered no content array", $$$ERROR($$$GeneralError, "export answered no content array"), .pHttpStatus, .pFault)
             Quit
         }
+        Set tLines = ..WholeLines(tLines)
         If 'tToFile {
             Set pResult = {}
             Do pResult.%Set("lines", tLines)
@@ -1146,6 +1161,24 @@ ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
         Set tSC = ..Fail("the export failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The export's lines <var>pLines</var>, as the vendor answers them, with each line longer than
+/// <parameter>VENDORLINE</parameter> put back together: a line of exactly that length is taken for
+/// one such piece and joined to the line after it.</p>
+ClassMethod WholeLines(pLines As %DynamicArray) As %DynamicArray
+{
+    Set tWhole = []
+    Set tPending = ""
+    Set tJoining = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tPending = $Select(tJoining: tPending _ tLine, 1: tLine)
+        Set tJoining = ($Length(tLine) = ..#VENDORLINE)
+        If 'tJoining Do tWhole.%Push(tPending, "string")
+    }
+    If tJoining Do tWhole.%Push(tPending, "string")
+    Quit tWhole
 }
 
 /// <p>Write <var>pLines</var> to <var>pFile</var> as UTF-8 text, each line ended by a line feed,
@@ -1332,7 +1365,9 @@ ClassMethod Header(pLines As %DynamicArray) As %String
 /// lines are <var>pLines</var>, would do in <var>pNamespace</var>: <var>pSummary</var>, one entry per
 /// document, <code>&lt;name&gt; new</code> or <code>&lt;name&gt; replaces &lt;ts&gt;</code> where
 /// <code>ts</code> is the instance's own version, sorted by character code and joined by
-/// <parameter>SUMMARYSEPARATOR</parameter>; <var>pCount</var>, how many; <var>pSelected</var>, the
+/// <parameter>SUMMARYSEPARATOR</parameter>, then <code> (sha256 &lt;digest&gt;)</code>, the
+/// <method>Digest</method> of <var>pLines</var>, so a file rewritten with the same documents reads a
+/// different summary (AD-6); <var>pCount</var>, how many; <var>pSelected</var>, the
 /// names as the vendor spells them; and <var>pName</var>, a UDL file's one document. An XML export is
 /// read through <code>xml/list</code>, whose per-file <code>status</code> or empty list is 422
 /// <code>EXPLORER.IMPORT.UNREADABLE</code> with the status logged; a UDL file is named by
@@ -1351,7 +1386,7 @@ ClassMethod Examine(pVersion As %Integer, pNamespace As %String, pLabel As %Stri
         Set tSC = ..Docs(pVersion, pNamespace, tEndpoint, $ListBuild(pName), .tDocs, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
         Set tModified = tDocs.%Get("Modified")
-        Set pSummary = pName _ $Select(tModified = "": " new", 1: " replaces " _ $Piece(tModified, "=", 2, *))
+        Set pSummary = pName _ $Select(tModified = "": " new", 1: " replaces " _ $Piece(tModified, "=", 2, *)) _ ..DigestNote(pLines)
         Set pCount = 1
         Do pSelected.%Push(pName, "string")
         Quit $$$OK
@@ -1391,7 +1426,36 @@ ClassMethod Examine(pVersion As %Integer, pNamespace As %String, pLabel As %Stri
         Set pCount = pCount + 1
     }
     If pCount = 0 Quit ..Unreadable(.pHttpStatus, .pFault)
+    Set pSummary = pSummary _ ..DigestNote(pLines)
     Quit $$$OK
+}
+
+/// <p>The note that ends an import's summary: <code> (sha256 &lt;digest&gt;)</code>, the
+/// <method>Digest</method> of <var>pLines</var>.</p>
+ClassMethod DigestNote(pLines As %DynamicArray) As %String [ Private ]
+{
+    Quit " (" _ ..#SUMMARYDIGEST _ " " _ ..Digest(pLines) _ ")"
+}
+
+/// <p>The SHA-256 digest, as lower-case hexadecimal, of the lines <var>pLines</var> an import read
+/// from its file, each written as UTF-8 and ended by a line feed. The import's write compares it as
+/// part of the reviewed summary, so it refuses a file whose text changed even where its documents
+/// did not (AD-6).</p>
+ClassMethod Digest(pLines As %DynamicArray) As %String
+{
+    Set tStream = ##class(%Stream.TmpBinary).%New()
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        For tStart = 1:..#DIGESTCHUNK:$Length(tLine) {
+            Do tStream.Write($ZConvert($Extract(tLine, tStart, tStart + ..#DIGESTCHUNK - 1), "O", "UTF8"))
+        }
+        Do tStream.Write($Char(10))
+    }
+    Do tStream.Rewind()
+    Set tSC = $$$OK
+    Set tHash = $System.Encryption.SHAHashStream(256, tStream, .tSC)
+    If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
 }
 
 /// <p>What an import of the file <var>pQuery</var> names would do in <var>pNamespace</var>

@@ -89,7 +89,7 @@ The routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) 
 | Import a local file | action `import-local`, values `{fileName, content, Compile}` | As for a server file, from the sent text | `content` over 3,000,000 characters gives 400 `TOOLARGE`; a malformed `fileName` gives 400 `PORT.VALIDATION`. |
 | Import a UDL document | a `.cls`, `.mac`, `.inc` or `.int` file | The header names the document. The `PUT` answers 201 (new) or 200 (replaced), then a compile runs when asked. `output {imported:[name], lines, errors}`. | A header that does not parse gives 422 `UNREADABLE`; nothing is put. |
 | Imported code does not compile | a file whose code fails to compile | 200. The documents are written, `errors` is true, and `lines` carry the errors. The file `status` text is logged. | not a fault |
-| Agent import (AC3) | `explorer.classes.import {Id:"import", root, path, Compile}`, with the key enabled | The mint stores `documents`, for example `A.cls replaces 2026-10-02 08:59:19.69, B.cls new`. The card shows the rows `root`, `path`, `documents` and `Compile`, and the consequence `EXPLORER.IMPORT.REPLACES`. Confirm loads exactly those documents. | With the baseline in force, governance refuses it and the tool stays advertised. |
+| Agent import (AC3) | `explorer.classes.import {Id:"import", root, path, Compile}`, with the key enabled | The mint stores `documents`, for example `A.cls replaces 2026-10-02 08:59:19.69, B.cls new (sha256 <digest>)`. The card shows the rows `root`, `path`, `documents` and `Compile`, and the consequence `EXPLORER.IMPORT.REPLACES`. Confirm loads exactly those documents. | With the baseline in force, governance refuses it and the tool stays advertised. |
 | File changed | at the write, the file's documents, or the version of a document it replaces, differ from `documents` | 409 `EXPLORER.IMPORT.CHANGED`; nothing is loaded | none |
 | OcuPilot's own code | an import file holding `OcuPilotProbe1913.Own.cls` | 403 `PROHIBITED.OCUPILOTCODE` on both callers; nothing changes. An export of that class succeeds. | none |
 | No routines WRITE | the caller holds the read pairs but not `<routines resource>:WRITE`, and imports | 403 `AUTH.NOPRIVILEGE` naming that pair, with no vendor call. A `%Development`-only holder exports to this browser. | none |
@@ -345,6 +345,44 @@ Each is listed with its current literal and what moves it:
 - **AC6 (read before write).** Given an unreadable file, when it is imported, then the answer is `UNREADABLE` and no document, stub included, is created. Given a file or a replaced document changed after `documents` was read, when the write runs, then the answer is `CHANGED` and nothing is loaded.
 - **AC7 (registry).** Given the registry after this story, when `ExplorerDescriptor` enumerates `explorer.*`, then it finds four reads and eight writes, the import keys disabled and the export keys enabled. `DeveloperFloor` finds that its writes are exactly the two exports, and the structural walk adds no `structural-baseline.json` entry.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 64 rows, 15 entries (high 1, med 7, low 7), all patched; 45 rows rejected. Design Notes › The summary and the matrix's AC3 example predate entry 1's digest note.
+
+- [x] [Review][Patch] high, fix-risk med (the summary changes form, every pin on it moves), in-story, AD-6/AC6: `CHANGED` compared names and replaced versions only, so a server file rewritten after the review with the same names loaded code nobody reviewed; the summary now ends ` (sha256 <digest of the file's lines>)` [src/OcuPilot/Port/AtelierPort.cls:1444]
+- [x] [Review][Patch] med, fix-risk med (output changes for long lines only), in-story, AC1: the vendor's export answers a line over 32,000 characters as pieces (measured: 40,033 as 32,000 + 8,033), so the file and the browser's lines broke it; `WholeLines` rejoins them [src/OcuPilot/Port/AtelierPort.cls:1169]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story, AC6: no leg rewrote the file after the review; added at the port and on the agent's confirm [src/OcuPilot/Test/ExplorerTransfer.cls:305]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story, AC3: the agent's calls were pinned at the tool's `View`; both now go through `Dispatch.Answer` (governance, schema, pairs, the model's tool result) [src/OcuPilot/Test/ExplorerTransfer.cls:208]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: a UDL import over an existing document (`ignoreConflict=1`) had no test [src/OcuPilot/Test/AtelierPortTransfer.cls:243]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: a UDL import with Compile off was never checked to skip the compile [src/OcuPilot/Test/AtelierPortTransfer.cls:304]
+- [x] [Review][Patch] med, fix-risk low (test and fixture seam), in-story: `ExportSet`'s cleanup after a failed write had no test [src/OcuPilot/Test/AtelierPortTransfer.cls:399]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: `TestAnExportWritesTheVendorsLines` compared two exports whose `Export` element stamps its second, red when they straddle one (run 1826); compared unstamped [src/OcuPilot/Test/AtelierPortTransfer.cls:115]
+- [x] [Review][Patch] low, fix-risk low, in-story: the matrix row "export above the capture ceiling: 503" had no pin on the export path [src/OcuPilot/Test/AtelierPortTransfer.cls:381]
+- [x] [Review][Patch] low, fix-risk low, in-story: the import dialog kept a local file across a source switch and sent it under an empty input [ui/src/app/areas/system-explorer/explorer-import-dialog.ts:143]
+- [x] [Review][Patch] low, fix-risk low, in-story: the Routines list's Export label had no test [ui/tools/screen-actions.test.mjs:133]
+- [x] [Review][Patch] low, fix-risk low, in-story: the "Beta's version" assertion passed when the read answered nothing [src/OcuPilot/Test/AtelierPortTransfer.cls:160]
+- [x] [Review][Patch] low, fix-risk low, in-story: the export tools told the model the XML "is shown to the user"; the agent's export writes the file [src/OcuPilot/Screen/Tool/ExplorerClassExport.cls:9]
+- [x] [Review][Patch] low, fix-risk low, in-story: `TYPEEXPORTDOCS` called `root` and `path` empty (they are `null`) and `DOCUMENTSKEY` cited no such method [src/OcuPilot/Port/AtelierPort.cls:98]
+- [x] [Review][Patch] low, fix-risk low, in-story: `TASK_IMPORT_ACTION_ID`'s and the command bar's comments named Task schedule alone [ui/src/app/core/screen-actions.ts:44]
+
+Rejected:
+
+- `false`: CSP or global items in an XML file pass the code arm (4 rows) — probed: `xml/list` names OcuPilot's served files `ocupilot/<file>` and its globals `OcuPilot*.gbl`, both refused.
+- `false`: `LoadXMLFiles` answering no entry reads as success — the route pushes one entry per file sent (v7 :307).
+- `false`: the code arm keys import on the target literal — the port refuses another id for import types, and `import` fails `SetNames` for a set.
+- `false`: `CheckExport` does not check as `ExportSet` does — it checks the file the same way; pairs and version are the mint's fresh read.
+- `false`: `Invoke`'s refusal list is incomplete — it names the methods that document their codes.
+- `low`, spec-bound: Compile off sends `""`, not `-c` (2 rows) — the intent specifies `""`; real only where default qualifiers compile.
+- `low`, spec-bound: a local file near the limit can pass the longest string as JSON (2 rows) — named limitation.
+- `low`, spec-bound: an export of 3.0–3.6 million characters re-imports `TOOLARGE`, and a large set reaches the ceiling (2 rows) — both limits are the spec's.
+- `low`, spec-bound: one request loads and compiles a file — named limitation (504).
+- `low`, spec-bound: "with compile errors" also covers a save error or a file status (2 rows); no singular forms (2 rows); "proposed" on the screen path — specified copy.
+- `low`: FileReader race, no `onerror`, no pre-read size check (3 rows) — two picks inside one read or a failing read; each fix adds a guard.
+- `low`, spec-bound: UTF-8 whatever the declaration; no preview on the screen (2 rows, AD-53's dialog review); no document cap; no running status for export; `created` on `import` and `updated` for export (3 rows, `TaskImport`'s precedent); a `/* */` banner is `UNREADABLE`; `saveText` beside an unchanged `saveCsv`.
+- `low`: EXPERIENCE.md :589-:590 markers, and the +2 citation drift (pre-existing) (2 rows).
+- `low`: radios without a group name; `overflow-wrap` on a file input; no final line feed in the browser file; schema descriptions and file keys declared twice (2 rows); routine tools not minted; no browser download leg; an unasserted setup export; the status line's root join (Task schedule's precedent).
+- `low`: a locked document's `PUT` answers 500; an export a few kilobytes under the ceiling can fail at the response write (shared `Api/Response`) — rare, each fix adds a branch.
+
 ## Spec Change Log
 
 - 2026-10-02, spec gate (lead; footprint by the orchestrator, by=merge_gate): the eight spine amendments applied as tier-1. Option (A) approved for the six roster files Epic 18's 18.16 also edits: proceed now; whichever story reaches feature second unions them at its forward merge (count literals summed from the merged code, sorted lists merged) and re-runs those six classes one at a time before pushing. `Prohibited.cls` hunks approved as disjoint. DW-1932 routed here.
@@ -420,7 +458,7 @@ ROUTINE Name [Type=INC]                    -> Name.inc   ([Type=INT] -> Name.int
 anything else                              -> EXPLORER.IMPORT.UNREADABLE
 ```
 
-**The summary.** One entry per document, sorted by code point and joined by `", "`. Each entry reads `<name> new`, or `<name> replaces <ts>`, where `ts` is the instance's own version: from `xml/list` for XML, from `Docs` for UDL. Because a replaced document's version is in it, a change on the instance between review and write refuses `CHANGED`, so the import never replaces a version nobody reviewed (AD-6).
+**The summary.** One entry per document, sorted by code point and joined by `", "`. Each entry reads `<name> new`, or `<name> replaces <ts>`, where `ts` is the instance's own version: from `xml/list` for XML, from `Docs` for UDL. Because a replaced document's version is in it, a change on the instance between review and write refuses `CHANGED`, so the import never replaces a version nobody reviewed (AD-6). The summary ends with ` (sha256 <digest>)`, the digest of the file's lines, so a file whose text changed after review refuses `CHANGED` even when its document names did not.
 
 **Why two action ids per tool.** `ScreenAction.Values` admits exactly the declared values, each non-empty. A server file and a local file, or a file and this browser, are therefore separate actions of one tool. The page never registers the second id of each pair, so it is never drawn.
 
@@ -536,6 +574,11 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 - mutation: AC4, `ExplorerImport.ArgumentPairs` answering `""` → `AtelierPortWriteDenial.TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName` (run 1410).
 - mutation: AC5, `Prohibited.ImportedNames` reading only the summary's first entry → `ExplorerTransfer.TestTheCodeArmReadsEveryNameAnImportReviewed` (run 1409).
 - mutation: AC6 and the matrix, `If tTooLarge` and `If tCompileErrors` disabled in `AtelierPort` → `AtelierPortTransfer.TestAFileIsCheckedBeforeAnyRoute` and `TestAUdlFileThatDoesNotCompileIsPutWithErrors` (run 1818); the `CheckExport` call and the preview's refusal check removed from the two mints → `ExplorerTransfer.TestTheMintsRefuseTheFileTheWriteWould`, both legs (run 1819).
+- mutation (review): AC6, the digest note dropped from `AtelierPort.Examine` → `AtelierPortTransfer.TestAnXmlImportLoadsWhatItsPreviewNamed` "a file whose text changed under the same documents is refused" (run 1833) and `ExplorerTransfer.TestAnUnreadableOrChangedFileLoadsNothing` "the confirm of a file rewritten after the mint is refused as changed" (run 1835).
+- mutation (review): AC1, `AtelierPort.WholeLines` answering the vendor's lines unchanged → `AtelierPortTransfer.TestALongLineIsExportedWhole` (run 1840).
+- mutation (review): AC3, `Compile` dropped from `ExplorerImport.InputSchema` → `ExplorerTransfer.TestTheAgentExportsAndImportsThroughConfirm` "the agent's import call is minted through the dispatcher" (run 1834).
+- mutation (review): matrix, in one recompile of `AtelierPort`: `ignoreConflict` renamed → `TestAUdlFileIsPutAndCompiled` "a second text of the class replaces it"; the UDL compile made unconditional → `TestFilesAreReadAndWrittenAsUtf8` "without compiling"; `ExportSet`'s delete disabled → `TestAFailedExportWriteDeletesOnlyTheFileItCreated` first leg; `ExportSet` carrying on after a failed route → `TestAnExportAboveTheCeilingIsUnavailable` (all `AtelierPortTransfer`, run 1832); its `tAbsent` guard dropped → the cleanup test's second leg (run 1833).
+- mutation (review): `ExplorerImportDialog.onSource` keeping `local` → `code-list.page.spec.ts` "a local file read before the source was switched away and back is not sent…"; `export` dropped from `ExplorerRoutineList`'s labels → `tools/screen-actions.test.mjs`. Every mutation reverted with the tree byte-identical; final runs green: `AtelierPortTransfer` 1841, `ExplorerTransfer` 1842, `AtelierPortWriteDenial` 1843, `AtelierPortWrite`, `npm run test:tools` 1772/1772, system-explorer specs 34/34, `system-explorer-transfer` browser spec on the rebuilt bundle.
 
 ## Auto Run Result
 

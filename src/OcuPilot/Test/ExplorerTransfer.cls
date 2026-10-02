@@ -82,6 +82,35 @@ Method MintFor(pTool As %String, pArgs As %DynamicObject, Output pProposal As %D
     Quit tSC
 }
 
+/// <p>The agent's call of tool <var>pToolName</var> with <var>pInput</var> in the probe namespace, sent
+/// as one <code>tool_use</code> block through the agent's dispatcher inside a completed turn seeded for
+/// the running account, as the turn's loop sends it: <var>pContent</var> is the tool result the model
+/// reads, <var>pIsError</var> whether it is an error, and <var>pProposal</var> that result parsed.</p>
+Method DispatchFor(pToolName As %String, pInput As %DynamicObject, Output pContent As %String, Output pIsError As %Boolean, Output pProposal) As %Status
+{
+    Set pContent = ""
+    Set pIsError = 1
+    Set pProposal = ""
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    If $$$ISERR(tSC) Quit tSC
+    Set tUse = {"type": "tool_use", "id": "toolu_transfer"}
+    Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName(pToolName), "string")
+    Do tUse.%Set("input", pInput)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurn)
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(tTurn, $Username, "", [(tUse)], "OcuPilot.Kernel.Agent.Limits", .tResults, .tNames, 0, 0, .tDetails)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If $$$ISERR(tSC) Quit tSC
+    Set pContent = tResults.%Get(0).%Get("content")
+    Set pIsError = tResults.%Get(0).%Get("is_error")
+    Try {
+        Set pProposal = ##class(%DynamicObject).%FromJSON(pContent)
+    } Catch {
+        Set pProposal = ""
+    }
+    Quit $$$OK
+}
+
 /// <p>Confirm <var>pProposal</var> in process as the running account, in the probe namespace.</p>
 ClassMethod ConfirmIn(pProposal As %DynamicObject, Output pResult, Output pHttp As %Integer, Output pCode As %String) As %Status
 {
@@ -166,13 +195,16 @@ Method TestTheBrowserRoundTripRestoresEachDocument()
     Do $$$AssertTrue('$ClassMethod(tProbe, "Compiled", ..#PROBENAMESPACE, "OcuProbe1913.Alpha"), "and is not compiled when Compile is off")
 }
 
-/// <p>AC3: the agent's export mints a card naming the documents and the file with the replacement
-/// consequence, and its confirm writes the file; with the import key enabled through its stored
-/// setting, the agent's import of that file mints a card naming the file, the reviewed documents and
-/// the compile choice, and its confirm loads them. Neither tool result, nor the stored proposals and
-/// their turns' ledger rows, holds an XML or console line. At the baseline the import's confirm is
-/// refused by governance.</p>
-/// <p>Mutation (Rule 19): put the written output on the mint's answer -- this goes red.</p>
+/// <p>AC3: the agent's export call, sent through the dispatcher, mints a card naming the documents and
+/// the file with the replacement consequence, and its confirm writes the file; at the baseline the
+/// dispatcher refuses the import call, and an import minted there is refused at its confirm by
+/// governance; with the import key enabled through its stored setting, the agent's import call of
+/// that file mints a card naming the file, the reviewed documents and the compile choice, and its
+/// confirm loads them. Neither tool result the model reads, nor the stored proposals and their turns'
+/// ledger rows, holds an XML or console line.</p>
+/// <p>Mutation (Rule 19): put the written output on the mint's answer -- this goes red; drop
+/// <code>Compile</code> from <method>OcuPilot.Screen.Tool.ExplorerImport.InputSchema</method> -- the
+/// dispatcher refuses the import call and this goes red.</p>
 Method TestTheAgentExportsAndImportsThroughConfirm()
 {
     Set tProbe = ..#PROBE
@@ -180,8 +212,8 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Set tBefore = $ClassMethod(tProbe, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls")
     Set tArgs = ..FileValues("agent.xml")
     Do tArgs.%Set("Names", "OcuProbe1913.Alpha.cls", "string")
-    Set tSC = ..MintFor(..#EXPORTTOOL, tArgs, .tExport, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "the export is minted: " _ ..Json($Get(tFault)))
+    Set tSC = ..DispatchFor("explorer.classes.export", tArgs, .tExportResult, .tIsError, .tExport)
+    Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tExport)), "the agent's export call is minted through the dispatcher: " _ $Extract(tExportResult, 1, 300))
     If '$IsObject($Get(tExport)) Quit
     Set tCard = tExport.changed.%ToJSON()
     Do $$$AssertTrue((tCard [ """root""") && (tCard [ "OcuProbe1913/agent.xml") && (tCard [ "OcuProbe1913.Alpha.cls"), "its card names the documents and the file: " _ tCard)
@@ -194,15 +226,17 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Set tImportArgs = {"Id": "import", "Compile": true}
     Do tImportArgs.%Set("root", tArgs.root, "string")
     Do tImportArgs.%Set("path", tArgs.path, "string")
+    Set tSC = ..DispatchFor("explorer.classes.import", tImportArgs, .tRefused, .tIsError, .tAnswer)
+    Do $$$AssertTrue($$$ISOK(tSC) && tIsError && $IsObject($Get(tAnswer)) && (tAnswer.%Get("code") = ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED), "at the baseline the dispatcher refuses the agent's import call: " _ tRefused)
     Set tSC = ..MintFor(..#IMPORTTOOL, tImportArgs, .tImport, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "an import is minted at the baseline")
+    Do $$$AssertStatusOK(tSC, "an import minted at the baseline")
     Set tSC = ..ConfirmIn(tImport, .tResult, .tConfirmHttp, .tCode)
-    Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "403 " _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "and its confirm is refused by governance")
+    Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "403 " _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, "has its confirm refused by governance")
     Kill tSettings
     Set tSettings(..#IMPORTKEY) = "enabled"
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the import key is enabled through its stored setting")
-    Set tSC = ..MintFor(..#IMPORTTOOL, tImportArgs, .tImport, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "the import is minted: " _ ..Json($Get(tFault)))
+    Set tSC = ..DispatchFor("explorer.classes.import", tImportArgs, .tImportResult, .tIsError, .tImport)
+    Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject($Get(tImport)), "the agent's import call is minted through the dispatcher: " _ $Extract(tImportResult, 1, 300))
     If '$IsObject($Get(tImport)) Quit
     Set tCard = tImport.changed.%ToJSON()
     Do $$$AssertTrue((tCard [ """root""") && (tCard [ """path""") && (tCard [ """documents""") && (tCard [ "OcuProbe1913.Alpha.cls new") && (tCard [ """Compile"""), "its card names the file, the reviewed documents and the compile choice: " _ tCard)
@@ -212,9 +246,10 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     If '$IsObject($Get(tResult)) Quit
     Do $$$AssertEquals(tResult.state _ " " _ tResult.action _ " " _ $Select($IsObject(tResult.%Get("output")): tResult.output.imported.%ToJSON(), 1: ""), "confirmed created [""OcuProbe1913.Alpha.cls""]", "and loads the reviewed document")
     Do $$$AssertEquals($ClassMethod(tProbe, "Source", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls"), tBefore, "as it was")
+    For tModel = tExportResult, tImportResult {
+        Do $$$AssertTrue((tModel [ "proposalId") && (tModel '[ "<Export") && (tModel '[ "<?xml") && (tModel '[ "Load started") && (tModel '[ "Compiling") && (tModel '[ """output"""), "the tool result the model reads holds no XML or console line: " _ $Extract(tModel, 1, 200))
+    }
     For tProposal = tExport, tImport {
-        Set tModel = tProposal.%ToJSON()
-        Do $$$AssertTrue((tModel '[ "<Export") && (tModel '[ "<?xml") && (tModel '[ "Load started") && (tModel '[ "Compiling") && (tProposal.%GetTypeOf("output") = "unassigned"), "the tool result holds no XML or console line")
         Set tStored = ##class(OcuPilot.Test.ExplorerWrite).StoredText(tProposal.proposalId, .tLedgerRows)
         Do $$$AssertTrue(tLedgerRows > 0, "the turn's ledger rows are read: " _ tLedgerRows)
         Do $$$AssertTrue((tStored [ "OcuProbe1913") && (tStored '[ "<Export") && (tStored '[ "Load started") && (tStored '[ "Compiling"), "and the stored proposal and its ledger rows hold none: " _ $Extract(tStored, 1, 300))
@@ -261,10 +296,12 @@ Method TestAnImportOfOcuPilotsOwnCodeIsRefusedOnBothCallers()
 }
 
 /// <p>AC6: a file that does not read is refused <code>UNREADABLE</code> with no document, stub
-/// included, created; and a file changed after the agent's import was minted refuses its confirm
-/// <code>CHANGED</code> with nothing loaded.</p>
+/// included, created; and the agent's confirmed import is refused <code>CHANGED</code>, with nothing
+/// loaded, when the file is rewritten after the mint with the same document and other code, and when
+/// the document it would replace changes on the instance after the mint.</p>
 /// <p>Mutation (Rule 19): skip the list before the load in
-/// <method>OcuPilot.Port.AtelierPort.ImportSet</method> -- the stub leg goes red.</p>
+/// <method>OcuPilot.Port.AtelierPort.ImportSet</method> -- the stub leg goes red; drop the digest note
+/// from <method>OcuPilot.Port.AtelierPort.Examine</method> -- the rewritten-file leg goes red.</p>
 Method TestAnUnreadableOrChangedFileLoadsNothing()
 {
     Set tProbe = ..#PROBE
@@ -275,6 +312,7 @@ Method TestAnUnreadableOrChangedFileLoadsNothing()
     Do $$$AssertTrue('$ClassMethod(tProbe, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Stub.cls"), "and leaves no stub")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "MakeClass", ..#PROBENAMESPACE, "OcuProbe1913.Alpha"), "a probe class is saved")
     Do ..Act("classes", "export", "OcuProbe1913.Alpha.cls", ..FileValues("changed.xml"), .tStatus, .tBody)
+    Set tExported = $ClassMethod(tProbe, "ReadFile", "changed.xml")
     Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove", ..#PROBENAMESPACE), "and removed once exported")
     Kill tSettings
     Set tSettings(..#IMPORTKEY) = "enabled"
@@ -284,6 +322,16 @@ Method TestAnUnreadableOrChangedFileLoadsNothing()
     Do tArgs.%Set("Compile", 0, "boolean")
     Set tSC = ..MintFor(..#IMPORTTOOL, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the import is minted: " _ ..Json($Get(tFault)))
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "MakeClass", ..#PROBENAMESPACE, "OcuProbe1913.Alpha", 1), "another version of the class is saved")
+    Do ..Act("classes", "export", "OcuProbe1913.Alpha.cls", ..FileValues("changed.xml"), .tStatus, .tBody)
+    Do $$$AssertTrue((tStatus = 200) && ($ClassMethod(tProbe, "ReadFile", "changed.xml") [ "<Property name=""Broken"">") && (tExported '[ "<Property name=""Broken"">"), "and exported over the file, which holds the same document with other code")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "Remove", ..#PROBENAMESPACE), "and removed, so the namespace is as the mint read it")
+    Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode)
+    Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Api.AtelierError).#IMPORTCHANGED, "the confirm of a file rewritten after the mint is refused as changed")
+    Do $$$AssertTrue('$ClassMethod(tProbe, "Exists", ..#PROBENAMESPACE, "OcuProbe1913.Alpha.cls"), "and loads nothing")
+    Do $$$AssertStatusOK($ClassMethod(tProbe, "WriteFile", "changed.xml", tExported), "the exported file is put back")
+    Set tSC = ..MintFor(..#IMPORTTOOL, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the import is minted again: " _ ..Json($Get(tFault)))
     Do $$$AssertStatusOK($ClassMethod(tProbe, "MakeClass", ..#PROBENAMESPACE, "OcuProbe1913.Alpha", 1), "and the document it would create is created, otherwise, before the confirm")
     Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Api.AtelierError).#IMPORTCHANGED, "the confirm is refused as changed")
