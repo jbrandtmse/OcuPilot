@@ -4384,6 +4384,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:19:37Z occurrence=23-3-the-range-end-cleanup-part-3 note=batch b stage: proposal-demo AC3 :617 red 2 of 5 on post-sweep ocupilot-b-ci (30 s wait to the audit screen); a batch c member candidate
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -8265,6 +8266,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T01:47:49Z status=routed owner=range-end-cleanup by=orchestrator note=wait for the re-read response by URL before asserting the list, instead of a fixed collection window
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: AC2 waits for each Apply answer and the re-read; red under a 3 s hold, green after; run 36940146133
 
 ### DW-1809: Prohibited.BaseMappingMoves judges a %ALL subscript mapping of a code global on an inference that %ALL's base mapping lands on each namespace's globals database (read from the vendor's NSPMAP, not measured: the throwaway has no %ALL)
 - source: spec-18-14-namespace-mappings-and-copy-mappings.md | severity: low | fix-risk: low | footprint: in-story
@@ -8322,6 +8324,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-09-30T18:09:10Z occurrence=23-2-the-range-end-cleanup-part-2
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: protocolTimeout 600 s; red at 182 s under a 200 s font hold, 12/12 after; reopen_if a walk stalls past 600 s
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8568,6 +8571,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T14:50:03Z status=routed owner=burndown by=lead note=CI flake, Rule 27 priority: wait for the status word done before reading; next standing cleanup (23.3)
 - 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: CI flake, Rule 27 priority for the standing cleanup after 1.0.5
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: AC1 waits for done; red under a forced running poll, green after; run 36940146133
 ### DW-1861: The task create and the 9.8 edit judge the task type's privilege (TaskRules.Permitted) only at the mint, never at Confirm, so a caller who lost it since the mint still confirms (AD-6, AD-40)
 - source: spec-16-11-start-suspend-and-resume-the-task-manager.md | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: TaskCreate/TaskUpdate.ArgumentProblem call TaskRules.Validate (Permitted :141, :250) at the mint only; Confirm asked no tool rule until 16.11's review added Write.ConfirmProblem, pinned for the row tools by TaskRowWire (run 21873 red without it)
@@ -8609,6 +8613,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T15:17:44Z status=routed owner=range-end-cleanup by=orchestrator note=queued for the standing cleanup after the next release, priority p1 (CI flake): the assertion counts alerts instance-wide, so an unrelated vendor alert in the window fails it; scope it to alerts the delete itself raises
 - 2026-10-01T05:57:12Z occurrence=1.0.5 upgrade check (orchestrator) 2026-10-01 note=a second failure mode: 'and the instance's state, 1 before, has not reached Alert' on an upgraded instance already at Warning from the restart (DW-1762), with the three preceding classes logging deliberate severity-2 lines (inference); the port's own assertions passed; 3/3 green on a fresh instance. The fix should assert on lines this delete posts, not the instance-wide state
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: asserts own-process adminport lines only; red under numbered poster+Warning, green after; run 36940146133
 
 ### DW-1867: CI flake: language-server-editor.browser-spec.mjs AC3 (a started probe's editor states the running sentence and reads only) failed once
 - source: OCU-1-epic16 CI run 36724473192 attempt 1 on 6de77ace (orchestrator), 2026-09-30 | severity: low | fix-risk: low | footprint: in-epic
@@ -8805,6 +8810,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance shard 3/3 was cancelled by its 46-min timeout with every class green (13:24:34, run 36862943319); refreshed timings estimate the largest leg at 37.5 min, so AC9 needed 60.7; the timeout was raised to 61 meanwhile
 - 2026-10-01T13:39:04Z status=routed owner=range-end-cleanup by=harvest note=priority p1 (CI health), orchestrator 2026-10-01: add a fourth instance shard (and a browser one if its legs follow) so a run's wall time falls
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T01:12:40Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=merge_gate note=restores the 2026-10-01T21:22:56Z adjudication trailer the 19.1 staging union merge moved under DW-1914: 98e71205 (cd14a21f), four instance legs, run 36923461500
 
 ### DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor?
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -8817,6 +8823,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.1 Task 0 on ocupilot-ci: 8 of 20 background jobs of 20 index calls died under %SYS.Capture (messages.log, 14 caught signal 11 lines 20:17-20:21Z); through a file device and through the vendor's HTTP route none; AD-61 rule 5 routes index through a temporary file
 - 2026-10-01T21:38:12Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to file it with InterSystems, as DW-1527 and DW-1640 were
+- 2026-10-02T02:16:04Z status=wontfix-accepted owner=burndown by=owner reopen_if=the owner asks to report it, or the crash reproduces on an instance with a healthy IRISTEMP note=owner 2026-10-01: hold the upstream report for now; the product avoids the route through AD-61 rule 5's temporary file. Measured only on ocupilot-ci, whose IRISTEMP had no IRIS.DAT and hit <FILEFULL> (inference: may be a factor); Epic 19 re-measures on ocupilot-a2-ci
+- 2026-10-02T03:27:50Z status=decision-pending owner=burndown by=merge_gate note=reopen_if met: reproduces on ocupilot-a2-ci with a healthy IRISTEMP (5 caught-signal-11 lines at 03:24:13Z from 20 jobs, 3 more halted, 9 failed on their first call; Community's licence limit also hit during the burst) and once in a single process (19.1 implement test run, messages.old_20261002), so the broken-IRISTEMP explanation is wrong; human=whether to report it to InterSystems now; the product stays on AD-61 rule 5's temp-file route
 
 ### DW-1908: A text-form read that fails after the index answered fails the whole document read, so the viewer's source and XML not-available sentences cannot appear
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
@@ -8853,6 +8861,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AtelierPortDenial.OnBeforeAllTests grants tHome only while the port also requires the globals resource; the two coincide on every CI and throwaway instance
 - 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real only on an install namespace whose globals database differs from its routines database
 - 2026-10-01T21:22:56Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=98e71205 (cd14a21f): four instance legs, run 36923461500 green, longest leg 38.4 min, wall 38.7 (was 46.1)
+- 2026-10-02T01:12:40Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=merge_gate note=restores the 2026-10-02T00:25:27Z cr trailer; the line above it belongs to DW-1901 (union-merge move)
 
 ### DW-1904: The spine's Operational Envelope Build and CI row lists the client unit tests among the suites run against throwaway containers and never names the browser specs it then splits across three shards
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
@@ -8880,3 +8889,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md:182 (Privilege resource: the %Admin_* or OcuPilot administrator resource) and :214 (screens gate on the admin API's %Admin_* privilege map); System Explorer's descriptors declare %Development:USE since 19.1
 - 2026-10-02T03:58:04Z status=wontfix-accepted owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=cr note=reopen_if=EXPERIENCE.md :182 or :214 still reads %Admin_*-only when the lead writes 19.12's ship amendments
 - 2026-10-02T04:01:21Z status=resolved-by:19-12-a-development-holder-reaches-system-explorer-as-the-classic by=adjudication note=EXPERIENCE.md :182 and :214 now name %Development for System Explorer, edited in place at ship
+### DW-1906: browser.config.mjs launchOptions doc comment says a spec states no launch option of its own, but two specs add one
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/browser.config.mjs:99 vs data-table-columns.browser-spec.mjs:441 (ignoreDefaultArgs) and a11y-structural-invariants.browser-spec.mjs:48 (protocolTimeout, batch b)
+- 2026-10-01T23:19:37Z status=open owner=23-3-the-range-end-cleanup-part-3 by=harvest note=comment-only; patch in batch b's code review
+- 2026-10-01T23:57:16Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=191b35d2: comment corrected in batch b review
+
+### DW-1907: ci-throwaway.sh's arming comment says AdminPortAbsence reads the alert state; since DW-1866 it reads messages.log
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: scripts/ci-throwaway.sh:264 vs src/OcuPilot/Test/AdminPortAbsence.cls (6e6b8dcc): the class no longer reads $SYSTEM.Monitor or alerts.log
+- 2026-10-01T23:37:15Z status=open owner=23-3-the-range-end-cleanup-part-3 by=cr note=one-word comment fix; Epic 19 is editing ci-throwaway.sh (add-only), so not patched in batch b's review
+
+### DW-1915: CI flake: OAuthResourceServerAuditMask.TestARowCarryingAProbeKeyReadsMasked's audit-screen read answered 200 without the key but not the expected '1 3' masked counts (AssertMasked+7)
+- source: CI run 36949919497 attempt 1, instance shard 4/4 (OCU-1-staging-19-1 abb61579) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: same class, same position and same four predecessors passed on runs 36940146133, 36943583139 and 36946450097; abb61579's code differs from green 6f5a99e2 only by two doc-comment lines; the probe's rows not yet visible to the screen read is an (inference) to reproduce
+- 2026-10-02T01:52:17Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; rerun --failed on attempt 2; next cleanup story reproduces it (audit write vs read visibility, or the screen's row window)

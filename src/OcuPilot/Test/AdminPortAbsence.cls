@@ -2,7 +2,7 @@
 /// so <class>OcuPilot.Port.AdminPort</class> logs nothing for it and the caller still gets its
 /// <code>PORT.NOTFOUND</code> fault; a write answered 404 is still logged at error; and on the
 /// instance, a verified delete, whose re-read is answered 404, writes no port line to
-/// <code>messages.log</code>, so it posts nothing the instance would copy to <code>alerts.log</code>.</p>
+/// <code>messages.log</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, a caller holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the
 /// last test creates and deletes a role through the real port and reads the instance's
