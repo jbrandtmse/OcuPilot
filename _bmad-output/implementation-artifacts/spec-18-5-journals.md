@@ -2,7 +2,7 @@
 title: 'Story 18.5: Journals'
 type: 'feature'
 created: '2026-10-02'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
 baseline_commit: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
 review_loop_iteration: 0
@@ -539,7 +539,13 @@ Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-
 - Rejected (low, not worth it): a warning naming a stale or unloaded first row; out-of-order database reads on one page; over 500 databases unmarked; an out-of-band switch racing the unmoved check; the cold-deep-link databases read (maybe-false: `databases.browser-spec.mjs:298`'s cold goto shows the same pattern working); the 200-line errors layout (maybe-false, inference only).
 - Rejected (spec-bound or not this stage's): NOOTHER naming Journal settings; the guard's whole-list read per call; a started check's verdict lost (Named limit 2); `PathPortInstance` armed whole; EXPERIENCE.md :164 wording; prompt groups and plain prev/next; per-AC Rule 19 scope met for AC5 and AC11 (runs 2697, 2702); the merged tree's 1,001 lines (19.13's); the stale "For the runner" lines (a spec edit); DW-1797's adjudication (the lead's).
 
+### Rework 1 (CI)
+
+- [ ] [CI] instance shards 1-4 of run 37057086419 (`f1e3376c`): every journal test that needs a closed journal file or at least two listed files fails on a fresh CI instance, which lists exactly one journal file (the current one): `JournalRead` (3: "the instance lists at least two journal files", "lists journal files: 1"), `JournalWrite.TestACleanCheckAnswersBothCallersAtBothLevels`, `JournalIntegrity` (2), `JournalWriteGate` (2), `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` ("a closed journal file is listed") -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37057086419 -- the fix: each class arranges its own precondition instead of relying on an old instance's journal history (a `JournalProbe` helper, called before the class's tests, that switches the journal file by test-only `%SYS` seeding until the list names a closed file and at least two files; never deletes a file), so the classes pass on an instance whose journal holds one file; prove it by making the helper's precondition branch run (a seam or a check that it switched when the list held one file).
+
 ## Spec Change Log
+
+- 2026-10-02, runner (rework 1, trigger=ci): re-opened for the `[CI]` item under Tasks & Acceptance; nothing else changes.
 
 - 2026-10-02, runner at dev_complete (Rule 5 tier 1, corrected at origin): the Boundaries screen table's routes read `journals/details` and `journals/databases`, opened at `<route>/<file>` as built (a journal file name holds slashes; the DatabaseDetails convention keeps the id one path segment, AD-13); the matrix's List row and AC1 drop "Journal settings 14th", which is Story 18.18's under the split. AD-51's JournalPort case gains `DIRSTATE`. The deferred stale-confirm 500 is DW-1950, routed to 18.18.
 
