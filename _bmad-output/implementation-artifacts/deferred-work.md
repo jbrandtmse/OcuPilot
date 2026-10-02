@@ -8904,3 +8904,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 36949919497 attempt 1, instance shard 4/4 (OCU-1-staging-19-1 abb61579) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: same class, same position and same four predecessors passed on runs 36940146133, 36943583139 and 36946450097; abb61579's code differs from green 6f5a99e2 only by two doc-comment lines; the probe's rows not yet visible to the screen read is an (inference) to reproduce
 - 2026-10-02T01:52:17Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; rerun --failed on attempt 2; next cleanup story reproduces it (audit write vs read visibility, or the screen's row window)
+
+### DW-1925: CI flake: reply.browser-spec (b) found the remote link's href null in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
+- 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story
