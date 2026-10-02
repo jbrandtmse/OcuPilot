@@ -162,10 +162,12 @@ Method TestListFiltersApplyBeforeTheCapAndFilterIsNeverSent()
         Set tQuery($List(tCase, 1)) = $List(tCase, 2)
         Do $$$AssertEquals(..Names("Classes", .tQuery, .tHttp), $List(tCase, 3), $List(tCase, 1) _ "=" _ $List(tCase, 2))
     }
+    ; Four rows: the first four raw rows hold %Sys.Thing.cls, so a cap counted before the filter
+    ; answers three.
     Kill tQuery
     Set tQuery("system") = "no"
-    Set tQuery("maxRows") = 2
-    Do $$$AssertEquals(..Names("Classes", .tQuery, .tHttp), "Alpha.One.cls,Alpha.Two.cls", "the cap cuts after the filters")
+    Set tQuery("maxRows") = 4
+    Do $$$AssertEquals(..Names("Classes", .tQuery, .tHttp), "Alpha.One.cls,Alpha.Two.cls,alpha.Lower.cls,Beta.Mapped.cls", "the cap cuts after the filters")
 
     Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
     Do ..ArmVendor()
@@ -246,6 +248,7 @@ Method TestTheReadExecutorAppliesDefaultsAndCarriesTheDocument()
     Do $$$AssertEquals(tNames, "Alpha.One.cls,Alpha.Two.cls,alpha.Lower.cls,Beta.Mapped.cls,Alpha.Gen.cls", "and the port applied them")
     Set tCall = ##class(OcuPilot.Test.AtelierPortFixture).CallAt(##class(OcuPilot.Test.AtelierPortFixture).CallCount())
     Do $$$AssertEquals(tCall.namespace, $Namespace, "the route's scope is the port's namespace")
+    Do $$$AssertEquals(tCall.method _ " " _ tCall.params.%ToJSON(), "GetDocNames {}", "generated no sends no generated parameter")
     Do $$$AssertTrue('tResult.%IsDefined("document"), "a list read carries no document")
 
     Kill tCriteria

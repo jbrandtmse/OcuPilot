@@ -206,7 +206,7 @@ interface LineSegment {
  * rail gets a tile except the two that are not destinations of their own: Home is the surface
  * the tiles sit on, and Agent co-pilot is reached from the rail. Both are read off the
  * declaration rather than named -- Home is the one area whose rail item `navigates`, Agent the
- * one pinned to the bottom -- so a ninth area would take a tile without this file changing.
+ * one pinned to the bottom -- so a new area takes a tile without this file changing.
  *
  * **A tile's caption is its area's built screen names** (EXPERIENCE.md "Seven tiles in daily-use order", "Entries in daily-use order."): the
  * side-bar entries that area lists today, joined by a separator that is `aria-hidden` so a

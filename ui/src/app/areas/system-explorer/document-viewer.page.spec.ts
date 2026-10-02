@@ -68,14 +68,19 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(screen: ScreenDeclaration, name: string, rows: readonly unknown[], missing = false) {
+async function mount(screen: ScreenDeclaration, name: string, rows: readonly unknown[], missing = false, refuseIn = '') {
   TestBed.resetTestingModule();
   const paths: string[] = [];
+  let namespace = 'HSCUSTOM';
+  const scopeListeners = new Set<() => void>();
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
       if (missing) {
         return { kind: 'error', status: 404, code: 'PORT.NOTFOUND', reason: 'This namespace holds no document by that name.', detail: null };
+      }
+      if (namespace === refuseIn) {
+        return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'Refused.', detail: { failedPair: '%DB_USER:READ' } };
       }
       const form = new URLSearchParams(path.split('?')[1] ?? '').get('form') ?? 'udl';
       const { rows: answered, ...document } = documentFor(name, form, rows);
@@ -87,7 +92,7 @@ async function mount(screen: ScreenDeclaration, name: string, rows: readonly unk
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
     bus: new ChangeBus(),
-    namespace: () => 'HSCUSTOM',
+    namespace: () => namespace,
     schedule: () => {},
   });
   TestBed.configureTestingModule({
@@ -101,7 +106,14 @@ async function mount(screen: ScreenDeclaration, name: string, rows: readonly unk
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
-        useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
+        useValue: {
+          loaded: () => true,
+          namespace: () => namespace,
+          subscribe: (listener: () => void) => {
+            scopeListeners.add(listener);
+            return () => scopeListeners.delete(listener);
+          },
+        } as unknown as ScopeService,
       },
       {
         provide: ActivatedRoute,
@@ -120,6 +132,13 @@ async function mount(screen: ScreenDeclaration, name: string, rows: readonly unk
   return {
     host,
     paths,
+    /** Move the scope as `src/main.ts` does: the framework re-reads, then the scope's listeners run. */
+    switchTo: async (next: string) => {
+      namespace = next;
+      refresh.noteScopeChanged();
+      for (const listener of [...scopeListeners]) listener();
+      await settle(fixture);
+    },
     view: async (key: string) => {
       (host.querySelector(`[data-ocu-source-view="${key}"]`) as HTMLElement).click();
       await settle(fixture);
@@ -168,6 +187,8 @@ describe('the class and routine viewers', () => {
     await view('int');
     expect(paths[2]).toContain('&form=int');
     expect(pressed()).toEqual(['int']);
+    // Mutation (Rule 19): answer `textAvailable` false for the int view -> red.
+    expect(host.querySelector('pre[data-ocu-source="text"]')?.textContent).toBe('int line 1\nint line 2');
     await view('structure');
     await view('documentation');
     expect(paths).toHaveLength(3);
@@ -212,6 +233,17 @@ describe('the class and routine viewers', () => {
     const { host } = await mount(CLASS_VIEWER, 'Demo.Gone.cls', [], true);
     expect(host.querySelector('[data-ocu-source="header"]')).toBeNull();
     expect(host.querySelector('.ocu-data-table-empty-title')?.textContent?.trim()).toBe(STRINGS.explorerClassDocumentEmpty);
+  });
+
+  it('a namespace switch whose read is refused leaves no text from the namespace left behind', async () => {
+    // Mutation (Rule 19): drop the page's `onScopeChange` -> `forget()` -> the header and text stay, red.
+    const { host, paths, switchTo } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS, false, 'USER');
+    expect(host.querySelector('pre[data-ocu-source="text"]')?.textContent).toBe(`udl line 1\n${HOSTILE}`);
+    await switchTo('USER');
+    expect(paths).toHaveLength(2);
+    expect(host.querySelector('[data-ocu-source="header"]')).toBeNull();
+    expect(host.querySelector('pre[data-ocu-source="text"]')).toBeNull();
+    expect(host.querySelector('.ocu-data-table-refusal')).not.toBeNull();
   });
 
   it('the state keeps an answer only for the name and form on screen', () => {

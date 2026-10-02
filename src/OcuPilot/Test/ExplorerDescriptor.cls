@@ -70,6 +70,21 @@ Method TestTheCriteriaCarryTheClassicDefaults()
     Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), "[""Kind"",""Name"",""Type"",""Flags""]", "screen context carries kind, name, type and flags alone")
 }
 
+/// <p>The read tools tell the model each declared default, since omitting a criterion reads it
+/// (AD-36): the Routines pattern names <code>*.mac</code>, each include choice its own default, and
+/// the viewer's form <code>udl</code>.</p>
+/// <p>Mutation: drop the default clause from
+/// <method>OcuPilot.Screen.Tool.Read.AddCriteria</method> -&gt; every assertion here goes red.</p>
+Method TestTheReadToolsNameEachDefault()
+{
+    Set tRoutines = ##class(OcuPilot.Screen.Tool.Read).InputSchema("OcuPilot.Screen.Descriptor.ExplorerRoutineList").properties
+    Do $$$AssertTrue(tRoutines.pattern.description [ "screen's default (*.mac)", "the Routines pattern names *.mac: " _ tRoutines.pattern.description)
+    Do $$$AssertTrue(tRoutines.system.description [ "screen's default (no)", "system names no: " _ tRoutines.system.description)
+    Do $$$AssertTrue(tRoutines.generated.description [ "screen's default (yes)", "generated names yes: " _ tRoutines.generated.description)
+    Set tClass = ##class(OcuPilot.Screen.Tool.Read).InputSchema("OcuPilot.Screen.Descriptor.ExplorerClassDocument").properties
+    Do $$$AssertTrue(tClass.form.description [ "screen's default (udl)", "the viewer's form names udl: " _ tClass.form.description)
+}
+
 /// <p>Every screen of the area declares at least three suggested prompts in the Code group.</p>
 Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 {

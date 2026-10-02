@@ -296,6 +296,45 @@ deferred: []
 - **AC7 (DW-1337).** Given the structural walk, when it covers all four screens at 1280 light, 720 light and 1280 dark, then it adds no entry to `structural-baseline.json`.
 - **Limit (AC4, AC5).** An account holding only `%Developer` cannot open System Explorer, because OcuPilot's `%Admin_*` floor guards every route and AD-61's gate sits on top of it until Story 19.12 widens that floor to admit `%Development:USE` (DW-1903, owner decision 2026-10-01).
 
+### Review Findings
+
+Code review 2026-10-01 (`full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 45 rows, 25 entries (high 1, med 6, low 18), 6 rejected. Every patch applied and run on `ocupilot-a2-ci`.
+
+- [x] [Review][Patch] (high, AD-61 rule 5) The index route's temporary file was left when its `Open` failed; it is deleted whenever created [src/OcuPilot/Port/AtelierPort.cls:965]
+- [x] [Review][Patch] (med) The read tools told the model an omitted pattern matches every name; each declared default is now named [src/OcuPilot/Screen/Tool/Read.cls:167]
+- [x] [Review][Patch] (med, AD-44) The viewer kept the previous namespace's document when the switch's re-read was refused; a scope change now drops it [ui/src/app/areas/system-explorer/document-viewer.page.ts:193]
+- [x] [Review][Patch] (med, Rule 19, AC1) No test read a namespace other than the install namespace [src/OcuPilot/Test/ExplorerWire.cls:93]
+- [x] [Review][Patch] (med, Rule 19, AC1) "Switching the namespace re-reads" had no pinning test on the list page [ui/src/app/areas/system-explorer/code-list.page.spec.ts:178]
+- [x] [Review][Patch] (med, Rule 19, AC2) Intermediate code's text was asserted nowhere client-side, and the browser wait also passed on the not-available sentence [ui/src/app/areas/system-explorer/document-viewer.page.spec.ts:191]
+- [x] [Review][Patch] (med, Rule 19, AC3) "Under the same defaults" was unasserted on the tool path [src/OcuPilot/Test/ExplorerWire.cls:204]
+- [x] [Review][Patch] (low) The Routines pattern label read "Routine name", not the specified "Routine and include files" [ui/src/app/core/strings.ts:4170]
+- [x] [Review][Patch] (low) The oversize refusal advised narrowing the pattern, which cannot help [src/OcuPilot/Port/AtelierPort.cls:185]
+- [x] [Review][Patch] (low) `PlainText` read any `<` as a tag, dropping text after `x<5` [src/OcuPilot/Port/AtelierPort.cls:834]
+- [x] [Review][Patch] (low) `NamespacePairs`' doc said an unresolved globals resource refuses [src/OcuPilot/Port/AtelierPort.cls:278]
+- [x] [Review][Patch] (low) A non-string criterion `default` was refused in different words by the two engines [src/OcuPilot/Screen/Registry.cls:1691]
+- [x] [Review][Patch] (low) The none-holder roster loop skipped System Explorer's screens [src/OcuPilot/Test/WireAreaAnyScreen.cls:319]
+- [x] [Review][Patch] (low) The in-process cap-after-filter assertion could not fail on a raw-row cap [src/OcuPilot/Test/AtelierPort.cls:169]
+- [x] [Review][Patch] (low) `generated=no` sending no vendor parameter was unasserted [src/OcuPilot/Test/AtelierPort.cls:251]
+- [x] [Review][Patch] (low) The list spec's echo case passed with `applyEcho` emptied [ui/src/app/areas/system-explorer/code-list.page.spec.ts:167]
+- [x] [Review][Patch] (low) Stale area counts in two comments [ui/src/app/shell/rail.ts:49]
+- [x] [Review][Defer] (low) A text-form failure after the index answered fails the whole document read [src/OcuPilot/Port/AtelierPort.cls:665] — deferred: DW-1908 wontfix-accepted
+- [x] [Review][Defer] (low) Every structure read also fetches the text [src/OcuPilot/Port/AtelierPort.cls:664] — deferred: DW-1909 by-design
+- [x] [Review][Defer] (low) Sort and the most-recent prompts work inside the name-ordered cut [src/OcuPilot/Port/AtelierPort.cls:467] — deferred: DW-1910 by-design
+- [x] [Review][Defer] (low) Documentation shows the capped rows with no cap notice [ui/src/app/areas/system-explorer/document-viewer.page.ts:312] — deferred: DW-1911 wontfix-accepted
+- [x] [Review][Defer] (low) A viewer's `name` is described to the model as a wildcard list [src/OcuPilot/Screen/Tool/Read.cls:171] — deferred: occurrence on DW-1001
+- [x] [Review][Defer] (low) The pattern field has no syntax hint [ui/src/app/areas/system-explorer/code-list.page.ts:87] — deferred: DW-1912 wontfix-accepted
+- [x] [Review][Defer] (low) Defensive branches with no trigger here (remote databases, an index `<PROTECT>`, a vendor 403) [src/OcuPilot/Port/AtelierPort.cls:255] — deferred: DW-1913 wontfix-theoretical
+- [x] [Review][Defer] (low) Denial principals get READ on the routines database alone [src/OcuPilot/Test/AtelierPortDenial.cls:107] — deferred: DW-1914 wontfix-theoretical
+
+Rejected:
+
+- `false`: the bundle comment's 2,419,634 bytes is the measurement 2420kB was rounded from.
+- `false`: EXPERIENCE.md:64 describes the IA wireframe, which still draws eight bands.
+- `false`: `findmappings^%R`'s system-database spelling is pinned by `TestFindMappingsAnswersTheShapeThePortReads`, and the denial principals read in full without `%DB_IRISSYS`.
+- `false`: the tool-field bound is exercised, since the class viewer's descriptions exceed 1,000 characters.
+- `low`: the navigation payload's System Explorer block may be hand-added; comment only, and its screen order matches the server's (inference).
+- `low`: the triage log's "all six routine types" claim; the fix edits the spec, and no-extension matching is type-agnostic.
+
 ## Spec Change Log
 
 - 2026-10-01, implement halt (intent gap, AD-61 rule 5): lead ruling. AD-61 rule 5 now names a port-owned temporary file for `action/index` and rule 1 folds Task 0's pair set; re-dispatched `in-progress` with `baseline_revision` kept at `08ec761c` and the implementation intact in the tree.
@@ -491,6 +530,10 @@ Record one `mutation: <change> → <test that reddened>` line per AC under this 
 - mutation: AD-61 rule 1, `DatabaseResources` reads `findmappings^%R`'s third argument in place of its second → `AtelierPort.TestFindMappingsAnswersTheShapeThePortReads` (run 2, `ocupilot-a2-ci`).
 - mutation: AD-61 rule 3, drop `%session` and `%SourceControl` from `Route`'s `New` → `AtelierPortDocument.TestTheCallersCspObjectsAreUntouched` (run 427).
 - mutation: AD-61 rule 5, `FILEDEVICEROUTES` set to `""` → `AtelierPortDocument.TestTheIndexRouteWritesAPortOwnedFileItDeletes` (single-method run; the class run dies on signal 11 in `TestALiveClassReads`); delete the file's deletion from `Route` → the same test (run 426); read the file back `RAW` → `ExplorerWire.TestTheClassViewerAnswersRowsAndTheDocument` (run 428).
+- mutation: AC1 (review), hand the port `$Namespace` in `Read.Execute`'s atelier branch → `ExplorerWire.TestTheClassesListOpensOnTheClassicDefaults` (run 438); drop the read from `RefreshService.noteScopeChanged` → `code-list.page.spec.ts` "switching the namespace re-reads the search on screen".
+- mutation: AC2 (review), `textAvailable` false for the int view → `document-viewer.page.spec.ts` "XML and Intermediate code each re-read with their form".
+- mutation: AC3 (review), seed every declared criterion in `Tool/Read.View`, omitted ones empty → `ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument` (run 439).
+- mutation: AD-44 (review), drop the viewer's `onScopeChange` → `forget()` → `document-viewer.page.spec.ts` "a namespace switch whose read is refused leaves no text from the namespace left behind".
 
 ## Auto Run Result
 

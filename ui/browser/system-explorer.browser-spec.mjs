@@ -210,7 +210,8 @@ test('AC2: the class viewer shows its header and five views, each text view a re
 
     await view(page, 'int');
     await readsUntil(reads, (all) => all.some((read) => read.includes('form=int')), 'Intermediate code re-reads with form=int');
-    await page.waitForFunction(() => /^ ?;OcuPilot\.Port\.AtelierPort\.1/m.test(document.querySelector('pre[data-ocu-source="text"]')?.textContent ?? '') || document.querySelector('[data-ocu-source="not-available"]') !== null, { timeout: config.navigationTimeoutMs });
+    // The header named the generated routine, so its text is what this view shows.
+    await page.waitForFunction(() => /^(ROUTINE | ?;)OcuPilot\.Port\.AtelierPort\.1/m.test(document.querySelector('pre[data-ocu-source="text"]')?.textContent ?? ''), { timeout: config.navigationTimeoutMs });
 
     const before = reads.length;
     await view(page, 'structure');

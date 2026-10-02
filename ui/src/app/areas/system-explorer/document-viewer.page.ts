@@ -6,7 +6,7 @@ import { decodeEntityId } from '../../core/entity-id';
 import { isBannerFault } from '../../core/fault';
 import { NavigationService } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
-import { ScopeService } from '../../core/scope';
+import { ScopeService, onScopeChange } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
@@ -189,6 +189,8 @@ export class SourceViewerPage {
     const stopState = this.state.subscribe(() => this.bump());
     const stopStore = store.subscribe(() => this.bump());
     const stopRefresh = this.refresh.subscribe(() => this.bump());
+    // A namespace switch re-reads through the framework; the old namespace's text leaves now.
+    const stopScope = onScopeChange(this.scope, () => this.state.forget());
     // A new id on the same route is a new document, read from Source.
     const params = this.route.paramMap.subscribe((map) => {
       const raw = map.get('id');
@@ -200,6 +202,7 @@ export class SourceViewerPage {
       stopState();
       stopStore();
       stopRefresh();
+      stopScope();
       params.unsubscribe();
       if (this.navigation.screenForUrl(this.router.url)?.descriptor === screen.descriptor) return;
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();

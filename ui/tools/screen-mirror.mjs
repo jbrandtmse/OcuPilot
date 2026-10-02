@@ -1844,7 +1844,7 @@ function criteriaValueDefaultProblem(field, where) {
   if (field.kind === 'datetime') {
     return `${where} declares default on kind 'datetime', and a datetime criterion's default is defaultHoursAgo (AD-36)`;
   }
-  if (typeof field.default !== 'string') return `${where} default '${shown(field.default)}' is not a string`;
+  if (typeof field.default !== 'string') return `${where} default is not a string`;
   if (field.kind === 'text') {
     if (field.default.length > field.maxLength) return `${where} default '${field.default}' is longer than its maxLength`;
     return null;

@@ -59,7 +59,12 @@ ClassMethod Names(pRows As %DynamicArray) As %String
 
 /// <p>Matrix: the Classes list opens on the classic defaults -- no <code>%</code> names, no
 /// generated classes, mapped ones included -- with the declared fields, at most the cap's rows and
-/// <code>truncated</code> reported; a pattern narrows it case-sensitively to exactly its matches.</p>
+/// <code>truncated</code> reported; a pattern narrows it case-sensitively to exactly its matches;
+/// and the route's <code>ns</code> is the namespace read (AC1), so another namespace, which holds
+/// none of OcuPilot's classes, answers none of them.</p>
+/// <p>Mutation: hand the port <code>$Namespace</code> in place of the route's scope in
+/// <method>OcuPilot.Screen.Read.Execute</method>'s atelier branch -&gt; the other-namespace
+/// assertions go red.</p>
 Method TestTheClassesListOpensOnTheClassicDefaults()
 {
     Set tHere = $Namespace
@@ -84,6 +89,12 @@ Method TestTheClassesListOpensOnTheClassicDefaults()
     Do $$$AssertEquals(tStatus _ " " _ ..Names(tAnswer.rows), "200 OcuPilot.Kernel.EntityId.cls,OcuPilot.Kernel.EntityRef.cls,OcuPilot.Kernel.EntityType.cls", "a pattern narrows the list to exactly its matches")
     Set tSC = ..Read("explorer.classes", "pattern=ocupilot.kernel.entity*&ns=" _ tHere, .tStatus, .tAnswer, .tHeaders)
     Do $$$AssertEquals(tStatus _ " " _ tAnswer.rows.%Size(), "200 0", "and matches case-sensitively, as the classic page does")
+
+    Set tOther = $Select(tHere = "USER": "%SYS", 1: "USER")
+    Set tSC = ..Read("explorer.classes", "pattern=OcuPilot.Kernel.Entity*&ns=" _ $Replace(tOther, "%", "%25"), .tStatus, .tAnswer, .tHeaders)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("rows")): tAnswer.rows.%Size(), 1: ""), "200 0", "the same pattern in " _ tOther _ " reads that namespace, which holds none of them")
+    Set tSC = ..Read("explorer.class", "name=OcuPilot.Kernel.EntityId.cls&ns=" _ $Replace(tOther, "%", "%25"), .tStatus, .tAnswer, .tHeaders)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "and so does a document read")
 }
 
 /// <p>Matrix: the Routines list opens on <code>*.mac</code> with generated routines included.</p>
@@ -166,17 +177,20 @@ Method TestRefusalsOverTheWire()
 }
 
 /// <p>Integration (AC3): each <code>explorer.*.read</code> answered through the agent's dispatcher
-/// returns the rows the screen reads, each field bounded by the context cap, and never the
-/// document; an empty call on a viewer's read is refused <code>PORT.VALIDATION</code>.</p>
-/// <p>Mutation: copy <code>document</code> into <method>OcuPilot.Screen.Tool.Read.View</method>'s
-/// result -&gt; the no-document assertion goes red.</p>
+/// returns the rows the screen reads, under the same defaults the screen opens on, each field
+/// bounded by the context cap, and never the document; an empty call on a viewer's read is refused
+/// <code>PORT.VALIDATION</code>.</p>
+/// <p>Mutations: copy <code>document</code> into <method>OcuPilot.Screen.Tool.Read.View</method>'s
+/// result -&gt; the no-document assertion goes red; seed every declared criterion in
+/// <method>OcuPilot.Screen.Tool.Read.View</method>, the omitted ones as empty -&gt; the defaults
+/// assertion goes red.</p>
 Method TestTheReadToolsAnswerRowsAndNeverTheDocument()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
     If $$$ISERR(tSC) Quit
     Try {
-        For tCase = $ListBuild("explorer.classes.read", "{}", "Name"), $ListBuild("explorer.routines.read", "{}", "Name"), $ListBuild("explorer.class.read", "{""name"":""OcuPilot.Port.AdminPort.cls""}", "Description"), $ListBuild("explorer.routine.read", "{""name"":""HS.HC.Info.mac""}", "Type") {
+        For tCase = $ListBuild("explorer.classes.read", "{}", "Name", "{""pattern"":""*"",""system"":""no"",""generated"":""no"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.routines.read", "{}", "Name", "{""pattern"":""*.mac"",""system"":""no"",""generated"":""yes"",""mapped"":""yes"",""from"":"""",""to"":""""}"), $ListBuild("explorer.class.read", "{""name"":""OcuPilot.Port.AdminPort.cls""}", "Description", "{""name"":""OcuPilot.Port.AdminPort.cls"",""form"":""udl""}"), $ListBuild("explorer.routine.read", "{""name"":""HS.HC.Info.mac""}", "Type", "{""name"":""HS.HC.Info.mac"",""form"":""udl""}") {
             Set tUse = {"type": "tool_use", "id": "toolu_explorer"}
             Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName($List(tCase, 1)), "string")
             Do tUse.%Set("input", ##class(%DynamicObject).%FromJSON($List(tCase, 2)))
@@ -187,6 +201,7 @@ Method TestTheReadToolsAnswerRowsAndNeverTheDocument()
             Set tContent = ##class(%DynamicObject).%FromJSON(tResults.%Get(0).%Get("content"))
             Do $$$AssertTrue($IsObject(tContent.%Get("rows")) && (tContent.rows.%Size() > 0), $List(tCase, 1) _ ": returns rows")
             Do $$$AssertTrue('tContent.%IsDefined("document"), $List(tCase, 1) _ ": and no document")
+            Do $$$AssertEquals($Select($IsObject(tContent.%Get("criteria")): tContent.criteria.%ToJSON(), 1: ""), $List(tCase, 4), $List(tCase, 1) _ ": under the defaults the screen opens on")
             If '$IsObject(tContent.%Get("rows")) Continue
             Set tLongest = 0
             Set tIterator = tContent.rows.%GetIterator()

@@ -1688,7 +1688,7 @@ ClassMethod CriteriaValueDefaultProblem(pField As %DynamicObject, pWhere As %Str
     Set tKind = pField.%Get("kind")
     Set tDefault = pField.%Get("default")
     If tKind = "datetime" Quit pWhere _ " declares default on kind 'datetime', and a datetime criterion's default is defaultHoursAgo (AD-36)"
-    If tType '= "string" Quit pWhere _ " default '" _ tDefault _ "' is not a string"
+    If tType '= "string" Quit pWhere _ " default is not a string"
     If tKind = "text" {
         If $Length(tDefault) > pField.%Get("maxLength") Quit pWhere _ " default '" _ tDefault _ "' is longer than its maxLength"
         Quit ""

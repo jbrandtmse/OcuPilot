@@ -182,7 +182,7 @@ Parameter REASONVALIDATION = "The source code API refused one of the values supp
 Parameter REASONACCESSDENIED = "The source code API refused this read for this account.";
 
 /// <p>The reason an answer above <parameter>CAPTURECEILING</parameter> is refused with.</p>
-Parameter REASONTOOLARGE = "The answer is too large to read in one call; narrow the name pattern.";
+Parameter REASONTOOLARGE = "The source code API's answer is too large to read in one call.";
 
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
@@ -274,8 +274,9 @@ ClassMethod Pairs() As %List
 /// <p>READ on <var>pNamespace</var>'s routines database, on its globals database where that is
 /// another one, and on every database it maps classes or routines from but the system database
 /// (<method>DatabaseResources</method>), as the gate's <code>%List</code> of pairs in that order;
-/// <code>""</code> when any of those resources cannot be resolved, which the caller refuses rather
-/// than admits. Entering a namespace needs READ on its globals database, and a
+/// <code>""</code> when the routines database's or a mapped database's resource cannot be resolved,
+/// which the caller refuses rather than admits. A globals database that reports no resource adds no
+/// pair. Entering a namespace needs READ on its globals database, and a
 /// list read answers 200 with no rows when a mapped code database cannot be read.</p>
 ClassMethod NamespacePairs(pNamespace As %String) As %List
 {
@@ -806,7 +807,8 @@ ClassMethod Joined(pArray) As %String [ Private ]
 }
 
 /// <p>Documentation as plain text: <var>pDesc</var>'s lines (or one string) joined by a space, every
-/// <code>&lt;...&gt;</code> tag removed, <code>&amp;lt; &amp;gt; &amp;quot; &amp;#39;</code> and
+/// <code>&lt;...&gt;</code> tag removed (a <code>&lt;</code> followed by a letter, <code>/</code>,
+/// <code>!</code> or <code>?</code>; any other <code>&lt;</code> is text), <code>&amp;lt; &amp;gt; &amp;quot; &amp;#39;</code> and
 /// then <code>&amp;amp;</code> decoded, and whitespace runs collapsed to one space.</p>
 ClassMethod PlainText(pDesc) As %String
 {
@@ -829,7 +831,7 @@ ClassMethod PlainText(pDesc) As %String
             If tChar = ">" Set tInTag = 0
             Continue
         }
-        If tChar = "<" {
+        If (tChar = "<") && ($Extract(tText, tI + 1)?1(1A,1"/",1"!",1"?")) {
             Set tInTag = 1
             Continue
         }
@@ -958,8 +960,9 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
             Use tDevice
             If $$$ISOK(tCallSC) Set tCallSC = exFile.AsStatus()
         }
-        Do ##class(%File).Delete(tFile)
     }
+    ; TempFilename creates the file, so it is deleted whether or not it was opened.
+    If tFile '= "" Do ##class(%File).Delete(tFile)
     If $IsObject($Get(%response)) Set tHttp = +%response.Status
     If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 1
     Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault)

@@ -68,9 +68,11 @@ ClassMethod Read(pEndpoint As %String, pName As %String, pForm As %String, Outpu
 /// markup untouched, and the generated <code>.int</code> names. The index is asked for the one name
 /// as a JSON body; the text is the name's own.</p>
 /// <p>Mutation: drop the tag stripping from <method>OcuPilot.Port.AtelierPort.PlainText</method>
-/// -&gt; the rows assertion goes red.</p>
+/// -&gt; the rows assertion goes red; treat every <code>&lt;</code> as a tag's start -&gt; the
+/// comparison assertion goes red.</p>
 Method TestAClassReadsItsRowsAndItsSource()
 {
+    Do $$$AssertEquals(##class(OcuPilot.Port.AtelierPort).PlainText("Quits 1 if x<5 and y>3, or 0 <b>otherwise</b>. If n<0"), "Quits 1 if x<5 and y>3, or 0 otherwise. If n<0", "a < that starts no tag is text")
     Do ..ArmDocument()
     Set tSC = ..Read("Class", "Alpha.One.cls", "", .tRows, .tDocument, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the class reads")

@@ -50,13 +50,18 @@ function echoFor(screen: ScreenDeclaration, path: string): Record<string, string
   return applied;
 }
 
-async function mount(screen: ScreenDeclaration, rows: unknown[] = [row('OcuPilot.Port.AtelierPort.cls')], arrivals: ScreenArrivals | null = null) {
+async function mount(
+  screen: ScreenDeclaration,
+  rows: unknown[] = [row('OcuPilot.Port.AtelierPort.cls')],
+  arrivals: ScreenArrivals | null = null,
+  echo: (path: string) => Record<string, string> = (path) => echoFor(screen, path)
+) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
-      return { kind: 'ok', status: 200, body: { fields: [], rows, truncated: false, banner: '', criteria: echoFor(screen, path) } as T };
+      return { kind: 'ok', status: 200, body: { fields: [], rows, truncated: false, banner: '', criteria: echo(path) } as T };
     },
   };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
@@ -95,6 +100,7 @@ async function mount(screen: ScreenDeclaration, rows: unknown[] = [row('OcuPilot
     fixture,
     host,
     paths,
+    refresh,
     field: (param: string) => host.querySelector(`input[data-ocu-criterion="${param}"]`) as HTMLInputElement,
     type: async (param: string, value: string) => {
       const input = host.querySelector(`input[data-ocu-criterion="${param}"]`) as HTMLInputElement;
@@ -161,9 +167,23 @@ describe('System Explorer lists', () => {
   it('an agent arrival runs exactly its criteria, and the form fills the rest from the answer', async () => {
     const arrivals = new ScreenArrivals();
     arrivals.set({ route: CLASSES.route, criterion: '', criteria: { pattern: 'HS.*' } });
-    const { paths, field } = await mount(CLASSES, [row('HS.HC.Info.cls')], arrivals);
+    // The instance answers a value the declaration does not default to, so the form can only show
+    // it by reading the answer. Mutation (Rule 19): make `CodeListSearch.applyEcho` return at once -> red.
+    const { paths, field, host } = await mount(CLASSES, [row('HS.HC.Info.cls')], arrivals, (path) => ({ ...echoFor(CLASSES, path), system: 'yes' }));
     expect(paths).toEqual(['/api/ocupilot/screens/explorer.classes/read?maxRows=1000&pattern=HS.*']);
     expect(field('pattern').value).toBe('HS.*');
+    expect((host.querySelector('input[type="checkbox"][data-ocu-criterion="system"]') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('switching the namespace re-reads the search on screen (AC1)', async () => {
+    // Mutation (Rule 19): drop the read from `RefreshService.noteScopeChanged` -> red.
+    const { fixture, paths, type, search, refresh } = await mount(CLASSES);
+    await type('pattern', 'OcuPilot.*');
+    await search();
+    refresh.noteScopeChanged();
+    await settle(fixture);
+    expect(paths).toHaveLength(3);
+    expect(paths[2]).toBe(paths[1]);
   });
 
   it('the store opens on the declared defaults and sends nothing until the form is used', () => {

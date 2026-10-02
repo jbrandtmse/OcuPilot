@@ -182,6 +182,17 @@ export class SourceViewerState {
     this.notify();
   }
 
+  /**
+   * Drop the document another namespace answered (AD-44), so the page shows the table -- its
+   * skeleton, refusal or empty state -- until this namespace's read answers.
+   */
+  forget(): void {
+    if (this.documentValue === null && !this.goneValue) return;
+    this.documentValue = null;
+    this.goneValue = false;
+    this.notify();
+  }
+
   /** The one `RefreshRead` this state holds, built by `create` on first ask. */
   readFor(create: () => RefreshRead): RefreshRead {
     if (this.cachedRead === null) this.cachedRead = create();

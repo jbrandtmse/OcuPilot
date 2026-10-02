@@ -46,7 +46,7 @@ export function railItemDomId(areaKey: string): string {
 }
 
 /**
- * The activity rail: the eight areas in daily-use order, Agent co-pilot pinned to the bottom
+ * The activity rail: the nine areas in daily-use order, Agent co-pilot pinned to the bottom
  * (EXPERIENCE.md "**The rail, top to bottom (daily-use order):**", "`{spacing.rail-width}` icon"; DESIGN.md `:972-1003`).
  *
  * **One Tab stop, arrows within it.** Exactly one item is in the tab order at a time -- the

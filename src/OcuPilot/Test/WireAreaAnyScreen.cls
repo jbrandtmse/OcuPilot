@@ -316,7 +316,7 @@ Method TestAHolderOfNoneOfAnAreasScreensSeesItGated()
     Do $$$AssertTrue($IsObject(tMap), "the navigation map answers a principal holding one administrative resource")
     Do $$$AssertEquals(..AreaVerdicts(tMap), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE agent=open", "the six gated areas it holds no screen of each name their set's first pair: " _ ..AreaVerdicts(tMap))
     Set tOpen = ""
-    For tArea = "logs", "os-management", "tasks", "permissions", "web-applications", "security" {
+    For tArea = "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer" {
         Set tListed = ..ListedVerdicts(tMap, tArea)
         Do $$$AssertTrue(tListed '= "", tArea _ " still lists its screens")
         For tI = 1:1:$Length(tListed, " ") {

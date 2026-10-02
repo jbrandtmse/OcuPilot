@@ -4167,7 +4167,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:586 */
   explorerClassPatternLabel: 'Class name',
   /** EXPERIENCE.md:586 */
-  explorerRoutinePatternLabel: 'Routine name',
+  explorerRoutinePatternLabel: 'Routine and include files',
   /** EXPERIENCE.md:586 */
   explorerSystemLabel: 'System items',
   /** EXPERIENCE.md:586 */

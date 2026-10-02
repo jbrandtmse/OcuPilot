@@ -3835,6 +3835,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
+- 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8812,3 +8813,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.1 Task 0 on ocupilot-ci: 8 of 20 background jobs of 20 index calls died under %SYS.Capture (messages.log, 14 caught signal 11 lines 20:17-20:21Z); through a file device and through the vendor's HTTP route none; AD-61 rule 5 routes index through a temporary file
 - 2026-10-01T21:38:12Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to file it with InterSystems, as DW-1527 and DW-1640 were
+
+### DW-1908: A text-form read that fails after the index answered fails the whole document read, so the viewer's source and XML not-available sentences cannot appear
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.Document quits on any GetDoc error; available is 0 only when no .int is named; on ocupilot-slot-a every listed .cls, .mac, .int and .inc answered udl and xml
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a document whose index answers but whose source or XML read fails opens as This class no longer exists.
+
+### DW-1909: Every structure read, the agent's included, also fetches the document text, so it runs the namespace's source-control hooks and fails past the capture ceiling
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.Document calls GetDoc on every Class and Routine read and Tool/Read.View drops the document; the spec's endpoints read Index then GetDoc
+- 2026-10-02T00:25:26Z status=by-design owner=19-1-classes-and-routines-listed-and-viewed by=cr note=spec Tasks: Class and Routine are Index then GetDoc; AD-61 rule 8 names the hook cost
+
+### DW-1910: List sort and the changed-most-recently prompts work only inside the max-rows cut, which follows the vendor's name order
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ListRows cuts at maxRows in docnames order and ApplyView sorts the cut; HSCUSTOM holds 13,867 classes against the 1,000 default cap
+- 2026-10-02T00:25:26Z status=by-design owner=19-1-classes-and-routines-listed-and-viewed by=cr note=AD-36: the cap bounds the read and only filters run before it; from and to narrow by date before the cap
+
+### DW-1911: The viewer's Documentation view lists only the rows under Max rows and shows no cap notice
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: document-viewer.page.ts builds Documentation from store.data(), the capped rows; only Structure's shared table draws the footer notice
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a class with more members than Max rows shows a shorter Documentation than Structure with no notice
+
+### DW-1912: The Classes and Routines pattern field gives no hint that matching is case-sensitive, a leading quote excludes and a comma takes no space
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: code-list.page.ts draws the pattern as a bare field; the classic page matches the same way; a malformed pattern is refused PORT.VALIDATION naming the grammar
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a user reports a lower-case or spaced pattern answering no rows or a refusal with no on-form explanation
+
+### DW-1913: AtelierPort's defensive branches have no trigger here: an unresolvable code-database resource is refused 400 PORT.VALIDATION, and IndexRefusal's PROTECT and Outcome's 403 are untested
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DatabaseResources quits on a mapped database reporting no resource; GetAllNSInfo names one for every local database; Community licenses no ECP
+- 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real on a licensed instance whose namespace maps code from, or keeps globals on, a remote (ECP) database
+
+### DW-1914: AtelierPortDenial grants its principals READ on the routines database alone, so a separate globals database would fail its setup rather than the product
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AtelierPortDenial.OnBeforeAllTests grants tHome only while the port also requires the globals resource; the two coincide on every CI and throwaway instance
+- 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real only on an install namespace whose globals database differs from its routines database
