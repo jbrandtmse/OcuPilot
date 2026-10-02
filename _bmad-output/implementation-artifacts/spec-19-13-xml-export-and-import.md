@@ -480,7 +480,7 @@ Rejected:
   - `xml/list` answers `ts` -1 for a document the instance lacks.
 - **Size.** A real XML export of 77 classes (777,305 characters) is 836,715 as JSON, a ratio of 1.0764. So a 3,000,000-character file fits the 3,641,144-character string inside the screen action's payload.
 
-**The UDL header rule.** Lines before the header are skipped when they are blank, `///…`, `Include …`, `IncludeGenerator …` or `Import …`. Keywords match in any case. The name must match the port's class or routine pattern.
+**The UDL header rule.** Lines before the header are skipped when they are blank, `///…`, a `/* … */` comment, `Include …`, `IncludeGenerator …` or `Import …` [AMENDED 2026-10-02, Story 19.3 code review: the `/* … */` skip]. Keywords match in any case. The name must match the port's class or routine pattern.
 
 ```text
 Class Pkg.Name Extends %RegisteredObject   -> Pkg.Name.cls

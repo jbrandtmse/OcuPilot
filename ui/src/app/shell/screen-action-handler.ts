@@ -6,7 +6,7 @@ import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { impactLine, impactOf } from '../core/impact';
 import { checkedSetReason, checkedSetTarget, isCheckedSetAction } from '../core/multi-select';
-import { readBackOf } from '../core/read-back';
+import { readBackOf, type ReadBack } from '../core/read-back';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
 import { ScreenStores } from '../core/screen-store';
@@ -1113,6 +1113,7 @@ export class ScreenActionHandler {
   ): Promise<boolean> {
     this.lastRefused = null;
     this.lastOutputValue = null;
+    this.lastReadBackValue = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -1134,6 +1135,7 @@ export class ScreenActionHandler {
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
     this.lastOutputValue = result.kind === 'ok' ? (result.body?.output ?? null) : null;
+    this.lastReadBackValue = result.kind === 'ok' ? readBackOf(result.body?.readBack) : null;
     this.progressSignal.set({
       descriptor,
       actionId,
@@ -1193,6 +1195,8 @@ export class ScreenActionHandler {
 
   private lastOutputValue: unknown = null;
 
+  private lastReadBackValue: ReadBack | null = null;
+
   /**
    * The `output` the last action this handler sent was answered with, or `null` when it carried none
    * or was refused (Story 19.2). Read right after the `sendFor` that sent it, as `continued` is; the
@@ -1200,6 +1204,15 @@ export class ScreenActionHandler {
    */
   lastOutput(): unknown {
     return this.lastOutputValue;
+  }
+
+  /**
+   * The read-back the last action this handler sent was answered with (AD-58), or `null` when it
+   * carried none or was refused (Story 19.3). Read right after the `sendFor` that sent it; an
+   * editor's "Saved" line renders it.
+   */
+  lastReadBack(): ReadBack | null {
+    return this.lastReadBackValue;
   }
 
   /**

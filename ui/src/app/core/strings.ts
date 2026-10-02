@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:634 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4362,6 +4362,26 @@ export const STRINGS = {
   explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   /** EXPERIENCE.md:592 */
   explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:593 */
+  explorerEditSource: 'Edit source',
+  /** EXPERIENCE.md:593 */
+  explorerClassEditorLabel: 'Edit class',
+  /** EXPERIENCE.md:593 */
+  explorerRoutineEditorLabel: 'Edit routine',
+  /** EXPERIENCE.md:593 */
+  explorerCompileAfterSaving: 'Compile after saving',
+  /** EXPERIENCE.md:593 */
+  explorerEditorTextLabel: 'Text of <name>',
+  /** EXPERIENCE.md:593 */
+  explorerDocumentConflict: 'Someone else changed this document after you opened it, so it was not saved. Copy your changes, then reopen the document to see the current text.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveHeader: 'The first line no longer names this document, so the text was not saved.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveTooLarge: 'The text is longer than 3,000,000 characters, the most one save sends.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveRefused: 'The instance refused this text, so nothing was saved.',
+  /** EXPERIENCE.md:593 */
+  explorerEditorRefusedAction: 'save this document',
   // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
   // empty states and prompts; the two screen-level switches and the integrity check, their warnings
   // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,

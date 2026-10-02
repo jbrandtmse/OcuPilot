@@ -9,11 +9,12 @@
 /// <method>LoadXMLFiles</method> and <method>PutDoc</method> stand in for the vendor's routes: each
 /// records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
-/// the request's query data, content type and body -- leaves <code>%SourceControl</code> set, as
+/// the request's query data, content type, body and <code>If-None-Match</code> -- leaves
+/// <code>%SourceControl</code> set, as
 /// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
 /// <method>HighestVersion</method> and <method>DatabaseResources</method> answer what a test arms,
-/// and <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>.
-/// State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
+/// <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>, and
+/// <method>LogNote</method> through <class>OcuPilot.Test.LogProbe</class>. State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
 /// <p>A canned route runs while the port has switched to the read's namespace, so a test that arms
 /// one reads the install namespace.</p>
 Class OcuPilot.Test.AtelierPortFixture Extends OcuPilot.Port.AtelierPort
@@ -87,7 +88,7 @@ ClassMethod CallCount() As %Integer
 }
 
 /// <p>Recorded call <var>pIndex</var> (1-based) as <code>{method, current, device, redirect,
-/// namespace, arg, typePassed, params, contentType, body}</code>, or <code>{}</code>.</p>
+/// namespace, arg, typePassed, params, contentType, body, ifNoneMatch}</code>, or <code>{}</code>.</p>
 ClassMethod CallAt(pIndex As %Integer) As %DynamicObject
 {
     Set tJson = $Get(^||OcuPilotAtelierFixture("call", pIndex))
@@ -136,6 +137,16 @@ ClassMethod DatabaseResources(pNamespace As %String, Output pRoutineResource As 
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Do ##class(OcuPilot.Test.FaultProbe).LogRaw("atelierport", pMessage, pStatus, pCode)
+}
+
+/// <p>The information-severity line routed through <class>OcuPilot.Test.LogProbe</class>, so a test
+/// reads its severity and text.</p>
+ClassMethod LogNote(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set tData = {}
+    Do tData.%Set("code", pCode, "string")
+    Do tData.%Set("status", $System.Status.GetErrorText(pStatus), "string")
+    Do ##class(OcuPilot.Test.LogProbe).Info("atelierport", pMessage, tData)
 }
 
 /// <p>The canned <code>GetNamespace</code> route.</p>
@@ -247,6 +258,7 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, p
         Do %request.Content.Rewind()
     }
     Do tCall.%Set("body", tBody)
+    Do tCall.%Set("ifNoneMatch", $Get(%request.CgiEnvs("HTTP_IF_NONE_MATCH")))
     Set tIndex = $Increment(^||OcuPilotAtelierFixture("calls"))
     Set ^||OcuPilotAtelierFixture("call", tIndex) = tCall.%ToJSON()
     ; A vendor route leaves the namespace's source-control object behind, as this does.

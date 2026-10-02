@@ -153,6 +153,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.export": true,
   "explorer.routines.export": true,
   "explorer.classes.import": false,
+  "explorer.classes.save": false,
+  "explorer.routines.save": false,
   "explorer.routines.import": false
 }
 }

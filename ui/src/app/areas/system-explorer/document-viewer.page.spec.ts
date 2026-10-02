@@ -258,6 +258,27 @@ describe('the class and routine viewers', () => {
     expect(host.querySelector('.ocu-data-table-refusal')).not.toBeNull();
   });
 
+  it("Story 19.3: offers Edit source while a document's source is on screen, linking its own editor", async () => {
+    const { host, view } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    const link = host.querySelector('a[data-ocu-source="edit"]') as HTMLAnchorElement;
+    expect(link.textContent?.trim()).toBe(STRINGS.explorerEditSource);
+    expect(link.getAttribute('href')).toBe(`/system-explorer/classes/editor/${encodeEntityId('Demo.Probe.cls')}?ns=HSCUSTOM`);
+    await view('xml');
+    expect(host.querySelector('a[data-ocu-source="edit"]')).toBeNull();
+    await view('source');
+    (host.querySelector('a[data-ocu-source="edit"]') as HTMLAnchorElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(TestBed.inject(Router).url).toBe(`/system-explorer/classes/editor/${encodeEntityId('Demo.Probe.cls')}?ns=HSCUSTOM`);
+    const routine = await mount(ROUTINE_VIEWER, 'Demo.Probe.mac', ROUTINE_ROWS);
+    expect(routine.host.querySelector('a[data-ocu-source="edit"]')?.getAttribute('href')).toBe(`/system-explorer/routines/editor/${encodeEntityId('Demo.Probe.mac')}?ns=HSCUSTOM`);
+    for (const name of ['Demo.Probe.inc', 'Demo.Probe.int']) {
+      const kind = await mount(ROUTINE_VIEWER, name, ROUTINE_ROWS);
+      expect(kind.host.querySelector('a[data-ocu-source="edit"]')?.getAttribute('href')).toBe(`/system-explorer/routines/editor/${encodeEntityId(name)}?ns=HSCUSTOM`);
+    }
+    const objectOnly = await mount(ROUTINE_VIEWER, 'Demo.ObjectOnly.mac', ROUTINE_ROWS);
+    expect(objectOnly.host.querySelector('a[data-ocu-source="edit"]')).toBeNull();
+  });
+
   it('the state keeps an answer only for the name and form on screen', () => {
     const state = new SourceViewerState();
     expect(state.open('A.cls')).toBe(true);
