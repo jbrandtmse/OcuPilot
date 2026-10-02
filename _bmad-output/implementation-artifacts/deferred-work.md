@@ -8530,6 +8530,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
 - 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
+- 2026-10-02T00:35:41Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=reopened: 19.12's charter (owner DW-1903 decision) gives every floor-only screen its classic page's own pair
 
 ### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
 - source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
