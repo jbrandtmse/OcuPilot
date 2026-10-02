@@ -8998,6 +8998,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
 
+### DW-1936: ErrorDelete fails 6 of 15 on an instance holding a governance override on logs.applicationerrors.delete, the key it exercises: a sixth class with DW-1839's problem, outside 23.3 batch (c)'s five
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: confirms answered 403 GOVERNANCE.DISABLED with the seeded override; 15/15 after resetting it to inherit; GovernanceRestore covers DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch only
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=extend GovernanceRestore to ErrorDelete, and sweep for any other class that exercises a governance key
+
+### DW-1937: CI flake candidate: SanitizeAuditMask.TestARealMaskedVendorSecretReachesTheModelOnceMasked missed the vendor's own mask in the read window
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AssertTrue 'the vendor's own mask is present: Create Metadata ...' failed once, 1/1 on its one rerun; (inference) the Create Metadata audit row lands just outside the window that starts at tSince, taken after AddServer
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; reproduce by timing the AddServer audit row against tSince
+
+### DW-1938: The full ObjectScript sweep clears state it did not create on an instance that holds real rows: preferences 4 to 0, the switches row reset, Turn and Step rows to 0
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seeded through the REST API before the upgrade; after the sweep Pref 0 (PreferencesWire, documented), SwitchState at defaults, Turn/Step 0 while the conversation read is unchanged; definitions and the override were restored by 23.3's fixtures
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=the tests only run on throwaways and CI, so no user instance is affected; extend the set-aside-and-restore pattern if a developer instance should survive a sweep
 ### DW-1935: CI flake: turn.browser-spec 'Second send' timed out waiting for the lock banner in browser shard 3/3
 - source: cycle-log-epic-19.md (Story 19.2 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
