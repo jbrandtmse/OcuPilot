@@ -2236,15 +2236,18 @@ ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDire
 
 /// <p>A database configuration's reviewed change fields: the mounting edit's three and the file
 /// edit's seven, with the file edit's two volume-directory arguments.</p>
+/// <p>Story 18.16's remote re-point adds the data server and the directory.</p>
 ClassMethod DatabaseChangeFields() As %List [ Private ]
 {
-    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath")
+    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath", "Server", "Directory")
 }
 
 /// <p>A database create's fields: its five declared arguments.</p>
+/// <p>Story 18.16's remote create adds the data server and the directory; the local tools' derived
+/// lists exclude both, so they never send them.</p>
 ClassMethod DatabaseCreateFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName")
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Server", "Directory")
 }
 
 /// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>

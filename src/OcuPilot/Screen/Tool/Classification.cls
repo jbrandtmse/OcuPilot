@@ -559,6 +559,30 @@ XData Entries
       "MountRequired": "ordinary"
     }
   },
+  "osmgmt.remotedatabases.create": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
+  "osmgmt.remotedatabases.update": {
+    "fieldList": "Database.ConfigCRUD",
+    "compare": {"Directory": "unslashed"},
+    "classification": {
+      "Server": "ordinary",
+      "Directory": "ordinary",
+      "StreamLocation": "ordinary",
+      "ClusterMountMode": "ordinary",
+      "MountAtStartup": "ordinary",
+      "MountRequired": "ordinary"
+    }
+  },
   "osmgmt.localdatabases.update": {
     "fieldList": "Database.SysCRUD",
     "compare": {"NewVolumeDirectory": "unslashed"},

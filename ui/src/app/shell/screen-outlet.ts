@@ -58,6 +58,7 @@ import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page';
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
 import { DatabaseIntegrityPage } from '../areas/os-management/database-integrity.page';
+import { RemoteDatabaseFormPage } from '../areas/os-management/remote-database-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -176,6 +177,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
   // Story 16.12: the Locks list with its Remove locks dialog.
   'OcuPilot.Screen.Descriptor.LockList': LockListPage,
+  // Story 18.16: the remote database form, create and re-point alike.
+  'OcuPilot.Screen.Descriptor.RemoteDatabaseForm': RemoteDatabaseFormPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

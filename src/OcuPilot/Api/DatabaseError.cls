@@ -162,10 +162,47 @@ Parameter VOLUMEDIRECTORYMANAGER = "DATABASE.VOLUMEDIRECTORY.MANAGER";
 
 Parameter REASONVOLUMEDIRECTORYMANAGER = "This database's new volume directory is the manager directory, which holds the instance's own files, so no volume can be added there. Set another new volume directory first.";
 
+/// <p>Envelope code (409, Story 18.16): a remote database tool named a configuration whose file is
+/// on this instance (its <code>Server</code> is empty), and nothing was sent.</p>
+Parameter LOCAL = "DATABASE.LOCAL";
+
+Parameter REASONLOCAL = "This database's file is on this instance. Change it on Local databases.";
+
+/// <p>Violation code (Story 18.16): a remote database names a data server this instance does not
+/// define (<code>ECP.DataServer</code> <code>GET</code> answered 404; the vendor's own #420).</p>
+Parameter SERVERABSENT = "DATABASE.SERVER.ABSENT";
+
+Parameter REASONSERVERABSENT = "Choose a data server this instance defines.";
+
+/// <p>Violation code (Story 18.16, AD-21's seventh case): the data server's databases could not be
+/// listed -- this instance's license enables no ECP, the listing passed its bound, or the server is
+/// not connected -- and nothing was written.</p>
+Parameter SERVERUNREACHABLE = "DATABASE.SERVER.UNREACHABLE";
+
+Parameter REASONSERVERUNREACHABLE = "The data server could not be reached in time. Check that it is running and that this instance's license includes ECP.";
+
+/// <p>Violation code (Story 18.16, the owner's database-directory rule): a remote database's create
+/// or re-point names no directory (the vendor's own #5659), refused before any vendor call.</p>
+Parameter REMOTEDIRECTORYNONE = "DATABASE.REMOTEDIRECTORY.NONE";
+
+Parameter REASONREMOTEDIRECTORYNONE = "Choose the database's directory on the data server.";
+
+/// <p>Violation code (Story 18.16, AD-21's seventh case): the directory is not one the data server's
+/// listing answered at the write.</p>
+Parameter REMOTEDIRECTORYABSENT = "DATABASE.REMOTEDIRECTORY.ABSENT";
+
+Parameter REASONREMOTEDIRECTORYABSENT = "The data server does not list that directory. Choose one it lists.";
+
+/// <p>Violation code (Story 18.16, the owner's database-directory rule): the directory is the one the
+/// data server's own listing names <code>IRISSYS</code>, its manager directory.</p>
+Parameter REMOTEDIRECTORYMANAGER = "DATABASE.REMOTEDIRECTORY.MANAGER";
+
+Parameter REASONREMOTEDIRECTORYMANAGER = "That directory is the data server's IRISSYS directory. Choose another.";
+
 /// <p>Every field-level code, as a <class>%List</class>, in the order the form lists its rules.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#NEWVOLUMETHRESHOLDMANAGER, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE)
+    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#NEWVOLUMETHRESHOLDMANAGER, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE, ..#SERVERABSENT, ..#SERVERUNREACHABLE, ..#REMOTEDIRECTORYNONE, ..#REMOTEDIRECTORYABSENT, ..#REMOTEDIRECTORYMANAGER)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for a code this class does not
@@ -197,6 +234,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#GLOBALSONEDATABASE Quit ..#REASONGLOBALSONEDATABASE
     If pCode = ..#VOLUMEDIRECTORYNONE Quit ..#REASONVOLUMEDIRECTORYNONE
     If pCode = ..#VOLUMEDIRECTORYMANAGER Quit ..#REASONVOLUMEDIRECTORYMANAGER
+    If pCode = ..#LOCAL Quit ..#REASONLOCAL
+    If pCode = ..#SERVERABSENT Quit ..#REASONSERVERABSENT
+    If pCode = ..#SERVERUNREACHABLE Quit ..#REASONSERVERUNREACHABLE
+    If pCode = ..#REMOTEDIRECTORYNONE Quit ..#REASONREMOTEDIRECTORYNONE
+    If pCode = ..#REMOTEDIRECTORYABSENT Quit ..#REASONREMOTEDIRECTORYABSENT
+    If pCode = ..#REMOTEDIRECTORYMANAGER Quit ..#REASONREMOTEDIRECTORYMANAGER
     Quit ""
 }
 

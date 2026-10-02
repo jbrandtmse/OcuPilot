@@ -208,6 +208,10 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/database/check" path="/api/ocupilot/database/check" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="PUT" url="/database/:id" path="/api/ocupilot/database/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/database" path="/api/ocupilot/database" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/remote-database/form" path="/api/ocupilot/remote-database/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/remote-database/directories" path="/api/ocupilot/remote-database/directories" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/remote-database/:id" path="/api/ocupilot/remote-database/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/remote-database" path="/api/ocupilot/remote-database" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ssl/form" path="/api/ocupilot/ssl/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/ssl/name" path="/api/ocupilot/ssl/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/ssl/:id/test" path="/api/ocupilot/ssl/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>

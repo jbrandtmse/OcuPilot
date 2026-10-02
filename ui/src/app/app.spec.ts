@@ -30,6 +30,7 @@ import { MappingForm } from './areas/os-management/mapping-form.store';
 import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
+import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -1263,6 +1264,10 @@ describe('the shell frame', () => {
     const databaseIntegrity = TestBed.inject(DatabaseIntegrityFlow);
     databaseIntegrity.setGlobals('AGLOBALTHISPRINCIPALTYPED');
     expect(databaseIntegrity.globals()).not.toBe('');
+    // And the remote database form (Story 18.16): a name THIS principal typed for a remote database.
+    const remoteDatabaseForm = TestBed.inject(RemoteDatabaseForm);
+    remoteDatabaseForm.setValue('Name', 'AREMOTEDATABASETHISPRINCIPALTYPED');
+    expect(remoteDatabaseForm.value('Name')).not.toBe('');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1401,6 +1406,9 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.databaseIntegrity.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's Check integrity flow holds the previous one's globals.
     expect(databaseIntegrity.globals()).toBe('');
+    // Mutation (Rule 19): delete `this.remoteDatabaseForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's remote database form holds the previous one's typed name.
+    expect(remoteDatabaseForm.value('Name')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

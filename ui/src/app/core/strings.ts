@@ -3793,6 +3793,47 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   localDatabaseDeleteConsequence:
     'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
+  // Story 18.16: Remote databases, its form and the bounded listing of a data server's databases.
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListLabel: 'Remote databases',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListEmpty: 'No remote databases on this instance.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListEmptyAgent: 'create a remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormRefusedAction: 'change this remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormLabel: 'Remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseServer: 'Data server',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseStreamLocation: 'Stream location',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListAgain: 'List databases',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListHint: 'Choosing a data server lists its databases over ECP, which can take up to <n> seconds.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListRunning: 'Listing the databases on <server> since <time>',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListNone: '<server> lists no databases.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListConsequence:
+    'Confirming lists the databases on <server> to check the directory, which can take up to <n> seconds.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt1: 'Which remote databases does this instance define, and on which data servers?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt2: 'Which namespaces use a remote database?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt3: 'What would removing a remote database take with it?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt1: 'Which data server is this database\'s file on?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt2: 'Which namespaces use this remote database?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt3: 'What happens to this database\'s file when it is removed here?',
+  /** EXPERIENCE.md:479 */
+  remoteDatabaseDeleteConsequence:
+    'Deleting this remote database removes it from this instance\'s configuration. Its file on the data server stays. This cannot be undone.',
   /** EXPERIENCE.md:481 */
   databaseRefusalOcuPilot:
     'OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.',

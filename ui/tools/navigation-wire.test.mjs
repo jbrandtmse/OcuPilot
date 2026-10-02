@@ -104,6 +104,7 @@ const LIVE_PAYLOAD = {
       // language servers after the Dashboard, refused on its own pair; Story 18.3 the local
       // database form among the unlisted ones and Local databases last; Story 18.4 Check integrity
       // among the unlisted ones; and Story 18.17 the Integrity log right after Databases.
+      // Story 18.16 adds the remote database form among the unlisted ones and Remote databases last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -211,6 +212,13 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/remote-databases/edit',
+          labelKey: 'remoteDatabaseFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/namespaces/routine-mappings/edit',
           labelKey: 'routineMappingFormLabel',
           sideBarPosition: 0,
@@ -298,6 +306,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
           sideBarPosition: 11,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/remote-databases',
+          labelKey: 'remoteDatabaseListLabel',
+          sideBarPosition: 12,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -626,6 +641,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 18.16: Remote databases and its form declare the Local databases screens' pairs.
+  for (const route of ['os-management/remote-databases', 'os-management/remote-databases/edit']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
   // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
   // holds, and is denied on the second.

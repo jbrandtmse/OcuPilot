@@ -289,6 +289,9 @@ services:
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
+      # The remote database gate class signs in as probe principals holding the Remote databases
+      # screens' pairs, with and without the system database's write (Story 18.16).
+      # classes: RemoteDatabaseWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -447,6 +450,10 @@ services:
       # checks the integrity of OCUPROBE184* databases, removing their background tasks and
       # integrity checks by probe directory (Story 18.4).
       # classes: DatabaseActions, DatabaseActionsGate, DatabaseActionsProhibited, DatabaseGrowExpand, DatabaseIntegrity
+      # It also defines OCUPROBE1816* ECP data servers, configuration only and never contacted, and
+      # creates, re-points and deletes OCUPROBE1816* remote database configurations, with a local
+      # probe database, a namespace and a mapping over them (Story 18.16).
+      # classes: RemoteDatabaseDescriptor, RemoteDatabaseListing, RemoteDatabaseWrite, RemoteDatabaseWriteGate
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

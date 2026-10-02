@@ -8686,6 +8686,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T02:07:01Z owner=range-end-cleanup by=burndown note=23.2 gate: real MED outside the cap of 12; queued for the standing cleanup after 1.0.5
 - 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
 - 2026-10-01T05:41:07Z occurrence=16-14-the-ldap-and-kerberos-editor
+- 2026-10-02T12:43:22Z occurrence=18-16-remote-databases
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
@@ -8998,6 +8999,37 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
 
+### DW-1939: A change toast for a remote database opens Local databases: Local and Remote databases share entity type database-configuration and screenForEntityType takes the lowest side-bar position
+- source: spec-18-16-remote-databases.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: ui/src/app/core/navigation.ts:462 picks Local databases (11) over Remote databases (12); its read is localOnly, so 'Open in Local databases' lands on a list without the row. The change event carries no tool or owner (change-bus.ts ChangeEvent). DW-1529 is the same shape, solved there by a second type.
+- 2026-10-02T12:43:15Z status=escalated owner=burndown by=cr note=options: a remote entity type (splits AD-34's lock key on one Config.Databases name), or an owner-aware lookup (AD-14 wire); navigation.ts contended
+- 2026-10-02T13:54:39Z status=routed owner=range-end-cleanup by=merge_gate note=navigation.ts contended; plan weighs (a) a remote entity type (DW-1529 precedent; prove AD-34's lock key cannot diverge) or (b) an owner-aware lookup
+
+### DW-1940: ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet's message says thirty-five OWNPAIRS names; the roster holds thirty-eight since Story 18.16
+- source: spec-18-16-remote-databases.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: src/OcuPilot/Test/ClassicPageGate.cls:142, a contended line Epic 19 is changing; the assertion compares the lists, so only the message is stale
+- 2026-10-02T12:43:15Z status=wontfix-accepted owner=18-16-remote-databases by=cr note=reopen_if=after both epics merge, grep 'thirty-five OWNPAIRS' still matches ClassicPageGate.cls while OWNPAIRS holds another count
+- 2026-10-02T12:54:57Z status=resolved-by:18-16-remote-databases owner=18-16-remote-databases by=adjudication note=ClassicPageGate.cls:142 reads forty OWNPAIRS names at the 19.2 forward merge (40 = 35 + 19.2's 2 + 18.16's 3)
+
+### DW-1941: The remote database Create form shows an empty Data server select with no sentence when the instance defines no ECP data server
+- source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: remote-database-form.page.ts serverChoices answers only the empty choice; no string says none is defined, and a Save then answers REMOTEDIRECTORY.NONE first. A new string needs EXPERIENCE.md:377, a contended line.
+- 2026-10-02T12:43:15Z status=wontfix-accepted owner=18-16-remote-databases by=cr note=reopen_if=Story 18.6's Data servers screen ships and the Create form still gives no pointer to it on an instance with no data server
+
+### DW-1942: The copy-out draft's listing step names its route from a hand-written LISTINGROUTE, not from the derived AdminRoutes table, which holds non-GET routes only
+- source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RemoteDatabasePort.cls:42 LISTINGROUTE /ecp/data-server/databases; AD-59 addresses a draft's rest steps from AdminRoutes, held equal to a fresh derivation by DraftRegistry; the listing is a GET guard step and changes nothing
+- 2026-10-02T12:43:15Z status=wontfix-accepted owner=18-16-remote-databases by=cr note=reopen_if=the vendor dispatch map or mainspec_v2.json no longer names GET /ecp/data-server/databases for ECP.DataServer DBLIST
+
+### DW-1943: The remote listing's abandoned child is never stopped, and every listing route call by a holder of the screen's read pairs spawns one
+- source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RemoteDatabasePort.Spawn keeps no child pid; a DBLIST that blocks keeps its child until the vendor returns. Spec Tasks put HandleDirectories under the screen's pairs; TestCall's model (AD-42) leaves an abandoned child running too
+- 2026-10-02T12:43:22Z status=by-design owner=18-16-remote-databases by=cr note=spec-bound: AD-42's TestCall model and the spec's named limit 2 (one child per listing); the form allows one listing at a time
+
+### DW-1944: A data server listing more than LISTINGCAP (1000) databases is cut: the form ignores truncated, and a directory past the cap is refused REMOTEDIRECTORY.ABSENT
+- source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: RemoteDatabasePort.Directories keeps 1000 rows and marks truncated; remote-database-form.store.ts rowsOf never reads truncated; RemoteWrite checks membership against the cut rows
+- 2026-10-02T12:43:22Z status=wontfix-theoretical owner=18-16-remote-databases by=cr note=real only on a data server listing more than 1000 databases
 ### DW-1936: ErrorDelete fails 6 of 15 on an instance holding a governance override on logs.applicationerrors.delete, the key it exercises: a sixth class with DW-1839's problem, outside 23.3 batch (c)'s five
 - source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: confirms answered 403 GOVERNANCE.DISABLED with the seeded override; 15/15 after resetting it to inherit; GovernanceRestore covers DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch only

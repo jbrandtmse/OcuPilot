@@ -10193,6 +10193,221 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": []
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.RemoteDatabaseForm",
+    "route": "os-management/remote-databases/edit",
+    "area": "os-management",
+    "labelKey": "remoteDatabaseFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.RemoteDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.remotedatabaseform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RemoteDatabaseList",
+    "route": "os-management/remote-databases",
+    "area": "os-management",
+    "labelKey": "remoteDatabaseListLabel",
+    "sideBarPosition": 12,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "remoteDatabaseListEmpty",
+    "commandAliases": [
+      "remote databases",
+      "ecp databases",
+      "create remote database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.RemoteDatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.ConfigCRUD",
+        "type": "LIST",
+        "query": {
+          "remoteOnly": "1"
+        }
+      },
+      "fields": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "filter": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Server",
+          "Directory",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Server",
+          "labelKey": "remoteDatabaseServer",
+          "kind": "identifier"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "remoteDatabaseListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.remotedatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
     "route": "permissions/resources",
     "area": "permissions",
