@@ -58,8 +58,8 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#FIXTURE, "Composed", tUser, .tComposed)
     If $$$ISERR(tSC) Quit tSC
-    Set ..PreparedSetupOk = $ClassMethod(..#FIXTURE, "Holds", tComposed, "%Development", "USE") && '$ClassMethod(..#FIXTURE, "Holds", tComposed, "%Admin_Operate", "USE")
-    If '..PreparedSetupOk Quit $$$ERROR($$$GeneralError, "Setup could not read back that the principal holds %Development:USE and no %Admin_Operate:USE")
+    Set ..PreparedSetupOk = $ClassMethod(..#FIXTURE, "Holds", tComposed, "%Development", "USE") && '$ClassMethod(..#FIXTURE, "HoldsAdministrative", tComposed)
+    If '..PreparedSetupOk Quit $$$ERROR($$$GeneralError, "Setup could not read back that the principal holds %Development:USE and no administrative resource")
     Quit $$$OK
 }
 
@@ -74,7 +74,8 @@ Method OnAfterAllTests() As %Status
 /// <p>The routes the principal passes, as <code>$ListBuild(method, url)</code> spelled as the map
 /// declares them: the caller-own agent reads and choices, its turns, proposals, conversations and
 /// transcripts, the shell reads, its own account, Home's reads and the analytics log (Story 19.12's
-/// audit). Each is owner-scoped, or its classic page carries no <code>RESOURCE</code>.</p>
+/// audit). Each is owner-scoped, or its classic page carries no <code>RESOURCE</code> or one the
+/// principal holds (the analytics log's public <code>%DeepSee_Portal</code>).</p>
 ClassMethod Roster() As %List
 {
     Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics"

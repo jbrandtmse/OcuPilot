@@ -296,21 +296,6 @@ ClassMethod EvaluateRequired(pPairs As %List, Output pFailedPair As %String) As 
     Quit ..EvaluatePairs(pPairs, .pFailedPair)
 }
 
-/// <p><parameter>ADMINRESOURCES</parameter> spelled as the comma-separated
-/// <code>resource:permission</code> specification every declared pair set in this tree uses, each
-/// member at <parameter>ADMINPERMISSION</parameter>. The floor itself is
-/// <method>FloorPairSpec</method>.</p>
-ClassMethod AdminPairSpec() As %String
-{
-    Set tSpec = ""
-    For tI = 1:1:$Length(..#ADMINRESOURCES, ",") {
-        Set tResource = $Piece(..#ADMINRESOURCES, ",", tI)
-        If tResource = "" Continue
-        Set tSpec = tSpec _ $Select(tSpec = "": "", 1: ",") _ tResource _ ":" _ ..#ADMINPERMISSION
-    }
-    Quit tSpec
-}
-
 /// <p>The floor's members, comma-separated: <parameter>ADMINRESOURCES</parameter> followed by
 /// <parameter>DEVELOPMENTRESOURCE</parameter>. Holding any one at
 /// <parameter>ADMINPERMISSION</parameter> clears the floor.</p>

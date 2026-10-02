@@ -79,13 +79,13 @@ Method %OnNew(initvalue As %String = "") As %Status
 
 /// <p>Refuse unless armed, create the three principals and read their grants back: the developer
 /// principal holds <code>%Development:USE</code>, the public <code>%DeepSee_Portal:USE</code> and
-/// the code database's READ, and no <code>%Admin_Secure:USE</code>; the one below the floor holds
-/// the READ and not <code>%Development:USE</code>; the administrator holds
-/// <code>%DB_IRISSYS:READ</code> and <code>%Admin_Operate:USE</code>.</p>
+/// the code database's READ, and no administrative resource; the one below the floor holds the
+/// READ and neither <code>%Development:USE</code> nor an administrative resource; the
+/// administrator holds <code>%DB_IRISSYS:READ</code> and <code>%Admin_Operate:USE</code>.</p>
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DeveloperFloor creates IRIS users and a role, on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DeveloperFloor creates IRIS users and roles, on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Set ..PreparedPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", ..PreparedPassword, "", .tUser)
@@ -98,15 +98,15 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedComposed = tComposed
     Set tCode = $ClassMethod(..#FIXTURE, "CodeResource")
-    Set tDev = ..Held(tComposed, "%Development", "USE") && ..Held(tComposed, "%DeepSee_Portal", "USE") && ..Held(tComposed, tCode, "READ") && '..Held(tComposed, "%Admin_Secure", "USE")
-    Set tFloor = ..Held(tBelow, tCode, "READ") && '..Held(tBelow, "%Development", "USE")
+    Set tDev = ..Held(tComposed, "%Development", "USE") && ..Held(tComposed, "%DeepSee_Portal", "USE") && ..Held(tComposed, tCode, "READ") && '$ClassMethod(..#FIXTURE, "HoldsAdministrative", tComposed)
+    Set tFloor = ..Held(tBelow, tCode, "READ") && '..Held(tBelow, "%Development", "USE") && '$ClassMethod(..#FIXTURE, "HoldsAdministrative", tBelow)
     Set tAdminOk = ..Held(tAdmin, "%DB_IRISSYS", "READ") && ..Held(tAdmin, "%Admin_Operate", "USE")
     Set ..PreparedSetupOk = tDev && tFloor && tAdminOk
     If '..PreparedSetupOk Quit $$$ERROR($$$GeneralError, "Setup could not read back the principals' grants: developer " _ tDev _ ", below the floor " _ tFloor _ ", administrator " _ tAdminOk)
     Quit $$$OK
 }
 
-/// <p>Remove both principals and the role, and return a failing status if any survives.</p>
+/// <p>Remove the three principals and both roles, and return a failing status if any survives.</p>
 Method OnAfterAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
@@ -317,6 +317,7 @@ Method TestHomeSystemInformationLogsNothingForTheDeveloper()
     Do $$$AssertTrue(tBefore >= 0, "messages.log is readable")
     Do ..Request("GET", "/ui/system", $Parameter(..#FIXTURE, "DEVELOPERUSER"), .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 200, "System information answers: " _ $Extract(tText, 1, 200))
+    Do $$$AssertTrue($IsObject(tObject), "its body parses")
     If '$IsObject(tObject) Quit
     For tI = 1:1:$Length(..#DASHBOARDMEMBERS, ",") {
         Set tMember = $Piece(..#DASHBOARDMEMBERS, ",", tI)
@@ -337,8 +338,10 @@ Method TestHomeSystemInformationAnswersAnAdministratorWithoutAll()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tBefore = ..ConsoleLinesNaming(..#SYSTEMINFOLOGMARK)
+    Do $$$AssertTrue(tBefore >= 0, "messages.log is readable")
     Do ..Request("GET", "/ui/system", $Parameter(..#FIXTURE, "ADMINISTRATORUSER"), .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 200, "System information answers: " _ $Extract(tText, 1, 200))
+    Do $$$AssertTrue($IsObject(tObject), "its body parses")
     If '$IsObject(tObject) Quit
     Do $$$AssertNotEquals(tObject.%Get("uptime"), "", "uptime is reported")
     Do $$$AssertTrue($ListFind($ListBuild("Normal", "Troubled"), tObject.%Get("writeDaemon")), "the write daemon is reported: " _ tObject.%Get("writeDaemon"))
@@ -347,12 +350,16 @@ Method TestHomeSystemInformationAnswersAnAdministratorWithoutAll()
 
 /// <p><b>Classic parity (AC2).</b> Every screen the map opens to the developer principal is one of
 /// <parameter>SCREENS</parameter>, and each one replacing a classic page has that page's compiled
-/// <code>RESOURCE</code> empty or holding a member the principal holds at <code>USE</code> (AD-44), so
-/// nothing past the floor opens what the classic portal would refuse it. A page that compiles no
-/// <code>RESOURCE</code> is judged by its <parameter>INTERNALCHECKS</parameter> entry, and fails
-/// without one.</p>
-/// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set -> it
-/// opens, outside the roster, its page's <code>%Admin_Secure</code> unheld, and this goes red.</p>
+/// <code>RESOURCE</code> empty, or holding a member the principal holds and the screen declares as
+/// its own pair (AD-8, AD-44), so nothing past the floor opens what the classic portal would refuse
+/// it, whichever floor member let the caller in. A member is read as the classic portal reads it:
+/// <code>resource[:permission]</code>, <code>USE</code> when no permission is given. A page that
+/// compiles no <code>RESOURCE</code> is judged by its <parameter>INTERNALCHECKS</parameter> entry,
+/// and fails without one.</p>
+/// <p>Mutations: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set -> it
+/// opens, outside the roster, its page's <code>%Admin_Secure</code> unheld; give
+/// <class>OcuPilot.Screen.Descriptor.ExplorerClassList</class> an empty pair set -> it still opens,
+/// declaring no pair from its page's <code>%Development</code>; either way this goes red.</p>
 Method TestEveryOpenScreenMatchesItsClassicPage()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
@@ -376,11 +383,18 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
         Set tResource = ..ClassicResource(tPage, .tHasResource)
         Do $$$AssertTrue(tHasResource || (tResource '= ""), tKey _ ": " _ tPage _ " declares no RESOURCE, and no check of its own is recorded in INTERNALCHECKS")
         Set tAdmitted = tHasResource && (tResource = "")
+        Set tDeclares = (tResource = "")
+        Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
         For tI = 1:1:$Length(tResource, ",") {
             Set tMember = $Piece($Piece(tResource, ",", tI), ":", 1)
-            If (tMember '= "") && ..Held(..PreparedComposed, tMember, "USE") Set tAdmitted = 1
+            Set tPermission = $Piece($Piece(tResource, ",", tI), ":", 2)
+            If tPermission = "" Set tPermission = "USE"
+            If tMember = "" Continue
+            If ..Held(..PreparedComposed, tMember, tPermission) Set tAdmitted = 1
+            If $ListFind(tPairs, $ListBuild(tMember, tPermission)) Set tDeclares = 1
         }
         Do $$$AssertTrue(tAdmitted, tKey _ ": " _ tPage _ "'s RESOURCE '" _ tResource _ "' admits the developer")
+        Do $$$AssertTrue(tDeclares, tKey _ ": declares its own pair from " _ tPage _ "'s RESOURCE '" _ tResource _ "', not the floor alone")
     }
     Do $$$AssertTrue(tChecked > 0, "at least one open screen replaces a classic page: " _ tChecked)
 }

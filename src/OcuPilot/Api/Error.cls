@@ -102,8 +102,8 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// <parameter>FORBIDDEN</parameter> slug, with the failed pair as the envelope's
 /// <code>detail</code>.</p>
 /// <p><b>Distinct from <parameter>AUTHNOADMIN</parameter> on purpose.</b> That one means "this
-/// account administers nothing on this instance" and drives a blocking notice whose only
-/// control is Sign out; this one means "this account administers this instance but not this
+/// account cannot use OcuPilot on this instance" and drives a blocking notice whose only
+/// control is Sign out; this one means "this account uses OcuPilot but cannot open this
 /// screen" and drives an inline refusal beside a working shell. A client that read one for the
 /// other would show the wrong surface.</p>
 /// <p>Declared here, with no call site yet: the screen reads that render it are Epic 2's, and

@@ -7,7 +7,8 @@
 /// <p><b>Each of the seven <method>Members</method> is read in the calling process behind its own
 /// <code>Try</code></b> (<class>OcuPilot.Kernel.Shell.FieldRead</class>), so a refused or absent
 /// source degrades that one member to <code>""</code> and reaches the log, and the others still
-/// answer.</p>
+/// answer. The dashboard sample is the exception: for a caller without <code>%DB_IRISSYS:READ</code>
+/// it is never attempted (<method>Dashboard</method>).</p>
 /// <p><b>Three sources, one sample.</b> The five dashboard members come from a single
 /// <method>Sample</method> of <parameter>DASHBOARDCLASS</parameter>, taken once per payload in
 /// <code>%SYS</code> by explicit save and restore with the restore as the first line of the

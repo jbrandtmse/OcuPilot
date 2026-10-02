@@ -101,9 +101,9 @@ Method OnAfterOneTest() As %Status
 /// <code>TURN.ABANDONED.PRIVILEGE</code>, and its provider calls all ran.</p>
 /// <p>Mutations: <class>OcuPilot.Api.Turn</class> passing
 /// <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> to the job -> the first step boundary
-/// abandons the turn; <parameter>OcuPilot.Port.ProviderPort.INVOKEPAIRS</parameter> set to
-/// <method>OcuPilot.Screen.Gate.AdminPairSpec</method> -> the provider port refuses the first call;
-/// either way this goes red.</p>
+/// abandons the turn; <parameter>OcuPilot.Port.ProviderPort.INVOKEPAIRS</parameter> set to the
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> members alone, each at
+/// <code>USE</code> -> the provider port refuses the first call; either way this goes red.</p>
 Method TestATurnCallsAHeldToolAndIsRefusedALackedOne()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principal's grants")

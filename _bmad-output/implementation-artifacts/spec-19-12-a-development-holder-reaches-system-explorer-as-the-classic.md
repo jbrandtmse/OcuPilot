@@ -154,6 +154,42 @@ D is the principal described above.
 - **AC4 (fourth criterion).** Given `FloorResources()` returning `ADMINRESOURCES` alone (the old floor), when `DeveloperFloor`, `DeveloperFloorTurn` and the browser spec run, then each reddens.
 - **AC5.** Given D on Home, when System information loads, then it shows "not reported" for the dashboard members and writes nothing to `messages.log`.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 9 patch (applied), 3 defer, 19 rejected.
+
+- [x] [Review][Patch] (med) The parity leg never checked that an open screen declares its own pair from its classic page's `RESOURCE` (AC2, AD-8) [src/OcuPilot/Test/DeveloperFloor.cls:397]
+- [x] [Review][Patch] (low) The parity leg read a classic `RESOURCE` member's `:PERM` suffix as `USE` [src/OcuPilot/Test/DeveloperFloor.cls:391]
+- [x] [Review][Patch] (low) Setup never proved the developer and below-the-floor principals hold no `%Admin_*` resource [src/OcuPilot/Test/DeveloperFloorFixture.cls:206]
+- [x] [Review][Patch] (low) The administrator leg's no-log check passed when `messages.log` was unreadable [src/OcuPilot/Test/DeveloperFloor.cls:341]
+- [x] [Review][Patch] (low) Both Home legs quit on an unparsable 200 without failing [src/OcuPilot/Test/DeveloperFloor.cls:320]
+- [x] [Review][Patch] (low) The fixture's `%SYS` switches restored after the `Catch`, not as its first line (AD-16) [src/OcuPilot/Test/DeveloperFloorFixture.cls:108]
+- [x] [Review][Patch] (low) `Screen.Gate.AdminPairSpec` had no caller left; deleted [src/OcuPilot/Screen/Gate.cls:299]
+- [x] [Review][Patch] (low) Prose outside the diff still stated the old floor: `Error.cls` :104, `SystemInfo.cls` :9, `navigation.ts` :886, `Wire.cls` :234, `WireSecurityRead.cls` :19, `instance-notice.ts` :26 [src/OcuPilot/Api/Error.cls:104]
+- [x] [Review][Patch] (low) New test prose disagreed with the code: principal and role counts, the throwaway comment, the route roster's reason [scripts/ci-throwaway.sh:286]
+- [x] [Review][Defer] (low) Home's performance tick re-fetches the navigation map every 10 s for a caller refused `/ui/performance` [ui/src/app/core/performance.ts:118] — deferred: pre-existing since Story 16.18, DW-1923 `wontfix-accepted`
+- [x] [Review][Defer] (low) README's sign-in prerequisite names only `%Manager`; a `%Developer` needs the same database READ [README.md:314] — deferred: out of footprint, DW-1763 occurrence; EXPERIENCE.md :182 and :214 (stale since 19.1) are DW-1924 `wontfix-accepted`
+- [x] [Review][Defer] (low) The USER own-database assertion rests on the `Ens*.mac` rows DW-1922 concerns [src/OcuPilot/Test/DeveloperFloor.cls:242] — deferred: DW-1922 occurrence, owner 19.2
+
+Rejected:
+
+- (false) Other roster GETs log as D: probe on `ocupilot-a2-ci`, 19 GETs as a real `%Developer` (`/ui/findings`, `/ui/help`, `/ui/guardrails`, `/ui/performance` among them) wrote no `messages.log` line.
+- (false) Viewers never exercise D's code-database grant: `AtelierPort`'s gate requires the namespace's code-database READ for every read there (AD-61 rule 1).
+- (false) The USER assertion depends on names and `maxRows`: `USER`'s database is `USER` on every stock instance, and its Routines list holds a handful of rows.
+- (false) The 114/113 mutation gap: the mutation reddened; one refused route names its pair through its own writer.
+- (false) The browser spec hard-codes `HSCUSTOM`: 129 specs do; the browser tier runs only on IRIS for Health.
+- (by-design) The AC3 principal holds `TurnWireFixture.Resources(0)`, credential READ included: the I/O matrix's Turn row defines it.
+- (by-design) Non-GET roster routes are not sent: the I/O row and Tasks scope the open check to GET.
+- (by-design) AD-8, AD-61 rule 1 and PRD FR-3/FR-65 wording: the lead's ship amendments.
+- (low) A failed `OnBeforeAllTests` leaves its principals: only on an already-red setup, as `TurnWire` and `AtelierPortDenial` do; the fix adds cleanup branches.
+- (low) Three `:id` roster GETs answer 404 on absent ids: owner scoping is pinned by `TranscriptGate`, `TranscriptsWire` and `LedgerWire`; a real-id leg writes rows that outlive D.
+- (low) `Router.ADMINRESOURCES` has no product reader and `HoldsAdminResource` keeps its name: seven `Turn*` harnesses and `PortGate` read it; a rename is churn with no named harm.
+- (low) A relocated console file, a concurrent `uisystem` line or a mid-test rotation: one class runs at a time on a default throwaway.
+- (low) `Resources(0)` answering `""`, `resetRememberedState` resetting the suite account, `production` off an interoperability namespace: each reddens or cannot occur on CI's IRIS for Health throwaway.
+- (low) Matrix rows without `mutation:` lines: they are not ACs (Rule 19).
+- (low) The browser spec does not read D's grants back: a missing grant can only redden it; the HTTP classes read the same fixture's grants back.
+- (low) The Auto Run Result miscounts the earlier review: its fix edits build-auto's own section.
+
 ## Spec Change Log
 
 - 2026-10-02, spec gate (lead): DW-1853 resolved by parity accepted (the screen already declares its classic page's `RESOURCE` member); the non-additive edits approved, none contended at gate time, re-checked at edit time; the AD-8 sentence, AD-61 rule 1's wording and PRD FR-3/FR-65 are amended by the lead when the story ships.
@@ -275,12 +311,13 @@ Record one `mutation: <change> → <test that reddened>` line per AC here as eac
 - mutation: AC2, `LogMessageViewer` privileges `%DeepSee_Portal:USE` → `DeveloperFloor` red: parity, tools (`logs.messages.read` joins the held set), Logs and sign-in legs (run 462).
 - mutation: AC2, `Gate()` deleted from `Area/WebApp/FormRules.HandleForm` → `DeveloperFloorRoutes` red on `GET /web-applications/form` (run 467).
 - mutation: AC3, `Turn.cls` :148 back to `Router.#ADMINRESOURCES` → `DeveloperFloorTurn` red, turn not completed (run 464).
-- mutation: AC3, `INVOKEPAIRS` back to `Gate.AdminPairSpec()` → `DeveloperFloorTurn` red, turn not completed (run 465).
+- mutation: AC3, `INVOKEPAIRS` back to the `ADMINRESOURCES` members alone at `USE` → `DeveloperFloorTurn` red, turn not completed (run 465).
 - mutation: AC5, `%DB_IRISSYS` guard removed from `SystemInfo.Dashboard` → `DeveloperFloor.TestHomeSystemInformationLogsNothingForTheDeveloper` red alone (run 463).
 - mutation: one home, `Router.FLOORRESOURCES` a literal → `PortGate.TestTheAdministrativeFloorHasOneHome` red (run 466).
 - mutation: AC5 admitted side, the `Dashboard` guard checks a misspelled `%DB_IRISYS` → `DeveloperFloor.TestHomeSystemInformationAnswersAnAdministratorWithoutAll` red alone (run 486).
 - mutation: AC2 parity, `DeveloperFloor.INTERNALCHECKS` emptied → `TestEveryOpenScreenMatchesItsClassicPage` red on `ExplorerRoutineDocument` (`%CSP.UI.System.ViewCode` compiles no `RESOURCE`) (run 487).
 - mutation: AC2 routes, `Kernel.Denial.Detail` answers `""` for every pair → `DeveloperFloorRoutes` red, 113 refused routes naming no pair (run 488).
+- mutation: AC2 parity, own pair, `ExplorerClassList` privileges `[]` (throwaway copy only) → `TestEveryOpenScreenMatchesItsClassicPage` red alone, "declares its own pair from %CSP.UI.Portal.ClassList's RESOURCE" (run 894; reverted, green run 897).
 
 ## Auto Run Result
 

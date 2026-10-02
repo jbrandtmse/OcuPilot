@@ -882,8 +882,8 @@ export class NavigationService {
    * moved.
    *
    * It carries no guard of its own. `createSingleFlight` fills its slot **before** the fetch
-   * starts, so a refusal reported by the navigation call itself -- a caller holding no
-   * administrative resource at all, whose every request is a 403 -- finds that slot filled, and
+   * starts, so a refusal reported by the navigation call itself -- a caller holding neither an
+   * administrative resource nor `%Development`, whose every request is a 403 -- finds that slot filled, and
    * finds the namespace unchanged, so it joins rather than queueing. A second guard here would be
    * a second copy of that rule, and nothing could tell it from a correct one.
    */

@@ -87,7 +87,7 @@ ClassMethod CodeResource() As %String
 ClassMethod EnsurePrincipal(pPassword As %String, pKind As %String = "", Output pUser As %String) As %Status
 {
     Set pUser = ""
-    If '..Armed() Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DeveloperFloorFixture creates IRIS users and a role and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created.")
+    If '..Armed() Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DeveloperFloorFixture creates IRIS users and roles and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created.")
     If '$ListFind($ListBuild("", "neither", "administrator"), pKind) Quit $$$ERROR($$$GeneralError, "unknown principal kind: " _ pKind)
     Set tCode = ..CodeResource()
     If tCode = "" Quit $$$ERROR($$$GeneralError, "the install namespace's code database resource could not be read")
@@ -105,6 +105,7 @@ ClassMethod EnsurePrincipal(pPassword As %String, pKind As %String = "", Output 
         }
         Set tSC = ##class(Security.Users).Create(tUser, tRoles, pPassword, "OcuPilot developer floor test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.DeveloperFloorFixture")
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
@@ -127,6 +128,7 @@ ClassMethod ResetRole(pRole As %String, pResources As %String) As %Status
             Set tSC = ##class(Security.Roles).Create(pRole, "OcuPilot test: developer floor principal role (throwaway)", pResources, "")
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Set $NAMESPACE = tOrigNS
@@ -150,6 +152,7 @@ ClassMethod RemovePrincipals() As %String
             If ##class(Security.Roles).Exists(tRole, .tR2, .tRS2) Set tLeft = tLeft _ " role " _ tRole
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
     }
     Set $NAMESPACE = tOrigNS
@@ -195,6 +198,19 @@ ClassMethod Holds(pComposed As %DynamicObject, pResource As %String, pPermission
 {
     If '$IsObject(pComposed) Quit 0
     Quit ''##class(OcuPilot.Kernel.Shell.Effective).Holds(pComposed, pResource, $Extract($ZConvert(pPermission, "U"))).%Get("held")
+}
+
+/// <p>Whether <var>pComposed</var>, a <method>Composed</method> answer, holds any member of
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> at <code>USE</code>: a principal
+/// meant to clear the floor through <code>%Development</code> alone must answer 0.</p>
+ClassMethod HoldsAdministrative(pComposed As %DynamicObject) As %Boolean
+{
+    Set tList = ##class(OcuPilot.Screen.Gate).#ADMINRESOURCES
+    Set tHolds = 0
+    For tI = 1:1:$Length(tList, ",") {
+        If ..Holds(pComposed, $Piece(tList, ",", tI), "USE") Set tHolds = 1
+    }
+    Quit tHolds
 }
 
 /// <p>One request as <var>pUser</var> to <var>pPath</var> under <parameter>APIBASE</parameter>.</p>

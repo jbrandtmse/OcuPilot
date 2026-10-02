@@ -231,7 +231,7 @@ Method TestAnonymousApiRequestIsRefusedBeforeDispatch()
     Do $$$AssertEquals($ZStrip(tBody, "<>W"), "", "with an empty body -- no OcuPilot code ran, so there is no envelope")
 }
 
-/// <p>AC8 -- a signed-in caller holding no <code>%Admin_*</code> resource receives exactly
+/// <p>AC8 -- a signed-in caller holding no <code>%Admin_*</code> resource and not <code>%Development</code> receives exactly
 /// one 403 envelope whose code is <code>AUTH.NOADMIN</code> and whose reason names the
 /// missing administrative privilege; a caller holding one reaches dispatch, observed as the
 /// route-not-found envelope since no route is mapped at the application root.</p>

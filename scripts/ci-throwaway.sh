@@ -283,7 +283,8 @@ services:
       # The source code API's denial class also makes one mapped code database's resource non-public
       # for its leg and restores it.
       # classes: AtelierPortDenial
-      # The developer floor classes sign in as a %Developer principal and one below the floor.
+      # The developer floor classes sign in as purpose-built principals: a %Developer, one below the
+      # floor, an administrator without %All, and a %Development holder that runs a turn.
       # classes: DeveloperFloor, DeveloperFloorFixture, DeveloperFloorRoutes, DeveloperFloorTurn
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
