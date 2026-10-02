@@ -8184,6 +8184,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: JournalDirectories reads GetPrimaryDirectory, GetAlternateDirectory and GetCurrentFileName only; after a journal directory change the older files stay where they were and the journal history still lists them (inference; never changed on the throwaway). Config.config wijdir is empty on ocupilot-b-ci, so IRIS.WIJ is refused there only as a manager-directory file.
 - 2026-09-28T22:34:01Z status=routed owner=18-5-journals by=cr note=18.5 changes journal directories: add the history's directories and the WIJ directory to the refusal, read at call time
+- 2026-10-02T19:51:35Z status=resolved-by:18-5-journals owner=18-5-journals by=adjudication note=PathPort refuses the journal history's directories and the WIJ directory (081bbd5e; PathPortInstance 10/10 run 3154, AC6)
 
 ### DW-1798: PATH.INSTANCE does not cover OcuPilot's own static bundle (csp/ocupilot/): DW-1790's review note named it, and the decision widened only databases and journals
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
@@ -9068,3 +9069,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
 - 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)
+
+### DW-1953: JOURNAL.SWITCHDIR.UNMOVED's sentence shows a literal <directory> where only the code is rendered (the confirm route, a refused tool call)
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalError.ReasonFor(SWITCHDIRUNMOVED) answers the template; Api/Confirm.ReasonFor renders by code; only the screen route carries the port's filled Unmoved() reason
+- 2026-10-02T19:49:21Z status=wontfix-theoretical owner=18-5-journals by=cr note=real only if a confirm's SWITCHDIR stays put with %Admin_Manage:USE held (measured: it moves) or an out-of-band race
+
+### DW-1954: A vendor SWITCHDIR 409 is logged at error severity before JournalPort maps it to JOURNAL.SWITCHDIR.NOOTHER
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AdminPort.Fail logs every refusal but UNLOGGEDREFUSALS (Lock/DELETE/409, AD-2); reachable only past DIRSTATE's own refusal (a race) and in JournalWrite's direct port leg
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=alerts.log shows a SWITCHDIR 409 line from a product call, or a test asserts alert state after JournalWrite
+
+### DW-1955: AC6's former-journal and WIJ directory refusal is pinned at PathPort.Resolve, not through an overwriting file consumer
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PathPortInstance calls ResolveOf(..., overwrite 1), the same entry 16.4's task export and 19.13's XML export call unchanged; no consumer leg seeds a former journal directory
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a file consumer resolves a server path other than through PathPort.Resolve
+
+### DW-1956: Switch directory's fingerprint covers CurrentFile, so a journal file roll between mint and confirm refuses the confirm
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalSwitchDirectory.FINGERPRINTSUBJECT is CurrentFile,CurrentDirectory,OtherDirectory, as the spec's tools table declares STATE / CurrentFile,CurrentDirectory; fails closed, the agent re-proposes
+- 2026-10-02T19:49:21Z status=by-design owner=18-5-journals by=cr note=spec Boundaries tools table names the subject; reopen only through a spec amendment

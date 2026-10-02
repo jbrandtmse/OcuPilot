@@ -323,7 +323,8 @@ test('AC3: Switch file warns naming the file the instance writes now, and the li
 });
 
 // AC4. Mutation (Rule 19): drop the NOOTHER refusal from `JournalPort`'s DIRSTATE read, reload ->
-// the vendor's own 409 answers a different sentence and the banner assertion goes red.
+// the fresh read names no other directory, the tool refuses the switch with another reason, and the
+// banner assertion goes red.
 test('AC4: on one journal directory Switch directory is refused with the published sentence and nothing moves', async () => {
   const before = journalState();
   assert.equal(before.settings.CurrentDirectory, before.settings.AlternateDirectory, 'the throwaway has one journal directory');

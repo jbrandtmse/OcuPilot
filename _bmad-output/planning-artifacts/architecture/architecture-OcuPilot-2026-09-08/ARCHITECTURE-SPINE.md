@@ -575,6 +575,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A single-object `GET` may also be read as a list over one named member** (`source.rows`; Story 18.5's journal file databases) [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: the read issues the `GET` once and cuts to the cap, and a 404 reads as no rows.
 
+  **Only the vendor's own 404 reads as no rows** [AMENDED 2026-10-02, Story 18.5 code review, Rule 20]: a single-object `GET` read answers no rows for a 404 the port maps to `PORT.NOTFOUND`, or one carrying no code; a 404 on any other code is a refusal and fails the read, so a journal file AD-21's eighth case refuses `JOURNAL.FILE.UNLISTED` is never shown as a file holding no databases (`Screen/Read.cls` `IsAbsence`).
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions

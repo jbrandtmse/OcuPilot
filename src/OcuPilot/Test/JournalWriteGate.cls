@@ -114,8 +114,11 @@ Method TestEachMissingPairIsRefusedByNameBeforeAnyPortCall()
 
 /// <p>The floor under the refusals' zero: a principal holding exactly every declared pair reaches the
 /// port with each tool on the screen's action -- the file switch applied, the directory switch read
-/// and refused for the one directory, the check answered by the seam -- and at the confirm of the
-/// file switch.</p>
+/// and refused for the one directory before any switch is sent, the check answered by the seam -- and
+/// at the confirm of the file switch.</p>
+/// <p>Mutation (Rule 19): drop the one-directory test from
+/// <class>OcuPilot.Port.JournalPort</class>'s other-directory read -&gt; the screen sends the switch,
+/// the vendor's 409 maps to the same code, and the before-any-switch leg goes red.</p>
 Method TestExactlyTheDeclaredPairsReachThePort()
 {
     Set tFile = ..ClosedFile()
@@ -139,6 +142,7 @@ Method TestExactlyTheDeclaredPairsReachThePort()
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 200) && (tLeg.%Get("types") [ "Journal.Settings/SWITCHFILE"), "the screen's file switch reaches the port and is applied: " _ ..LegText(tRun, 2))
     Set tLeg = ..Leg(tRun, 3)
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 409) && (tLeg.%Get("code") = "JOURNAL.SWITCHDIR.NOOTHER") && (tLeg.%Get("calls") > 0), "the screen's directory switch reaches the port's read: " _ ..LegText(tRun, 3))
+    Do $$$AssertTrue($IsObject(tLeg) && '(tLeg.%Get("types") [ "Journal.Settings/SWITCHDIR"), "and is refused at that read, before any switch is sent: " _ $Select($IsObject(tLeg): tLeg.%Get("types"), 1: ""))
     Set tLeg = ..Leg(tRun, 4)
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 200) && (tLeg.%Get("types") [ "Journal.File/INTEGRITYCHECK"), "the screen's check reaches the port: " _ ..LegText(tRun, 4))
 }

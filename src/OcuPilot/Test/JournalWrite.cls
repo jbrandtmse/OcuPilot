@@ -114,10 +114,9 @@ Method TestTheFileIsSwitchedOnBothCallers()
     Set tBefore = $ClassMethod(..#PROBE, "Newest")
     Set tSC = ..Act("switchfile", "current", "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "the screen's switch answers 200: " _ ..Shown(tBody))
-    If $IsObject(tBody) && $IsObject(tBody.%Get("target")) {
-        Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%ToJSON(), "updated {""type"":""journal-file"",""scope"":""instance"",""id"":""current""}", "publishing the update event")
-        Do $$$AssertEquals(..Verdict(tBody), "nothingSent", "read back as nothing sent (AD-58)")
-    }
+    Set tEvent = $Select($IsObject(tBody) && $IsObject(tBody.%Get("target")): tBody.%Get("action") _ " " _ tBody.%Get("target").%ToJSON(), 1: ..Shown(tBody))
+    Do $$$AssertEquals(tEvent, "updated {""type"":""journal-file"",""scope"":""instance"",""id"":""current""}", "publishing the update event")
+    Do $$$AssertEquals(..Verdict(tBody), "nothingSent", "read back as nothing sent (AD-58)")
     Set tAfter = $ClassMethod(..#PROBE, "Newest")
     Do $$$AssertTrue((tAfter '= "") && (tAfter '= tBefore), "the list's newest file changed: " _ tBefore _ " -> " _ tAfter)
     Do $$$AssertEquals(##class(%File).GetDirectory(tAfter), ##class(%File).GetDirectory(tBefore), "in the same directory")

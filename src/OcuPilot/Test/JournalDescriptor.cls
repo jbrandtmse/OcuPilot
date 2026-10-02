@@ -1,7 +1,8 @@
 /// <p>Pins Story 18.5's declarations: Journals and its two unlisted screens, their pairs, prompts,
 /// reads and replaced classic pages; the three journal tools' kinds, ports, request types, pairs and
-/// replaced pages; their baseline lines; and the read grammar's single-object <code>GET</code> read
-/// over one member (AD-5, AD-8, AD-22, AD-36, AD-44).</p>
+/// replaced pages; their baseline lines; the read grammar's single-object <code>GET</code> read
+/// over one member; and how the journal port compares directories (AD-5, AD-8, AD-22, AD-36, AD-44,
+/// AD-51).</p>
 /// <p>It reads declarations only and needs OcuPilot installed with no custom resource assigned to the
 /// replaced classic pages.</p>
 Class OcuPilot.Test.JournalDescriptor Extends %UnitTest.TestCase
@@ -180,6 +181,20 @@ Method TestEveryJournalCodeReadsItsOwnSentence()
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ " reads it on a refused tool call")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ " and on a violation")
     }
+}
+
+/// <p>AD-51 as amended by Story 18.5: <class>OcuPilot.Port.JournalPort</class> compares two
+/// normalized directories as the vendor's <code>GetTheOtherDirectory</code> does -- trailing
+/// separators aside, letter case included -- so a primary and an alternate that differ only in case
+/// are two directories, and an empty one names none.</p>
+/// <p>Mutation (Rule 19): fold case in <method>OcuPilot.Port.JournalPort.SameDirectory</method> -&gt;
+/// the case leg goes red.</p>
+Method TestDirectoriesCompareAsTheVendorComparesThem()
+{
+    Set tPort = "OcuPilot.Port.JournalPort"
+    Do $$$AssertTrue($ClassMethod(tPort, "SameDirectory", "/durable/iris/mgr/journal/", "/durable/iris/mgr/journal"), "a trailing separator changes nothing")
+    Do $$$AssertTrue('$ClassMethod(tPort, "SameDirectory", "/durable/iris/mgr/Journal/", "/durable/iris/mgr/journal/"), "directories differing in case are two directories")
+    Do $$$AssertTrue('$ClassMethod(tPort, "SameDirectory", "", ""), "an empty directory names none")
 }
 
 }

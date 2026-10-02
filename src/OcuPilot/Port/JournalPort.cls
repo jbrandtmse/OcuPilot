@@ -156,7 +156,7 @@ ClassMethod Newest(Output pFile As %String, Output pHttpStatus As %Integer, Outp
 /// <var>pOther</var>, as the vendor's <code>GetTheOtherDirectory</code> chooses it from
 /// <parameter>SETTINGSENDPOINT</parameter> <code>GET</code>: <code>""</code> when the primary and the
 /// alternate name one directory; the primary when journaling writes in the alternate; the alternate
-/// otherwise. Directories are compared normalized and ignoring case.</p>
+/// otherwise. Directories are compared as <method>SameDirectory</method> compares them.</p>
 ClassMethod OtherDirectory(pDirectory As %String, Output pOther As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pOther = ""
@@ -257,12 +257,13 @@ ClassMethod Normalized(pDirectory As %String) As %String [ Private ]
     Quit ##class(%File).NormalizeDirectory(pDirectory)
 }
 
-/// <p>Whether two directories name one place: equal without regard to case once every trailing
-/// separator is removed. <code>""</code> names none.</p>
+/// <p>Whether two normalized directories name one place: equal once every trailing separator is
+/// removed, letter case included, as the vendor's <code>GetTheOtherDirectory</code> compares them.
+/// <code>""</code> names none.</p>
 ClassMethod SameDirectory(pA As %String, pB As %String) As %Boolean
 {
-    Set tA = $ZConvert($ZStrip(pA, ">", "/\"), "L")
-    Set tB = $ZConvert($ZStrip(pB, ">", "/\"), "L")
+    Set tA = $ZStrip(pA, ">", "/\")
+    Set tB = $ZStrip(pB, ">", "/\")
     If (tA = "") || (tB = "") Quit 0
     Quit (tA = tB)
 }

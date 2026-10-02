@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
-import { NavigationService, UNGATED, screenForUrl } from '../../core/navigation';
+import { NavigationService, UNGATED, screenForRoute, screenForUrl } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
@@ -14,7 +14,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { JournalFileDetailsPage } from './journal-file-details.page';
-import { JOURNAL_FILE_UNLISTED, isUnlisted } from './journal-file-details.store';
+import { JOURNAL_DATABASES_ROUTE, JOURNAL_FILE_UNLISTED, isUnlisted } from './journal-file-details.store';
 
 /**
  * Journal file details (Story 18.5, AC2), wired over a stub of the HTTP answer with the real
@@ -23,7 +23,8 @@ import { JOURNAL_FILE_UNLISTED, isUnlisted } from './journal-file-details.store'
  * names, and a file the instance no longer lists reads as gone rather than refused.
  *
  * Mutation (Rule 19): drop the `isUnlisted` branch from `showGone` -> the unlisted leg goes red,
- * drawing the refusal strip instead.
+ * drawing the refusal strip instead; drop the constructor's clear of the databases store -> the
+ * earlier-file leg goes red.
  */
 
 const FILE = '/durable/iris/mgr/journal/20261002.089';
@@ -62,7 +63,9 @@ function summary(overrides: Record<string, unknown> = {}) {
 
 interface Answers {
   details: JsonResult<unknown>;
-  databases: JsonResult<unknown>;
+  databases: JsonResult<unknown> | Promise<JsonResult<unknown>>;
+  /** Rows the databases screen's store already holds when the page opens: an earlier file's. */
+  earlier?: unknown[];
 }
 
 function rows(list: unknown[]): JsonResult<unknown> {
@@ -75,7 +78,7 @@ async function mount(answers: Answers) {
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
-      return (path.includes('osmgmt.journalfiledatabases') ? answers.databases : answers.details) as JsonResult<T>;
+      return (path.includes('osmgmt.journalfiledatabases') ? await answers.databases : answers.details) as JsonResult<T>;
     },
   };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
@@ -101,6 +104,10 @@ async function mount(answers: Answers) {
     ],
   });
   await TestBed.inject(Router).navigateByUrl(URL);
+  if (answers.earlier !== undefined) {
+    const databasesScreen = screenForRoute(JOURNAL_DATABASES_ROUTE);
+    if (databasesScreen !== null) stores.for(databasesScreen.descriptor, databasesScreen.refreshRates).applyTick(answers.earlier, false, '', new Date());
+  }
   const fixture = TestBed.createComponent(JournalFileDetailsPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -133,6 +140,13 @@ describe('Journal file details', () => {
     expect(section.querySelector('h2')?.textContent?.trim()).toBe(STRINGS.databaseListLabel);
     expect(Array.from(section.querySelectorAll('th')).map((cell) => cell.textContent?.trim())).toEqual([STRINGS.systemInfoDatabase, STRINGS.journalColumnSfn]);
     expect(section.querySelectorAll('tbody tr')).toHaveLength(2);
+  });
+
+  it('opens with none of the databases an earlier file showed, while its own read is out', async () => {
+    const { host } = await mount({ details: rows([summary()]), databases: new Promise(() => {}), earlier: [{ SFN: 9, DatabasePathOrAlias: '/earlier/file/' }] });
+    expect(fieldValue(host, 'Name')).toBe(FILE);
+    expect(host.querySelectorAll('[data-journal="databases"] tbody tr')).toHaveLength(0);
+    expect(host.textContent).not.toContain('/earlier/file/');
   });
 
   it('a file with no database records reads the databases empty state', async () => {

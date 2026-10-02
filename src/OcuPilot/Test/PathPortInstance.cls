@@ -564,9 +564,9 @@ Method TestAFormerJournalDirectoryStaysRefused()
     Set tProbe = "OcuPilot.Test.JournalProbe"
     Set tSaved = $ClassMethod(tProbe, "JournalSettings")
     Set tAlternate = $ClassMethod(tProbe, "AlternateDirectory")
+    Set tOrigNS = $NAMESPACE
     Try {
         Do $$$AssertStatusOK($ClassMethod(tProbe, "SeedAlternate"), "the probe alternate is configured")
-        Set tOrigNS = $NAMESPACE
         Set $NAMESPACE = "%SYS"
         Set tSwitchSC = ##class(%SYS.Journal.System).SwitchDirectory(.tThere)
         Set tBackSC = ##class(%SYS.Journal.System).SwitchDirectory(.tBack)
@@ -588,6 +588,7 @@ Method TestAFormerJournalDirectoryStaysRefused()
         Do $ClassMethod(..#FIXTURE, "UseJournalHistory", "")
         Do $$$AssertEquals(..Overwrite(tAlternate, tJournal, ..#FIXTURE), "200|" _ tAlternate _ tJournal, "and resolves while the history names no directory, so the history read is what refuses it")
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Do $$$AssertStatusOK(ex.AsStatus(), "the former-directory legs ran to the end")
     }
     Do $$$AssertStatusOK($ClassMethod(tProbe, "RestoreJournal", tSaved), "the journal settings found are in place")

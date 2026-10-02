@@ -161,6 +161,8 @@ export class JournalFileDetailsPage {
       databasesScreen === null || databasesScreen.read === null
         ? null
         : { screen: databasesScreen, store: this.stores.for(databasesScreen.descriptor, databasesScreen.refreshRates) };
+    // The databases store outlives the page: what it holds may be the file an earlier page showed.
+    this.databases?.store.clearAnswers();
 
     const criteria = () => parentCriteria(screen, this.router.url);
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));

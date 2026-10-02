@@ -185,12 +185,15 @@ Method TestTheSelfQueuedAuditListIsPolledToAnOrdinarySuccess()
 
 /// <p>AD-26, AD-39's fifth exception (Story 18.5): a real queued journal integrity check, its finished
 /// poll answered by <class>OcuPilot.Test.JournalConsolePort</class>, answers 200 with
-/// <code>{Result, console}</code>: two lines as written; 201 lines cut to
+/// <code>{Result, console}</code>: two lines as written; 200 lines whole; 201 lines cut to
 /// <parameter>OcuPilot.Port.AdminPort.CONSOLEMAXLINES</parameter>, the last U+2026; and a failed check
-/// that wrote lines its lines with <code>failed</code> true. No task row is left.</p>
+/// that wrote lines its lines with <code>failed</code> true, each with nothing logged. A failed check
+/// that wrote no line is a logged fault with no answer. No task row is left.</p>
 /// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.AdminPort.AwaitTask</method>'s failed-with-lines
 /// branch -&gt; the failed leg answers a fault and goes red; drop the cut from
-/// <method>OcuPilot.Port.AdminPort.Consoled</method> -&gt; the 201-line leg goes red.</p>
+/// <method>OcuPilot.Port.AdminPort.Consoled</method> -&gt; the 201-line leg goes red; drop that
+/// branch's line count -&gt; the no-line leg answers 200 and goes red; cut at the cap rather than
+/// above it -&gt; the 200-line leg goes red.</p>
 Method TestAJournalChecksConsoleIsAnsweredCutAndOnFailure()
 {
     Set tPort = "OcuPilot.Test.JournalConsolePort"
@@ -200,11 +203,12 @@ Method TestAJournalChecksConsoleIsAnsweredCutAndOnFailure()
     If tFile = "" Quit
     Set tBefore = ..TaskCount()
     ; state parameter, lines armed, failed flag expected, lines kept, last line expected
-    Set tCases = $ListBuild($ListBuild("STATEFINISHED", 2, 0, 2, "line 2"), $ListBuild("STATEFINISHED", 201, 0, 200, $Char(8230)), $ListBuild("STATEFAILED", 3, 1, 3, "line 3"))
+    Set tCases = $ListBuild($ListBuild("STATEFINISHED", 2, 0, 2, "line 2"), $ListBuild("STATEFINISHED", 200, 0, 200, "line 200"), $ListBuild("STATEFINISHED", 201, 0, 200, $Char(8230)), $ListBuild("STATEFAILED", 3, 1, 3, "line 3"))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tLabel = $List(tCase, 1) _ " with " _ $List(tCase, 2) _ " lines"
         Do $ClassMethod(tPort, "Clear")
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
         Do $ClassMethod(tPort, "Arm", $Parameter(tTaskClass, $List(tCase, 1)), $List(tCase, 2))
         Kill tQuery
         Set tQuery("file") = tFile
@@ -219,7 +223,18 @@ Method TestAJournalChecksConsoleIsAnsweredCutAndOnFailure()
         Do $$$AssertEquals($Select(tConsole.%Size() > 0: tConsole.%Get(tConsole.%Size() - 1), 1: ""), $List(tCase, 5), tLabel _ ": a cut console ends with U+2026")
         Do $$$AssertEquals(''$Select($IsObject(tResult): tResult.%Get("failed"), 1: 0), $List(tCase, 3), tLabel _ ": failed only when the check failed")
         Do $$$AssertTrue($IsObject(tResult) && $IsObject(tResult.%Get("Result")), tLabel _ ": with the task's result")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", tLabel _ ": nothing logged")
     }
+    Do $ClassMethod(tPort, "Clear")
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do $ClassMethod(tPort, "Arm", $Parameter(tTaskClass, "STATEFAILED"), 0)
+    Kill tQuery
+    Set tQuery("file") = tFile
+    Set tResult = ""
+    Set tSC = $ClassMethod(tPort, "Invoke", "Journal.File", "INTEGRITYCHECK", .tQuery, {"CheckDetails": false}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ $Get(tHttp) _ " " _ $IsObject($Get(tResult)), "0 500 0", "a failed check that wrote no line is a fault with no answer")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '= "", "and its fault is logged")
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
     Do $ClassMethod(tPort, "Clear")
     Do $$$AssertEquals(..TaskCount(), tBefore, "no queued row is left")
 }

@@ -515,6 +515,30 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - **AC10:** Given governance, when the story lands, then Part A's three write keys (switch file, switch directory, check integrity) are in `Baseline.cls`, `true`; the settings key lands with Story 18.18.
 - **AC11:** Given the rosters, when the story lands, then every roster and pinned side-bar list includes the new screens and tools, every screen has three prompts, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 999 lines.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 52 raw, 41 entries; 11 patch, 4 defer, 26 rejected; high 0.
+
+- [x] [Review][Patch] (med) A failed directory switch left the test in `%SYS`: the Catch did not restore `$NAMESPACE`, so the journal restore after it could not run [src/OcuPilot/Test/PathPortInstance.cls:591]
+- [x] [Review][Patch] (low) `SameDirectory` folded case; the vendor's `GetTheOtherDirectory` compares `$zu(12)` forms exactly, so a case-only alternate read NOOTHER [src/OcuPilot/Port/JournalPort.cls:263]
+- [x] [Review][Patch] (low) Details kept an earlier file's databases in the shared store until its own read landed [ui/src/app/areas/os-management/journal-file-details.page.ts:165]
+- [x] [Review][Patch] (low) `AwaitTask`'s failed-with-no-line fault, the 200-line edge and "nothing logged" were unpinned [src/OcuPilot/Test/AdminPortAsync.cls:197]
+- [x] [Review][Patch] (low) The file switch's event and read-back assertions skipped themselves on an answer with no target [src/OcuPilot/Test/JournalWrite.cls:117]
+- [x] [Review][Patch] (low) Nothing pinned that a one-directory screen switch is refused before `SWITCHDIR` is sent [src/OcuPilot/Test/JournalWriteGate.cls:145]
+- [x] [Review][Patch] (low) The AC4 browser leg's mutation comment gave the wrong reason it reddens [ui/browser/journals.browser-spec.mjs:325]
+- [x] [Review][Patch] (low) Stale count in the OS management roster comment (thirty-two, twenty) [src/OcuPilot/Test/Navigation.cls:460]
+- [x] [Review][Patch] (low) AC2's unlisted refusal was untested on the integrity check's screen action [src/OcuPilot/Test/JournalRead.cls:203]
+- [x] [Review][Patch] (low) AD-36 still read "a 404 reads as no rows"; added the recorded narrowing add-only, memlog appended, lint clean but for a prior `{id}` hit at :178 [ARCHITECTURE-SPINE.md:578]
+- [x] [Review][Patch] (low, Rule 19) QA's AC4 card mutation reddened on an earlier `TOOL.ARGUMENTS`; the precise one is now recorded [src/OcuPilot/Test/JournalWrite.cls:217]
+- [x] [Review][Defer] UNMOVED's sentence renders `<directory>` where only the code is shown [src/OcuPilot/Api/JournalError.cls:51] — deferred: DW-1953 wontfix-theoretical
+- [x] [Review][Defer] A vendor SWITCHDIR 409 is logged before the NOOTHER mapping [src/OcuPilot/Port/JournalPort.cls:178] — deferred: DW-1954 wontfix-accepted
+- [x] [Review][Defer] AC6 pinned at `PathPort.Resolve`, not through a file consumer [src/OcuPilot/Test/PathPortInstance.cls:562] — deferred: DW-1955 wontfix-accepted
+- [x] [Review][Defer] A file roll between mint and confirm refuses a directory switch (subject covers `CurrentFile`) [src/OcuPilot/Screen/Tool/JournalSwitchDirectory.cls:33] — deferred: DW-1956 by-design
+- Runs (`ocupilot-b-ci`, one class per call): clean 3157-3162, then 3167-3170 after the mutations, all green (JournalDescriptor 8, AdminPortAsync 6, JournalRead 5, PathPortInstance 10, JournalWrite 7, JournalWriteGate 2); mutated 3163-3166 red as recorded under Verification. Vitest details spec 6/6, red 1 under its mutation. `npm run test:tools` 1,778/1,778; check-objectscript and lint-docs 0. Throwaway as found (settings, primary directory, no probe object, 0 agents, 0 policy rows, monitor 2 as found).
+- Rejected (false): agent `CheckDetails` of another JSON type (`ValidateArguments` refuses it) and a boolean screen value (`ScreenAction.Values` takes strings only); a finished check with no `output` (the server always answers one); a failed check with lines read as errors (the CONSOLEDTYPES contract); another id carried in `values` (refused as undeclared); tool-result and context line pins (no path carries a line); `RowsProblem`'s indirection and the command bar's per-action code (no named harm, the Task Manager precedent); POLLRESOURCE absent (already a held pair); the switch-directory script omitting the pre-switch read (it feeds only the post-call check no script carries).
+- Rejected (low, not worth it): a warning naming a stale or unloaded first row; out-of-order database reads on one page; over 500 databases unmarked; an out-of-band switch racing the unmoved check; the cold-deep-link databases read (maybe-false: `databases.browser-spec.mjs:298`'s cold goto shows the same pattern working); the 200-line errors layout (maybe-false, inference only).
+- Rejected (spec-bound or not this stage's): NOOTHER naming Journal settings; the guard's whole-list read per call; a started check's verdict lost (Named limit 2); `PathPortInstance` armed whole; EXPERIENCE.md :164 wording; prompt groups and plain prev/next; per-AC Rule 19 scope met for AC5 and AC11 (runs 2697, 2702); the merged tree's 1,001 lines (19.13's); the stale "For the runner" lines (a spec edit); DW-1797's adjudication (the lead's).
+
 ## Spec Change Log
 
 - 2026-10-02, runner at dev_complete (Rule 5 tier 1, corrected at origin): the Boundaries screen table's routes read `journals/details` and `journals/databases`, opened at `<route>/<file>` as built (a journal file name holds slashes; the DatabaseDetails convention keeps the id one path segment, AD-13); the matrix's List row and AC1 drop "Journal settings 14th", which is Story 18.18's under the split. AD-51's JournalPort case gains `DIRSTATE`. The deferred stale-confirm 500 is DW-1950, routed to 18.18.
@@ -757,6 +781,12 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 - mutation: `JournalSwitch.ArgumentProblem` answers no problem → `JournalWrite.TestTheFileIsSwitchedOnBothCallers` red on the agent's other-id leg (run 2721)
 - mutation: the handler sends a flag as `'true'` whatever was chosen → `journal-list.page.spec.ts`'s clean-check leg red (vitest)
 - mutation: `ProposalCard.journalVisible` answers false → `proposal-card.spec.ts`'s Story 18.5 leg red (vitest)
+- mutation (AC4, QA): `JournalPort` no longer sets `OtherDirectory` on the `DIRSTATE` read, so the card cannot name the other directory → `JournalWrite.TestTheDirectoryIsSwitchedThereAndBack` red (run 3155); reverted byte-identical, reloaded, class green again
+- mutation (AC4, code review): `JournalPort.OtherDirectory` answers the alternate whatever journaling writes in → `JournalWrite.TestTheDirectoryIsSwitchedThereAndBack` red on "one row, naming the other directory" alone (run 3165)
+- mutation (code review): `AwaitTask`'s failed-with-lines branch loses its line count, and `Consoled` cuts at the cap → `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` red on the no-line and 200-line legs (run 3163)
+- mutation (code review): `JournalPort.SameDirectory` folds case → `JournalDescriptor.TestDirectoriesCompareAsTheVendorComparesThem` red (run 3164)
+- mutation (code review): `JournalPort.OtherDirectory` drops its one-directory test → `JournalWriteGate.TestExactlyTheDeclaredPairsReachThePort` red on the before-any-switch leg alone (run 3166)
+- mutation (code review): the details page no longer clears the databases store when it opens → `journal-file-details.page.spec.ts`'s earlier-file leg red (vitest); each review mutation reverted byte-identical, reloaded, classes green again (runs 3167-3170)
 
 ## Auto Run Result
 

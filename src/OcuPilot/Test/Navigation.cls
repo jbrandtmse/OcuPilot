@@ -457,8 +457,8 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
 
     ; OS management proves the screen half follows the roster rather than a fixed list: it
-    ; carries its thirty-two built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
-    ; own collation (Registry.cls) -- so the twenty unlisted, sideBarPosition-0 screens sort first,
+    ; carries its thirty-five built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
+    ; own collation (Registry.cls) -- so the twenty-two unlisted, sideBarPosition-0 screens sort first,
     ; alphabetically by descriptor class name (Database details, Database free-space, Check
     ; integrity, Database volumes, the device editor, the global mapping editor and
     ; list, the journal file databases and details, External language servers' Activity log and editor, License usage's three unlisted tabs,

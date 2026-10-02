@@ -2,10 +2,12 @@
 /// AD-36): Journals and its read tool answer the vendor's list in its order; Journal file details and
 /// its databases list read one listed file's <code>GET</code>; a name the instance's journal file list
 /// does not answer is refused <code>JOURNAL.FILE.UNLISTED</code> on every guarded pair, through each
-/// screen's read and at the integrity tool's mint, with no vendor call for the target and no echo of
-/// the name; and the record list's omitted file reads the newest listed file.</p>
+/// screen's read, the integrity check's screen action and the integrity tool's mint, with no vendor
+/// call for the target and no echo of the name; and the record list's omitted file reads the newest
+/// listed file.</p>
 /// <p>It reads only, and writes nothing to the instance. It needs journaling on, at least two listed
-/// journal files, and a caller holding <code>%All</code>.</p>
+/// journal files, a caller holding <code>%All</code>, and OcuPilot serving over HTTP as
+/// <class>OcuPilot.Test.Http</class>'s test account.</p>
 Class OcuPilot.Test.JournalRead Extends %UnitTest.TestCase
 {
 
@@ -152,8 +154,8 @@ Method TestAnAbsentFileReadsAsNoDatabases()
 /// <p>AC2: every guarded pair refuses a name the instance's journal file list does not answer -- a
 /// foreign path and a listed name with the <code>z</code> a closed file carries on disk -- 404
 /// <code>JOURNAL.FILE.UNLISTED</code>, after the one list read and with no vendor call for the
-/// target; no refusal names the file; and the details and databases reads refuse it on the same code
-/// with the same count.</p>
+/// target; no refusal names the file; the details and databases reads refuse it on the same code
+/// with the same count; and the integrity check's mint and screen action refuse it on that code.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AdminPort.JournalGuard</method> answer OK for an
 /// unlisted file -&gt; the target call is made and every leg here goes red on its count or its
 /// code.</p>
@@ -197,6 +199,8 @@ Method TestAnUnlistedFileIsRefusedBeforeTheVendorIsCalledForIt()
         Do tArgs.%Set("Name", tName, "string")
         Set tSC = ##class(OcuPilot.Screen.Tool.JournalMint).Mint(..#LIST, $Parameter(..#INTEGRITY, "TOOLNAME"), $Username, "", "", tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(..#INTEGRITY, "Endpoint"), $ClassMethod(..#INTEGRITY, "IdParam"), tName, "Name", $ClassMethod(..#INTEGRITY, "SettableFields"), ..#INTEGRITY)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "404 " _ ..#UNLISTED, "the integrity check's mint refuses '" _ tName _ "' on the guard's own code")
+        Set tSC = ##class(OcuPilot.Test.JournalWrite).Act("integrity", tName, "", .tStatus, .tBody, {"CheckDetails": "false"})
+        Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.JournalWrite).Code(tBody), "404 " _ ..#UNLISTED, "the integrity check's screen action refuses '" _ tName _ "' on the guard's own code")
     }
     Do $ClassMethod(tPort, "Reset")
     Kill tQuery
