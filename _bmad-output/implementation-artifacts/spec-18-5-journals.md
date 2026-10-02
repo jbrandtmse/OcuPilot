@@ -7,7 +7,7 @@ review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['multiple-goals', 'oversized']
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -267,6 +267,8 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 
 ## Tasks & Acceptance
 
+**Scope after the split (orchestrator merge gate 2026-10-02, Rule 5): this story builds Part A only.** That is Task 0 steps 1, 2, 4, 5, 7 and 8 (step 3 is Story 18.19's, step 6 Story 18.18's), Execution A, AC0-AC6 and AC9-AC11, the Part A test classes (`JournalRead`, `JournalWrite`, `JournalIntegrity`, `JournalWriteGate`, `JournalDescriptor`, `PathPortInstance`, `PathPortServed`), and three descriptors (Journals, Journal file details, Journal file databases) with their nine prompts, strings and EXPERIENCE.md lines. **Execution B (AC7) moves to Story 18.18 and Execution C (AC8) to Story 18.19**: build neither, nor their descriptors, prompts, strings, EXPERIENCE.md lines, `JournalRecords` or `JournalSettingsWrite`; those stories' plans start from these sections. The guard's file rule may already name `Journal.Record`, which 18.19 consumes; the record filter's closed sets, the doubled `maxRows` and the settings `PUT` branch are 18.19's and 18.18's.
+
 **Task 0: the implement stage's first task, before any tool, descriptor or form.** Run it on `ocupilot-b-ci` only. Load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing.**
@@ -361,7 +363,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
   - Journals: fields `Name, Size, CreationTime, Reason, DataSize`; `rowActions` `switchfile`, `switchdirectory`, `integrity`; the name cell opens details.
   - Details: the single-object `GET` with route criterion `file`, and the scalar fields `CreationTime, FileCount, MaxSize, FileGUID, FirstRecordAddress, LastRecordAddress, End, EncryptionKeyID, MinTransFileCount, MinTransFileIndex, ClusterStartTime, PrevFile.File, NextFile.File`.
   - Databases: `{"port":"admin","endpoint":"Journal.File","type":"GET","rows":"Databases"}` with route criterion `file`, and fields `SFN, DatabasePathOrAlias`.
-  - The fifteen prompts, three per descriptor (the two Execution B and C descriptors' included):
+  - The fifteen prompts, three per descriptor (the two Execution B and C descriptors' included) [SPLIT 2026-10-02: this story ships the first three descriptors' nine; Journal records' and Journal settings' move to 18.19 and 18.18]:
     - Journals (Capacity): "Which journal file is the instance writing now?" · "How much space do the journal files use?" · "Why was the journal last switched?"
     - Journal file details (Troubleshooting): "When was this journal file created?" · "Which journal files come before and after this one?" · "Is this journal file encrypted?"
     - Journal file databases (Troubleshooting): "Which databases have records in this journal file?" · "How many databases does this journal file cover?" · "Does this journal file hold records for IRISSYS?"
@@ -498,10 +500,12 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
   - rows of an unreadable database are absent;
   - the record dialog shows values that no read tool, context or ledger row ever carries.
 - **AC9:** Given each tool, when its caller lacks a declared pair, then it is refused `AUTH.NOPRIVILEGE` naming that pair, with zero port calls.
-- **AC10:** Given governance, when the story lands, then the four keys are in `Baseline.cls`, `true`.
+- **AC10:** Given governance, when the story lands, then Part A's three write keys (switch file, switch directory, check integrity) are in `Baseline.cls`, `true`; the settings key lands with Story 18.18.
 - **AC11:** Given the rosters, when the story lands, then every roster and pinned side-bar list includes the new screens and tools, every screen has three prompts, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 999 lines.
 
 ## Spec Change Log
+
+- 2026-10-02, spec gate (runner, Rule 5, by=merge_gate): the orchestrator approved the split. This story is Part A (Tasks & Acceptance › scope block; AC10's key count; the prompt and test lists). Part B is Story 18.18 "Journal settings" and Part C Story 18.19 "Journal record browser" in `epics.md`, each planned from this spec's sections. The runner writes only Part A's spine amendments now (Design Notes › 1 in part, 3 in part, 4 in part, 5, 6 in part, 7, 10 in part); amendment 2 (AD-8) follows Task 0, 8 (AD-4) is 18.18's, and the record filter and record values sentences of 1 and 6 are 18.19's.
 
 - 2026-10-02, spec gate (runner, Rule 5 tier 1): epics.md's 18.5 block (:7184-7185) and `epic-18-context.md` corrected at origin. Was: "`switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees." Now: it swaps between the configured primary and alternate directories and answers 409 when they are the same (vendor source `System.cls:81-126`; Task 0 measures it). The record list's halving gains its cause (the counter steps twice per kept row, `ListTask.cls:88,93`), so doubling is exact only when no row is skipped. The split (Design Notes › Size) and the spine amendments wait for the orchestrator's decision.
 
@@ -569,7 +573,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - A new 18.18 "Journal settings" takes Part B.
 - A new 18.19 "Journal record browser" takes Part C, which consumes Part A's guard.
 
-Each part's Task 0 steps, tasks, tests and ACs are separable as marked: A is AC0-AC6, AC9-AC11; B is AC7; C is AC8.
+Each part's Task 0 steps, tasks, tests and ACs are separable as marked: A is AC0-AC6, AC9-AC11; B is AC7; C is AC8. **Decided 2026-10-02 (orchestrator merge gate): split as recommended; 18.5 is Part A, Story 18.18 Part B, Story 18.19 Part C.**
 
 **Integration ACs.** `JournalPort` and the `AdminPort` guard are new, and their consumers are in this story:
 
@@ -612,7 +616,7 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 **Commands:**
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one call at a time. Expected: 0 failures each, with totals checked against `%UnitTest_Result`.
-  - The story's own classes: `JournalRead`, `JournalRecords`, `JournalWrite`, `JournalIntegrity`, `JournalSettingsWrite`, `JournalWriteGate`, `JournalDescriptor`, `PathPortInstance`, `PathPortServed`.
+  - The story's own classes: `JournalRead`, `JournalWrite`, `JournalIntegrity`, `JournalWriteGate`, `JournalDescriptor`, `PathPortInstance`, `PathPortServed` (`JournalRecords` and `JournalSettingsWrite` moved to 18.19 and 18.18 at the split).
   - The rosters: `ReadSourceCorpus`, `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `ScreenRead`, `Navigation`, `Wire`, `WireSecurityRead`, `WireAreaAnyScreen`, `PortGate`, `AdminPortAsync`, `DraftRegistry`, `ToolRoundTrip`, `ToolWrite`, `ToolEmit`, `ToolDispatch`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ClassicPageGate`, `MappingDescriptor`, `Inventory`.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/journals.browser-spec.mjs browser/license-usage.browser-spec.mjs browser/remote-databases.browser-spec.mjs`. Expected: pass.
 - `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 999.

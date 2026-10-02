@@ -7163,11 +7163,11 @@ So that "disks" means operating on them rather than only reading them.
 
 As an operator,
 I want journal settings, files, integrity checks and the record browser,
-So that the transaction record is inspectable from the portal.
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split for size, Rule 5 -- 18.5 keeps the file list, the file summary, integrity check and the two switches; journal settings moved to Story 18.18 and the record browser to Story 18.19]
 
 **Acceptance Criteria:**
 
-- **Given** journal settings, the file list, the file summary, integrity check, switch file, switch directory and the record browser
+- **Given** journal settings, the file list, the file summary, integrity check, switch file, switch directory and the record browser [SPLIT to 18.18 / 18.19 2026-10-02: journal settings to 18.18, the record browser to 18.19; 18.5 keeps the file list, the file summary, integrity check, switch file and switch directory]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
@@ -7181,7 +7181,7 @@ So that the transaction record is inspectable from the portal.
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
 
-- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
+- `POST /v2/journal/file/records` [SPLIT to 18.19 2026-10-02: the record list's behavior moved with the record browser]
 - `POST /v2/journal/switch-dir` takes no body. It swaps between the configured primary and alternate directories, and answers 409 when the two are the same, as on `ocupilot-b-ci` (read in the vendor source, `System.cls:81-126`, at Story 18.5's plan; Task 0 measures it). The specification says it switches only to the alternate. [AMENDED 2026-10-02 — see the story change log]
 
 ### Story 18.6: Licensing and ECP
@@ -7437,6 +7437,34 @@ So that a mapping that reaches the system globals says so, creating a database f
 - DW-1813: A global mapping range whose low end is empty (':A') covers the % globals in any namespace, yet carries no MAPPING.SYSTEMGLOBAL consequence (ledger; routed by merge_gate 2026-09-29)
 - DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
 - DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
+
+### Story 18.18: Journal settings
+
+As an operator,
+I want journal settings,
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split from 18.5 for size, Rule 5; planned as Part B (AC7) of `spec-18-5-journals.md`]
+
+**Acceptance Criteria:**
+
+- **Given** journal settings
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+### Story 18.19: Journal record browser
+
+As an operator,
+I want the record browser,
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split from 18.5 for size, Rule 5; planned as Part C (AC8) of `spec-18-5-journals.md`; consumes Story 18.5's journal-file guard]
+
+**Acceptance Criteria:**
+
+- **Given** the record browser
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+**Admin API behavior to design for.** (moved from Story 18.5, 2026-10-02)
+
+- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

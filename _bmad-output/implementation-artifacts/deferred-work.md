@@ -9002,6 +9002,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-16-remote-databases.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: ui/src/app/core/navigation.ts:462 picks Local databases (11) over Remote databases (12); its read is localOnly, so 'Open in Local databases' lands on a list without the row. The change event carries no tool or owner (change-bus.ts ChangeEvent). DW-1529 is the same shape, solved there by a second type.
 - 2026-10-02T12:43:15Z status=escalated owner=burndown by=cr note=options: a remote entity type (splits AD-34's lock key on one Config.Databases name), or an owner-aware lookup (AD-14 wire); navigation.ts contended
+- 2026-10-02T13:54:39Z status=routed owner=range-end-cleanup by=merge_gate note=navigation.ts contended; plan weighs (a) a remote entity type (DW-1529 precedent; prove AD-34's lock key cannot diverge) or (b) an owner-aware lookup
 
 ### DW-1940: ClassicPageGate.TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet's message says thirty-five OWNPAIRS names; the roster holds thirty-eight since Story 18.16
 - source: spec-18-16-remote-databases.md | severity: low | fix-risk: low | footprint: in-epic
