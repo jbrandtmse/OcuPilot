@@ -8939,3 +8939,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
 - 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story
+
+### DW-1927: Step and transcript rows written before 23.3's DW-1782 fix keep a declared secret's value the model sent as an id until retention purges them; no scrub runs on upgrade
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch d (f2168084) marks the target at write time only; existing OcuPilot_Kernel_State.Step.Target and Entry.StepsJson rows are unchanged; visible to the turn's owner and to OcuPilotAdmin readers of transcripts
+- 2026-10-02T06:12:24Z status=decision-pending owner=burndown by=harvest note=recommended: wontfix-accepted (retention clears them; owner and admin only); alternative: a one-time install-time scrub
+
+### DW-1928: TurnConversation's DW-1782 method writes error-level log lines on every run, which raise the instance's alert state, as agent-ledger already does
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 23.3 batch d full sweep on ocupilot-b-ci: monitor state rose to 2; the method's provider-path refusals log at error severity (AD-39)
+- 2026-10-02T06:12:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=a test or check that reads the instance alert state reddens after TurnConversation runs on the same container
