@@ -14,8 +14,8 @@
  *   named probe endpoint no longer answers). The number is kept, because the notice names
  *   it, and a mismatch is never presented as a privilege problem.
  * - `no-privileges` -- the router refused the call with `AUTH.NOADMIN`, so this user holds
- *   none of its administrative resources. Read from the envelope's machine `code`, never
- *   from the human `reason` (AD-39), and never presented as a version mismatch.
+ *   none of its administrative resources nor `%Development`. Read from the envelope's machine
+ *   `code`, never from the human `reason` (AD-39), and never presented as a version mismatch.
  * - `checking` -- nothing conclusive yet: the instance is still installing, or the call
  *   failed some other way. The shell shows the notice for neither, and a later `verify()`
  *   can still settle it.

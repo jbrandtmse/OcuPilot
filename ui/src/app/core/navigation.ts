@@ -16,7 +16,7 @@
  * revoked mid-session -- and the shell learns about it the moment any call is refused:
  * `ApiService` calls `noteForbidden()` on every 403 and the map is fetched again. The re-read
  * joins a fetch already running **in the same namespace**, which is what keeps the navigation
- * call's own 403 (a caller who holds no administrative resource at all) from looping; a fetch
+ * call's own 403 (a caller who holds neither an administrative resource nor `%Development`) from looping; a fetch
  * running against a namespace the shell has since left is re-run once instead (**DW-157**,
  * `single-flight.ts`).
  *
@@ -882,8 +882,8 @@ export class NavigationService {
    * moved.
    *
    * It carries no guard of its own. `createSingleFlight` fills its slot **before** the fetch
-   * starts, so a refusal reported by the navigation call itself -- a caller holding no
-   * administrative resource at all, whose every request is a 403 -- finds that slot filled, and
+   * starts, so a refusal reported by the navigation call itself -- a caller holding neither an
+   * administrative resource nor `%Development`, whose every request is a 403 -- finds that slot filled, and
    * finds the namespace unchanged, so it joins rather than queueing. A second guard here would be
    * a second copy of that rule, and nothing could tell it from a correct one.
    */

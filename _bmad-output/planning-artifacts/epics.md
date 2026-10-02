@@ -7482,6 +7482,8 @@ So that the Explorer is not read-only.
 - **When** the instance is older
 - **Then** the version gate reports it rather than failing obscurely.
 
+- DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER) (ledger; routed by harvest 2026-10-02)
+
 ### Story 19.3: The source editor, with ETag conflict detection
 
 As a developer,

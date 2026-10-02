@@ -57,14 +57,15 @@ Parameter CATALOGCLASS = "OcuPilot.Kernel.Provider.Catalog";
 Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
 
 /// <p>The pair set <method>Invoke</method> requires, comma-separated as
-/// <code>resource:permission</code>: the instance-level administrative floor, of which <b>any
-/// one</b> pair admits the call (AD-29). A caller who could not reach any OcuPilot API route
-/// cannot make the instance call a provider on their behalf either.</p>
-/// <p><b>Derived, not held</b>: the list's one home is
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, spelled into pair form by
-/// <method>OcuPilot.Screen.Gate.AdminPairSpec</method> at compile time, so this port cannot come
-/// to admit a caller <class>OcuPilot.Api.Router</class> would refuse.</p>
-Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).AdminPairSpec()};
+/// <code>resource:permission</code>: the instance-level floor -- every <code>%Admin_*</code>
+/// resource and <code>%Development</code>, each at <code>USE</code> -- of which <b>any one</b>
+/// pair admits the call (AD-8, AD-29). A caller who could not reach any OcuPilot API route
+/// cannot make the instance call a provider on their behalf either. Each tool call the reply
+/// asks for is still gated by that tool's own pairs.</p>
+/// <p><b>Derived, not held</b>: the floor's one home is <class>OcuPilot.Screen.Gate</class>,
+/// spelled into pair form by <method>OcuPilot.Screen.Gate.FloorPairSpec</method> at compile time,
+/// so this port cannot come to admit a caller <class>OcuPilot.Api.Router</class> would refuse.</p>
+Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).FloorPairSpec()};
 
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
@@ -102,7 +103,7 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
         ; The named gate this port's primary entry evaluates before its outbound call (AD-29).
-        ; An OR-set: any one administrative pair admits, an empty or unreadable set admits
+        ; An OR-set: any one floor pair admits, an empty or unreadable set admits
         ; nobody, and nothing leaves the instance before it has answered. Asked of the turn
         ; owner's live grants rather than of the job's frozen roles (AD-31, DW-1309).
         Set tFailedPair = ""

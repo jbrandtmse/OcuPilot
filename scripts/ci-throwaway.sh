@@ -283,6 +283,9 @@ services:
       # The source code API's denial class also makes one mapped code database's resource non-public
       # for its leg and restores it.
       # classes: AtelierPortDenial
+      # The developer floor classes sign in as purpose-built principals: a %Developer, one below the
+      # floor, an administrator without %All, and a %Development holder that runs a turn.
+      # classes: DeveloperFloor, DeveloperFloorFixture, DeveloperFloorRoutes, DeveloperFloorTurn
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -398,6 +401,7 @@ services:
       # classes: TurnSanitize
       # classes: SanitizeAuditMask
       # classes: EgressLine
+      # classes: DeveloperFloorTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one
