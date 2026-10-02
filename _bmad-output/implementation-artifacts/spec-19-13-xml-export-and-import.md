@@ -2,7 +2,7 @@
 title: 'Story 19.13: XML export and import'
 type: 'feature'
 created: '2026-10-02'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '830f7fc890e1e38a9506126e90ecc2e0da052237'
 baseline_commit: '830f7fc890e1e38a9506126e90ecc2e0da052237'
 review_loop_iteration: 0
@@ -332,6 +332,8 @@ Each is listed with its current literal and what moves it:
       - a local import through the file input;
       - the two dialogs walked by `structural()`, light and dark.
 
+- [ ] [CI] browser shard 1/3, run 37012695762 (head 1291b759): `ui/browser/system-explorer-transfer.browser-spec.mjs:182` timed out waiting for `input[data-explorer-import-file]` -- intermittent: the implement head's run passed it, and one of four local runs on `ocupilot-a2-ci` failed the same way (36 s) right after a redeploy. Find the race (the dialog's source switch and the local-file input's rendering, the spec's wait, or the review's `setSource` change at `explorer-import-dialog.ts`), fix it at its cause in the dialog or the spec, and prove it with five consecutive green runs of that spec file on `ocupilot-a2-ci` against a rebuilt and redeployed bundle, one run per call. Write or update its `mutation:` line.
+
 **Acceptance Criteria:**
 
 - **AC1 (epic criterion 1, 19.2's AC4 verbatim).** Given probe documents exported to a server file, when they are deleted and then imported from that file, then each document's `GET doc` source equals what it was before. The same holds for an export to this browser imported as a local file. Each write goes through a confirmed proposal from the agent, or through the screen's own action.
@@ -384,6 +386,8 @@ Rejected:
 - `low`: a locked document's `PUT` answers 500; an export a few kilobytes under the ceiling can fail at the response write (shared `Api/Response`) — rare, each fix adds a branch.
 
 ## Spec Change Log
+
+- 2026-10-02, rework iteration 1 (trigger ci): run 37012695762 red on the transfer browser spec's local-file input wait; one `[CI]` item re-opens the story.
 
 - 2026-10-02, spec gate (lead; footprint by the orchestrator, by=merge_gate): the eight spine amendments applied as tier-1. Option (A) approved for the six roster files Epic 18's 18.16 also edits: proceed now; whichever story reaches feature second unions them at its forward merge (count literals summed from the merged code, sorted lists merged) and re-runs those six classes one at a time before pushing. `Prohibited.cls` hunks approved as disjoint. DW-1932 routed here.
 
