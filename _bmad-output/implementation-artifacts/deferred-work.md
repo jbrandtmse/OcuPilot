@@ -8964,6 +8964,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: code-list.page.ts deleteConsequence uses explorerDeleteConsequence and explorerDeleteSetConsequence on both lists; strings.ts and EXPERIENCE.md:589 carry one wording
 - 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=Story 19.13 revises the Routines list's dialogs and the delete warning still names a persistent class
+- 2026-10-02T09:17:52Z status=routed owner=19-13-xml-export-and-import by=spec_gate note=reopen_if met: 19.13 adds dialogs to the Routines list; its Task 8 rewords the Routines delete warning
 
 ### DW-1933: A DeleteDocs envelope error raised after some documents were deleted is answered as a fault, with no change event or read-back
 - source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
