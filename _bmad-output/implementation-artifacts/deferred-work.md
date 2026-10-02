@@ -9021,3 +9021,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
 - 2026-10-02T13:19:43Z status=routed owner=burndown by=cr note=move ExplorerWrite's AC3 calls to Dispatch.Answer, as ExplorerTransfer now does
+
+### DW-1946: System Explorer's import and export dialogs re-centre when the directory list loads, moving their source radios about 64 px under the pointer
+- source: spec-19-13-xml-export-and-import.md (rework 1) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
+- 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
