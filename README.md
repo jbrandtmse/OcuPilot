@@ -151,10 +151,10 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
   accounts, OcuPilot's own applications, roles, resources and processes. An administrator can stop
   the agent everywhere with a kill switch, hold it read-only, switch off individual agent writes,
   and cap how many turns each user runs an hour; anyone can make the agent read-only for
-  themselves. Thirteen agent actions ship switched off - deleting a local database, deleting a
-  namespace, enabling interoperability on a namespace, importing tasks, purging the audit database
-  and the eight disk operations - and an administrator turns them on under **Agent co-pilot →
-  Governance policy**. The **Guardrails** page shows all of it in one place.
+  themselves. Eighteen agent actions ship switched off - deleting a local database, a remote
+  database or a namespace, enabling interoperability on a namespace, importing tasks, deleting or
+  importing classes and routines, purging the audit database and the eight disk operations - and an
+  administrator turns them on under **Agent co-pilot → Governance policy**. The **Guardrails** page shows all of it in one place.
 - **Findings you can fix.** Home checks for open web applications, an open monitoring API, accounts
   holding `%All`, certificates that expire within 30 days, auditing switched off, dismounted or
   nearly full databases, the Task Manager's state and suspended tasks. Where a fix exists, **Fix
@@ -173,16 +173,18 @@ and [issue #2](https://github.com/intersystems-community/sysadmin-api-specificat
 | Permissions | Users, roles, resources, services | Create and edit users and roles, set passwords, grant and revoke roles and resource permissions; edit services - enabled state, allowed IP addresses, roles and authentication methods; see a user's effective privileges, and check whether a user or role holds a permission and through which role |
 | Security and secrets | SSL/TLS, X.509 credentials, wallet, OAuth 2.0 (client server descriptions, client configurations, resource servers, the authorization server, server client descriptions), LDAP, auditing, allowed directories | Editors for each, SSL/TLS and LDAP connection tests, an LDAP test sign-in that keeps no password, OAuth token revocation, audit event configuration, and audit database copy and purge |
 | Tasks | Task schedule, on-demand tasks, upcoming tasks, task history, task details, background tasks | A New Task wizard, edit, run, suspend, resume and delete; export and import tasks; suspend and resume the Task Manager itself; pause, resume and cancel background tasks |
-| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, integrity check and its log, namespaces, devices, external language servers | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; enable interoperability on a namespace; edit devices; free space per database; create, edit, delete, start and stop external language servers and read their activity log |
+| OS management | Processes, process details, locks, system usage, dashboard, license usage, databases, local databases, remote databases, integrity check and its log, namespaces, devices, external language servers | Suspend, resume and terminate processes; remove a lock, all of a process's locks or all of a remote client's; broadcast a message to terminal sessions; create, edit and delete local databases, optionally with their files; create, edit and delete remote databases on an ECP data server; mount, dismount, truncate, compact, defragment, expand and grow databases, with progress for the long ones; run the integrity check and read its log; create, edit and delete namespaces and their global, routine and package mappings, and copy mappings between namespaces; enable interoperability on a namespace; edit devices; free space per database; create, edit, delete, start and stop external language servers and read their activity log |
 | Logs | A unified log hub; `alerts.log`, `messages.log` and its older files, application errors, the audit database, and six more: the System Monitor log, background task errors, xDBC errors, SQL diagnostics, the interoperability event log and the analytics log | See every log in one list and one timeline, newest first; search and page each log, filter the audit database to agent writes, delete application errors, and ask the agent to explain any entry, which it reads alongside the rest of the page |
 
 Three more areas sit beside the six. **Home** shows the instance's performance, refreshing itself,
 and its findings. **System Explorer** lists a namespace's classes and routines and shows each one's
-source; as in the classic portal, it needs only `%Development` and read access to the namespace's
-code database, so a developer with no administration role can use it. **Agent co-pilot** holds the
-agent's definitions, switches and governance policy for administrators, and for everyone the
-Guardrails page, your transcripts, and the agent audit ledger of each model call, tool call and
-confirmed write.
+source; it compiles and deletes them, exports them as XML to a file on the server or a download, and
+imports an XML export or a source file from the server or your computer. As in the classic portal,
+browsing needs only `%Development` and read access to the namespace's code database, so a developer
+with no administration role can use it; changing code also needs write access to that database, and
+OcuPilot's own classes are refused. **Agent co-pilot** holds the agent's definitions, switches and
+governance policy for administrators, and for everyone the Guardrails page, your transcripts, and
+the agent audit ledger of each model call, tool call and confirmed write.
 
 An area opens when you may use any of its screens, and each screen still checks your own
 privileges.
@@ -276,6 +278,9 @@ a 1.0.4 install). Nothing you use changes.
 In 1.0.6, the agent's enable-interoperability action starts switched off in the same way. The
 Namespaces screen does it for an account assigned the `%All` role itself, and settings you already
 made are kept.
+
+In 1.0.7, the agent's remote database delete and its class and routine delete and import start
+switched off in the same way; the screens do all five.
 
 ## Get a model key in two minutes
 
@@ -462,8 +467,8 @@ token and hidden values left as placeholders.
   portal in headless Chrome, compiles and smoke-tests on both IRIS Community and IRIS for Health
   Community, and builds and loads the IPM package offline. The ObjectScript suite runs across four
   containers at once and the browser specs across three, so a full run takes about 39 minutes.
-- **Tests:** 402 `%UnitTest` classes run inside IRIS; 100 Node test files and 155 Angular component
-  specs cover the client; 136 browser specs exercise the running portal.
+- **Tests:** 411 `%UnitTest` classes run inside IRIS; 101 Node test files and 157 Angular component
+  specs cover the client; 139 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
   IRIS, so CI and your machine ask the same question.
@@ -515,9 +520,8 @@ that carry Community Opportunity status:
 ## Known limitations
 
 - **One instance at a time.** OcuPilot manages the instance it is installed on.
-- **Not every portal page yet.** Remote databases, journals, encryption, mirroring, System
-  Explorer's SQL and globals pages, and Interoperability beyond enabling it on a namespace are still
-  the classic portal's.
+- **Not every portal page yet.** Journals, encryption, mirroring, System Explorer's SQL and globals
+  pages, and Interoperability beyond enabling it on a namespace are still the classic portal's.
 - **A model is needed for the agent.** Every screen works without one; the agent needs a key or a
   local model. A turn that makes a change can take up to a minute, and a small local model may
   propose changes that need correcting.
@@ -538,8 +542,8 @@ that carry Community Opportunity status:
 New releases arrive every few days, each installed and tested on a clean machine before it reaches
 `main`. Next:
 
-- **The rest of system operation:** remote databases, journals, licensing and ECP, encryption,
-  superservers and authentication options.
+- **The rest of system operation:** journals, licensing and ECP, encryption, superservers and
+  authentication options.
 - **Permissions and monitoring:** SQL privileges, the raw metrics, and a live log tail.
 
 After that, OcuPilot grows toward parity with the classic portal: the rest of System Explorer (SQL
