@@ -2,13 +2,14 @@
 title: 'Story 18.18: Journal settings'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'blocked'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
 deferred: []
+baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
 ---
 
 <intent-contract>
@@ -327,6 +328,12 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-02, implement Task 0 (HALT, step 5; Design Notes › Measured at implement). For the runner, pending the decision on the halt:
+  - **Recommended intent amendments:** `JournalFilePrefix` matches `^[A-Za-z0-9_-]{0,64}$`, reason "Use up to 64 letters, digits, hyphens or underscores."; the tool and the Save also declare `%Admin_Operate:USE`, refused by name before any port call; `FileSizeLimit` from 0 to 4079.
+  - **AD-4:** "the vendor keeps an omitted key (measured at Story 18.18's Task 0)", with no unchanged-directory clause.
+  - **AD-8:** "`osmgmt.journalsettings.update` declares `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, and PathPort's `%Admin_FileSystemAccess:USE` when it sends a root: with the screen's three pairs the vendor's save is refused `<PROTECT>`, and with `%DB_IRISSYS:WRITE` added it stores the change and then answers 500, its journal switch refused `#1142` (measured on `ocupilot-b-ci`, 2026-10-02)."
+  - **AD-15, AD-53:** no case; the `PUT` records `%System/%System/ConfigurationChange`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -394,7 +401,26 @@ deferred: []
 
 **Footprint (Rule 11).** Every contended file is edited add-only (Boundaries). Report these under `footprint_extensions`, since neither epic's `paths_hint` names them: `src/OcuPilot/Area/OsMgmt/JournalRules.cls` and `JournalSave.cls` (new), `ui/src/app/app.ts`, `ui/src/app/app.spec.ts`, and `scripts/ci-throwaway.sh`, `ui/angular.json` and EXPERIENCE.md (also add-only).
 
-**Measured at implement:** (Task 0 writes here.)
+**Measured at implement (Task 0, `ocupilot-b-ci`, 2026-10-02; HALTED at step 5 on two conditions).** Every `PUT` went through `JournalProbe.Run` and `AdminPort` (wall clock, guard included) and was followed by `RestoreJournal`.
+
+- **HALT 1 (the vendor refuses a value `JournalRules` admits):** a `JournalFilePrefix` holding `.` is refused 500 (`#7209`, `#5802` on `Config.Journal:JournalFilePrefix`) and nothing is stored: `.x`, `a.b-c_D9`, `.`. Stored: `-x`, `_x`, `Ab9-_` and 64 × `a`; refused: 65 × `a` and `a/b`. A stored prefix names the next file (`journal/-x20261002.435`).
+- **HALT 2 (a step needs a pair outside the three, `%DB_IRISSYS:WRITE` and `%Admin_FileSystemAccess:USE`):** the `PUT` also needs `%Admin_Operate:USE`. Principals with the install namespace's code read plus:
+  - the three pairs: `GET` 200; `PUT {FileSizeLimit:1000}` 500, `<PROTECT>%SaveData+26^Config.Journal.1`, nothing stored;
+  - the three and `%DB_IRISSYS:WRITE`: **500 with the change stored** (`FileSizeLimit` 1000), `#1142` "Error switching journal file: Operation requires %Admin_Operate:Use privilege";
+  - the three, `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`: 200, stored, a file started; the same set without `%Admin_Journal:USE`: 200;
+  - `%Admin_Journal:USE` and `%DB_IRISSYS:READ`: `GET` 200, `PUT` 500 `#921` (`%Admin_Manage:USE`); `%Admin_Manage:USE` and `%DB_IRISSYS:READ`: `PUT` 500 `<PROTECT>`; `%Admin_Journal:USE` alone: `GET` 500 (`<PROTECT>` entering `%SYS`).
+- **a.** A `PUT` of the ten settable keys as read: 200 in 0.002 s; nothing stored changed, no file started, no `messages.log` line, no audit row.
+- **b.** `PUT {FileSizeLimit:1000}`: only that key changed, so the vendor keeps an omitted key; a file started; 0.15 s.
+- **c.** `AlternateDirectory` sent without its trailing slash is stored with it. A file started in the primary, and the vendor wrote `iris.lck` into the alternate.
+- **d.** `CurrentDirectory` set to that directory is stored with the slash, and journaling moved there at once (`ocuprobe185set/20261002.422`).
+- **e.** A missing `AlternateDirectory` (`ocuprobe185none/`) is created by the vendor (with `iris.lck`), stored, 200. Restored, and the directory removed (its `iris.lck` first).
+- **f.** `FreezeOnError:"true"`, `FileSizeLimit` 5000 and -1, `DaysBeforePurge` 101 and `BackupsBeforePurge` 11: 500, nothing stored, each logged at error severity by `AdminPort`. `FileSizeLimit` 0 is stored 0, `1.5` stored 1, and `"1000"` stored 1000.
+- **g.** `PurgeArchived:true` with `ArchiveName` "": stored true, purge counts unchanged.
+- **Audit:** every `PUT` that reaches `Config.Journal.Modify` records `%System/%System/ConfigurationChange` "Modify section Journal" under the caller, a refused one too (beside a `%System/%Security/Protect` row). No AD-15/AD-53 case is needed.
+- **Step 4 (S2 against S0):** `Config.Journal` and `Config.config` byte-equal; journaling in `/durable/iris/mgr/journal/` (`20261002.446`); no probe principal; async task rows 348 as at S0. Differences: 30 new journal files; `ocuprobe185set/` keeps `20261002.422z` and the vendor's `iris.lck`; `messages.log` +139 lines; monitor state 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Step 6, from the record, for the re-plan:** extra pairs `%DB_IRISSYS:WRITE` and (HALT 2) `%Admin_Operate:USE`; an unchanged directory is sent as read (step a started no file); `FileSizeLimit`'s lower bound is 0 ("from 0 to 4079"); `compare` `unslashed` for both directories; the directory line is shown (c and d each started a file, as did b); no unaudited case.
+- **Plumbing (step 1)** is parked in `_bmad-output/implementation-artifacts/spec-18-18-task0-plumbing.patch`; `git apply` it first. It holds `AdminPort` and `PortFixture` `MUTATINGTYPES`, `JournalPort`'s settings `GET` and `PUT` branches (`ResolveDirectory`, `PurgeRule`, `Snippet`), `JournalError`'s `VALIDATION` and `DIRECTORY.ABSENT`, and `JournalProbe.SeedDirectory`. Checked before parking: the `GET` answers the four arguments `null`, and a missing directory is 422 `JOURNAL.DIRECTORY.ABSENT` and the manager root `PATH.MANAGERDIR` on the path field, with no vendor call.
+- **For the matrix:** the stock allowed root is the manager directory, and OcuPilot's served directory is `/durable/iris/csp/ocupilot/`, outside it, so a `csp/ocupilot` name under that root resolves to a missing directory, not `PATH.SERVED`. The served leg needs a root over the data directory, as `PathPortServed` seeds (inference, not run).
 
 ## Verification
 
@@ -434,5 +460,11 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: (1) the vendor refuses a `JournalFilePrefix` containing "." (500, #7209/#5802 on `Config.Journal:JournalFilePrefix`; `.x`, `a.b-c_D9`, `.`), which `JournalRules`' `^[A-Za-z0-9._-]{0,64}$` admits; (2) the settings `PUT` needs `%Admin_Operate:USE`, outside the screen's three pairs, `%DB_IRISSYS:WRITE` and `%Admin_FileSystemAccess:USE`: with the three pairs it is refused `<PROTECT>` and nothing is stored; with `%DB_IRISSYS:WRITE` added the vendor stores the change and then answers 500 (#1142, its journal file switch requires `%Admin_Operate:Use`).
+
+- Halted at Task 0 step 5 (both conditions are listed there). Nothing was built: no tool, descriptor, form, roster, test or client change; source files are at `baseline_revision`.
+- Recorded: Design Notes › Measured at implement (every Task 0 step, S2 against S0) and the Spec Change Log (recommended amendments: prefix `^[A-Za-z0-9_-]{0,64}$` with "Use up to 64 letters, digits, hyphens or underscores."; the tool and the Save also declare `%Admin_Operate:USE`; `FileSizeLimit` from 0 to 4079; draft AD-4/AD-8 sentences; no AD-15/AD-53 case).
+- Parked: Task 0's step-1 plumbing in `spec-18-18-task0-plumbing.patch` (`AdminPort`/`PortFixture` `MUTATINGTYPES`, `JournalPort` settings `GET`/`PUT`, two `JournalError` codes, `JournalProbe.SeedDirectory`); `git apply --check` passes on this tree.
+- Stage verification (independent of the handoff's report): `Config.Journal.JournalFilePrefixIsValid(".x")` answers #7209 on the throwaway; `irissys/%SYS/Journal/System.cls:137` (`SwitchFile`) requires `%Admin_Operate:USE`. Throwaway end state read at halt: `Config.Journal` equals the plan-time values (both directories `/durable/iris/mgr/journal/`, `FileSizeLimit` 1024, purge 2/2, `CompressFiles` 1, prefix and archive empty), `wijdir` "" and `targwijsz` 0, journaling in `/durable/iris/mgr/journal/20261002.446`, no `OCUPROBE*` user, monitor state 0 (the handoff cleared it with `$SYSTEM.Monitor.Clear()`). Kept per the spec: about 30 journal files the writes started, `ocuprobe185set/` holding `20261002.422z` and the vendor's `iris.lck`, and 139 `messages.log` lines.
+- Not run: tests, mutations, the client build and the full sweep (nothing to verify).
