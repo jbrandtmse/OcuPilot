@@ -17,6 +17,9 @@
 /// definition and its settings row and then puts both back. An unconditional delete here removed
 /// a configured proxy permanently, which is the same defect <class>OcuPilot.Test.Egress</class>
 /// scoped away next door.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.EgressLocal Extends %UnitTest.TestCase
 {
 

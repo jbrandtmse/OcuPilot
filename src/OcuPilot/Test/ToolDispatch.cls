@@ -5,9 +5,10 @@
 /// the <code>tool_result</code> content <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> renders
 /// and on the counting fixtures' record of what was reached.</p>
 /// <p>Driven through <class>OcuPilot.Test.ToolDispatchProbe</class> over
-/// <class>OcuPilot.Test.DispatchTool.Registry</class>. <b>Live-safe</b>: it spawns nothing, and the
-/// one thing it writes is the stored governance policy, cleared before each test and put back after
-/// it, the restore asserted.</p>
+/// <class>OcuPilot.Test.DispatchTool.Registry</class>. It spawns nothing, and the one thing it
+/// writes is the stored governance policy, cleared before each test and put back after it, the
+/// restore asserted. While a test runs no stored setting or preset applies on the instance, so the
+/// class is not live-safe.</p>
 Class OcuPilot.Test.ToolDispatch Extends %UnitTest.TestCase
 {
 

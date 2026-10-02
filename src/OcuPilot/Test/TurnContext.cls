@@ -18,6 +18,9 @@
 /// <code>tool_result</code>'s payload -- <i>is</i> a string: the payload JSON inside
 /// <class>OcuPilot.Kernel.Agent.Sanitize</class>'s frame, so <method>ResultPayload</method>
 /// unwraps it and that one call is where a second <method>%FromJSON</method> belongs.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.TurnContext Extends %UnitTest.TestCase
 {
 

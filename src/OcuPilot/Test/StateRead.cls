@@ -6,6 +6,9 @@
 /// truncation signal -- observed over the state source.</p>
 /// <p>Every definition this class creates is named with <parameter>PROBEPREFIX</parameter> and
 /// removed in <method>OnAfterOneTest</method>, which then asserts none survives.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.StateRead Extends %UnitTest.TestCase
 {
 

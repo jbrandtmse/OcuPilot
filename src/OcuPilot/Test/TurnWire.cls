@@ -9,6 +9,9 @@
 /// <parameter>PROVIDERVARIABLE</parameter> read 1.</b> Only <file>scripts/ci-throwaway.sh</file>
 /// sets them. After every method no probe job is alive and no probe turn, slot or stub node
 /// remains.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.TurnWire Extends %UnitTest.TestCase
 {
 

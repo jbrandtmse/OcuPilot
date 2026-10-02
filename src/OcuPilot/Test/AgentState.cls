@@ -7,6 +7,9 @@
 /// asserts rather than assumes -- the
 /// promotion rules are about creation order, so a definition left behind by something else would
 /// make the results mean something different.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.AgentState Extends %UnitTest.TestCase
 {
 

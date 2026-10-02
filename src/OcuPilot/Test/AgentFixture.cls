@@ -117,7 +117,9 @@ ClassMethod RemoveProbeDefinitions(Output pRemaining As %Integer) As %Status
 /// no default marker is rebalanced. A holding global a crashed run left is restored first, and
 /// that restore's refusal is this method's.</p>
 /// <p><b>Caller contract:</b> once this succeeds, <method>RestoreDefinitions</method> runs on every
-/// path out of the class, its setup's own error path included.</p>
+/// path out of the class, its setup's own error path included. Until it does, the instance reads
+/// as holding no definition: no default resolves for a turn, and a retention pass keeps
+/// transcripts and the ledger by its 30-day default rather than by theirs.</p>
 ClassMethod SetAsideDefinitions() As %Status
 {
     Set tSC = $$$OK

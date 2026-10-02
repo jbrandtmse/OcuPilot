@@ -13,6 +13,9 @@
 /// otherwise.</p>
 /// <p>Every row this class writes is removed in <method>OnAfterOneTest</method>, which then asserts
 /// none survives, so a run on the development instance leaves it as it found it.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.Restraint Extends %UnitTest.TestCase
 {
 

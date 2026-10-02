@@ -2,16 +2,18 @@
 /// <method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method> and
 /// <method>OcuPilot.Test.AgentFixture.RestoreDefinitions</method>, every Agent data node, both Agent
 /// index subtrees and every id read back byte-identical; a restore is refused, the copy kept, while
-/// an Agent index node remains; and a set-aside over a copy a crashed class left restores that copy
-/// first.</p>
+/// an Agent index node remains; a set-aside over a copy a crashed class left restores that copy
+/// first; and a set-aside over a copy that cannot come back is refused, the copy and the node
+/// blocking it left as they were.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and an account that writes
 /// OcuPilot's protected globals. Every definition it creates is named with
-/// <parameter>OcuPilot.Test.AgentFixture.PROBEPREFIX</parameter> and removed after each test; any
+/// <parameter>OcuPilot.Test.AgentFixture.PROBEPREFIX</parameter>, created disabled so none takes the
+/// default marker from a definition the instance already holds, and removed after each test; any
 /// definition the instance already holds goes aside and comes back with the rest.</p>
 Class OcuPilot.Test.AgentAside Extends %UnitTest.TestCase
 {
 
-/// <p>The <code>NameIdx</code> subscript of the stray index node the refusal test writes, under id
+/// <p>The <code>NameIdx</code> subscript of the stray index node the refusal tests write, under id
 /// <code>-1</code>, which no row carries.</p>
 Parameter ORPHANNAME = " OCUPILOTPROBEAGENTASIDEORPHAN";
 
@@ -32,14 +34,14 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>An enabled, verified definition and a disabled one go aside, leaving no Agent row or index
-/// node in place, and come back byte-identical with the holding global gone.</p>
+/// <p>Two definitions go aside, leaving no Agent row or index node in place, and come back
+/// byte-identical with the holding global gone.</p>
 Method TestRoundTripIsByteIdentical()
 {
-    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("One"), 1, 1)
-    Do $$$AssertStatusOK(tSC, "an enabled, verified definition is created")
-    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Two"), 0, 0)
-    Do $$$AssertStatusOK(tSC, "and a disabled one")
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("One"))
+    Do $$$AssertStatusOK(tSC, "a definition is created")
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Two"))
+    Do $$$AssertStatusOK(tSC, "and a second")
     Set tBefore = ..Flat()
     Do $$$AssertTrue(tBefore '= "", "the instance holds Agent rows and index nodes to move")
     Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
@@ -56,7 +58,7 @@ Method TestRoundTripIsByteIdentical()
 /// is gone the restore completes byte-identical.</p>
 Method TestRestoreRefusedWhileAnIndexNodeRemains()
 {
-    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Held"), 1, 1)
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Held"))
     Do $$$AssertStatusOK(tSC, "a definition is created")
     Set tBefore = ..Flat()
     Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
@@ -76,12 +78,12 @@ Method TestRestoreRefusedWhileAnIndexNodeRemains()
 /// copy, and the next restore brings back exactly what was there before.</p>
 Method TestSetAsideRestoresALeftCopyFirst()
 {
-    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Kept"), 1, 1)
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Kept"))
     Do $$$AssertStatusOK(tSC, "a definition is created")
     Set tBefore = ..Flat()
     Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
     Do $$$AssertStatusOK(tSC, "the first class sets it aside")
-    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Left"), 1, 1)
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Left"))
     Do $$$AssertStatusOK(tSC, "and creates a probe it never removes")
     Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
     Do $$$AssertStatusOK(tSC, "the next class's set-aside succeeds over the copy left behind")
@@ -89,6 +91,28 @@ Method TestSetAsideRestoresALeftCopyFirst()
     Set tSC = ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
     Do $$$AssertStatusOK(tSC, "its restore succeeds")
     Do $$$AssertTrue(..Flat() = tBefore, "and brings back what was there before, without the left probe")
+}
+
+/// <p>A set-aside over a held copy whose restore is refused is refused itself: the copy is kept
+/// node for node and the stray <code>NameIdx</code> node stays in place, so the instance's rows are
+/// never folded into the copy.</p>
+Method TestSetAsideRefusedOverACopyThatCannotComeBack()
+{
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..ProbeName("Stuck"))
+    Do $$$AssertStatusOK(tSC, "a definition is created")
+    Set tBefore = ..Flat()
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+    Do $$$AssertStatusOK(tSC, "it is set aside")
+    Set ^OcuPilot.Kernel.State.BaseI("NameIdx", ..#ORPHANNAME, -1) = ""
+    Set tHeld = ..Walk($Name(^OcuPilotTestAgentAside))
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+    Do $$$AssertStatusNotOK(tSC, "a set-aside over a copy the stray node keeps from coming back is refused")
+    Do $$$AssertTrue(..Walk($Name(^OcuPilotTestAgentAside)) = tHeld, "and the copy is kept node for node")
+    Do $$$AssertTrue($Data(^OcuPilot.Kernel.State.BaseI("NameIdx", ..#ORPHANNAME, -1)) # 2, "and the stray node stays in place")
+    Kill ^OcuPilot.Kernel.State.BaseI("NameIdx", ..#ORPHANNAME, -1)
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+    Do $$$AssertStatusOK(tSC, "once the node is gone the restore completes")
+    Do $$$AssertTrue(..Flat() = tBefore, "and reads back byte-identical")
 }
 
 /// <p>A probe definition's name.</p>

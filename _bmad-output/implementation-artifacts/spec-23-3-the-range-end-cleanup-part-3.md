@@ -14,7 +14,7 @@ deferred:
   - summary: >-
       proposal-demo AC3 goes red on the post-sweep throwaway: the move to the audit screen after the user's "yes" exceeds its 30 s wait.
     evidence: |-
-      Stage re-runs on ocupilot-b-ci (4.3M audit rows), 2026-10-01: AC3 red in 2 of 5 runs at proposal-demo.browser-spec.mjs:617 (TimeoutError, Waiting failed: 30000ms), green in the others. AC3 is untouched by batch b. Whether it reddens on a fresh CI container is unverified; the post-sweep audit volume as the cause is (inference). A DW-1204 candidate for batch c.
+      Stage re-runs on ocupilot-b-ci (4.3M audit rows), 2026-10-01: AC3 red in 2 of 5 runs at proposal-demo.browser-spec.mjs:617 (TimeoutError, Waiting failed: 30000ms), green in the others. AC3 is untouched by batch b. Whether it reddens on a fresh CI container is unverified; the cause, measured in batch c, is the file's own previous run's late provider call record under its tag (fixed in 12790813), not the audit volume.
     location: >-
       ui/browser/proposal-demo.browser-spec.mjs:617
     severity: medium
@@ -227,7 +227,7 @@ deferred:
 
 ### Batch c: test isolation (DW-1759, DW-1839, DW-1204, DW-434)
 
-- [x] **DW-1759** — With any agent definition present, it is the lower id, so it holds or retakes the default marker, and 29 methods fail.
+- [x] **DW-1759** — With any agent definition present, it is the lower id, so it holds or retakes the default marker, and 25 methods fail (measured in batch c; the ledger's 29 counted four TurnContext methods that stay green).
   - **Reproduce** on `ocupilot-b-ci`:
     - Seed one enabled definition that is not named as a probe: `UpgradeSeedAgent` through `Agent.GuardedCreate`, with provider `anthropic` and `CredType` `env`.
     - Run the seven classes one at a time. Expect 13 + 7 + 3 + 3 + 1 + 1 + 1 red before the fix.
@@ -358,6 +358,36 @@ Rejected:
 - `low`: `ci-timings.json` holds 15.2 s for `AdminPortAbsence`, mostly the removed `Hang`. The next refresh corrects it.
 - `low`: the Auto Run Result's wording ("each item red", "follow-up pass"). The triage row below records what was run.
 
+### Review Findings (batch c)
+
+Code review 2026-10-01 of `66f2e716..12790813`: four layers, tier `full-opus`. 36 raw findings make 6 entries, 2 medium and 4 low; none high. Rule 3: exempt (test-only; the classes drive the real throwaway). Checked on `ocupilot-b-ci`: Agent compiles `NameIdx`, `DefaultIdx` and the IDKEY, with no bitmap, stream or subclass, so the set-aside moves every Agent node and nothing of another store; `^OcuPilotTestAgentAside` maps into OCUPILOT (AD-9); `%UnitTest.Manager` runs `OnAfterAllTests` after a failed `OnBeforeAllTests`.
+
+- [x] [Review][Patch] A set-aside over a held copy it cannot restore must be refused, and no test pins that: without the `Quit` after the inner restore, the instance's index node is folded into the copy and AgentAside stays green [src/OcuPilot/Test/AgentFixture.cls:130]
+- [x] [Review][Patch] `GovernanceFixture.Restore`'s branch that stores a snapshot back, which DW-1839's "reads back unchanged" rests on, runs in no CI test, because every snapshot there is empty [src/OcuPilot/Test/GovernanceFixture.cls:31]
+- [x] [Review][Patch] AgentAside's enabled probes take the marker from a disabled default the instance holds and hand it back, rewriting that row: one class run moved a seeded row's version from 1 to 7 (run 1693) [src/OcuPilot/Test/AgentAside.cls:41]
+- [x] [Review][Patch] The set-aside's cost is stated nowhere a caller reads: the seven headers omit the protected-global write, and the fixture omits that the instance serves no definition meanwhile [src/OcuPilot/Test/AgentFixture.cls:120]
+- [x] [Review][Patch] ToolDispatch's header still calls the class live-safe, but each test runs with no stored policy in force [src/OcuPilot/Test/ToolDispatch.cls:8]
+- [x] [Review][Patch] DW-1917 names `governance.browser-spec.mjs` as `resetGovernancePolicy`'s home; it is `preferences-reset.mjs:119`, run from `resetRememberedState` [deferred-work.md DW-1917] — a `by=cr` trailer corrects it; the Named-for-filing line is the lead's.
+
+Rejected:
+
+- `low` (2): a run killed between set-aside and restore leaves the definitions in the holding global, and a product start deletes the code that restores them. Spec-bound (Tasks › DW-1759); the refusal names the global and the copy is never lost.
+- `low`: `SetAsideDefinitions` moves a crashed class's leftover probes aside and back instead of removing them. Removing probes first would empty AgentAside's stand-ins; the next class that clears probes removes them.
+- `low`: about 20 other classes rewrite an operator's default row through `TurnWireFixture`. Pre-existing; those classes are armed for throwaways only, and the marker is put back.
+- `low` (4): the frontmatter `deferred` entry keeps proposal-demo AC3's superseded cause (twice); the task text keeps DW-1759's "29" and DW-434's "vacuous"; the turnprobe Named-for-filing line runs four sentences. Each fix edits the spec, which is the lead's (triage row 9).
+- `low`: `proposal-demo` still leaves `DEMO5` at `calls=1` after each green run. Filed as DW-1916.
+- `false`: an earlier run's late call can land after this run forgets its tag. `DEMO5` is minted minutes into the next run, long after the earlier process ended.
+- `low` (3): a failed `Snapshot` or `Clear` in `OnBeforeOneTest` skips `OnAfterOneTest` and leaves a probe device, an armed seam or a cleared store. Each is one guarded statement; real if a run's log shows either failing.
+- `low`: `RemoveSeeded`'s status goes unchecked in DeviceDelete, DeviceWire and DeviceWriteGate. Pre-existing in 21 of its 81 callers, not introduced here.
+- `low` (3): `Restore` puts the policy back by value with new row versions, and a crash or a concurrent save between clear and restore loses the stored policy. Spec-bound: the Fix copies `Governance.cls`'s pattern, which 20 classes share.
+- `low` (2): `Flat()` answers an error string when its SQL fails, so one byte-identity assertion compares two errors. The round-trip and left-copy tests then fail on `Flat() = ""`.
+- `low`: only one of `RestoreDefinitions`' three refusal branches is pinned. Rule 19 asks one per AC; the held-id branch guards ids the shared counter never reissues.
+- `low` (2): `state-conflict.test.mjs` pins a closed two-file list, its `""` unescape cannot run, and the spec side unescapes only `\'`. The spec prescribes the precedent's regex; a doubled quote fails loudly, naming the parameter.
+- `low`: a definition written between the checks and the move could split rows from index nodes. Theoretical: the window is milliseconds, on a throwaway.
+- `low`: AgentAside catches the row marker matching too little, not too much. Rule 19 asks one per AC; an over-match also moves the install stamp the HTTP callers' gate reads (inference).
+- `low`: the spec grew while flagged oversized. The added lines are its tracking sections.
+- `false`: `browser-reset` is missing from batch c's checks. It runs in `prebuild`, and `node tools/browser-reset.mjs` is clean on the committed tree.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -430,6 +460,13 @@ Rejected:
   - `[low]` `[patch]` (same root cause as row 1) The restore's refusal, the left-copy branch and the row-marker predicate have no mutation line. — Each now has one (runs 1680, 1688, 1685), and the index list too (1691).
   - `[low]` `[reject]` ToolDispatch's "Live-safe" header changed: a run cut off between clear and restore leaves no stored override. — Spec-prescribed (DW-1839 names ToolDispatch); the header says what it writes.
 
+### 2026-10-01 — Code review (batch c)
+
+- verdicts: 36 findings — high 0, medium 2, low 32, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The set-aside's propagated refusal and `GovernanceFixture.Restore`'s stored-policy branch run in no CI test. — AgentAside's fourth test and the new `GovernanceRestore`; mutations 1696 and 1698 (Verification › Batch c).
+  - `[low]` `[reject]` The frontmatter AC3 entry, DW-1759's "29", DW-434's "vacuous" and the turnprobe Named-for-filing line need correcting at origin. — Each edits the spec; left to the lead with DW-1917's file name, which a `by=cr` trailer corrects.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
@@ -485,8 +522,8 @@ No AC contradicts an AD.
 - Every DW-1204 non-member, and every member beyond the cap.
 - `about-help-links`' stamp leg reds on any throwaway whose bundle was redeployed by `docker cp`, the recipe `.claude/rules/objectscript-testing.md` gives, because the installer's stamp still names the bundle it installed. Not a sweep effect.
 - `data-table-columns` and `data-table` fail without the table harness `pretest:browser` builds; a bare `node --test` over the specs skips it. An invocation gap, not a product or isolation defect.
-- `turnprobe-spec.mjs`'s `nextTag` restarts per process, so a spec whose last provider call lands after its own forget leaves a call record the file's next run inherits. Fixed locally in `proposal-demo`; other callers are unchecked. After the DW-1204 pass, `IMPACTLINE2`, `PRIVLINE2`, `PRIVLINE3` and `PROPOSAL4` held a late call's `returned` node on `ocupilot-b-ci`, and `EGRESS3` to `EGRESS6` full call records (`egress-line` forgets no tag); all forgotten.
-- `governance.browser-spec.mjs`'s `resetGovernancePolicy` leaves an empty-preset policy row where it found none. It reads as the default; removed after the DW-1204 run.
+- `turnprobe-spec.mjs`'s `nextTag` restarts per process, so a spec whose last provider call lands after its own forget leaves a call record its next run on that container inherits; fixed in `proposal-demo` only (DW-1916).
+- `preferences-reset.mjs:119`'s `resetGovernancePolicy` (run by `resetRememberedState`) leaves an empty-preset policy row where it found none; removed after the DW-1204 run (DW-1917).
 
 ## Verification
 
@@ -538,12 +575,15 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
   - Observed before the DW-1839 fix, under the override: DeviceDelete 3/6 red (1637), DeviceWire 1/7 (1638), DeviceWriteGate 1/3 (1639), Prohibited 1/13 (1640), ToolDispatch 1/18 (1641). After: clean, all five green (1664 to 1668); under the override, all green (1669 to 1673), the override reading back `osmgmt.devices.delete` `disabled` with an empty preset after each. Then `DeleteAllGuarded`: 0 rows.
 - `mutation:` drop `SetAsideDefinitions` from `AgentState.OnBeforeAllTests` → AgentState goes 13/13 red under the seed.
   - Observed: 13/13 red under both seeds (run 1663); the enabled seed's row version moved from 1 to 5. Reverted and reloaded; `git status --short` and `git diff --stat` unchanged.
-- `Test/AgentAside.cls` pins the fixture itself, which a fresh CI container never moves: a round trip reads back byte-identical, a restore over a stray `NameIdx` node is refused with the copy kept, and a set-aside over a crashed class's copy restores it first. It finds rows by SQL over the master map and indexes in the class dictionary, not from the fixture's marker or index list. Observed: 3/3 green (final version, runs 1690, 1692).
-- `mutation:` comment out `RestoreDefinitions`' index merge → AgentAside 3/3 red, each on its byte-identical assertion (run 1687).
-- `mutation:` make `SetAsideDefinitions`' left-copy branch `If 0` → `TestSetAsideRestoresALeftCopyFirst` alone red (1688).
-- `mutation:` make `RestoreDefinitions`' refusal `If 0` → `TestRestoreRefusedWhileAnIndexNodeRemains` alone red, on the refusal and the kept copy (1680).
-- `mutation:` set `ROWMARKER` to a store that does not exist → AgentAside 3/3 red (1685). The mutated restore left four orphan index nodes, removed by exact id.
-- `mutation:` drop `DefaultIdx` from `AGENTINDEXES` → `TestRoundTripIsByteIdentical` red on "no Agent row or Agent index node is left in place", with the left-copy test (1691). Each mutation reverted (`shasum` and `git diff --stat` unchanged) and reloaded; 0 definitions, no Agent index node and no holding global after each.
+- `Test/AgentAside.cls` pins the fixture itself, which a fresh CI container never moves: a round trip reads back byte-identical, a restore over a stray `NameIdx` node is refused with the copy kept, a set-aside over a crashed class's copy restores it first, and a set-aside over a copy that cannot come back is refused with the copy and the node kept. It finds rows by SQL over the master map and indexes in the class dictionary, not from the fixture's marker or index list. Its probes are created disabled. Observed after the review patch: 4/4 green (runs 1694, 1699, 1705); with a disabled default `UpgradeSeedAgent` present, that row reads back byte-identical (1694), where the class before the patch moved its version from 1 to 7 (1693).
+- `mutation:` comment out `RestoreDefinitions`' index merge → AgentAside 4/4 red, each on its byte-identical assertion (run 1701).
+- `mutation:` make `SetAsideDefinitions`' left-copy branch `If 0` → `TestSetAsideRestoresALeftCopyFirst` and `TestSetAsideRefusedOverACopyThatCannotComeBack` red (1702).
+- `mutation:` make `RestoreDefinitions`' refusal `If 0` → `TestRestoreRefusedWhileAnIndexNodeRemains` red on the refusal and the kept copy, with `TestSetAsideRefusedOverACopyThatCannotComeBack` (1703).
+- `mutation:` set `ROWMARKER` to a store that does not exist → AgentAside 4/4 red (1704). The mutated restore left five `NameIdx` and five `DefaultIdx` nodes naming no row, removed by exact id.
+- `mutation:` drop `DefaultIdx` from `AGENTINDEXES` → `TestRoundTripIsByteIdentical` red on "no Agent row or Agent index node is left in place", with the left-copy test (1697).
+- `mutation:` delete the `Quit` after `SetAsideDefinitions`' inner restore → `TestSetAsideRefusedOverACopyThatCannotComeBack` alone red, on the kept copy, the stray node and the byte-identical read (1696).
+- `Test/GovernanceRestore.cls` pins `GovernanceFixture.Restore` over a stored policy, which no CI snapshot holds: a read-only preset and a disabled `osmgmt.devices.delete`, snapshot, cleared and restored, read back by value and decide the key disabled again. Observed: 1/1 green (runs 1695, 1700).
+- `mutation:` make `GovernanceFixture.Restore` answer `$$$OK` in place of its `GuardedApply` → `GovernanceRestore` red on the read-back and on the key decided disabled again (1698). Each mutation reverted (`shasum` and `git diff --stat` unchanged) and reloaded; the throwaway read back 0 definitions, 0 policy rows, no Agent index node and no holding global after the last.
 - `mutation:` drop the clear in `DeviceDelete.OnBeforeOneTest` → DeviceDelete red under the override.
   - Observed: 3/6 red on `GOVERNANCE.DISABLED` (run 1674). Reverted and reloaded; tree unchanged.
 - `mutation:` replace `ToolDispatch.OnAfterOneTest`'s `Restore(.tRows)` with `Set tSC = $$$OK` → under the override, ToolDispatch red on "and reads back as it was".

@@ -8889,6 +8889,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci left one Policy row after governance.browser-spec.mjs; removed by the stage; DW-1839's classes now clear and restore the store themselves
 - 2026-10-02T02:53:58Z status=routed owner=range-end-cleanup by=harvest note=test isolation on a reused container; reset should delete the row when none existed
+- 2026-10-02T03:20:45Z status=routed owner=range-end-cleanup by=cr note=correction: resetGovernancePolicy lives in preferences-reset.mjs:119 and runs from resetRememberedState (133 specs reach it)
 
 ### DW-1918: about-help-links' stamp leg reds on a throwaway whose bundle was redeployed by docker cp, the recipe objectscript-testing.md gives, because the installer's stamp still names the bundle it installed
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
