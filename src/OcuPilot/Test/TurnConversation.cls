@@ -262,6 +262,49 @@ Method TestToolTargetPrefersIdOverEntityOverRoute()
     Do $$$AssertEquals(tStep.target, "widget-1", "id wins over entity and route")
 }
 
+/// <p>AD-33, AD-41: where the model sends a declared secret's value as a call's <code>id</code>
+/// (<code>permissions.users.password</code> declares <code>Password</code>), the step's
+/// <code>target</code> is the redaction mark in the poll and in the stored transcript, and the value
+/// is in neither the poll, the stored transcript nor any step column; a target that holds no
+/// declared secret's value is kept as sent.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Agent.Dispatch.StepTarget</method> answer
+/// <method>OcuPilot.Kernel.Agent.Dispatch.TargetOf</method> alone -- this goes red.</p>
+Method TestADeclaredSecretSentAsTheIdIsNotTheStepTarget()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Set tConvId = ..NewConversation(tUser)
+    Set tSecret = "ocupilotconvoidsecret" _ $Random(1000000000)
+    Set tAccount = "OcuPilotProbeConvoAccount"
+    Set tCalls = []
+    For tCase = $ListBuild("toolu_pw1", tSecret, tSecret), $ListBuild("toolu_pw2", tAccount, "ocupilotconvopassword" _ $Random(1000000000)) {
+        Set tInput = {}
+        Do tInput.%Set("id", $List(tCase, 2), "string")
+        Do tInput.%Set("Password", $List(tCase, 3), "string")
+        Set tCall = {}
+        Do tCall.%Set("id", $List(tCase, 1))
+        Do tCall.%Set("name", "permissions_users_password")
+        Do tCall.%Set("input", tInput)
+        Do tCalls.%Push(tCall)
+    }
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tCalls))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, "set a password", tConvId, .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted")
+    Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "the turn completes")
+    If '$IsObject($Get(tView)) Quit
+    Set tFirst = tView.steps.%Get(1)
+    Set tSecond = tView.steps.%Get(2)
+    Do $$$AssertEquals($Select($IsObject(tFirst): tFirst.name _ " " _ tFirst.target, 1: ""), "permissions.users.password " _ ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "the step whose id is the secret reads the redaction mark as its target")
+    Do $$$AssertEquals(tView.%ToJSON() [ tSecret, 0, "and the poll carries the value nowhere")
+    Do $$$AssertEquals($Select($IsObject(tSecond): tSecond.target, 1: ""), tAccount, "a target that holds no declared secret's value is kept as sent")
+    Do ..Call("GET", ..ConversationPath(tConvId), tUser, "", .tStatus, .tConvText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the conversation reads back")
+    Do $$$AssertEquals(tConvText [ tSecret, 0, "the stored transcript carries it nowhere")
+    Do $$$AssertTrue(tConvText [ ("""target"":""" _ ##class(OcuPilot.Kernel.Audit.Log).#REDACTED _ """"), "and its step reads the redaction mark as its target")
+    Set tStepText = ##class(OcuPilot.Test.Ledger).StepText(tId)
+    Do $$$AssertEquals(tStepText [ tSecret, 0, "nor does any step column: " _ tStepText)
+}
+
 /// <p>A credential-shaped argument key is redacted before it is stored -- the integration point
 /// between <method>OcuPilot.Kernel.Agent.Dispatch.RedactedArguments</method> and
 /// <method>OcuPilot.Kernel.Audit.Log.Redact</method>, unverified until now even though

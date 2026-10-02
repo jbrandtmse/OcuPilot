@@ -237,22 +237,13 @@ ClassMethod AddressValidity(pAddress As %String, Output pAnswer As %Integer) As 
     Quit tSC
 }
 
-/// <p>An allowed-connection entry's address and roles, split the way the classic dialog reads one
-/// (<class>%CSP.UI.Portal.Dialog.Service</class>'s <code>DrawConnectionTable</code>): the separator is
-/// <code>|</code> when the entry holds a <code>|</code> or more than one <code>:</code> (an IPv6
-/// address), and <code>:</code> otherwise. <var>pAddress</var> is the part before it, and
-/// <var>pRoles</var> the comma-separated part after it as a <class>%List</class>, empty names
-/// dropped. The one reading the rules, the form read and <method>Canonical</method> share.</p>
+/// <p>An allowed-connection entry's address and roles, as the kernel reads one
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.EntryParts</method>, the classic dialog's reading),
+/// so the rules, the form read, <method>Canonical</method> and the kernel's privilege verdict share
+/// one reading.</p>
 ClassMethod EntryParts(pEntry As %String, Output pAddress As %String, Output pRoles As %List)
 {
-    Set pRoles = ""
-    Set tSeparator = $Select((pEntry [ "|") || ($Length(pEntry, ":") > 2): "|", 1: ":")
-    Set pAddress = $Piece(pEntry, tSeparator, 1)
-    Set tList = $Piece(pEntry, tSeparator, 2)
-    For tI = 1:1:$Length(tList, ",") {
-        Set tRole = $Piece(tList, ",", tI)
-        If tRole '= "" Set pRoles = pRoles _ $ListBuild(tRole)
-    }
+    Do ##class(OcuPilot.Kernel.Proposal.Prohibited).EntryParts(pEntry, .pAddress, .pRoles)
 }
 
 /// <p><var>pEntry</var> in the one spelling a write sends for an entry it adds or changes:

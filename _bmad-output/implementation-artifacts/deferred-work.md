@@ -2938,6 +2938,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813: state-conflict.test.mjs pins both specs' constant to Error.cls; reddens on a rewording; run 36960333685
 
 ### DW-435: Two first writers to a singleton store can both create a row, and GuardedCurrent's TOP 1 then hides the second
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -4385,6 +4386,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:19:37Z occurrence=23-3-the-range-end-cleanup-part-3 note=batch b stage: proposal-demo AC3 :617 red 2 of 5 on post-sweep ocupilot-b-ci (30 s wait to the audit screen); a batch c member candidate
+- 2026-10-02T04:07:24Z status=wontfix-accepted by=adjudication note=reopen_if=a browser spec fails alone after the class sweep and passes on a fresh container; 23.3 pass of 132 files found none
+- 2026-10-02T04:07:24Z occurrence=23-3-the-range-end-cleanup-part-3 note=corrects the 23:19 occurrence: proposal-demo AC3 inherited its own last run's late call record, not the sweep; fixed in 12790813 (DW-1916)
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -5004,6 +5007,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: TurnSecretResidue sweeps messages.log over each turn; reddens on a logged key; run 36975211472
 
 ### DW-1308: The matrix's exactly-one-refused-ledger-row-per-refused-call is asserted nowhere
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -7639,6 +7643,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T19:21:32Z status=open owner=range-end-cleanup by=orchestrator note=test isolation, not a product defect; each test should create and clean up its own definition state or tolerate existing definitions
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813+5c811f01: definitions set aside and restored byte-identical; 25 red under a seed (not 29), green after; run 36960333685
 ### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
 - source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
@@ -8099,6 +8104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p2 (security)
 - 2026-09-30T07:53:11Z status=routed owner=range-end-cleanup by=owner note=owner 2026-09-30 via the Planner: leave it where it is - top of the 23.3 queue (p2 security); 23.2 stays at its 12
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: Dispatch.StepTarget marks the step target at write time; red first (run 1706); AD-33 amended; run 36975211472
 
 ### DW-1783: The agent ledger's local-to-UTC conversion direction cannot be falsified on the project's UTC test instances (ocupilot-ci and CI throwaways run Etc/UTC), so a swapped conversion keeps every begin, end, time and echo assertion green
 - source: spec-16-16-the-agent-audit-viewer.md | severity: med | fix-risk: high | footprint: in-story
@@ -8443,6 +8449,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T19:58:42Z status=routed owner=range-end-cleanup by=orchestrator note=test isolation: each test sets and restores the governance state it relies on, or tolerates overrides
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813+5c811f01: per-test snapshot, clear and restore in 5 classes; 7 red under an override, green after; run 36960333685
 ### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
 - source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
@@ -8704,6 +8711,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 16.13 plan: the service arm uses IsPrivilegedRole (by name) and '|' only; 23.2 batch c moved the OAuth arm to RoleGrantsAdministrativePrivilege (DW-1663); 16.13 canonicalizes only entries a write adds or changes
 - 2026-09-30T21:35:51Z status=routed owner=range-end-cleanup by=harvest note=orchestrator 2026-09-30: service arm to RoleGrantsAdministrativePrivilege plus EntryParts for held entries; Prohibited.cls held by Epic 23
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T07:26:26Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084+0f55b740: Prohibited.EntryParts reads both spellings, roles judged by privilege; red first (run 1707); run 36975211472
 
 ### DW-1883: The service editor has no control for %Service_WebGateway's HttpOnlyCookies, which the classic Edit Service dialog draws and saves for that service, and the admin API's Security.Service PUT cannot carry it
 - source: spec-16-13-the-service-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -8900,6 +8908,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: scripts/ci-throwaway.sh:264 vs src/OcuPilot/Test/AdminPortAbsence.cls (6e6b8dcc): the class no longer reads $SYSTEM.Monitor or alerts.log
 - 2026-10-01T23:37:15Z status=open owner=23-3-the-range-end-cleanup-part-3 by=cr note=one-word comment fix; Epic 19 is editing ci-throwaway.sh (add-only), so not patched in batch b's review
+- 2026-10-02T07:26:27Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=f2168084: ci-throwaway.sh:264 comment corrected after Epic 19's edit reached feature; run 36975211472
 
 ### DW-1915: CI flake: OAuthResourceServerAuditMask.TestARowCarryingAProbeKeyReadsMasked's audit-screen read answered 200 without the key but not the expected '1 3' masked counts (AssertMasked+7)
 - source: CI run 36949919497 attempt 1, instance shard 4/4 (OCU-1-staging-19-1 abb61579) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8965,3 +8974,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ScreenAction/Confirm fresh read plus AtelierPort.PresentSet (plus the delete's read-back), ~0.35 s each on HSCUSTOM classes (T0.2); a category above the capture ceiling refuses every write as it refuses the list
 - 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=a screen compile request on HSCUSTOM's Classes list measures above 1 s before the compile itself
+### DW-1925: CI flake: reply.browser-spec (b) found the remote link's href null in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
+- 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story
+
+### DW-1927: Step and transcript rows written before 23.3's DW-1782 fix keep a declared secret's value the model sent as an id until retention purges them; no scrub runs on upgrade
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch d (f2168084) marks the target at write time only; existing OcuPilot_Kernel_State.Step.Target and Entry.StepsJson rows are unchanged; visible to the turn's owner and to OcuPilotAdmin readers of transcripts
+- 2026-10-02T06:12:24Z status=decision-pending owner=burndown by=harvest note=recommended: wontfix-accepted (retention clears them; owner and admin only); alternative: a one-time install-time scrub
+- 2026-10-02T07:27:07Z status=wontfix-accepted by=merge_gate reopen_if=retention can be disabled or set past 30 days, or a user asks for a scrub note=pre-fix rows are visible only to their owner and OcuPilotAdmin and retention purges them; no install-time scrub
+
+### DW-1928: TurnConversation's DW-1782 method writes error-level log lines on every run, which raise the instance's alert state, as agent-ledger already does
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 23.3 batch d full sweep on ocupilot-b-ci: monitor state rose to 2; the method's provider-path refusals log at error severity (AD-39)
+- 2026-10-02T06:12:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=a test or check that reads the instance alert state reddens after TurnConversation runs on the same container
+- 2026-10-02T06:39:17Z occurrence=23-3-the-range-end-cleanup-part-3
+
+### DW-1929: agent-ledger.browser-spec.mjs deletes only its own ledger rows, so each run leaves a _SYSTEM turn and conversation on the container
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
+- 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
