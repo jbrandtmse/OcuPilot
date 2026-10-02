@@ -323,8 +323,8 @@ Method TestTheIdentityRouteRefusesAPostAndNamesTheVerbItAllows()
     Do $$$AssertEquals(tObj.code, "ROUTE.METHODNOTALLOWED", "through the one error writer")
 }
 
-/// <p>AC4 -- a signed-in caller holding none of the router's thirteen administrative
-/// resources meets the identity call's 403 and the machine code the shell reads, never a
+/// <p>AC4 -- a signed-in caller holding no administrative resource and not %Development
+/// meets the identity call's 403 and the machine code the shell reads, never a
 /// version report. The principal is this suite's throwaway one, created in
 /// <method>OnBeforeAllTests</method> and removed in <method>OnAfterAllTests</method>; it
 /// holds read on the install namespace's code database, without which IRIS could not load
@@ -797,20 +797,20 @@ Method TestANamespaceThisPrincipalCannotEnterIsRefusedOverTheWire()
     Do $$$AssertEquals(tObj2.code, "NS.UNKNOWN", "told apart from the denial by its code")
 }
 
-/// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> is a
+/// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.FLOORRESOURCES</parameter> is a
 /// resource this instance actually defines. The gate quits on the first match, so only the
 /// one resource this suite grants is ever evaluated behind a real request: a typo in any of
-/// the other twelve would lock out an administrator whose only administrative resource is
-/// that one, with every suite green. The parameter's own doc claims the list was read from
+/// the other thirteen would lock out a caller whose only floor resource is that one, with
+/// every suite green. The parameter's own doc claims the list was read from
 /// the instance; this is the check of that claim rather than a restatement of it.</p>
 /// <p>Deliberately not asserted the other way round -- that the instance defines no
 /// <code>%Admin_*</code> resource missing from the list -- because narrowing as IRIS adds
 /// resources is the stated point of a closed list.</p>
 /// <p>Mutation: misspell any entry of
-/// <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> -> this goes red.</p>
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> -> this goes red.</p>
 Method TestEveryAdminResourceNamedExistsOnTheInstance()
 {
-    Set tList = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
+    Set tList = ##class(OcuPilot.Api.Router).#FLOORRESOURCES
     Do $$$AssertTrue($Length(tList, ",") > 1, "the gate names more than one administrative resource")
 
     Set tOrigNS = $NAMESPACE

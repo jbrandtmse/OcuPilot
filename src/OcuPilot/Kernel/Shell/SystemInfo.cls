@@ -100,9 +100,14 @@ ClassMethod ReadSource(pField As %String, ByRef pContext) As %String
 /// and the failure is logged once under <parameter>DASHBOARDSOURCE</parameter>.</p>
 /// <p>The switch to <code>%SYS</code> is explicit save and restore with the restore as the first
 /// line of the <code>Catch</code> (AD-16).</p>
+/// <p><b>A caller without <code>%DB_IRISSYS:READ</code> is answered the five empty, with no switch
+/// and no log line.</b> The switch would raise <code>&lt;PROTECT&gt;</code> for such a caller -- a
+/// <code>%Developer</code> past the floor on every Home visit -- and OcuPilot never elevates to read
+/// the sample (AD-8, AD-9), so the absence is expected rather than a fault.</p>
 ClassMethod Dashboard(Output pDashboard)
 {
     Kill pDashboard
+    If '$System.Security.Check("%DB_IRISSYS", "READ") Quit
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"

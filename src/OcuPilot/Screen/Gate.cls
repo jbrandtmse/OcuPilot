@@ -29,10 +29,12 @@ Class OcuPilot.Screen.Gate Extends %RegisteredObject
 Parameter CLASSICPERMISSION = "USE";
 
 /// <p>The closed list of IRIS administrative resources, comma-separated. Holding <b>any one</b>
-/// of them at <parameter>ADMINPERMISSION</parameter> is the instance-level floor: what
+/// of them, or <parameter>DEVELOPMENTRESOURCE</parameter>, at <parameter>ADMINPERMISSION</parameter>
+/// is the instance-level floor (<method>FloorResources</method>): what
 /// <method>OcuPilot.Api.Router.HoldsAdminResource</method> requires of a caller before any route
-/// runs, and what <method>OcuPilot.Port.ProviderPort.Invoke</method> requires before an outbound
-/// provider request leaves (AD-8, AD-29).</p>
+/// runs, what <method>OcuPilot.Port.ProviderPort.Invoke</method> requires before an outbound
+/// provider request leaves, and what a turn's step boundary requires of its owner (AD-8, AD-29,
+/// AD-31).</p>
 /// <p>Read from the instance on 2026-09-11 (<code>Security.Resources:List</code> over
 /// <code>%Admin*</code>) -- all thirteen it defines. A closed list, not a wildcard scan: what
 /// OcuPilot admits must not silently widen because a later IRIS release adds a resource, and a
@@ -44,6 +46,12 @@ Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemA
 
 /// <p>The permission each <parameter>ADMINRESOURCES</parameter> member is required at.</p>
 Parameter ADMINPERMISSION = "USE";
+
+/// <p>The one floor member that is not an administrative resource: the classic portal admits a
+/// <code>%Developer</code> account to System Explorer, whose Classes, Routines, Globals and SQL
+/// pages declare it as their <code>RESOURCE</code> (AD-8). It never joins
+/// <parameter>ADMINRESOURCES</parameter>, whose members are <code>%Admin_*</code> alone.</p>
+Parameter DEVELOPMENTRESOURCE = "%Development";
 
 /// <p>The user names that are not an authenticated principal, comma-separated: IRIS's
 /// unauthenticated placeholder and its public one.</p>
@@ -290,14 +298,40 @@ ClassMethod EvaluateRequired(pPairs As %List, Output pFailedPair As %String) As 
 
 /// <p><parameter>ADMINRESOURCES</parameter> spelled as the comma-separated
 /// <code>resource:permission</code> specification every declared pair set in this tree uses, each
-/// member at <parameter>ADMINPERMISSION</parameter>.</p>
-/// <p>Read at <b>compile</b> time by the two classes that declare the administrative floor as a
-/// parameter of their own, so neither holds a copy of the list.</p>
+/// member at <parameter>ADMINPERMISSION</parameter>. The floor itself is
+/// <method>FloorPairSpec</method>.</p>
 ClassMethod AdminPairSpec() As %String
 {
     Set tSpec = ""
     For tI = 1:1:$Length(..#ADMINRESOURCES, ",") {
         Set tResource = $Piece(..#ADMINRESOURCES, ",", tI)
+        If tResource = "" Continue
+        Set tSpec = tSpec _ $Select(tSpec = "": "", 1: ",") _ tResource _ ":" _ ..#ADMINPERMISSION
+    }
+    Quit tSpec
+}
+
+/// <p>The floor's members, comma-separated: <parameter>ADMINRESOURCES</parameter> followed by
+/// <parameter>DEVELOPMENTRESOURCE</parameter>. Holding any one at
+/// <parameter>ADMINPERMISSION</parameter> clears the floor.</p>
+/// <p>Read at <b>compile</b> time by <class>OcuPilot.Api.Router</class>, whose
+/// <parameter>OcuPilot.Api.Router.FLOORRESOURCES</parameter> the request gate and a turn's step
+/// boundary read, so neither holds a copy of the list.</p>
+ClassMethod FloorResources() As %String
+{
+    Quit ..#ADMINRESOURCES _ "," _ ..#DEVELOPMENTRESOURCE
+}
+
+/// <p><method>FloorResources</method> spelled as the comma-separated
+/// <code>resource:permission</code> specification, each member at
+/// <parameter>ADMINPERMISSION</parameter>. Read at <b>compile</b> time by
+/// <class>OcuPilot.Port.ProviderPort</class>, whose any-of gate it is.</p>
+ClassMethod FloorPairSpec() As %String
+{
+    Set tSpec = ""
+    Set tFloor = ..FloorResources()
+    For tI = 1:1:$Length(tFloor, ",") {
+        Set tResource = $Piece(tFloor, ",", tI)
         If tResource = "" Continue
         Set tSpec = tSpec _ $Select(tSpec = "": "", 1: ",") _ tResource _ ":" _ ..#ADMINPERMISSION
     }

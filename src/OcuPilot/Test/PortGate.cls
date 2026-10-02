@@ -5,10 +5,10 @@
 /// held -- observed by driving the refusal, not by reading the source. A port added without a
 /// gate is therefore red on the day it arrives rather than on the day somebody reads it, which
 /// is what makes Epic 6's <class>MonitorPort</class> fail closed.</p>
-/// <p>It also pins the administrative floor's one home: the list
+/// <p>It also pins the floor's one home: the list
 /// <method>OcuPilot.Api.Router.HoldsAdminResource</method> tests and the list
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method> tests are the same list, derived from
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> at compile time. A stale
+/// <method>OcuPilot.Screen.Gate.FloorResources</method> at compile time. A stale
 /// compilation is what this catches.</p>
 /// <p><b>Live-safe</b>: it spawns nothing, creates no principal and writes nothing. Every denial
 /// is driven through the ports' own gate seams, because <code>%UnitTest</code> runs as an account
@@ -233,9 +233,9 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
 }
 
-/// <p><b>AC6</b> -- the administrative floor has one home. The router's list and the provider
-/// port's declared pair set are both derived from
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, so a caller the router would refuse
+/// <p><b>AC6</b> -- the floor has one home. The router's list and the provider port's declared
+/// pair set are both derived from <method>OcuPilot.Screen.Gate.FloorResources</method>, which is
+/// the administrative list plus <code>%Development</code>, so a caller the router would refuse
 /// cannot make the instance call a provider.</p>
 /// <p>Mutation: edit either derived parameter into a literal that differs -> this goes red. It is
 /// also what catches a compile-time derivation left stale.</p>
@@ -243,11 +243,15 @@ Method TestTheAdministrativeFloorHasOneHome()
 {
     Set tHome = ##class(OcuPilot.Screen.Gate).#ADMINRESOURCES
     Do $$$AssertNotEquals(tHome, "", "the gate declares the administrative resource list")
-    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#ADMINRESOURCES, tHome, "the router's list is the gate's, not a copy")
-    Do $$$AssertEquals($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"), ##class(OcuPilot.Screen.Gate).AdminPairSpec(), "and the provider port's gate is that list at USE")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#ADMINRESOURCES, tHome, "the router's administrative list is the gate's, not a copy")
+    Set tFloor = ##class(OcuPilot.Screen.Gate).FloorResources()
+    Do $$$AssertEquals(tFloor, tHome _ ",%Development", "the floor is the administrative list plus %Development")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#FLOORRESOURCES, tFloor, "the router's floor is the gate's, not a copy")
+    Do $$$AssertEquals($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"), ##class(OcuPilot.Screen.Gate).FloorPairSpec(), "and the provider port's gate is that floor at USE")
 
     Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"))
-    Do $$$AssertEquals($ListLength(tPairs), $Length(tHome, ","), "one pair per named resource")
+    Do $$$AssertEquals($ListLength(tPairs), $Length(tFloor, ","), "one pair per named resource")
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), $Piece(tHome, ",", 1) _ ":USE", "an administrative pair still leads, so a refusal naming the first pair is unchanged")
 }
 
 /// <p>A minimal message array, the shape

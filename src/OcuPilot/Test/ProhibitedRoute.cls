@@ -93,8 +93,8 @@ Parameter PROCESSFLOORADMIN = "%Admin_Manage";
 
 /// <p>An administrative resource that is <b>not</b> <code>%Admin_Secure</code>, granted to the
 /// principal of <method>TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair</method>.
-/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding no
-/// <code>%Admin_*</code> resource at all with <code>AUTH.NOADMIN</code> before any route runs, so
+/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding neither a
+/// <code>%Admin_*</code> resource nor <code>%Development</code> with <code>AUTH.NOADMIN</code> before any route runs, so
 /// without this the leg would measure the router's floor instead of the screen's own pair
 /// set.</p>
 Parameter NONSECUREADMIN = "%Admin_Operate";
