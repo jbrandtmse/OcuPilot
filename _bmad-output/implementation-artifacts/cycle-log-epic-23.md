@@ -250,3 +250,6 @@
 2026-10-02T04:07:56Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@2bc43624 merge=bookkeeping_only conflicts=none before=batch_d
 2026-10-02T04:07:56Z	Story 23.3	rework_opened	cycle_iteration=4 iteration=batch_d trigger=next_batch items=DW-1782,DW-1881,DW-1307,DW-1907 scope_baseline=HEAD spec=status_only(oversized) note=full_ObjectScript_sweep_in_this_pass
 2026-10-02T04:07:56Z	Story 23.3	stage_spawned	stage=implement batch=d spawn_at=2026-10-02T04:07:56Z model=opus agent_name=23-3-the-range-end-cleanup-part-3-implement-d cycle_iteration=4 prior_ci=success(36960333685) feature=2bc43624
+2026-10-02T04:08:17Z	Epic 23	report_error	fault=lead field=integrate_forward(04:07:56Z) reported=merged actual=aborted(uncommitted_ledger_appends_overlapped_feature) impact=none(merge_redone) correction=merge_17d3a515_from_2bc43624 ledger_tail_check=20_entries_effective_ok
+2026-10-02T04:08:17Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@2bc43624 merge=17d3a515 conflicts=none code_changes=none before=batch_d
+2026-10-02T04:08:17Z	Story 23.3	stage_spawned	stage=implement batch=d spawn_at=2026-10-02T04:08:17Z model=opus agent_name=23-3-the-range-end-cleanup-part-3-implement-d cycle_iteration=4 prior_ci=success(36960333685) feature=2bc43624 supersedes=04:07:56Z_entry(not_spawned)
