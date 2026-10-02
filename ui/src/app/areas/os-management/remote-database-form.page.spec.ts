@@ -297,6 +297,31 @@ describe('the remote database form', () => {
     expect(host.querySelector('.ocu-form-bar-status [role="status"]')?.textContent?.trim()).toBe(savedLine(readBackOf(readBack)));
   });
 
+  it('a name typed while a Save is in flight is not kept on the control, so the next Save sends what it shows', async () => {
+    let release: (answer: unknown) => void = () => {};
+    const pending = new Promise((resolve) => {
+      release = resolve;
+    });
+    const { fixture, host, listings } = await mount('/os-management/remote-databases/edit', pending);
+    const name = host.querySelector('#ocu-remote-database-Name') as HTMLInputElement;
+    name.value = 'PROBEREMOTE';
+    name.dispatchEvent(new Event('input'));
+    choose(fixture, serverSelect(host), 'DATASRV');
+    await settle(fixture);
+    listings[0]?.({ kind: 'ok', status: 200, body: LISTED });
+    await settle(fixture);
+    choose(fixture, host.querySelector('#ocu-remote-database-Directory') as HTMLSelectElement, '/data/two/');
+    await settle(fixture);
+    (host.querySelector('.ocu-form-bar-actions .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    // Mutation (Rule 19): drop the in-flight guard from `onName` -> the control keeps the typed name and this goes red.
+    name.value = 'PROBEREMOTEX';
+    name.dispatchEvent(new Event('input'));
+    expect(name.value).toBe('PROBEREMOTE');
+    release(REFUSED_SAVE);
+    await settle(fixture);
+  });
+
   it('a change raises the dirty flag, and leaving asks the shared question first', async () => {
     const { fixture, host, formDirty } = await mount();
     expect(formDirty.dirty()).toBe(false);

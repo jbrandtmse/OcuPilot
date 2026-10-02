@@ -227,6 +227,8 @@ describe('the remote database form store', () => {
   it('AC3, AD-4: an edit offers just the stored directory until a server is chosen, and puts only what changed', async () => {
     const { store, calls, events } = mount({ kind: 'ok', status: 200, body: { name: 'PROBEREMOTE' } });
     await store.open('PROBEREMOTE');
+    // Mutation (Rule 19): the form read names the configuration under another key than `name` -> red.
+    expect(calls[0]?.path).toBe(`${REMOTE_DATABASE_FORM_PATH}?name=${encodeURIComponent('PROBEREMOTE')}`);
     expect(store.mode()).toBe('edit');
     expect([store.value('Name'), store.value('Server'), store.value('Directory'), store.value('StreamLocation')]).toEqual([
       'PROBEREMOTE',

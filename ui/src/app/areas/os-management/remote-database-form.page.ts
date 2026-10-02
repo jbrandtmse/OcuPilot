@@ -424,9 +424,15 @@ export class RemoteDatabaseFormPage {
 
   // --- intents ---------------------------------------------------------------------------------
 
+  /** A name typed while a Save is in flight is refused here, and the control shows the held name. */
   protected onName(event: Event): void {
     const target = event.target;
-    if (target instanceof HTMLInputElement) this.store.setValue(NAME_FIELD, target.value);
+    if (!(target instanceof HTMLInputElement)) return;
+    if (this.store.busy()) {
+      target.value = this.store.value(NAME_FIELD);
+      return;
+    }
+    this.store.setValue(NAME_FIELD, target.value);
   }
 
   /**
@@ -449,9 +455,15 @@ export class RemoteDatabaseFormPage {
     void this.store.listAgain();
   }
 
+  /** A directory chosen while a Save is in flight is refused here, and the select shows the held one. */
   protected onDirectory(event: Event): void {
     const target = event.target;
-    if (target instanceof HTMLSelectElement) this.store.setValue(DIRECTORY_FIELD, target.value);
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (this.store.busy()) {
+      target.value = this.store.value(DIRECTORY_FIELD);
+      return;
+    }
+    this.store.setValue(DIRECTORY_FIELD, target.value);
   }
 
   protected onBlur(field: string): void {

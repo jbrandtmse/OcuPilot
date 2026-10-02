@@ -2417,6 +2417,8 @@ ClassMethod HttpMethodFor(pEndpoint As %String, pSuffix As %String) As %String [
 /// parameter of that name; any other suffix must be in <parameter>TYPESUFFIXES</parameter> or form
 /// a <parameter>MUTATINGTYPES</parameter> or <parameter>CONNECTIONTESTTYPES</parameter> pair, and
 /// resolves through <code>TYPE&lt;suffix&gt;</code>.</p>
+/// <p>A <parameter>CONNECTIONREADTYPES</parameter> pair resolves through <code>TYPE&lt;suffix&gt;</code>
+/// too, on its own endpoint alone.</p>
 ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %String) As %String [ Private ]
 {
     If '$Match(pSuffix, "^[A-Z]+$") Quit ""

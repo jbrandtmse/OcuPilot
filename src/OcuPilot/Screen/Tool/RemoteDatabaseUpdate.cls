@@ -15,7 +15,7 @@ Parameter TOOLNAME = "osmgmt.remotedatabases.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.RemoteDatabaseList";
 
-Parameter DESCRIPTION = "Propose moving one remote database to another ECP data server or directory. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the remote databases list reports it and send only what changes: the data server, as this instance's data servers list reports it, or the directory, exactly as that data server lists it. The directory is checked against the data server's own listing only when the user confirms, which can take up to 20 seconds.";
+Parameter DESCRIPTION = "Propose moving one remote database to another ECP data server or directory. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the database as the remote databases list reports it and send only what changes: the data server, as this instance's data servers list reports it, or the directory, exactly as that data server lists it. The directory is checked against the data server's own listing only when the user confirms, which can take up to 20 seconds; this instance's license must include ECP.";
 
 /// <p>The port that sequences the write (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.RemoteDatabasePort";

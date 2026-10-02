@@ -7,8 +7,10 @@
 /// defined, and whether a directory is named are asked here; whether the directory is one the data
 /// server lists is asked by <class>OcuPilot.Port.RemoteDatabasePort</class> at the write, through its
 /// bounded listing (AD-21's seventh case), and so never at a mint or in a turn (AD-7). Every sentence
-/// is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s, and every read goes through the
-/// create tool's port as the caller.</p>
+/// is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s. Every read is made as the caller: the
+/// data servers' reads and the listing through <method>PortClass</method>, the name look-up through
+/// <class>OcuPilot.Area.OsMgmt.DatabaseRules</class>' own port, and the form's configuration read
+/// through the update tool's.</p>
 Class OcuPilot.Area.OsMgmt.RemoteDatabaseRules Extends %RegisteredObject
 {
 

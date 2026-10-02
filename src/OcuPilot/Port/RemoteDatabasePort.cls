@@ -10,15 +10,20 @@
 /// (<method>Directories</method>); a directory the listing does not answer character for character
 /// refused <parameter>OcuPilot.Api.DatabaseError.REMOTEDIRECTORYABSENT</parameter>, and the one it
 /// names <parameter>MANAGERNAME</parameter> <parameter>OcuPilot.Api.DatabaseError.REMOTEDIRECTORYMANAGER</parameter>;
-/// and only then the vendor's <code>PUT</code> (AD-21's seventh case). Each refusal is a 422 on its
-/// field, the 409 excepted, and nothing is written after one.</p>
+/// the configuration read again, because the listing can take <method>ListSeconds</method> and the
+/// vendor's <code>PUT</code> is an upsert: one created meanwhile refused
+/// <parameter>OcuPilot.Api.DatabaseError.NAMETAKEN</parameter> on <code>Name</code>, one deleted
+/// meanwhile 404 <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter>, and one made local the
+/// 409; and only then the vendor's <code>PUT</code> (AD-21's seventh case). Each refusal is a 422 on its
+/// field, the 409 and the 404 excepted, and nothing is written after one.</p>
 /// <p><b>A configuration <code>DELETE</code></b> refuses a local configuration 409
 /// <parameter>OcuPilot.Api.DatabaseError.LOCAL</parameter>, then is the database port's own, which
 /// sends no file delete for a remote configuration.</p>
 /// <p><b>The listing</b> runs in a short-lived child job the request waits for against
 /// <method>ListSeconds</method>, on the <class>OcuPilot.Kernel.Provider.TestCall</class> model
 /// (AD-42): a nonce, <code>$System.Event</code>, and the process's event queue cleared before each
-/// spawn, so an abandoned child's late answer is discarded. When this instance's license enables no
+/// spawn, so an abandoned child's late answer is discarded. An abandoned child is not stopped: it runs
+/// until the vendor's call returns, one child per listing. When this instance's license enables no
 /// ECP (<method>NetworkEnabled</method>) no child is spawned and the listing answers
 /// <parameter>OcuPilot.Api.DatabaseError.SERVERUNREACHABLE</parameter> at once: a listing there
 /// blocks, answers no rows and starts ECP client daemons that outlive it (measured at Story 18.16's
@@ -91,6 +96,11 @@ ClassMethod RemoteWrite(ByRef pQuery, pBody As %DynamicAbstractObject, Output pR
     If $$$ISERR(tSC) Quit tSC
     Set tCode = ..DirectoryRefusal(tRows, tDirectory)
     If tCode '= "" Quit ..FieldRefused(..#DIRECTORYFIELD, tCode, .pHttpStatus, .pFault)
+    Set tSC = ..Held($Get(pQuery(..#NAMEPARAM)), .tHeldNow, .tLocalNow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tLocalNow Quit ..LocalRefused(.pHttpStatus, .pFault)
+    If tHeldNow && 'tHeld Quit ..FieldRefused("Name", ##class(OcuPilot.Api.DatabaseError).#NAMETAKEN, .pHttpStatus, .pFault)
+    If tHeld && 'tHeldNow Quit ..Gone(.pHttpStatus, .pFault)
     Kill tQuery
     Set tQuery(..#NAMEPARAM) = $Get(pQuery(..#NAMEPARAM))
     Quit ..Call(..#CONFIGENDPOINT, "PUT", .tQuery, tBody, .pResult, .pHttpStatus, .pFault)
@@ -358,6 +368,15 @@ ClassMethod FieldRefused(pField As %String, pCode As %String, Output pHttpStatus
     Do tViolation.%Set("reason", tReason, "string")
     Do pFault.%Set("detail", {"violations": [(tViolation)]})
     Quit $$$ERROR($$$GeneralError, pCode)
+}
+
+/// <p>The 404 <parameter>OcuPilot.Api.DatabaseError.NAMEABSENT</parameter> refusal of a configuration
+/// deleted while the listing ran, with nothing sent.</p>
+ClassMethod Gone(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 404
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.DatabaseError).#NAMEABSENT, ##class(OcuPilot.Api.DatabaseError).#REASONNAMEABSENT)
+    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.DatabaseError).#NAMEABSENT)
 }
 
 /// <p>The 409 <parameter>OcuPilot.Api.DatabaseError.LOCAL</parameter> refusal, with nothing sent.</p>

@@ -5,17 +5,23 @@
 /// before it is sent.</p>
 /// <p><b>The listing</b> (<method>ListRows</method>, run in the child) is chosen by the data server's
 /// name: <parameter>SLOWSERVER</parameter> answers only after <parameter>SLOWSECONDS</parameter> with
-/// the row <parameter>LATENAME</parameter>; <parameter>DOWNSERVER</parameter> and
-/// <parameter>EMPTYSERVER</parameter> answer no rows, the second reading connected; any
-/// other answers three rows, <parameter>LISTEDNAME</parameter> in <parameter>LISTEDDIRECTORY</parameter>,
-/// <parameter>SECONDNAME</parameter> in <parameter>SECONDDIRECTORY</parameter> and <code>IRISSYS</code>
-/// in the manager directory.</p>
+/// the row <parameter>LATENAME</parameter>, and <parameter>SLOWERSERVER</parameter> two seconds later
+/// with <parameter>LATERNAME</parameter>; <parameter>DOWNSERVER</parameter> and
+/// <parameter>EMPTYSERVER</parameter> answer no rows, the second reading connected; each of
+/// <parameter>VENDORSERVERS</parameter> runs the shipped <method>ListRows</method>, whose vendor call
+/// <method>Call</method> answers by name (a 404, a 500 reading connected, or the rows the call asked
+/// for); any other answers three rows, <parameter>LISTEDNAME</parameter> in
+/// <parameter>LISTEDDIRECTORY</parameter>, <parameter>SECONDNAME</parameter> in
+/// <parameter>SECONDDIRECTORY</parameter> and <code>IRISSYS</code> in the manager directory.</p>
 /// <p><b>The parent's seams</b>, each read from a process-private node a test sets:
 /// <method>NetworkEnabled</method> answers 1 under <code>^||OcuPilotRemoteLicensed</code> and the
 /// instance's own license otherwise; <method>ListSeconds</method> answers
 /// <code>^||OcuPilotRemoteBound</code> where set. <method>Directories</method> counts every listing
 /// asked for in <code>^||OcuPilotRemoteListings</code> and <method>Spawn</method> every child started
-/// in <code>^||OcuPilotRemoteSpawns</code>.</p>
+/// in <code>^||OcuPilotRemoteSpawns</code>; under <code>^||OcuPilotRemoteRace</code>,
+/// <code>create:&lt;name&gt;:&lt;directory&gt;</code> or <code>delete:&lt;name&gt;</code>, it creates
+/// or deletes that probe configuration once the listing has answered, as another writer could while
+/// the listing ran.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.RemoteDatabaseListingPort Extends OcuPilot.Port.RemoteDatabasePort
 {
@@ -26,6 +32,15 @@ Parameter SLOWSERVER = "OCUPROBE1816SLOW";
 Parameter SLOWSECONDS = 3;
 
 Parameter LATENAME = "OCUPROBE1816LATE";
+
+/// <p>The data server whose listing answers after its caller's next listing has started.</p>
+Parameter SLOWERSERVER = "OCUPROBE1816SLOWER";
+
+Parameter LATERNAME = "OCUPROBE1816LATER";
+
+/// <p>The data servers whose listing runs the shipped <method>ListRows</method>, each answered by
+/// <method>Call</method>: a 404, a failed call, and the rows the call asked for.</p>
+Parameter VENDORSERVERS = "OCUPROBE1816VABSENT,OCUPROBE1816VFAIL,OCUPROBE1816VCAP";
 
 /// <p>The data server whose listing answers no rows.</p>
 Parameter DOWNSERVER = "OCUPROBE1816DOWN";
@@ -51,7 +66,35 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
     Set tMutating = ##class(OcuPilot.Port.AdminPort).IsMutating(pEndpoint, pType)
     Set tIndex = $Increment(^||OcuPilotDatabaseCalls)
     Set ^||OcuPilotDatabaseCalls(tIndex) = $ListBuild(pEndpoint _ "/" _ pType, $Get(pQuery("name")) _ $Get(pQuery("dir")), $Select($IsObject(pBody): pBody.%ToJSON(), 1: ""), tMutating)
+    If (pEndpoint = ..#SERVERENDPOINT) && (pType = ..#LISTINGTYPE) && $ListFind($ListFromString(..#VENDORSERVERS), $ZConvert($Get(pQuery("name")), "U")) {
+        Quit ..VendorAnswer($ZConvert(pQuery("name"), "U"), +$Get(pQuery("maxRows")), .pResult, .pHttpStatus, .pFault)
+    }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The vendor's listing answer for one of <parameter>VENDORSERVERS</parameter>: 404 for the first,
+/// a 500 for the second, and <var>pMaxRows</var> rows for the third (three when the call asked for
+/// no number).</p>
+ClassMethod VendorAnswer(pServer As %String, pMaxRows As %Integer, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pResult = ""
+    Set pFault = ""
+    If pServer = $Piece(..#VENDORSERVERS, ",", 1) {
+        Set pHttpStatus = 404
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "Not found")
+        Quit $$$ERROR($$$GeneralError, "the data server is not defined")
+    }
+    If pServer = $Piece(..#VENDORSERVERS, ",", 2) {
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, "The listing failed")
+        Quit $$$ERROR($$$GeneralError, "the listing failed")
+    }
+    Set pHttpStatus = 200
+    Set pResult = []
+    For tI = 1:1:$Select(pMaxRows > 0: pMaxRows, 1: 3) {
+        Do pResult.%Push({"Name": ("OCUPROBE1816N" _ tI), "Directory": ("/ocuprobe1816n" _ tI _ "/")})
+    }
+    Quit $$$OK
 }
 
 ClassMethod NetworkEnabled() As %Boolean
@@ -70,7 +113,19 @@ ClassMethod ListSeconds() As %Integer
 ClassMethod Directories(pServer As %String, Output pRows As %DynamicArray, Output pTruncated As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set ^||OcuPilotRemoteListings = $Get(^||OcuPilotRemoteListings) + 1
-    Quit ##super(pServer, .pRows, .pTruncated, .pHttpStatus, .pFault)
+    Set tSC = ##super(pServer, .pRows, .pTruncated, .pHttpStatus, .pFault)
+    Set tRace = $Get(^||OcuPilotRemoteRace)
+    Kill ^||OcuPilotRemoteRace
+    If $Piece(tRace, ":", 1) = "create" Do ##class(OcuPilot.Test.RemoteDatabaseProbe).SeedRemote($Piece(tRace, ":", 2), $Piece(tRace, ":", 3))
+    If $Piece(tRace, ":", 1) = "delete" {
+        Set tOrigNS = $NAMESPACE
+        Try {
+            Set $NAMESPACE = "%SYS"
+            Do ##class(Config.Databases).Delete($Piece(tRace, ":", 2))
+        } Catch {}
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tSC
 }
 
 ClassMethod Spawn(pNonce As %String, pServer As %String) As %Boolean
@@ -90,6 +145,12 @@ ClassMethod ListRows(pServer As %String, pCap As %Integer, Output pRows, Output 
         Set pRows = [{"Name": (..#LATENAME), "Directory": "/ocuprobe1816late/"}]
         Quit $$$OK
     }
+    If tServer = ..#SLOWERSERVER {
+        Hang ..#SLOWSECONDS + 2
+        Set pRows = [{"Name": (..#LATERNAME), "Directory": "/ocuprobe1816later/"}]
+        Quit $$$OK
+    }
+    If $ListFind($ListFromString(..#VENDORSERVERS), tServer) Quit ##super(pServer, pCap, .pRows, .pHttpStatus, .pFault)
     If (tServer = ..#DOWNSERVER) || (tServer = ..#EMPTYSERVER) {
         Set pRows = []
         Quit $$$OK
@@ -100,11 +161,13 @@ ClassMethod ListRows(pServer As %String, pCap As %Integer, Output pRows, Output 
     Quit $$$OK
 }
 
-/// <p><parameter>EMPTYSERVER</parameter> reads connected, as the shipped port's
-/// <parameter>NORMALSTATUS</parameter>; every other server reads its status from the instance.</p>
+/// <p><parameter>EMPTYSERVER</parameter> and the failing one of <parameter>VENDORSERVERS</parameter>
+/// read connected, as the shipped port's <parameter>NORMALSTATUS</parameter>; every other server reads
+/// its status from the instance.</p>
 ClassMethod ServerStatus(pServer As %String) As %String
 {
     If $ZConvert(pServer, "U") = ..#EMPTYSERVER Quit ..#NORMALSTATUS
+    If $ZConvert(pServer, "U") = $Piece(..#VENDORSERVERS, ",", 2) Quit ..#NORMALSTATUS
     Quit ##super(pServer)
 }
 
@@ -125,10 +188,10 @@ ClassMethod Manager() As %String
     Quit ##class(%File).NormalizeDirectory($System.Util.ManagerDirectory())
 }
 
-/// <p>Forget the counts and the armed license and bound, and the recorded calls.</p>
+/// <p>Forget the counts, the armed license, bound and race, and the recorded calls.</p>
 ClassMethod Clear()
 {
-    Kill ^||OcuPilotRemoteListings, ^||OcuPilotRemoteSpawns, ^||OcuPilotRemoteLicensed, ^||OcuPilotRemoteBound
+    Kill ^||OcuPilotRemoteListings, ^||OcuPilotRemoteSpawns, ^||OcuPilotRemoteLicensed, ^||OcuPilotRemoteBound, ^||OcuPilotRemoteRace
     Do ##class(OcuPilot.Test.DatabaseRecordPort).Clear()
 }
 

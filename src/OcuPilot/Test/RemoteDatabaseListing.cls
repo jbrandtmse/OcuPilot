@@ -8,8 +8,9 @@
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, a license that enables no ECP
 /// (IRIS Community), and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the
 /// class defines probe ECP data servers (configuration only, never contacted) and probe remote
-/// configurations (<class>OcuPilot.Test.RemoteDatabaseProbe</class>), and sets the governance policy.
-/// Every probe object is removed by exact name before all, after each and after all.</p>
+/// configurations (<class>OcuPilot.Test.RemoteDatabaseProbe</class>), and mints proposals, restoring
+/// the governance policy it snapshots. Every probe object is removed by exact name before all, after
+/// each and after all.</p>
 Class OcuPilot.Test.RemoteDatabaseListing Extends %UnitTest.TestCase
 {
 
@@ -25,6 +26,8 @@ Parameter SEAM = "OcuPilot.Test.RemoteDatabaseListingPort";
 Parameter RULES = "OcuPilot.Test.RemoteDatabaseRulesFixture";
 
 Parameter PORT = "OcuPilot.Port.RemoteDatabasePort";
+
+Parameter RECORD = "OcuPilot.Test.DatabaseRecordPort";
 
 Parameter CREATETOOL = "OcuPilot.Screen.Tool.RemoteDatabaseCreate";
 
@@ -102,6 +105,9 @@ Method TestALicensedListingAnswersTheServersRows()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Spawns"), 1, "from one child job")
     Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816DOWN", .tRows, .tTruncated, .tHttp, .tFault)
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "422 Server:" _ ..#UNREACHABLE, "a server listing no rows while not connected is unreachable")
+    ; The shipped status read: the data servers' list names the defined server's status, not connected.
+    Set tStatus = $ClassMethod(..#PORT, "ServerStatus", "OCUPROBE1816DOWN")
+    Do $$$AssertTrue((tStatus '= "") && (tStatus '= $Parameter(..#PORT, "NORMALSTATUS")), "the shipped port reads the server's status from the data servers' list (" _ tStatus _ ")")
 }
 
 /// <p>The bound: a child that answers past a one-second bound is cut at the bound, nothing is
@@ -204,6 +210,73 @@ Method TestTheListingRouteAnswersTheRowsTheFormReads()
     If tBody.%GetTypeOf("rows") '= "array" Quit
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", tBody.%Get("rows")), "OCUPROBE1816X:/ocuprobe1816x/,OCUPROBE1816Y:/ocuprobe1816y/,IRISSYS:" _ $ClassMethod(..#SEAM, "Manager"), "each row a database's name and directory")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Spawns"), 1, "from one child job")
+}
+
+/// <p>A late answer arriving while the next listing waits is discarded by its nonce: the slow child,
+/// cut at a one-second bound, answers during the next listing, of a slower server, which answers its
+/// own row.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.RemoteDatabasePort.Await</method> accepts a message
+/// whatever its nonce -> the second listing answers the first server's row and this goes red.</p>
+Method TestALateAnswerArrivingDuringTheNextListingIsDiscarded()
+{
+    Set ^||OcuPilotRemoteLicensed = 1
+    Set ^||OcuPilotRemoteBound = 1
+    Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816SLOW", .tRows, .tTruncated, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "422 Server:" _ ..#UNREACHABLE, "the slow listing is cut at its bound")
+    ; The next listing starts at once, so the cut child answers while it waits.
+    Set ^||OcuPilotRemoteBound = $Parameter(..#SEAM, "SLOWSECONDS") + 5
+    Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816SLOWER", .tRows, .tTruncated, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the next listing answers")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Names", tRows), "OCUPROBE1816LATER:/ocuprobe1816later/", "with its own server's row, the late answer discarded")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Spawns"), 2, "each from its own child")
+}
+
+/// <p>The vendor's answer, read in the child through the shipped
+/// <method>OcuPilot.Port.RemoteDatabasePort.ListRows</method> (the seam answers only the vendor call):
+/// a 404 is <code>DATABASE.SERVER.ABSENT</code>; a failed call is unreachable even for a server that
+/// reads connected; and a listing longer than <code>LISTINGCAP</code>, asked for as one more row, is
+/// cut there and marked.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.RemoteDatabasePort.Directories</method> drops its
+/// <code>ok</code> term -> the failed call against a connected server answers no rows and this goes
+/// red.</p>
+Method TestTheChildReadsTheVendorsAnswer()
+{
+    Set ^||OcuPilotRemoteLicensed = 1
+    Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816VABSENT", .tRows, .tTruncated, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "422 Server:DATABASE.SERVER.ABSENT", "a server the vendor does not know is absent")
+    Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816VFAIL", .tRows, .tTruncated, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "422 Server:" _ ..#UNREACHABLE, "a failed listing of a connected server is unreachable")
+    Set tSC = $ClassMethod(..#SEAM, "Directories", "OCUPROBE1816VCAP", .tRows, .tTruncated, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a long listing answers")
+    Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size(), 1: -1) _ " " _ tTruncated, $Parameter(..#PORT, "LISTINGCAP") _ " 1", "cut at the cap and marked")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Spawns"), 3, "each from its own child")
+}
+
+/// <p>The listing's window: the port reads the configuration again once the listing has answered, so
+/// a configuration created under a create's name meanwhile is refused <code>DATABASE.NAME.TAKEN</code>
+/// on Name and keeps its directory, and a re-point's target deleted meanwhile is refused 404
+/// <code>DATABASE.NAME.ABSENT</code> and not re-created by the vendor's upsert.</p>
+/// <p>Mutation (Rule 19): drop that second read from
+/// <method>OcuPilot.Port.RemoteDatabasePort.RemoteWrite</method> -> the upsert re-points the
+/// configuration created meanwhile and this goes red.</p>
+Method TestAConfigurationThatMovedDuringTheListingIsRefused()
+{
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer"), "the probe data server is defined")
+    Set ^||OcuPilotRemoteLicensed = 1
+    Set ^||OcuPilotRemoteRace = "create:OCUPROBE1816RACEC:/ocuprobe1816racec/"
+    Kill tQuery
+    Set tQuery("name") = "OCUPROBE1816RACEC"
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Database.ConfigCRUD", "PUT", .tQuery, {"Server": "OCUPROBE1816SRV", "Directory": "/ocuprobe1816x/"}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "422 Name:DATABASE.NAME.TAKEN", "a name taken while the listing ran is refused on Name")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OCUPROBE1816RACEC", "Directory"), "/ocuprobe1816racec/", "and the configuration created meanwhile keeps its directory")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRemote", "OCUPROBE1816RACED"), "a remote database to re-point")
+    Set ^||OcuPilotRemoteRace = "delete:OCUPROBE1816RACED"
+    Set tQuery("name") = "OCUPROBE1816RACED"
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "Database.ConfigCRUD", "PUT", .tQuery, {"Server": "OCUPROBE1816SRV", "Directory": "/ocuprobe1816x/"}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Refusal", tSC, tHttp, tFault), "404 DATABASE.NAME.ABSENT", "a re-point whose target was deleted while the listing ran is refused")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBE1816RACED"), 0, "and the vendor's upsert did not re-create it")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "Writes"), "", "nothing was written")
 }
 
 }

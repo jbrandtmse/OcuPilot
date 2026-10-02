@@ -1041,6 +1041,15 @@ class TestAgentJobReachRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_agent_job_reach(problems)
         self.assertEqual(problems, [], f"expected the listing's spawn accepted, got {problems}")
+        # The allowance is that one file, not the Port package: a sibling port's JOB is refused.
+        self.write(
+            "src/OcuPilot/Port/AdminPort.cls",
+            "Class OcuPilot.Port.AdminPort Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Port.AdminPort).Child(1)::5\n}\n\n}\n",
+        )
+        problems = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(any("Port/AdminPort.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
 
     def test_a_state_class_naming_the_agent_package_is_refused(self):
         # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter

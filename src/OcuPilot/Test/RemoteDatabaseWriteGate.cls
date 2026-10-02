@@ -135,7 +135,8 @@ Method TestTheScreensPairsReadTheListTheFormAndTheListing()
 /// status, a JSON content type and its body's shape. The form answers its required fields, the
 /// listing's bound and the data servers; the listing answers <code>DATABASE.SERVER.UNREACHABLE</code>
 /// on Server on this license; a create and a re-point naming no directory are refused on Directory
-/// before any vendor call, and nothing is written.</p>
+/// before anything is listed or written; and a re-point of a configuration the instance does not hold
+/// is 404 <code>DATABASE.NAME.ABSENT</code>.</p>
 Method TestEachRouteAnswersJsonOverTheWire()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRemote", "OCUPROBE1816GW"), "a remote database to re-point")
@@ -160,11 +161,15 @@ Method TestEachRouteAnswersJsonOverTheWire()
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as JSON")
     Do $$$AssertEquals(..Violation(tBody), "Directory:" _ ##class(OcuPilot.Api.DatabaseError).#REMOTEDIRECTORYNONE, "a create naming no directory is refused on Directory")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBE1816GN"), 0, "and nothing was created")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ $Replace(..#EDITPATH, ":id", "OCUPROBE1816GX"), tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders, {"Directory": "/ocuprobe1816x/"}.%ToJSON(), "application/json")
+    Set tAnswer = ..Parsed(tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404 " _ ##class(OcuPilot.Api.DatabaseError).#NAMEABSENT, "a re-point of a configuration the instance does not hold is 404: " _ $Extract(tBody, 1, 200))
 }
 
 /// <p>Without <code>%DB_IRISSYS:WRITE</code>: the form's create and re-point, the row action's delete,
-/// and the agent's confirm of each are refused 403 naming the pair, with the port asked nothing and
-/// nothing listed.</p>
+/// and the agent's confirm of each are refused 403 naming the pair, with nothing sent through the seam
+/// and nothing listed. A re-point's <code>MountRequired</code> pair check reads the stored configuration
+/// through the shipped port first, which the seam does not record.</p>
 /// <p>Mutation (Rule 19): drop <code>%DB_IRISSYS:WRITE</code> from
 /// <method>OcuPilot.Screen.Tool.RemoteDatabaseCreate.PrivilegePairs</method> -> the create legs reach
 /// the port and this goes red.</p>

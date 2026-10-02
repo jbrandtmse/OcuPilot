@@ -388,6 +388,7 @@ test('AC5: the form states the bound before a server is chosen, gates the select
     assert.ok(running.line.startsWith(prefix) && /^\d{2}:\d{2}:\d{2}$/.test(running.line.slice(prefix.length)), `the running line names the server and the time: ${running.line}`);
 
     // Released, the instance answers the license refusal at once, on Data server, within the bound plus 5 s.
+    const releasedAt = Date.now();
     await held[0].continue();
     await page.waitForFunction(
       (wanted) => (document.querySelector('#ocu-remote-database-Server-reason')?.textContent ?? '').trim() === wanted,
@@ -395,6 +396,8 @@ test('AC5: the form states the bound before a server is chosen, gates the select
       UNREACHABLE_REASON
     );
     assert.ok(Date.now() - chosenAt <= (LIST_SECONDS + 5) * 1000, 'the reason rendered within the bound plus 5 s');
+    // At once: a listing attempted on this license would block about 11 s (Task 0), so 5 s tells the two apart.
+    assert.ok(Date.now() - releasedAt < 5000, `the license refusal rendered at once, ${Date.now() - releasedAt} ms after the listing was released`);
     const refused = await page.evaluate(() => ({
       ariaDisabled: document.querySelector('#ocu-remote-database-Server').getAttribute('aria-disabled'),
       invalid: document.querySelector('#ocu-remote-database-Server').getAttribute('aria-invalid'),

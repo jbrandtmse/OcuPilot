@@ -1,7 +1,8 @@
 /// <p>Test-only <class>OcuPilot.Area.OsMgmt.RemoteDatabaseRules</class> subclass whose
 /// <method>PortClass</method> answers the port a test names in <code>^||OcuPilotDatabaseWritePort</code>,
-/// and <class>OcuPilot.Test.RemoteDatabaseListingPort</class> when none is named, so the rules' reads,
-/// the form read and the listing route go through the seam and are recorded there
+/// and <class>OcuPilot.Test.RemoteDatabaseListingPort</class> when none is named, so the rules' data
+/// server reads, the form's data servers read and the listing route go through the seam and are
+/// recorded there; the name look-up and the form's configuration read keep their own ports
 /// (<class>OcuPilot.Test.RemoteDatabaseSaveFixture</class> declares it as its rules).</p>
 /// <p><method>Route</method> runs the form read or the listing route in this process against request
 /// and response stubs and captures the envelope it writes.</p>

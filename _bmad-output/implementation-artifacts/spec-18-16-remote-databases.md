@@ -44,7 +44,7 @@ deferred: []
   - `delete` (AD-51): subject `Server,Directory`, `DESTRUCTIVE`. It deletes the configuration only, never a file.
 - **Pairs.** Each tool declares the screen's two pairs plus `%DB_IRISSYS:WRITE`, which Task 0 confirms. The update adds `%Admin_Operate:USE` whenever its complete set sends `MountRequired` true (`LocalDatabaseUpdateMount.ArgumentPairs`). Each `PrivilegePairs` ends in `Gate.WithClassicPages` over its `CLASSICPAGES`: create and update `%CSP.UI.Portal.Dialog.RemoteDatabase`, delete `%CSP.UI.Portal.Dialog.DatabaseDelete`. A missing pair is refused by name before any port call.
 - **The remote directory (proposed AD-21 seventh case).** The caller names a data server the instance defines (`ECP.DataServer` `GET` answers 200) and one directory. The directory is accepted only when it equals, character for character, a `Directory` the data server's listing answers at that write. It is refused when the listing names its row `IRISSYS`. The listing runs when a person chooses a server, at every Save and at every confirm. It never runs at a mint, never in a turn, and is never cached.
-- **The owner's database-directory rule, read for a remote directory** (Design Notes). An omitted directory is refused `DATABASE.REMOTEDIRECTORY.NONE` before any vendor call. The data server's manager directory, the directory its own listing names `IRISSYS`, is refused `DATABASE.REMOTEDIRECTORY.MANAGER` before any vendor write.
+- **The owner's database-directory rule, read for a remote directory** (Design Notes). An omitted directory is refused `DATABASE.REMOTEDIRECTORY.NONE` before the listing and before any vendor write; only the reads that identify the target (a re-point's fresh read, an agent mint's target read) may precede it. The data server's manager directory, the directory its own listing names `IRISSYS`, is refused `DATABASE.REMOTEDIRECTORY.MANAGER` before any vendor write.
 - **The bound.**
   - `RemoteDatabasePort` runs the listing in a child job on the `TestCall` model: a nonce, `$System.Event`, and an abandoned child's late answer discarded. It waits `LISTSECONDS`, which is 20 s, raised by Task 0's rule to at most 40 s.
   - The form states the bound before the listing starts and shows a running line while it runs. The agent's proposal card states it before the confirm (`Consequence`).
@@ -77,7 +77,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 | Choose a server it cannot reach (licensed) | The seam: a licensed instance whose listing finds the server not connected | Before the listing starts, the form states it can take up to `LISTSECONDS` and connects to the data server. A running line shows while it runs. Within the bound the field shows the reason. | `DATABASE.SERVER.UNREACHABLE` |
 | Listing past the bound | A seam child that never answers; test bound 1 s | Answered at the bound, nothing sent. The abandoned child's late answer is discarded by the next listing. | `DATABASE.SERVER.UNREACHABLE` |
 | Create | Seam listing; Name `OCUPROBE1816C`, Directory `/ocuprobe1816x/` | Lists at the Save or the confirm, then sends `PUT /database?name=OCUPROBE1816C {Server, Directory}`. The row is listed after the change event, and the read-back reads `matches`. | none |
-| Owner's rule | Directory empty; or `/durable/iris/mgr/` (the listing's `IRISSYS` row) | Refused on Directory: an empty one before any vendor call, the `IRISSYS` one before any vendor write. Nothing is stored. | `DATABASE.REMOTEDIRECTORY.NONE`, `.MANAGER` |
+| Owner's rule | Directory empty; or `/durable/iris/mgr/` (the listing's `IRISSYS` row) | Refused on Directory: an empty one before the listing and any vendor write, the `IRISSYS` one before any vendor write. Nothing is stored. | `DATABASE.REMOTEDIRECTORY.NONE`, `.MANAGER` |
 | Directory not listed | `/elsewhere/` | Refused on Directory; nothing sent | `DATABASE.REMOTEDIRECTORY.ABSENT` |
 | Server not defined | `OCUPROBE1816NOSRV` | Refused on Server before any listing | `DATABASE.SERVER.ABSENT` |
 | Name taken or bad | A present name in another case; `1AB` | Refused on Name | `DATABASE.NAME.TAKEN`, `DATABASE.NAME.SHAPE` |
@@ -333,13 +333,69 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - **AC5:** Given a data server that cannot be reached:
   - On an instance whose license enables no ECP (`NetworkEnabled()` 0, as on `ocupilot-b-ci`), when a person chooses it or the agent's proposal is confirmed, then the answer is `DATABASE.SERVER.UNREACHABLE` at once, with the sentence naming the license; no listing runs, no ECP process starts, and nothing is written.
   - On a licensed instance (the seam), when a person chooses it, then the form has stated the bound and that it connects to the data server before the listing starts, and shows the running line while it runs; the reason appears on Data server within the bound plus 5 s, and nothing is written. When the agent proposes against it, the card states the bound before the confirm, the mint lists nothing, and the confirm answers `DATABASE.SERVER.UNREACHABLE` within the bound plus 5 s.
-- **AC6:** Given an omitted directory, an unlisted one, or the one the listing names `IRISSYS`, when either caller saves or confirms, then each is refused on Directory: `NONE` before any vendor call, the other two before any vendor write.
+- **AC6:** Given an omitted directory, an unlisted one, or the one the listing names `IRISSYS`, when either caller saves or confirms, then each is refused on Directory: `NONE` before the listing and before any vendor write (only the reads that identify the target may precede it), the other two before any vendor write.
 - **AC7:** Given a local configuration named to a remote tool, a protected name, or a caller lacking a declared pair, when the tool runs, then it is refused `DATABASE.LOCAL`, `PROHIBITED.OCUPILOTDATABASE` or `AUTH.NOPRIVILEGE` respectively, and nothing is sent.
 - **AC8:** Given the side bar, governance and rosters, when the story lands, then:
   - Remote databases is OS management's twelfth entry, with three prompts;
   - the three keys are in the baseline (the delete disabled);
   - every roster and pinned side-bar list includes the new screens and tools;
   - the DW-1337 gate holds in both themes.
+
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Runs on `ocupilot-b-ci`: `RemoteDatabaseListing` 2622, `RemoteDatabaseWriteGate` 2626, `RemoteDatabaseWrite` 2625, `RemoteDatabaseDescriptor` 2627; component specs 22/22; `remote-databases.browser-spec.mjs` 3/3 after rebuild and redeploy; `test:tools` 1772/1772; checker harness 145/145.
+
+- [x] [Review][Patch] med, fix-risk low: the upsert `PUT` followed a listing of up to 20 s with no second read of the target, so a name taken or a target deleted meanwhile was overwritten or re-created [src/OcuPilot/Port/RemoteDatabasePort.cls:99]
+- [x] [Review][Patch] med, fix-risk low: the nonce check in `Await` decided nothing in any test (late answer during the next listing) [src/OcuPilot/Test/RemoteDatabaseListing.cls:220]
+- [x] [Review][Patch] med, fix-risk low: the shipped `ServerStatus` was never asserted; the seam stood in for it [src/OcuPilot/Test/RemoteDatabaseListing.cls:111]
+- [x] [Review][Patch] med, fix-risk low: the seam replaced `ListRows`, so the child's 404, failed-call and cap branches never ran [src/OcuPilot/Test/RemoteDatabaseListing.cls:242]
+- [x] [Review][Patch] med, fix-risk low: the edit form's `?name=` read had no client assertion (AC3) [ui/src/app/areas/os-management/remote-database-form.store.spec.ts:231]
+- [x] [Review][Patch] low: `RemoteDatabaseSave.HandleUpdate`'s 404 branch ran in no test [src/OcuPilot/Test/RemoteDatabaseWriteGate.cls:164]
+- [x] [Review][Patch] low: the `JOB` allow-list harness could not see a widened allowance [scripts/test_check_objectscript.py:1052]
+- [x] [Review][Patch] low: the browser AC5 leg did not assert "at once" [ui/browser/remote-databases.browser-spec.mjs:400]
+- [x] [Review][Patch] low: docs claimed a re-point's empty directory and a missing pair are refused before any vendor call; the pair check and the fresh read precede, as the kernel's target read does on every agent create [src/OcuPilot/Test/RemoteDatabaseWriteGate.cls:138]
+- [x] [Review][Patch] low: the port header called the child short-lived; an abandoned child is not stopped [src/OcuPilot/Port/RemoteDatabasePort.cls:25]
+- [x] [Review][Patch] low: the rules' and the rules fixture's headers said every read goes through one port; the name look-up does not [src/OcuPilot/Area/OsMgmt/RemoteDatabaseRules.cls:11]
+- [x] [Review][Patch] low: `RemoteDatabaseListing`'s header said it sets the governance policy [src/OcuPilot/Test/RemoteDatabaseListing.cls:11]
+- [x] [Review][Patch] low: `EndpointType`'s doc did not name `CONNECTIONREADTYPES` (one line added, add-only) [src/OcuPilot/Port/AdminPort.cls:2420]
+- [x] [Review][Patch] low: the update tool's description omitted the ECP license the create's states [src/OcuPilot/Screen/Tool/RemoteDatabaseUpdate.cls:18]
+- [x] [Review][Patch] low: a name typed or a directory chosen during a Save stayed on the control while the store kept the old value [ui/src/app/areas/os-management/remote-database-form.page.ts:428]
+- [x] [Review][Defer] med, fix-risk high: a remote database's change toast opens Local databases (shared entity type) [ui/src/app/core/navigation.ts:462] — DW-1939 escalated owner=burndown
+- [x] [Review][Defer] low: `ClassicPageGate`'s message says thirty-five OWNPAIRS (now 38), a contended line [src/OcuPilot/Test/ClassicPageGate.cls:142] — DW-1940 wontfix-accepted
+- [x] [Review][Defer] low: no sentence for an empty Data server select [ui/src/app/areas/os-management/remote-database-form.page.ts:343] — DW-1941 wontfix-accepted
+- [x] [Review][Defer] low: the draft's listing route is a literal, not from `AdminRoutes` (non-GET only) [src/OcuPilot/Port/RemoteDatabasePort.cls:42] — DW-1942 wontfix-accepted
+- [x] [Review][Defer] low: an abandoned listing child is never stopped; each listing call spawns one [src/OcuPilot/Port/RemoteDatabasePort.cls:250] — DW-1943 by-design
+- [x] [Review][Defer] low: a listing over 1000 rows is cut and a directory past the cap refused [src/OcuPilot/Port/RemoteDatabasePort.cls:214] — DW-1944 wontfix-theoretical
+- [x] [Review][Defer] med: `RemoteDatabaseSave` is another per-entity Save without the per-target hold [src/OcuPilot/Area/OsMgmt/RemoteDatabaseSave.cls:31] — DW-1882 occurrence
+
+Rejected:
+
+- false: the license refusal reuses `UNREACHABLE`'s sentence — the Tasks give the code one sentence, and it names the license (AD-21)
+- false: neither bound sentence says "connects" — the hint says the listing runs over ECP; AC5 asks the card for the bound
+- spec-bound: no license check at the form read or the mint — the mint checks name and server only (Design Notes)
+- spec-bound: the agent cannot list data servers or directories — no listing in a turn (AD-7, AD-21); data servers are 18.6's
+- spec-bound: the membership check is stricter than the read-back's `unslashed` — AD-21 says character for character
+- spec-bound: the Directory select offers the `IRISSYS` row — no client copy of the listing rule
+- spec-bound: a remote tool mints against a local configuration — the refusal is at the write, on both callers
+- spec-bound: the shared create and change lists admit `Server` and `Directory` — Boundaries › Kernel
+- spec-bound: a data server's other system databases are accepted — AD-21 names `IRISSYS`; the classic dialog allows them
+- spec-bound: `LISTSECONDS` ignores the gateway timeout — the Tasks fix it at 20; 25 s is under the stock 60
+- spec-bound: Task 0's `Run`, `Snapshot` and `Diff` are unused — the Tasks name them
+- spec-bound: the update's `MountRequired` pair read cannot fire — Boundaries name `UpdateMount`'s `ArgumentPairs`
+- spec-bound: `REASONLOCAL` names Local databases on a delete — the Tasks fix the sentence
+- false: `Validate` hides later refusals behind `NONE` — required, so the name look-up's read never precedes it
+- false: the local form now publishes remote rules — no local field named `Server` or `Directory` renders them
+- false: the card can name an empty server — `proposal.unchanged` always carries `Server`
+- false: the `PUT` order contradicts AD-52 — the AD's named steps keep their order
+- false: the form departs from the Tasks' field wording — nothing is typed; the edit shows the stored directory
+- false: contended files edited in place — the one-line-list and count exceptions, the sanctioned `maximumWarning` edit, EXPERIENCE.md in place
+- false: the merge will conflict and the budget is stale — the orchestrator reconciles both at the second merge
+- low: a listing refused with an envelope leaves its banner after a successful retry — needs a 500/503/403 then success; the fix adds state
+- low: a child's vendor failure reads unreachable — `AdminPort` logs it in the child; the fix adds branches
+- low: `RemoteDatabaseSave.GROUPS` is unread — an override nothing reaches, no harm
+- low: the connected test compares a localized `Status` — the admin API's `LIST` answers no `StatusEnglish` (read on `ocupilot-b-ci`)
+- low: two suites assume an unlicensed instance — every instance and CI image here is Community
+- rejected: the Spec Change Log's LOCAL-before-server sentence holds only at the port — the fix edits the spec
 
 ## Spec Change Log
 
@@ -350,6 +406,8 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 - 2026-10-02, runner (dispatch 6, Rule 5 tier 1): integrate-forward `04409070` brought Stories 19.1, 19.12 and 23.3. EXPERIENCE.md is 997 lines on the merged tree (19.1 added four), so the line-count checks read 997 (Boundaries, Code Map, Tasks, Verification); :164, :377 and :479 are still the side-bar row, the Databases strings and the delete bodies. The concurrent epic is now Epic 19 on slot A: it also changes `Router.cls`, `Baseline.cls`, `Prohibited.cls`, `Screen/Gate.cls`, `ci-throwaway.sh`, `ui/angular.json`, EXPERIENCE.md (:173, :314, :321, :376, :380, :383-384, :392, :584-590) and the rosters `ReadTool`, `SurfaceCoverage`, `Wire`, `PortGate`, `Governance`, `GovernanceBaseline`, `ToolDispatch`, `ToolEmit`, `ToolRoundTrip`, `ClassicPageGate` and `Test/Prohibited.cls`; each stays add-only here. Side-bar pins are re-derived from the merged tree (19.1 added a ninth rail area).
 
 - 2026-10-02, implement (Task 0 resumed): **AD-8, after Story 18.15's paragraph,** for the runner to write: "**Story 18.16's remote database tools declare pairs beyond their screen's set** [AMENDED 2026-10-02, Story 18.16 implement, Rule 20]: `osmgmt.remotedatabases.create`, `.update` and `.delete` declare `%DB_IRISSYS:WRITE`, because a principal holding only the Remote databases screens' `%Admin_Manage:USE` and `%DB_IRISSYS:READ` was refused `PUT` and `DELETE` of `Database.ConfigCRUD` on protected `^SYS` nodes (measured at Story 18.16's Task 0), and the update `%Admin_Operate:USE` whenever its complete set sends `MountRequired` true, each refused by name before any port call. A remote database's delete names the namespaces and applications a local database's does, and no shared file." Amendment 6 (AD-15/AD-53) is not needed: step h recorded the vendor's `ConfigurationChange` event for every write. AD-42's third spawn site is now in `scripts/check-objectscript.py`'s `JOB` allow-list, with a harness case. The port's `PUT` order differs from the Code Map: the empty-directory refusal comes first (the owner's rule says before any vendor call), and `LOCAL` precedes the server check, so a re-point of a local configuration answers `LOCAL` rather than `SERVER.ABSENT`.
+
+- 2026-10-02, runner after code review (Rule 5 tier 1, Rule 20): "`NONE` before any vendor call" overclaimed -- a re-point's fresh read (AD-4) and an agent mint's target read precede the refusal, as the review measured. Restated in Boundaries, the matrix's owner's-rule row, AC6, Design Notes and AD-21's seventh case as "before the listing and before any vendor write"; the product promise (no listing and no write without a directory) is unchanged, and a person's create still makes no vendor call first (`RemoteDatabaseWrite`, calls=0).
 
 ## Review Triage Log
 
@@ -455,7 +513,7 @@ The seam listing below answers `[{Name:"OCUPROBE1816X", Directory:"/ocuprobe1816
 **The owner's database-directory rule, read for a remote directory.**
 
 - A remote directory lives on the data server.
-- "Always required, never left for the vendor to default": a create and a re-point each require a directory, refused `REMOTEDIRECTORY.NONE` before any vendor call. Task 0 records what the vendor would store without one.
+- "Always required, never left for the vendor to default": a create and a re-point each require a directory, refused `REMOTEDIRECTORY.NONE` before the listing and before any vendor write. Task 0 records what the vendor would store without one.
 - "Nothing is ever written into IRISSYS's directory, the manager directory": this means the data server's manager directory, which only the data server knows. The directory its own listing names `IRISSYS` is refused `REMOTEDIRECTORY.MANAGER`. The refusal follows the listing, which is a read, and precedes any vendor write. That is the only sense in which "before any vendor call" can hold for a directory the instance cannot see.
 - A data server that is this instance would list its own `IRISSYS`, so the instance's own manager directory is covered the same way.
 
@@ -560,6 +618,11 @@ Mutations run, each reverted byte-identical (server fingerprint `cc5688d5`, clie
 - mutation: `Snippet` renders a `PUT` without the listing step → `RemoteDatabaseDescriptor` draft leg red, AD-59 (run 2207)
 - mutation: the rules read on past an empty directory → `RemoteDatabaseWrite` owner's-rule leg red on its zero calls (run 2208)
 - mutation: List databases dropped from the form, or `listAgain` a no-op → the page spec's and the store spec's AC3 legs red; the read-back not kept across the create's arrival → the page spec's AC2 leg red (component runner)
+- mutation (code review, four applied together, each reddening only its own test, run 2621): `RemoteWrite` drops its read after the listing → `RemoteDatabaseListing` moved-during-the-listing leg red, AC2/AD-54; `Await` accepts any nonce → its late-answer leg red, AC5; `ServerStatus` reads `State` → the licensed leg's status assertion red, AC5; `Directories` drops its `ok` term → the vendor-answer leg red, AC5
+- mutation: `RemoteDatabaseSave.HandleUpdate` drops its 404 branch → `RemoteDatabaseWriteGate` over-the-wire leg red, AC3 (run 2624)
+- mutation: the store's form read names `?id=` → the store spec's AC3 leg red; `onName` drops its in-flight guard → the page spec's in-flight leg red (component runner)
+- mutation: the license pre-check answers after `Hang 6` → `remote-databases.browser-spec.mjs` AC5 red on its at-once assertion, after rebuild and redeploy (browser runner)
+- mutation: `JOB_ALLOWED` admits `Port/AdminPort.cls` → `test_the_remote_directory_listing_may_spawn_its_child` red (checker harness)
 
 ## Auto Run Result
 
