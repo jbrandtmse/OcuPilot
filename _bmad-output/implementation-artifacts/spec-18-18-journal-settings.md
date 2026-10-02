@@ -50,7 +50,7 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
 - **Rules.** `Area/OsMgmt/JournalRules.cls` holds them once. Both callers refuse each on its field before any vendor call:
   - `FileSizeLimit`: a whole number from 1 to 4079 (`JOURNAL.FILESIZE.SHAPE`). The lower bound becomes 0 only if Task 0 measures that the vendor stores 0 (`irissys/Config/Journal.cls:80`, `MINVAL = 0`).
   - `DaysBeforePurge` from 0 to 100, `BackupsBeforePurge` from 0 to 10 (`JOURNAL.PURGE.SHAPE`; `Journal.cls:64-77`).
-  - `JournalFilePrefix` matches `^[A-Za-z0-9._-]{0,64}$` (`JOURNAL.PREFIX.SHAPE`).
+  - `JournalFilePrefix` matches `^[A-Za-z0-9_-]{0,64}$` (`JOURNAL.PREFIX.SHAPE`); the vendor refuses a dot (Task 0).
   - The four booleans are JSON booleans (`JOURNAL.BOOLEAN.SHAPE`).
   - A key outside `SettableFields` is refused 400 `PORT.FIELD.UNEXPECTED` on the Save; the agent's closed schema refuses it as `TOOL.ARGUMENTS`.
 - **Consequence.** A write whose payload sends `FreezeOnError` true carries `JOURNAL.SETTINGS.FREEZE`: "With Freeze on error on, a journal write error blocks every process that journals until it is fixed." The form shows that sentence under the checkbox while it is checked.
@@ -248,7 +248,7 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
   - `JOURNAL.DIRECTORY.ABSENT` (422): "That directory does not exist on the instance. Create it, then choose it."
   - `JOURNAL.FILESIZE.SHAPE` (422): "Enter a whole number of megabytes from 1 to 4079."
   - `JOURNAL.PURGE.SHAPE` (422): "Enter a whole number: up to 100 days, or up to 10 backups."
-  - `JOURNAL.PREFIX.SHAPE` (422): "Use up to 64 letters, digits, dots, hyphens or underscores."
+  - `JOURNAL.PREFIX.SHAPE` (422): "Use up to 64 letters, digits, hyphens or underscores."
   - `JOURNAL.BOOLEAN.SHAPE` (422): "Choose on or off."
 - `src/OcuPilot/Screen/Descriptor/JournalSettings.cls` (new), per Boundaries.
 - `src/OcuPilot/Kernel/EntityType.cls` gains `journal-settings`. `src/OcuPilot/Kernel/EntityRef.cls` `IDRULES` gains `journal-settings:singleton`.
@@ -327,6 +327,8 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
   - EXPERIENCE.md reads 1001 lines.
 
 ## Spec Change Log
+
+- 2026-10-02, runner at the Task 0 halt (Rule 5 tier 1, and evidence for the orchestrator): the prefix rule drops the dot (`^[A-Za-z0-9_-]{0,64}$`, "Use up to 64 letters, digits, hyphens or underscores."), because the vendor refuses one (#7209 on `Config.Journal:JournalFilePrefix`, confirmed by the stage). `FileSizeLimit`'s lower bound becomes 0 by the spec's own step-10 rule (the vendor stored 0; `Config.Journal` declares `MINVAL = 0, MAXVAL = 4079`). The runner re-measured the changing settings `PUT` (`{FileSizeLimit: 1025}`, through `AdminPort`, `RunAs`, the plumbing patch applied and reverted) on `ocupilot-b-ci`: Journal settings' three pairs, 500 `<PROTECT>%SaveData+26^Config.Journal.1 ^SYS`, nothing stored; plus `%DB_IRISSYS:WRITE`, 500 `#1142 Error switching journal file: Operation requires %Admin_Operate:Use privilege` with the change STORED and no new file (a half-applied write); plus `%Admin_Operate:USE` alone, the same `<PROTECT>`, nothing stored; plus both, 200, stored, new journal file. Every row matches the handoff's; journal settings restored byte-equal after each row, probes removed, monitor 0 (evidence `/tmp/epic-18-d6/1818-remeasure-out.txt`). The extra `%Admin_Operate:USE` pair (HALT 2) waits for the orchestrator's ruling.
 
 - 2026-10-02, implement Task 0 (HALT, step 5; Design Notes › Measured at implement). For the runner, pending the decision on the halt:
   - **Recommended intent amendments:** `JournalFilePrefix` matches `^[A-Za-z0-9_-]{0,64}$`, reason "Use up to 64 letters, digits, hyphens or underscores."; the tool and the Save also declare `%Admin_Operate:USE`, refused by name before any port call; `FileSizeLimit` from 0 to 4079.
