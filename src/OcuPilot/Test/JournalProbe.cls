@@ -2,9 +2,9 @@
 /// and restore, a probe alternate journal directory and probe principals; switches the journal file
 /// where the list names no closed file (<method>EnsureClosedFile</method>); restores the journal state a
 /// caller captured before it ran; and takes canonical snapshots of what a journal read or write can
-/// change, so a run can be compared with the state before it. Every object it creates or removes is
-/// named with <parameter>PREFIX</parameter> (users and roles compared without case), and it never
-/// touches another.</p>
+/// change, so a run can be compared with the state before it. Every user, role and directory it
+/// creates or removes is named with <parameter>PREFIX</parameter> (users and roles compared without
+/// case), and it never touches another.</p>
 /// <p><b>It never deletes a journal file.</b> The journal history the instance lists stops at the first
 /// missing file, so a probe directory that holds one is left in place; the instance's own purge ages
 /// those files out.</p>
@@ -330,7 +330,7 @@ ClassMethod EnsureClosedFile(pArmed As %Boolean, Output pSwitched As %Integer, p
         }
         If '..NeedsSwitch(tRows, ##class(%SYS.Journal.System).GetCurrentFileName()) Quit
         If 'pArmed {
-            Set tSC = $$$ERROR($$$GeneralError, "the journal file list names " _ tRows.%Size() _ " file(s) and no closed one, and closing one takes a journal switch the calling class is not armed for here, so nothing was switched")
+            Set tSC = $$$ERROR($$$GeneralError, "the journal file list names " _ tRows.%Size() _ " file(s) and no closed file after the current one; closing one takes a journal switch, which the calling class's arming variable does not allow here (a throwaway from scripts/ci-throwaway.sh sets it), so nothing was switched")
             Quit
         }
         If pSwitched >= ..#SWITCHLIMIT {

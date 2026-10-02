@@ -9089,3 +9089,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: JournalSwitchDirectory.FINGERPRINTSUBJECT is CurrentFile,CurrentDirectory,OtherDirectory, as the spec's tools table declares STATE / CurrentFile,CurrentDirectory; fails closed, the agent re-proposes
 - 2026-10-02T19:49:21Z status=by-design owner=18-5-journals by=cr note=spec Boundaries tools table names the subject; reopen only through a spec amendment
+
+### DW-1959: JournalRead's and the journals browser spec's closed-file precondition calls take the no-switch path in every current run, so dropping either stays green
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: CI shard 1 runs AdminPortAsync (pos 3, its in-test EnsureClosedFile switches) before JournalRead (pos 40); the browser spec's AC3 switch leg runs before its AC5 and AC2 legs; the slot-B throwaway lists hundreds of files, so neither call has switched in any run
+- 2026-10-02T21:40:16Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a missing closed journal file or fewer than two listed files
+- 2026-10-02T21:40:29Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a closed-file need; the browser hook may switch on CI

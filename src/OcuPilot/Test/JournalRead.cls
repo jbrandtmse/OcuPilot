@@ -8,8 +8,9 @@
 /// <p>Its tests read only. Where the journal file list names no closed file,
 /// <method>OnBeforeAllTests</method> first switches the journal file to close one
 /// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), only when
-/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is kept. It needs
-/// journaling on, a caller holding <code>%All</code>, and OcuPilot serving over HTTP as
+/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>, and otherwise fails without running a
+/// test; the file it closes is kept. It needs journaling on, a caller holding <code>%All</code>, and
+/// OcuPilot serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account.</p>
 Class OcuPilot.Test.JournalRead Extends %UnitTest.TestCase
 {

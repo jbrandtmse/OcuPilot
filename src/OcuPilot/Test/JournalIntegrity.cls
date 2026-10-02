@@ -8,8 +8,9 @@
 /// holding <code>%All</code>. Where the journal file list names no closed file,
 /// <method>OnBeforeAllTests</method> first switches the journal file to close one
 /// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), only when
-/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is kept. Otherwise it
-/// writes only proposals, ledger rows and agent markers, and removes the proposals it minted.</p>
+/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>, and otherwise fails without running a
+/// test; the file it closes is kept. Apart from that switch it writes only proposals, ledger rows and
+/// agent markers, and removes the proposals it minted.</p>
 Class OcuPilot.Test.JournalIntegrity Extends %UnitTest.TestCase
 {
 

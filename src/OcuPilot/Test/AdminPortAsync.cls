@@ -14,8 +14,8 @@
 /// vendor task row, which the port deletes; the row count read through the port is asserted
 /// unchanged. Where the journal file list names no closed file, the journal check's test first
 /// switches the journal file to close one (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>),
-/// only when <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is
-/// kept.</p>
+/// only when <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>, and otherwise that test
+/// fails; the file it closes is kept.</p>
 Class OcuPilot.Test.AdminPortAsync Extends %UnitTest.TestCase
 {
 

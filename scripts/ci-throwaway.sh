@@ -464,8 +464,9 @@ services:
       # writing. Each class restores the current directory, the primary and the alternate it
       # found and asserts the restore; the journal files a switch creates stay (Story 18.5).
       # classes: JournalWrite, JournalWriteGate, PathPortInstance
-      # The journal read classes and AdminPortAsync's journal check switch the journal file only where
-      # the list names no closed file, to close one (OcuPilot.Test.JournalProbe.EnsureClosedFile).
+      # JournalRead, JournalIntegrity, JournalWrite and JournalWriteGate before their tests, and
+      # AdminPortAsync in its journal check, also switch the journal file where the list names no
+      # closed file, to close one (OcuPilot.Test.JournalProbe.EnsureClosedFile).
       # classes: AdminPortAsync, JournalIntegrity, JournalRead
       OCUPILOT_ALLOW_JOURNAL: "1"
     volumes:
