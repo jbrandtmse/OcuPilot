@@ -344,7 +344,16 @@ test("AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, i
 
   const { context, page, tag } = await listWithLiveCard();
   try {
-    // The read tool-call card completed and collapsed before the proposal card arrived.
+    // The tool-call card completes and collapses. A poll between the mint and the step's finish
+    // shows the proposal card beside a card still running, so its done is waited for. A card that
+    // never reads done falls through to the assertions below, which name its state.
+    await page
+      .waitForFunction(
+        (word) => (document.querySelector('app-tool-call-card .ocu-tool-call-status-word')?.textContent ?? '').trim() === word,
+        { timeout: config.navigationTimeoutMs },
+        STRINGS.toolCallStatusDone
+      )
+      .catch(() => {});
     const read = await page.evaluate(() => {
       const card = document.querySelector('app-tool-call-card');
       return {

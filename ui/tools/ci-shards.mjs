@@ -3,7 +3,7 @@
  * How CI splits its two long suites across shard jobs, and how a roll-up proves the split ran whole
  * (Story 13.5).
  *
- * `instance shard k/3` runs its share of the ObjectScript classes through `ci-runner.mjs --shard`,
+ * `instance shard k/4` runs its share of the ObjectScript classes through `ci-runner.mjs --shard`,
  * and `browser shard k/3` its share of the spec files through `ci-browser.mjs`. Every leg computes
  * the split itself, from the same offered list and the same `ci-timings.json`, so the legs agree
  * without talking to each other: items sorted by recorded seconds, longest first, then by name in

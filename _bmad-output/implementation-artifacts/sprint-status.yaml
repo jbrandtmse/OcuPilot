@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-01-2026 17:26'
+last_updated: '10-01-2026 17:30'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -346,7 +346,7 @@ development_status:
   epic-23: in-progress
   23-1-the-range-end-cleanup: done
   23-2-the-range-end-cleanup-part-2: done
-  23-3-the-range-end-cleanup-part-3: backlog
+  23-3-the-range-end-cleanup-part-3: in-progress
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"

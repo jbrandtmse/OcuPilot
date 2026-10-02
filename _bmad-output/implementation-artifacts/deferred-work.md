@@ -8848,3 +8848,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AtelierPortDenial.OnBeforeAllTests grants tHome only while the port also requires the globals resource; the two coincide on every CI and throwaway instance
 - 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real only on an install namespace whose globals database differs from its routines database
+- 2026-10-01T21:22:56Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=98e71205 (cd14a21f): four instance legs, run 36923461500 green, longest leg 38.4 min, wall 38.7 (was 46.1)
+
+### DW-1904: The spine's Operational Envelope Build and CI row lists the client unit tests among the suites run against throwaway containers and never names the browser specs it then splits across three shards
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:1050 (amended in 98e71205): the client unit tests run in gates with no container; Stack > CI (:913) states both suites correctly
+- 2026-10-01T20:58:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=cr note=reopen_if=a plan or review cites the Build and CI row for where client unit tests or browser specs run (spine contended: add-only)

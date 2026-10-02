@@ -45,7 +45,7 @@ let result = null;
 
 before(async () => {
   await assertThrowaway(config);
-  browser = await puppeteer.launch(launchOptions(config));
+  browser = await puppeteer.launch({ ...launchOptions(config), protocolTimeout: 600_000 });
   result = await walk(browser, config);
   for (const line of reportLines(result.report)) console.log(line);
 });
