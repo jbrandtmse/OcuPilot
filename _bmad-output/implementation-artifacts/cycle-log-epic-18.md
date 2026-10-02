@@ -450,3 +450,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-02T13:54:53Z	Epic 18	ledger_decision_recorded	DW-1939=routed_owner=range-end-cleanup_by=merge_gate(trailer_on_branch)
 2026-10-02T14:30:33Z	Epic 18	ci_resolved	story=integrate_forward(19.2_at_18.16) run=37015542799 head=1e5ca918 result=success resolved_at=boundary
 2026-10-02T14:30:33Z	Story 18.16	boundary_reported	to=main merge_head=1e5ca918 ci=success run=37015542799 story_head=3ce2fad9(37009161220_success) branch_head=2534011a(skip-ci_bookkeeping_only)
+2026-10-02T14:31:26Z	Epic 18	decision_received	item=go_18.5_implement by=orchestrator feature=e703aea3+ca5bcd20(18.16_merged_by_fast-forward) note=Epic_19_does_the_roster_union_and_bundle_re-measure_at_its_next_forward_merge;integrate_forward_before_pushing_18.5_code_head
+2026-10-02T14:31:26Z	Story 18.5	stage_spawned	stage=implement spawn_at=2026-10-02T14:31:26Z model=opus agent_name=18-5-journals-implement-1 cycle_iteration=1 scope=Part_A prompt=/tmp/epic-18-d6/implement-18-5.md
