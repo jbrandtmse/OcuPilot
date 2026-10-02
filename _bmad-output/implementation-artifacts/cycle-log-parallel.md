@@ -745,3 +745,4 @@
 2026-10-01T21:58:00Z	orchestrator	merged	epic=23 story=23.3 batch=a-followups head=0ee6bce8 by fast-forward; verified on origin
 2026-10-01T23:57:30Z	Epic 23	batch_boundary_reported	story=23.3 batch=b DW-1866,1865,1808,1822 code_head=6e6b8dcc ci=success run=36940146133 (orchestrator-verified) test code only (AdminPortAbsence, proposal-demo, audit-events, a11y-structural-invariants protocolTimeout); review high=0 med=0 low=3; doc patches 191b35d2 to follow; DW-1907 held open (ci-throwaway.sh:264, Epic 19 editing the file)
 2026-10-01T23:57:30Z	orchestrator	merged	epic=23 story=23.3 batch=b head=6e6b8dcc into feature (merge commit; code-equal to green 6e6b8dcc, diff=0; ledger check 0 problems)
+2026-10-02T00:38:36Z	orchestrator	merged	epic=23 story=23.3 batch=b-followup head=fe7e529e (191b35d2 doc comments over feature 68bb6946) by fast-forward; CI 36943583139 green on exact head; verified on origin. Batch (c) DW-1759,1839,1204,434 started (~3h before CI)
