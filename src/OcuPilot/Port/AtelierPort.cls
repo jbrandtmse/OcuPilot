@@ -1353,8 +1353,9 @@ ClassMethod Lines(pText As %String) As %DynamicArray
 
 /// <p>The document a UDL file's lines <var>pLines</var> hold, named from its header, or
 /// <code>""</code> when the header does not parse. Leading lines that are blank, documentation
-/// (<code>///</code>), or an <code>Include</code>, <code>IncludeGenerator</code> or <code>Import</code>
-/// line are skipped, and the first other line decides, its keyword read in any case:
+/// (<code>///</code>), a <code>/* ... */</code> comment, which the vendor's own text keeps above a
+/// class, or an <code>Include</code>, <code>IncludeGenerator</code> or <code>Import</code> line are
+/// skipped, and the first other line decides, its keyword read in any case:
 /// <code>Class &lt;name&gt; ...</code> is <code>&lt;name&gt;.cls</code>, and
 /// <code>ROUTINE &lt;name&gt;</code> is <code>&lt;name&gt;.mac</code>, or <code>.inc</code> or
 /// <code>.int</code> where it carries <code>[Type=INC]</code> or <code>[Type=INT]</code>. The name must
@@ -1363,11 +1364,20 @@ ClassMethod Lines(pText As %String) As %DynamicArray
 ClassMethod Header(pLines As %DynamicArray) As %String
 {
     Set tName = ""
+    Set tInComment = 0
     Set tIterator = pLines.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tLine) {
         Set tWords = $ZStrip($Translate(tLine, $Char(9), " "), "<=>W")
+        If tInComment {
+            If tWords [ "*/" Set tInComment = 0
+            Continue
+        }
         If tWords = "" Continue
         If $Extract(tWords, 1, 3) = "///" Continue
+        If $Extract(tWords, 1, 2) = "/*" {
+            If '$Find(tWords, "*/", 3) Set tInComment = 1
+            Continue
+        }
         Set tKeyword = $ZConvert($Piece(tWords, " ", 1), "L")
         If (tKeyword = "include") || (tKeyword = "includegenerator") || (tKeyword = "import") Continue
         If tKeyword = "class" {
@@ -1624,7 +1634,8 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
 /// document exactly, kind included, is 422 <code>EXPLORER.SAVE.HEADER</code>;</li>
 /// <li>a document the namespace no longer holds is <method>PresentSet</method>'s 404, so a save never
 /// creates one;</li>
-/// <li>the text's lines are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
+/// <li>the text's lines (<method>Lines</method>, plus an empty last line when the text ends with a line
+/// feed) are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
 /// the vendor's <code>If-None-Match</code> and never <code>ignoreConflict</code>, so a document changed
 /// since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
 /// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, and a text the vendor refuses under 200
@@ -1660,6 +1671,7 @@ ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %S
             Quit
         }
         Set tLines = ..Lines($Get(pQuery(..#CONTENTKEY)))
+        If $Extract($Get(pQuery(..#CONTENTKEY)), *) = $Char(10) Do tLines.%Push("", "string")
         If ..Header(tLines) '= tName {
             Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEHEADER, ##class(OcuPilot.Api.AtelierError).#REASONSAVEHEADER, .pHttpStatus, .pFault)
             Quit

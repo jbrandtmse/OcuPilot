@@ -195,6 +195,39 @@ deferred:
 
 - **Note (scope).** FR-80 and Epic 19's preamble read toward an agent-authored save; that would be a later story if the owner asks (spec gate, option A, by=merge_gate 2026-10-02).
 
+### Review Findings
+
+Code review 2026-10-02 (four layers, full tier): 37 rows, 8 entries (med 3, low 5), 27 rejected.
+
+- [x] [Review][Patch] med, fix-risk low, in-story: a class whose text opens with a `/* */` banner, as the vendor's own read returns it, was refused 422 `EXPLORER.SAVE.HEADER` on an unchanged first line (probed on `ocupilot-a2-ci`); `Header` now skips a leading block comment, so the import accepts one too [src/OcuPilot/Port/AtelierPort.cls:1364]
+- [x] [Review][Patch] med, fix-risk low, in-story: the routine editor was rendered by no test (outlet entry, routine viewer's read, Routines list's save, its gone sentence) [ui/src/app/areas/system-explorer/source-editor.page.spec.ts]
+- [x] [Review][Patch] low, fix-risk low, in-story: a save dropped the empty last line a final line feed carries, so a routine lost its trailing blank line; a class keeps one either way (probed) [src/OcuPilot/Port/AtelierPort.cls:1650]
+- [x] [Review][Patch] low, fix-risk low, in-story: AC4's "never a log line" had no assertion on a save that compiles [src/OcuPilot/Test/AtelierPortSave.cls]
+- [x] [Review][Patch] low, fix-risk low, in-story: the editor's no-source branch (object only, no source) was untested [ui/src/app/areas/system-explorer/source-editor.page.spec.ts]
+- [x] [Review][Patch] low, fix-risk low, in-story: the proposal count answering -1 before and after passed "no proposal is written" [src/OcuPilot/Test/ExplorerSave.cls]
+- [x] [Review][Patch] low, fix-risk low, in-story: AC6's planned mutation named the `AtelierPortWriteDenial` leg, which that mutation leaves green, and that leg's own mutation was unrecorded (`## Verification`)
+- [x] [Review][Defer] med, fix-risk low, out-of-footprint: AD-61 rule 6 does not name the 422 `EXPLORER.SAVE.REFUSED` the I/O matrix specifies and `Outcome` ships [src/OcuPilot/Port/AtelierPort.cls:2173] — deferred: DW-1952, routed to this story for the lead's spine amendment (Rule 20)
+
+Rejected:
+
+- `low`: the routine save script writes the UDL `ROUTINE` line through `%Routine` — no proposal is minted for an unadvertised tool, so `Draft.Render` never reaches it (2 rows).
+- `low`: the version and the text come from two reads — the shipped order (index, then text) can only yield a false conflict.
+- `false`: a routine's version is whole seconds — measured milliseconds, and a stale save 25 ms later was refused 409.
+- `low`: after a namespace switch with unsaved text, the editor and Cancel follow different namespaces — pinned by design to where the text was read; the fix adds a branch (3 rows).
+- `low`, spec-bound: "Saved" does not mark a compile with errors — the Strings name none; the output pane shows them (2 rows).
+- `low`: Edit source is offered for read-only, system or generated code — refused by name where read-only; the same reach as 19.2 and 19.13 (2 rows).
+- `maybe-false`: the editors' prompts lack tools — the read tools stay advertised (AD-8); low if true.
+- Edits the spec under review: the blocked-decision paragraph and the Tasks' `pSoft` 1 and unchecked boxes (2 rows).
+- `low`: no HTTP or browser leg for the header refusal — pinned at the port with its mutation; the banner renders any reason.
+- `low`, by-design: a failed post-save re-read or a lost answer leaves the old version, so the next Save is refused rather than overwriting (2 rows).
+- `low`: read-only opacity while saving; a duplicated name in one request; the import's lock row in EXPERIENCE.md; no Ctrl+S (4 rows).
+- `low`: a `.bas`, `.mvi` or `.mvb` editor reached by URL — the viewer never links one; the fix adds a guard.
+- `low`: the compile choice persists across an id-to-id reuse of the page.
+- `low`, theoretical: a 409 echo over the capture ceiling — the editor's own read of such a document overflows first.
+- `false`: SAVEDOCS checks one name — `SetProblem` refuses a set at the route for both types.
+- `false`: AC7's second half needs its own mutation line — Rule 19 asks one per AC, and AC7 has one.
+- `maybe-false`: a refused save logs a line of the text through #16021 — a `///` line before `ROUTINE` and two malformed class headers each answered 200 with nothing logged; low if true.
+
 ## Spec Change Log
 
 - 2026-10-02, spec gate (orchestrator, by=merge_gate): option A, the save is screen-only (both tools unadvertised, keys `false`); the drafted spine amendments applied; the `strings.ts` citation shift and the `angular.json` budget line approved, re-checked at edit time (whoever lands second re-measures the budget).
@@ -357,7 +390,7 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 - AC3: `setDirty(true)` removed from the store → `source-editor.page.spec.ts` guard case.
 - AC4: `output` dropped from `ExplorerSave`'s `WriteOutput` → `ExplorerSave` compile leg.
 - AC5: `PresentSet` skipped in `SaveSet` → `AtelierPortSave` absent leg. The `Header` check made `If 0` → the header leg.
-- AC6: SAVE removed from `tWrite` → `AtelierPortWriteDenial` save leg.
+- AC6: SAVE removed from `tWrite` → `AtelierPortSave.TestASaveRequiresTheWritePair`; both WRITE gates removed → the `AtelierPortWriteDenial` save leg.
 - AC7: `ADVERTISED` 1 → `ExplorerSave` unadvertised pin.
 - AC8: the editor's re-read and change event removed → the `system-explorer-editor` browser leg.
 
@@ -375,7 +408,19 @@ mutation: `PresentSet` skipped in `SaveSet` → `AtelierPortSave.TestADocumentDe
 
 mutation: `SaveSet`'s header check made `If 0` → `AtelierPortSave.TestTheTextIsCheckedBeforeAnyRoute`
 
-mutation: `TYPESAVE` removed from `Invoke`'s write types → `AtelierPortSave.TestASaveRequiresTheWritePair`; the planned `AtelierPortWriteDenial` save leg stayed green, as the tool's declared WRITE pair refuses first
+mutation: `TYPESAVE` removed from `Invoke`'s write types → `AtelierPortSave.TestASaveRequiresTheWritePair` (run 2339); the `AtelierPortWriteDenial` save leg stays green under it, as the tool's declared WRITE pair refuses first
+
+mutation: `TYPESAVE` removed from `Invoke`'s write types and the routines WRITE pair dropped from `ExplorerWrite.PrivilegePairs`, tree recompiled → `AtelierPortWriteDenial.TestASaveWithoutWriteIsRefusedByName` (run 2340); either gate alone keeps it green
+
+mutation: `Header` no longer skipping a `/*` line → `AtelierPortSave.TestAClassUnderACommentBannerIsSaved` (run 2339)
+
+mutation: `SaveSet`'s empty last line for a final line feed dropped → `AtelierPortSave.TestEachRoutineKindIsSavedByItsHeader` and `TestTheVersionIsSentAsIfNoneMatch` (run 2339)
+
+mutation: `SaveSet` logging a compile's lines when it reports errors → `AtelierPortSave.TestASaveCompilesWhenAsked` (run 2339; run 2339 carried these four port mutations at once, each reddening its own method)
+
+mutation: `DESCRIPTOR_PAGES`' routine editor entry dropped → `source-editor.page.spec.ts` "renders the routine editor too"
+
+mutation: the store's `!document.available` check made inert → `source-editor.page.spec.ts` "shows the viewer's own sentence and no text area for a document whose source the instance does not keep"
 
 mutation: `ExplorerSave.ADVERTISED` 1 → `ExplorerSave.TestTheSaveIsAbsentFromEveryRosterTheAgentSees`
 

@@ -5,7 +5,8 @@
 /// the instance's text kept, refused <code>ABSENT</code>
 /// for a document deleted since, which is never created again -- the header, size and argument
 /// refusals before any route, a soft refusal under 200, the version sent as the vendor's
-/// <code>If-None-Match</code> and never <code>ignoreConflict</code>, the compile after the save, the
+/// <code>If-None-Match</code> and never <code>ignoreConflict</code>, a class saved under its comment
+/// banner and a final empty line kept, the compile after the save, the
 /// WRITE pair, the version gate, the save's script, and the caller's namespace restored; and an
 /// import's put of a held document refused <code>LOCKED</code> as the save's is.</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace. The vendor is the live
@@ -209,7 +210,7 @@ Method TestTheVersionIsSentAsIfNoneMatch()
     Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {""lines"":[""Compiling class Probe.A""],""errors"":false}", "a save that compiles answers the compiler's lines")
     Set tPut = $ClassMethod(..#FIXTURE, "CallAt", 2)
     Do $$$AssertEquals(tPut.method _ " " _ tPut.arg _ " " _ tPut.ifNoneMatch _ " " _ tPut.params.%ToJSON() _ " " _ tPut.contentType, "PutDoc Probe.A.cls 2026-10-02 09:00:00.120 {} application/json", "the put carries the version as If-None-Match and no query parameter")
-    Do $$$AssertEquals(tPut.body, "{""enc"":false,""content"":[""Class Probe.A Extends %RegisteredObject"",""{"",""}""]}", "and the text's lines")
+    Do $$$AssertEquals(tPut.body, "{""enc"":false,""content"":[""Class Probe.A Extends %RegisteredObject"",""{"",""}"",""""]}", "and the text's lines, its final line feed keeping an empty last line")
     Set tCompile = $ClassMethod(..#FIXTURE, "CallAt", 3)
     Do $$$AssertEquals(tCompile.method _ " " _ tCompile.params.%ToJSON() _ " " _ tCompile.body, "Compile {""flags"":""cuk"",""source"":0} [""Probe.A.cls""]", "then the compile of the one document")
     Do $ClassMethod(..#FIXTURE, "Clear")
@@ -246,7 +247,9 @@ Method TestTheVendorsRefusalsAreAnsweredByName()
 }
 
 /// <p>Each kind is saved by its header: a routine, an include file and an intermediate routine, each
-/// read, changed and saved back, read back as saved.</p>
+/// read, changed and saved back with an empty last line, read back as saved.</p>
+/// <p>Mutation (Rule 19): drop the empty last line <method>OcuPilot.Port.AtelierPort.SaveSet</method>
+/// keeps for a final line feed -- this goes red.</p>
 Method TestEachRoutineKindIsSavedByItsHeader()
 {
     For tName = "OcuProbe193Mac.mac", "OcuProbe193Inc.inc", "OcuProbe193Int.int" {
@@ -254,10 +257,35 @@ Method TestEachRoutineKindIsSavedByItsHeader()
         Set tVersion = $ClassMethod(..#PROBE, "Version", ..#PROBENAMESPACE, tName)
         Set tRead = $ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, tName)
         Do $$$AssertTrue((tVersion '= "") && ($Piece(tRead, $Char(10), 1) [ "ROUTINE"), tName _ " reads with its header: " _ $Piece(tRead, $Char(10), 1))
-        Set tText = tRead _ $Char(10) _ " ; saved by Story 19.3's probe"
+        Set tText = tRead _ $Char(10) _ " ; saved by Story 19.3's probe" _ $Char(10)
         Do ..Save("Routines", tName, tText, tVersion, 0, .tResult, .tHttp, .tFault)
         Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {}", tName _ " is saved")
         Do $$$AssertEquals($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, tName), tText, tName _ " reads back as saved")
+    }
+}
+
+/// <p>AC1: a class whose text the vendor keeps under a <code>/* ... */</code> banner is read, changed
+/// and saved with its banner, and the header rule skips a one-line or a multi-line comment but not
+/// one left open.</p>
+/// <p>Mutation (Rule 19): stop <method>OcuPilot.Port.AtelierPort.Header</method> skipping a
+/// <code>/*</code> line -- this goes red.</p>
+Method TestAClassUnderACommentBannerIsSaved()
+{
+    Set tBanner = "/* Probe banner" _ $Char(10) _ "   kept above the class */" _ $Char(10) _ $Char(10)
+    Do $$$AssertStatusOK(##class(%Compiler.UDL.TextServices).SetTextFromString(..#PROBENAMESPACE, ..#ALPHA, tBanner _ $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "1"), $Char(10)), "a probe class under a banner is saved")
+    Set tVersion = $ClassMethod(..#PROBE, "Version", ..#PROBENAMESPACE, ..#ALPHA _ ".cls")
+    Set tRead = $ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, ..#ALPHA _ ".cls")
+    Do $$$AssertTrue(($Extract(tRead, 1, 2) = "/*") && (tRead [ "Quit 1"), "the vendor's text keeps the banner: " _ $Piece(tRead, $Char(10), 1))
+    Set tText = $Replace(tRead, "Quit 1", "Quit 2")
+    Do ..Save("Classes", ..#ALPHA _ ".cls", tText, tVersion, 0, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {}", "the class is saved")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, ..#ALPHA _ ".cls"), tText, "with its banner")
+    For tCase = $ListBuild($ListBuild("/* one line */", "Class A.B"), "A.B.cls"), $ListBuild($ListBuild("/* opened", " closed */", "", "Class A.B"), "A.B.cls"), $ListBuild($ListBuild("/* never closed", "Class A.B"), "") {
+        Set tLines = []
+        For tI = 1:1:$ListLength($List(tCase, 1)) {
+            Do tLines.%Push($List($List(tCase, 1), tI))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Port.AtelierPort).Header(tLines), $List(tCase, 2), tLines.%ToJSON() _ " names '" _ $List(tCase, 2) _ "'")
     }
 }
 
@@ -275,6 +303,7 @@ Method TestASaveCompilesWhenAsked()
     Do ..Save("Classes", ..#ALPHA _ ".cls", tBroken, tVersion, 1, .tResult, .tHttp, .tFault)
     Do $$$AssertTrue((tHttp = 200) && $IsObject($Get(tResult)) && (tResult.errors = 1) && (tResult.lines.%ToJSON() [ "ERROR"), "a text that does not compile answers its errors: " _ ..Said(.tHttp, .tResult, .tFault))
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Source", ..#PROBENAMESPACE, ..#ALPHA _ ".cls") [ "Property Broken As OcuProbe193.NoSuchType;", "and is saved all the same")
+    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and neither compile's lines are logged")
 }
 
 /// <p>AC6: a save requires WRITE on the namespace's routines database before any route; its fresh read

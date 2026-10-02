@@ -261,6 +261,7 @@ Method TestTheSaveIsAbsentFromEveryRosterTheAgentSees()
     }
 
     Set tBefore = ..ProposalRows("explorer.classes.save")
+    Do $$$AssertTrue(tBefore >= 0, "the stored proposals are counted: " _ tBefore)
     Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
     Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")

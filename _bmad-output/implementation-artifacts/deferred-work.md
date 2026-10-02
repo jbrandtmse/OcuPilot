@@ -9064,8 +9064,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
 - 2026-10-02T18:45:35Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=harvest note=reopen_if=a deleted document is reported reappearing after a Save, or the vendor gains a conditional put that refuses a missing document; the window is one PresentSet-to-PutDoc call
+- 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a document deleted by another writer reappears after a Save; cr: not MED, ms window, own text re-created
 
 ### DW-1949: A save or import text whose JSON-escaped form passes the instance's longest string reaches the screen route's payload serialization as a 500, not EXPLORER.SAVE.TOOLARGE (inference)
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check; Story 19.13's import shares the limit
 - 2026-10-02T18:45:35Z status=routed owner=burndown by=harvest note=Epic 19 burn-down: check the length before serialization, or map the <MAXSTRING> to the port's too-large code
+- 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a Save of pasted text over 3,400,000 characters is reported answering 500; a LOW, which burndown never owns
+
+### DW-1952: AD-61 rule 6 does not name PutDoc's error under a 2xx answer as 422 EXPLORER.SAVE.REFUSED, which Story 19.3's I/O matrix specifies and AtelierPort.Outcome ships
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Rule 6 ends 'anything else is INTERNAL' and its 19.3 amendment names only PutDoc 409 and 423; Outcome answers a parsed PutDoc 2xx error that is no access refusal 422 SAVEREFUSED, logged (matrix row 'Vendor soft refusal').
+- 2026-10-02T19:20:03Z status=routed owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=lead amends AD-61 rule 6 (Rule 20) with the 2xx soft refusal case; code matches the spec gate
+- 2026-10-02T19:23:32Z status=resolved-by:19-3-the-source-editor-with-etag-conflict-detection owner=19-3-the-source-editor-with-etag-conflict-detection by=adjudication note=AD-61 rule 6 amended at ARCHITECTURE-SPINE.md:916 (Rule 20, memlog entry 303): a PutDoc 2xx error that is no access refusal is 422 EXPLORER.SAVE.REFUSED, logged, never sent

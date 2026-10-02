@@ -12,6 +12,8 @@ import { ScopeService } from '../../core/scope';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler, type ActionRefusal, type ActionSink, type ActionValues } from '../../shell/screen-action-handler';
+import { ARCHETYPE_PAGES, DESCRIPTOR_PAGES, resolveScreenPage } from '../../shell/screen-outlet';
+import { OBJECT_ONLY_REASON } from './document-viewer.store';
 import { SourceEditorPage } from './source-editor.page';
 
 /**
@@ -20,11 +22,13 @@ import { SourceEditorPage } from './source-editor.page';
  * real dialog and the real template run, so the assertions are about rendered DOM: the text read
  * through the viewer's own read, Save drawn `aria-disabled` while the text is empty, unchanged or
  * being saved, the unsaved-changes question, a landed Save's "Saved", output and re-read, a refused
- * Save keeping the person's text, unsaved text kept across a namespace switch, and where Cancel
- * goes.
+ * Save keeping the person's text, unsaved text kept across a namespace switch, a document with no
+ * source to edit, the routine editor's own read and list, and where Cancel goes.
  */
 
 const CLASS_EDITOR = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerClassEditor') as ScreenDeclaration;
+
+const ROUTINE_EDITOR = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor') as ScreenDeclaration;
 
 const NAME = 'Demo.Probe.cls';
 
@@ -59,15 +63,15 @@ interface Mounted {
   readonly router: Router;
   readonly reads: { path: string; scope: string | null | undefined }[];
   readonly saves: SaveCall[];
-  /** What the next read answers: the document's lines and version, or `'gone'`. */
-  answer: { lines: readonly string[]; modified: string } | 'gone';
+  /** What the next read answers: the document's lines and version, whether its source is kept, or `'gone'`. */
+  answer: { lines: readonly string[]; modified: string; available?: boolean; reason?: string } | 'gone';
   /** What the next save answers: applied with output, or refused with a sentence. */
   saveAnswer: { applied: true; output: unknown } | { applied: false; refusal: string; code?: string; detail?: Record<string, unknown> };
   /** Switch the scope's namespace, as the shell's namespace switch does. */
   switchNamespace(namespace: string): void;
 }
 
-async function mount(): Promise<Mounted> {
+async function mount(editor: ScreenDeclaration = CLASS_EDITOR, name = NAME): Promise<Mounted> {
   TestBed.resetTestingModule();
   const formDirty = new FormDirty();
   const mounted = {
@@ -87,7 +91,7 @@ async function mount(): Promise<Mounted> {
       if (answer === 'gone') {
         return { kind: 'error', status: 404, code: 'PORT.NOTFOUND', reason: 'This namespace holds no document by that name.', detail: null };
       }
-      const document = { name: NAME, form: 'udl', available: true, content: answer.lines, modified: answer.modified, database: 'USER', generates: [] };
+      const document = { name, form: 'udl', available: answer.available ?? true, reason: answer.reason ?? '', content: answer.lines, modified: answer.modified, database: 'USER', generates: [] };
       return { kind: 'ok', status: 200, body: { fields: [], rows: [], truncated: false, document } as T };
     },
   };
@@ -116,7 +120,7 @@ async function mount(): Promise<Mounted> {
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
-      { provide: NavigationService, useValue: { screenForUrl: () => CLASS_EDITOR } as unknown as NavigationService },
+      { provide: NavigationService, useValue: { screenForUrl: () => editor } as unknown as NavigationService },
       { provide: ScreenActionHandler, useValue: handler as unknown as ScreenActionHandler },
       { provide: FormDirty, useValue: formDirty },
       { provide: OverlayStack, useValue: new OverlayStack() },
@@ -134,7 +138,7 @@ async function mount(): Promise<Mounted> {
     ],
   });
   const router = TestBed.inject(Router);
-  await router.navigateByUrl(`/${CLASS_EDITOR.route}/${encodeEntityId(NAME)}?ns=USER`);
+  await router.navigateByUrl(`/${editor.route}/${encodeEntityId(name)}?ns=USER`);
   const fixture = TestBed.createComponent(SourceEditorPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -302,6 +306,37 @@ describe('the class and routine editors', () => {
     await settle(mounted.fixture);
     expect(mounted.host.querySelector('[data-ocu-editor="gone"]')?.textContent?.trim()).toBe(STRINGS.explorerClassDocumentEmpty);
     expect(textArea(mounted.host)).toBeNull();
+  });
+
+  it("shows the viewer's own sentence and no text area for a document whose source the instance does not keep", async () => {
+    const mounted = await mount();
+    for (const [name, reason, sentence] of [
+      ['Demo.ObjectOnly.cls', OBJECT_ONLY_REASON, STRINGS.explorerViewerObjectOnly],
+      ['Demo.NoSource.cls', '', STRINGS.explorerSourceNotAvailable],
+    ] as const) {
+      mounted.answer = { lines: [], modified: '2026-10-02 09:00:00.120', available: false, reason };
+      await mounted.router.navigateByUrl(`/${CLASS_EDITOR.route}/${encodeEntityId(name)}?ns=USER`);
+      await settle(mounted.fixture);
+      expect(mounted.host.querySelector('[data-ocu-editor="unavailable"]')?.textContent?.trim()).toBe(sentence);
+      expect(textArea(mounted.host)).toBeNull();
+    }
+    expect(mounted.saves).toEqual([]);
+  });
+
+  it("renders the routine editor too, reading through the routine viewer's read and saving through the Routines list", async () => {
+    for (const editor of [CLASS_EDITOR, ROUTINE_EDITOR]) {
+      expect(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, editor.descriptor, editor.archetype)).toBe(SourceEditorPage);
+    }
+    const mounted = await mount(ROUTINE_EDITOR, 'Demo.Probe.mac');
+    expect(mounted.reads[0]?.path).toBe('/api/ocupilot/screens/explorer.routine/read?maxRows=1&name=Demo.Probe.mac&form=udl');
+    await type(mounted, 'ROUTINE Demo.Probe\n ; changed');
+    saveButton(mounted.host).click();
+    await settle(mounted.fixture);
+    expect(mounted.saves.map((save) => `${save.descriptor} ${save.target}`)).toEqual(['OcuPilot.Screen.Descriptor.ExplorerRoutineList Demo.Probe.mac']);
+    mounted.answer = 'gone';
+    await mounted.router.navigateByUrl(`/${ROUTINE_EDITOR.route}/${encodeEntityId('Demo.Other.mac')}?ns=USER`);
+    await settle(mounted.fixture);
+    expect(mounted.host.querySelector('[data-ocu-editor="gone"]')?.textContent?.trim()).toBe(STRINGS.explorerRoutineDocumentEmpty);
   });
 
   it("Cancel returns to the document's viewer in the editor's namespace", async () => {
