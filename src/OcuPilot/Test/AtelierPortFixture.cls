@@ -4,8 +4,10 @@
 /// <p>Unless a test arms <method>UseFakeRoutes</method>, <method>ImplClass</method> answers the
 /// vendor's own class and the port reads the live instance. Armed, it answers this class, whose
 /// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method>,
-/// <method>Index</method>, <method>Compile</method> and <method>DeleteDocs</method> stand in for the
-/// vendor's routes: each records what it was handed --
+/// <method>Index</method>, <method>Compile</method>, <method>DeleteDocs</method>,
+/// <method>ExportToXMLFile</method>, <method>ListDocumentsInXMLFiles</method>,
+/// <method>LoadXMLFiles</method> and <method>PutDoc</method> stand in for the vendor's routes: each
+/// records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
 /// the request's query data, content type and body -- leaves <code>%SourceControl</code> set, as
 /// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
@@ -170,6 +172,51 @@ ClassMethod Compile(pNamespace As %String) As %Status
 ClassMethod DeleteDocs(pNamespace As %String) As %Status
 {
     Quit ..Answer("DeleteDocs", pNamespace, "", 0)
+}
+
+/// <p>Make every export's file write fail from now on (<method>WriteLines</method>).</p>
+ClassMethod FailWrites()
+{
+    Set ^||OcuPilotAtelierFixture("writefails") = 1
+}
+
+/// <p>The port's file write, or, once <method>FailWrites</method> is armed, a write that fails after
+/// creating a short file at a name where none stood, and touching none that did.</p>
+ClassMethod WriteLines(pFile As %String, pLines As %DynamicArray) As %Status [ Private ]
+{
+    If '$Get(^||OcuPilotAtelierFixture("writefails")) Quit ##super(pFile, pLines)
+    If '##class(%File).Exists(pFile) {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tSC = tStream.LinkToFile(pFile)
+        If $$$ISOK(tSC) Set tSC = tStream.Write("partial")
+        If $$$ISOK(tSC) Set tSC = tStream.%Save()
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Quit $$$ERROR($$$GeneralError, "the canned file write fails")
+}
+
+/// <p>The canned <code>ExportToXMLFile</code> route.</p>
+ClassMethod ExportToXMLFile(pNamespace As %String) As %Status
+{
+    Quit ..Answer("ExportToXMLFile", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>ListDocumentsInXMLFiles</code> route.</p>
+ClassMethod ListDocumentsInXMLFiles(pNamespace As %String) As %Status
+{
+    Quit ..Answer("ListDocumentsInXMLFiles", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>LoadXMLFiles</code> route.</p>
+ClassMethod LoadXMLFiles(pNamespace As %String) As %Status
+{
+    Quit ..Answer("LoadXMLFiles", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>PutDoc</code> route.</p>
+ClassMethod PutDoc(pNamespace As %String, pDocName As %String) As %Status
+{
+    Quit ..Answer("PutDoc", pNamespace, pDocName, 0)
 }
 
 /// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an

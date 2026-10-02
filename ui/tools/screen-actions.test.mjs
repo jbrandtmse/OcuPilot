@@ -131,6 +131,13 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', 'export'), STRINGS.taskExportAction);
   assert.equal(actionLabel(DEFINITIONS, 'export'), 'export');
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.TaskScheduleList', TASK_IMPORT_ACTION_ID), STRINGS.actionImport);
+  // Story 19.13: the Classes and Routines lists' Export over the checked rows, and their
+  // screen-level Import under the id the Task schedule's Import also takes.
+  // Mutation (Rule 19): drop `export` from the ExplorerRoutineList entry -> this goes red.
+  for (const list of ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList']) {
+    assert.equal(actionLabel(list, 'export'), STRINGS.taskExportAction, list);
+    assert.equal(actionLabel(list, TASK_IMPORT_ACTION_ID), STRINGS.actionImport, list);
+  }
   // Story 16.11: the Task Manager's three actions on the Task schedule, the suspend also under the
   // screen-level id its page registers and the command bar draws.
   // Mutation (Rule 19): drop the three entries from the TaskScheduleList labels -> this goes red.

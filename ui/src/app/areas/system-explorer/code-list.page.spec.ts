@@ -10,22 +10,27 @@ import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { ScreenActions } from '../../core/screen-actions';
+import { ScreenActions, TASK_IMPORT_ACTION_ID } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { COMPILE_ACTION, CodeListPage, DELETE_ACTION } from './code-list.page';
+import { COMPILE_ACTION, CodeListPage, DELETE_ACTION, EXPORT_ACTION } from './code-list.page';
 import { CodeListSearch, CodeListWrite, isYesNo } from './code-list.store';
+import { IMPORT_MAX_CHARACTERS } from './explorer-import-dialog';
 
 /**
  * System Explorer's Classes and Routines lists over the shipped descriptors, with the real
  * `RefreshService`, `ScreenStores`, `createScreenRead` and `DataTable` and a stubbed HTTP answer that
  * echoes the criteria the instance would apply (Story 19.1, AC1), and their compile and delete over
  * the checked rows through the real `ScreenActionHandler`, each action request answered by a stub the
- * test releases (Story 19.2, AC1 and AC2).
+ * test releases (Story 19.2, AC1 and AC2), and their export and import through the two transfer
+ * dialogs, the allowed directories read answering one root (Story 19.13).
  */
+
+/** The one allowed root the stubbed Allowed directories read answers. */
+const ROOT = '/data/';
 
 const CLASSES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerClassList') as ScreenDeclaration;
 const ROUTINES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerRoutineList') as ScreenDeclaration;
@@ -79,6 +84,9 @@ async function mount(
         });
       }
       paths.push(path);
+      if (path.includes('security.alloweddirectories')) {
+        return { kind: 'ok', status: 200, body: { fields: [], rows: [{ Directory: ROOT, Restricted: true }], truncated: false, banner: '', criteria: {} } as T };
+      }
       return { kind: 'ok', status: 200, body: { fields: [], rows, truncated: false, banner: '', criteria: echo(path) } as T };
     },
   };
@@ -388,13 +396,14 @@ describe('System Explorer compile and delete (Story 19.2)', () => {
     expect(store.checked().size).toBe(0);
   });
 
-  it('AC2: Delete of one document is typed by its name', async () => {
+  it('AC2: Delete of one document is typed by its name, and a routine names no stored data (DW-1932)', async () => {
+    // Mutation (Rule 19): answer the Classes list's sentence for a routine in `deleteConsequence` -> red.
     const { fixture, host, calls, store, actions } = await mount(ROUTINES, [row('A.mac')]);
     store.setChecked(['A.mac']);
     actions.run(ROUTINES.descriptor, DELETE_ACTION);
     await settle(fixture);
     expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Delete A.mac');
-    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.explorerDeleteConsequence);
+    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.explorerRoutineDeleteConsequence);
     const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
     field.value = 'A.mac';
     field.dispatchEvent(new Event('input'));
@@ -422,5 +431,249 @@ describe('System Explorer compile and delete (Story 19.2)', () => {
     release();
     await first;
     expect(write.lines()).toEqual(['a']);
+  });
+});
+
+/** Type `value` into the open dialog's server-path name field. */
+async function typePath(fixture: ComponentFixture<unknown>, host: HTMLElement, value: string): Promise<void> {
+  const input = host.querySelector('.ocu-path-picker input[type="text"]') as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await settle(fixture);
+}
+
+/** The open transfer dialog's own alert, or `''`. */
+function dialogRefusal(host: HTMLElement): string {
+  return host.querySelector('[data-explorer-transfer-refusal]')?.textContent?.trim() ?? '';
+}
+
+/** Pick `file` in the import dialog's local file input, after choosing that source. */
+async function pickLocal(fixture: ComponentFixture<unknown>, host: HTMLElement, file: File): Promise<void> {
+  const local = host.querySelector('input[data-explorer-import-source="local"]') as HTMLInputElement;
+  local.checked = true;
+  local.dispatchEvent(new Event('change'));
+  await settle(fixture);
+  const input = host.querySelector('input[data-explorer-import-file]') as HTMLInputElement;
+  expect(input.getAttribute('accept')).toBe('.xml,.cls,.mac,.inc,.int');
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new Event('change'));
+  await settle(fixture);
+}
+
+describe('System Explorer export and import (Story 19.13)', () => {
+  it('AC1: Export over the checked rows to a server file sends one export over the canonical set with the file, pinned to its namespace', async () => {
+    // Mutation (Rule 19): drop `scope` from the export's `sendFor` in `onExport` -> the request follows the shell and this goes red.
+    const { fixture, host, calls, store, actions, switchNamespace } = await mount(CLASSES, [row('B.cls'), row('A.cls')]);
+    expect(actions.has(CLASSES.descriptor, EXPORT_ACTION)).toBe(true);
+    store.setChecked(['B.cls', 'A.cls']);
+    actions.run(CLASSES.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Export 2 documents');
+    expect(host.querySelector('[data-explorer-export-replaces]')?.textContent?.trim()).toBe(STRINGS.taskExportReplaces);
+    const confirm = host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement;
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    await typePath(fixture, host, 'out/classes.xml');
+    expect(confirm.getAttribute('aria-disabled')).toBeNull();
+    switchNamespace('USER');
+    confirm.click();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toEqual({ action: 'export', id: 'A.cls,B.cls', values: { root: ROOT, path: 'out/classes.xml' } });
+    expect(calls[0].scope).toBe('HSCUSTOM');
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls,B.cls' }, output: { root: ROOT, path: 'out/classes.xml' } } });
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
+    expect(status(host)).toBe(`Exported 2 documents to ${ROOT}out/classes.xml.`);
+  });
+
+  it('Export to this browser sends export-browser and saves the answered lines as <NAMESPACE>-export.xml', async () => {
+    const saved: { name: string; type: string; text: Promise<string> }[] = [];
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    const realClick = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = (blob: Blob) => {
+      saved.push({ name: '', type: blob.type, text: blob.text() });
+      return 'blob:probe';
+    };
+    URL.revokeObjectURL = () => undefined;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      saved[saved.length - 1].name = this.download;
+    };
+    try {
+      const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+      store.setChecked(['A.cls']);
+      actions.run(CLASSES.descriptor, EXPORT_ACTION);
+      await settle(fixture);
+      expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Export 1 document');
+      const browserChoice = host.querySelector('input[data-explorer-export-destination="browser"]') as HTMLInputElement;
+      browserChoice.checked = true;
+      browserChoice.dispatchEvent(new Event('change'));
+      await settle(fixture);
+      expect(host.querySelector('app-server-path-picker')).toBeNull();
+      (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(calls[0].body).toEqual({ action: 'export-browser', id: 'A.cls' });
+      calls[0].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' }, output: { lines: ['<?xml version="1.0"?>', '<Export>', '</Export>'] } } });
+      await settle(fixture);
+      expect(saved.map((file) => [file.name, file.type])).toEqual([['HSCUSTOM-export.xml', 'application/xml']]);
+      expect(await saved[0].text).toBe('<?xml version="1.0"?>\n<Export>\n</Export>');
+      expect(status(host)).toBe('Saved 1 documents as HSCUSTOM-export.xml.');
+    } finally {
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      HTMLAnchorElement.prototype.click = realClick;
+    }
+  });
+
+  it("AC2: a refused export shows the instance's sentence in the dialog, which stays open, and a refusal on the name lands on the picker's field", async () => {
+    // Mutation (Rule 19): drop the refusal render from `ExplorerExportDialog` -> red.
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    await typePath(fixture, host, 'a.xml');
+    (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    const version = "This instance's source code API answers version 6, and this operation needs version 7 or later.";
+    calls[0].answer({ kind: 'error', status: 501, code: 'PORT.NOTIMPLEMENTED', reason: version, detail: null });
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-export-dialog')).not.toBeNull();
+    expect(dialogRefusal(host)).toBe(version);
+    expect(status(host)).toBe('');
+    (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[1].answer({
+      kind: 'error',
+      status: 400,
+      code: 'EXPLORER.EXPORT.DIRECTORY',
+      reason: STRINGS.explorerExportDirectory,
+      detail: { violations: [{ field: 'path', code: 'EXPLORER.EXPORT.DIRECTORY', reason: STRINGS.explorerExportDirectory }] },
+    });
+    await settle(fixture);
+    expect(host.querySelector('.ocu-path-picker .ocu-form-error')?.textContent?.trim()).toBe(STRINGS.explorerExportDirectory);
+    expect(dialogRefusal(host)).toBe('');
+  });
+
+  it('Import from a server file sends import on the one target with the file and the compile choice, and lists what it loaded', async () => {
+    const { fixture, host, calls, actions } = await mount(ROUTINES, [row('A.mac')]);
+    expect(actions.has(ROUTINES.descriptor, TASK_IMPORT_ACTION_ID)).toBe(true);
+    actions.run(ROUTINES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.actionImport);
+    expect(host.querySelector('[data-explorer-import-replaces]')?.textContent?.trim()).toBe(STRINGS.explorerImportReplaces);
+    const compile = host.querySelector('input[data-explorer-import-compile]') as HTMLInputElement;
+    expect(compile.checked).toBe(true);
+    compile.checked = false;
+    compile.dispatchEvent(new Event('change'));
+    await typePath(fixture, host, 'in/all.xml');
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls[0].body).toEqual({ action: 'import', id: 'import', values: { root: ROOT, path: 'in/all.xml', Compile: 'false' } });
+    expect(calls[0].scope).toBe('HSCUSTOM');
+    expect(status(host)).toBe(`Importing ${ROOT}in/all.xml`);
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'created', target: { type: 'routine', scope: 'HSCUSTOM', id: 'import' }, output: { imported: ['A.MAC', 'B.MAC'], lines: ['Load started', 'Load finished successfully.'], errors: false } } });
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-import-dialog')).toBeNull();
+    expect(pane(host)).toBe('A.MAC\nB.MAC\nLoad started\nLoad finished successfully.');
+    expect(status(host)).toBe('Imported 2 documents.');
+  });
+
+  it('Import from a local file reads it as text and sends import-local with its name, text and compile choice', async () => {
+    // Mutation (Rule 19): drop `content` from the local import's values in `onImport` -> red.
+    const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    const confirm = host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement;
+    await pickLocal(fixture, host, new File(['Class A.B\n{\n}\n'], 'B.cls'));
+    expect(confirm.getAttribute('aria-disabled')).toBeNull();
+    confirm.click();
+    await settle(fixture);
+    expect(calls[0].body).toEqual({ action: 'import-local', id: 'import', values: { fileName: 'B.cls', content: 'Class A.B\n{\n}\n', Compile: 'true' } });
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'created', target: { type: 'class', scope: 'HSCUSTOM', id: 'import' }, output: { imported: ['A.B.cls'], lines: ['ERROR: probe compile error'], errors: true } } });
+    await settle(fixture);
+    expect(status(host)).toBe('Imported 1 documents, with compile errors.');
+  });
+
+  it('a local file read before the source was switched away and back is not sent: Import waits for a file again', async () => {
+    // Mutation (Rule 19): keep `local` in `ExplorerImportDialog.onSource` -> Import stays available and this goes red.
+    const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await pickLocal(fixture, host, new File(['Class A.B\n{\n}\n'], 'B.cls'));
+    const server = host.querySelector('input[data-explorer-import-source="server"]') as HTMLInputElement;
+    server.checked = true;
+    server.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const local = host.querySelector('input[data-explorer-import-source="local"]') as HTMLInputElement;
+    local.checked = true;
+    local.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const confirm = host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement;
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    confirm.click();
+    await settle(fixture);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a local file above three million characters is refused in the dialog before anything is sent', async () => {
+    // Mutation (Rule 19): drop the length check in `ExplorerImportDialog.onFile` -> the file is sent and this goes red.
+    const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await pickLocal(fixture, host, new File(['a'.repeat(IMPORT_MAX_CHARACTERS + 1)], 'big.xml'));
+    expect(dialogRefusal(host)).toBe(STRINGS.explorerImportTooLarge);
+    const confirm = host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement;
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    confirm.click();
+    await settle(fixture);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("AC2: a refused import shows the instance's sentence in the import dialog, which stays open, and a refusal on the name lands on the picker's field", async () => {
+    // Mutation (Rule 19): answer `localRefusal()` alone from `ExplorerImportDialog.shownRefusal` -> red.
+    const { fixture, host, calls, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await typePath(fixture, host, 'in/a.xml');
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    const version = "This instance's source code API answers version 6, and this operation needs version 7 or later.";
+    calls[0].answer({ kind: 'error', status: 501, code: 'PORT.NOTIMPLEMENTED', reason: version, detail: null });
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-import-dialog')).not.toBeNull();
+    expect(dialogRefusal(host)).toBe(version);
+    expect(status(host)).toBe('');
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[1].answer({ kind: 'error', status: 400, code: 'PATH.NOFILE', reason: 'No such file.', detail: { violations: [{ field: 'path', code: 'PATH.NOFILE', reason: 'No such file.' }] } });
+    await settle(fixture);
+    expect(host.querySelector('.ocu-path-picker .ocu-form-error')?.textContent?.trim()).toBe('No such file.');
+    expect(dialogRefusal(host)).toBe('');
+  });
+
+  it('DW-1932: Delete of several routines names no stored data', async () => {
+    // Mutation (Rule 19): answer the Classes list's set sentence for routines in `deleteConsequence` -> red.
+    const { fixture, host, store, actions } = await mount(ROUTINES, [row('A.mac'), row('B.mac')]);
+    store.setChecked(['A.mac', 'B.mac']);
+    actions.run(ROUTINES.descriptor, DELETE_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(STRINGS.explorerRoutineDeleteSetConsequence.replace('<n>', '2'));
+  });
+
+  it('no transfer dialog opens over another, and Export opens on the checked rows only', async () => {
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    actions.run(CLASSES.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
+    actions.run(CLASSES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, EXPORT_ACTION);
+    actions.run(CLASSES.descriptor, COMPILE_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('app-explorer-import-dialog')).not.toBeNull();
+    expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
+    expect(host.querySelector('app-explorer-compile-dialog')).toBeNull();
+    expect(calls).toHaveLength(0);
   });
 });

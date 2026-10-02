@@ -8966,6 +8966,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: code-list.page.ts deleteConsequence uses explorerDeleteConsequence and explorerDeleteSetConsequence on both lists; strings.ts and EXPERIENCE.md:589 carry one wording
 - 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=Story 19.13 revises the Routines list's dialogs and the delete warning still names a persistent class
 - 2026-10-02T09:17:52Z status=routed owner=19-13-xml-export-and-import by=spec_gate note=reopen_if met: 19.13 adds dialogs to the Routines list; its Task 8 rewords the Routines delete warning
+- 2026-10-02T13:19:43Z status=resolved-by:19-13-xml-export-and-import by=adjudication note=Routines delete warning reworded to source and compiled code (Task 8, EXPERIENCE.md fixed strings, strings.ts)
 
 ### DW-1933: A DeleteDocs envelope error raised after some documents were deleted is answered as a fault, with no change event or read-back
 - source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
@@ -9057,3 +9058,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
 - 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal
+### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
+- source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
+- 2026-10-02T13:19:43Z status=routed owner=burndown by=cr note=move ExplorerWrite's AC3 calls to Dispatch.Answer, as ExplorerTransfer now does
+
+### DW-1946: System Explorer's import and export dialogs re-centre when the directory list loads, moving their source radios about 64 px under the pointer
+- source: spec-19-13-xml-export-and-import.md (rework 1) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
+- 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
+- 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)

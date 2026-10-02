@@ -201,6 +201,12 @@ export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 /** Story 16.4: a task export, which replaces a file already at its name. */
 export const CONSEQUENCE_TASKEXPORTREPLACES = 'TASK.EXPORT.REPLACES';
 
+/** Story 19.13: a System Explorer export to a server file, which replaces a file already at its name. */
+export const CONSEQUENCE_EXPLOREREXPORTREPLACES = 'EXPLORER.EXPORT.REPLACES';
+
+/** Story 19.13: a System Explorer import, which replaces each document of the same name. */
+export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
+
 /** Story 16.25, AD-4: a change to a Python language server's own settings, which resets two the read never shows. */
 export const CONSEQUENCE_PYTHONCUSTOM = 'LANGUAGESERVER.PYTHONCUSTOM';
 
@@ -301,6 +307,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
   // The export dialog's own replace line, published once.
   if (code === CONSEQUENCE_TASKEXPORTREPLACES) return STRINGS.taskExportReplaces;
+  // An export to a server file replaces one at its name, as a task export does.
+  if (code === CONSEQUENCE_EXPLOREREXPORTREPLACES) return STRINGS.taskExportReplaces;
+  // The import dialog's own consequence line, published once.
+  if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
   // The editor's own consequence line, published once.
   if (code === CONSEQUENCE_PYTHONCUSTOM) return STRINGS.languageServerPythonConsequence;
   // The warning dialog's own consequence sentence, published once.

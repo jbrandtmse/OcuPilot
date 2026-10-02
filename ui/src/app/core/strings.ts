@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:631 */
+  /** EXPERIENCE.md:633 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4315,13 +4315,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerViewerObjectOnly: 'This instance holds only this routine\'s object code, so it has no source to show.',
   /** EXPERIENCE.md:590 */
-  explorerRefusalOcuPilot: 'This is OcuPilot\'s own code. It cannot be compiled or deleted from OcuPilot.',
+  explorerRefusalOcuPilot: 'This is OcuPilot\'s own code. It cannot be compiled, deleted or replaced from OcuPilot.',
   /** EXPERIENCE.md:590 */
   explorerDocumentAbsent: 'This namespace no longer holds a document this change names.',
   /** EXPERIENCE.md:590 */
   explorerImportUnreadable: 'The file holds no document this instance can read.',
   /** EXPERIENCE.md:590 */
-  explorerImportChanged: 'The file no longer holds the documents this import was proposed with.',
+  explorerImportChanged: 'The file, or a document it would replace, has changed since this import was proposed.',
   /** EXPERIENCE.md:590 */
   explorerImportTooLarge: 'The file is longer than 3,000,000 characters, the most one import reads.',
   /** EXPERIENCE.md:590 */
@@ -4332,6 +4332,36 @@ export const STRINGS = {
   explorerDeleteAbsent: 'This namespace no longer holds this document.',
   /** EXPERIENCE.md:590 */
   explorerDeleteFailed: 'The source code API could not delete this document.',
+  /** EXPERIENCE.md:591 */
+  explorerExportTitle: 'Export <n> documents',
+  /** EXPERIENCE.md:591 */
+  explorerExportTitleOne: 'Export 1 document',
+  /** EXPERIENCE.md:591 */
+  explorerTransferServer: 'A file on the server',
+  /** EXPERIENCE.md:591 */
+  explorerTransferBrowser: 'This browser',
+  /** EXPERIENCE.md:591 */
+  explorerTransferLocal: 'A file on this computer',
+  /** EXPERIENCE.md:591 */
+  explorerImportCompile: 'Compile imported documents',
+  /** EXPERIENCE.md:591 */
+  explorerImportReplaces: 'Importing replaces each document of the same name in this namespace, without asking.',
+  /** EXPERIENCE.md:591 */
+  explorerExportDone: 'Exported <n> documents to <path>.',
+  /** EXPERIENCE.md:591 */
+  explorerExportSaved: 'Saved <n> documents as <file>.',
+  /** EXPERIENCE.md:591 */
+  explorerImportRunning: 'Importing <file>',
+  /** EXPERIENCE.md:591 */
+  explorerImportDone: 'Imported <n> documents.',
+  /** EXPERIENCE.md:591 */
+  explorerImportDoneErrors: 'Imported <n> documents, with compile errors.',
+  /** EXPERIENCE.md:591 */
+  explorerExportDirectory: 'There is no such directory under that allowed directory.',
+  /** EXPERIENCE.md:592 */
+  explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:592 */
+  explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
   // empty states and prompts; the two screen-level switches and the integrity check, their warnings
   // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,

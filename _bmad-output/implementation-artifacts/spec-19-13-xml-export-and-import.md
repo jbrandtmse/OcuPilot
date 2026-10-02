@@ -2,7 +2,9 @@
 title: 'Story 19.13: XML export and import'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '18d5533c14b180eb1f13a6547008464b8df81014'
+baseline_commit: '18d5533c14b180eb1f13a6547008464b8df81014'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -87,7 +89,7 @@ The routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) 
 | Import a local file | action `import-local`, values `{fileName, content, Compile}` | As for a server file, from the sent text | `content` over 3,000,000 characters gives 400 `TOOLARGE`; a malformed `fileName` gives 400 `PORT.VALIDATION`. |
 | Import a UDL document | a `.cls`, `.mac`, `.inc` or `.int` file | The header names the document. The `PUT` answers 201 (new) or 200 (replaced), then a compile runs when asked. `output {imported:[name], lines, errors}`. | A header that does not parse gives 422 `UNREADABLE`; nothing is put. |
 | Imported code does not compile | a file whose code fails to compile | 200. The documents are written, `errors` is true, and `lines` carry the errors. The file `status` text is logged. | not a fault |
-| Agent import (AC3) | `explorer.classes.import {Id:"import", root, path, Compile}`, with the key enabled | The mint stores `documents`, for example `A.cls replaces 2026-10-02 08:59:19.69, B.cls new`. The card shows the rows `root`, `path`, `documents` and `Compile`, and the consequence `EXPLORER.IMPORT.REPLACES`. Confirm loads exactly those documents. | With the baseline in force, governance refuses it and the tool stays advertised. |
+| Agent import (AC3) | `explorer.classes.import {Id:"import", root, path, Compile}`, with the key enabled | The mint stores `documents`, for example `A.cls replaces 2026-10-02 08:59:19.69, B.cls new (sha256 <digest>)`. The card shows the rows `root`, `path`, `documents` and `Compile`, and the consequence `EXPLORER.IMPORT.REPLACES`. Confirm loads exactly those documents. | With the baseline in force, governance refuses it and the tool stays advertised. |
 | File changed | at the write, the file's documents, or the version of a document it replaces, differ from `documents` | 409 `EXPLORER.IMPORT.CHANGED`; nothing is loaded | none |
 | OcuPilot's own code | an import file holding `OcuPilotProbe1913.Own.cls` | 403 `PROHIBITED.OCUPILOTCODE` on both callers; nothing changes. An export of that class succeeds. | none |
 | No routines WRITE | the caller holds the read pairs but not `<routines resource>:WRITE`, and imports | 403 `AUTH.NOPRIVILEGE` naming that pair, with no vendor call. A `%Development`-only holder exports to this browser. | none |
@@ -330,6 +332,8 @@ Each is listed with its current literal and what moves it:
       - a local import through the file input;
       - the two dialogs walked by `structural()`, light and dark.
 
+- [x] [CI] browser shard 1/3, run 37012695762 (head 1291b759): `ui/browser/system-explorer-transfer.browser-spec.mjs:182` timed out waiting for `input[data-explorer-import-file]` -- intermittent: the implement head's run passed it, and one of four local runs on `ocupilot-a2-ci` failed the same way (36 s) right after a redeploy. Find the race (the dialog's source switch and the local-file input's rendering, the spec's wait, or the review's `setSource` change at `explorer-import-dialog.ts`), fix it at its cause in the dialog or the spec, and prove it with five consecutive green runs of that spec file on `ocupilot-a2-ci` against a rebuilt and redeployed bundle, one run per call. Write or update its `mutation:` line.
+
 **Acceptance Criteria:**
 
 - **AC1 (epic criterion 1, 19.2's AC4 verbatim).** Given probe documents exported to a server file, when they are deleted and then imported from that file, then each document's `GET doc` source equals what it was before. The same holds for an export to this browser imported as a local file. Each write goes through a confirmed proposal from the agent, or through the screen's own action.
@@ -343,11 +347,111 @@ Each is listed with its current literal and what moves it:
 - **AC6 (read before write).** Given an unreadable file, when it is imported, then the answer is `UNREADABLE` and no document, stub included, is created. Given a file or a replaced document changed after `documents` was read, when the write runs, then the answer is `CHANGED` and nothing is loaded.
 - **AC7 (registry).** Given the registry after this story, when `ExplorerDescriptor` enumerates `explorer.*`, then it finds four reads and eight writes, the import keys disabled and the export keys enabled. `DeveloperFloor` finds that its writes are exactly the two exports, and the structural walk adds no `structural-baseline.json` entry.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 64 rows, 15 entries (high 1, med 7, low 7), all patched; 45 rows rejected. Design Notes › The summary and the matrix's AC3 example predate entry 1's digest note.
+
+- [x] [Review][Patch] high, fix-risk med (the summary changes form, every pin on it moves), in-story, AD-6/AC6: `CHANGED` compared names and replaced versions only, so a server file rewritten after the review with the same names loaded code nobody reviewed; the summary now ends ` (sha256 <digest of the file's lines>)` [src/OcuPilot/Port/AtelierPort.cls:1444]
+- [x] [Review][Patch] med, fix-risk med (output changes for long lines only), in-story, AC1: the vendor's export answers a line over 32,000 characters as pieces (measured: 40,033 as 32,000 + 8,033), so the file and the browser's lines broke it; `WholeLines` rejoins them [src/OcuPilot/Port/AtelierPort.cls:1169]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story, AC6: no leg rewrote the file after the review; added at the port and on the agent's confirm [src/OcuPilot/Test/ExplorerTransfer.cls:305]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story, AC3: the agent's calls were pinned at the tool's `View`; both now go through `Dispatch.Answer` (governance, schema, pairs, the model's tool result) [src/OcuPilot/Test/ExplorerTransfer.cls:208]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: a UDL import over an existing document (`ignoreConflict=1`) had no test [src/OcuPilot/Test/AtelierPortTransfer.cls:243]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: a UDL import with Compile off was never checked to skip the compile [src/OcuPilot/Test/AtelierPortTransfer.cls:304]
+- [x] [Review][Patch] med, fix-risk low (test and fixture seam), in-story: `ExportSet`'s cleanup after a failed write had no test [src/OcuPilot/Test/AtelierPortTransfer.cls:399]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: `TestAnExportWritesTheVendorsLines` compared two exports whose `Export` element stamps its second, red when they straddle one (run 1826); compared unstamped [src/OcuPilot/Test/AtelierPortTransfer.cls:115]
+- [x] [Review][Patch] low, fix-risk low, in-story: the matrix row "export above the capture ceiling: 503" had no pin on the export path [src/OcuPilot/Test/AtelierPortTransfer.cls:381]
+- [x] [Review][Patch] low, fix-risk low, in-story: the import dialog kept a local file across a source switch and sent it under an empty input [ui/src/app/areas/system-explorer/explorer-import-dialog.ts:143]
+- [x] [Review][Patch] low, fix-risk low, in-story: the Routines list's Export label had no test [ui/tools/screen-actions.test.mjs:133]
+- [x] [Review][Patch] low, fix-risk low, in-story: the "Beta's version" assertion passed when the read answered nothing [src/OcuPilot/Test/AtelierPortTransfer.cls:160]
+- [x] [Review][Patch] low, fix-risk low, in-story: the export tools told the model the XML "is shown to the user"; the agent's export writes the file [src/OcuPilot/Screen/Tool/ExplorerClassExport.cls:9]
+- [x] [Review][Patch] low, fix-risk low, in-story: `TYPEEXPORTDOCS` called `root` and `path` empty (they are `null`) and `DOCUMENTSKEY` cited no such method [src/OcuPilot/Port/AtelierPort.cls:98]
+- [x] [Review][Patch] low, fix-risk low, in-story: `TASK_IMPORT_ACTION_ID`'s and the command bar's comments named Task schedule alone [ui/src/app/core/screen-actions.ts:44]
+
+Rejected:
+
+- `false`: CSP or global items in an XML file pass the code arm (4 rows) — probed: `xml/list` names OcuPilot's served files `ocupilot/<file>` and its globals `OcuPilot*.gbl`, both refused.
+- `false`: `LoadXMLFiles` answering no entry reads as success — the route pushes one entry per file sent (v7 :307).
+- `false`: the code arm keys import on the target literal — the port refuses another id for import types, and `import` fails `SetNames` for a set.
+- `false`: `CheckExport` does not check as `ExportSet` does — it checks the file the same way; pairs and version are the mint's fresh read.
+- `false`: `Invoke`'s refusal list is incomplete — it names the methods that document their codes.
+- `low`, spec-bound: Compile off sends `""`, not `-c` (2 rows) — the intent specifies `""`; real only where default qualifiers compile.
+- `low`, spec-bound: a local file near the limit can pass the longest string as JSON (2 rows) — named limitation.
+- `low`, spec-bound: an export of 3.0–3.6 million characters re-imports `TOOLARGE`, and a large set reaches the ceiling (2 rows) — both limits are the spec's.
+- `low`, spec-bound: one request loads and compiles a file — named limitation (504).
+- `low`, spec-bound: "with compile errors" also covers a save error or a file status (2 rows); no singular forms (2 rows); "proposed" on the screen path — specified copy.
+- `low`: FileReader race, no `onerror`, no pre-read size check (3 rows) — two picks inside one read or a failing read; each fix adds a guard.
+- `low`, spec-bound: UTF-8 whatever the declaration; no preview on the screen (2 rows, AD-53's dialog review); no document cap; no running status for export; `created` on `import` and `updated` for export (3 rows, `TaskImport`'s precedent); a `/* */` banner is `UNREADABLE`; `saveText` beside an unchanged `saveCsv`.
+- `low`: EXPERIENCE.md :589-:590 markers, and the +2 citation drift (pre-existing) (2 rows).
+- `low`: radios without a group name; `overflow-wrap` on a file input; no final line feed in the browser file; schema descriptions and file keys declared twice (2 rows); routine tools not minted; no browser download leg; an unasserted setup export; the status line's root join (Task schedule's precedent).
+- `low`: a locked document's `PUT` answers 500; an export a few kilobytes under the ceiling can fail at the response write (shared `Api/Response`) — rare, each fix adds a branch.
+
+Code review 2026-10-02, rework re-review of `18d5533c..fb7be227` (full-opus; four layers): 27 rows, 11 entries (high 0, med 0, low 8, false 3); 3 patched, 8 rejected. The `[CI]` item is fixed at its cause in the spec. The held-read harness now proves the wait (below).
+
+- [x] [Review][Patch] low, fix-risk low (tracking line), in-story, Rule 19: the recorded mutation reddens with the old wait too, so the wait had no discriminating red. A held-read harness reddens the pre-rework wait and leaves `pickerRoot` green [spec `## Verification`, `[CI]` block]
+- [x] [Review][Patch] low, fix-risk low, in-story: the rework triage row said `baseline_commit` marks the story; both baselines are `18d5533c`. Corrected at its origin [spec `## Review Triage Log`, rework row 5]
+- [x] [Review][Patch] low, fix-risk low, in-story: DW-1946 gives 64 px for both dialogs, but only the import dialog was measured. A trailer now labels the export figure (inference) [deferred-work.md DW-1946]
+
+Rejected:
+
+- `false`: the green-run counts disagree — the five runs are recorded under `## Verification`; "one more" is a sixth, later run.
+- `false`: the wait relies on an unstated ordering — `openTransfer` calls `load()`, which sets `loading` synchronously before the dialog's first render, so a stale picker cannot satisfy `pickerRoot`.
+- `false`: three copies of the open-then-wait pattern, and the third has no title wait — the selector is scoped to `.ocu-dialog-body`, and the previous dialog is closed (`dialogOpen()` guard).
+- `low`: the product's layout shift remains, the in-story fixes were not weighed, and the rejection rests on an unmeasured likelihood (3 rows) — this is DW-1946 (`wontfix-accepted`). The dialogs are outside the rework range, and the defect is not HIGH.
+- `low`: the cycle log's `dev_complete` reads `review_loop_iteration=1` against the frontmatter's 0, and `deferred=0` sits beside DW-1946 `by=harvest`. Both are the lead's log and ledger lines.
+- `low`: DW-1946's `reopen_if` is a report, not a probe; it does not name the spec; the task dialogs may share the cause (maybe-false). The entry is terminal and append-only.
+- `low`: the cause is stated several times in an oversized spec (2 rows) — partly consolidated by the first patch above; the triage rows and the Auto Run Result are the stage's own records.
+- `low`: `pickerRoot` times out bare, before the assertion message or a refusal sentence can show (2 rows); the `[CI]` item names `setSource` for `onSource`. Each is cosmetic.
+
 ## Spec Change Log
+
+- 2026-10-02, rework iteration 1 (trigger ci): run 37012695762 red on the transfer browser spec's local-file input wait; one `[CI]` item re-opens the story.
 
 - 2026-10-02, spec gate (lead; footprint by the orchestrator, by=merge_gate): the eight spine amendments applied as tier-1. Option (A) approved for the six roster files Epic 18's 18.16 also edits: proceed now; whichever story reaches feature second unions them at its forward merge (count literals summed from the merged code, sorted lists merged) and re-runs those six classes one at a time before pushing. `Prohibited.cls` hunks approved as disjoint. DW-1932 routed here.
 
 ## Review Triage Log
+
+### 2026-10-02 — Review pass
+
+- verdicts: 28 findings — high 0, medium 8, low 6, false 14, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A server file over 3,000,000 characters has no test — leg added to `AtelierPortTransfer.TestAFileIsCheckedBeforeAnyRoute` (400 `TOOLARGE`, no route); red under the disabled check (run 1818).
+  - `[medium]` `[patch]` A UDL import whose compile fails is never tested for `errors` — `AtelierPortTransfer.TestAUdlFileThatDoesNotCompileIsPutWithErrors` added on the live vendor; red under the disabled flag (run 1818).
+  - `[medium]` `[patch]` The code arm is tested with a one-name summary only — `ExplorerTransfer.TestTheCodeArmReadsEveryNameAnImportReviewed` added (own document second of three); red with `ImportedNames` reading one entry (run 1409).
+  - `[medium]` `[patch]` The import dialog never shows an instance refusal in a test (AC2's import half) — page-spec leg added for the 501 sentence and a `PATH.*` on the picker; red with `shownRefusal` answering `localRefusal()` alone.
+  - `[low]` `[patch]` The Routines set-delete warning (DW-1932) has no test — page-spec leg added; red with the Classes sentence restored.
+  - `[medium]` `[patch]` The agent's mints never refuse a bad file in a test — `ExplorerTransfer.TestTheMintsRefuseTheFileTheWriteWould` added (export `DIRECTORY` on `path`, import `PATH.NOFILE`); both legs red with the checks removed (run 1819).
+  - `[medium]` `[patch]` The import's file-pair gate has no test — `AtelierPortWriteDenial.TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName` added; red with `ArgumentPairs` answering `""` (run 1410).
+  - `[low]` `[patch]` Nothing checks that the import schema leaves out the local file — `ExplorerTransfer.TestTheImportSchemaAdvertisesNoLocalFile` added (a direct assertion, so patched rather than deferred).
+  - `[false]` `[reject]` AC2's compile-and-delete clause has no `mutation:` line — Rule 19 asks one demonstrated mutation per AC; AC2 has three.
+  - `[false]` `[reject]` AC3's card and confirm clauses have no `mutation:` line — AC3's pinning test has its recorded mutation (run 1392).
+  - `[false]` `[reject]` AC4's file-pair and browser-export clauses have no `mutation:` line — AC4 has recorded mutations (runs 1394, 1395, 1410).
+  - `[false]` `[reject]` AC7's floor and structural clauses have no `mutation:` line — AC7 has its recorded mutation (runs 1399, 1400).
+  - `[false]` `[reject]` The agent legs call `View` and `Confirm` in process, not dispatch — dispatch's refusal of both import tools at the baseline and the tool staying advertised are pinned by `ToolDispatch` (`EXPLORERDISABLED`); `View` is dispatch's own call target, as in 19.2.
+  - `[false]` `[reject]` Several matrix rows are tested at the port, not the screen route — the port is the one seam both callers reach (AD-61), the route adds no logic on these paths, and version 6 is reachable only through the version seam.
+  - `[false]` `[reject]` The capture ceiling's 503 has no new test — the ceiling is `Route`'s, pinned for every route by `AtelierPortDocument`; the export adds no code on that path.
+  - `[medium]` `[patch]` `TOOLARGE` for a server file is unreached — same root cause and fix as the first row.
+  - `[false]` `[reject]` `EXPLORER.DOCUMENT.ABSENT` at the confirm is untested — the confirm's write is the port's `EXPORT`, whose absent refusal `AtelierPortTransfer.TestAnExportWritesTheVendorsLines` pins; the screen and the mint are pinned by `TestAnExportNamingAMissingDocumentIsRefused`.
+  - `[medium]` `[patch]` A real compile failure is covered only by canned routes — same root cause and fix as the second row.
+  - `[low]` `[patch]` UTF-8 is not distinguished, since the probes are ASCII — `AtelierPortTransfer.TestFilesAreReadAndWrittenAsUtf8` added (a server file read and an export written, checked as bytes).
+  - `[low]` `[reject]` `CHANGED` compares the summary, so a content-only change goes undetected — the matrix row and Design Notes › The summary define the comparison; a content hash is a spec change, and the sentence shows only when the summary differs.
+  - `[low]` `[reject]` "Never stored or logged" for a local file has no test — `ScreenAction` writes no ledger row and logs no value, and the agent half is pinned by the closed-schema leg; a log-scraping test adds machinery for a property no path violates.
+  - `[false]` `[reject]` The agent's own-code import is refused at the confirm, not at the mint — the intent asks for the refusal on both callers, and 19.2's compile and delete refuse at the same `Operation.Gate` point.
+  - `[false]` `[reject]` Every import type is gated at 7, a UDL import too — AC2 requires import to answer the version-7 sentence; the diff implements that reading.
+  - `[false]` `[reject]` A failed `PUT` also sets `errors` — no bad outcome: the document is left out of `imported` and the vendor text is logged.
+  - `[false]` `[reject]` EXPERIENCE.md is edited above :591 — the in-place citation moves are required by inserted rows; the one wrong move (`prd.md` :698) was reverted at verify.
+  - `[low]` `[patch]` `AtelierPortWriteDenial`'s new legs name 19.2's probe package and a file directly under the manager directory — the refused export's file moved to `OcuProbe1913/denied.xml`; the class keeps its own probe package, which its setup and teardown remove.
+  - `[false]` `[reject]` A failed `PUT` logs the document's name — the spec sends a file `status`'s vendor text to the log; the `PUT` error is that channel, and the name is the caller's own file's.
+  - `[false]` `[reject]` DW-1932 sits outside the intent — Task 8 and the spawn prompt route it here.
+
+### 2026-10-02 — Review pass (rework iteration 1, `[CI]`)
+
+- verdicts: 5 findings — high 0, medium 0, low 3, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The dialogs' source radios still move up when the allowed-directories read lands, so a click during the read can hit the root `<select>` — a human click inside a local read's window is unlikely, and the fix reserves the shared picker's loading height or re-anchors the shared dialog (new layout rules on shared components); reopen_if a user reports a misclick on the import or export source.
+  - `[low]` `[reject]` Same root cause, read as the screen's promise (intent reading R2): no test watches the dialog during the read — as the row above.
+  - `[false]` `[reject]` The timing fix has no recorded red — the held-read diagnostic reproduced the miss every time and hit after the picker was drawn; a race cannot redden deterministically by reverting the wait, and the `[CI]` item asks five consecutive greens, recorded.
+  - `[low]` `[reject]` carried — AC1's browser half is not driven through the page's save and file input with source equality — same claim as the logged "no browser download leg" row; this diff does not touch it.
+  - `[false]` `[reject]` The `[CI]` box is open, the old result reads done, and the two baselines differ — the run's in-flight state: finalize ticks the item and writes the result, and the lead points both baselines at the rework for the scoped re-review.
 
 ## Design Notes
 
@@ -385,7 +489,7 @@ ROUTINE Name [Type=INC]                    -> Name.inc   ([Type=INT] -> Name.int
 anything else                              -> EXPLORER.IMPORT.UNREADABLE
 ```
 
-**The summary.** One entry per document, sorted by code point and joined by `", "`. Each entry reads `<name> new`, or `<name> replaces <ts>`, where `ts` is the instance's own version: from `xml/list` for XML, from `Docs` for UDL. Because a replaced document's version is in it, a change on the instance between review and write refuses `CHANGED`, so the import never replaces a version nobody reviewed (AD-6).
+**The summary.** One entry per document, sorted by code point and joined by `", "`. Each entry reads `<name> new`, or `<name> replaces <ts>`, where `ts` is the instance's own version: from `xml/list` for XML, from `Docs` for UDL. Because a replaced document's version is in it, a change on the instance between review and write refuses `CHANGED`, so the import never replaces a version nobody reviewed (AD-6). The summary ends with ` (sha256 <digest>)`, the digest of the file's lines, so a file whose text changed after review refuses `CHANGED` even when its document names did not.
 
 **Why two action ids per tool.** `ScreenAction.Values` admits exactly the declared values, each non-empty. A server file and a local file, or a file and this browser, are therefore separate actions of one tool. The page never registers the second id of each pair, so it is never drawn.
 
@@ -487,17 +591,59 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 
 **Planned mutations (Rule 19)**, one per AC. Record each as `mutation: <change> → <test that reddened>` as it is observed.
 
-- AC1: drop the last exported line before writing → `ExplorerTransfer`'s server round trip reddens. Drop `content` in `ExplorerImport.ScreenActionDelta` → the local round trip reddens.
-- AC2: `ExportToXMLFile:1` in `MINVERSIONS` → `AtelierPortTransfer`'s version leg reddens. Remove the dialog's refusal render → `code-list.page.spec.ts` reddens.
-- AC3: copy `output` onto the mint's answer → `ExplorerTransfer`'s agent leg reddens.
-- AC4: give the import `ExplorerExport`'s `PrivilegePairs` → `AtelierPortWriteDenial`'s import leg reddens.
-- AC5: drop the arm's `import` branch → `ExplorerTransfer`'s `OCUPILOTCODE` legs redden.
-- AC6: skip `xml/list` before the load → the no-stub leg reddens. Skip the `CHANGED` comparison → the changed leg reddens.
-- AC7: set `explorer.classes.import` to `true` in `Baseline.cls` → `ExplorerDescriptor` reddens.
+- mutation: AC1, the last exported line removed before `WriteLines` in `AtelierPort.ExportSet` → `ExplorerTransfer.TestTheServerRoundTripRestoresEachDocument` (run 1388), `AtelierPortTransfer.TestAnExportWritesTheVendorsLines` (run 1389).
+- mutation: AC1, `content` dropped from `ExplorerImport.ScreenActionDelta`'s value copy → `ExplorerTransfer.TestTheBrowserRoundTripRestoresEachDocument` (run 1390).
+- mutation: AC2, `ExportToXMLFile:1` in `MINVERSIONS` → `AtelierPortTransfer.TestAnOlderInstanceRefusesEveryTransfer` (run 1391).
+- mutation: AC2, `ExplorerExportDialog`'s refusal rendered on `sending()` instead of `hasRefusal` → `code-list.page.spec.ts` "AC2: a refused export shows the instance's sentence in the dialog".
+- mutation: AC3, `output` set on the proposal after `ExplorerImportMint.Mint` → `ExplorerTransfer.TestTheAgentExportsAndImportsThroughConfirm` (run 1392).
+- mutation: AC4, `ExplorerExport`'s `PrivilegePairs` given to `ExplorerImport` → `AtelierPortWriteDenial.TestTheToolsDeclareTheRequestNamespacesWritePair` (run 1394); with the port's import write pair also dropped from `AtelierPort.Invoke`'s `tWrite` → `TestAnImportWithoutWriteIsRefusedByName` and `TestADeveloperImportsInUserAndExportsAnywhere` (run 1395).
+- mutation: AC5, `Prohibited.Prohibits` arm called on `tId` without the `import` branch → `ExplorerTransfer.TestAnImportOfOcuPilotsOwnCodeIsRefusedOnBothCallers` (run 1396).
+- mutation: AC6, `Examine` skipped for an XML file in `AtelierPort.ImportSet` → `ExplorerTransfer.TestAnUnreadableOrChangedFileLoadsNothing`, unreadable leg (run 1397).
+- mutation: AC6, the `CHANGED` comparison in `AtelierPort.ImportSet` made `If 0` → `ExplorerTransfer.TestAnUnreadableOrChangedFileLoadsNothing`, changed leg (run 1398).
+- mutation: AC7, `"explorer.classes.import": true` in `Baseline.cls` → `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndEightWrites` (run 1399), `ExplorerTransfer.TestTheBaselineShipsTheImportsDisabled` (run 1400).
+- mutation: AC2, `ExplorerImportDialog.shownRefusal` answering `localRefusal()` alone → `code-list.page.spec.ts` "AC2: a refused import shows the instance's sentence in the import dialog…".
+- mutation: AC4, `ExplorerImport.ArgumentPairs` answering `""` → `AtelierPortWriteDenial.TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName` (run 1410).
+- mutation: AC5, `Prohibited.ImportedNames` reading only the summary's first entry → `ExplorerTransfer.TestTheCodeArmReadsEveryNameAnImportReviewed` (run 1409).
+- mutation: AC6 and the matrix, `If tTooLarge` and `If tCompileErrors` disabled in `AtelierPort` → `AtelierPortTransfer.TestAFileIsCheckedBeforeAnyRoute` and `TestAUdlFileThatDoesNotCompileIsPutWithErrors` (run 1818); the `CheckExport` call and the preview's refusal check removed from the two mints → `ExplorerTransfer.TestTheMintsRefuseTheFileTheWriteWould`, both legs (run 1819).
+- mutation (review): AC6, the digest note dropped from `AtelierPort.Examine` → `AtelierPortTransfer.TestAnXmlImportLoadsWhatItsPreviewNamed` "a file whose text changed under the same documents is refused" (run 1833) and `ExplorerTransfer.TestAnUnreadableOrChangedFileLoadsNothing` "the confirm of a file rewritten after the mint is refused as changed" (run 1835).
+- mutation (review): AC1, `AtelierPort.WholeLines` answering the vendor's lines unchanged → `AtelierPortTransfer.TestALongLineIsExportedWhole` (run 1840).
+- mutation (review): AC3, `Compile` dropped from `ExplorerImport.InputSchema` → `ExplorerTransfer.TestTheAgentExportsAndImportsThroughConfirm` "the agent's import call is minted through the dispatcher" (run 1834).
+- mutation (review): matrix, in one recompile of `AtelierPort`: `ignoreConflict` renamed → `TestAUdlFileIsPutAndCompiled` "a second text of the class replaces it"; the UDL compile made unconditional → `TestFilesAreReadAndWrittenAsUtf8` "without compiling"; `ExportSet`'s delete disabled → `TestAFailedExportWriteDeletesOnlyTheFileItCreated` first leg; `ExportSet` carrying on after a failed route → `TestAnExportAboveTheCeilingIsUnavailable` (all `AtelierPortTransfer`, run 1832); its `tAbsent` guard dropped → the cleanup test's second leg (run 1833).
+- mutation (review): `ExplorerImportDialog.onSource` keeping `local` → `code-list.page.spec.ts` "a local file read before the source was switched away and back is not sent…"; `export` dropped from `ExplorerRoutineList`'s labels → `tools/screen-actions.test.mjs`. Every mutation reverted with the tree byte-identical; final runs green: `AtelierPortTransfer` 1841, `ExplorerTransfer` 1842, `AtelierPortWriteDenial` 1843, `AtelierPortWrite`, `npm run test:tools` 1772/1772, system-explorer specs 34/34, `system-explorer-transfer` browser spec on the rebuilt bundle.
+
+**`[CI]` run 37012695762.** Cause: the import dialog opens with the allowed-directories read in flight; its answer grows the picker and re-centres the dialog, moving the source radio up 64 px, so a click whose point is taken before the answer and pressed after it lands on the picker's `<select>` and the file input never renders. Fix: the local leg presses the radio once `pickerRoot` has drawn the picker. No client code changed.
+
+- mutation: AC1, `ExplorerImportDialog.onSource` setting the source to `server` whatever was chosen → `system-explorer-transfer.browser-spec.mjs` red at its file-input wait (:240) on the rebuilt bundle; reverted byte-identical (blob d832e765), rebuilt to the same `main-EUGSEAEJ.js`, redeployed. It pins AC1's local leg, not the wait.
+- mutation (review), the wait: a scratch harness held the `security.alloweddirectories` read and released it when `page.mouse.click` was entered, after the click point was taken (else after 1.5 s). With the pre-rework radio wait restored → red at the file-input wait, the radio's top 397 → 333 px; with `pickerRoot` → green. The spec file was restored byte-identical (blob 656b3d0d), and HEAD ran green on the redeployed `main-EUGSEAEJ.js` beforehand.
+- Five consecutive runs of `system-explorer-transfer.browser-spec.mjs` on `ocupilot-a2-ci` against that bundle, one per call: 1/1 green each (6.7-6.8 s). System-explorer component specs 34/34.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan (halted after planning, as instructed).** Task 0 was measured on `ocupilot-a2-ci`, and every probe was removed (Design Notes › Measured at plan). The spine amendments and the contended edits under Design Notes › Footprint wait for the lead's spec gate. DW-1932's reopen condition is met, and Task 8 addresses it.
+**Rework iteration 1 (`[CI]`, run 37012695762).** Change: the transfer browser spec's local leg waits for the import dialog's drawn picker (`pickerRoot`) before pressing the local-source radio, since the allowed-directories answer re-centres the dialog and moved the radio under a click taken before it (`ui/browser/system-explorer-transfer.browser-spec.mjs` :236-238); no client or server code changed. Review (verification-gap, intent-alignment): 5 findings, none patched or deferred; 3 low rejected (the product's layout shift during the read, twice; AC1's browser half carried) and 2 false, reasons in the triage log. Follow-up review: false (follow-up pass, no high patched). Verification: the mutation and five consecutive green runs under `## Verification`; system-explorer component specs 34/34; one more green run after a rebuild and redeploy (`main-EUGSEAEJ.js`). Residual risk: the dialogs' radios move when the directory read lands (rejected low, reopen_if in the triage log).
+
+**Change.** Export of the checked set (to a server file, or to this browser) and import of an XML export or one UDL document (from a server file, or a local file) on the Classes and Routines lists, through `AtelierPort`'s new `EXPORTDOCS`, `EXPORT`, `IMPORTTARGET`, `PREVIEW` and `IMPORT` types and four action-style tools reached by the agent and the screen; the import reads before it writes, refuses `CHANGED` against its reviewed summary, and is refused `OCUPILOTCODE` for OcuPilot's own documents; DW-1932's Routines delete sentences.
+
+**Files.**
+
+- Port: `Port/AtelierPort.cls` (the five types, file resolve, UDL header rule, summary, script forms), `Port/AtelierRequest.cls` (object body), `Api/AtelierError.cls` (`EXPLORER.EXPORT.DIRECTORY`, `CHANGED` reworded).
+- Tools: `Screen/Tool/ExplorerExport.cls`, `ExplorerExportMint.cls`, `ExplorerImport.cls`, `ExplorerImportMint.cls`, `Explorer{Class,Routine}{Export,Import}.cls`.
+- Kernel: `Kernel/Proposal/Prohibited.cls` (export not judged, import judged by its summary's names, reason), `Kernel/Governance/Baseline.cls` (export keys on, import keys off).
+- Descriptors: `ExplorerClassList.cls`, `ExplorerRoutineList.cls` (four row actions, `export` extra action); `ui/src/app/core/screens.generated.ts` regenerated.
+- Client: `explorer-export-dialog.ts`, `explorer-import-dialog.ts` (new); `code-list.page.ts`, `code-list.store.ts`, `core/csv.ts` (`saveText`), `core/proposal-view.ts`, `core/screen-actions.ts`, `core/strings.ts`, `styles/_components.scss`; `ui/angular.json` warning 2447kB (measured 2,446,524 bytes).
+- Tests: `Test/AtelierPortTransfer.cls`, `ExplorerTransfer.cls`, `ExplorerTransferProbe.cls` (new); `AtelierPortWriteDenial.cls`, `AtelierPortFixture.cls`; roster updates in `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `GovernanceBaseline`, `Governance` (`EXPLORERDELETES` is now `EXPLORERDISABLED`), `ToolDispatch`, `DeveloperFloor`, `ToolEmit`, `Prohibited`, `ClassicPageGate`, `MappingDescriptor`, `SurfaceCoverage`, `ExplorerDescriptor`; `code-list.page.spec.ts`; `ui/browser/system-explorer-transfer.browser-spec.mjs` (new); `ui/tools/{csv,proposal-view,screen-mirror,self-protection,angular-json}.test.mjs`.
+- Docs: EXPERIENCE.md :173 and :590 in place, rows :591-592, citations above :590 moved by 2.
+
+**Review.** 28 findings (triage log): 12 patched, all test-side (8 medium, 4 low), each patched leg's red observed under a named mutation; 16 rejected with their reasons in the log; none deferred. Before review, the matrix audit added two legs (an XML file listing no document; an export naming a missing document at the screen and the mint), and one wrong citation move (`prd.md` :698) was reverted. Follow-up review: false (patched: high 0, medium 8 in 6 entries, low 4); every patch is a test whose mutation was demonstrated, so no unverified risk can be named.
+
+**Verification.** `check-objectscript` 0 problems, its harness 144/144; `lint-docs` and `check-prose` clean; `npm run test:tools` 1772/1772; `npm test` 1772 + 2098 component tests (155 files); `ng test` system-explorer 33/33; browser `system-explorer-transfer`, `system-explorer-write`, `a11y-structural-invariants` green on the final bundle with `structural-baseline.json` unchanged (handoff pass; no client source changed since). Full ObjectScript sweep on `ocupilot-a2-ci` after a clean `LoadDir`: 407 classes, 3,351 tests, 0 failed, every class in exactly one of 30 sequential legs (`ci-shards check`); no residue. `AtelierPortTransfer` (run 1820) and `ExplorerTransfer` (run 1821) re-run green after the last mutation revert. No probe document, file or enabled import key left on the throwaway.
+
+**Residual risks.** `CHANGED` compares the reviewed summary, so a server file whose content changes with the same documents imports unreviewed content (by design, Design Notes › The summary). Named limitations stand (export above about 3.6 million characters; a local file dense in escapes; a 504 on a long compile).
+
+**Merge notes (Rule 11).** The bundle-warning literal (`ui/angular.json` :54 and its pin) is also raised by Epic 18's 18.16: re-measure at the forward merge. Contended rosters to union then: `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `Governance` (renamed parameter), `ToolDispatch`, `ClassicPageGate`; add-only: `Baseline.cls`, `SurfaceCoverage.cls`; adjacent: `proposal-view.ts`, `strings.ts`, EXPERIENCE.md; regenerate `screens.generated.ts`.
+
+QA pass (19.13): no test added, every AC and matrix row already holds a real-runtime pin. The Rule 19 mutation lines above stand.
+
+- mutation: AC7 (QA, re-demonstrated), `"explorer.classes.import": true` in `Baseline.cls` -> `ExplorerTransfer.TestTheBaselineShipsTheImportsDisabled` and `TestTheAgentExportsAndImportsThroughConfirm` (run 1824); reverted byte-identical (sha1 52337c84), recompiled, `ExplorerTransfer` green again.

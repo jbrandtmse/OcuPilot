@@ -103,14 +103,15 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Story 19.2 AC9: the area's tools are its four reads and four writes, the lists' compile and
-/// delete, each over the source code API port with its own request type, fingerprint subject and
-/// precondition -- a delete covers each document's modified time; the compile keys are
-/// enabled and the delete keys disabled at the baseline; and the two lists declare compile and
-/// delete as row actions acting on the checked rows, at most one hundred, while the viewers declare
-/// none.</p>
+/// <p>Stories 19.2 AC9 and 19.13 AC7: the area's tools are its four reads and eight writes, the
+/// lists' compile, delete, export and import, each over the source code API port with its own
+/// request type, fingerprint subject and precondition -- a delete covers each document's modified
+/// time and an import its reviewed documents; the compile and export keys are enabled and the
+/// delete and import keys disabled at the baseline; and the two lists declare the six row actions,
+/// compile, delete and export acting on the checked rows, at most one hundred, while the viewers
+/// declare none.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
-Method TestTheAreaHoldsFourReadsAndFourWrites()
+Method TestTheAreaHoldsFourReadsAndEightWrites()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the registry lists")
@@ -124,8 +125,8 @@ Method TestTheAreaHoldsFourReadsAndFourWrites()
         Set tClass = tTool.class
         Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
-    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.read:read", "the area's tools are four reads and four writes")
-    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes are destructive")
+    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read", "the area's tools are four reads and eight writes")
+    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.classes.export:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.classes.import:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.export:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.routines.import:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes and imports are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
     If $$$ISERR(tSC) Quit
@@ -134,12 +135,12 @@ Method TestTheAreaHoldsFourReadsAndFourWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false", "the compile keys ship enabled and the delete keys disabled")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete and import keys disabled")
     For tI = 1:1:4 {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Set tMulti = $Select($$$ISOK(tSC) && (tDeclaration.%GetTypeOf("multiSelect") = "object"): tDeclaration.multiSelect.%ToJSON(), 1: "")
-        Set tWant = $Select(tI <= 2: "|compile,delete|{""action"":""compile"",""max"":100,""extraActions"":[""delete""]}", 1: "||")
+        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", 1: "||")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tMulti, tWant, tClass _ ": its actions")
     }
 }

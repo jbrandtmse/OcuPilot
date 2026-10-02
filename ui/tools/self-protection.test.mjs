@@ -498,9 +498,10 @@ test('Story 18.15: the refusal of %SYS and %ALL is one sentence on both surfaces
 /** Story 19.2's error class, which declares System Explorer's write refusals and delete reasons. */
 const ATELIER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AtelierError.cls');
 
-/** Story 19.2's eight published sentences: `[parameter, strings.ts key]`. */
+/** Story 19.2's eight published sentences and Story 19.13's export directory refusal: `[parameter, strings.ts key]`. */
 const ATELIER_REFUSALS = [
   ['REASONDOCUMENTABSENT', 'explorerDocumentAbsent'],
+  ['REASONEXPORTDIRECTORY', 'explorerExportDirectory'],
   ['REASONIMPORTUNREADABLE', 'explorerImportUnreadable'],
   ['REASONIMPORTCHANGED', 'explorerImportChanged'],
   ['REASONIMPORTTOOLARGE', 'explorerImportTooLarge'],

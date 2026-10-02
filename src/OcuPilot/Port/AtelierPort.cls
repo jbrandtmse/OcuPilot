@@ -9,10 +9,20 @@
 /// <parameter>ENDPOINTROUTINES</parameter>, a namespace's classes and routines as rows, and
 /// <parameter>ENDPOINTCLASS</parameter> and <parameter>ENDPOINTROUTINE</parameter>, one document's
 /// structure as rows with its text beside them. The two list endpoints also serve a set of documents
-/// (<parameter>NAMESKEY</parameter>): <parameter>TYPEDOCS</parameter>, which of them the namespace
-/// holds, and the writes <parameter>TYPECOMPILE</parameter> and <parameter>TYPEDELETE</parameter>,
-/// each composed here from the caller's declared values and gated on WRITE on the namespace's
-/// routines database as well (AD-51, AD-61).</p>
+/// (<parameter>NAMESKEY</parameter>): <parameter>TYPEDOCS</parameter> and
+/// <parameter>TYPEEXPORTDOCS</parameter>, which of them the namespace holds, and the writes
+/// <parameter>TYPECOMPILE</parameter>, <parameter>TYPEDELETE</parameter> and
+/// <parameter>TYPEEXPORT</parameter>; and an import of one file (<parameter>IDKEY</parameter>
+/// <parameter>IMPORTID</parameter>): <parameter>TYPEIMPORTTARGET</parameter>, its target,
+/// <parameter>TYPEPREVIEW</parameter>, what the file would do, and the write
+/// <parameter>TYPEIMPORT</parameter>. Each write is composed here from the caller's declared values
+/// (AD-51); a compile, a delete and an import are gated on WRITE on the namespace's routines database
+/// as well (AD-61).</p>
+/// <p><b>A server file is never a caller's path</b> (AD-21's sixth case): an export or an import
+/// names it by <code>root</code> and <code>path</code>, resolved through
+/// <method>PathPortClass</method> at each call, the export as an overwriting <code>file</code>
+/// (<parameter>EXPORTOVERWRITES</parameter>, a constant) and the import as a <code>source</code>. A
+/// local file is the screen's <code>fileName</code> and <code>content</code>, never a path.</p>
 /// <p><b>The order of every call is fixed</b> (AD-61): the gate, in the caller's process
 /// (<parameter>PAIRS</parameter>, then READ on the target namespace's routines and globals
 /// databases and on every other database it maps code from, resolved at call time); the endpoint;
@@ -43,7 +53,7 @@ Parameter VERSIONCLASSPREFIX = "%Api.Atelier.v";
 Parameter PINNEDVERSION As INTEGER = 8;
 
 /// <p>The lowest version each route this port calls needs, as <code>method:version</code>.</p>
-Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1";
+Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1,ExportToXMLFile:7,ListDocumentsInXMLFiles:7,LoadXMLFiles:7,PutDoc:1";
 
 /// <p>The pair set every call requires whatever its namespace, comma-separated as
 /// <code>resource:permission</code>, in the order the gate reports in (AD-8, AD-29). READ on the
@@ -83,10 +93,85 @@ Parameter TYPECOMPILE = "COMPILE";
 /// <p>The list endpoints' delete of a set of documents (<method>DeleteSet</method>).</p>
 Parameter TYPEDELETE = "DELETE";
 
+/// <p>The list endpoints' read of a set of documents an export makes: <method>Docs</method>, with
+/// <code>root</code> and <code>path</code> answered <code>null</code> beside it.</p>
+Parameter TYPEEXPORTDOCS = "EXPORTDOCS";
+
+/// <p>The list endpoints' export of a set of documents (<method>ExportSet</method>).</p>
+Parameter TYPEEXPORT = "EXPORT";
+
+/// <p>The list endpoints' read of an import's target: its arguments, empty (<method>Invoke</method>).</p>
+Parameter TYPEIMPORTTARGET = "IMPORTTARGET";
+
+/// <p>The list endpoints' read of what an import's file would do (<method>Preview</method>).</p>
+Parameter TYPEPREVIEW = "PREVIEW";
+
+/// <p>The list endpoints' import of one file (<method>ImportSet</method>).</p>
+Parameter TYPEIMPORT = "IMPORT";
+
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
-/// <code>endpoint/type</code> (AD-51): a compile from its three booleans and a delete from the set
-/// alone.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE";
+/// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
+/// alone, an export from the set and its file, and an import from its file.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT";
+
+/// <p>The query key carrying an import's target, and the one target it takes, compared without
+/// regard to case.</p>
+Parameter IDKEY = "id";
+
+Parameter IMPORTID = "import";
+
+/// <p>The query keys carrying a server file: an allowed directory and a relative name under it
+/// (AD-21's sixth case).</p>
+Parameter ROOTKEY = "root";
+
+Parameter PATHKEY = "path";
+
+/// <p>The query keys carrying a local file the screen sends: its name, which names no directory, and
+/// its text.</p>
+Parameter FILENAMEKEY = "fileName";
+
+Parameter CONTENTKEY = "content";
+
+/// <p>The query key carrying the reviewed summary an import's write compares
+/// (<method>Examine</method>).</p>
+Parameter DOCUMENTSKEY = "documents";
+
+/// <p>The query key carrying whether an import compiles what it loads, <code>1</code> or
+/// <code>0</code> (<code>true</code> or <code>false</code> are read the same).</p>
+Parameter COMPILEKEY = "Compile";
+
+/// <p>Whether an export replaces a file already at its name: declared by the export itself, never a
+/// caller value (AD-21).</p>
+Parameter EXPORTOVERWRITES As BOOLEAN = 1;
+
+/// <p>The most characters an import reads from one file.</p>
+Parameter MAXIMPORTCHARACTERS As INTEGER = 3000000;
+
+/// <p>The longest local file name an import takes.</p>
+Parameter MAXFILENAME As INTEGER = 255;
+
+/// <p>The extensions an import reads, lower case: an XML export, or one UDL document.</p>
+Parameter IMPORTEXTENSIONS = "xml,cls,mac,inc,int";
+
+/// <p>The compiler flags an import that compiles sends: <method>CompileFlags</method> with source
+/// kept and documents already up to date skipped.</p>
+Parameter IMPORTCOMPILEFLAGS = "cuk";
+
+/// <p>The separator between two entries of an import's summary.</p>
+Parameter SUMMARYSEPARATOR = ", ";
+
+/// <p>The label of the digest that ends an import's summary (<method>Digest</method>).</p>
+Parameter SUMMARYDIGEST = "sha256";
+
+/// <p>How many characters of one line <method>Digest</method> converts to UTF-8 at a time, so a long
+/// line never becomes one string longer than the instance's longest.</p>
+Parameter DIGESTCHUNK As INTEGER = 32000;
+
+/// <p>The longest line the vendor's export route answers whole: it reads its stream with
+/// <code>ReadLine</code>'s default length, so a longer line arrives as pieces of exactly this many
+/// characters followed by the rest (measured on this build, 2026-10-02). <method>WholeLines</method>
+/// puts such a line back together.</p>
+Parameter VENDORLINE As INTEGER = 32000;
 
 /// <p>The query key carrying a set of documents: their names, comma-separated.</p>
 Parameter NAMESKEY = "names";
@@ -185,7 +270,7 @@ Parameter REASONNOTIMPLEMENTED = "This instance does not implement that operatio
 
 /// <p>The reason an instance whose API is too old is refused with; <code>{highest}</code> and
 /// <code>{needed}</code> are the two versions.</p>
-Parameter REASONVERSION = "This instance's source code API answers version {highest}, and this read needs version {needed} or later.";
+Parameter REASONVERSION = "This instance's source code API answers version {highest}, and this operation needs version {needed} or later.";
 
 /// <p>The reason a missing or malformed namespace is refused with.</p>
 Parameter REASONNAMESPACESHAPE = "Name the namespace the read runs in.";
@@ -232,6 +317,18 @@ Parameter REASONNAMES = "Name 1 to 100 documents of this list, separated by comm
 
 /// <p>The reason a missing or malformed compile value is refused with.</p>
 Parameter REASONFLAGS = "KeepSource, CompileDependents and SkipUpToDate must each be true or false.";
+
+/// <p>The reason an import whose file is named twice, or not at all, is refused with.</p>
+Parameter REASONSOURCE = "Name the file to import once: root and path for a file on the server, or fileName and content for one on this computer.";
+
+/// <p>The reason a malformed local file name is refused with.</p>
+Parameter REASONFILENAME = "fileName must be 1 to 255 characters, with no /, \ or control character.";
+
+/// <p>The reason a missing or malformed import compile value is refused with.</p>
+Parameter REASONIMPORTCOMPILE = "Compile must be true or false.";
+
+/// <p>The reason an import target other than <parameter>IMPORTID</parameter> is refused with.</p>
+Parameter REASONIMPORTID = "An import's target is import.";
 
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
@@ -358,10 +455,14 @@ ClassMethod WritePairs(pNamespace As %String) As %List
 }
 
 /// <p>The lowest version <var>pEndpoint</var>'s routes need for request type <var>pType</var>: the
-/// highest of its routes' <parameter>MINVERSIONS</parameter>.</p>
+/// highest of its routes' <parameter>MINVERSIONS</parameter>. An export's read and write take the
+/// export route's, and an import's target, preview and write each take every route an import may
+/// call, so an instance too old for the write refuses its fresh read too.</p>
 ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}) As %Integer
 {
-    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
+    Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
+    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -389,17 +490,27 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <p>The list endpoints also serve a set of documents, named in <code>names</code>
 /// (<method>SetNames</method>), in <code>namespace</code> or, where it is absent, the request's
 /// resolved scope (<method>OcuPilot.Kernel.Scope.Current</method>): <parameter>TYPEDOCS</parameter>
-/// answers <method>Docs</method>'s object; <parameter>TYPECOMPILE</parameter> and
-/// <parameter>TYPEDELETE</parameter> answer <method>CompileSet</method>'s and
-/// <method>DeleteSet</method>'s, and require WRITE on the namespace's routines database
-/// (<method>WritePairs</method>).</p>
+/// and <parameter>TYPEEXPORTDOCS</parameter> answer <method>Docs</method>'s object;
+/// <parameter>TYPECOMPILE</parameter>, <parameter>TYPEDELETE</parameter> and
+/// <parameter>TYPEEXPORT</parameter> answer <method>CompileSet</method>'s,
+/// <method>DeleteSet</method>'s and <method>ExportSet</method>'s, and the first two require WRITE on
+/// the namespace's routines database (<method>WritePairs</method>).</p>
+/// <p>They serve an import too, in the same namespace, its target <code>id</code>
+/// <parameter>IMPORTID</parameter>: <parameter>TYPEIMPORTTARGET</parameter> answers
+/// <code>{Namespace, root, path, fileName, content, documents}</code>, the namespace and five empty
+/// strings, with <code>Compile</code> <code>null</code>, and makes no vendor call, any other id
+/// being 404 <code>PORT.NOTFOUND</code>; <parameter>TYPEPREVIEW</parameter> answers
+/// <method>Preview</method>'s <code>{documents, count}</code>; and <parameter>TYPEIMPORT</parameter>
+/// answers <method>ImportSet</method>'s, requiring <method>WritePairs</method>.</p>
 /// <p>Otherwise an error status is returned with <var>pResult</var> and <var>pDocument</var> empty,
 /// <var>pHttpStatus</var> the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, before any vendor call; 501
 /// <code>PORT.NOTIMPLEMENTED</code> for an endpoint not served or an instance whose version is too
 /// old; 400 <code>PORT.VALIDATION</code> for a malformed argument or a value the vendor refused;
 /// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
-/// document the namespace does not hold, with nothing sent; 403 <code>PORT.ACCESSDENIED</code> for
+/// document the namespace does not hold, with nothing sent; a file's own refusals
+/// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); 403
+/// <code>PORT.ACCESSDENIED</code> for
 /// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace,
@@ -419,10 +530,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
+        Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
-        If (tNamespace = "") && tSetType Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+        If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
             Quit
@@ -439,7 +551,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         Set tList = (pEndpoint = ..#ENDPOINTCLASSES) || (pEndpoint = ..#ENDPOINTROUTINES)
         Set tOne = (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE)
-        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne)) || (tSetType && tList)
+        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne)) || ((tSetType || tImportType) && tList)
         If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
@@ -453,6 +565,29 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tVersion = $Select(tHighest > ..#PINNEDVERSION: ..#PINNEDVERSION, 1: tHighest)
 
+        If tImportType {
+            If $ZConvert($Get(pQuery(..#IDKEY)), "L") '= ..#IMPORTID {
+                Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONIMPORTID, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEIMPORTTARGET {
+                Set pResult = {}
+                Do pResult.%Set("Namespace", tNamespace, "string")
+                For tKey = ..#ROOTKEY, ..#PATHKEY, ..#FILENAMEKEY, ..#CONTENTKEY, ..#DOCUMENTSKEY {
+                    Do pResult.%Set(tKey, "", "string")
+                }
+                Do pResult.%Set(..#COMPILEKEY, "", "null")
+                Set pHttpStatus = 200
+                Quit
+            }
+            If pType = ..#TYPEPREVIEW {
+                Set tSC = ..Preview(tVersion, tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..ImportSet(tVersion, tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+
         If tSetType {
             Set tNames = ..SetNames(pEndpoint, $Get(pQuery(..#NAMESKEY)))
             If tNames = "" {
@@ -461,6 +596,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             If pType = ..#TYPEDOCS {
                 Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEEXPORTDOCS {
+                Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault, $ListBuild(..#ROOTKEY, ..#PATHKEY))
+                Quit
+            }
+            If pType = ..#TYPEEXPORT {
+                Set tSC = ..ExportSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
             If pType = ..#TYPECOMPILE {
@@ -727,10 +870,10 @@ ClassMethod SetNames(pEndpoint As %String, pValue As %String) As %List
 /// Namespace}</code>, where <code>Present</code> and <code>Absent</code> are the held and the missing
 /// names comma-joined in the set's order, <code>Modified</code> is each held name and its modified
 /// time as <code>name=time</code>, comma-joined, and <code>Namespace</code> is <var>pNamespace</var>.
-/// <code>KeepSource</code>, <code>CompileDependents</code> and <code>SkipUpToDate</code> are answered
-/// <code>null</code> beside them, so a compile's declared values merge over this read (AD-4,
-/// AD-51).</p>
-ClassMethod Docs(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// Each name of <var>pNullKeys</var> is answered <code>null</code> beside them, so a write's declared
+/// values merge over this read (AD-4, AD-51): <code>KeepSource</code>,
+/// <code>CompileDependents</code> and <code>SkipUpToDate</code> when it names none.</p>
+ClassMethod Docs(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pNullKeys As %List = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -772,8 +915,9 @@ ClassMethod Docs(pVersion As %Integer, pNamespace As %String, pEndpoint As %Stri
         Do pResult.%Set("Modified", tModified, "string")
         Do pResult.%Set("Absent", tAbsent, "string")
         Do pResult.%Set("Namespace", pNamespace, "string")
-        For tKey = ..#KEEPSOURCEKEY, ..#COMPILEDEPENDENTSKEY, ..#SKIPUPTODATEKEY {
-            Do pResult.%Set(tKey, "", "null")
+        Set tNullKeys = $Select(pNullKeys = "": $ListBuild(..#KEEPSOURCEKEY, ..#COMPILEDEPENDENTSKEY, ..#SKIPUPTODATEKEY), 1: pNullKeys)
+        For tI = 1:1:$ListLength(tNullKeys) {
+            Do pResult.%Set($List(tNullKeys, tI), "", "null")
         }
         Set pHttpStatus = 200
     } Catch ex {
@@ -907,6 +1051,562 @@ ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As 
         Set tSC = ..Fail("the delete failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The class an export's or an import's file is resolved through (AD-21). Overridable so a
+/// fixture can observe the resolve; production never overrides it.</p>
+ClassMethod PathPortClass() As %String
+{
+    Quit "OcuPilot.Port.PathPort"
+}
+
+/// <p>The export's file for <var>pRoot</var> and <var>pPath</var>, resolved and checked exactly as
+/// <method>ExportSet</method> checks it before its vendor call, for a mint that must refuse what the
+/// write would: <parameter>PAIRS</parameter>, then <method>ExportFile</method>. Nothing is
+/// written.</p>
+ClassMethod CheckExport(pRoot As %String, pPath As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tFailedPair = ""
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(), .tFailedPair) {
+            Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ExportFile(pRoot, pPath, .tResolved, .tAbsent, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set tSC = ..Fail("the export's file could not be checked", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The export's file: <var>pRoot</var> and <var>pPath</var> resolved through
+/// <method>PathPortClass</method> as a <code>file</code> with <parameter>EXPORTOVERWRITES</parameter>,
+/// each refusal on its field, then <code>EXPLORER.EXPORT.DIRECTORY</code>, 400 with one violation on
+/// <code>path</code>, when the resolved name's directory does not exist; a directory is never
+/// created. On success <var>pResolved</var> is the path and <var>pAbsent</var> whether no file stood
+/// at it.</p>
+ClassMethod ExportFile(pRoot As %String, pPath As %String, Output pResolved As %String, Output pAbsent As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResolved = ""
+    Set pAbsent = 0
+    Set tPathPort = ..PathPortClass()
+    Set tSC = $ClassMethod(tPathPort, "Resolve", pRoot, pPath, $Parameter(tPathPort, "KINDFILE"), ..#ROOTKEY, ..#PATHKEY, .pResolved, .pHttpStatus, .pFault, ..#EXPORTOVERWRITES)
+    If $$$ISERR(tSC) {
+        Set pResolved = ""
+        Quit tSC
+    }
+    If '##class(%File).DirectoryExists(##class(%File).GetDirectory(pResolved)) {
+        Set pResolved = ""
+        Quit ..Violation(##class(OcuPilot.Api.AtelierError).#EXPORTDIRECTORY, ##class(OcuPilot.Api.AtelierError).#REASONEXPORTDIRECTORY, ..#PATHKEY, .pHttpStatus, .pFault)
+    }
+    Set pAbsent = '##class(%File).Exists(pResolved)
+    Quit $$$OK
+}
+
+/// <p>Export the documents <var>pNames</var> in one call, after <method>PresentSet</method>, its lines
+/// the vendor's with each long line put back whole (<method>WholeLines</method>). When
+/// <var>pQuery</var> names <code>root</code> or <code>path</code>, the file is resolved and checked
+/// (<method>ExportFile</method>) before the vendor call, the lines are written to it
+/// (<method>WriteLines</method>), and <var>pResult</var> is <code>{root, path}</code>; a file the call
+/// created is deleted when the write fails. Otherwise nothing is written and <var>pResult</var> is
+/// <code>{lines}</code>.</p>
+ClassMethod ExportSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tRoot = $Get(pQuery(..#ROOTKEY))
+        Set tPath = $Get(pQuery(..#PATHKEY))
+        Set tToFile = (tRoot '= "") || (tPath '= "")
+        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tToFile {
+            Set tSC = ..ExportFile(tRoot, tPath, .tResolved, .tAbsent, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tBody = []
+        For tI = 1:1:$ListLength(pNames) {
+            Do tBody.%Push($List(pNames, tI), "string")
+        }
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "ExportToXMLFile", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tLines = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+        If '$IsObject(tLines) || 'tLines.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("ExportToXMLFile answered no content array", $$$ERROR($$$GeneralError, "export answered no content array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tLines = ..WholeLines(tLines)
+        If 'tToFile {
+            Set pResult = {}
+            Do pResult.%Set("lines", tLines)
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set tWriteSC = ..WriteLines(tResolved, tLines)
+        If $$$ISERR(tWriteSC) {
+            If tAbsent && ##class(%File).Exists(tResolved) Do ##class(%File).Delete(tResolved)
+            Set tSC = ..Fail("the export's file could not be written", tWriteSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set(..#ROOTKEY, tRoot, "string")
+        Do pResult.%Set(..#PATHKEY, tPath, "string")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the export failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The export's lines <var>pLines</var>, as the vendor answers them, with each line longer than
+/// <parameter>VENDORLINE</parameter> put back together: a line of exactly that length is taken for
+/// one such piece and joined to the line after it.</p>
+ClassMethod WholeLines(pLines As %DynamicArray) As %DynamicArray
+{
+    Set tWhole = []
+    Set tPending = ""
+    Set tJoining = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tPending = $Select(tJoining: tPending _ tLine, 1: tLine)
+        Set tJoining = ($Length(tLine) = ..#VENDORLINE)
+        If 'tJoining Do tWhole.%Push(tPending, "string")
+    }
+    If tJoining Do tWhole.%Push(tPending, "string")
+    Quit tWhole
+}
+
+/// <p>Write <var>pLines</var> to <var>pFile</var> as UTF-8 text, each line ended by a line feed,
+/// replacing any file at that name once every line is written: the stream writes beside it and its
+/// save puts the new file in its place.</p>
+ClassMethod WriteLines(pFile As %String, pLines As %DynamicArray) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tStream.TranslateTable = "UTF8"
+        Set tStream.LineTerminator = $Char(10)
+        Set tSC = tStream.LinkToFile(pFile)
+        If $$$ISERR(tSC) Quit
+        Set tIterator = pLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            Set tSC = tStream.WriteLine(tLine)
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set tSC = tStream.%Save()
+        Kill tStream
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The text of the file an import names in <var>pQuery</var>, in <var>pText</var>, with
+/// <var>pLabel</var> the name the vendor is handed for it and <var>pExtension</var> its extension in
+/// lower case: the server file <code>root</code> and <code>path</code> name, resolved through
+/// <method>PathPortClass</method> as a <code>source</code> and read as UTF-8 text
+/// (<method>ReadText</method>), or the local file <code>fileName</code> and <code>content</code>
+/// send. Refused before any vendor call: 400 <code>PORT.VALIDATION</code> when both files or neither
+/// is named, or a <code>fileName</code> is longer than <parameter>MAXFILENAME</parameter> or holds
+/// <code>/</code>, <code>\</code> or a control character; the resolve's own refusal on its field; 422
+/// <code>EXPLORER.IMPORT.UNREADABLE</code> for an extension outside
+/// <parameter>IMPORTEXTENSIONS</parameter>; and 400 <code>EXPLORER.IMPORT.TOOLARGE</code> for text
+/// longer than <parameter>MAXIMPORTCHARACTERS</parameter>.</p>
+ClassMethod ImportSource(ByRef pQuery, Output pText As %String, Output pLabel As %String, Output pExtension As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pText = ""
+    Set pLabel = ""
+    Set pExtension = ""
+    Set tRoot = $Get(pQuery(..#ROOTKEY))
+    Set tPath = $Get(pQuery(..#PATHKEY))
+    Set tFileName = $Get(pQuery(..#FILENAMEKEY))
+    Set tContent = $Get(pQuery(..#CONTENTKEY))
+    Set tServer = (tRoot '= "") || (tPath '= "")
+    Set tLocal = (tFileName '= "") || (tContent '= "")
+    If tServer = tLocal Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSOURCE, .pHttpStatus, .pFault)
+    If tLocal {
+        If (tFileName = "") || ($Length(tFileName) > ..#MAXFILENAME) || (tFileName [ "/") || (tFileName [ "\") || ($ZStrip(tFileName, "*C") '= tFileName) {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONFILENAME, .pHttpStatus, .pFault)
+        }
+        Set pLabel = tFileName
+    } Else {
+        Set tPathPort = ..PathPortClass()
+        Set tSC = $ClassMethod(tPathPort, "Resolve", tRoot, tPath, $Parameter(tPathPort, "KINDSOURCE"), ..#ROOTKEY, ..#PATHKEY, .tResolved, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set pLabel = tPath
+    }
+    Set pExtension = $ZConvert($Piece(pLabel, ".", $Length(pLabel, ".")), "L")
+    If ($Length(pLabel, ".") < 2) || '$ListFind($ListFromString(..#IMPORTEXTENSIONS), pExtension) {
+        Quit ..Unreadable(.pHttpStatus, .pFault)
+    }
+    If tLocal {
+        If $Length(tContent) > ..#MAXIMPORTCHARACTERS Quit ..TooLarge(.pHttpStatus, .pFault)
+        Set pText = tContent
+        Quit $$$OK
+    }
+    Set tSC = ..ReadText(tResolved, .pText, .tTooLarge)
+    If $$$ISERR(tSC) Quit ..Fail("the import's file could not be read", tSC, .pHttpStatus, .pFault)
+    If tTooLarge {
+        Set pText = ""
+        Quit ..TooLarge(.pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p><var>pFile</var>'s text, read as UTF-8, in <var>pText</var>; <var>pTooLarge</var> is 1, and
+/// <var>pText</var> empty, once it passes <parameter>MAXIMPORTCHARACTERS</parameter>.</p>
+ClassMethod ReadText(pFile As %String, Output pText As %String, Output pTooLarge As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pText = ""
+    Set pTooLarge = 0
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tStream.TranslateTable = "UTF8"
+        Set tSC = tStream.LinkToFile(pFile)
+        If $$$ISERR(tSC) Quit
+        While 'tStream.AtEnd {
+            Set tChunk = tStream.Read(32000, .tSC)
+            If $$$ISERR(tSC) Quit
+            If ($Length(pText) + $Length(tChunk)) > ..#MAXIMPORTCHARACTERS {
+                Set pTooLarge = 1
+                Set pText = ""
+                Quit
+            }
+            Set pText = pText _ tChunk
+        }
+        Kill tStream
+    } Catch ex {
+        Set pText = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pText</var> as its lines: split on line feeds, a line feed ending the text adding no empty
+/// line, each line's trailing carriage return dropped, and a byte order mark (U+FEFF) leading the
+/// first line dropped.</p>
+ClassMethod Lines(pText As %String) As %DynamicArray
+{
+    Set tLines = []
+    Set tLength = $Length(pText)
+    Set tStart = 1
+    While tStart <= tLength {
+        Set tEnd = $Find(pText, $Char(10), tStart)
+        If tEnd = 0 {
+            Set tLine = $Extract(pText, tStart, tLength)
+            Set tStart = tLength + 1
+        } Else {
+            Set tLine = $Extract(pText, tStart, tEnd - 2)
+            Set tStart = tEnd
+        }
+        If $Extract(tLine, *) = $Char(13) Set tLine = $Extract(tLine, 1, *-1)
+        If (tLines.%Size() = 0) && ($Extract(tLine) = $Char(65279)) Set tLine = $Extract(tLine, 2, *)
+        Do tLines.%Push(tLine, "string")
+    }
+    Quit tLines
+}
+
+/// <p>The document a UDL file's lines <var>pLines</var> hold, named from its header, or
+/// <code>""</code> when the header does not parse. Leading lines that are blank, documentation
+/// (<code>///</code>), or an <code>Include</code>, <code>IncludeGenerator</code> or <code>Import</code>
+/// line are skipped, and the first other line decides, its keyword read in any case:
+/// <code>Class &lt;name&gt; ...</code> is <code>&lt;name&gt;.cls</code>, and
+/// <code>ROUTINE &lt;name&gt;</code> is <code>&lt;name&gt;.mac</code>, or <code>.inc</code> or
+/// <code>.int</code> where it carries <code>[Type=INC]</code> or <code>[Type=INT]</code>. The name must
+/// take <parameter>CLASSNAMEPATTERN</parameter>'s or <parameter>ROUTINENAMEPATTERN</parameter>'s
+/// shape.</p>
+ClassMethod Header(pLines As %DynamicArray) As %String
+{
+    Set tName = ""
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tWords = $ZStrip($Translate(tLine, $Char(9), " "), "<=>W")
+        If tWords = "" Continue
+        If $Extract(tWords, 1, 3) = "///" Continue
+        Set tKeyword = $ZConvert($Piece(tWords, " ", 1), "L")
+        If (tKeyword = "include") || (tKeyword = "includegenerator") || (tKeyword = "import") Continue
+        If tKeyword = "class" {
+            Set tCandidate = $Piece(tWords, " ", 2) _ ".cls"
+            If $Match(tCandidate, ..#CLASSNAMEPATTERN) Set tName = tCandidate
+            Quit
+        }
+        If tKeyword '= "routine" Quit
+        Set tType = "mac"
+        Set tRest = $Piece(tWords, " ", 3, *)
+        If tRest '= "" {
+            Set tType = ""
+            If ($Extract(tRest) = "[") && ($Extract(tRest, *) = "]") {
+                Set tType = "mac"
+                Set tAttributes = $Extract(tRest, 2, *-1)
+                For tI = 1:1:$Length(tAttributes, ",") {
+                    Set tAttribute = $ZStrip($Piece(tAttributes, ",", tI), "<>W")
+                    If $ZConvert($ZStrip($Piece(tAttribute, "=", 1), "<>W"), "L") '= "type" Continue
+                    Set tType = $ZConvert($ZStrip($Piece(tAttribute, "=", 2), "<>W"), "L")
+                }
+                If '$ListFind($ListBuild("mac", "inc", "int"), tType) Set tType = ""
+            }
+        }
+        If tType = "" Quit
+        Set tCandidate = $Piece(tWords, " ", 2) _ "." _ tType
+        If $Match(tCandidate, ..#ROUTINENAMEPATTERN) Set tName = tCandidate
+        Quit
+    }
+    Quit tName
+}
+
+/// <p>What an import of the file <var>pLabel</var>, whose extension is <var>pExtension</var> and whose
+/// lines are <var>pLines</var>, would do in <var>pNamespace</var>: <var>pSummary</var>, one entry per
+/// document, <code>&lt;name&gt; new</code> or <code>&lt;name&gt; replaces &lt;ts&gt;</code> where
+/// <code>ts</code> is the instance's own version, sorted by character code and joined by
+/// <parameter>SUMMARYSEPARATOR</parameter>, then <code> (sha256 &lt;digest&gt;)</code>, the
+/// <method>Digest</method> of <var>pLines</var>, so a file rewritten with the same documents reads a
+/// different summary (AD-6); <var>pCount</var>, how many; <var>pSelected</var>, the
+/// names as the vendor spells them; and <var>pName</var>, a UDL file's one document. An XML export is
+/// read through <code>xml/list</code>, whose per-file <code>status</code> or empty list is 422
+/// <code>EXPLORER.IMPORT.UNREADABLE</code> with the status logged; a UDL file is named by
+/// <method>Header</method>, a header that does not parse being the same refusal, and read through
+/// <method>Docs</method>.</p>
+ClassMethod Examine(pVersion As %Integer, pNamespace As %String, pLabel As %String, pExtension As %String, pLines As %DynamicArray, Output pSummary As %String, Output pCount As %Integer, Output pSelected As %DynamicArray, Output pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pSummary = ""
+    Set pCount = 0
+    Set pSelected = []
+    Set pName = ""
+    If pExtension '= "xml" {
+        Set pName = ..Header(pLines)
+        If pName = "" Quit ..Unreadable(.pHttpStatus, .pFault)
+        Set tEndpoint = $Select($ZConvert($Piece(pName, ".", $Length(pName, ".")), "L") = "cls": ..#ENDPOINTCLASSES, 1: ..#ENDPOINTROUTINES)
+        Set tSC = ..Docs(pVersion, pNamespace, tEndpoint, $ListBuild(pName), .tDocs, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Set tModified = tDocs.%Get("Modified")
+        Set pSummary = pName _ $Select(tModified = "": " new", 1: " replaces " _ $Piece(tModified, "=", 2, *)) _ ..DigestNote(pLines)
+        Set pCount = 1
+        Do pSelected.%Push(pName, "string")
+        Quit $$$OK
+    }
+    Set tFile = {}
+    Do tFile.%Set("file", pLabel, "string")
+    Do tFile.%Set("content", pLines)
+    Kill tNoParams
+    Set tSC = ..Route(pVersion, pNamespace, "ListDocumentsInXMLFiles", "", .tNoParams, [(tFile)], .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+    Set tEntry = ""
+    If $IsObject(tContent) && tContent.%IsA("%Library.DynamicArray") && (tContent.%Size() = 1) Set tEntry = tContent.%Get(0)
+    If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Quit ..Fail("ListDocumentsInXMLFiles answered no one file", $$$ERROR($$$GeneralError, "xml/list answered no one file"), .pHttpStatus, .pFault)
+    Set tStatus = tEntry.%Get("status")
+    Set tDocuments = tEntry.%Get("documents")
+    If (tStatus '= "") || '$IsObject(tDocuments) || 'tDocuments.%IsA("%Library.DynamicArray") || (tDocuments.%Size() = 0) {
+        If tStatus '= "" Do ..LogFault("ListDocumentsInXMLFiles could not read the file", $$$ERROR($$$GeneralError, tStatus), ##class(OcuPilot.Api.AtelierError).#IMPORTUNREADABLE)
+        Quit ..Unreadable(.pHttpStatus, .pFault)
+    }
+    Kill tSorted
+    Set tIterator = tDocuments.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tDocument) {
+        If '$IsObject(tDocument) Continue
+        Set tDocName = tDocument.%Get("name")
+        If tDocName = "" Continue
+        Set tTs = tDocument.%Get("ts")
+        ; Subscripted behind a letter so every name collates as a string, never as a number.
+        Set tSorted("n" _ tDocName) = $ListBuild(tDocName, $Select((tTs = "") || (tTs = -1): "", 1: tTs))
+    }
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey), 1, tPair)
+        If tKey = "" Quit
+        Set pSummary = pSummary _ $Select(pSummary = "": "", 1: ..#SUMMARYSEPARATOR) _ $List(tPair, 1) _ $Select($List(tPair, 2) = "": " new", 1: " replaces " _ $List(tPair, 2))
+        Do pSelected.%Push($List(tPair, 1), "string")
+        Set pCount = pCount + 1
+    }
+    If pCount = 0 Quit ..Unreadable(.pHttpStatus, .pFault)
+    Set pSummary = pSummary _ ..DigestNote(pLines)
+    Quit $$$OK
+}
+
+/// <p>The note that ends an import's summary: <code> (sha256 &lt;digest&gt;)</code>, the
+/// <method>Digest</method> of <var>pLines</var>.</p>
+ClassMethod DigestNote(pLines As %DynamicArray) As %String [ Private ]
+{
+    Quit " (" _ ..#SUMMARYDIGEST _ " " _ ..Digest(pLines) _ ")"
+}
+
+/// <p>The SHA-256 digest, as lower-case hexadecimal, of the lines <var>pLines</var> an import read
+/// from its file, each written as UTF-8 and ended by a line feed. The import's write compares it as
+/// part of the reviewed summary, so it refuses a file whose text changed even where its documents
+/// did not (AD-6).</p>
+ClassMethod Digest(pLines As %DynamicArray) As %String
+{
+    Set tStream = ##class(%Stream.TmpBinary).%New()
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        For tStart = 1:..#DIGESTCHUNK:$Length(tLine) {
+            Do tStream.Write($ZConvert($Extract(tLine, tStart, tStart + ..#DIGESTCHUNK - 1), "O", "UTF8"))
+        }
+        Do tStream.Write($Char(10))
+    }
+    Do tStream.Rewind()
+    Set tSC = $$$OK
+    Set tHash = $System.Encryption.SHAHashStream(256, tStream, .tSC)
+    If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD(tHash), "L")
+}
+
+/// <p>What an import of the file <var>pQuery</var> names would do in <var>pNamespace</var>
+/// (<method>ImportSource</method>, <method>Examine</method>), as <code>{documents, count}</code>.
+/// Nothing is written.</p>
+ClassMethod Preview(pVersion As %Integer, pNamespace As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tSC = ..ImportSource(.pQuery, .tText, .tLabel, .tExtension, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tLines = ..Lines(tText)
+        Set tText = ""
+        Set tSC = ..Examine(pVersion, pNamespace, tLabel, tExtension, tLines, .tSummary, .tCount, .tSelected, .tName, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set pResult = {}
+        Do pResult.%Set(..#DOCUMENTSKEY, tSummary, "string")
+        Do pResult.%Set("count", tCount, "number")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the import preview failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Import the file <var>pQuery</var> names into <var>pNamespace</var>, compiling what it loads when
+/// <code>Compile</code> is on, and answer <code>{imported, lines, errors}</code>. In order: a
+/// <code>Compile</code> that is not true or false is 400 <code>PORT.VALIDATION</code>; the file is read
+/// (<method>ImportSource</method>) and examined (<method>Examine</method>); a summary that differs from
+/// the reviewed <code>documents</code> is 409 <code>EXPLORER.IMPORT.CHANGED</code>, with nothing
+/// loaded. An XML export is then loaded through <code>xml/load</code> with <code>selected</code> the
+/// names the list answered and <parameter>IMPORTCOMPILEFLAGS</parameter> or no flag; a UDL document is
+/// saved with <code>PUT doc/&lt;name&gt;?ignoreConflict=1</code> and, when it saved and
+/// <code>Compile</code> is on, compiled with <parameter>IMPORTCOMPILEFLAGS</parameter>.</p>
+/// <p><code>imported</code> names each document loaded as the vendor spells it, <code>lines</code> is
+/// the vendor's console, and <code>errors</code> is true when the compile or the save reported an error
+/// or the file carries a <code>status</code>. None of those is a fault: a file's <code>status</code> and
+/// a save's error are logged, and never sent (AD-39, AD-61 rule 6).</p>
+ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If '..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTCOMPILE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ImportSource(.pQuery, .tText, .tLabel, .tExtension, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tLines = ..Lines(tText)
+        Set tText = ""
+        Set tSC = ..Examine(pVersion, pNamespace, tLabel, tExtension, tLines, .tSummary, .tCount, .tSelected, .tName, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tSummary '= $Get(pQuery(..#DOCUMENTSKEY)) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#IMPORTCHANGED, ##class(OcuPilot.Api.AtelierError).#REASONIMPORTCHANGED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tImported = []
+        Set tConsole = []
+        Set tErrors = 0
+        If tExtension = "xml" {
+            Set tFile = {}
+            Do tFile.%Set("file", tLabel, "string")
+            Do tFile.%Set("content", tLines)
+            Do tFile.%Set("selected", tSelected)
+            Kill tParams
+            Set tParams("flags") = $Select(tCompile: ..#IMPORTCOMPILEFLAGS, 1: "")
+            Set tSC = ..Route(pVersion, pNamespace, "LoadXMLFiles", "", .tParams, [(tFile)], .tAnswer, .pHttpStatus, .pFault, 1, .tLoadConsole, .tLoadErrors)
+            If $$$ISERR(tSC) Quit
+            Do ..Append(tConsole, tLoadConsole)
+            Set tErrors = tLoadErrors
+            Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+            Set tEntry = $Select($IsObject(tContent) && tContent.%IsA("%Library.DynamicArray") && (tContent.%Size() > 0): tContent.%Get(0), 1: "")
+            If $IsObject(tEntry) {
+                Do ..Append(tImported, tEntry.%Get("imported"))
+                If tEntry.%Get("status") '= "" {
+                    Set tErrors = 1
+                    Do ..LogFault("LoadXMLFiles reported a status for the file", $$$ERROR($$$GeneralError, tEntry.%Get("status")))
+                }
+            }
+        } Else {
+            Set tDocument = {"enc": false}
+            Do tDocument.%Set("content", tLines)
+            Kill tParams
+            Set tParams("ignoreConflict") = 1
+            Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 1, .tPutConsole, .tPutErrors)
+            If $$$ISERR(tSC) Quit
+            Do ..Append(tConsole, tPutConsole)
+            If tPutErrors {
+                Set tErrors = 1
+                Do ..LogFault("PutDoc reported an error saving the document", $$$ERROR($$$GeneralError, tName _ ": " _ $Select($IsObject(tAnswer): tAnswer.%Get("status"), 1: "")))
+            } Else {
+                Do tImported.%Push(tName, "string")
+                If tCompile {
+                    Kill tParams
+                    Set tParams("flags") = ..#IMPORTCOMPILEFLAGS
+                    Set tParams("source") = 0
+                    Set tSC = ..Route(pVersion, pNamespace, "Compile", "", .tParams, [(tName)], .tCompiled, .pHttpStatus, .pFault, 1, .tCompileConsole, .tCompileErrors)
+                    If $$$ISERR(tSC) Quit
+                    Do ..Append(tConsole, tCompileConsole)
+                    If tCompileErrors Set tErrors = 1
+                }
+            }
+        }
+        Set pResult = {}
+        Do pResult.%Set("imported", tImported)
+        Do pResult.%Set("lines", tConsole)
+        Do pResult.%Set("errors", ''tErrors, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the import failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Push each string of <var>pFrom</var>, where it is an array, onto <var>pTo</var>.</p>
+ClassMethod Append(pTo As %DynamicArray, pFrom) [ Private ]
+{
+    If '$IsObject(pFrom) || 'pFrom.%IsA("%Library.DynamicArray") Quit
+    Set tIterator = pFrom.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue) {
+        If '$IsObject(tValue) Do pTo.%Push(tValue, "string")
+    }
+}
+
+/// <p>The refusal of a file an import cannot read: 422 <code>EXPLORER.IMPORT.UNREADABLE</code>.</p>
+ClassMethod Unreadable(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#IMPORTUNREADABLE, ##class(OcuPilot.Api.AtelierError).#REASONIMPORTUNREADABLE, .pHttpStatus, .pFault)
+}
+
+/// <p>The refusal of a file longer than an import reads: 400 <code>EXPLORER.IMPORT.TOOLARGE</code>.</p>
+ClassMethod TooLarge(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#IMPORTTOOLARGE, ##class(OcuPilot.Api.AtelierError).#REASONIMPORTTOOLARGE, .pHttpStatus, .pFault)
+}
+
+/// <p>A 400 refusal on one field, as <var>pCode</var> with its sentence, carried again as that field's
+/// one violation (AD-39).</p>
+ClassMethod Violation(pCode As %String, pReason As %String, pField As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tViolation = {}
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", pReason, "string")
+    Set tDetail = {}
+    Do tDetail.%Set("violations", [(tViolation)])
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, pCode, pReason, .pHttpStatus, .pFault, tDetail)
 }
 
 /// <p>The port-owned reason for a deleted document whose vendor status is <var>pStatus</var>:
@@ -1198,9 +1898,10 @@ ClassMethod PlainText(pDesc) As %String
 /// <p>Call route method <var>pMethod</var> of version <var>pVersion</var> with
 /// <var>pNamespace</var> and, when it is not <code>""</code>, <var>pArg</var>, and answer the
 /// envelope's <code>result</code> as <var>pResult</var>. <var>pParams</var> is seeded into
-/// <code>%request.Data</code> and <var>pBody</var>, when it is not <code>""</code>, is a JSON text
-/// sent as an <code>application/json</code> body. Trailing route arguments are omitted rather than
-/// passed empty.</p>
+/// <code>%request.Data</code> and <var>pBody</var>, when it is not <code>""</code>, is a JSON text or
+/// a <class>%DynamicAbstractObject</class> sent as an <code>application/json</code> body
+/// (<method>OcuPilot.Port.AtelierRequest.SetJsonBody</method>). Trailing route arguments are omitted
+/// rather than passed empty.</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code>,
 /// <code>%session</code> and <code>%SourceControl</code>, with fresh stubs. Its output is captured,
 /// or, for a route <parameter>FILEDEVICEROUTES</parameter> names, written to a temporary file that is
@@ -1209,7 +1910,7 @@ ClassMethod PlainText(pDesc) As %String
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
 /// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
 /// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -1226,7 +1927,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     Set tClass = ..ImplClass(pVersion)
     New %request, %response, %session, %SourceControl
     Try {
-        If pBody '= "" {
+        If $IsObject(pBody) || (pBody '= "") {
             Set %request = $ClassMethod(..#REQUESTCLASS, "%New")
             Set tCallSC = %request.SetJsonBody(pBody)
         } Else {
@@ -1331,8 +2032,8 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// the internal fault otherwise, as is an envelope that does not parse. Otherwise <var>pResult</var>
 /// is the envelope's <code>result</code>. The vendor's own text is logged on every logged path and
 /// never put on the wire.</p>
-/// <p>With <var>pSoft</var> (a compile), such an error under a 2xx status is the call's own result
-/// rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
+/// <p>With <var>pSoft</var> (a compile, or an import's load or save), such an error under a 2xx
+/// status is the call's own result rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
 /// <code>console</code> array on every 2xx answer that parses.</p>
 ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
@@ -1458,22 +2159,27 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter> and
-/// <parameter>TYPEDELETE</parameter>, the two writes this port carries; <code>""</code> for every
-/// read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter>,
+/// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter> and
+/// <parameter>TYPEIMPORT</parameter>, the writes this port carries; <code>""</code> for every read,
+/// which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
-    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) Quit "objectscript"
+    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) Quit "objectscript"
     Quit ""
 }
 
 /// <p><method>Invoke</method>'s branches as a script (AD-59), in the namespace <code>namespace</code>
 /// names: <parameter>TYPECOMPILE</parameter> is the compile the route makes,
 /// <code>$System.OBJ.CompileList</code> over the set with the flags <method>CompileFlags</method>
-/// builds, and <parameter>TYPEDELETE</parameter> the route's <code>%RoutineMgr</code>
-/// <code>Delete</code> of each document. A read writes nothing and answers no step. Every value is
-/// rendered as a string literal, so nothing the query carries runs as code.</p>
+/// builds, <parameter>TYPEDELETE</parameter> the route's <code>%RoutineMgr</code>
+/// <code>Delete</code> of each document, <parameter>TYPEEXPORT</parameter> the file
+/// <code>##class(%File).NormalizeFilename(path, root)</code> names and
+/// <code>$System.OBJ.Export</code> of the set to it, and <parameter>TYPEIMPORT</parameter> that file
+/// and <code>$System.OBJ.Load</code> of it, with <parameter>IMPORTCOMPILEFLAGS</parameter> when
+/// <code>Compile</code> is on. A read writes nothing and answers no step. Every value is rendered as a
+/// string literal, so nothing the query carries runs as code.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -1484,6 +2190,15 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Do ..FlagValue($Get(pQuery(..#COMPILEDEPENDENTSKEY)), .tDependents)
         Do ..FlagValue($Get(pQuery(..#SKIPUPTODATEKEY)), .tSkip)
         Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(..CompileFlags(tKeep, tDependents, tSkip)) _ ")"
+        Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    } ElseIf (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) {
+        Set tText = tText _ $Char(10) _ " Set tFile = ##class(%File).NormalizeFilename(" _ ..Literal($Get(pQuery(..#PATHKEY))) _ ", " _ ..Literal($Get(pQuery(..#ROOTKEY))) _ ")"
+        If pType = ..#TYPEEXPORT {
+            Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.Export(" _ ..Literal(tNames) _ ", tFile, ""-d"")"
+        } Else {
+            Do ..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile)
+            Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.Load(tFile, " _ ..Literal($Select(tCompile: ..#IMPORTCOMPILEFLAGS, 1: "")) _ ")"
+        }
         Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
     } Else {
         Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"

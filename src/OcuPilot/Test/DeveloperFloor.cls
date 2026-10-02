@@ -6,8 +6,8 @@
 /// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared ten, none a
-/// write.</p>
+/// admits it, and the tools whose required pairs it holds are exactly the declared twelve, whose
+/// writes are the two exports.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
 /// through <class>OcuPilot.Kernel.Shell.Effective</class>, and removes them in
@@ -32,7 +32,12 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassList,ExplorerRoutineDocument,ExplorerRoutineList,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.read,explorer.routine.read,explorer.routines.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+
+/// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
+/// every other System Explorer write also WRITE on the namespace's routines database, which the
+/// developer lacks in the install namespace.</p>
+Parameter HELDWRITES = "explorer.classes.export,explorer.routines.export";
 
 /// <p>The second namespace System Explorer is read in, whose code database
 /// <code>%Developer</code> grants.</p>
@@ -400,11 +405,11 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 }
 
 /// <p><b>Tools (AC2).</b> Of every tool the registry lists, the ones whose required pairs the
-/// developer principal holds are exactly <parameter>TOOLS</parameter>, and none of them is a
-/// write.</p>
+/// developer principal holds are exactly <parameter>TOOLS</parameter>, and its writes are exactly
+/// <parameter>HELDWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins the held set and this goes red.</p>
-Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTen()
+Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTwelve()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
@@ -412,6 +417,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTen()
     If $$$ISERR(tSC) Quit
     Do $$$AssertTrue(tTools.%Size() > 0, "it lists tools: " _ tTools.%Size())
     Set tHeld = ""
+    Set tHeldWrites = ""
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
@@ -424,9 +430,10 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTen()
         }
         If 'tHolds Continue
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
-        Do $$$AssertNotEquals(tTool.kind, "write", tTool.name _ ": a tool the developer holds is not a write")
+        If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared ten")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared twelve")
+    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports")
 }
 
 /// <p>The compiled <code>RESOURCE</code> of the classic page <var>pPage</var>, with

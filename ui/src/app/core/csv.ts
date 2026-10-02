@@ -1,8 +1,8 @@
 /**
  * A data table's view as a CSV file (Story 16.23): the field encoder, the file text and its name.
  * `shell/data-table.ts` and the log hub decide which rows and columns go in and save the result
- * through `saveCsv`; nothing here reads a store, and only `saveCsv` touches a page, the one it is
- * handed.
+ * through `saveCsv`; nothing here reads a store, and only `saveCsv` and `saveText` touch a page,
+ * the one they are handed.
  *
  * Framework-free, like the rest of `core/`, so `ui/tools/csv.test.mjs` executes it under
  * `node --test`.
@@ -75,6 +75,23 @@ export function csvFileName(label: string, date: Date): string {
  */
 export function saveCsv(doc: Document, text: string, fileName: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const anchor = doc.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.hidden = true;
+  doc.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Save `text` as the file `fileName` with media type `type` (Story 19.13's export to this browser):
+ * the same in-document anchor over an object URL as `saveCsv`, so no request leaves the page and
+ * nothing navigates (AD-20, AD-47). `doc` is the page's document.
+ */
+export function saveText(doc: Document, text: string, fileName: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const anchor = doc.createElement('a');
   anchor.href = url;
   anchor.download = fileName;

@@ -22,14 +22,21 @@ Parameter IMPORTUNREADABLE = "EXPLORER.IMPORT.UNREADABLE";
 /// <p>The sentence <parameter>IMPORTUNREADABLE</parameter> carries.</p>
 Parameter REASONIMPORTUNREADABLE = "The file holds no document this instance can read.";
 
-/// <p>Envelope code: an import's file no longer holds the documents its proposal was minted with
-/// (Story 19.13).</p>
+/// <p>Envelope code: an import's file, or a document it would replace, differs at the write from the
+/// documents its import was reviewed with (Story 19.13).</p>
 Parameter IMPORTCHANGED = "EXPLORER.IMPORT.CHANGED";
 
 /// <p>The sentence <parameter>IMPORTCHANGED</parameter> carries.</p>
-Parameter REASONIMPORTCHANGED = "The file no longer holds the documents this import was proposed with.";
+Parameter REASONIMPORTCHANGED = "The file, or a document it would replace, has changed since this import was proposed.";
 
-/// <p>Envelope code: a local file sent for import is longer than an import reads (Story 19.13).</p>
+/// <p>Envelope code: an export's file name names a directory that does not exist under its allowed
+/// directory (Story 19.13). Rendered as a 400 violation on <code>path</code>.</p>
+Parameter EXPORTDIRECTORY = "EXPLORER.EXPORT.DIRECTORY";
+
+/// <p>The sentence <parameter>EXPORTDIRECTORY</parameter> carries.</p>
+Parameter REASONEXPORTDIRECTORY = "There is no such directory under that allowed directory.";
+
+/// <p>Envelope code: a file sent or named for import is longer than an import reads (Story 19.13).</p>
 Parameter IMPORTTOOLARGE = "EXPLORER.IMPORT.TOOLARGE";
 
 /// <p>The sentence <parameter>IMPORTTOOLARGE</parameter> carries.</p>

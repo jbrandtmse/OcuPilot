@@ -1,28 +1,58 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AllowedDirectoriesStore } from '../../core/allowed-directories';
 import { ApiService } from '../../core/api';
+import { saveText } from '../../core/csv';
 import { checkedSetReason, checkedSetTarget } from '../../core/multi-select';
 import { NavigationService } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions, TASK_IMPORT_ACTION_ID } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { rowKey } from '../../core/table-model';
+import { reasonForField } from '../../core/violations';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { TypedNameDialog } from '../../shell/typed-name-dialog';
-import { CodeListSearch, CodeListWrite, compileLinesOf, deletedDocumentsOf, fillPlaceholders, isYesNo } from './code-list.store';
+import { CodeListSearch, CodeListWrite, compileLinesOf, deletedDocumentsOf, exportLinesOf, fillPlaceholders, importOutputOf, isYesNo } from './code-list.store';
 import { ExplorerCompileDialog, type CompileChoice } from './explorer-compile-dialog';
+import { ExplorerExportDialog, type ExportChoice } from './explorer-export-dialog';
+import { ExplorerImportDialog, type ImportChoice } from './explorer-import-dialog';
 
 /** The two write actions the Classes and Routines lists declare (Story 19.2). */
 export const COMPILE_ACTION = 'compile';
 export const DELETE_ACTION = 'delete';
+
+/**
+ * The export and import actions the lists declare (Story 19.13): each tool's second action takes the
+ * other kind of file, so the page draws `export` and the screen-level Import alone, and its dialogs
+ * send whichever of the two the chosen file needs.
+ */
+export const EXPORT_ACTION = 'export';
+export const EXPORT_BROWSER_ACTION = 'export-browser';
+export const IMPORT_ACTION = 'import';
+export const IMPORT_LOCAL_ACTION = 'import-local';
+
+/** The one target an import takes (AD-13). */
+export const IMPORT_TARGET = 'import';
+
+/** The values an export to the server and an import send beside their target (AD-56). */
+export const ROOT_VALUE = 'root';
+export const PATH_VALUE = 'path';
+
+/** The type an export to this browser is saved with. */
+export const EXPORT_FILE_TYPE = 'application/xml';
+
+/** The name an export to this browser is saved as: `<NAMESPACE>-export.xml`. */
+export function exportFileName(namespace: string): string {
+  return `${namespace}-export.xml`;
+}
 
 /** The screen this page renders and the store its table reads. */
 interface CodeListView {
@@ -95,13 +125,22 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
  * result. `CodeListWrite` holds the sequence (AD-19); the pane is a focusable `pre` on the code
  * surface under a polite status line.
  *
+ * **Export acts on the checked rows and Import on a file** (Story 19.13), each through its own
+ * dialog, which the page owns with one `AllowedDirectoriesStore` loaded when either opens. Export
+ * sends `export` with the server file's root and name, or `export-browser`, whose XML lines the page
+ * saves as `<NAMESPACE>-export.xml`; Import sends `import` with the server file, or `import-local`
+ * with the local file's name and text, on the one target `import`. Every send is pinned to the
+ * namespace the dialog opened in. A refusal keeps the dialog open: one on the root or the name is
+ * drawn on the picker's field, and any other, the version one included, in the dialog. An applied
+ * import lists the documents it loaded and the console's lines in the pane.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-code-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, ExplorerCompileDialog, TypedNameDialog],
+  imports: [DataTable, ExplorerCompileDialog, ExplorerExportDialog, ExplorerImportDialog, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" data-ocu-explorer="criteria" (submit)="onSearch($event)">
@@ -176,6 +215,29 @@ const PANE_SINK: ActionSink = { setRefusal: () => undefined };
           (cancelled)="onCloseDelete()"
         />
       }
+      @if (exportCount; as count) {
+        <app-explorer-export-dialog
+          [count]="count"
+          [store]="directories"
+          [rootReason]="rootReason()"
+          [pathReason]="pathReason()"
+          [refusal]="refusal()"
+          [sending]="sending()"
+          (submitted)="onExport($event)"
+          (cancelled)="onCloseTransfer()"
+        />
+      }
+      @if (importOpen) {
+        <app-explorer-import-dialog
+          [store]="directories"
+          [rootReason]="rootReason()"
+          [pathReason]="pathReason()"
+          [refusal]="refusal()"
+          [sending]="sending()"
+          (submitted)="onImport($event)"
+          (cancelled)="onCloseTransfer()"
+        />
+      }
     }
   </section>`,
 })
@@ -207,6 +269,28 @@ export class CodeListPage {
 
   /** The documents the open delete dialog deletes, in list order, or `[]` while none is open. */
   private readonly deleting = signal<readonly string[]>([]);
+
+  /** The documents the open export dialog exports, in list order, or `[]` while none is open. */
+  private readonly exporting = signal<readonly string[]>([]);
+
+  /** Whether the import dialog is open. */
+  private readonly importing = signal(false);
+
+  /** The allowed directories both transfer dialogs offer, read each time one opens. */
+  protected readonly directories = new AllowedDirectoriesStore();
+
+  /** A transfer is in flight. */
+  protected readonly sending = signal(false);
+
+  /** The namespace the open transfer dialog opened in, which its send is pinned to. */
+  private transferScope = '';
+
+  /** The open transfer dialog's refusal on each picker field, and any other refusal's sentence. */
+  protected readonly rootReason = signal('');
+
+  protected readonly pathReason = signal('');
+
+  protected readonly refusal = signal('');
 
   /** Bumped by the two stores, so the form and the table re-render under `OnPush`. */
   private readonly generation = signal(0);
@@ -248,6 +332,8 @@ export class CodeListPage {
       }) ?? null;
     const stopCompile = this.actions.register(screen.descriptor, COMPILE_ACTION, () => this.onOpenCompile());
     const stopDelete = this.actions.register(screen.descriptor, DELETE_ACTION, () => this.onOpenDelete());
+    const stopExport = this.actions.register(screen.descriptor, EXPORT_ACTION, () => this.onOpenExport());
+    const stopImport = this.actions.register(screen.descriptor, TASK_IMPORT_ACTION_ID, () => this.onOpenImport());
     const stopStore = store.subscribe(() => this.bump());
     const stopSearch = this.search.subscribe(() => this.bump());
     const stopWrite = this.write.subscribe(() => this.bump());
@@ -259,6 +345,8 @@ export class CodeListPage {
       stopWrite();
       stopCompile();
       stopDelete();
+      stopExport();
+      stopImport();
       stopRefreshAction();
       stopArrivals?.();
       if (!this.search.isCurrentGeneration(generation)) return;
@@ -366,11 +454,21 @@ export class CodeListPage {
     return names.length === 1 ? names[0] : String(names.length);
   }
 
+  /** The delete's consequence: a routine has no stored data, so the Routines list names none (DW-1932). */
   protected get deleteConsequence(): string {
     const names = this.deleting();
-    return names.length === 1
-      ? STRINGS.explorerDeleteConsequence
-      : fillPlaceholders(STRINGS.explorerDeleteSetConsequence, { n: names.length });
+    const routines = this.list?.screen.entityType === 'routine';
+    if (names.length === 1) return routines ? STRINGS.explorerRoutineDeleteConsequence : STRINGS.explorerDeleteConsequence;
+    return fillPlaceholders(routines ? STRINGS.explorerRoutineDeleteSetConsequence : STRINGS.explorerDeleteSetConsequence, { n: names.length });
+  }
+
+  /** The open export dialog's count, `0` (falsy) while none is open. */
+  protected get exportCount(): number {
+    return this.exporting().length;
+  }
+
+  protected get importOpen(): boolean {
+    return this.importing();
   }
 
   /** Compile on the checked rows: opens the dialog, never over another or while a write runs. */
@@ -435,13 +533,118 @@ export class CodeListPage {
     if (applied) view.store.setChecked([]);
   }
 
+  /** Export on the checked rows: opens the export dialog, under the same conditions as Compile. */
+  protected onOpenExport(): void {
+    const names = this.checkedNames();
+    if (names.length === 0) return;
+    this.exporting.set(names);
+    this.openTransfer();
+  }
+
+  /** Import: opens the import dialog, which names a file and no row, while no write runs and no dialog is open. */
+  protected onOpenImport(): void {
+    if (this.list === null || this.dialogOpen()) return;
+    this.importing.set(true);
+    this.openTransfer();
+  }
+
+  /** Close the open transfer dialog, unless a send is in flight. */
+  protected onCloseTransfer(): void {
+    if (this.sending()) return;
+    this.exporting.set([]);
+    this.importing.set(false);
+  }
+
+  /**
+   * One export of the dialog's documents to the chosen destination, sent to the namespace the dialog
+   * opened in; an export to this browser saves the answered lines.
+   */
+  protected async onExport(choice: ExportChoice): Promise<void> {
+    const names = this.exporting();
+    const view = this.list;
+    if (view === null || names.length === 0 || this.sending()) return;
+    const scope = this.transferScope;
+    this.beginSend();
+    const applied = await this.write.runExport(names, async () => {
+      const target = checkedSetTarget(view.screen, names);
+      const server = choice.destination === 'server';
+      const values = choice.destination === 'server' ? { [ROOT_VALUE]: choice.root, [PATH_VALUE]: choice.path } : undefined;
+      const sent = await this.handler.sendFor(view.screen.descriptor, server ? EXPORT_ACTION : EXPORT_BROWSER_ACTION, target, values, PANE_SINK, scope);
+      if (!sent) return { applied: false, summary: '' };
+      if (choice.destination === 'server') {
+        return { applied: true, summary: fillPlaceholders(STRINGS.explorerExportDone, { n: names.length, path: `${choice.root}${choice.path}` }) };
+      }
+      const fileName = exportFileName(scope);
+      saveText(document, exportLinesOf(this.handler.lastOutput()).join('\n'), fileName, EXPORT_FILE_TYPE);
+      return { applied: true, summary: fillPlaceholders(STRINGS.explorerExportSaved, { n: names.length, file: fileName }) };
+    });
+    this.endSend(applied);
+  }
+
+  /** One import of the dialog's file on the one target, sent to the namespace the dialog opened in. */
+  protected async onImport(choice: ImportChoice): Promise<void> {
+    const view = this.list;
+    if (view === null || this.sending()) return;
+    const scope = this.transferScope;
+    const compile = String(choice.compile);
+    const values: Readonly<Record<string, string>> =
+      choice.source === 'server'
+        ? { [ROOT_VALUE]: choice.root, [PATH_VALUE]: choice.path, Compile: compile }
+        : { fileName: choice.fileName, content: choice.content, Compile: compile };
+    const file = choice.source === 'server' ? `${choice.root}${choice.path}` : choice.fileName;
+    this.beginSend();
+    const applied = await this.write.runImport(file, async () => {
+      const sent = await this.handler.sendFor(view.screen.descriptor, choice.source === 'server' ? IMPORT_ACTION : IMPORT_LOCAL_ACTION, IMPORT_TARGET, values, PANE_SINK, scope);
+      if (!sent) return { applied: false, imported: [], lines: [], errors: false };
+      return { applied: true, ...importOutputOf(this.handler.lastOutput()) };
+    });
+    this.endSend(applied);
+  }
+
+  private openTransfer(): void {
+    this.transferScope = this.scope.namespace();
+    this.rootReason.set('');
+    this.pathReason.set('');
+    this.refusal.set('');
+    void this.directories.load(this.api);
+  }
+
+  private beginSend(): void {
+    this.sending.set(true);
+    this.rootReason.set('');
+    this.pathReason.set('');
+    this.refusal.set('');
+  }
+
+  /** An applied transfer closes its dialog; a refused one keeps it open with the refusal on its field or in it. */
+  private endSend(applied: boolean): void {
+    this.sending.set(false);
+    if (applied) {
+      this.exporting.set([]);
+      this.importing.set(false);
+      return;
+    }
+    const refused = this.handler.lastRefusal();
+    if (refused === null) return;
+    const onRoot = reasonForField(refused.violations, ROOT_VALUE);
+    const onPath = reasonForField(refused.violations, PATH_VALUE);
+    this.rootReason.set(onRoot);
+    this.pathReason.set(onPath);
+    if (onRoot === '' && onPath === '') this.refusal.set(refused.reason || STRINGS.connectivityRequestRefused);
+  }
+
+  /** Whether a write runs or one of this page's dialogs is open, when no other may open. */
+  private dialogOpen(): boolean {
+    return this.write.running() || this.compiling().length > 0 || this.deleting().length > 0 || this.exporting().length > 0 || this.importing();
+  }
+
   /**
    * The checked documents in list order, or `[]` where no write may open: one is running, a dialog
    * is open, or the checked set is empty or over the declared most.
    */
   private checkedNames(): readonly string[] {
     const view = this.list;
-    if (view === null || this.write.running() || this.compiling().length > 0 || this.deleting().length > 0) return [];
+    if (view === null || this.dialogOpen()) return [];
     const checked = view.store.checked();
     if (checkedSetReason(view.screen, checked.size) !== '') return [];
     const names: string[] = [];

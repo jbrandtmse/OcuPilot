@@ -41,6 +41,8 @@ const {
   CONSEQUENCE_PURGEMARKERS,
   CONSEQUENCE_COPYMAPPINGS,
   CONSEQUENCE_TASKEXPORTREPLACES,
+  CONSEQUENCE_EXPLOREREXPORTREPLACES,
+  CONSEQUENCE_EXPLORERIMPORTREPLACES,
   CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_TASKMANAGERSUSPEND,
   CONSEQUENCE_LOCKINTRANSACTION,
@@ -263,6 +265,25 @@ test("the enable of interoperability's consequence code resolves to the dialog's
 test("the task export's consequence code resolves to the export dialog's replace line", () => {
   assert.equal(CONSEQUENCE_TASKEXPORTREPLACES, 'TASK.EXPORT.REPLACES');
   assert.equal(consequenceSentence(CONSEQUENCE_TASKEXPORTREPLACES), STRINGS.taskExportReplaces);
+});
+
+// Story 19.13: a System Explorer export to a server file replaces a file already at its name, and an
+// import each document of the same name. Each code is the tool's own, read from its class rather
+// than restated, and its card states the published line.
+//
+// Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red.
+test("the System Explorer export's and import's consequence codes are the tools' own and resolve to their lines", () => {
+  for (const [file, constant, sentence] of [
+    ['ExplorerExport.cls', CONSEQUENCE_EXPLOREREXPORTREPLACES, STRINGS.taskExportReplaces],
+    ['ExplorerImport.cls', CONSEQUENCE_EXPLORERIMPORTREPLACES, STRINGS.explorerImportReplaces],
+  ]) {
+    const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', file), 'utf8');
+    const declared = /^Parameter CONSEQUENCE = "([^"]+)";/m.exec(source);
+    assert.ok(declared, `${file} declares its consequence code`);
+    assert.equal(constant, declared[1]);
+    assert.equal(consequenceSentence(constant), sentence);
+  }
+  assert.notEqual(STRINGS.explorerImportReplaces, '');
 });
 
 // Story 16.25, AD-4: the agent's change to a Python language server's own settings carries the
