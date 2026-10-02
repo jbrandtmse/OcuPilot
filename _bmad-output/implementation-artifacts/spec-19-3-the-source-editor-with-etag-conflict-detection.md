@@ -2,14 +2,25 @@
 title: 'Story 19.3: The source editor, with ETag conflict detection'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '4f43afaef51cb91988949ad4561f99dff484c528'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A document deleted after the save's PresentSet and before its PutDoc is created again by the
+      vendor (201) (inference).
+    evidence: |-
+      %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers.
+  - summary: >-
+      A save text whose JSON-escaped form passes the instance's longest string reaches the screen
+      route's payload serialization as a 500, not EXPLORER.SAVE.TOOLARGE (inference).
+    evidence: |-
+      Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check.
 ---
 
 <intent-contract>
@@ -189,6 +200,37 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-02 — Review pass
+
+- verdicts: 26 findings — high 0, medium 3, low 17, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` An import's `PutDoc` 423 now answers `LOCKED` and no test reached it — added `AtelierPortSave.TestAnImportOfAHeldDocumentIsRefusedLocked` (live lock job), green run 1918.
+  - `[medium]` `[patch]` No test ran the production `AtelierPort.LogNote` — added `ExplorerSave.TestALockedDocumentIsRefusedAndItsHolderNoted` over HTTP, reading `messages.log`'s severity-0 line; its mutation reddened run 1920.
+  - `[medium]` `[patch]` A namespace switch with unsaved text was untested — added the component case; removing the dirty check reddened it.
+  - `[low]` `[patch]` "Edit source" for `.inc` and `.int` was untested — the viewer spec mounts both; cutting `EDITABLE_EXTENSIONS` reddened it.
+  - `[low]` `[patch]` The route's refusal of a `Compile` other than true or false was untested — `ExplorerSave.TestAnEmptyTextOrABadCompileIsRefusedByTheRoute` sends `"yes"`.
+  - `[low]` `[reject]` `AtelierPortSave`'s `MinVersion` "1 1" line cannot fail when the `tSave` branch is removed — the version-gate legs above it are falsifiable; pinning the branch needs a version seam.
+  - `[low]` `[patch]` The component spec's `a[href*="/csp/"]` check was vacuous — deleted; AC2 stays pinned by `ExplorerDescriptor` and the browser leg.
+  - `[low]` `[patch]` The component "shows no output" check could not fail — deleted and the case renamed.
+  - `[low]` `[patch]` AC6's `OCUPILOTCODE` half had no `mutation:` line — mutation applied, red run 1921, line written.
+  - `[low]` `[patch]` AC8's mutation reddened an AC1 assertion first — a viewer stale-read mutation reddened the AC8 wait at `:184`, line written.
+  - `[false]` `[reject]` The matrix says the lock is unlogged and the port logs it — the intent's Always clause ("Vendor text is logged and never sent") and AD-61 rule 6 read "unlogged" as not logged as a fault; the lock line is information severity.
+  - `[false]` `[reject]` `PutDoc` runs with `pSoft` 0, not Tasks' 1 — the soft-refusal row holds (`TestTheVendorsRefusalsAreAnsweredByName`); `pSoft` 1 would answer the vendor's refusal as a 200 result.
+  - `[false]` `[reject]` Lock logged at information severity versus the matrix's "unlogged" (intent layer, R1) — as the verification-gap row above.
+  - `[low]` `[reject]` Over HTTP the header and size checks follow the route's fresh `docnames` read — a read-only call; no write route runs before them, and moving them ahead of AD-53's fresh read adds a hook.
+  - `[low]` `[defer]` A document deleted between `PresentSet` and `PutDoc` is re-created (vendor 201, measured at plan) — kept in `deferred:` for the lead.
+  - `[low]` `[defer]` A text past the longest string answers 500 at the route's payload `%ToJSON()` — shared with Story 19.13's import; kept in `deferred:`.
+  - `[low]` `[reject]` The status line reads "Saved · Read back: nothing sent to compare" — Tasks name `savedLine(readBack)`, and AD-58 gives an action-style write `nothingSent`.
+  - `[low]` `[reject]` A compile route failing non-2xx after a stored put answers as an error — needs a capture overflow or internal fault; the next Save is refused `CONFLICT`, never overwriting; the fix adds a branch.
+  - `[false]` `[reject]` The change event is not asserted on this screen — `ScreenActionHandler` publishes it from an applied answer's target and action, which `ExplorerSave` asserts.
+  - `[low]` `[reject]` A deleted document has no HTTP or UI leg — the route passes the port's `ABSENT` fault unchanged, as Story 19.2's delete legs pin; the port leg covers `PresentSet`.
+  - `[low]` `[patch]` A held document had no HTTP leg — closed by the `ExplorerSave` lock leg above.
+  - `[false]` `[reject]` #5838 and #302 reach `ACCESSDENIED` only through the shared helper — `AccessDenied`'s list is pinned by Story 19.2's tests; the save reaches it through the #5883 branch it tests.
+  - `[low]` `[reject]` `OcuPilot*` has no routine or banner leg — one `Code()` predicate judges both kinds (Prohibited tests), and the banner renders any refusal's reason (component refusal case).
+  - `[false]` `[reject]` AC3's agent navigation is not driven on the editor — every `form-page` route carries `leaveFormGuard` (`app.routes.spec`), whose agent settle `app.routes.guard.wire.spec` pins; the editor answers `FormDirty` (guard case, with its mutation).
+  - `[low]` `[reject]` "Nothing logged" is asserted in process only — the port logs the vendor's status, which carries no request text, and the in-process legs pin each log call.
+  - `[low]` `[reject]` `Prohibited.cls`'s doc comment still says compile, delete or import — the intent forbids editing that file, and AD-10 already names a save.
+
 ## Design Notes
 
 **Decision required (intent gap; the reason this spec is `blocked`).**
@@ -318,11 +360,49 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 - AC7: `ADVERTISED` 1 → `ExplorerSave` unadvertised pin.
 - AC8: the editor's re-read and change event removed → the `system-explorer-editor` browser leg.
 
+mutation: `Route`'s `HTTP_IF_NONE_MATCH` seed dropped → `AtelierPortSave.TestAMatchingVersionSavesTheText` (409 `CONFLICT` where 200 was expected), with `TestTheVersionIsSentAsIfNoneMatch`, `TestASaveCompilesWhenAsked` and `TestEachRoutineKindIsSavedByItsHeader`
+
+mutation: `SaveSet` sends `ignoreConflict=1` → `AtelierPortSave.TestAStaleVersionIsRefusedAndTheTextKept` and `TestTheVersionIsSentAsIfNoneMatch`
+
+mutation: `classicPage` `%CSP.UI.Portal.ClassList` on `ExplorerClassEditor` → `ExplorerDescriptor.TestTheEditorsAreFormPagesWithNoClassicPage`
+
+mutation: `SourceEditorState.setText`'s `setDirty` call removed → `source-editor.page.spec.ts` "marks the form dirty while the text differs, and the guard asks" (and its refusal case)
+
+mutation: `ExplorerSave.WriteOutput` answers `""` → `ExplorerSave.TestACompileAnswersItsLinesToTheScreen`
+
+mutation: `PresentSet` skipped in `SaveSet` → `AtelierPortSave.TestADocumentDeletedSinceTheReadIsNotCreated` (with three canned-route legs)
+
+mutation: `SaveSet`'s header check made `If 0` → `AtelierPortSave.TestTheTextIsCheckedBeforeAnyRoute`
+
+mutation: `TYPESAVE` removed from `Invoke`'s write types → `AtelierPortSave.TestASaveRequiresTheWritePair`; the planned `AtelierPortWriteDenial` save leg stayed green, as the tool's declared WRITE pair refuses first
+
+mutation: `ExplorerSave.ADVERTISED` 1 → `ExplorerSave.TestTheSaveIsAbsentFromEveryRosterTheAgentSees`
+
+mutation: `SourceEditorState.save`'s re-read removed, bundle rebuilt and redeployed → `system-explorer-editor.browser-spec.mjs` "AC1, AC2, AC4, AC8" leg
+
+mutation: `SAVE` dropped from `SnippetForm` → `AtelierPortSave.TestTheSaveRendersItsScript`
+
+mutation: the `PutDoc` 423 branch's `LogNote` made `LogFault` (port and fixture recompiled) → `AtelierPortSave.TestALockedDocumentIsRefusedAndKept` and `TestTheVendorsRefusalsAreAnsweredByName` (run 1916)
+
+mutation: `AtelierPort.LogNote` writing through `Audit.Log.Error` (port recompiled) → `ExplorerSave.TestALockedDocumentIsRefusedAndItsHolderNoted` (run 1920)
+
+mutation: `Prohibited`'s class and routine arm made to skip a `SAVE` write type (recompiled, then restored) → `ExplorerSave.TestOcuPilotsOwnCodeIsRefused` (run 1921)
+
+mutation: the class viewer skipping its read for a name it has already shown, bundle rebuilt and redeployed → `system-explorer-editor.browser-spec.mjs` "AC1, AC2, AC4, AC8" leg at its AC8 wait (`:184`)
+
+mutation: the editor's namespace-switch handler re-opening whatever the text → `source-editor.page.spec.ts` "keeps unsaved text across a namespace switch"
+
+mutation: `EDITABLE_EXTENSIONS` cut to `cls` and `mac` → `document-viewer.page.spec.ts` "Story 19.3: offers Edit source"
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- The ETag path was measured on `ocupilot-a2-ci` (Design Notes). All probe documents were removed.
-- Library check: no editor library is needed. A `<textarea>` meets both criteria. `highlight.js`'s `cos` grammar is already in `node_modules` and was left unused.
-- Ledger inbox for this key: empty.
+- Plan: the ETag path was measured on `ocupilot-a2-ci` (Design Notes), all probe documents removed; no editor library is needed; ledger inbox empty.
+- Implemented (implement stage, 2026-10-02): the class and routine editors (`ExplorerClassEditor`, `ExplorerRoutineEditor`, one `SourceEditorPage` and its framework-free store) reading through the viewer's declared read and saving through the lists' `save` action to the unadvertised `explorer.classes.save` and `explorer.routines.save` (`ExplorerSave` and its two 16-line tools, keys `false` in `Baseline.cls`); `AtelierPort`'s `SAVEDOCS`/`SAVE` with `SaveSet` (one name, version, size, header, `PresentSet`, `PutDoc` with `If-None-Match`, then `Compile` `cuk`), `Route`'s If-None-Match seed, `Outcome`'s `PutDoc` 409/423/soft mappings and `LogNote`, and the save's script; five codes in `AtelierError.cls`; the viewer's "Edit source"; `lastReadBack()` on `ScreenActionHandler`; one EXPERIENCE.md row (:593) and its `strings.ts` keys with the :633→:634 shift; the budget rebased to 2488kB (measured 2,487,199 bytes).
+- Departures from Tasks, each recorded in the triage log: `PutDoc` runs with `pSoft` 0 so `Outcome` maps the vendor's soft refusals; the 423 lock text is logged at information severity, never as a fault (AD-61 rule 6, the Always clause "Vendor text is logged and never sent"); one added string, `explorerEditorRefusedAction`, names the action in the denial banner.
+- Tests: new `AtelierPortSave` (13), `ExplorerSave` (8), `ExplorerSaveProbe`, `source-editor.page.spec.ts` (10), `system-explorer-editor.browser-spec.mjs` (2); legs added to `AtelierPortWriteDenial` (WRITE refused, a `%Developer` refused in HSCUSTOM), `ExplorerDescriptor` and the viewer spec; roster literals updated in `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `GovernanceBaseline`, `Governance`, `ToolWrite`, `Prohibited`, `DeveloperFloor`, `navigation.test.mjs`, `self-protection.test.mjs`, `angular-json.test.mjs`.
+- Review: 26 findings (high 0, medium 3, low 17, false 6, maybe-false 0). Patched 13 (3 medium, 10 low), all test additions or vacuous assertions removed, each new pinning test falsified; deferred 2 (frontmatter); rejected 11 with reasons in the triage log. Follow-up review: `false` — the patched mediums are test additions, each reddened by its mutation, so no unverified risk can be named.
+- Verification: `check-objectscript` 0 problems and its harness 145 OK; the spec's 18 targeted classes green one at a time (runs 1895-1912), then `AtelierPortSave`, `ExplorerSave` and `AtelierPortWriteDenial` again after the patches (runs 1915-1919); `lint-docs` clean; `npm test` 1777 tools and 2134 components green; the bundle rebuilt and redeployed, then `system-explorer-editor` 2/2, `system-explorer` 4/4 and `a11y-structural-invariants` 12/12. Full ObjectScript sweep once (runs 1922-2334): 413 classes, 3407 tests, 1 red — `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, "nothing is cut at 1,000": the throwaway, up about 19 hours, holds 1,313 task history rows (`^SYS("Task","HistoryD")`), so the read truncates; no task code is in this diff, and CI's fresh throwaway starts empty.
+- Residual risks: the two `deferred:` items (a deletion between the presence check and the put, and a text past the longest string answering 500 at the route).

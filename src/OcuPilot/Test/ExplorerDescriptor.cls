@@ -1,15 +1,16 @@
 /// <p>Pins Story 19.1's declarations: the System Explorer area's row, its two lists and two viewers
 /// -- each validated, read through the source code API port, gated on the measured pair, keyed to a
 /// classic page the portal's own resolver answers, and carrying at least three prompts in the Code
-/// group -- and the area's tools since Story 19.2: four reads and the two lists' compile and delete,
-/// each write's baseline key, and the actions the lists declare for them.</p>
+/// group -- the two editors since Story 19.3, form pages with no read and no classic page; and the
+/// area's tools since Story 19.2: four reads and the two lists' compile, delete, export, import and
+/// save, each write's baseline key, and the actions the lists declare for them.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registry and the classic portal's
 /// classes. Live-safe: it reads and writes nothing.</p>
 Class OcuPilot.Test.ExplorerDescriptor Extends %UnitTest.TestCase
 {
 
-/// <p>The four descriptors, in side-bar order then viewers.</p>
-Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument";
+/// <p>The six descriptors, in side-bar order, then viewers, then editors.</p>
+Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument,OcuPilot.Screen.Descriptor.ExplorerClassEditor,OcuPilot.Screen.Descriptor.ExplorerRoutineEditor";
 
 /// <p>The measured pair set every screen and the area declare.</p>
 Parameter PAIRS = "[{""resource"":""%Development"",""permission"":""USE""}]";
@@ -88,7 +89,7 @@ Method TestTheReadToolsNameEachDefault()
 /// <p>Every screen of the area declares at least three suggested prompts in the Code group.</p>
 Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 {
-    For tI = 1:1:4 {
+    For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Set tCount = 0
@@ -103,13 +104,14 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Stories 19.2 AC9 and 19.13 AC7: the area's tools are its four reads and eight writes, the
-/// lists' compile, delete, export and import, each over the source code API port with its own
-/// request type, fingerprint subject and precondition -- a delete covers each document's modified
-/// time and an import its reviewed documents; the compile and export keys are enabled and the
-/// delete and import keys disabled at the baseline; and the two lists declare the six row actions,
-/// compile, delete and export acting on the checked rows, at most one hundred, while the viewers
-/// declare none.</p>
+/// <p>Stories 19.2 AC9 and 19.13 AC7: the area's advertised tools are its four reads and eight
+/// writes, the lists' compile, delete, export and import, each over the source code API port with its
+/// own request type, fingerprint subject and precondition -- a delete covers each document's modified
+/// time and an import its reviewed documents; the compile and export keys are enabled and the delete,
+/// import and save keys disabled at the baseline; and the two lists declare the seven row actions,
+/// compile, delete and export acting on the checked rows, at most one hundred, while the viewers and
+/// editors declare none. The two unadvertised saves are
+/// <method>TestTheTwoSavesAreUnadvertisedDestructiveWrites</method>'s.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
 Method TestTheAreaHoldsFourReadsAndEightWrites()
 {
@@ -120,12 +122,13 @@ Method TestTheAreaHoldsFourReadsAndEightWrites()
     Set tWriters = ""
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
+        If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tTool) Continue
         If $Extract(tTool.name, 1, 9) = "explorer." Set tExplorer = tExplorer _ $Select(tExplorer = "": "", 1: ",") _ tTool.name _ ":" _ tTool.kind
         If (tTool.kind '= "write") || (tTool.class = "") || ($Extract($Parameter(tTool.class, "DESCRIPTORCLASS"), 1, 35) '= "OcuPilot.Screen.Descriptor.Explorer") Continue
         Set tClass = tTool.class
         Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
-    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read", "the area's tools are four reads and eight writes")
+    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read", "the area's advertised tools are four reads and eight writes")
     Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.classes.export:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.classes.import:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.export:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.routines.import:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes and imports are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
@@ -135,13 +138,64 @@ Method TestTheAreaHoldsFourReadsAndEightWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete and import keys disabled")
-    For tI = 1:1:4 {
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete, import and save keys disabled")
+    For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Set tMulti = $Select($$$ISOK(tSC) && (tDeclaration.%GetTypeOf("multiSelect") = "object"): tDeclaration.multiSelect.%ToJSON(), 1: "")
-        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", 1: "||")
+        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local,save|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", 1: "||")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tMulti, tWant, tClass _ ": its actions")
+    }
+}
+
+/// <p>Story 19.3 AC7: the two lists' saves are unadvertised, destructive, action-style writes over the
+/// source code API port's <code>SAVEDOCS</code> and <code>SAVE</code>, fingerprinting the document's
+/// version, the namespace and the three values the list's <code>save</code> action declares -- the
+/// text, the version and the compile choice -- none of which their closed schema advertises; and
+/// they declare no classic page.</p>
+Method TestTheTwoSavesAreUnadvertisedDestructiveWrites()
+{
+    For tCase = $ListBuild("OcuPilot.Screen.Tool.ExplorerClassSave", "explorer.classes.save", "ExplorerClassList", "Classes"), $ListBuild("OcuPilot.Screen.Tool.ExplorerRoutineSave", "explorer.routines.save", "ExplorerRoutineList", "Routines") {
+        Set tClass = $List(tCase, 1)
+        Do ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
+        Do $$$AssertTrue($IsObject($Get(tEntry)) && (tEntry.class = tClass) && (tEntry.kind = "write") && (tEntry.advertised = 0), $List(tCase, 2) _ ": a registered, unadvertised write")
+        Do $$$AssertEquals($ClassMethod(tClass, "Advertised") _ "/" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "ReadType") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "SendsBody") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ClassMethod(tClass, "ChangeAction") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField") _ "/" _ $Parameter(tClass, "CLASSICPAGES"), "0/" _ $List(tCase, 3) _ "/OcuPilot.Port.AtelierPort/" _ $List(tCase, 4) _ "/SAVEDOCS/SAVE/0/1/updated/Modified+Absent+Namespace+content+version+Compile/Modified/", $List(tCase, 2) _ ": its declarations")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", $List(tCase, 2) _ ": which the registration guard holds adequate")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")) _ " " _ $ListToString($ClassMethod(tClass, "ScreenActionValueNames", "save")) _ " " _ $ListToString($ClassMethod(tClass, "SettableFields")), "save content,version,Compile content,version,Compile", $List(tCase, 2) _ ": carrying the list's save and its three values")
+        Set tSchema = $ClassMethod(tClass, "InputSchema")
+        Set tNames = ""
+        Set tIterator = tSchema.properties.%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) { Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName }
+        Do $$$AssertEquals(tNames _ " " _ tSchema.required.%ToJSON() _ " " _ tSchema.additionalProperties, "Names,rationale,expectedImpact,reverse [""Names""] 0", $List(tCase, 2) _ ": a closed schema naming the document alone")
+        Set tOne = $Select($List(tCase, 4) = "Classes": "A.cls", 1: "A.mac")
+        Do $$$AssertEquals($ClassMethod(tClass, "SetProblem", tOne) _ "|" _ ($ClassMethod(tClass, "SetProblem", tOne _ "," _ $Replace(tOne, "A.", "B.")) '= ""), "|1", $List(tCase, 2) _ ": exactly one document")
+    }
+}
+
+/// <p>Story 19.3 AC2: the two editors validate as unlisted form pages at their list's route plus
+/// <code>/editor</code>, gated on the measured pair, declaring no read, no table, no action and no
+/// context field, the viewer's own prompts, and no classic page and no exemption, so they carry no
+/// classic link: new capability, not parity. Their screen context names no tool.</p>
+/// <p>Mutation (Rule 19): set <code>classicPage</code> on
+/// <class>OcuPilot.Screen.Descriptor.ExplorerClassEditor</class> -- this goes red.</p>
+Method TestTheEditorsAreFormPagesWithNoClassicPage()
+{
+    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.ExplorerClassEditor", "system-explorer/classes/editor", "class", "explorer.classeditor", "OcuPilot.Screen.Descriptor.ExplorerClassDocument"), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerRoutineEditor", "system-explorer/routines/editor", "routine", "explorer.routineeditor", "OcuPilot.Screen.Descriptor.ExplorerRoutineDocument") {
+        Set tClass = $List(tCase, 1)
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", tClass _ ": the declaration validates")
+        Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.area _ "|" _ tDeclaration.id.kind, $List(tCase, 2) _ "|0|form-page|" _ $List(tCase, 3) _ "|namespace|system-explorer|single", tClass _ ": an unlisted form page keyed by one document")
+        Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#PAIRS, tClass _ ": gated on %Development:USE")
+        Do $$$AssertEquals(tDeclaration.%GetTypeOf("read") _ "|" _ tDeclaration.%GetTypeOf("table") _ "|" _ tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.context.%ToJSON(), "unassigned|unassigned|0||{""fields"":[],""secretFields"":[]}", tClass _ ": no read, no table, no action and no context field")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage") _ "|" _ tDeclaration.classicPage _ "|" _ tDeclaration.classicLinkExemption.exempt, "||0", tClass _ ": no classic page and no exemption")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool($List(tCase, 4)), tClass, tClass _ ": its tool identifier resolves to it")
+        Set tSC = $ClassMethod($List(tCase, 5), "DeclarationJson", .tViewer)
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%ToJSON(), $Select($$$ISOK(tSC): tViewer.suggestedPrompts.%ToJSON(), 1: ""), tClass _ ": the viewer's own prompts")
+        Kill tTools
+        Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tClass, .tTools), tClass _ ": its context tools build")
+        Do $$$AssertEquals($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: ""), "[]", tClass _ ": and name none")
     }
 }
 

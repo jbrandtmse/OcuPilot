@@ -7484,6 +7484,27 @@ app-log-hub-page {
   margin: 0 0 var(--ocu-space-2);
 }
 
+// The class and routine editors (Story 19.3): a form page as wide as its column, whose text is a
+// monospaced text area on the code surface that takes the page's free height and scrolls inside
+// itself, so the form bar stays in reach under it. No highlighting: the text is plain text.
+.ocu-source-editor {
+  max-width: none;
+}
+
+.ocu-source-editor-text {
+  flex: 1 0 auto;
+  width: 100%;
+  min-height: 20rem;
+  max-height: none;
+  border: 1px solid var(--ocu-outline-variant);
+  resize: vertical;
+  tab-size: 4;
+}
+
+.ocu-source-editor-text[readonly] {
+  opacity: 0.7;
+}
+
 // A confirmed compile's console lines on the proposal card, held to the page pane's height and
 // scrolled from the keyboard inside their focusable block.
 .ocu-proposal-card-output .ocu-code-block-pre {

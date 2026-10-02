@@ -65,6 +65,7 @@ import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page
 import { GovernancePage } from '../areas/agent/governance.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
+import { SourceEditorPage } from '../areas/system-explorer/source-editor.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -182,6 +183,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
+  // Story 19.3: the class and routine editors, one page serving both.
+  'OcuPilot.Screen.Descriptor.ExplorerClassEditor': SourceEditorPage,
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': SourceEditorPage,
 };
 
 /**

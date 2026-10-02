@@ -1,10 +1,11 @@
+import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
 import { decodeEntityId } from '../../core/entity-id';
 import { isBannerFault } from '../../core/fault';
-import { NavigationService } from '../../core/navigation';
+import { NavigationService, entityUrl, listForDocumentScreen, screenForRoute } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService, onScopeChange } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -23,6 +24,7 @@ import {
   type DocumentedRow,
   type SourceViewKey,
 } from './document-viewer.store';
+import { SOURCE_EDITOR_ROUTE_SUFFIX, isEditableName } from './source-editor.store';
 
 /** The screen this page renders and the store its table reads. */
 interface ViewerView {
@@ -61,7 +63,8 @@ const NAME_SEPARATOR = ' \u00b7 ';
  * the route's id, with a header naming its database, last modification and generated routines, and
  * five views -- Source, XML and Intermediate code, each a re-read with its `form`; Structure, the
  * shared table over the read's rows; and Documentation, each documented row's description under its
- * name. A routine's Structure and Documentation say it has no class structure.
+ * name. A routine's Structure and Documentation say it has no class structure. While a document's
+ * source text is on screen, "Edit source" opens its editor (Story 19.3).
  *
  * **The rows are the screen's; the text is not.** The read binds through the refresh framework, so
  * the table, the panel's screen context and the read tool see the same rows, and the document text
@@ -115,6 +118,9 @@ const NAME_SEPARATOR = ' \u00b7 ';
             </button>
           }
         </div>
+        @if (hasEditLink) {
+          <a class="ocu-details-link" data-ocu-source="edit" [href]="editLink.href" (click)="onEdit($event)">{{ STRINGS.explorerEditSource }}</a>
+        }
         @if (showFault) {
           <div class="ocu-data-table-refusal" role="alert" data-ocu-source="fault">
             <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
@@ -163,6 +169,7 @@ export class SourceViewerPage {
   private readonly api = inject(ApiService);
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
+  private readonly locationStrategy = inject(LocationStrategy);
 
   protected readonly STRINGS = STRINGS;
 
@@ -322,6 +329,34 @@ export class SourceViewerPage {
 
   protected get hasDocumentation(): boolean {
     return this.documentation.length > 0;
+  }
+
+  /**
+   * The editor's router URL and href for the document on screen (Story 19.3): offered while its
+   * source text is on screen and it is a class, routine, include file or intermediate routine;
+   * empty otherwise.
+   */
+  protected get editLink(): { readonly url: string; readonly href: string } {
+    this.generation();
+    const document = this.state.document();
+    const list = this.viewer === null ? null : listForDocumentScreen(this.viewer.screen);
+    const editor = list === null ? null : screenForRoute(`${list.route}/${SOURCE_EDITOR_ROUTE_SUFFIX}`);
+    if (document === null || this.state.gone() || document.form !== 'udl' || !document.available || !isEditableName(document.name)) return { url: '', href: '' };
+    if (editor === null || !editor.built) return { url: '', href: '' };
+    const url = entityUrl(editor.route, document.name, '', this.router.url);
+    return { url, href: this.locationStrategy.prepareExternalUrl(url) };
+  }
+
+  protected get hasEditLink(): boolean {
+    return this.editLink.url !== '';
+  }
+
+  /** A plain click opens the editor in place; a modified click is the browser's. */
+  protected onEdit(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const url = this.editLink.url;
+    if (url !== '') void this.router.navigateByUrl(url);
   }
 
   /** Show `view`; a text view re-reads with its form. */

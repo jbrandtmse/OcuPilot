@@ -151,6 +151,8 @@ XData Coverage
 <screen name="ExplorerRoutineList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
 <screen name="ExplorerClassDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
 <screen name="ExplorerRoutineDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="ExplorerClassEditor" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheEditorsAreFormPagesWithNoClassicPage" corpus="the two System Explorer editors are asserted together in one loop"/>
+<screen name="ExplorerRoutineEditor" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheEditorsAreFormPagesWithNoClassicPage" corpus="the two System Explorer editors are asserted together in one loop"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
@@ -284,6 +286,8 @@ XData Coverage
 <tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
 <tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
 <tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
+<tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

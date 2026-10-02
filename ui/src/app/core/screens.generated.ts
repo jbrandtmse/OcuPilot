@@ -4139,6 +4139,74 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassEditor",
+    "route": "system-explorer/classes/editor",
+    "area": "system-explorer",
+    "labelKey": "explorerClassEditorLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassDocumentPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.classeditor",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassList",
     "route": "system-explorer/classes",
     "area": "system-explorer",
@@ -4189,6 +4257,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "import-local",
+        "selfProtection": ""
+      },
+      {
+        "id": "save",
         "selfProtection": ""
       }
     ],
@@ -4506,6 +4578,74 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineEditor",
+    "route": "system-explorer/routines/editor",
+    "area": "system-explorer",
+    "labelKey": "explorerRoutineEditorLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "routine",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerRoutineDocumentPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.routineeditor",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineList",
     "route": "system-explorer/routines",
     "area": "system-explorer",
@@ -4556,6 +4696,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "import-local",
+        "selfProtection": ""
+      },
+      {
+        "id": "save",
         "selfProtection": ""
       }
     ],

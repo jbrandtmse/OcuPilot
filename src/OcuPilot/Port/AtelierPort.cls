@@ -15,9 +15,10 @@
 /// <parameter>TYPEEXPORT</parameter>; and an import of one file (<parameter>IDKEY</parameter>
 /// <parameter>IMPORTID</parameter>): <parameter>TYPEIMPORTTARGET</parameter>, its target,
 /// <parameter>TYPEPREVIEW</parameter>, what the file would do, and the write
-/// <parameter>TYPEIMPORT</parameter>. Each write is composed here from the caller's declared values
-/// (AD-51); a compile, a delete and an import are gated on WRITE on the namespace's routines database
-/// as well (AD-61).</p>
+/// <parameter>TYPEIMPORT</parameter>; and a save of one document's text, its fresh read
+/// <parameter>TYPESAVEDOCS</parameter> and the write <parameter>TYPESAVE</parameter>. Each write is
+/// composed here from the caller's declared values (AD-51); a compile, a delete, an import and a save
+/// are gated on WRITE on the namespace's routines database as well (AD-61).</p>
 /// <p><b>A server file is never a caller's path</b> (AD-21's sixth case): an export or an import
 /// names it by <code>root</code> and <code>path</code>, resolved through
 /// <method>PathPortClass</method> at each call, the export as an overwriting <code>file</code>
@@ -109,10 +110,19 @@ Parameter TYPEPREVIEW = "PREVIEW";
 /// <p>The list endpoints' import of one file (<method>ImportSet</method>).</p>
 Parameter TYPEIMPORT = "IMPORT";
 
+/// <p>The list endpoints' read of the one document a save names: <method>Docs</method>, with
+/// <code>content</code>, <code>version</code> and <code>Compile</code> answered <code>null</code>
+/// beside it.</p>
+Parameter TYPESAVEDOCS = "SAVEDOCS";
+
+/// <p>The list endpoints' save of one document's text (<method>SaveSet</method>).</p>
+Parameter TYPESAVE = "SAVE";
+
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
-/// alone, an export from the set and its file, and an import from its file.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT";
+/// alone, an export from the set and its file, an import from its file, and a save from its text,
+/// its version and its compile choice.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT,Classes/SAVE,Routines/SAVE";
 
 /// <p>The query key carrying an import's target, and the one target it takes, compared without
 /// regard to case.</p>
@@ -127,10 +137,18 @@ Parameter ROOTKEY = "root";
 Parameter PATHKEY = "path";
 
 /// <p>The query keys carrying a local file the screen sends: its name, which names no directory, and
-/// its text.</p>
+/// its text. A save's text travels under <parameter>CONTENTKEY</parameter> too.</p>
 Parameter FILENAMEKEY = "fileName";
 
 Parameter CONTENTKEY = "content";
+
+/// <p>The query key carrying the version of the document a save's text was read from: the
+/// <code>ts</code> the document read answers as <code>modified</code>, sent to the vendor as its
+/// <code>If-None-Match</code> (AD-61 rule 3).</p>
+Parameter VERSIONKEY = "version";
+
+/// <p>The request variable the vendor's save reads the client's version from.</p>
+Parameter IFNONEMATCHVARIABLE = "HTTP_IF_NONE_MATCH";
 
 /// <p>The query key carrying the reviewed summary an import's write compares
 /// (<method>Examine</method>).</p>
@@ -144,7 +162,7 @@ Parameter COMPILEKEY = "Compile";
 /// caller value (AD-21).</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
 
-/// <p>The most characters an import reads from one file.</p>
+/// <p>The most characters an import reads from one file, and the most one save sends.</p>
 Parameter MAXIMPORTCHARACTERS As INTEGER = 3000000;
 
 /// <p>The longest local file name an import takes.</p>
@@ -153,8 +171,8 @@ Parameter MAXFILENAME As INTEGER = 255;
 /// <p>The extensions an import reads, lower case: an XML export, or one UDL document.</p>
 Parameter IMPORTEXTENSIONS = "xml,cls,mac,inc,int";
 
-/// <p>The compiler flags an import that compiles sends: <method>CompileFlags</method> with source
-/// kept and documents already up to date skipped.</p>
+/// <p>The compiler flags an import or a save that compiles sends: <method>CompileFlags</method> with
+/// source kept and documents already up to date skipped.</p>
 Parameter IMPORTCOMPILEFLAGS = "cuk";
 
 /// <p>The separator between two entries of an import's summary.</p>
@@ -330,6 +348,12 @@ Parameter REASONIMPORTCOMPILE = "Compile must be true or false.";
 /// <p>The reason an import target other than <parameter>IMPORTID</parameter> is refused with.</p>
 Parameter REASONIMPORTID = "An import's target is import.";
 
+/// <p>The reason a save naming more than one document is refused with.</p>
+Parameter REASONSAVENAMES = "A save names exactly one document.";
+
+/// <p>The reason a save carrying no version is refused with.</p>
+Parameter REASONSAVEVERSION = "version must be the document's version as it was read.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -442,9 +466,9 @@ ClassMethod NamespacePairs(pNamespace As %String) As %List
 }
 
 /// <p><method>NamespacePairs</method> plus WRITE on the resource guarding <var>pNamespace</var>'s
-/// routines database, which a compile or a delete writes and the source code API itself does not
-/// check (AD-61 rule 1, measured); <code>""</code> when the namespace's pairs cannot be resolved,
-/// which the caller refuses rather than admits.</p>
+/// routines database, which a compile, a delete, an import or a save writes and the source code API
+/// itself does not check (AD-61 rule 1, measured); <code>""</code> when the namespace's pairs cannot
+/// be resolved, which the caller refuses rather than admits.</p>
 ClassMethod WritePairs(pNamespace As %String) As %List
 {
     Set tPairs = ..NamespacePairs(pNamespace)
@@ -457,12 +481,14 @@ ClassMethod WritePairs(pNamespace As %String) As %List
 /// <p>The lowest version <var>pEndpoint</var>'s routes need for request type <var>pType</var>: the
 /// highest of its routes' <parameter>MINVERSIONS</parameter>. An export's read and write take the
 /// export route's, and an import's target, preview and write each take every route an import may
-/// call, so an instance too old for the write refuses its fresh read too.</p>
+/// call, so an instance too old for the write refuses its fresh read too; a save's read and write
+/// take every route a save may call, the same way.</p>
 ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}) As %Integer
 {
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
-    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
+    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -502,6 +528,9 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// being 404 <code>PORT.NOTFOUND</code>; <parameter>TYPEPREVIEW</parameter> answers
 /// <method>Preview</method>'s <code>{documents, count}</code>; and <parameter>TYPEIMPORT</parameter>
 /// answers <method>ImportSet</method>'s, requiring <method>WritePairs</method>.</p>
+/// <p>And a save of one document, named in <code>names</code>: <parameter>TYPESAVEDOCS</parameter>
+/// answers <method>Docs</method>'s object, and <parameter>TYPESAVE</parameter> answers
+/// <method>SaveSet</method>'s, requiring <method>WritePairs</method>.</p>
 /// <p>Otherwise an error status is returned with <var>pResult</var> and <var>pDocument</var> empty,
 /// <var>pHttpStatus</var> the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, before any vendor call; 501
@@ -509,7 +538,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// old; 400 <code>PORT.VALIDATION</code> for a malformed argument or a value the vendor refused;
 /// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
 /// document the namespace does not hold, with nothing sent; a file's own refusals
-/// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); 403
+/// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); a save's
+/// own (<method>SaveSet</method>); 403
 /// <code>PORT.ACCESSDENIED</code> for
 /// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
@@ -530,9 +560,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
@@ -604,6 +634,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             If pType = ..#TYPEEXPORT {
                 Set tSC = ..ExportSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPESAVEDOCS {
+                Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault, $ListBuild(..#CONTENTKEY, ..#VERSIONKEY, ..#COMPILEKEY))
+                Quit
+            }
+            If pType = ..#TYPESAVE {
+                Set tSC = ..SaveSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
             If pType = ..#TYPECOMPILE {
@@ -1574,6 +1612,83 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
     Quit tSC
 }
 
+/// <p>Save the text <var>pQuery</var> carries as the one document <var>pNames</var> names, in
+/// <var>pNamespace</var>, against the version it was read at, and compile it when
+/// <code>Compile</code> is on (AD-51, AD-61 rule 3). In order, each refusal sending nothing:</p>
+/// <ol>
+/// <li>a set of more than one document, a <code>Compile</code> that is not true or false, or an empty
+/// <code>version</code>, is 400 <code>PORT.VALIDATION</code>;</li>
+/// <li>a <code>content</code> longer than <parameter>MAXIMPORTCHARACTERS</parameter> is 400
+/// <code>EXPLORER.SAVE.TOOLARGE</code>;</li>
+/// <li>a text whose header (<method>Header</method> of <method>Lines</method>) does not name the
+/// document exactly, kind included, is 422 <code>EXPLORER.SAVE.HEADER</code>;</li>
+/// <li>a document the namespace no longer holds is <method>PresentSet</method>'s 404, so a save never
+/// creates one;</li>
+/// <li>the text's lines are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
+/// the vendor's <code>If-None-Match</code> and never <code>ignoreConflict</code>, so a document changed
+/// since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
+/// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, and a text the vendor refuses under 200
+/// is 422 <code>EXPLORER.SAVE.REFUSED</code>, or 403 <code>PORT.ACCESSDENIED</code> for an access
+/// refusal (<method>Outcome</method>);</li>
+/// <li>once it saved, with <code>Compile</code> on, the document is compiled with
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>.</li>
+/// </ol>
+/// <p><var>pResult</var> is <code>{lines, errors}</code>, the compiler's console lines and whether it
+/// reported an error, when it compiled, and <code>{}</code> otherwise. A compile error is the compile's
+/// own result and does not undo the save. The text is never stored or logged.</p>
+ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If $ListLength(pNames) '= 1 {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVENAMES, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $List(pNames, 1)
+        If '..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTCOMPILE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tReadVersion = $Get(pQuery(..#VERSIONKEY))
+        If tReadVersion = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVEVERSION, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $Length($Get(pQuery(..#CONTENTKEY))) > ..#MAXIMPORTCHARACTERS {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SAVETOOLARGE, ##class(OcuPilot.Api.AtelierError).#REASONSAVETOOLARGE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tLines = ..Lines($Get(pQuery(..#CONTENTKEY)))
+        If ..Header(tLines) '= tName {
+            Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEHEADER, ##class(OcuPilot.Api.AtelierError).#REASONSAVEHEADER, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tDocument = {"enc": false}
+        Do tDocument.%Set("content", tLines)
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tNoParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 0, , , tReadVersion)
+        If $$$ISERR(tSC) Quit
+        Set pResult = {}
+        If tCompile {
+            Kill tParams
+            Set tParams("flags") = ..#IMPORTCOMPILEFLAGS
+            Set tParams("source") = 0
+            Set tSC = ..Route(pVersion, pNamespace, "Compile", "", .tParams, [(tName)], .tCompiled, .pHttpStatus, .pFault, 1, .tConsole, .tErrors)
+            If $$$ISERR(tSC) Quit
+            Do pResult.%Set("lines", $Select($IsObject(tConsole): tConsole, 1: []))
+            Do pResult.%Set("errors", ''tErrors, "boolean")
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the save failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
 /// <p>Push each string of <var>pFrom</var>, where it is an array, onto <var>pTo</var>.</p>
 ClassMethod Append(pTo As %DynamicArray, pFrom) [ Private ]
 {
@@ -1901,7 +2016,8 @@ ClassMethod PlainText(pDesc) As %String
 /// <code>%request.Data</code> and <var>pBody</var>, when it is not <code>""</code>, is a JSON text or
 /// a <class>%DynamicAbstractObject</class> sent as an <code>application/json</code> body
 /// (<method>OcuPilot.Port.AtelierRequest.SetJsonBody</method>). Trailing route arguments are omitted
-/// rather than passed empty.</p>
+/// rather than passed empty. <var>pIfNoneMatch</var>, when it is not <code>""</code>, is seeded as the
+/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code>,
 /// <code>%session</code> and <code>%SourceControl</code>, with fresh stubs. Its output is captured,
 /// or, for a route <parameter>FILEDEVICEROUTES</parameter> names, written to a temporary file that is
@@ -1910,7 +2026,7 @@ ClassMethod PlainText(pDesc) As %String
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
 /// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
 /// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -1939,6 +2055,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
             If tKey = "" Quit
             Set %request.Data(tKey, 1) = pParams(tKey)
         }
+        If pIfNoneMatch '= "" Set %request.CgiEnvs(..#IFNONEMATCHVARIABLE) = pIfNoneMatch
         Set %response = ##class(%CSP.Response).%New()
         Set %session = ""
         If $$$ISOK(tCallSC) && tToFile {
@@ -2035,6 +2152,12 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <p>With <var>pSoft</var> (a compile, or an import's load or save), such an error under a 2xx
 /// status is the call's own result rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
 /// <code>console</code> array on every 2xx answer that parses.</p>
+/// <p><code>PutDoc</code>'s own answers (AD-61 rule 6): 409, a version that no longer matches, is 409
+/// <code>EXPLORER.DOCUMENT.CONFLICT</code>, and 423, a document another process holds, is 409
+/// <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault and neither carrying the vendor's
+/// text, the lock's text going to the log at information severity (<method>LogNote</method>); and,
+/// without <var>pSoft</var>, an error under a 2xx status that is not an access refusal is 422
+/// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
 ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
     Set pResult = ""
@@ -2078,6 +2201,17 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
             If tParsed Set pResult = tEnvelope.%Get("result")
             Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONNOTFOUND, .pHttpStatus, .pFault)
         }
+        ; A save's version that no longer matches, and a document another process holds, are answers
+        ; rather than faults, so neither is logged as one; the lock's text names a user and a process,
+        ; so it is logged at information severity and never sent (AD-61 rule 6).
+        If (pMethod = "PutDoc") && (pHttp = 409) {
+            Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTCONFLICT, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTCONFLICT, .pHttpStatus, .pFault)
+        }
+        If (pMethod = "PutDoc") && (pHttp = 423) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTLOCKED, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTLOCKED, .pHttpStatus, .pFault)
+            Do ..LogNote(pMethod _ " found the document held by another process", tRawSC, pFault.code)
+            Quit tSC
+        }
         If pHttp = 400 {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONVALIDATION, .pHttpStatus, .pFault)
         } ElseIf pHttp = 403 {
@@ -2100,6 +2234,11 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
         If (tRaw [ "<PROTECT>") || ..AccessDenied(tCodes, tRaw) {
             Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, ..#REASONACCESSDENIED, .pHttpStatus, .pFault)
             Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
+            Quit tSC
+        }
+        If (pMethod = "PutDoc") && tParsed {
+            Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEREFUSED, ##class(OcuPilot.Api.AtelierError).#REASONSAVEREFUSED, .pHttpStatus, .pFault)
+            Do ..LogFault(pMethod _ " refused the text", tRawSC, pFault.code)
             Quit tSC
         }
         Quit ..Fail(pMethod _ " failed", tRawSC, .pHttpStatus, .pFault)
@@ -2133,6 +2272,20 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, pStatus, pCode)
 }
 
+/// <p>Send a raw status that answers rather than faults to the log at information severity, and
+/// nowhere else (AD-39, AD-61 rule 6): it never reaches the alert log. Overridable so a fixture can
+/// capture the line; production never overrides it.</p>
+ClassMethod LogNote(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Try {
+        Set tData = {}
+        Do tData.%Set("code", pCode, "string")
+        Do tData.%Set("status", $System.Status.GetErrorText(pStatus), "string")
+        Do ##class(OcuPilot.Kernel.Audit.Log).Info(..#LOGSUBSYSTEM, pMessage, tData)
+    } Catch {
+    }
+}
+
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>
 ClassMethod Deny(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -2160,13 +2313,13 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 }
 
 /// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter>,
-/// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter> and
-/// <parameter>TYPEIMPORT</parameter>, the writes this port carries; <code>""</code> for every read,
-/// which has no script form (AD-59).</p>
+/// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter>,
+/// <parameter>TYPEIMPORT</parameter> and <parameter>TYPESAVE</parameter>, the writes this port
+/// carries; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
-    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) Quit "objectscript"
+    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) Quit "objectscript"
     Quit ""
 }
 
@@ -2178,8 +2331,13 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>##class(%File).NormalizeFilename(path, root)</code> names and
 /// <code>$System.OBJ.Export</code> of the set to it, and <parameter>TYPEIMPORT</parameter> that file
 /// and <code>$System.OBJ.Load</code> of it, with <parameter>IMPORTCOMPILEFLAGS</parameter> when
-/// <code>Compile</code> is on. A read writes nothing and answers no step. Every value is rendered as a
-/// string literal, so nothing the query carries runs as code.</p>
+/// <code>Compile</code> is on, and <parameter>TYPESAVE</parameter> the text saved as the one document
+/// <code>names</code> holds -- <code>%Compiler.UDL.TextServices.SetTextFromString</code> for a class,
+/// a <code>%Routine</code> for a routine -- then, when <code>Compile</code> is on,
+/// <code>$System.OBJ.CompileList</code> of it with <parameter>IMPORTCOMPILEFLAGS</parameter>. The
+/// save's text is rendered as the placeholder <code>"&lt;content&gt;"</code>, never as the text. A
+/// read writes nothing and answers no step. Every value is rendered as a string literal, so nothing
+/// the query carries runs as code.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -2200,6 +2358,22 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
             Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.Load(tFile, " _ ..Literal($Select(tCompile: ..#IMPORTCOMPILEFLAGS, 1: "")) _ ")"
         }
         Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    } ElseIf pType = ..#TYPESAVE {
+        Set tPlaceholder = ..Literal("<" _ ..#CONTENTKEY _ ">")
+        If pEndpoint = ..#ENDPOINTCLASSES {
+            Set tText = tText _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString($NAMESPACE, " _ ..Literal($Piece(tNames, ".", 1, $Length(tNames, ".") - 1)) _ ", " _ tPlaceholder _ ", $Char(10))"
+        } Else {
+            Set tText = tText _ $Char(10) _ " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(tNames) _ ")"
+            Set tText = tText _ $Char(10) _ " Do tRoutine.Clear()"
+            Set tText = tText _ $Char(10) _ " Do tRoutine.Write(" _ tPlaceholder _ ")"
+            Set tText = tText _ $Char(10) _ " Set tSC = tRoutine.Save()"
+        }
+        Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        Do ..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile)
+        If tCompile {
+            Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ")"
+            Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        }
     } Else {
         Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"
         Set tText = tText _ $Char(10) _ "     Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI))"
