@@ -13,6 +13,7 @@ import {
   type ProposalPhase,
   type ProposalPrivilegeLine,
   consequenceSentence,
+  remoteListSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -256,6 +257,17 @@ export interface ProposalConfirmRequest {
       >
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ consequenceText }}</span>
+      </p>
+    }
+
+    @if (remoteListVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ remoteListText }}</span>
       </p>
     }
 
@@ -701,6 +713,19 @@ export class ProposalCard {
 
   protected get consequenceVisible(): boolean {
     return this.phase() !== null && this.consequenceText !== '';
+  }
+
+  /**
+   * A remote database proposal's bound sentence (Story 18.16, AD-21's seventh case): the confirm
+   * lists the data server the proposal names before it writes, and the card states how long that can
+   * take before Confirm is pressed. `''` for every other proposal.
+   */
+  protected get remoteListText(): string {
+    return remoteListSentence(this.view());
+  }
+
+  protected get remoteListVisible(): boolean {
+    return this.phase() !== null && this.remoteListText !== '';
   }
 
   /**

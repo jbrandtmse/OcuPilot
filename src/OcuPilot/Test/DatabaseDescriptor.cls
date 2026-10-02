@@ -82,9 +82,9 @@ Method TestTheFormIsBuiltUnlistedWithTheListsPairs()
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a sentence")
         Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ ##class(OcuPilot.Area.OsMgmt.DatabaseRules).FieldOf($List(tCodes, tI))
     }
-    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals", "each code names its own field, Story 18.4's operation arguments and DW-1860's threshold among them")
+    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals,Server,Server,Directory,Directory,Directory", "each code names its own field, Story 18.4's operation arguments, DW-1860's threshold and Story 18.16's remote fields among them")
     Do $$$AssertEquals(##class(OcuPilot.Area.OsMgmt.DatabaseRules).Rules().%Size(), $ListLength(tCodes), "and the form read publishes one rule per code")
-    For tCode = "DATABASE.INUSE", "DATABASE.REMOTE" {
+    For tCode = "DATABASE.INUSE", "DATABASE.REMOTE", "DATABASE.LOCAL" {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "", tCode _ ": the envelope code carries a sentence too")
     }
 }
@@ -156,8 +156,8 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
     Kill tQuery
     Do $ClassMethod(tCreate, "PortQuery", {"Name": "OCUPROBE183D", "root": "/probe/", "path": "ocuprobe183d", "Size": 2, "GlobalJournalState": false}, .tQuery)
     Do $$$AssertEquals($Get(tQuery("root")) _ "|" _ $Get(tQuery("path")) _ "|" _ $Get(tQuery("Size")) _ "|" _ $Get(tQuery("GlobalJournalState")) _ "|" _ $Data(tQuery("ResourceName")), "/probe/|ocuprobe183d|2|0|0", "and hands its arguments to the port as its query, an unsent resource left out (AD-52)")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName", "the prohibited set reviews the create's five")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("database-configuration")), "MountAtStartup,MountRequired,ClusterMountMode,MaxSize,ExpansionSize,ResourceName,NewGlobalIsKeep,GlobalJournalState,ReadOnly,NewVolumeThreshold,volumeRoot,volumePath", "and the two edits' settable fields for a change")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName,Server,Directory", "the prohibited set reviews the create's five, and a remote create's two (Story 18.16)")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("database-configuration")), "MountAtStartup,MountRequired,ClusterMountMode,MaxSize,ExpansionSize,ResourceName,NewGlobalIsKeep,GlobalJournalState,ReadOnly,NewVolumeThreshold,volumeRoot,volumePath,Server,Directory", "and the two edits' settable fields for a change, with a remote re-point's two (Story 18.16)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.LocalDatabaseUpdate).InputSchema().required.%ToJSON() _ "|" _ ##class(OcuPilot.Screen.Tool.LocalDatabaseUpdateMount).InputSchema().required.%ToJSON(), "[""Name""]|[""Name""]", "each edit requires the name alone")
 }
 
@@ -239,12 +239,12 @@ Method TestTheReadToolAnswersTheListsRowsAllLocal()
 /// <p>Every code <class>OcuPilot.Api.DatabaseError</class> declares is a <code>DATABASE.*</code> code
 /// with a sentence the one writer answers (AD-39), and each field-level code is among
 /// <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>, so the form read's rules carry it; only
-/// the eight envelope codes stay out, Story 18.4's five state codes among them.</p>
+/// the nine envelope codes stay out, Story 18.4's five state codes and Story 18.16's local refusal among them.</p>
 /// <p>Mutation (Rule 19): drop a code from <method>OcuPilot.Api.DatabaseError.ViolationCodes</method>
 /// -> this goes red.</p>
 Method TestEveryDatabaseCodeIsSaidAndListed()
 {
-    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE, ##class(OcuPilot.Api.DatabaseError).#MOUNTED, ##class(OcuPilot.Api.DatabaseError).#DISMOUNTED, ##class(OcuPilot.Api.DatabaseError).#READONLY, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER)
+    Set tEnvelopes = $ListBuild(##class(OcuPilot.Api.DatabaseError).#VALIDATION, ##class(OcuPilot.Api.DatabaseError).#INUSE, ##class(OcuPilot.Api.DatabaseError).#REMOTE, ##class(OcuPilot.Api.DatabaseError).#MOUNTED, ##class(OcuPilot.Api.DatabaseError).#DISMOUNTED, ##class(OcuPilot.Api.DatabaseError).#READONLY, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYNONE, ##class(OcuPilot.Api.DatabaseError).#VOLUMEDIRECTORYMANAGER, ##class(OcuPilot.Api.DatabaseError).#LOCAL)
     Set tListed = ##class(OcuPilot.Api.DatabaseError).ViolationCodes()
     Set tCount = 0
     Set tWrong = ""

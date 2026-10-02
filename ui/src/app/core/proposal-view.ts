@@ -214,6 +214,35 @@ export const CONSEQUENCE_LOCKINTRANSACTION = 'LOCK.INTRANSACTION';
 export const CONSEQUENCE_NAMESPACEINTEROP = 'NAMESPACE.INTEROP';
 
 /**
+ * Story 18.16: a remote database create or re-point, whose confirm lists the data server's databases
+ * before it writes. `consequenceSentence` answers `''` for it; the card states it through
+ * `remoteListSentence`, which names the data server the proposal sends.
+ */
+export const CONSEQUENCE_REMOTELIST = 'DATABASE.REMOTELIST';
+
+/** The bound the confirm's listing waits for, in seconds: `RemoteDatabasePort`'s `LISTSECONDS`. */
+export const REMOTE_DATABASE_LIST_SECONDS = 20;
+
+/** The field a remote database proposal names its data server in. */
+const REMOTE_SERVER_FIELD = 'Server';
+
+/**
+ * The card's bound sentence for a remote database proposal (AD-21's seventh case), or `''` for any
+ * other consequence: the data server is the proposal's own `Server` value -- a changed row's after
+ * value, else an unchanged row's -- and the bound is `REMOTE_DATABASE_LIST_SECONDS`. Each value is
+ * inserted through a replacer, so a name holding a placeholder is shown as written.
+ */
+export function remoteListSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'unchanged'>): string {
+  if (view.consequence !== CONSEQUENCE_REMOTELIST) return '';
+  const changed = view.changed.find((row) => row.field === REMOTE_SERVER_FIELD);
+  const unchanged = (view.unchanged ?? []).find((row) => row.field === REMOTE_SERVER_FIELD);
+  const server = changed !== undefined ? changed.after : (unchanged?.value ?? '');
+  return STRINGS.remoteDatabaseListConsequence
+    .replace('<server>', () => server)
+    .replace('<n>', () => String(REMOTE_DATABASE_LIST_SECONDS));
+}
+
+/**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
  */

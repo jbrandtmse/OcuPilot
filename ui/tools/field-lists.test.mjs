@@ -521,5 +521,8 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     // Story 16.25: the vendor answers a type's whole Custom object, its unsent members included.
     'osmgmt.languageservers.create': { Custom: 'members' },
     'osmgmt.languageservers.update': { Custom: 'members' },
+    // Story 18.16: a remote directory is compared as a local one's is.
+    'osmgmt.remotedatabases.create': { Directory: 'unslashed' },
+    'osmgmt.remotedatabases.update': { Directory: 'unslashed' },
   });
 });

@@ -112,6 +112,22 @@ XData Tools
 "osmgmt.packagemappings.update": {"fieldList":"Namespace.PackageMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.remotedatabases.create": {"fieldList":"Database.ConfigCRUD","fields":[
+  {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"StreamLocation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClusterMountMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountAtStartup","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountRequired","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"osmgmt.remotedatabases.update": {"fieldList":"Database.ConfigCRUD","fields":[
+  {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"StreamLocation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClusterMountMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountAtStartup","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"MountRequired","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "osmgmt.routinemappings.create": {"fieldList":"Namespace.RoutineMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},

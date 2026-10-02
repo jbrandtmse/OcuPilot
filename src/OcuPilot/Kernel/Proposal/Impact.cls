@@ -46,6 +46,14 @@ Parameter KINDDATABASEDISMOUNT = "database-dismount";
 /// <p>The tool whose write is <parameter>KINDDATABASEDISMOUNT</parameter>.</p>
 Parameter DATABASEDISMOUNTTOOL = "osmgmt.databasedetails.dismount";
 
+/// <p>A remote database delete (Story 18.16): the namespaces that use it and the web applications
+/// that run in them, as a local database delete's; its file is on the data server, so it has no
+/// shared-file part.</p>
+Parameter KINDREMOTEDATABASEDELETE = "remote-database-delete";
+
+/// <p>The tool whose write is <parameter>KINDREMOTEDATABASEDELETE</parameter>.</p>
+Parameter REMOTEDATABASEDELETETOOL = "osmgmt.remotedatabases.delete";
+
 Parameter PARTHOLDERS = "holders";
 
 Parameter PARTGRANTINGAPPLICATIONS = "grantingApplications";
@@ -187,7 +195,7 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             Set tSC = ..Databases(tFresh, .tPart)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
-        } ElseIf tKind = ..#KINDDATABASEDELETE {
+        } ElseIf (tKind = ..#KINDDATABASEDELETE) || (tKind = ..#KINDREMOTEDATABASEDELETE) {
             Set tSC = ..UsingNamespaces(tId, .tPart, .tUsing)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
@@ -198,9 +206,12 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
             If tNamespacesUnchecked '= "" Set tSC = ..Unchecked(tPart, tNamespacesUnchecked)
             If $$$ISERR(tSC) Quit
             Do tParts.%Push(tPart)
-            Set tSC = ..SharedFile(tId, tFresh, .tPart)
-            If $$$ISERR(tSC) Quit
-            Do tParts.%Push(tPart)
+            ; A remote database's file is on its data server: no configuration here shares it.
+            If tKind = ..#KINDDATABASEDELETE {
+                Set tSC = ..SharedFile(tId, tFresh, .tPart)
+                If $$$ISERR(tSC) Quit
+                Do tParts.%Push(tPart)
+            }
         } Else {
             Set tSC = ..Loses(tFresh, tPayload, .tPart)
             If $$$ISERR(tSC) Quit
@@ -229,6 +240,7 @@ ClassMethod KindOf(pToolName As %String, pFresh As %DynamicObject, pPayload As %
     If pToolName = ..#NAMESPACEDELETETOOL Quit ..#KINDNAMESPACEDELETE
     If pToolName = ..#DATABASEDELETETOOL Quit ..#KINDDATABASEDELETE
     If pToolName = ..#DATABASEDISMOUNTTOOL Quit ..#KINDDATABASEDISMOUNT
+    If pToolName = ..#REMOTEDATABASEDELETETOOL Quit ..#KINDREMOTEDATABASEDELETE
     If pToolName '= ..#USERUPDATETOOL Quit ""
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#ROLESFIELD) '= "array") Quit ""
     Kill tSent

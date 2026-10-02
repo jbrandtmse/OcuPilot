@@ -58,6 +58,9 @@ Parameter TASKIMPORTKEY = "tasks.schedule.import";
 /// <p>The agent's enable-interop key, which the baseline disables too (Story 18.15).</p>
 Parameter ENABLEINTEROPKEY = "osmgmt.namespaces.enableinterop";
 
+/// <p>The agent's remote database delete key, which the baseline disables too (Story 18.16).</p>
+Parameter REMOTEDELETEKEY = "osmgmt.remotedatabases.delete";
+
 /// <p>The tool whose first own pair is <code>%All:USE</code>: a holder of the <code>%All</code> role
 /// holds every custom resource, so its page's resource is never the pair that fails, and its legs
 /// assert the <code>%All:USE</code> refusal instead (AD-8 as amended 2026-10-01).</p>
@@ -67,7 +70,7 @@ Parameter ALLTOOL = "osmgmt.namespaces.enableinterop";
 /// entries: its declared set, with no classic page assigned. The declaring tools are exactly these,
 /// and the database file edit, the truncate and the service update declare none of their own; Story
 /// 18.4's dismount, whose classic page performs it itself, declares no page.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE";
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE,osmgmt.remotedatabases.create=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.update=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.delete=%DB_IRISSYS:WRITE";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -418,6 +421,7 @@ Method RestorePages() As %Status
 /// <p>Enable the agent's namespace and database delete keys, its task import key and Story 18.4's
 /// disk operation keys, over the snapshot this class took.</p>
 /// <p>And Story 18.15's enable-interop key.</p>
+/// <p>And Story 18.16's remote database delete key.</p>
 Method EnableDelete() As %Status
 {
     Kill tSettings
@@ -425,6 +429,7 @@ Method EnableDelete() As %Status
     Set tSettings(..#DATABASEDELETEKEY) = "enabled"
     Set tSettings(..#TASKIMPORTKEY) = "enabled"
     Set tSettings(..#ENABLEINTEROPKEY) = "enabled"
+    Set tSettings(..#REMOTEDELETEKEY) = "enabled"
     For tI = 1:1:$Length(..#DISKKEYS, ",") {
         Set tSettings($Piece(..#DISKKEYS, ",", tI)) = "enabled"
     }

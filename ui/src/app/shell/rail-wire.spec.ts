@@ -102,6 +102,7 @@ const LIVE_PAYLOAD = {
       // database form among the unlisted ones and Local databases last; Story 16.25 the language
       // server editor among the unlisted ones, refused on the list's own pair; and Story 18.17 the
       // Integrity log right after Databases.
+      // Story 18.16 adds the remote database form among the unlisted ones and Remote databases last.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -216,6 +217,13 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/remote-databases/edit',
+          labelKey: 'remoteDatabaseFormLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/namespaces/routine-mappings/edit',
           labelKey: 'routineMappingFormLabel',
           sideBarPosition: 0,
@@ -303,6 +311,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/local-databases',
           labelKey: 'localDatabaseListLabel',
           sideBarPosition: 11,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/remote-databases',
+          labelKey: 'remoteDatabaseListLabel',
+          sideBarPosition: 12,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -684,6 +699,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     // Both declare the Namespaces screens' pairs, so this principal is denied on `%Admin_Manage:USE`.
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['os-management/local-databases', 'os-management/local-databases/edit']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+    }
+  });
+
+  it('Story 18.16: reads the Remote databases list and form verdicts the live payload carries', () => {
+    // Both declare the Local databases screens' pairs, so this principal is denied on `%Admin_Manage:USE`.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/remote-databases', 'os-management/remote-databases/edit']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
   });

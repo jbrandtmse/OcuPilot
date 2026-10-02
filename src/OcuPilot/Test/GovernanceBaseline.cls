@@ -9,7 +9,7 @@ Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 {
 
 /// <p>The lines some story's criteria ship disabled, in name order, comma-separated.</p>
-Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, security.auditing.purge, tasks.schedule.import";
+Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, osmgmt.remotedatabases.delete, security.auditing.purge, tasks.schedule.import";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is
 /// asserted too, so an empty registry cannot pass by looping zero times.</p>

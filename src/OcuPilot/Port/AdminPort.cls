@@ -462,6 +462,25 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 /// <code>{}</code> and OK whatever happened (<parameter>CONSOLETESTS</parameter>).</p>
 Parameter CONNECTIONTESTTYPES = "Security.SSLConfig/TEST,Security.LDAP/TEST";
 
+/// <p>The non-mutating <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
+/// admits that open a connection from the instance and change nothing stored, answered as ordinary
+/// reads: the vendor's own answer, and a 404 an absence (AD-2). Unlike
+/// <parameter>CONNECTIONTESTTYPES</parameter>, a failure is a fault.</p>
+/// <p><code>ECP.DataServer/DBLIST</code> (Story 18.16, AD-21's seventh case) is the one entry: the
+/// databases an ECP data server lists, <code>[{Name, Directory}]</code> from
+/// <code>SYS.Database:RemoteDatabaseListSMP</code>, 404 for a server the instance does not define.
+/// The vendor call takes no timeout, so its one caller, <class>OcuPilot.Port.RemoteDatabasePort</class>,
+/// runs it in a child job against a bound.</p>
+Parameter CONNECTIONREADTYPES = "ECP.DataServer/DBLIST";
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CONNECTIONREADTYPES</parameter> admits, keyed by the pair as
+/// <method>IsMutating</method> is.</p>
+ClassMethod IsConnectionRead(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CONNECTIONREADTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
 /// <p>The <parameter>CONNECTIONTESTTYPES</parameter> pairs whose vendor answer carries no verdict,
 /// comma-separated. Their outcome is the console lines <method>Sequence</method> captured while
 /// <code>Run()</code> ran: <code>{lines}</code> at 200, with no <code>passed</code>, because the
@@ -2405,6 +2424,12 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
         Set tBare = $Parameter(pClass, pSuffix)
         If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tBare
+    }
+    ; CONNECTIONREADTYPES: a pair-keyed read, admitted on its own endpoint alone.
+    If ..IsConnectionRead(pEndpoint, pSuffix) {
+        Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
+        If (tType = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
+        Quit tType
     }
     If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '..IsMutating(pEndpoint, pSuffix) && '..IsConnectionTest(pEndpoint, pSuffix) Quit ""
     Set tType = $Parameter(pClass, "TYPE" _ pSuffix)

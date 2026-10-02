@@ -93,6 +93,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.LanguageServerList',
   'OcuPilot.Screen.Descriptor.DatabaseDetails',
   'OcuPilot.Screen.Descriptor.LockList',
+  // Story 18.16: the Remote databases list, whose Delete types the name and states the removal's impact.
+  'OcuPilot.Screen.Descriptor.RemoteDatabaseList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -145,6 +147,12 @@ export const ENABLE_INTEROP = 'enable-interop';
  * carries the file option as a declared value (AD-56 (ii)).
  */
 export const LOCAL_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.LocalDatabaseList';
+
+/**
+ * The Remote databases list's descriptor (Story 18.16), whose Delete states the removal's impact and
+ * offers no file option: the database's file is on its data server.
+ */
+export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseList';
 
 /**
  * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
@@ -325,6 +333,7 @@ const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [RESOURCE_LIST]: ['delete'],
   [NAMESPACE_LIST]: ['delete'],
   [LOCAL_DATABASE_LIST]: ['delete'],
+  [REMOTE_DATABASE_LIST]: ['delete'],
   // Story 18.4: a warning, not a removal -- the read answers only the prohibited set's refusal of a
   // protected database, which the Dismount dialog draws as its advisory.
   [DATABASE_DETAILS]: ['dismount'],
@@ -366,6 +375,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [LOCAL_DATABASE_LIST]: { delete: STRINGS.localDatabaseDeleteConsequence },
   // Story 16.25: the language server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
+  // Story 18.16: the remote database's Delete types the name; its file stays on the data server.
+  [REMOTE_DATABASE_LIST]: { delete: STRINGS.remoteDatabaseDeleteConsequence },
 };
 
 /**

@@ -1031,6 +1031,17 @@ class TestAgentJobReachRule(FixtureTreeCase):
         self.assertTrue(any("Api/Turn.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
         self.assertFalse(any(p.startswith("src/OcuPilot/Kernel/Agent/Job.cls") for p in problems), f"got {problems}")
 
+    def test_the_remote_directory_listing_may_spawn_its_child(self):
+        # Story 18.16: the listing's child job is the third spawn site AD-42 names.
+        self.write(
+            "src/OcuPilot/Port/RemoteDatabasePort.cls",
+            "Class OcuPilot.Port.RemoteDatabasePort Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Port.RemoteDatabasePort).ListChild(1)::5\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected the listing's spawn accepted, got {problems}")
+
     def test_a_state_class_naming_the_agent_package_is_refused(self):
         # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter
         # a provider call from inside an escalated frame (AD-9).

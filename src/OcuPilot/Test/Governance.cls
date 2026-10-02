@@ -28,6 +28,9 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 /// <p>The enable of interoperability, which the baseline also disables (Story 18.15).</p>
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
+/// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
+Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
+
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
 
@@ -111,6 +114,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = "" Quit
         Set tCount = tCount + 1
         Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey): "0|baseline", 1: "1|baseline")
+        If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
