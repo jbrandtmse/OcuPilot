@@ -134,6 +134,8 @@ XData ReadShapes
 <screen name="ExplorerRoutineList" filter="Name,Database" sort="Name,Modified,Database" kinds="Name:name,Modified:text,Database:identifier,Generated:status"/>
 <screen name="ExplorerClassDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 <screen name="ExplorerRoutineDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
+<screen name="ExplorerSearch" filter="Document,Member,Text" sort="Order,Document" kinds="Document:name,Member:identifier,Line:number,Text:text"/>
+<screen name="ExplorerMacro" filter="Macro,Document,Definition" sort="Macro,Document" kinds="Macro:name,Document:identifier,Line:number,Definition:text"/>
 <screen name="RemoteDatabaseList" filter="Name,Server,Directory,Status" sort="Name,Server,Directory,Status" kinds="Name:name,Server:identifier,Directory:identifier,Status:text"/>
 </shapes>
 }

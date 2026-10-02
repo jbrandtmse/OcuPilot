@@ -7484,6 +7484,110 @@ app-log-hub-page {
   margin: 0 0 var(--ocu-space-2);
 }
 
+// System Explorer's Search, Macros and Compare (Story 19.4). Search's results are a page-owned
+// table: the document, its location and the matched line, each cut to its track with an ellipsis.
+.ocu-code-search-row {
+  grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) minmax(16rem, 4fr);
+}
+
+.ocu-code-search-location,
+.ocu-code-search-match {
+  @include typo.ocu-type('code');
+}
+
+.ocu-code-search-results .ocu-data-table-viewport {
+  overflow: auto;
+}
+
+.ocu-macro-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  padding-block: var(--ocu-space-2);
+}
+
+.ocu-code-compare-sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-4);
+}
+
+.ocu-code-compare-side {
+  flex: 1 1 20rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+// The line diff draws on the plain surface in code type rather than on the code surface, because
+// the role colors on the code surface miss contrast in the light theme. A removed line sits on the
+// destructive container and an added one on the success container, each led by its sign in the
+// role's own color and a visually hidden direction (`.ocu-diff-direction`); a collapsed run of
+// unchanged lines is one muted line.
+.ocu-line-diff {
+  @include typo.ocu-type('code');
+
+  box-sizing: border-box;
+  max-width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-line-diff:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-line-diff-line {
+  display: flex;
+  gap: var(--ocu-space-2);
+  padding-inline: var(--ocu-space-2);
+  white-space: pre;
+}
+
+.ocu-line-diff-removed {
+  background: var(--ocu-destructive-container);
+  color: var(--ocu-on-destructive-container);
+}
+
+.ocu-line-diff-added {
+  background: var(--ocu-success-container);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-line-diff-number {
+  flex: 0 0 4ch;
+  color: var(--ocu-on-surface-variant);
+  text-align: end;
+}
+
+.ocu-line-diff-removed .ocu-line-diff-number,
+.ocu-line-diff-added .ocu-line-diff-number {
+  color: inherit;
+}
+
+.ocu-line-diff-sign {
+  flex: 0 0 1ch;
+}
+
+.ocu-line-diff-removed .ocu-line-diff-sign {
+  color: var(--ocu-destructive);
+}
+
+.ocu-line-diff-added .ocu-line-diff-sign {
+  color: var(--ocu-success);
+}
+
+.ocu-line-diff-collapsed {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-block: 1px dashed var(--ocu-outline-variant);
+  color: var(--ocu-on-surface-variant);
+}
+
 // The class and routine editors (Story 19.3): a form page as wide as its column, whose text is a
 // monospaced text area on the code surface that takes the page's free height and scrolls inside
 // itself, so the form bar stays in reach under it. No highlighting: the text is plain text.

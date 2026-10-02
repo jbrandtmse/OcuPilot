@@ -66,6 +66,9 @@ import { GovernancePage } from '../areas/agent/governance.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
 import { SourceEditorPage } from '../areas/system-explorer/source-editor.page';
+import { CodeSearchPage } from '../areas/system-explorer/code-search.page';
+import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
+import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -186,6 +189,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // Story 19.3: the class and routine editors, one page serving both.
   'OcuPilot.Screen.Descriptor.ExplorerClassEditor': SourceEditorPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': SourceEditorPage,
+  // Story 19.4: Search, Compare and Macros, each a page of its own.
+  'OcuPilot.Screen.Descriptor.ExplorerSearch': CodeSearchPage,
+  'OcuPilot.Screen.Descriptor.ExplorerCompare': CodeComparePage,
+  'OcuPilot.Screen.Descriptor.ExplorerMacro': MacroLookupPage,
 };
 
 /**

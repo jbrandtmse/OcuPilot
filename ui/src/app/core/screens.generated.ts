@@ -4427,6 +4427,222 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerCompare",
+    "route": "system-explorer/compare",
+    "area": "system-explorer",
+    "labelKey": "explorerCompareLabel",
+    "sideBarPosition": 4,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "compare",
+      "diff"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerComparePrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerComparePrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerComparePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.RoutineCompare",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "explorer.compare",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerMacro",
+    "route": "system-explorer/macros",
+    "area": "system-explorer",
+    "labelKey": "explorerMacroLabel",
+    "sideBarPosition": 5,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "routine",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Macro",
+        "Document",
+        "Line",
+        "Definition"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerMacroUndefined",
+    "commandAliases": [
+      "macro",
+      "macro definition"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerMacroPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerMacroPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerMacroPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Macro",
+        "type": "LIST"
+      },
+      "fields": [
+        "Macro",
+        "Document",
+        "Line",
+        "Definition"
+      ],
+      "filter": [
+        "Macro",
+        "Document",
+        "Definition"
+      ],
+      "sort": {
+        "fields": [
+          "Macro",
+          "Document"
+        ],
+        "default": "Macro",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "document",
+            "labelKey": "explorerColumnDocument",
+            "kind": "text",
+            "maxLength": 256
+          },
+          {
+            "param": "macro",
+            "labelKey": "explorerColumnMacro",
+            "kind": "text",
+            "maxLength": 128
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Macro",
+          "labelKey": "explorerColumnMacro",
+          "kind": "name"
+        },
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "identifier"
+        },
+        {
+          "field": "Line",
+          "labelKey": "explorerColumnLine",
+          "kind": "number"
+        },
+        {
+          "field": "Definition",
+          "labelKey": "agentDefinitionFormLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.macro",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerRoutineDocument",
     "route": "system-explorer/routines/document",
     "area": "system-explorer",
@@ -4861,6 +5077,170 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSearch",
+    "route": "system-explorer/search",
+    "area": "system-explorer",
+    "labelKey": "auditCriteriaSearch",
+    "sideBarPosition": 3,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [
+      "routine"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Document",
+        "Member",
+        "Line",
+        "Text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSearchEmpty",
+    "commandAliases": [
+      "search code",
+      "find in files"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSearchPrompt1"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSearchPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSearchPrompt3"
+      }
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Search",
+        "type": "LIST"
+      },
+      "fields": [
+        "Order",
+        "Document",
+        "Member",
+        "Line",
+        "Attribute",
+        "Text"
+      ],
+      "filter": [
+        "Document",
+        "Member",
+        "Text"
+      ],
+      "sort": {
+        "fields": [
+          "Order",
+          "Document"
+        ],
+        "default": "Order",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "text",
+            "labelKey": "explorerSearchTextLabel",
+            "kind": "text",
+            "maxLength": 256
+          },
+          {
+            "param": "scope",
+            "labelKey": "explorerSearchScopeLabel",
+            "kind": "choice",
+            "maxLength": 8,
+            "options": [
+              "all",
+              "classes",
+              "routines"
+            ],
+            "default": "all"
+          },
+          {
+            "param": "case",
+            "labelKey": "explorerSearchCaseLabel",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ],
+            "default": "no"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Document",
+          "labelKey": "explorerColumnDocument",
+          "kind": "name"
+        },
+        {
+          "field": "Member",
+          "labelKey": "explorerColumnMember",
+          "kind": "identifier"
+        },
+        {
+          "field": "Line",
+          "labelKey": "explorerColumnLine",
+          "kind": "number"
+        },
+        {
+          "field": "Text",
+          "labelKey": "explorerColumnMatch",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "explorer.search",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""

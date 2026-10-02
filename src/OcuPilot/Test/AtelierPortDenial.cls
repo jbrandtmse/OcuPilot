@@ -11,6 +11,10 @@
 /// that pair, before any route.</li>
 /// <li>With a database the install namespace maps code from made non-public, the port and the
 /// route refuse naming its pair, rather than answering an empty list.</li>
+/// <li>Search and Macros (Story 19.4): without <code>%Development:USE</code> both reads, and the
+/// Search, Compare and Macros screens on the navigation map, are refused naming that pair; without
+/// READ on <code>USER</code>'s database the port refuses both there naming that pair, before any
+/// route.</li>
 /// </ul>
 /// <p>The direct calls run in a child process (<class>OcuPilot.Test.AtelierDenialProbe</class>) that
 /// logs in as the principal, so this process never changes identity.</p>
@@ -215,6 +219,28 @@ Method Read(pUser As %String, pTool As %String, pQuery As %String) As %String
     Quit tStatus _ " " _ tAnswer.%Get("code") _ " " _ $Select($IsObject(tAnswer.%Get("detail")): tAnswer.detail.%Get("failedPair"), 1: "")
 }
 
+/// <p>The navigation map's verdict, as <code>allowed failedPair</code>, on each of
+/// <var>pRoutes</var> (comma-separated) for <var>pUser</var>, joined by <code>,</code>.</p>
+Method Verdicts(pUser As %String, pRoutes As %String) As %String
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/navigation", pUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit "unreached " _ $Get(tStatus)
+    Set tMap = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
+    Kill tSeen
+    Set tAreas = tMap.areas.%GetIterator()
+    While tAreas.%GetNext(.tIndex, .tArea) {
+        Set tScreens = tArea.screens.%GetIterator()
+        While tScreens.%GetNext(.tScreenIndex, .tScreen) {
+            If tScreen.route '= "" Set tSeen(tScreen.route) = ''tScreen.allowed _ " " _ tScreen.%Get("failedPair")
+        }
+    }
+    Set tOut = ""
+    For tI = 1:1:$Length(pRoutes, ",") {
+        Set tOut = tOut _ $Select(tI = 1: "", 1: ",") _ $Get(tSeen($Piece(pRoutes, ",", tI)), "absent")
+    }
+    Quit tOut
+}
+
 /// <p>Run <class>OcuPilot.Test.AtelierDenialProbe</class> as <var>pUser</var> over
 /// <var>pNamespaces</var> in a child process and answer what it signalled, or an object carrying
 /// <code>error</code>.</p>
@@ -322,6 +348,35 @@ Method TestAMappedDatabaseIsGatedRatherThanReadEmpty()
     Do ..SetMappedPublic(..PreparedMappedPublic)
     Do $$$AssertEquals(tRoute, "403 AUTH.NOPRIVILEGE " _ ..PreparedMapped _ ":READ", "the route refuses naming the mapped database's pair")
     Do $$$AssertEquals(..LegText(tProbe, tHere, "Classes"), "403 calls=0 AUTH.NOPRIVILEGE " _ ..PreparedMapped _ ":READ", "and so does the port, before any route")
+}
+
+/// <p>Story 19.4 AC8: without <code>%Development:USE</code> the Search and Macros reads are refused
+/// 403 naming it by the route and by the port before any route, and the navigation map draws Search,
+/// Compare and Macros unavailable naming it; without READ on <code>USER</code>'s database the port
+/// refuses both there naming that pair before any route, and the full principal searches and looks
+/// a macro up in <code>USER</code>.</p>
+/// <p>Mutation (Rule 19): give <class>OcuPilot.Screen.Descriptor.ExplorerSearch</class> an empty
+/// pair set -&gt; the navigation map opens Search and the verdict assertion goes red.</p>
+Method TestSearchAndMacrosAreRefusedNamingThePair()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")
+    Set tHere = $Namespace
+    Do $$$AssertEquals(..Read(..#NODEVUSER, "explorer.search", "text=Quit&ns=" _ tHere), "403 AUTH.NOPRIVILEGE %Development:USE", "the search is refused by the route, naming the pair")
+    Do $$$AssertEquals(..Read(..#NODEVUSER, "explorer.macro", "document=%25Library.Persistent.cls&macro=OK&ns=" _ tHere), "403 AUTH.NOPRIVILEGE %Development:USE", "and so is the macro lookup")
+    Do $$$AssertEquals(..Verdicts(..#NODEVUSER, "system-explorer/search,system-explorer/compare,system-explorer/macros"), "0 %Development:USE,0 %Development:USE,0 %Development:USE", "the map draws Search, Compare and Macros unavailable, naming the pair")
+    Set tProbe = ..ProbeAs(..#NODEVUSER, tHere)
+    Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(..LegText(tProbe, tHere, "Search"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "the port refuses a search before any route")
+    Do $$$AssertEquals(..LegText(tProbe, tHere, "Macro"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "and a macro lookup")
+
+    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#OTHERNAMESPACE, .tOther, .tGlobals, .tMapped, .tResolved)
+    Set tProbe = ..ProbeAs(..#NOUSERUSER, ..#OTHERNAMESPACE)
+    Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Search"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "a USER search is refused naming the database's pair")
+    Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Macro"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "and so is a USER lookup")
+
+    Do $$$AssertEquals(..Read(..#FULLUSER, "explorer.search", "text=Quit&maxRows=1&ns=" _ ..#OTHERNAMESPACE), "200 rows=1", "the full principal searches USER")
+    Do $$$AssertEquals(..Read(..#FULLUSER, "explorer.macro", "document=%25Library.Persistent.cls&macro=OK&ns=" _ ..#OTHERNAMESPACE), "200 rows=1", "and looks a macro up there")
 }
 
 }

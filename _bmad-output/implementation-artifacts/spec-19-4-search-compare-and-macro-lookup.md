@@ -2,14 +2,16 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - 'Screen/Tool/Read.AddCriteria describes every text criterion as a comma-separated name list where * matches, which misdescribes Search''s text and Macros'' document and macro to the model.'
 ---
 
 <intent-contract>
@@ -200,6 +202,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-02, lead (implement halt resolved, by=merge_gate): `ui/tools/strings.test.mjs:575-576` moves the Fixed-strings bound from 2000 to 2100, byte-identical to Epic 18's 081bbd5e on those two lines and with no comment line of this story's (a three-way merge with 18.5's file is clean and identical to it). The lead applied the edit; `npm run test:tools` 1777/1777. The implementation is committed locally as a work-in-progress commit; `baseline_revision` stays `6f718d93`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -336,10 +340,25 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - AC8: `ExplorerSearch` privileges dropped → `DeveloperFloor` and the `AtelierPortDenial` search leg.
 - AC9: the hit link always routing to the class viewer, rebuilt and redeployed → `system-explorer-find` routine-hit leg.
 
+
+**Mutations observed (Rule 19)**, each reverted byte for byte and recompiled or rebuilt:
+
+- mutation: AC1, `SearchRows` drops `Member` → `AtelierPortSearch.TestSearchRowsCarryTheInstancesShapes` and `TestTheSearchSendsExactlyItsParameters` (run 2359).
+- mutation: AC2, `SearchRows` sends `max` as `maxRows` − 1 → `AtelierPortSearch.TestTheCapIsReportedThroughTheRead` and `TestTheSearchSendsExactlyItsParameters` (run 2360).
+- mutation: AC3, `regex` sent as 1 → `AtelierPortSearch.TestAMetacharacterIsText`, with four other legs (run 2362); `documents` given the text → `AtelierPortSearch.TestTheSearchSendsExactlyItsParameters` (run 2363).
+- mutation: AC4, `lineDiff` stops trimming the common tail → `line-diff.spec.ts` "keeps the shared head and tail".
+- mutation: AC5, `MacroContext` drops `Extends` → `AtelierPortMacro.TestAMacroIsFoundThroughASuperclass`, `TestBothMacroRoutesAreSentTheBodyTheTextGives` and `TestMacroContextReadsTheDocumentsOwnText` (run 2364).
+- mutation: AC6, `Kernel/Agent/Bound.Apply`'s per-field cut skipped → `ExplorerFind.TestTheReadToolsAnswerBoundedRowsAlone` (run 2365).
+- mutation: AC7, `ExplorerCompare` `classicPage` `""` → `ExplorerDescriptor.TestCompareKeysTheClassicCompareRoutinesPage` (run 2366).
+- mutation: AC8, `ExplorerSearch` privileges `[]` → `AtelierPortDenial.TestSearchAndMacrosAreRefusedNamingThePair` (run 2367) and `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 2369).
+- mutation: AC9, `viewerRouteFor` answers the class viewer for every hit, rebuilt and redeployed → `system-explorer-find` AC1/AC9 and AC5/AC9 tests.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: contended edit needs lead approval: `ui/tools/strings.test.mjs:575-576`. This story's Fixed-strings row takes the table to 2032 distinct literals against the bound of 2000 (`npm run test:tools`: 1 of 1,777 red), and Epic 18's 081bbd5e (Story 18.5) changes the same two assertion lines from 2000 to 2100. The 19.1 approval covered disjoint hunks only.
 
 - Plan (2026-10-02): search, macro and capture behavior measured on `ocupilot-a2-ci` (Design Notes), every `OcuProbe194*` document, the probe port class and its global removed and checked gone; the classic pages read on slot A and in `irissys/`; no diff library needed; ledger inbox empty.
 - For the spec gate: the drafted AD-61, AD-7 and AD-36 amendments; Search declaring no classic page; the contended non-additive edits (`ReadTool`, `ToolRoundTrip`, `strings.ts`, the budget, the spine).
+- Implement (2026-10-02, baseline `6f718d934244b6f45b511e5cb72f1d15038bac7e`, all work uncommitted in the tree): every task is implemented. The story's 14 ObjectScript classes are green on `ocupilot-a2-ci`, one per call. Their latest runs, 2350-2358 and 2370-2375, were read back from `%UnitTest_Result`; the red runs 2359-2369 are the recorded mutations. Also green: `ng test` (162 files) and the three browser specs (bundle 2,525,385 bytes, warning re-based to 2526kB); every AC's `mutation:` line is recorded. `check-objectscript` passes, the `%Atelier` literal is absent, and no probe documents or principals are left. Not run yet: the full ObjectScript sweep, the step-04 review layers and the Matrix Test Audit.
+- Recommended resolution: change only those two lines from 2000 to 2100, byte-identical to 18.5's, with no comment line of this story's. A three-way `git merge-file` of that edit against 18.5's file gave 0 conflicts and a result identical to 18.5's file. The two stories together add at most 2072 literals, which fits under 2100. Keep the baseline above when re-dispatching, so the review diff covers the whole story.
