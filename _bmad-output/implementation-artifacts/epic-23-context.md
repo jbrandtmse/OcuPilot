@@ -4,46 +4,51 @@
 
 ## Goal
 
-Keep the deferred-work ledger honest and the code it names correct between releases. Closable entries that block no release and no downstream story are drained by standing cleanup stories of at most twelve entries each, chosen by priority: CI flakes, then security, then repeat occurrences, then lowest fix-risk. Story 23.1 is closed as it stood. Story 23.2 fixes, or declines with a reason, twelve owner-approved entries, so every CI lane stops paying for the same flakes and the guardrails do what they say.
+Keep the deferred-work ledger honest and the code it names correct between releases. After each release a standing cleanup story drains at most twelve `range-end-cleanup` entries by priority: CI health and flakes, then security, then repeat occurrences, then lowest fix-risk. Story 23.3, chartered after the `release/1.0.5` cut, makes CI faster and trustworthy and keeps declared secrets out of what the agent shows.
 
 ## Stories
 
 - Story 23.1: The range-end cleanup (closed)
-- Story 23.2: The range-end cleanup, part 2
+- Story 23.2: The range-end cleanup, part 2 (done)
+- Story 23.3: The range-end cleanup, part 3
 
 ## Requirements & Constraints
 
-- **Roster** (owner key `23-2-the-range-end-cleanup-part-2`): DW-1829, DW-1831, DW-1450, DW-1663, DW-1289, DW-1451, DW-1497, DW-1290, DW-1440, DW-1210, DW-1669, DW-48. Each entry's evidence and trailers carry its probe and recorded direction.
-- **Every entry ends terminal, written by the ledger tool:** `resolved-by:` this story with the commit, or `wontfix-accepted` / `by-design` with a reason and any reopen condition. No onward re-owning unless the plan says why.
-- **CI flakes** (DW-1829 background-task seed, DW-1831 OAuth discover `content` case): the plan names how each was reproduced; the fix is shown passing under that condition; a wait or predicate fix carries a Rule 19 mutation. DW-1829's trailers mark its 30 s-wait half void and name the DW-1802 mint-to-confirm race as the open cause.
-- **Security** (DW-1450, DW-1663, DW-48): a test reddens on each defect. DW-48: a product install compiles no `Test.*` class; CI and throwaway paths still load them.
-- **Batches:** grouped by area, one commit each, CI green on its head; a red batch reopens alone. Each merges to the feature branch once green, in this order: flakes, user-visible defects, security, the rest, DW-48 last. The story starts before the `release/1.0.4` cut; what is green on feature at the cut ships. Never commit to a release branch.
-- **User-visible changes** are named in the plan with their entry; a fix that contradicts a document replaces the wrong sentence at origin.
+- **Roster** (owner key `23-3-the-range-end-cleanup-part-3`): DW-1901, 1866, 1822, 1808, 1865, 1759, 1839, 1204, 434, 1782, 1881, 1307. Each ends terminal through the ledger tool: `resolved-by` with the commit, or `wontfix-accepted` / `by-design` with a reason and any reopen condition.
+- **Batches, in order**, grouped by area, one commit each, CI green on its head, a red batch reopened alone: (a) DW-1901; (b) flakes 1866, 1865, 1808, 1822; (c) isolation 1759, 1839, 1204, 434; (d) security, DW-1782 first (owner), then 1881, 1307.
+- **DW-1901** (instance legs 38-46 min; timeout raised to 61 meanwhile): four instance legs from timings refreshed off a green run (`cd ui && node tools/ci-shards.mjs refresh --run <id>`); every class in exactly one leg; `ui/tools/ci.test.mjs` holds the new shape; no `timeout-minutes` lowered; report a green run's longest instance leg. A fourth browser leg is optional (routing note), not required.
+- **Flakes and isolation:** the plan names each reproduction and the fix passes under it. A test assuming instance state (agent definitions, a governance override, a seeded row, a monitor state) creates and restores it, or asserts only on what its own action produced.
+  - DW-1866: `AdminPortAbsence.TestAVerifiedDeletePostsNoAlert` judges alerts instance-wide, so a vendor alert (#7802) or an instance already at Warning (DW-1762) fails it; assert on lines this delete posts.
+  - DW-1865 (`proposal-demo` spec): wait for the card's "done". DW-1808 (`audit-events` AC2): wait for the re-read by URL, not a fixed window. DW-1822 (`a11y-structural-invariants`): protocol timeout in the structural walk; raise `protocolTimeout` or split the per-screen evaluation.
+  - DW-1759: 29 methods in seven classes fail when any agent definition exists (one seeded definition reproduces it). DW-1839: a stored governance override fails five classes (DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch).
+  - DW-1204: browser specs relying on seeded state (measured: `audit.browser-spec.mjs`) fail after the ObjectScript sweep ran on the same container; establish the set by running, not by grep.
+  - DW-434: `switches.page.spec.ts` and `definition-form.page.spec.ts` assert `not.toContain` a transcribed STATE.CONFLICT reason, vacuous on a rewording; the pin must redden when the reason changes.
+- **Security:** a test reddens on each defect.
+  - DW-1782: a declared secret the model sends as an id never reaches a progress step's target (`Kernel.State.Step.Target`), the stored transcript or the panel; store the redaction mark at write time, as the ledger does.
+  - DW-1881: a privileged role at a service address, under any name (`%Manager` too) and in either spelling (`|` or classic `address:roles`), is minted destructive. Direction: `RoleGrantsAdministrativePrivilege` plus `EntryParts` for held entries, which Story 16.13 does not canonicalize.
+  - DW-1307: `Test/TurnSecretResidue` also sweeps the log line its header and Story 5.4's AC5 name.
 
 ## Technical Decisions
 
-- **Ledger:** `bash _bmad/scripts/ledger.sh _bmad-output/implementation-artifacts/deferred-work.md show|append`. Trailers are append-only; never read or hand-edit the whole file.
-- **The spine (60 ADs) is a contract.** An AD a fix contradicts is amended in the spine's grammar when decided (Rule 20):
-  - DW-1289/DW-1290: a validation-routine refusal carries 5001 (`$$$GeneralError`); allow-listing it reopens the catch-all AD-39 closes, so a 422 with the instance's reason needs AD-39 amended. 838 (no such user) stays opaque. The wire test needs an oracle independent of the code's index derivation.
-  - DW-1440: IRIS checks the default globals database's resource; the installer derives the anonymous role from the routines database. Direction: grant both, amend AD-21. Reproduce where the two differ.
-  - DW-1497: AD-34's per-target lock is the proposal store's; the screen caller (AD-53, AD-55's Save) writes unclaimed. A lock must cover both callers' port write, or record why vendor ordering suffices.
-  - DW-1663: AD-10 permits privilege grants at the destructive confirmation with the diff naming the privilege; today's check is name-only and IRIS ships no `%Admin_` role. Judge the role by its privileges (a `Security.Roles` read, composed as `Kernel.Shell.Effective` does), which a two-pair principal may be refused; the client line needs a server-computed mark.
-  - DW-1210: progress stays bounded (AD-33, AD-36); a per-poll bound on the steps projection is a poll-contract decision.
-  - DW-48: AD-17 generates the compile roster and IPM manifest from one source, and the spine's source tree and CLAUDE.md place `Test/` under `src/OcuPilot/`. The recorded direction (a sibling tree excluded from the start hook and manifest) corrects them at origin.
-- **DW-1450:** the confirm channel is closed to declared secrets (AD-6, AD-56). The settable set must be PermittedFields-aware in `Screen.Registry` and `ui/tools/screen-mirror.mjs`; the plain field list would reject every declared secret.
-- **DW-1451:** `check-objectscript.py`'s destructive-test guard matches call shapes in one file and cannot follow a confirm; arming on the tool's class name reddened the shipped tree.
-- **DW-1669:** `pollUntilTerminal` stops at the turn's end, so the privilege line goes stale. Direction: re-read live proposals slowly after the turn; Confirm already refuses a lost privilege.
-- **Verification:** MCP tools on the runner's slot profile; one test class at a time, results from `%UnitTest_Result`; recompile the affected tree before reading a mutation; rebuild and redeploy before a browser result; `check-objectscript.py`, `lint-docs.sh`, and `npm run test:tools` when `epics.md` or EXPERIENCE.md changes.
-- **Git:** stage by path; never push a `[skip ci]` commit together with a code commit.
+- **Ledger:** `bash _bmad/scripts/ledger.sh _bmad-output/implementation-artifacts/deferred-work.md show|append`; append-only; never open the file.
+- **Spine (Rule 20: amend when decided):**
+  - DW-1901: Stack › CI and Operational Envelope › Build and CI say three shards per suite; amend both, and correct CLAUDE.md's CI paragraph and `docs/DEVELOPMENT.md`'s job table at origin. Roll-ups fail unless every item ran in exactly one leg and no leg ran zero tests.
+  - Conventions › Tests: no test depends on another's leftovers, order or instance age; a shard-composition red is fixed in the test, never by pinning to a shard.
+  - AD-2 (DW-1866): a read answered 404 logs nothing; other port failures log at error severity, which IRIS copies to `alerts.log` and counts toward its alert state.
+  - AD-22 (DW-1839): governance resolves stored per-key setting, then preset, then baseline.
+  - AD-33, AD-35, AD-41, AD-46 (DW-1782, DW-1307): progress is untrusted content in protected storage; no secret reaches a surface or log OcuPilot displays; secrets are excluded at write time, never redacted afterwards.
+  - AD-10 (DW-1881): a permitted privilege grant is minted destructive, no typed name, its diff naming the privilege; the prohibited set has one kernel home, stated over effect, not payload shape (AD-53); effective privilege is composed only by `Kernel.Shell.Effective` (AD-8).
+- **Verification:** slot profile on every MCP call; one test class at a time, totals from `%UnitTest_Result`; a Rule 19 mutation per AC; recompile the tree before reading a mutation; redeploy the bundle before a browser result; full ObjectScript sweep once before `dev_complete` (Rule 29); `npm run test:tools` when `ci.yml`, `epics.md` or EXPERIENCE.md changes.
+- **Git:** stage by path; push a code commit alone before any `[skip ci]` commit; never commit to a release branch.
 
 ## UX & Interaction Patterns
 
-- The proposal card's privilege line says "requires", never "sufficient"; Confirm stays available and the instance's refusal is the verdict.
-- A privilege-granting proposal takes the destructive treatment (no typed name) and its diff names the privilege.
-- A refusal sentence is written once on the server and once in EXPERIENCE.md's Fixed strings, pinned equal by a test; change both together.
+- DW-1782: the tool-call card renders the step target, so it shows the redaction mark, as the ledger viewer does.
+- DW-1881: the card carries EXPERIENCE.md's privilege-grant consequence sentence. The service editor sets an address's roles only through Edit roles.
+- DW-434: Switches and the Definition form show EXPERIENCE.md's stale-save sentence, never the server's reason.
 
 ## Cross-Story Dependencies
 
-- The flake fixtures belong to other epics: `Test/BackgroundSeed` and `Test/BackgroundTasksLive` (Story 16.5), `Test/OAuthServerDiscover` (Epic 12).
-- DW-1289 and DW-1290 share Story 15.1's change-password path; the ledger pairs them.
-- DW-48 changes the start hook, the throwaway and CI load paths and the manifest roster every later install uses, so it merges last.
+- DW-1881 builds on Story 23.2's DW-1663 and Story 16.13's service arm; Epic 23 holds `Prohibited.cls`.
+- DW-1782 extends Story 16.16's ledger redaction. DW-1866 pins DW-1814's AD-2 rule. DW-1204 generalizes DW-1190; DW-1447 showed a reused container's browser suite is not idempotent.
+- `ci.yml` and `ci-timings.json` serve every lane, Epic 19's parallel runs included.

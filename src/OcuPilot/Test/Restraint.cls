@@ -13,6 +13,9 @@
 /// otherwise.</p>
 /// <p>Every row this class writes is removed in <method>OnAfterOneTest</method>, which then asserts
 /// none survives, so a run on the development instance leaves it as it found it.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.Restraint Extends %UnitTest.TestCase
 {
 
@@ -25,6 +28,19 @@ Parameter OTHERUSER = "OcuPilotProbeHoldOther";
 
 /// <p>The prefix every probe definition this class creates is named with.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
+
+/// <p>Set the instance's own definitions aside for the class, so the definition in force is one
+/// this class created or none.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
 
 Method OnBeforeOneTest() As %Status
 {

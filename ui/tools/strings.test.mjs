@@ -443,7 +443,7 @@ test('no literal extracted from prose is also a Fixed strings literal', () => {
   assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test("the table's area-names row lists the eight navArea keys' values, in rail order", () => {
+test("the table's area-names row lists the nine navArea keys' values, in rail order", () => {
   const rows = fixedStringsRows.filter((row) => row.where.startsWith('area names'));
   assert.equal(rows.length, 1, 'the Fixed strings table carries one area-names row');
   assert.deepEqual(rows[0].literals, [
@@ -454,6 +454,7 @@ test("the table's area-names row lists the eight navArea keys' values, in rail o
     stringsValues.navAreaPermissions,
     stringsValues.navAreaWebApplications,
     stringsValues.navAreaSecurity,
+    stringsValues.navAreaSystemExplorer,
     stringsValues.navAreaAgent,
   ]);
 });
@@ -568,9 +569,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // bound moves to 1800 under the same protocol.
   // Story 16.11's eleven literals take the table past 1800; the bound moves to 1900 under the same
   // protocol.
+  // Story 19.1's three rows, thirty-seven literals, take the table past 1900; the bound moves to 2000
+  // under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1900,
-    `expected between 150 and 1900 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 2000,
+    `expected between 150 and 2000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -646,7 +649,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
   // form's startup namespace, which the account enters on sign-in. Story 18.2's Namespaces list and
   // form name their own copy `namespace*`, on the device screens' convention, and are listed here
-  // one by one; so does Story 18.14's Copy mappings row action on that list, and Story 18.3's four
+  // one by one; so do Story 18.14's Copy mappings and Story 18.15's Enable interoperability row actions
+  // on that list, and Story 18.3's four
   // phrases of a database delete's impact that name the namespaces using the database. Story 16.14's
   // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
@@ -672,6 +676,12 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceCopyMappingsDone',
       'namespaceCopyMappingsRunning',
       'namespaceDeleteConsequence',
+      'namespaceEnableInteropAction',
+      'namespaceEnableInteropConsequence',
+      'namespaceEnableInteropDone',
+      'namespaceEnableInteropRunning',
+      'namespaceEnableInteropSystem',
+      'namespaceEnableInteropVerb',
       'namespaceFormPrompt1',
       'namespaceFormPrompt2',
       'namespaceFormPrompt3',

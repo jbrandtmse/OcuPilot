@@ -8,11 +8,11 @@
 /// proposal, announced and recorded no navigation, and posted to the definition's endpoint
 /// alone.</p>
 /// <p><b>It needs a throwaway container</b>: it creates a probe role and user, writes a failed
-/// login, a messages.log line, an application error and a probe task, and runs turn jobs on the
+/// login, a messages.log line, an application error, a probe task and a probe class, and runs turn jobs on the
 /// <code>turnprobe</code> row, so <method>OnBeforeAllTests</method> refuses unless every variable
 /// this class declares reads 1. The turns run as the suite's own account, which holds every
 /// read's pairs. After every method no probe turn, proposal, conversation, stub node, probe
-/// definition, task, role, user or application error it planted remains; the failed-login audit
+/// definition, task, role, user, class or application error it planted remains; the failed-login audit
 /// row and the messages.log line are append-only.</p>
 Class OcuPilot.Test.InjectionChannels Extends %UnitTest.TestCase
 {
@@ -250,6 +250,13 @@ Method TestEntityComment()
 Method TestToolResultNamingAnEntity()
 {
     Do ..ReadSource("f", "who are the users?")
+}
+
+/// <p>Source (h): a probe class in the test package whose doc comment is the seed, read through
+/// <code>explorer.class.read</code>'s class row <code>Description</code>.</p>
+Method TestClassDescription()
+{
+    Do ..ReadSource("h", "what does this class do?")
 }
 
 /// <p>Source (g): the rows of sources (a) and (e), each sent as a turn's screen context with no

@@ -231,7 +231,7 @@ Method TestAnonymousApiRequestIsRefusedBeforeDispatch()
     Do $$$AssertEquals($ZStrip(tBody, "<>W"), "", "with an empty body -- no OcuPilot code ran, so there is no envelope")
 }
 
-/// <p>AC8 -- a signed-in caller holding no <code>%Admin_*</code> resource receives exactly
+/// <p>AC8 -- a signed-in caller holding no <code>%Admin_*</code> resource and not <code>%Development</code> receives exactly
 /// one 403 envelope whose code is <code>AUTH.NOADMIN</code> and whose reason names the
 /// missing administrative privilege; a caller holding one reaches dispatch, observed as the
 /// route-not-found envelope since no route is mapped at the application root.</p>
@@ -323,8 +323,8 @@ Method TestTheIdentityRouteRefusesAPostAndNamesTheVerbItAllows()
     Do $$$AssertEquals(tObj.code, "ROUTE.METHODNOTALLOWED", "through the one error writer")
 }
 
-/// <p>AC4 -- a signed-in caller holding none of the router's thirteen administrative
-/// resources meets the identity call's 403 and the machine code the shell reads, never a
+/// <p>AC4 -- a signed-in caller holding no administrative resource and not %Development
+/// meets the identity call's 403 and the machine code the shell reads, never a
 /// version report. The principal is this suite's throwaway one, created in
 /// <method>OnBeforeAllTests</method> and removed in <method>OnAfterAllTests</method>; it
 /// holds read on the install namespace's code database, without which IRIS could not load
@@ -377,7 +377,7 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tObj.areas.%Size(), 8, "every area is listed, denied ones included -- nothing is hidden")
+    Do $$$AssertEquals(tObj.areas.%Size(), 9, "every area is listed, denied ones included -- nothing is hidden")
 
     Kill tVerdict, tFailed, tHasFailed
     Set tIterator = tObj.areas.%GetIterator()
@@ -391,10 +391,10 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 
     ; The principal holds %Admin_Operate and nothing else. Home and Agent co-pilot declare no pair
     ; and never gate; Logs opens because its alerts.log and messages.log viewers need that one pair
-    ; (AD-8 as amended for DW-1768); the five other gated areas list no screen it can open. All eight
+    ; (AD-8 as amended for DW-1768); the six other gated areas list no screen it can open. All nine
     ; verdicts are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
-    ; ui/tools/navigation-wire.test.mjs read the same eight verdicts off a payload captured for this
-    ; principal, and a claim that the three readings agree has to cover the same eight.
+    ; ui/tools/navigation-wire.test.mjs read the same nine verdicts off a payload captured for this
+    ; principal, and a claim that the three readings agree has to cover the same nine.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
     Do $$$AssertEquals($Get(tVerdict("logs")), 1, "Logs opens, since a screen it lists needs only this principal's pair")
@@ -417,6 +417,8 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tFailed("web-applications")), "%Admin_Secure:USE", "on the same pair its two siblings name")
     Do $$$AssertEquals($Get(tVerdict("tasks")), 0, "and the tasks area")
     Do $$$AssertEquals($Get(tFailed("tasks")), "%Admin_Task:USE", "which wants a different resource again")
+    Do $$$AssertEquals($Get(tVerdict("system-explorer")), 0, "and System Explorer, whose screens all need %Development")
+    Do $$$AssertEquals($Get(tFailed("system-explorer")), "%Development:USE", "naming that pair")
     Do $$$AssertEquals($Get(tHasFailed("home")), 0, "an allowed entry omits the failed-pair key rather than sending it empty")
     Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
 }
@@ -795,20 +797,20 @@ Method TestANamespaceThisPrincipalCannotEnterIsRefusedOverTheWire()
     Do $$$AssertEquals(tObj2.code, "NS.UNKNOWN", "told apart from the denial by its code")
 }
 
-/// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> is a
+/// <p>AC8 -- every name in <parameter>OcuPilot.Api.Router.FLOORRESOURCES</parameter> is a
 /// resource this instance actually defines. The gate quits on the first match, so only the
 /// one resource this suite grants is ever evaluated behind a real request: a typo in any of
-/// the other twelve would lock out an administrator whose only administrative resource is
-/// that one, with every suite green. The parameter's own doc claims the list was read from
+/// the other thirteen would lock out a caller whose only floor resource is that one, with
+/// every suite green. The parameter's own doc claims the list was read from
 /// the instance; this is the check of that claim rather than a restatement of it.</p>
 /// <p>Deliberately not asserted the other way round -- that the instance defines no
 /// <code>%Admin_*</code> resource missing from the list -- because narrowing as IRIS adds
 /// resources is the stated point of a closed list.</p>
 /// <p>Mutation: misspell any entry of
-/// <parameter>OcuPilot.Api.Router.ADMINRESOURCES</parameter> -> this goes red.</p>
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> -> this goes red.</p>
 Method TestEveryAdminResourceNamedExistsOnTheInstance()
 {
-    Set tList = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
+    Set tList = ##class(OcuPilot.Api.Router).#FLOORRESOURCES
     Do $$$AssertTrue($Length(tList, ",") > 1, "the gate names more than one administrative resource")
 
     Set tOrigNS = $NAMESPACE

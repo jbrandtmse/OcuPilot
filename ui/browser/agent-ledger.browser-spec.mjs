@@ -2,6 +2,7 @@
  * The Agent audit ledger in a real browser, against the throwaway instance (Story 16.16, AC1, AC4,
  * Integration). A `turnprobe` turn started from Processes calls `osmgmt.processes.read` and a
  * `permissions.users.password` call carrying a probe value V as `Password` and as `id`; the
+ * panel's card for that call reads its target as the redaction mark and V is not in the panel; the
  * ledger, filtered to Processes, lists both, each row's dialog shows its Arguments and Result, and V
  * is nowhere on the page or in the route's body. User, Begin and End set to the password row's own
  * user and second list it, and an End a second earlier does not. The spec deletes its turn's rows
@@ -195,6 +196,12 @@ test('AC1, AC4, Integration: the turn rows are listed on Processes, open in the 
       STRINGS.actionSend,
       reply
     );
+    // The panel is read now and asserted at the end, once the ledger search has collected the
+    // turn's keys, so a red card still lets the cleanup remove the turn's rows.
+    const panel = await page.evaluate(() => ({
+      labels: [...document.querySelectorAll('app-panel .ocu-tool-call-name')].map((node) => node.textContent.trim()),
+      text: document.querySelector('app-panel')?.innerText ?? '',
+    }));
 
     await page.goto(`${config.origin}${LEDGER_URL}`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('app-ledger-page #ocu-ledger-route', { timeout: config.navigationTimeoutMs });
@@ -280,6 +287,10 @@ test('AC1, AC4, Integration: the turn rows are listed on Processes, open in the 
     const before = await searchToEnd(page, earlier);
     // Mutation (Rule 19): `WindowWhere`'s end predicate always holds -> the password row is listed and this goes red.
     assert.equal(before.rows.some((row) => row.ledgerId === password.key), false, `an End one second earlier (${earlier}) leaves it out`);
+
+    // Mutation (Rule 19): `Dispatch.StepTarget` answers `TargetOf` alone -> the card reads V and this goes red.
+    assert.ok(panel.labels.includes(`permissions.users.password ${REDACTED}`), `the password call's card reads its target as the redaction mark: ${JSON.stringify(panel.labels)}`);
+    assert.equal(panel.text.includes(secret), false, 'V is not in the panel');
 
     const pageText = await page.$eval('app-ledger-page', (node) => node.innerText);
     assert.equal(pageText.includes(secret), false, 'V is nowhere in the ledger page');

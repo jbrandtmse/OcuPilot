@@ -123,7 +123,14 @@ function runIris(lines) {
   return sharedRunIris(config.container, lines);
 }
 
-const nextTag = () => sharedNextTag(probe);
+/** A fresh tag with nothing recorded under it. The counter restarts with every run of this file, and
+ * a turn's last provider call can land after its leg has forgotten the tag, so an earlier run's call
+ * can sit under the same name and shift this run's script by one: it is cleared before use. */
+const nextTag = () => {
+  const tag = sharedNextTag(probe);
+  sharedForgetTag(probe, tag);
+  return tag;
+};
 const setTag = (tag) => sharedSetTag(probe, preparedId, tag);
 const forgetTag = (tag) => sharedForgetTag(probe, tag);
 const scriptReply = (tag, bodyExpr) => sharedScriptReply(probe, tag, 0, bodyExpr);
@@ -344,7 +351,16 @@ test("AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, i
 
   const { context, page, tag } = await listWithLiveCard();
   try {
-    // The read tool-call card completed and collapsed before the proposal card arrived.
+    // The tool-call card completes and collapses. A poll between the mint and the step's finish
+    // shows the proposal card beside a card still running, so its done is waited for. A card that
+    // never reads done falls through to the assertions below, which name its state.
+    await page
+      .waitForFunction(
+        (word) => (document.querySelector('app-tool-call-card .ocu-tool-call-status-word')?.textContent ?? '').trim() === word,
+        { timeout: config.navigationTimeoutMs },
+        STRINGS.toolCallStatusDone
+      )
+      .catch(() => {});
     const read = await page.evaluate(() => {
       const card = document.querySelector('app-tool-call-card');
       return {

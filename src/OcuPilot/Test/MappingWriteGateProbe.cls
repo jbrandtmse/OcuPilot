@@ -27,10 +27,11 @@ Parameter RECORD = "OcuPilot.Test.MappingRecordPort";
 /// <code>{error}</code> when something raised. A step is one of <code>{kind: "create", mappingKind, body}</code>,
 /// <code>{kind: "update", mappingKind, id, body}</code>, <code>{kind: "action", screen, body}</code>,
 /// <code>{kind: "confirm", proposalId}</code> and <code>{kind: "dispatch", turnKey, tool,
-/// input}</code>; its answer is <code>{http, code, failedPair, calls, types}</code>, where
+/// input}</code>; its answer is <code>{http, code, failedPair, continues, calls, types}</code>, where
 /// <code>calls</code> and <code>types</code> are what the recording port was asked during that step
-/// alone, reads included, and a dispatch's <code>http</code> is 403 for a pair refusal, 400 for any
-/// other refused call and 200 for an answered one.</p>
+/// alone, reads included, <code>continues</code> is whether the answer said the write is still
+/// running, and a dispatch's <code>http</code> is 403 for a pair refusal, 400 for any other refused
+/// call and 200 for an answered one.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
 {
     Set tOut = {}
@@ -79,6 +80,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
     Set tHttp = 0
     Set tCode = ""
     Set tPair = ""
+    Set tContinues = 0
     Set tBody = ""
     Set tRecord = $Select(pStep.%Get("port") '= "": pStep.%Get("port"), 1: ..#RECORD)
     Set ^||OcuPilotNamespaceWritePort = tRecord
@@ -101,12 +103,14 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody) } Catch {}
         If $IsObject(tAnswer) {
             Set tCode = tAnswer.%Get("code")
+            Set tContinues = ''tAnswer.%Get("continues")
             If $IsObject(tAnswer.%Get("detail")) Set tPair = tAnswer.%Get("detail").%Get("failedPair")
         }
     }
     Do tLeg.%Set("http", +tHttp, "number")
     Do tLeg.%Set("code", tCode, "string")
     Do tLeg.%Set("failedPair", tPair, "string")
+    Do tLeg.%Set("continues", tContinues, "boolean")
     Do tLeg.%Set("calls", $ClassMethod(tRecord, "CallCount"), "number")
     Do tLeg.%Set("types", $ClassMethod(tRecord, "CallTypes"), "string")
     Do $ClassMethod(tRecord, "Clear")

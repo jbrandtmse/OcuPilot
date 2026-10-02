@@ -44,6 +44,7 @@ const {
   CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_TASKMANAGERSUSPEND,
   CONSEQUENCE_LOCKINTRANSACTION,
+  CONSEQUENCE_NAMESPACEINTEROP,
   CONSEQUENCE_SYSTEMGLOBAL,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -240,6 +241,15 @@ test("the system-global mapping's and the mapping copy's consequence codes resol
   assert.equal(CONSEQUENCE_COPYMAPPINGS, 'NAMESPACE.COPYMAPPINGS');
   assert.equal(consequenceSentence(CONSEQUENCE_SYSTEMGLOBAL), STRINGS.mappingSystemGlobalConsequence);
   assert.equal(consequenceSentence(CONSEQUENCE_COPYMAPPINGS), STRINGS.namespaceCopyMappingsConsequence);
+});
+
+// Story 18.15: an enable of interoperability is destructive with its own consequence, the typed-name
+// dialog's sentence published once.
+//
+// Mutation (Rule 19): drop the NAMESPACE.INTEROP branch from `consequenceSentence` -> this goes red.
+test("the enable of interoperability's consequence code resolves to the dialog's published sentence", () => {
+  assert.equal(CONSEQUENCE_NAMESPACEINTEROP, 'NAMESPACE.INTEROP');
+  assert.equal(consequenceSentence(CONSEQUENCE_NAMESPACEINTEROP), STRINGS.namespaceEnableInteropConsequence);
 });
 
 // Story 16.4: a task export replaces a file already at its name, and its card says so in the export

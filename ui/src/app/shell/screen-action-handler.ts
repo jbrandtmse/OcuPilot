@@ -135,6 +135,12 @@ export const NAMESPACE_LIST = 'OcuPilot.Screen.Descriptor.NamespaceList';
 export const COPY_MAPPINGS = 'copy-mappings';
 
 /**
+ * The Namespaces list's Enable interoperability (Story 18.15): declared, and run by the list's own
+ * page, whose typed-name dialog states the consequence and whose status line follows the enable.
+ */
+export const ENABLE_INTEROP = 'enable-interop';
+
+/**
  * The Local databases list's descriptor (Story 18.3), whose Delete states the removal's impact and
  * carries the file option as a declared value (AD-56 (ii)).
  */
@@ -252,7 +258,7 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // The role editor draws these beside its grants, members and assigned roles, which supply the values.
   [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
   // The Namespaces list's page registers Copy mappings itself, after this handler, so its dialog opens.
-  [NAMESPACE_LIST]: [COPY_MAPPINGS],
+  [NAMESPACE_LIST]: [COPY_MAPPINGS, ENABLE_INTEROP],
   // The database editor draws Add a volume beside its volume files, for the database it shows.
   [LOCAL_DATABASE_LIST]: [EXPAND_VOLUME],
   // The Task schedule's page registers Export itself and draws Import as a screen-level action, and
@@ -480,6 +486,8 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.lockRemoveRefusalRemote,
   STRINGS.lockRemoveRefusalLocal,
   STRINGS.lockRemoveTooMany,
+  // Story 18.15: an enable of interoperability in %SYS or %ALL.
+  STRINGS.namespaceEnableInteropSystem,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */

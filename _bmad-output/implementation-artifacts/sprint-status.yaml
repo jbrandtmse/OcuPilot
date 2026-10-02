@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-01-2026 12:34'
+last_updated: '10-02-2026 06:12'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -235,7 +235,7 @@ development_status:
   15-10-the-header-logo-on-a-white-tile: done
   epic-15-retrospective: optional
 
-  epic-16: in-progress
+  epic-16: done
   16-1-the-try-it-request-console: done
   16-2-web-sessions-listed-and-ended: done
   16-3-effective-privileges-and-the-permission-check-tool: done
@@ -289,13 +289,13 @@ development_status:
   18-12-the-agent-grows-with-the-stage: backlog
   18-13-multi-namespace-install: backlog
   18-14-namespace-mappings-and-copy-mappings: done
-  18-15-enable-interoperability-on-a-namespace: in-progress
+  18-15-enable-interoperability-on-a-namespace: done
   18-16-remote-databases: in-progress
   18-17-namespace-and-database-follow-ups: done
   epic-18-retrospective: optional
 
-  epic-19: backlog
-  19-1-classes-and-routines-listed-and-viewed: backlog
+  epic-19: in-progress
+  19-1-classes-and-routines-listed-and-viewed: done
   19-2-compile-delete-export-and-import: backlog
   19-3-the-source-editor-with-etag-conflict-detection: backlog
   19-4-search-compare-and-macro-lookup: backlog
@@ -306,6 +306,7 @@ development_status:
   19-9-documatic-and-docdb: backlog
   19-10-sql-activity: backlog
   19-11-the-agent-gains-guarded-sql-and-a-picker: backlog
+  19-12-a-development-holder-reaches-system-explorer-as-the-classic: done
   epic-19-retrospective: optional
 
   epic-20: backlog
@@ -345,6 +346,7 @@ development_status:
   epic-23: in-progress
   23-1-the-range-end-cleanup: done
   23-2-the-range-end-cleanup-part-2: done
+  23-3-the-range-end-cleanup-part-3: review
   epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"
@@ -366,3 +368,14 @@ action_items:
     ref: "DW-1527"
     resolution: "filed by the owner 2026-09-26 at github.com/intersystems-community/sysadmin-api-specification
       (issues #1 and #2, the second being DW-1640)"
+  - id: "epic-23-retro-item-3-add-ocupilot_load_tests-1-to-ocupilot-sl"
+    epic: 23
+    action: "Add OCUPILOT_LOAD_TESTS: \"1\" to ../OcuPilot-slot-b/compose.yml (and
+      to ocupilot's compose if it is ever recreated) before the next slot refresh;
+      without it the start hook deletes the instance's compiled OcuPilot.Test classes
+      (DW-1886)"
+    owner: "user"
+    status: done
+    ref: "slot B compose.yml set 2026-10-01 by the orchestrator on the owner's instruction;
+      takes effect at the next docker compose up -d --wait (a restart keeps the old
+      environment)"

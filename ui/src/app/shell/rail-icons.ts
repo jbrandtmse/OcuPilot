@@ -1,5 +1,5 @@
 /**
- * The area icons: the rail's eight 20x20 drawings and Home's six 24x24 tile drawings, transcribed
+ * The area icons: the rail's nine 20x20 drawings and Home's seven 24x24 tile drawings, transcribed
  * verbatim from DESIGN.md's `mockups/key-home.html` (every element, attribute value and element
  * order), keyed by the registry's area `key` (AD-5). `ui/tools/rail-icons.test.mjs` pins this data
  * to the mockup and the key set to `AREAS`.
@@ -89,6 +89,18 @@ export const AREA_ICONS: Readonly<Record<string, AreaIconSet>> = {
   security: {
     rail: [{ tag: 'path', attrs: { d: 'M10 3l6 2.2v4.6c0 3.6-2.4 6.3-6 7.2-3.6-.9-6-3.6-6-7.2V5.2z' } }],
     tile: [{ tag: 'path', attrs: { d: 'M12 3l7.5 2.7v5.6c0 4.4-3 7.7-7.5 8.7-4.5-1-7.5-4.3-7.5-8.7V5.7z' } }],
+  },
+  'system-explorer': {
+    rail: [
+      { tag: 'circle', attrs: { cx: '8.5', cy: '8.5', r: '5.5' } },
+      { tag: 'path', attrs: { d: 'M12.5 12.5 17 17' } },
+      { tag: 'path', attrs: { d: 'M7 6.5 5.5 8.5 7 10.5M10 6.5l1.5 2-1.5 2M9.2 6l-1.4 5' } },
+    ],
+    tile: [
+      { tag: 'circle', attrs: { cx: '10', cy: '10', r: '6.5' } },
+      { tag: 'path', attrs: { d: 'M14.8 14.8 20.5 20.5' } },
+      { tag: 'path', attrs: { d: 'M8.3 7.6 6.5 10l1.8 2.4M11.7 7.6 13.5 10l-1.8 2.4M10.8 7l-1.6 6' } },
+    ],
   },
   agent: {
     rail: [

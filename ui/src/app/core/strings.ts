@@ -332,6 +332,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:310 */
   navAreaSecurity: 'Security and secrets',
   /** EXPERIENCE.md:310 */
+  navAreaSystemExplorer: 'System Explorer',
+  /** EXPERIENCE.md:310 */
   navAreaAgent: 'Agent co-pilot',
   /** EXPERIENCE.md:311 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
@@ -2088,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:626 */
+  /** EXPERIENCE.md:629 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -3609,6 +3611,24 @@ export const STRINGS = {
   mappingRefusalOcuPilot:
     'A mapping whose name or pattern covers OcuPilot\'s own names decides where OcuPilot\'s globals and code are found. In the namespace OcuPilot runs in, and in %ALL, such a mapping cannot be added, changed, removed or copied in.',
 
+  // Story 18.15: the Namespaces list's Enable interoperability -- its row action, the typed-name
+  // dialog's verb and consequence, which is also the agent's card line, the running and done lines,
+  // and the tool's refusal of %SYS and %ALL. An enable that outlasts the wait reads
+  // `auditDatabaseStillRunning`.
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropAction: 'Enable interoperability',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropVerb: 'Enable interoperability in',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropConsequence:
+    'Enabling interoperability maps the interoperability code into this namespace, creates its portal applications and gives the interoperability roles access to its databases. On InterSystems IRIS for Health it also runs the HealthShare Foundation install, which changes the whole instance: it maps the HealthShare libraries into this namespace; grants the Admin user the %HS_BFC_Administrator role, which holds %Admin_Manage, %Admin_Secure, %Admin_Task and %Admin_OAuth2_Client; creates HealthShare roles and resources and changes %HS_Administrator\'s resources; schedules the FHIR purge task and starts the FHIR_Validation_Server Java language server; and gives the new applications access to the HSCUSTOM database, and /bulkfhir/api access to IRISSYS and %HS_ImpersonateUser. Elsewhere it creates two databases, ENSTEMP and SECONDARY, beside this namespace\'s globals database. This cannot be undone.',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropRunning: 'Enabling interoperability in <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropDone: 'Enabled interoperability in <namespace>.',
+  /** EXPERIENCE.md:378 */
+  namespaceEnableInteropSystem: 'Interoperability cannot be enabled in %SYS or %ALL.',
+
   // Story 16.6: Processes' Broadcast over the checked rows, its dialog and refusal, and the data
   // table's checked set. The dialog's field label and buttons reuse `logViewerColumnMessage`,
   // `actionSend`, `actionCancel` and `auditDialogClose`.
@@ -4139,6 +4159,81 @@ export const STRINGS = {
   egressLineNone: 'This turn sent no screen context to <provider>.',
   /** EXPERIENCE.md:335 */
   agentDefinitionModelUnused: 'This endpoint has no {model} placeholder, so Model is not used; calls go to the model the endpoint names.',
+  // Story 19.1: System Explorer's lists, viewers and prompts.
+  /** EXPERIENCE.md:586 */
+  explorerClassListLabel: 'Classes',
+  /** EXPERIENCE.md:586 */
+  explorerRoutineListLabel: 'Routines',
+  /** EXPERIENCE.md:586 */
+  explorerClassPatternLabel: 'Class name',
+  /** EXPERIENCE.md:586 */
+  explorerRoutinePatternLabel: 'Routine and include files',
+  /** EXPERIENCE.md:586 */
+  explorerSystemLabel: 'System items',
+  /** EXPERIENCE.md:586 */
+  explorerGeneratedLabel: 'Generated items',
+  /** EXPERIENCE.md:586 */
+  explorerMappedLabel: 'Mapped items',
+  /** EXPERIENCE.md:586 */
+  explorerColumnModified: 'Last modified',
+  /** EXPERIENCE.md:586 */
+  explorerColumnGenerated: 'Generated',
+  /** EXPERIENCE.md:586 */
+  explorerClassListEmpty: 'No classes in <NAMESPACE> match.',
+  /** EXPERIENCE.md:586 */
+  explorerRoutineListEmpty: 'No routines in <NAMESPACE> match.',
+  /** EXPERIENCE.md:587 */
+  explorerClassDocumentLabel: 'Class',
+  /** EXPERIENCE.md:587 */
+  explorerFormLabel: 'Form',
+  /** EXPERIENCE.md:587 */
+  explorerColumnFlags: 'Flags',
+  /** EXPERIENCE.md:587 */
+  explorerViewXml: 'XML',
+  /** EXPERIENCE.md:587 */
+  explorerViewInt: 'Intermediate code',
+  /** EXPERIENCE.md:587 */
+  explorerViewStructure: 'Structure',
+  /** EXPERIENCE.md:587 */
+  explorerGenerates: 'Generates',
+  /** EXPERIENCE.md:587 */
+  explorerSourceNotAvailable: 'The instance keeps no source for this document.',
+  /** EXPERIENCE.md:587 */
+  explorerXmlNotAvailable: 'The instance keeps no XML form of this document.',
+  /** EXPERIENCE.md:587 */
+  explorerIntNotAvailable: 'This document generates no intermediate code.',
+  /** EXPERIENCE.md:587 */
+  explorerRoutineNoStructure: 'A routine has no class structure.',
+  /** EXPERIENCE.md:587 */
+  explorerNoDocumentation: 'This class carries no documentation.',
+  /** EXPERIENCE.md:587 */
+  explorerClassDocumentEmpty: 'This class no longer exists.',
+  /** EXPERIENCE.md:587 */
+  explorerRoutineDocumentEmpty: 'This routine no longer exists.',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt1: 'Which classes in this namespace changed most recently?',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt2: 'Which classes here are mapped from another database?',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt3: 'Which packages hold the most classes?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt1: 'Which routines changed most recently?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt2: 'Which include files does this namespace hold?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt3: 'Which routines here are generated?',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt1: 'Summarize what this class does.',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt2: 'Which methods does this class define?',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt3: 'Which members are deprecated or internal?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt1: 'When did this routine last change?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt2: 'Which database holds this routine?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt3: 'Which intermediate routines does this routine generate?',
 } as const;
 
 /**

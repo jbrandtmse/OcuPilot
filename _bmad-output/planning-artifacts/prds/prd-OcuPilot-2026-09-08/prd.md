@@ -236,7 +236,7 @@ The shell can verify, on every load, that the admin API is present at version 2 
 **Consequences (testable):**
 
 - When the admin API reports a version other than 2, or is absent, the shell shows a blocking notice naming the mismatch and linking to the classic portal, and no area screen loads.
-- A signed-in user who holds no `%Admin_*` resource receives the admin API's 403 on that same call; the shell renders it as "no administrative privileges on this instance" with a sign-out link, not as a version mismatch.
+- A signed-in user who holds neither an `%Admin_*` resource nor `%Development` [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903: was "holds no `%Admin_*` resource"] receives the admin API's 403 on that same call; the shell renders it as "no administrative privileges on this instance" with a sign-out link, not as a version mismatch.
 - The instance name and version shown in the header come from the same call.
 - The generated OpenAPI document for the admin API is kept under an automated test that fails when a route OcuPilot uses disappears.
 
@@ -909,7 +909,7 @@ Install creates the static shell application and the OcuPilot API application wi
 
 - The shell application serves the bundle unauthenticated with a non-root base href and a deep-link fallback so that any client route reloads correctly.
 - The OcuPilot API application is password-authenticated with JWT enabled, no server session, and membership in the vendor's portal group, and accepts the same Bearer token as the admin API.
-- The OcuPilot API carries no application roles and no matching roles, and the installer asserts this; it carries a resource gate, and the turn endpoint refuses users holding no `%Admin_*` resource with the FR-3 message.
+- The OcuPilot API carries no application roles and no matching roles, and the installer asserts this; it carries a resource gate, and the turn endpoint refuses users holding neither an `%Admin_*` resource nor `%Development` with the FR-3 message [AMENDED 2026-10-02, Story 19.12, owner decision on DW-1903].
 
 #### FR-66: Idempotent installer and name isolation
 

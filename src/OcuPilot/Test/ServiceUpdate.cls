@@ -5,8 +5,9 @@
 /// classic <code>address:role</code> spelling sent canonical and an entry the service holds sent as
 /// read; the rules at the mint, the three address rules against held services among them, and the
 /// vendor's own address check they use; the serving service's disable refused at the mint by name
-/// while an address change is minted destructive with its consequence; and the destructive marking
-/// of an added unauthenticated bit and of an address carrying <code>%All</code>.</p>
+/// while an address change is minted destructive with its consequence; the destructive marking of an
+/// added unauthenticated bit and of an address carrying <code>%All</code>; and the kernel's verdict
+/// on a role given to an address, in either spelling.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state readable.
 /// Every mint's fresh read and every confirmed write go to <class>OcuPilot.Test.ProposalFixture</class>;
 /// the tool's own rules read the instance (<code>%Service_CallIn</code>,
@@ -210,6 +211,41 @@ Method TestAWeakeningOrPrivilegedChangeIsMintedDestructive()
     Set tKey = ..MintedKey({"Name": (..#PROBE), "ClientSystems": ["10.0.0.9"]})
     Do ..Stored(tKey, .tDestructive, .tConsequence)
     Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "while an ordinary address is neither")
+}
+
+/// <p>AD-10 by effect, the service arm asked directly: an address given a role that grants
+/// <code>%All</code> or an administrative privilege
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>), in the
+/// <code>|</code> spelling or the classic <code>address:role</code>, is a privileged grant; a role the
+/// target already gives that address, in either spelling, is not counted as added;
+/// <code>%Developer</code> grants nothing; and a role whose read fails counts as privileged
+/// (<class>OcuPilot.Test.ProhibitedFixture</class>'s role read armed). It reads the instance's roles
+/// and writes nothing.</p>
+/// <p>Mutation (Rule 19): judge each added role by name alone -- the <code>%Manager</code>,
+/// <code>%Operator</code> and armed rows go red. Read the held entries on <code>|</code> only -- the held
+/// classic rows go red; on <code>:</code> only -- the held <code>|</code> row goes red. Read the
+/// payload's on <code>|</code> only -- the classic <code>10.0.0.9:%All</code> row goes red.</p>
+Method TestAnAddressRoleIsJudgedByEffectInEitherSpelling()
+{
+    For tCase = $ListBuild("[""10.0.0.9|%Manager""]", "[]", 1), $ListBuild("[""10.0.0.9|%Operator""]", "[]", 1), $ListBuild("[""10.0.0.9:%All""]", "[]", 1), $ListBuild("[""10.0.0.6|%All,%Developer""]", "[""10.0.0.6:%All""]", 0), $ListBuild("[""10.0.0.9|%Developer""]", "[]", 0), $ListBuild("[""10.0.0.6:%All"",""10.0.0.7""]", "[""10.0.0.6:%All""]", 0), $ListBuild("[""10.0.0.6:%All""]", "[""10.0.0.6|%All""]", 0) {
+        Set tPayload = {}
+        Do tPayload.%Set("ClientSystems", ##class(%DynamicArray).%FromJSON($List(tCase, 1)))
+        Set tTarget = {}
+        Do tTarget.%Set("ClientSystems", ##class(%DynamicArray).%FromJSON($List(tCase, 2)))
+        Set tGrants = ""
+        Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", $Parameter(..#SET, "TYPESERVICE"), tPayload, tTarget, .tGrants)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ " is judged")
+        Do $$$AssertEquals(+tGrants, $List(tCase, 3), $List(tCase, 1) _ " against held " _ $List(tCase, 2) _ " grants privilege: " _ $List(tCase, 3))
+    }
+    Set tPayload = {}
+    Do tPayload.%Set("ClientSystems", ["10.0.0.9|%Developer"])
+    Set tTarget = {}
+    Do tTarget.%Set("ClientSystems", [])
+    Set tGrants = ""
+    Do ##class(OcuPilot.Test.ProhibitedFixture).ArmRoleReadFault(1)
+    Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).GrantsPrivilegeByEffect($Parameter(..#SET, "TYPESERVICE"), tPayload, tTarget, .tGrants)
+    Do ##class(OcuPilot.Test.ProhibitedFixture).ArmRoleReadFault(0)
+    Do $$$AssertEquals($$$ISOK(tSC) _ " " _ +tGrants, "1 1", "a role whose read fails counts as privileged on the service arm")
 }
 
 /// <p>AD-5, AD-44: the form is built, unlisted, at the list's own route with the editor suffix, over

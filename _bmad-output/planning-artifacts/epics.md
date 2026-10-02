@@ -7482,6 +7482,8 @@ So that the Explorer is not read-only.
 - **When** the instance is older
 - **Then** the version gate reports it rather than failing obscurely.
 
+- DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER) (ledger; routed by harvest 2026-10-02)
+
 ### Story 19.3: The source editor, with ETag conflict detection
 
 As a developer,
@@ -7634,6 +7636,34 @@ So that the operations agent and the developer agent can differ.
 - **Given** the agent's SQL tool
 - **When** it runs a statement
 - **Then** it passes the same DML and DDL guard the console does, and any mutating statement is a confirmed proposal.
+
+### Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows
+
+As a developer whose account holds `%Development` and no administrative resource,
+I want System Explorer to open for me as the classic portal's does,
+So that OcuPilot does not shut out the people the explorer is for.
+
+[ADDED 2026-10-01, owner decision on DW-1903, Rule 5 split by=merge_gate: placed right after Story 19.1 in the run order.]
+
+**Acceptance Criteria:**
+
+- **Given** the classic portal, where `/csp/sys` carries no resource and `ClassList`, `RoutineList`, `GlobalList` and `SQL/Home` each declare `Parameter RESOURCE = "%Development"` (`SQL/QButtons/RuntimeStats` declares `%Development:USE`)
+- **When** an account holding `%Development:USE` and no `%Admin_*` resource signs in to OcuPilot
+- **Then** it passes the API's floor, which becomes any `ADMINRESOURCES` member or `%Development:USE`, kept in `Screen/Gate.cls` as its one home with the router and the provider port deriving from it (AD-8).
+
+- **Given** every screen, route and tool that today relies on that floor alone
+- **When** the floor widens
+- **Then** each declares its own pair matching its classic page's `RESOURCE`, read from `irissys/` and never recalled, so a caller past the floor opens nothing the classic portal would refuse them (DW-1853: Logs opens for any caller past the floor, because `%DeepSee_Portal` is public).
+
+- **Given** a `%Development`-only caller
+- **When** it starts a turn
+- **Then** it reaches the agent only through tools whose own pairs it holds, and the spec states how the provider port's floor changes.
+
+- **Given** a real `%Developer`-only principal on the throwaway
+- **When** it signs in
+- **Then** it reaches System Explorer and is refused everywhere a classic `%Developer` is refused, and a Rule 19 mutation that restores the old floor reddens that test.
+
+- DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor? (ledger; routed by merge_gate 2026-10-01)
 
 ---
 
@@ -8150,4 +8180,34 @@ So that every lane stops paying for the same flakes and the guardrails say what 
 - **Given** a fix that changes behavior a user can see
 - **When** it is proposed
 - **Then** the plan names it with the entry that asks for it, and a fix that contradicts a document corrects the document at origin.
+
+### Story 23.3: The range-end cleanup, part 3
+
+Chartered by the orchestrator on 2026-10-01, after the `release/1.0.5` cut, as the standing cleanup story Rule 27 charters after each release (owner restatement of 2026-09-29). It takes 12 entries from the `range-end-cleanup` queue by the owner's priority: CI health and flakes first, then security. DW-1782 heads the security group on the owner's instruction of 2026-09-30. DW-1827 waits, because the agent's task import key ships disabled.
+
+As the team keeping OcuPilot's CI fast and trustworthy between releases,
+I want the twelve highest-priority deferred entries fixed, or declined with a reason,
+So that every lane stops paying for the same flakes and slow runs, and secrets stay out of what the agent shows.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story (DW-1901, DW-1866, DW-1822, DW-1808, DW-1865, DW-1759, DW-1839, DW-1204, DW-434, DW-1782, DW-1881 and DW-1307)
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** DW-1901 (each of the three instance legs runs 38 to 46 minutes)
+- **When** it is fixed
+- **Then** CI runs the instance suite in four shard legs from refreshed timings, every class still runs in exactly one leg, `ui/tools/ci.test.mjs` holds the new shape, no `timeout-minutes` is lowered, and a green run's longest instance leg is reported.
+
+- **Given** the CI flakes and test-isolation entries (DW-1866, DW-1822, DW-1808, DW-1865, DW-1759, DW-1839, DW-1204, DW-434)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the test passing under that condition. A test that assumed instance state (agent definitions, a governance override, a seeded row, a monitor state) creates and restores the state it relies on, or asserts only on what its own action produced.
+
+- **Given** the security entries (DW-1782, DW-1881, DW-1307)
+- **When** each is fixed
+- **Then** a test reddens on the defect: a declared secret the model sends as an id never reaches a progress step's target, the stored transcript or the panel; a privileged role granted to a service address in either spelling is minted destructive; and the secret-residue sweep covers the log line its class header names.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
 

@@ -343,8 +343,8 @@ deleting it.
 **Two things an API caller needs.** Read on that same database, or the framework's own
 `%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`
 that OcuPilot never sees — see the roles section above for which resource and what was measured.
-And `USE` on at least one `%Admin_*` resource, or the router answers one `403` envelope with the
-code `AUTH.NOADMIN` (FR-65).
+And `USE` on at least one `%Admin_*` resource or on `%Development`, or the router answers one
+`403` envelope with the code `AUTH.NOADMIN` (FR-65).
 
 **The bundle.** Build it with `npm --prefix ui run build`; the output lands in
 `ui/dist/ocupilot-ui/browser/`, which the container sees through the read-only `./ui` mount. The
@@ -448,8 +448,8 @@ gate is run rather than described. Seven jobs, split by what each needs:
 | Job | Needs | Runs |
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
-| `instance-shard` | three legs, `instance shard 1/3` to `3/3`, each with its own throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `ui/tools/ci-runner.mjs --shard k/3` over the leg's share of the classes, whose record it uploads as an artifact. Leg 1 alone also runs `ui/tools/admin-spec.mjs` before its share and `scripts/smoke.sh` after it. On failure only, `scripts/ci-throwaway.sh logs`; always, `scripts/ci-throwaway.sh down` |
-| `instance` | the three legs' records | `ui/tools/ci-shards.mjs check`: red unless every class the instance offered ran in exactly one leg, every leg executed a test, and the legs succeeded |
+| `instance-shard` | four legs, `instance shard 1/4` to `4/4`, each with its own throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `ui/tools/ci-runner.mjs --shard k/4` over the leg's share of the classes, whose record it uploads as an artifact. Leg 1 alone also runs `ui/tools/admin-spec.mjs` before its share and `scripts/smoke.sh` after it. On failure only, `scripts/ci-throwaway.sh logs`; always, `scripts/ci-throwaway.sh down` |
+| `instance` | the four legs' records | `ui/tools/ci-shards.mjs check`: red unless every class the instance offered ran in exactly one leg, every leg executed a test, and the legs succeeded |
 | `browser-shard` | three legs, each with its own throwaway container on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, and `npm run test:browser:shard -- --shard k/3` over the leg's share of the spec files, one file at a time in sorted order, then the record upload and the same capture and teardown |
 | `browser` | the three legs' records | `ui/tools/ci-shards.mjs check`, holding the legs to the spec files the checkout carries |
 | `images` | both stock Community editions at the pinned `2026.2` | per edition, `scripts/ci-image-compile.sh` first: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read. Then the client build and a product-start throwaway on that edition (`scripts/ci-throwaway.sh up --product`, 52781/1980): `scripts/wait-readiness.sh`, `scripts/ci-throwaway.sh product-check` (no `OcuPilot.Test` class compiled), `ui/tools/admin-spec.mjs` over HTTP, and `scripts/smoke.sh` with no `--namespace`, so plain IRIS Community installs, drift-checks and smokes in `USER` (NFR-13); then `scripts/ci-throwaway.sh product-reuse` (the first start must have logged deleting no class; two classes are compiled into the test package and the throwaway started again over its volume, whose start must log deleting both) and `product-check` again |
@@ -463,7 +463,7 @@ fixtures; on 2026-09-11 eighteen were started together, a probe uninstall raced 
 and the probe database was left mounted over a deleted directory until a human restarted the
 instance.
 
-**Each long suite is split across three containers, never run in parallel inside one.**
+**The ObjectScript suite is split across four containers and the browser specs across three, never run in parallel inside one.**
 `ui/tools/ci-shards.mjs` gives every leg its share from `ui/tools/ci-timings.json`, longest first,
 so the legs finish close together and each derives the same split; an item with no recorded time
 weighs the median. A test must not depend on what an earlier class or spec file left behind,

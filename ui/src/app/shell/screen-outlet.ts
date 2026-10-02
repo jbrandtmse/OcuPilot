@@ -62,6 +62,8 @@ import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { GovernancePage } from '../areas/agent/governance.page';
+import { CodeListPage } from '../areas/system-explorer/code-list.page';
+import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -101,6 +103,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'log-viewer': LogViewerPage,
   'form-page': DefinitionFormPage,
   'viewer (OpenAPI)': OpenApiViewerPage,
+  'viewer (source)': SourceViewerPage,
   detail: DetailPage,
   meters: SystemUsagePage,
 };
@@ -173,6 +176,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.LanguageServerForm': LanguageServerFormPage,
   // Story 16.12: the Locks list with its Remove locks dialog.
   'OcuPilot.Screen.Descriptor.LockList': LockListPage,
+  // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
+  'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
 };
 
 /**
