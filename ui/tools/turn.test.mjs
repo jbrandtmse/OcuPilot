@@ -1641,6 +1641,44 @@ test('a confirm carries the instance\u2019s read-back onto its outcome, its chan
   assert.deepEqual(reloaded.entries()[0].proposals[0].readBack, expected, 'a reloaded card reads the recorded read-back');
 });
 
+test("a confirm's console lines reach its outcome and the proposal the card renders, and nothing else (Story 19.2)", async () => {
+  // AD-39's fifth exception: a compile's lines are the confirm's own `output`, rendered on the card;
+  // the change event carries none.
+  //
+  // Mutation (Rule 19): drop the `output` spread from `recordProposalState` -> the proposal leg goes red.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({
+        proposalId: 'p1',
+        state: 'confirmed',
+        closedReason: '',
+        confirmedAt: '2026-09-19T10:01:02Z',
+        action: 'updated',
+        output: { lines: ['Compiling class A', 7, 'Compilation finished successfully.'], errors: false },
+      }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const lines = ['Compiling class A', 'Compilation finished successfully.'];
+  assert.deepEqual(outcome.output, lines, 'the outcome carries the string lines');
+  assert.deepEqual(turn.entries()[0].proposals[0].output, lines, 'and so does the proposal the card renders');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
+});
+
 test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
   // The panel names the change from the outcome, so the outcome must carry what the change event
   // carries: the action through the same closed-set reading, and the createdId verbatim.

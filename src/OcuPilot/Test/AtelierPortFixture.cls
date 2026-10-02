@@ -3,8 +3,9 @@
 /// filters, capture and status mapping against canned route answers.</p>
 /// <p>Unless a test arms <method>UseFakeRoutes</method>, <method>ImplClass</method> answers the
 /// vendor's own class and the port reads the live instance. Armed, it answers this class, whose
-/// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method> and
-/// <method>Index</method> stand in for the vendor's routes: each records what it was handed --
+/// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method>,
+/// <method>Index</method>, <method>Compile</method> and <method>DeleteDocs</method> stand in for the
+/// vendor's routes: each records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
 /// the request's query data, content type and body -- leaves <code>%SourceControl</code> set, as
 /// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
@@ -157,6 +158,18 @@ ClassMethod GetDoc(pNamespace As %String, pDocName As %String) As %Status
 ClassMethod Index(pNamespace As %String) As %Status
 {
     Quit ..Answer("Index", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>Compile</code> route.</p>
+ClassMethod Compile(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Compile", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>DeleteDocs</code> route.</p>
+ClassMethod DeleteDocs(pNamespace As %String) As %Status
+{
+    Quit ..Answer("DeleteDocs", pNamespace, "", 0)
 }
 
 /// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an

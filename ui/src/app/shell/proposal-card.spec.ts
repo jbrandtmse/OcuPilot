@@ -1068,6 +1068,22 @@ describe('the proposal card', () => {
     expect(card.querySelector('.ocu-proposal-card-cancel')).toBeNull();
   });
 
+  it("Story 19.2 AC3: a confirmed card shows the write's console lines as text in a code block, and a canceled one shows none", () => {
+    // Mutation (Rule 19): draw the block whatever the phase, dropping `confirmed` from `outputVisible` -> red.
+    const lines = ['Compiling class <b>OcuProbe192.Alpha</b>', 'Compilation finished successfully.'];
+    const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'canceled-by-you' });
+    fixture.componentRef.setInput('output', lines);
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-status')).not.toBeNull();
+    expect(card.querySelector('[data-slot="output"]')).toBeNull();
+    fixture.componentRef.setInput('phase', 'confirmed');
+    fixture.detectChanges();
+    const block = card.querySelector('[data-slot="output"] pre') as HTMLElement;
+    expect(block.textContent).toBe(lines.join('\n'));
+    expect(block.querySelector('b')).toBeNull();
+    expect(block.getAttribute('tabindex')).toBe('0');
+  });
+
   it('AC4: the fingerprint refusal draws its line inside the warning banner, with only Re-propose', () => {
     const { card } = mount(liveView(), { phase: 'target-changed' });
     const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;

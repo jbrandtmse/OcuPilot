@@ -392,8 +392,13 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // initial total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 19.1 raised it to 2420kB, the measured 2,419,634-byte initial total rounded up to the next kB
 // (System Explorer's two pages, their stores and its four descriptors' mirror), under the 4000kB hard stop.
+// Story 19.2 raised it to 2433kB, the measured 2,432,268-byte initial total rounded up to the next kB
+// (System Explorer's compile and delete: the write store, the compile dialog and the output pane), under
+// the 4000kB hard stop.
 // Story 18.16 raised it to 2446kB, the measured 2,445,492-byte initial total rounded up to the next kB
 // (the remote database form, its store and the two descriptors' mirror), under the 4000kB hard stop.
+// Story 18.16's forward merge of Story 19.2 raised it to 2459kB, the measured 2,458,172-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -406,7 +411,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2446kB', 'DW-1166, Story 18.16: the measured 2,445,492 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2459kB', 'DW-1166, Story 18.16 forward merge of Story 19.2: the measured 2,458,172 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

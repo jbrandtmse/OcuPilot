@@ -286,6 +286,9 @@ services:
       # The developer floor classes sign in as purpose-built principals: a %Developer, one below the
       # floor, an administrator without %All, and a %Development holder that runs a turn.
       # classes: DeveloperFloor, DeveloperFloorFixture, DeveloperFloorRoutes, DeveloperFloorTurn
+      # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
+      # and the %Developer role on a namespace's code database, and compiles and deletes probes.
+      # classes: AtelierPortWriteDenial
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate

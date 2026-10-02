@@ -44,7 +44,12 @@ export interface SourceDocument {
   readonly modified: string;
   readonly database: string;
   readonly generates: readonly string[];
+  /** Why no text is available: `objectonly` where the instance keeps only a routine's object code (Story 19.2), else `''`. */
+  readonly reason: string;
 }
+
+/** The reason a routine kept only as object code carries (Story 19.2). */
+export const OBJECT_ONLY_REASON = 'objectonly';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -67,6 +72,7 @@ export function documentOf(value: unknown): SourceDocument | null {
     modified: text(value['modified']),
     database: text(value['database']),
     generates,
+    reason: text(value['reason']),
   };
 }
 

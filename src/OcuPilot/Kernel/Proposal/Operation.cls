@@ -180,6 +180,25 @@ ClassMethod MovesMarking(pToolClass As %String) As %Boolean
     Quit tMoves
 }
 
+/// <p>What <var>pToolClass</var> shows of the write its port answered <var>pWritten</var> for, as
+/// the <code>output</code> its caller's answer carries (AD-39's fifth exception), or <code>""</code>
+/// for a tool that declares no <code>WriteOutput</code>, a class that cannot be asked, and an answer
+/// it reads nothing from.</p>
+/// <p><b>Caller contract:</b> the two callers of the operation put it on their own answer and
+/// nowhere else: never on a stored row, the ledger, a log line or a tool result.</p>
+ClassMethod OutputOf(pToolClass As %String, pWritten) As %DynamicObject
+{
+    Set tOutput = ""
+    Try {
+        If (pToolClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||WriteOutput") Quit
+        Set tOutput = $ClassMethod(pToolClass, "WriteOutput", pWritten)
+        If '$IsObject(tOutput) Set tOutput = ""
+    } Catch {
+        Set tOutput = ""
+    }
+    Quit tOutput
+}
+
 /// <p>The AD-14 action <var>pToolClass</var>'s write performs, or <code>""</code> for a class that
 /// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
 /// default.</p>

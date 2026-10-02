@@ -1,7 +1,7 @@
 /**
- * A list's one multi-select action (AD-5, Story 16.6), read from its declaration: which rows may be
- * checked, why an action over the checked set cannot run yet, and the pid-set target it is sent
- * with.
+ * A list's multi-select (AD-5, Stories 16.6 and 19.2), read from its declaration: which actions act
+ * on the checked set, which rows may be checked, why an action over the checked set cannot run yet,
+ * and the canonical set target it is sent with.
  *
  * Framework-free, so the data table, the command bar, the command box and the action handler ask
  * the one question one way, and `node --test` can pin it (AD-19).
@@ -15,15 +15,24 @@ import { fieldOf } from './table-model.ts';
 /** The placeholder `tableCheckAtMost` and the broadcast strings carry for a count. */
 const COUNT_PLACEHOLDER = '<n>';
 
-/** Whether `actionId` is `screen`'s declared multi-select action, which acts on the checked set. */
+/**
+ * Whether `actionId` acts on `screen`'s checked set: its declared multi-select action, or one of the
+ * multi-select's `extraActions` (Story 19.2).
+ */
 export function isCheckedSetAction(screen: Pick<ScreenDeclaration, 'multiSelect'>, actionId: string): boolean {
-  return screen.multiSelect !== null && actionId !== '' && screen.multiSelect.action === actionId;
+  if (screen.multiSelect === null || actionId === '') return false;
+  return screen.multiSelect.action === actionId || (screen.multiSelect.extraActions ?? []).includes(actionId);
 }
 
-/** Whether `row` may be checked on `screen`: it declares a multi-select and the row's eligible field reads true. */
+/**
+ * Whether `row` may be checked on `screen`: it declares a multi-select, and the row's eligible field
+ * reads true -- or the multi-select names no eligible field, when every row is checkable (Story 19.2).
+ */
 export function isCheckable(screen: Pick<ScreenDeclaration, 'multiSelect'>, row: unknown): boolean {
   if (screen.multiSelect === null) return false;
-  return fieldOf(row, screen.multiSelect.eligible) === true;
+  const eligible = screen.multiSelect.eligible ?? '';
+  if (eligible === '') return true;
+  return fieldOf(row, eligible) === true;
 }
 
 /**

@@ -147,9 +147,10 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 }
 
 /// <p>Under the default policy the shipped gate point allows every live tool except the audit
-/// purge, the namespace delete, the database delete, the task import and Story 18.4's eight disk
-/// operations (<parameter>OcuPilot.Test.Governance.DISKOPERATIONS</parameter>), which their baseline
-/// lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
+/// purge, the namespace delete, the database delete, the task import, Story 18.4's eight disk
+/// operations (<parameter>OcuPilot.Test.Governance.DISKOPERATIONS</parameter>) and Story 19.2's two
+/// document deletes (<parameter>OcuPilot.Test.Governance.EXPLORERDELETES</parameter>), which their
+/// baseline lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
 /// stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
 Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
@@ -163,7 +164,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Kill tDecision
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Gate).Decide(tTool.name, tTool.kind, $Username, {}, .tDecision), tTool.name _ ": the gate decides")
-        Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import") || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ENABLEINTEROP")) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DISKOPERATIONS")), tTool.name): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
+        Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import") || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ENABLEINTEROP")) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DISKOPERATIONS")), tTool.name) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "EXPLORERDELETES")), tTool.name): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "REMOTEDATABASEDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }

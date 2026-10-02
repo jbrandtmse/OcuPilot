@@ -197,6 +197,14 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther)}, .tOtherResolved)
                 Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": another namespace resolves that namespace's resource and not this one's")
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerWrite") {
+            ; Story 19.2: System Explorer's compile and delete declare WRITE on the routines database
+            ; of the request's namespace, here this one's, after their screen's pairs (AD-8 as amended
+            ; 2026-10-02).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tCodePair = $ListBuild(##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), "WRITE")
+            If '$ListFind(tExpected, tCodePair) Set tExpected = tExpected _ $ListBuild(tCodePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

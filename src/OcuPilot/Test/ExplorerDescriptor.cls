@@ -1,8 +1,8 @@
 /// <p>Pins Story 19.1's declarations: the System Explorer area's row, its two lists and two viewers
 /// -- each validated, read through the source code API port, gated on the measured pair, keyed to a
 /// classic page the portal's own resolver answers, and carrying at least three prompts in the Code
-/// group -- and the area's read-only shape (AC6): every <code>explorer.*</code> tool reads, none has
-/// a governance key, and no screen of the area declares an action a write tool could carry.</p>
+/// group -- and the area's tools since Story 19.2: four reads and the two lists' compile and delete,
+/// each write's baseline key, and the actions the lists declare for them.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registry and the classic portal's
 /// classes. Live-safe: it reads and writes nothing.</p>
 Class OcuPilot.Test.ExplorerDescriptor Extends %UnitTest.TestCase
@@ -103,37 +103,44 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>AC6: the area is read-only. Every registered <code>explorer.*</code> tool is a read, none has a
-/// governance baseline key, no screen of the area declares a primary or row action, and no
-/// registered write tool names one of its descriptors.</p>
-/// <p>Mutation: declare a row action on the Classes list -&gt; the registry refuses the roster and
-/// this test goes red.</p>
-Method TestTheAreaIsReadOnly()
+/// <p>Story 19.2 AC9: the area's tools are its four reads and four writes, the lists' compile and
+/// delete, each over the source code API port with its own request type, fingerprint subject and
+/// precondition -- a delete covers each document's modified time; the compile keys are
+/// enabled and the delete keys disabled at the baseline; and the two lists declare compile and
+/// delete as row actions acting on the checked rows, at most one hundred, while the viewers declare
+/// none.</p>
+/// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
+Method TestTheAreaHoldsFourReadsAndFourWrites()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the registry lists")
     If $$$ISERR(tSC) Quit
     Set tExplorer = ""
-    Set tWritersOfTheArea = ""
+    Set tWriters = ""
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If $Extract(tTool.name, 1, 9) = "explorer." Set tExplorer = tExplorer _ $Select(tExplorer = "": "", 1: ",") _ tTool.name _ ":" _ tTool.kind
-        If (tTool.kind = "write") && (tTool.class '= "") && ($Extract($Parameter(tTool.class, "DESCRIPTORCLASS"), 1, 35) = "OcuPilot.Screen.Descriptor.Explorer") Set tWritersOfTheArea = tWritersOfTheArea _ " " _ tTool.name
+        If (tTool.kind '= "write") || (tTool.class = "") || ($Extract($Parameter(tTool.class, "DESCRIPTORCLASS"), 1, 35) '= "OcuPilot.Screen.Descriptor.Explorer") Continue
+        Set tClass = tTool.class
+        Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
-    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.read:read", "every explorer tool is one of the four reads")
-    Do $$$AssertEquals(tWritersOfTheArea, "", "no write tool names a System Explorer descriptor")
+    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.read:read", "the area's tools are four reads and four writes")
+    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
     If $$$ISERR(tSC) Quit
     Set tBaselined = ""
     Set tIterator = tKeys.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
-        If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ " " _ tKey
+        If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "", "and the baseline holds no explorer key")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false", "the compile keys ship enabled and the delete keys disabled")
     For tI = 1:1:4 {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
-        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")), "|", tClass _ ": declares no action")
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Set tMulti = $Select($$$ISOK(tSC) && (tDeclaration.%GetTypeOf("multiSelect") = "object"): tDeclaration.multiSelect.%ToJSON(), 1: "")
+        Set tWant = $Select(tI <= 2: "|compile,delete|{""action"":""compile"",""max"":100,""extraActions"":[""delete""]}", 1: "||")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tMulti, tWant, tClass _ ": its actions")
     }
 }
 

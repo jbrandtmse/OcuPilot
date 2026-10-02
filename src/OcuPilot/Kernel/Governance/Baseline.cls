@@ -142,7 +142,11 @@ XData Keys [ MimeType = application/json ]
   "tasks.schedule.startmanager": true,
   "osmgmt.locks.remove": true,
   "osmgmt.locks.removeprocess": true,
-  "osmgmt.locks.removeclient": true
+  "osmgmt.locks.removeclient": true,
+  "explorer.classes.compile": true,
+  "explorer.classes.delete": false,
+  "explorer.routines.compile": true,
+  "explorer.routines.delete": false
 }
 }
 

@@ -514,6 +514,12 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Do ..RecordReadBack(pProposalId, tReadBack)
 
         Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass), tCreatedId, tReadBack)
+        ; AD-39's fifth exception: what the write answered for the card -- a compile's console lines, a
+        ; delete's per-document results -- rides on this answer alone, after the row is recorded.
+        If $$$ISOK(tSC) && $IsObject(pResult) {
+            Set tOutput = ##class(OcuPilot.Kernel.Proposal.Operation).OutputOf(tToolClass, $Get(tWritten))
+            If $IsObject(tOutput) Do pResult.%Set("output", tOutput)
+        }
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)

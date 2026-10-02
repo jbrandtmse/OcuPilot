@@ -528,6 +528,11 @@ interface ScreenActionAnswer {
   readonly continues?: boolean;
   /** The instance's read-back of the write (AD-58), carried onto the change event as it came. */
   readonly readBack?: unknown;
+  /**
+   * What the write answered for the screen alone (AD-39's fifth exception, Story 19.2): a compile's
+   * console lines, a delete's per-document results. Read right after the send by `lastOutput`.
+   */
+  readonly output?: unknown;
 }
 
 /** Which dialog a pending row action is waiting on. */
@@ -1056,16 +1061,19 @@ export class ScreenActionHandler {
    * The one request, and what its answer publishes; `true` when the instance applied it. `values`
    * travels only where the action's tool declares values, and is sent as given (AD-56). It is sent
    * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own; a refusal is
-   * put on the descriptor's own store, which is the page the person acted on.
+   * put on the descriptor's own store, which is the page the person acted on. `scope`, where given,
+   * is the namespace the request carries whatever the shell is scoped to when it is sent.
    */
   private async send(
     descriptor: string,
     actionId: string,
     target: string,
     values?: ActionValues,
-    sink: ActionSink | null = null
+    sink: ActionSink | null = null,
+    scope?: string
   ): Promise<boolean> {
     this.lastRefused = null;
+    this.lastOutputValue = null;
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
@@ -1082,9 +1090,11 @@ export class ScreenActionHandler {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
+        ...(scope === undefined ? {} : { scope }),
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
+    this.lastOutputValue = result.kind === 'ok' ? (result.body?.output ?? null) : null;
     this.progressSignal.set({
       descriptor,
       actionId,
@@ -1131,15 +1141,27 @@ export class ScreenActionHandler {
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
    * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
    * dialog that shows the refusal itself keeps it off the list's banner, and the Check integrity
-   * flow (Story 18.4) keeps it in its own store.
+   * flow (Story 18.4) keeps it in its own store. `scope`, where given, pins the request to that
+   * namespace, so a sequence of sends stays where it started when the shell's namespace changes.
    */
-  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
-    return this.send(descriptor, actionId, target, values, sink ?? null);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink, scope?: string): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values, sink ?? null, scope);
   }
 
   private lastContinues = false;
 
   private lastRefused: ActionRefusal | null = null;
+
+  private lastOutputValue: unknown = null;
+
+  /**
+   * The `output` the last action this handler sent was answered with, or `null` when it carried none
+   * or was refused (Story 19.2). Read right after the `sendFor` that sent it, as `continued` is; the
+   * caller renders it as text and keeps it nowhere else.
+   */
+  lastOutput(): unknown {
+    return this.lastOutputValue;
+  }
 
   /**
    * The refusal the last action this handler sent was answered with, or `null` when it was applied

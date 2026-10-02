@@ -8887,6 +8887,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: On ocupilot-a2-ci as _SYSTEM, explorer.routines lists EnsJob.mac (Database HSCUSTOM) and explorer.routine?name=EnsJob.mac answers 404 PORT.NOTFOUND; USER's Ens*.mac do the same
 - 2026-10-02T03:22:55Z status=routed owner=19-2-compile-delete-export-and-import by=harvest note=19.1's AtelierPort surface; 19.2 acts on these documents next
 - 2026-10-02T03:58:04Z occurrence=19-12-a-development-holder-reaches-system-explorer-as-the-classic
+- 2026-10-02T08:35:55Z status=resolved-by:19-2-compile-delete-export-and-import by=adjudication note=object-only routine reads available false, reason objectonly; AtelierPortDocument and the viewer spec pin it (AC8)
 
 ### DW-1923: Home's performance tick re-fetches the navigation map every 10 s for a caller refused /ui/performance (now every %Developer)
 - source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: low | fix-risk: med | footprint: in-epic
@@ -8915,6 +8916,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: same class, same position and same four predecessors passed on runs 36940146133, 36943583139 and 36946450097; abb61579's code differs from green 6f5a99e2 only by two doc-comment lines; the probe's rows not yet visible to the screen read is an (inference) to reproduce
 - 2026-10-02T01:52:17Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; rerun --failed on attempt 2; next cleanup story reproduces it (audit write vs read visibility, or the screen's row window)
 
+### DW-1925: CI flake: reply.browser-spec (b) found the remote link's href null in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
+- 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story
+
+### DW-1926: IRIS defect candidate: the Atelier work routes' poll checks no owner, and the queue runs a caller-named routine
+- source: spec-19-2-compile-delete-export-and-import.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.2 plan on ocupilot-a2-ci: PollAsync answers another caller's queued job (no owner check) and QueueAsync accepts a caller-named routine (testrtn) to run; AtelierPort never calls the work routes (AD-61 rule 7)
+- 2026-10-02T04:52:52Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905
 ### DW-1916: turnprobe-spec.mjs nextTag restarts per process, so a browser spec whose last provider call lands after its own forget leaves a call record the same file's next run on that container inherits
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci: proposal-demo AC3 red alone from its own previous run's DEMO5 record (fixed there in 12790813); IMPACTLINE2, PRIVLINE2/3, PROPOSAL4 held a late returned node, EGRESS3-6 full records (egress-line forgets no tag)
@@ -8940,6 +8950,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 plan: excluded from the DW-1204 pass on ocupilot-b-ci (4,325,263 audit rows) so as not to copy them into USER; not measured
 - 2026-10-02T02:53:58Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=audit-copy-purge reds on its 30 s wait in CI or on a post-sweep container
+
+### DW-1930: At confirm, System Explorer's write tools resolve their routines-WRITE pair for the confirm request's ?ns=, not the proposal's namespace
+- source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ExplorerWrite.PrivilegePairs reads Kernel.Scope.Current(), which Router sets from the confirm's ?ns= (turn.ts passes none); the port's WritePairs re-gates the payload namespace before any write, so it only misnames the pair
+- 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=a %Developer confirming a USER proposal while the shell is scoped to HSCUSTOM is refused naming %DB_HSCUSTOM:WRITE
+
+### DW-1931: A document-set write's change sentence reads the comma-joined set with a singular verb ('A.cls,B.cls was deleted') and marks no row
+- source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: formatChangeSentence -> displayEntityId (ui/src/app/core/entity-id.ts:59) prints the canonical set id as given; the process-set broadcast reads the same
+- 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=a set delete's toast or reply line is observed naming more than 10 documents in one sentence
+
+### DW-1932: The Routines list's delete warning keeps the Classes sentence 'A persistent class's stored data is kept'
+- source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: code-list.page.ts deleteConsequence uses explorerDeleteConsequence and explorerDeleteSetConsequence on both lists; strings.ts and EXPERIENCE.md:589 carry one wording
+- 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=Story 19.13 revises the Routines list's dialogs and the delete warning still names a persistent class
+- 2026-10-02T09:17:52Z status=routed owner=19-13-xml-export-and-import by=spec_gate note=reopen_if met: 19.13 adds dialogs to the Routines list; its Task 8 rewords the Routines delete warning
+
+### DW-1933: A DeleteDocs envelope error raised after some documents were deleted is answered as a fault, with no change event or read-back
+- source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Vendor DeleteDocs (irissys %Api/Atelier/v1.cls:1463-1470) quits its loop on a GetDbForDoc error and keeps an extension UserAction error after deleting; AtelierPort.DeleteSet then Fails
+- 2026-10-02T08:34:00Z status=wontfix-theoretical owner=19-2-compile-delete-export-and-import by=cr note=real if a source-control class's UserAction answers an error after a delete, or GetDbForDoc fails mid-set
+
+### DW-1934: Every System Explorer write reads DOCS over the namespace's whole document category two or three times per request
+- source: spec-19-2-compile-delete-export-and-import.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ScreenAction/Confirm fresh read plus AtelierPort.PresentSet (plus the delete's read-back), ~0.35 s each on HSCUSTOM classes (T0.2); a category above the capture ceiling refuses every write as it refuses the list
+- 2026-10-02T08:34:00Z status=wontfix-accepted owner=19-2-compile-delete-export-and-import by=cr note=reopen_if=a screen compile request on HSCUSTOM's Classes list measures above 1 s before the compile itself
 ### DW-1925: CI flake: reply.browser-spec (b) found the remote link's href null in browser shard 3/3
 - source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
@@ -8971,6 +9007,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-16-remote-databases.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: src/OcuPilot/Test/ClassicPageGate.cls:142, a contended line Epic 19 is changing; the assertion compares the lists, so only the message is stale
 - 2026-10-02T12:43:15Z status=wontfix-accepted owner=18-16-remote-databases by=cr note=reopen_if=after both epics merge, grep 'thirty-five OWNPAIRS' still matches ClassicPageGate.cls while OWNPAIRS holds another count
+- 2026-10-02T12:54:57Z status=resolved-by:18-16-remote-databases owner=18-16-remote-databases by=adjudication note=ClassicPageGate.cls:142 reads forty OWNPAIRS names at the 19.2 forward merge (40 = 35 + 19.2's 2 + 18.16's 3)
 
 ### DW-1941: The remote database Create form shows an empty Data server select with no sentence when the instance defines no ECP data server
 - source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
@@ -8991,3 +9028,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-16-remote-databases.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: RemoteDatabasePort.Directories keeps 1000 rows and marks truncated; remote-database-form.store.ts rowsOf never reads truncated; RemoteWrite checks membership against the cut rows
 - 2026-10-02T12:43:22Z status=wontfix-theoretical owner=18-16-remote-databases by=cr note=real only on a data server listing more than 1000 databases
+### DW-1936: ErrorDelete fails 6 of 15 on an instance holding a governance override on logs.applicationerrors.delete, the key it exercises: a sixth class with DW-1839's problem, outside 23.3 batch (c)'s five
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: confirms answered 403 GOVERNANCE.DISABLED with the seeded override; 15/15 after resetting it to inherit; GovernanceRestore covers DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch only
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=extend GovernanceRestore to ErrorDelete, and sweep for any other class that exercises a governance key
+
+### DW-1937: CI flake candidate: SanitizeAuditMask.TestARealMaskedVendorSecretReachesTheModelOnceMasked missed the vendor's own mask in the read window
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AssertTrue 'the vendor's own mask is present: Create Metadata ...' failed once, 1/1 on its one rerun; (inference) the Create Metadata audit row lands just outside the window that starts at tSince, taken after AddServer
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; reproduce by timing the AddServer audit row against tSince
+
+### DW-1938: The full ObjectScript sweep clears state it did not create on an instance that holds real rows: preferences 4 to 0, the switches row reset, Turn and Step rows to 0
+- source: 1.0.6 upgrade check sweep on ocupilot-c-ci (0f55b740) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seeded through the REST API before the upgrade; after the sweep Pref 0 (PreferencesWire, documented), SwitchState at defaults, Turn/Step 0 while the conversation read is unchanged; definitions and the override were restored by 23.3's fixtures
+- 2026-10-02T08:46:46Z status=routed owner=range-end-cleanup by=merge_gate note=the tests only run on throwaways and CI, so no user instance is affected; extend the set-aside-and-restore pattern if a developer instance should survive a sweep
+### DW-1935: CI flake: turn.browser-spec 'Second send' timed out waiting for the lock banner in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.2 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
+- 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
