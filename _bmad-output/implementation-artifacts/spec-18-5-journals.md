@@ -2,7 +2,8 @@
 title: 'Story 18.5: Journals'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: '8f06ee016f2ed388ee32c7f6e3284b270985f2a8'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -505,6 +506,10 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 
 ## Spec Change Log
 
+- 2026-10-02, implement Task 0 (HALT, step 9; Design Notes › Measured at implement). For the runner, pending the decision on the halt:
+  - **AD-8, measured pairs per tool:** "Story 18.5's journal tools: switch file and the integrity check need only Journals' `%Admin_Operate:USE` and `%DB_IRISSYS:READ`; switch directory needs `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE` beyond them, because without the first the vendor's switch is refused `<PROTECT>`, and without the second it answers 200 having switched to a new file in the same directory (measured on `ocupilot-b-ci`, 2026-10-02)."
+  - **AD-15 and AD-53 named cases:** switching the journal file, switching the journal directory and a journal integrity check record no vendor event with auditing on (measured on `ocupilot-b-ci`, 2026-10-02).
+
 - 2026-10-02, spec gate (runner, Rule 5, by=merge_gate): the orchestrator approved the split. This story is Part A (Tasks & Acceptance › scope block; AC10's key count; the prompt and test lists). Part B is Story 18.18 "Journal settings" and Part C Story 18.19 "Journal record browser" in `epics.md`, each planned from this spec's sections. The runner writes only Part A's spine amendments now (Design Notes › 1 in part, 3 in part, 4 in part, 5, 6 in part, 7, 10 in part); amendment 2 (AD-8) follows Task 0, 8 (AD-4) is 18.18's, and the record filter and record values sentences of 1 and 6 are 18.19's.
 
 - 2026-10-02, spec gate (runner, Rule 5 tier 1): epics.md's 18.5 block (:7184-7185) and `epic-18-context.md` corrected at origin. Was: "`switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees." Now: it swaps between the configured primary and alternate directories and answers 409 when they are the same (vendor source `System.cls:81-126`; Task 0 measures it). The record list's halving gains its cause (the counter steps twice per kept row, `ListTask.cls:88,93`), so doubling is exact only when no row is skipped. The split (Design Notes › Size) and the spine amendments wait for the orchestrator's decision.
@@ -603,6 +608,23 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 
 **Contended files and footprint.** Every contended file is edited add-only (Boundaries). No footprint extension: every other file is new or in Epic 18's paths.
 
+**Measured at implement (Task 0, `ocupilot-b-ci`, 2026-10-02; HALTED at step 9).** Durations are wall clock through `AdminPort`, guard and `VerifyInstance` included.
+
+- **HALT (step 9, "any step needs a pair outside the tables plus `%DB_IRISSYS:WRITE`"):** `SWITCHDIR` with a probe alternate configured needs `%Admin_Manage:USE` as well as `%DB_IRISSYS:WRITE`. Principals with the install namespace's code read plus:
+  - Journals' two pairs: 500, `<PROTECT>etINT1+2^JRNSWTCH ^%SYS("JOURNAL","PROCESS","JRNSWTCH")`, nothing switched;
+  - those and `%DB_IRISSYS:WRITE` (also with `%Admin_Journal:USE`, or with `%Admin_Secure:USE`): **200, but journaling stays in the primary directory** (a new file there), every repetition;
+  - Journals' pairs and `%Admin_Manage:USE`, no `%DB_IRISSYS:WRITE`: 500, the same `<PROTECT>`;
+  - Journals' pairs, `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE`: moves to the alternate, and a second switch returns to the primary.
+- **Step 2:** `LIST`'s first `Name` is `GetCurrentFileName()`. A closed file is `<name>z` on disk (compressed) and listed without the `z`; a listed name plus `z` is refused `JOURNAL.FILE.UNLISTED`, as is `/tmp/x.001`. `LIST` (110 rows) 0.221 s; the largest closed file's `GET` (`20260930.004`, 82 `Databases`) 0.227 s; one record `GET` 0.237 s; settings `GET` 0.002 s. `Journal.File` `GET` with `maxRows` 5 answers 200 with 5 `Databases`: it takes `maxRows`. `NormalizePage` answers `%cspapp.op.utilsysjournals`, `.utilsysjournalsummary`, `.utilsysjournal`, `.utilsysjournalproperties`, `.utilsysjournalswitchdirectory`, `.utilsysjournalintegrity` and `%CSP.UI.Portal.Journal`. `ByTimeReverseOrder` (0.233 s) and `Config.config.Get` (0.001 s) answer for a principal holding only `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`. Without `%DB_IRISSYS:READ` the `wijdir` read raises `<PROTECT>`, and `ByTimeReverseOrder` still answers but writes one `%System/%Security/Protect` audit row per listed file.
+- **Step 4 (`20260930.004`):**
+  - `INTEGRITYCHECK` answers 202 and the port's poll reads it. The poll answer is `{State, TaskName, Console, FailureReason, Result, TimeQueued, TimeStarted, TimeFinished}`; `Console` holds the lines. A clean check's `Console` is `[]` at both levels and its `Result` `{}`; `CheckDetails` false takes 0.281 s, true 1.085 s.
+  - No effect and no audit event; the task row is removed for `_SYSTEM`.
+  - Journals' two pairs suffice. Without `%Admin_Operate:USE` it is 403 `PORT.ACCESSDENIED`; without `%DB_IRISSYS:READ`, 500 (`<PROTECT>` entering `%SYS`).
+  - The least-privileged caller's finished row outlives the port's read, since that caller cannot delete it (`ForgetTask`, AD-37's sweep); the runner removed it.
+- **Step 5:** `SWITCHFILE` 0.004-0.005 s, answering `{CurrentFile}` (the new newest listed file), needs Journals' two pairs only. One-directory `SWITCHDIR` is a vendor 409, answered `PORT.CONFLICT` and logged at error severity by `AdminPort`. `_SYSTEM`'s `SWITCHDIR` goes to `ocuprobe185alt/` and back (0.004-0.006 s). Neither switch records a vendor audit event with auditing on. Each `Config.Journal.Modify` of a directory (`SeedAlternate`, `RestoreJournal`) itself switches the file ("to activate journal changes").
+- **Step 7:** `ByTimeReverseOrder` names every file the switches wrote in `ocuprobe185alt/` (144 files, 0.279 s).
+- **Step 8:** `Config.Journal` and `Config.config` equal S0; journaling writes in `/durable/iris/mgr/journal/`; no probe principal; async task rows 337 as at S0. The rest differs: 34 new journal files (current `20261002.080`); `ocuprobe185alt/` holds four of them and the vendor's `iris.lck`, all kept; `messages.log` +140 lines, `alerts.log` +5 lines (OcuPilot's logged refusals); monitor state 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+
 ## Verification
 
 **Setup (slot B):**
@@ -650,9 +672,25 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: `osmgmt.journals.switchdirectory` needs `%Admin_Manage:USE` beyond Journals' pairs and `%DB_IRISSYS:WRITE` (Task 0 step 9, "any step needs a pair outside the tables plus `%DB_IRISSYS:WRITE`"); without it the vendor answers 200 and switches to a new file in the same directory.
 
-- Planned only; nothing implemented. The plan covers seven surfaces in three separable parts (A: Journals, file details, switches, integrity, the `AdminPort` guard and DW-1797; B: settings; C: the record browser and detail). The recommended split is in Design Notes › Size.
-- Read-only grounding on `ocupilot-b-ci`: the hidden `Journal.*` endpoint sources (exported to `/tmp/epic-18-d6/185/vendor/`) and synchronous GETs. No write was made to any instance.
-- Before the implement spawn, the runner writes the ten proposed spine amendments (Design Notes) and the two corrections at their origin (epics.md :7184 and `epic-18-context.md:33`).
+- **Implement pass 1 (2026-10-02), halted at Task 0 step 9.** Built only Task 0 step 1's plumbing; no tool, descriptor, form or test class exists. The measurements are under Design Notes › Measured at implement; the AD-8 sentence and the AD-15/AD-53 named cases are in the Spec Change Log for the runner.
+- **Evidence.** The handoff measured the four pair combinations in Measured at implement. The stage agent re-measured the deciding row on its own: principal `OCUPROBE185STAGEV` with `%Admin_Operate:U` and `%DB_IRISSYS:RW`, alternate seeded to `ocuprobe185alt/`, `SWITCHDIR` answered 200 `{CurrentFile:"/durable/iris/mgr/journal/20261002.082"}` and journaling stayed in the primary. The cause inside `JRNSWTCH` is not readable (the routine ships without source); the `<PROTECT>` without `%DB_IRISSYS:WRITE` follows from `SwitchDirectory` calling `$$INT^JRNSWTCH` with directory arguments (`irissys/%SYS/Journal/System.cls:105-126`).
+- **Recommended amendment (Rule 5).**
+  - Boundaries › Tools: switch directory's extra pairs become `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE`, each refused by name before any port call.
+  - `JournalPort` faults a `SWITCHDIR` whose answered `CurrentFile` sits in the directory journaling wrote in before, so the vendor's silent 200 never reads as a switch.
+  - With `%Admin_Manage` held, the decision "The switches act on `current`" (Design Notes) may name the other directory on the card. That is the runner's call.
+- **Secondary, for the same ruling.** Step 9 also lists "a task row outlives the port's read". That held for the least-privileged integrity caller, whose finished row it cannot delete. This is the port's documented behavior (`AwaitTask`: `ForgetTask` leaves such a row for `SweepOwnTasks`), so it was recorded, not halted on.
+- **Uncommitted in the tree (the HALT commits nothing):**
+  - `Port/AdminPort.cls`: Execution A's list entries, `CONSOLEDTYPES`, `JOURNALFILETYPES`, `JournalGuard` and a `Snippet` line. `AwaitTask` gained a trailing `pType`, and its call site passes it; that is the only change to existing lines, and the file is not contended.
+  - `Api/Error.cls`: two dispatch lines, add-only, no parameter.
+  - New: `Api/JournalError.cls` (two codes) and `Test/JournalProbe.cls`.
+  - This spec.
+  - Committed alone, `MUTATINGTYPES` names three pairs no tool reaches, so `SurfaceCoverage` and `ToolWrite` may redden (inference, not run).
+- **Throwaway `ocupilot-b-ci`:**
+  - It is compiled at this tree, with no restart.
+  - `Config.Journal` and `Config.config` equal S0, journaling writes in `/durable/iris/mgr/journal/`, and the monitor reads 0. The handoff cleared it with `$SYSTEM.Monitor.Clear()`.
+  - No probe principal, role or database remains, and the async task rows read 337 as at S0.
+  - Kept by design: the journal files the switches created, about 37 in all, four of them with `iris.lck` in `ocuprobe185alt/`.
+  - `messages.log` gained about 140 lines and `alerts.log` 5, from OcuPilot's logged refusals.
