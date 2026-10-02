@@ -1050,14 +1050,16 @@ export class ScreenActionHandler {
    * The one request, and what its answer publishes; `true` when the instance applied it. `values`
    * travels only where the action's tool declares values, and is sent as given (AD-56). It is sent
    * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own; a refusal is
-   * put on the descriptor's own store, which is the page the person acted on.
+   * put on the descriptor's own store, which is the page the person acted on. `scope`, where given,
+   * is the namespace the request carries whatever the shell is scoped to when it is sent.
    */
   private async send(
     descriptor: string,
     actionId: string,
     target: string,
     values?: ActionValues,
-    sink: ActionSink | null = null
+    sink: ActionSink | null = null,
+    scope?: string
   ): Promise<boolean> {
     this.lastRefused = null;
     this.lastOutputValue = null;
@@ -1077,6 +1079,7 @@ export class ScreenActionHandler {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
+        ...(scope === undefined ? {} : { scope }),
       }
     );
     this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
@@ -1127,10 +1130,11 @@ export class ScreenActionHandler {
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
    * makes. `sink`, where given, takes the refusal sentence in place of the screen's own store: a
    * dialog that shows the refusal itself keeps it off the list's banner, and the Check integrity
-   * flow (Story 18.4) keeps it in its own store.
+   * flow (Story 18.4) keeps it in its own store. `scope`, where given, pins the request to that
+   * namespace, so a sequence of sends stays where it started when the shell's namespace changes.
    */
-  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink): Promise<boolean> {
-    return this.send(descriptor, actionId, target, values, sink ?? null);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink, scope?: string): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values, sink ?? null, scope);
   }
 
   private lastContinues = false;

@@ -56,6 +56,8 @@ function echoFor(screen: ScreenDeclaration, path: string): Record<string, string
 interface ActionCall {
   readonly path: string;
   readonly body: { readonly action: string; readonly id: string; readonly values?: Record<string, string> };
+  /** The namespace the request was pinned to, or `undefined` where it follows the shell's. */
+  readonly scope: string | null | undefined;
   answer(result: JsonResult<unknown>): void;
 }
 
@@ -68,11 +70,12 @@ async function mount(
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const calls: ActionCall[] = [];
+  let namespace = 'HSCUSTOM';
   const api = {
-    requestJson: async <T,>(path: string, init?: RequestInit): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path: string, init?: RequestInit & { scope?: string | null }): Promise<JsonResult<T>> => {
       if (init?.method === 'POST') {
         return new Promise<JsonResult<T>>((resolve) => {
-          calls.push({ path, body: JSON.parse(String(init.body)), answer: (result) => resolve(result as JsonResult<T>) });
+          calls.push({ path, body: JSON.parse(String(init.body)), scope: init.scope, answer: (result) => resolve(result as JsonResult<T>) });
         });
       }
       paths.push(path);
@@ -100,7 +103,7 @@ async function mount(
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
-        useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
+        useValue: { loaded: () => true, namespace: () => namespace, subscribe: () => () => {} } as unknown as ScopeService,
       },
       { provide: ActivatedRoute, useValue: { paramMap: new BehaviorSubject(convertToParamMap({})) } as unknown as ActivatedRoute },
       ...(arrivals === null ? [] : [{ provide: ScreenArrivals, useValue: arrivals }]),
@@ -119,6 +122,10 @@ async function mount(
     paths,
     calls,
     refresh,
+    /** Switch the shell's namespace, as the namespace selector does. */
+    switchNamespace: (next: string) => {
+      namespace = next;
+    },
     store: stores.for(screen.descriptor, screen.refreshRates),
     actions: TestBed.inject(ScreenActions),
     field: (param: string) => host.querySelector(`input[data-ocu-criterion="${param}"]`) as HTMLInputElement,
@@ -300,6 +307,27 @@ describe('System Explorer compile and delete (Story 19.2)', () => {
     expect(calls).toHaveLength(1);
     expect(pane(host)).toBe('Compiling routine A.mac');
     expect(status(host)).toBe('Stopped after 1 of 3 documents.');
+  });
+
+  it('AC1: a compile sequence sends every request to the namespace it started in when the shell switches namespace mid-run', async () => {
+    // Mutation (Rule 19): drop `scope` from the `sendFor` in `onCompile` -> the requests follow the shell and this goes red.
+    const { fixture, host, calls, store, actions, switchNamespace } = await mount(CLASSES, [row('A.cls'), row('B.cls')]);
+    store.setChecked(['A.cls', 'B.cls']);
+    actions.run(CLASSES.descriptor, COMPILE_ACTION);
+    await settle(fixture);
+    (host.querySelector('[data-explorer-compile-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls).toHaveLength(1);
+    switchNamespace('USER');
+    calls[0].answer(compiled('A.cls', ['Compiling class A']));
+    await settle(fixture);
+    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => [call.body.id, call.scope])).toEqual([
+      ['A.cls', 'HSCUSTOM'],
+      ['B.cls', 'HSCUSTOM'],
+    ]);
+    calls[1].answer(compiled('B.cls', ['Compiling class B']));
+    await settle(fixture);
   });
 
   it("AC1: a refused document is its own line in the pane, in the instance's words, and the sequence goes on", async () => {

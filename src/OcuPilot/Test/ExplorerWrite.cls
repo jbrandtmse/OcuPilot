@@ -4,7 +4,8 @@
 /// read back gone, a delete one of whose documents another process holds read back present, a
 /// persistent class's data kept by its delete, a missing document refused by name -- the agent's
 /// compile and delete through mint and confirm, an oversized or missing set refused at the mint, the
-/// delete refused by governance at the baseline and confirmed once its key is enabled, the console
+/// delete refused by governance at the baseline and confirmed once its key is enabled, refused once its
+/// document is edited after the mint, the console
 /// kept off the proposal the model reads, and OcuPilot's own documents refused on both callers.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and
 /// serving over HTTP as <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code>
@@ -239,14 +240,17 @@ Method TestTheAgentCompilesThroughConfirm()
     Set tLines = $Select($IsObject(tResult.%Get("output")): tResult.output.lines.%ToJSON(), 1: "")
     Do $$$AssertTrue((tLines [ "qualifiers 'cuk'") && (tLines [ "OcuProbe192.Alpha") && (tLines [ "OcuProbe192.Beta"), "and the confirm answers the console of one compile of both: " _ tLines)
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Alpha") && $ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Beta"), "both are compiled")
-    Set tStored = ..StoredText(tProposal.proposalId)
+    Set tStored = ..StoredText(tProposal.proposalId, .tLedgerRows)
+    Do $$$AssertTrue(tLedgerRows > 0, "the turn's ledger rows are read: " _ tLedgerRows)
     Do $$$AssertTrue((tStored [ "OcuProbe192.Alpha.cls") && (tStored '[ "Compilation") && (tStored '[ "Compiling"), "and the stored proposal and its turn's ledger rows hold no console line: " _ $Extract(tStored, 1, 400))
 }
 
 /// <p>Everything OcuPilot stored for proposal <var>pProposalId</var> -- its row and its turn's ledger
-/// rows -- as one text.</p>
-ClassMethod StoredText(pProposalId As %String) As %String
+/// rows -- as one text. <var>pLedgerRows</var> is how many ledger rows were read, 0 when the read
+/// failed.</p>
+ClassMethod StoredText(pProposalId As %String, Output pLedgerRows As %Integer) As %String
 {
+    Set pLedgerRows = 0
     Set tText = ""
     Do ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(pProposalId, .tFound, .tValues)
     Set tKey = ""
@@ -255,8 +259,10 @@ ClassMethod StoredText(pProposalId As %String) As %String
         If tKey = "" Quit
         Set tText = tText _ " " _ tValue
     }
-    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedIdsForWindow($Username, "", $Get(tValues("turnKey")), 100, .tIds, .tProblem)
-    For tI = 1:1:+$Get(tIds) {
+    Set tSC = ##class(OcuPilot.Kernel.State.Ledger).GuardedIdsForWindow($Username, "", $Get(tValues("turnKey")), 100, .tIds, .tProblem)
+    If $$$ISERR(tSC) Quit tText
+    Set pLedgerRows = +$Get(tIds)
+    For tI = 1:1:pLedgerRows {
         Kill tRow
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedRow(tIds(tI), .tRow)
         Set tKey = ""
@@ -294,6 +300,30 @@ Method TestTheAgentsDeleteIsGovernedAndThenConfirmed()
     If '$IsObject($Get(tResult)) Quit
     Do $$$AssertEquals(tResult.action _ " " _ tResult.readBack.verdict _ " " _ tResult.output.documents.%Get(0).deleted, "deleted notFound 1", "the document is deleted and reads back not found")
     Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe192.Alpha.cls"), "it is gone")
+}
+
+/// <p>AC2 (AD-6): a document edited after the agent's delete was minted refuses the confirm 409 as a
+/// changed target and is not deleted, because the delete's fingerprint covers each document's modified
+/// time.</p>
+/// <p>Mutation (Rule 19): drop <code>Modified</code> from
+/// <parameter>OcuPilot.Screen.Tool.ExplorerDelete.FINGERPRINTSUBJECT</parameter> -- the confirm deletes the
+/// edited class and this goes red.</p>
+Method TestAnEditAfterTheMintRefusesTheDelete()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, "OcuProbe192.Alpha"), "a probe class is saved")
+    Kill tSettings
+    Set tSettings(..#DELETEKEY) = "enabled"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings), "the delete key is enabled through its stored setting")
+    Set tSC = ..MintFor(..#DELETETOOL, ..#PROBENAMESPACE, "OcuProbe192.Alpha.cls", {}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the delete is minted: " _ ..Json($Get(tFault)))
+    If '$IsObject($Get(tProposal)) Quit
+    ; Apart by more than a second, so the edit's modified time differs from the mint's whatever the
+    ; timestamp's precision.
+    Hang 1.1
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, "OcuProbe192.Alpha", 1), "the class is edited after the mint")
+    Set tSC = ..ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tConfirmHttp, .tCode)
+    Do $$$AssertEquals(tConfirmHttp _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the confirm is refused as a changed target")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#PROBENAMESPACE, "OcuProbe192.Alpha.cls"), "and the edited class is not deleted")
 }
 
 /// <p>AC7: OcuPilot's own documents are refused <code>PROHIBITED.OCUPILOTCODE</code> on both callers,

@@ -8,7 +8,8 @@
 Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 {
 
-/// <p>The lines some story's criteria ship disabled, in name order, comma-separated.</p>
+/// <p>The lines some story's criteria ship disabled, in the baseline's own line order,
+/// comma-separated.</p>
 Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is

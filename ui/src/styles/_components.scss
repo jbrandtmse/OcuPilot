@@ -7484,6 +7484,13 @@ app-log-hub-page {
   margin: 0 0 var(--ocu-space-2);
 }
 
+// A confirmed compile's console lines on the proposal card, held to the page pane's height and
+// scrolled from the keyboard inside their focusable block.
+.ocu-proposal-card-output .ocu-code-block-pre {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
 .ocu-explorer-compile-flag {
   display: flex;
   margin-block-end: var(--ocu-space-2);

@@ -384,19 +384,23 @@ export class CodeListPage {
     this.compiling.set([]);
   }
 
-  /** One `compile` per document, in list order, with the dialog's three flags. */
+  /**
+   * One `compile` per document, in list order, with the dialog's three flags, each sent to the
+   * namespace the sequence started in.
+   */
   protected async onCompile(choice: CompileChoice): Promise<void> {
     const names = this.compiling();
     this.compiling.set([]);
     const screen = this.list?.screen;
     if (screen === undefined || names.length === 0) return;
+    const scope = this.scope.namespace();
     const values = {
       KeepSource: String(choice.KeepSource),
       CompileDependents: String(choice.CompileDependents),
       SkipUpToDate: String(choice.SkipUpToDate),
     };
     await this.write.runCompile(names, async (name) => {
-      const applied = await this.handler.sendFor(screen.descriptor, COMPILE_ACTION, name, values, PANE_SINK);
+      const applied = await this.handler.sendFor(screen.descriptor, COMPILE_ACTION, name, values, PANE_SINK, scope);
       const output = compileLinesOf(this.handler.lastOutput());
       const reason = this.handler.lastRefusal()?.reason || STRINGS.connectivityRequestRefused;
       return { applied, lines: output.lines, errors: output.errors, reason };

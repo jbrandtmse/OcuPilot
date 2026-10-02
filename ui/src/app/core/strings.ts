@@ -4268,9 +4268,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot, and a persistent class\'s stored data is kept.',
   /** EXPERIENCE.md:589 */
-  explorerClassListEmptyAgent: 'compile or delete classes',
+  explorerClassListEmptyAgent: 'compile classes',
   /** EXPERIENCE.md:589 */
-  explorerRoutineListEmptyAgent: 'compile or delete routines',
+  explorerRoutineListEmptyAgent: 'compile routines',
   /** EXPERIENCE.md:589 */
   explorerViewerObjectOnly: 'This instance holds only this routine\'s object code, so it has no source to show.',
   /** EXPERIENCE.md:590 */

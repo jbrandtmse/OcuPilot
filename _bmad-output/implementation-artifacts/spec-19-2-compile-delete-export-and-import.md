@@ -285,6 +285,44 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
 - **AC8 (DW-1922).** Given `EnsJob.mac` in HSCUSTOM, when its viewer opens, then it states that only object code is installed, and does not show the empty state for a missing document.
 - **AC9.** Given the registry after this story, when `ExplorerDescriptor` enumerates `explorer.*`, then it finds four reads and four writes, the delete keys disabled, and the structural walk adds no `structural-baseline.json` entry.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 40 rows, 12 entries (high 0, med 3, low 9), 19 rejected.
+
+- [x] [Review][Patch] med, fix-risk low (pin the scope at the sequence's start), in-story: a screen compile sequence followed the shell's namespace, so a namespace switch mid-run compiled the remaining names in the new namespace [ui/src/app/areas/system-explorer/code-list.page.ts:391]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: the deletes' fingerprint subject (`Modified`) and every write's precondition were pinned by no test [src/OcuPilot/Test/ExplorerWrite.cls:311]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: AC3's "no console line on the ledger" check never asserted that a ledger row was read [src/OcuPilot/Test/ExplorerWrite.cls:251]
+- [x] [Review][Patch] low, fix-risk low, in-story: the lists' empty-state invitation offered delete, which the baseline disables (EXPERIENCE.md: "a write it could propose here") [ui/src/app/core/strings.ts:4271]
+- [x] [Review][Patch] low, fix-risk low, in-story: the card's console block had no height cap, unlike the page's pane [ui/src/styles/_components.scss:7489]
+- [x] [Review][Patch] low, fix-risk low, in-story: `AtelierError.Codes()` and `ReasonFor()` had no caller and no test, and are removed [src/OcuPilot/Api/AtelierError.cls:51]
+- [x] [Review][Patch] low, fix-risk low, in-story: `GovernanceBaseline.DISABLED` claimed name order; the test compares the baseline's line order [src/OcuPilot/Test/GovernanceBaseline.cls:13]
+- [x] [Review][Defer] low, fix-risk med, in-story: at confirm the tools' routines-WRITE pair is resolved for the confirm request's `?ns=`, not the proposal's namespace; the port re-gates the right namespace before any write [src/OcuPilot/Screen/Tool/ExplorerWrite.cls:102] — deferred: DW-1930 wontfix-accepted (spec-prescribed `Scope.Current()`; kernel or client change)
+- [x] [Review][Defer] low, fix-risk med, out-of-footprint: a document-set change sentence reads "A.cls,B.cls was deleted" and marks no row [ui/src/app/core/toasts.ts:103] — deferred: DW-1931 wontfix-accepted (shared sentence builder; the process-set precedent reads the same)
+- [x] [Review][Defer] low, fix-risk low, in-story: the Routines list's delete warning keeps the class-data sentence [ui/src/app/core/strings.ts:4267] — deferred: DW-1932 wontfix-accepted (irrelevant, not false; new copy)
+- [x] [Review][Defer] low, fix-risk med, in-story: a `DeleteDocs` envelope error after some deletions (a source-control `UserAction` error, `GetDbForDoc` failing mid-set) is answered as a fault [src/OcuPilot/Port/AtelierPort.cls:872] — deferred: DW-1933 wontfix-theoretical
+- [x] [Review][Defer] low, fix-risk med, in-story: every write reads `DOCS` over the whole category twice (three times for a delete), about 0.35 s each on HSCUSTOM classes, under the same capture ceiling as the list [src/OcuPilot/Port/AtelierPort.cls:733] — deferred: DW-1934 wontfix-accepted
+
+Rejected:
+
+- `false`: a compile's `<PROTECT>` becomes output rather than 403. The amended AD-61 rule 6 carves out "inside a compile's output and a delete's per-item results", and `DeleteReason` treats a per-item `<PROTECT>` the same way. A capture failure parses no envelope and stays `INTERNAL`.
+- `false`: a compile writes a mapped database without a gated WRITE. IRIS enforces database permissions in process, and the measured answers are #302 and #5883 (M7).
+- `false`: AC2's re-fetch and AC9's walk lack `mutation:` lines. Rule 19 asks for one per AC, and both ACs have recorded mutations.
+- `false`: `MultiSelectCorpus`'s base no longer mirrors `ProcessList`. The base is a synthetic validation subject, and an empty `extraActions` is valid.
+- `low`, spec-bound: a compile with errors is announced `updated`. AD-14 publishes every applied write, and the pane and card show the errors.
+- `low`, spec-bound: the Routines dialog shows the class-only "dependents" flag. The spec gives both lists' tools the same three booleans.
+- `low`, spec-bound: the set's delete dialog reads "Delete 2". The spec confirms a set by its typed count.
+- `low`, spec-bound: the agent's delete card shows no per-document lines. The spec renders `output.lines` only.
+- `low`, spec-bound: compile ships non-destructive and enabled, and an `.inc` compile reports success. Both follow AD-22's baseline and T0.4.
+- `low`, spec-bound: overlapping sets take different AD-34 locks. AD-13 keys the lock on the canonical set, as the process and database sets do.
+- `low`: deleting a mapped document carries no warning. The classic page deletes the same way (inference).
+- `low`: the 100 limit is written in several places. A mismatch is unlikely, and the fix adds a cross-check.
+- `low`: Compile and Delete stay pressable while a write runs. The status line and Stop show the run.
+- `low`: a refused delete clears the pane. Its refusal is the list's banner.
+- `low`: `lastOutput` is shared handler state. It follows the shipped `continued()` pattern and needs two screens' sends in one microtask window.
+- `low`: `ClassicPageGate.OWNPAIRS` names `%DB_HSCUSTOM`. CI and throwaways install in HSCUSTOM.
+- Not a finding: AD-15/AD-53's no-audit case lands at ship.
+- Rejected because the fix edits the spec: the `OcuPilotProbe192` package lies outside the probe-package line.
+
 ## Spec Change Log
 
 - 2026-10-02, spec gate (orchestrator, by=merge_gate): split approved. This story is Part A (AC1-AC3, AC6-AC9); Part B (AC4, AC5, the `[B]` items and `(19.13)` rows) is Story 19.13. The `Prohibited.cls` edits approved with disjoint hunks. The lead applied amendments 1-5 and 7-10 for Part A to the spine; amendment 6's wording follows T0.5 and lands at ship.
@@ -443,6 +481,9 @@ Record one `mutation: <change> → <test that reddened>` line per AC here as eac
 - mutation: AC2 (agent), `explorer.classes.delete` true in `Baseline.cls` → `ExplorerWrite.TestTheAgentsDeleteIsGovernedAndThenConfirmed` (run 944).
 - mutation: AC3, the `[output]` binding dropped from `panel.ts` → `panel.spec.ts` "Story 19.2 AC3: a confirmed card carries the console lines…".
 - mutation: matrix "Document gone" (mint), the absent check skipped in `ExplorerMint.Mint` → `ExplorerWrite.TestTheMintRefusesAnOversizedOrMissingSet` (run 934).
+- mutation: AC1, `scope` dropped from the `sendFor` in `code-list.page.ts` `onCompile` → `code-list.page.spec.ts` "AC1: a compile sequence sends every request to the namespace it started in…".
+- mutation: AC2, `ExplorerDelete`'s `FINGERPRINTSUBJECT` and `PRECONDITIONFIELD` moved from `Modified` to `Present` → `ExplorerWrite.TestAnEditAfterTheMintRefusesTheDelete` (run 1358) and `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndFourWrites` (run 1359).
+- mutation: AC3, `ExplorerWrite.StoredText`'s ledger read pointed at a turn with no rows → `ExplorerWrite.TestTheAgentCompilesThroughConfirm` (run 1360).
 
 ## Auto Run Result
 

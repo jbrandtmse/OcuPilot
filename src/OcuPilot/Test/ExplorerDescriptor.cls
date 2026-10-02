@@ -104,7 +104,8 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 }
 
 /// <p>Story 19.2 AC9: the area's tools are its four reads and four writes, the lists' compile and
-/// delete, each over the source code API port with its own request type; the compile keys are
+/// delete, each over the source code API port with its own request type, fingerprint subject and
+/// precondition -- a delete covers each document's modified time; the compile keys are
 /// enabled and the delete keys disabled at the baseline; and the two lists declare compile and
 /// delete as row actions acting on the checked rows, at most one hundred, while the viewers declare
 /// none.</p>
@@ -121,10 +122,10 @@ Method TestTheAreaHoldsFourReadsAndFourWrites()
         If $Extract(tTool.name, 1, 9) = "explorer." Set tExplorer = tExplorer _ $Select(tExplorer = "": "", 1: ",") _ tTool.name _ ":" _ tTool.kind
         If (tTool.kind '= "write") || (tTool.class = "") || ($Extract($Parameter(tTool.class, "DESCRIPTORCLASS"), 1, 35) '= "OcuPilot.Screen.Descriptor.Explorer") Continue
         Set tClass = tTool.class
-        Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive")
+        Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
     Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.read:read", "the area's tools are four reads and four writes")
-    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1", "each write names its list, the source code API port, its endpoint and type, and the deletes are destructive")
+    Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
     If $$$ISERR(tSC) Quit

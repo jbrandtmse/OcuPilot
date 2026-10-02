@@ -48,21 +48,4 @@ Parameter DELETEABSENT = "This namespace no longer holds this document.";
 /// <p>A deleted document's per-document reason for any other refusal.</p>
 Parameter DELETEFAILED = "The source code API could not delete this document.";
 
-/// <p>Every <code>EXPLORER.*</code> code, as a <class>%List</class>.</p>
-ClassMethod Codes() As %List
-{
-    Quit $ListBuild(..#DOCUMENTABSENT, ..#IMPORTUNREADABLE, ..#IMPORTCHANGED, ..#IMPORTTOOLARGE)
-}
-
-/// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not
-/// declare.</p>
-ClassMethod ReasonFor(pCode As %String) As %String
-{
-    If pCode = ..#DOCUMENTABSENT Quit ..#REASONDOCUMENTABSENT
-    If pCode = ..#IMPORTUNREADABLE Quit ..#REASONIMPORTUNREADABLE
-    If pCode = ..#IMPORTCHANGED Quit ..#REASONIMPORTCHANGED
-    If pCode = ..#IMPORTTOOLARGE Quit ..#REASONIMPORTTOOLARGE
-    Quit ""
-}
-
 }
