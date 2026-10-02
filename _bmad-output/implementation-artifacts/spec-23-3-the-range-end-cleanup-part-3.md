@@ -2,10 +2,10 @@
 title: 'Story 23.3: The range-end cleanup, part 3'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '66f2e7162232257c1afaa55fc5891874cb87841c'
-baseline_commit: '66f2e7162232257c1afaa55fc5891874cb87841c'
+baseline_revision: '29baebbe838e29e1f2026b185dee9d1acd231097'
+baseline_commit: '29baebbe838e29e1f2026b185dee9d1acd231097'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -277,7 +277,7 @@ deferred:
 
 ### Batch d: security (DW-1782, then DW-1881, then DW-1307)
 
-- [ ] **DW-1782** — `Step.Target` stores `TargetOf(input)` raw. A declared secret the model sends as `id` therefore reaches the poll, the transcript copy and the card. The ledger row is already marked.
+- [x] **DW-1782** — `Step.Target` stores `TargetOf(input)` raw. A declared secret the model sends as `id` therefore reaches the poll, the transcript copy and the card. The ledger row is already marked.
   - **Red first:** a new `Test/TurnConversation.cls` method next to `:242`.
     - The scripted model sends `permissions_users_password` twice: once with `{"id": V, "Password": V}`, and once with `{"id": <an account>, "Password": V2}`.
     - Assert that step 1's target in the poll view is `[redacted]` and the view's JSON lacks V.
@@ -290,7 +290,7 @@ deferred:
     - `agent-ledger.browser-spec.mjs` already sends this call (`:163`). After the reply, assert the card label reads `permissions.users.password [redacted]` and the panel's text lacks the secret.
   - Files: `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Test/TurnConversation.cls`, `ui/browser/agent-ledger.browser-spec.mjs`. ADs: AD-35, AD-33, AD-41, AD-46, AD-3, Conventions › Secrets.
   - AC: Given the model sends a declared secret's value as a tool call's `id`, when the turn runs, then the step's target reads `[redacted]` in the poll, the stored transcript and the panel's card, and the value appears in none of them.
-- [ ] **DW-1881** — The service arm splits entries on `|` only and judges roles by name.
+- [x] **DW-1881** — The service arm splits entries on `|` only and judges roles by name.
   - **Red first:** a direct table of `GrantsPrivilegeByEffect("service", …)` rows in `Test/ServiceUpdate.cls`. The rows are the matrix's: `%Manager` and `%Operator` with `|` (1), kernel-level `10.0.0.9:%All` (1), the held classic entry (0), `%Developer` (0), and `["10.0.0.6:%All","10.0.0.7"]` against held `10.0.0.6:%All` (0).
   - **Fix:**
     - Move the spelling rule into the kernel as `Prohibited.EntryParts`, and have `ServiceRules.EntryParts` delegate to it. Prohibited names no Area class.
@@ -299,13 +299,14 @@ deferred:
     - `Test/ServiceEdit.cls:165`'s control role `%Operator` becomes `%Developer`.
   - Files: `Kernel/Proposal/Prohibited.cls`, `Area/Permissions/ServiceRules.cls`, `Test/ServiceUpdate.cls`, `Test/ServiceEdit.cls`. ADs: AD-10, AD-8, AD-53, AD-16.
   - AC: Given an agent proposal that gives a service address `%Manager` in the `|` spelling, or `%All` in the classic `address:roles` spelling, when it is minted, then it takes the destructive treatment with the privileged consequence (`Mint.CONSEQUENCEPRIVILEGED`). A role the target already gives that address, in either spelling, is not counted as added.
-- [ ] **DW-1307** — The class header and Story 5.4's AC5 promise a log sweep. `TestNoKeyReachesTheLedger` sweeps no log.
+- [x] **DW-1307** — The class header and Story 5.4's AC5 promise a log sweep. `TestNoKeyReachesTheLedger` sweeps no log.
   - **Fix:**
     - For each outcome, take `SslSinks.LogOffset()` before `Drive`.
     - After the writes, assert `SslSinks.Flush(tOffset)`, then assert `LogSince(tOffset)` lacks `CANARYMARK`.
     - Header line 4 becomes: "and the console log (`messages.log`) lines written over each turn are swept for it."
   - Files: `Test/TurnSecretResidue.cls`. ADs: AD-35, Conventions › Secrets.
   - AC: Given a completed turn and a failed turn, when the sweep runs, then the `messages.log` lines written over each turn hold no canary. A change that logs the key reddens the sweep.
+- [x] **DW-1907** — `scripts/ci-throwaway.sh:264` says the 404 class "reads the alert state"; since batch b it reads `messages.log`. That one comment line is replaced in place (Epic 19's edits to the file, at `:286` and `:404`, are committed and disjoint).
 
 ### Review Findings (batch a)
 
@@ -467,6 +468,28 @@ Rejected:
   - `[medium]` `[patch]` The set-aside's propagated refusal and `GovernanceFixture.Restore`'s stored-policy branch run in no CI test. — AgentAside's fourth test and the new `GovernanceRestore`; mutations 1696 and 1698 (Verification › Batch c).
   - `[low]` `[reject]` The frontmatter AC3 entry, DW-1759's "29", DW-434's "vacuous" and the turnprobe Named-for-filing line need correcting at origin. — Each edits the spec; left to the lead with DW-1917's file name, which a `by=cr` trailer corrects.
 
+### 2026-10-01 — Review pass (batch d)
+
+- verdicts: 17 findings — high 0, medium 4, low 4, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The stop and reply-budget step writes are untested with a secret sent as the `id`; a revert at either `Loop.cls` site stays green. — New `LedgerStep.TestEachPreDispatchStepWriteMarksASecretSentAsTheId` drives the three pre-dispatch writes; each site's revert reddens its own leg (runs 1730, 1731).
+  - `[medium]` `[patch]` (same root cause as row 1) The running step's target, and the target a failed dispatch keeps, are never observed. — Same test, through `LedgerRunningProbe`; reverting `tRunningTarget` reddens that leg (1732).
+  - `[low]` `[patch]` `Dispatch.ResolveClientCall`'s doc says its `pTarget` is set as `AnswerOne` sets it. — The doc now says it is `TargetOf`'s raw answer; its one caller discards it.
+  - `[false]` `[reject]` The AD-33 amendment is not in the diff. — Design Notes › Lead edits: the lead writes it with the commit; implement passes do not edit the spine.
+  - `[medium]` `[patch]` (same root cause as row 1) A single `Loop.cls` site going back to `TargetOf` would redden nothing. — Same fix as row 1.
+  - `[medium]` `[patch]` (same root cause as row 1) A mid-turn poll's running target is never asserted. — Same fix as row 2.
+  - `[false]` `[reject]` The card after a reload is covered at the API only. — A reopened card renders the transcript's step, which `TurnConversation` asserts lacks V.
+  - `[low]` `[reject]` Client-fulfilled ledger rows get the step target, not `TargetOf`'s. — Spec-bound (`:569` takes `tRunningTarget`); the row stores the mark either way, and the one shipped client tool, `Navigate`, declares no secret.
+  - `[false]` `[reject]` `%Manager`, `%Operator` and the classic spelling are destructive at the mint only by composition. — `Mint.cls:320` asks `GrantsPrivilegeByEffect` for the service type; the existing mint test pins that call, the new table each role and spelling.
+  - `[false]` `[reject]` The editor's consequence line is not exercised for `%Manager` and `%Operator`. — The page renders the server's role flag (`service-editor.store.ts:295,565`); ServiceEdit pins both marked (mutation 1726).
+  - `[false]` `[reject]` The editor's fail-closed path is not exercised. — `RoleOptions` asks the same predicate, which answers 1 on a failed read and never an error; the armed row pins it on the service arm (1725).
+  - `[false]` `[reject]` An entry with a third `|` segment is read differently on the payload side. — `EntryShaped` refuses more than one `|` at the mint (`ServiceRules.cls:264`), so no such entry is added; `Canonical` already read it this way.
+  - `[false]` `[reject]` DW-1307 sweeps `messages.log` only. — The AC names it; `alerts.log` copies its severity 2+ lines, and `ProviderSecret` covers the logs under forced failures.
+  - `[false]` `[reject]` DW-1907 is outside the twelve. — Owned by this story since batch b's review, and added to batch d by the lead's dispatch.
+  - `[low]` `[reject]` The new method and `agent-ledger` raise the alert state on every run. — The input is the spec's (V as `id` and `Password`); `agent-ledger` sent it before this story; named for filing; the throwaway reads 0 at the end.
+  - `[low]` `[reject]` No read-back is recorded for the removed `agent-ledger` rows, and the mutation's canary lines stay in `messages.log`. — The fix edits this spec; the canary is fabricated, and a log line cannot be removed.
+  - `[false]` `[reject]` The full sweep's result and the Auto Run Result are missing. — Finalize writes both, after the sweep.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
@@ -524,6 +547,7 @@ No AC contradicts an AD.
 - `data-table-columns` and `data-table` fail without the table harness `pretest:browser` builds; a bare `node --test` over the specs skips it. An invocation gap, not a product or isolation defect.
 - `turnprobe-spec.mjs`'s `nextTag` restarts per process, so a spec whose last provider call lands after its own forget leaves a call record its next run on that container inherits; fixed in `proposal-demo` only (DW-1916).
 - `preferences-reset.mjs:119`'s `resetGovernancePolicy` (run by `resetRememberedState`) leaves an empty-preset policy row where it found none; removed after the DW-1204 run (DW-1917).
+- A call carrying a declared secret's value under another argument makes `Ledger.RedactArguments` withhold the arguments and log it at error severity wherever they are recorded (the running step, the finished step, the ledger row), which the instance counts toward its alert state: `TurnConversation`'s DW-1782 method and `agent-ledger` do so on each run (`messages.log` on `ocupilot-b-ci`, 2026-10-02 04:21 to 04:27 UTC).
 
 ## Verification
 
@@ -603,12 +627,23 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 **Batch d (loop):**
 
 - Classes `TurnConversation`, `ServiceUpdate`, `ServiceEdit`, `TurnSecretResidue`, `Prohibited`, `LedgerSearch`. Specs `agent-ledger` and `service-editor`. If the latter reddens on `%Operator` now being marked privileged, switch its role to `%Developer`.
+  - Observed after the fixes: TurnConversation 10/10 (runs 1708, 1718), ServiceUpdate 14/14 (1710, 1719), ServiceEdit 10/10 with `%Developer` as its control role (1711, 1722), TurnSecretResidue 2/2 (1717), Prohibited 13/13 (1720), LedgerSearch 10/10 (1721). `agent-ledger` 2/2 and `service-editor` 5/5; the latter's AC3 asserts no consequence line, so it keeps `%Operator`. Bundle rebuilt and redeployed: 2.42 MB initial.
 - The new DW-1782 method and the new DW-1881 rows go red before their fixes.
+  - Observed: TurnConversation's method red on the target, the poll, the transcript and the step columns, each carrying V, with the second call's target kept (run 1706). ServiceUpdate's table red on the `%Manager`, `%Operator`, classic `10.0.0.9:%All` and held-classic rows, the two `0` controls green (1707).
 - `mutation:` make `StepTarget` answer `TargetOf` alone → the TurnConversation method and agent-ledger's card assertion go red.
+  - Observed: TurnConversation red on the same four assertions (1709); `agent-ledger` AC1 red, the card reading `permissions.users.password <V>`. The ledger row's target stayed `[redacted]`, the ledger deciding from `TargetOf`. The red spec run's turn rows, which its cleanup collects only from the later ledger search, were removed by turn key. Reverted (`shasum` unchanged), Dispatch recompiled with `/subclasses`.
 - `mutation:` revert to `IsPrivilegedRole` → the `%Manager` and `%Operator` rows go red. Parse the held side on `|` only → the held-classic row goes red. Parse the payload side on `|` only → the classic `10.0.0.9:%All` row goes red.
+  - Observed: by name, the `%Manager` and `%Operator` rows alone red (1712); the held side on `|`, the two held-classic rows red (1713); the payload side on `|`, the `10.0.0.9:%All` row alone red (1714). Each reverted (`shasum` unchanged), Prohibited recompiled with `/subclasses`.
+  - Matrix audit, by the stage: ServiceUpdate's table gains a row with `ProhibitedFixture`'s role read armed (a role whose read fails counts as privileged), and ServiceEdit's role marks assert `%Manager` and `%Operator` privileged. Green: ServiceUpdate 14/14 (1723, 1727), ServiceEdit 10/10 (1724, 1728). `mutation:` judge by name again → ServiceUpdate red on the `%Manager`, `%Operator` and armed rows (1725), and ServiceEdit red on the role marks (1726). Reverted (`shasum` and `git diff --stat` unchanged), Prohibited recompiled with `/subclasses`.
 - `mutation:` insert `Do ..LogRaw("residue probe", $$$ERROR($$$GeneralError, ..ApiKey))` after the key-shape gate in `Kernel/Provider/Base.cls` `Invoke` (`:185`), and recompile Base and every descendant → the new log sweep goes red. The unfixed class stays green under the same change, which shows the gap.
+  - Observed: inserted before `Attempts` (`:227`). The unfixed class green under it (1715) while `messages.log` held the canary four times; the fixed class red on both outcomes' log sweep (1716). Reverted, Base and its descendants recompiled: 2/2 (1717).
+- After every revert, `git status --short` and `git diff --stat` read as before the mutation.
+- Review patch: `LedgerStep.TestEachPreDispatchStepWriteMarksASecretSentAsTheId` drives the refused dispatch, the reply-budget refusal and the boundary stop with V as `id` and `Value`; each tool step's target reads the mark and V is in no column. Observed: LedgerStep 5/5 (1729, 1733).
+- `mutation:` set the stop, the budget or the running target from `TargetOf` again, `Loop` recompiled with `/subclasses` → that probe's leg alone red (1730, 1731, 1732). Reverted (`shasum` and `git diff --stat` unchanged), recompiled. `agent-ledger` re-run by the stage: 2/2.
 
 **Full sweep (once, before dev_complete of batch d):** `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci` with no seeded state present. Expected: 0 failed, totals from `%UnitTest_Result`.
+
+- Observed (`/tmp/epic-23-d/full-sweep.log`, runs 1734 to 2132; latest run per class from `%UnitTest_Result`): 399 classes, 3,291 tests, 3,283 passed, 8 failed, all in classes batch d does not touch and each green in feature's CI (run 36947014339), so the cause is this throwaway (inference): AuditCopy 3, AuditPurge 2 and AuditStarted 1 (a copy or purge of the instance's 4.37M audit records outlasts the test's wait: "2060085 against 4373539"); Retention 1 (its precondition found another suite's day-old rows, which a fresh container cannot hold); WireSecurityRead 1 (task history beyond 1,000 rows, "nothing is cut at 1,000", on a 25-hour-old instance).
 
 **Each batch (lead):** push the code commit alone, and wait for CI green on its exact head.
 
@@ -617,17 +652,17 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 Status: done
 Blocking condition: none
 
-**Batch c only (DW-1759, DW-1839, DW-1204, DW-434);** batch d is untouched. Test-only changes; no product code moved.
+**Batch d only (DW-1782, DW-1881, DW-1307), plus DW-1907.** Batches a, b and c are untouched.
 
-- `src/OcuPilot/Test/AgentFixture.cls`: `SetAsideDefinitions` moves every Agent row's `BaseD(id)` and the `NameIdx` and `DefaultIdx` subtrees raw into `^OcuPilotTestAgentAside`, restoring a crashed copy first. `RestoreDefinitions` removes probes, refuses while an Agent row, index node or held id remains, and otherwise merges back and kills the copy.
-- AgentState, AgentWire, StateRead, Restraint, EgressLocal: set aside in `OnBeforeAllTests`, restore in `OnAfterAllTests`. TurnContext, TurnWire: set aside before `MarkedDefault`, restore on the setup error path and last in teardown.
-- `src/OcuPilot/Test/AgentAside.cls` (new, review patch): pins the fixture's round trip, refusal and left-copy recovery on every CI run.
-- DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch: `Governance.cls`'s snapshot, clear, restore and `Matches`. DeviceWire and DeviceWriteGate gain `OnBeforeOneTest`.
-- `ui/browser/proposal-demo.browser-spec.mjs`: `nextTag` forgets each tag before use (the DW-1204 member).
-- `ui/tools/state-conflict.test.mjs` (new): both component specs' `CONFLICT_ENVELOPE_REASON` equal `Error.cls` `REASONSTATECONFLICT`.
+- `src/OcuPilot/Kernel/Agent/Dispatch.cls`: new `StepTarget` answers `TargetOf`, or the redaction mark where `Ledger.CarriesSecretValue` holds. `AnswerOne` sets the step's target with it once the tool resolves; the ledger row still gets the raw target. `ResolveClientCall`'s doc says its target is raw.
+- `src/OcuPilot/Kernel/Agent/Loop.cls`: the stop, reply-budget and running writes take `StepTarget` (the running target also feeds the client call and the failed-dispatch finish); the refused ledger rows keep `TargetOf`.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: new `EntryParts` reads both spellings. `AddressGrantsPrivilege` reads the held and the payload entries with it and judges each added role with `RoleGrantsAdministrativePrivilege`. `IsPrivilegedRole` stays (four other callers).
+- `src/OcuPilot/Area/Permissions/ServiceRules.cls`: `EntryParts` delegates to the kernel.
+- Tests: `TurnConversation` (V as the `id`: poll, transcript, step columns), `ServiceUpdate` (the six-row table and an armed role-read row), `ServiceEdit` (control role `%Developer`; `%Manager` and `%Operator` marked), `TurnSecretResidue` (the `messages.log` sweep and the header sentence), `LedgerStep` (the three pre-dispatch step writes), `ui/browser/agent-ledger.browser-spec.mjs` (the card label and the panel text).
+- `scripts/ci-throwaway.sh:264`: the 404 class's comment names `messages.log` (DW-1907; Epic 19's edits at `:286` and `:404` are committed and disjoint).
 
-**Review:** 13 findings from verification-gap and intent-alignment (blind-hunter and edge-case-hunter are disabled by config). Patched: 4 entries, medium 1 and low 3 (7 findings: the AgentAside class, DW-1839's restore mutation, the state-conflict header, the leftover probe records). Rejected: 6 low (Review Triage Log › batch c). Deferred: none. Follow-up review: false (follow-up pass; no high patched; patched: medium 1, low 3).
+**Review:** 17 findings from verification-gap and intent-alignment (blind-hunter and edge-case-hunter are disabled by config). Patched: 2 entries, medium 1 (four findings: the per-site step-target test) and low 1 (the `ResolveClientCall` doc). Rejected: 12, low 3 and false 9 (Review Triage Log › batch d). Deferred: none. Before review, the stage's matrix audit added the armed row and the `%Manager`/`%Operator` marks. Follow-up review: false (follow-up pass; no high patched; patched: medium 1, low 1).
 
-**Verification:** Verification › Batch c. DW-1759: 25 red with one seed before the fix (runs 1630 to 1636); all seven green clean, with one seed and with two (1642 to 1662), the rows byte-identical. DW-1839: 7 red under the override (1637 to 1641); green clean and under it (1664 to 1673), the override unchanged. DW-1204: `audit` alone 7/7; the 132-file pass (54 min) failed 29 tests in four files; one member, `proposal-demo`, fixed and 3/3 alone (also a stage re-run). DW-434: tools 1,766/1,766, components 2,063/2,063. Ten `mutation:` lines, each red and reverted byte-identical. Stage re-runs: AgentState (1675), DeviceDelete (1676), ToolDispatch (1683), AgentAside (1692). `check-objectscript`, `client-lint` and `lint-docs` clean. Throwaway read-back: 0 agent definitions, 0 policy rows, 850 `OcuPilot.Test` of 1,292 `OcuPilot.*` classes (AgentAside added), monitor state 0 (held 95 s after a second `Clear()`), `$Data(^OcuPilotTestAgentAside)` 0, no Agent index node, the turn-provider global empty.
+**Verification:** Verification › Batch d. Red before the fixes: TurnConversation (1706), ServiceUpdate (1707). Green after: TurnConversation 10/10 (1718), ServiceUpdate 14/14 (1727), ServiceEdit 10/10 (1728), TurnSecretResidue 2/2 (1717), Prohibited 13/13 (1720), LedgerSearch 10/10 (1721), LedgerStep 5/5 (1733); `agent-ledger` 2/2 (and again by the stage), `service-editor` 5/5; bundle 2.42 MB initial. Mutations 1709, 1712 to 1716, 1725, 1726 and 1730 to 1732, each red as recorded and reverted byte-identical. `check-objectscript`, `client-lint`, `browser-reset` and `lint-docs` clean; `test:tools` 1,767/1,767; the diff's secret-shape count 0. Full sweep, runs 1734 to 2132: 399 classes, 3,291 tests, 3,283 passed, 8 failed, all in five untouched classes green in feature's CI, from this throwaway's audit volume and age (Verification › Full sweep). Throwaway read-back: 0 agent definitions, 0 policy rows, 859 `OcuPilot.Test` of 1,307 `OcuPilot.*` classes, monitor state 0 (held 105 s after a second `Clear()`), `$Data(^OcuPilotTestAgentAside)` 0.
 
-**Residual risk:** the seven and five classes meet a definition or an override only on a non-fresh instance; CI exercises the fixture through AgentAside's own seeds. DW-1204's member is the file's own leftover, not the sweep; `about-help-links`, `data-table` and `data-table-columns` failed the pass for reasons named for filing. The batch b frontmatter entry's cause for proposal-demo AC3 (post-sweep audit volume) is superseded by Verification › Batch c.
+**Residual risk:** step and transcript rows written before the fix keep a value sent as an `id` until retention purges them (Named for filing). The AD-33 amendment is the lead's (Design Notes › Lead edits).

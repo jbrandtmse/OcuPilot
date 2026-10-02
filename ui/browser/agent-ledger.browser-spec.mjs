@@ -195,6 +195,13 @@ test('AC1, AC4, Integration: the turn rows are listed on Processes, open in the 
       STRINGS.actionSend,
       reply
     );
+    const panel = await page.evaluate(() => ({
+      labels: [...document.querySelectorAll('app-panel .ocu-tool-call-name')].map((node) => node.textContent.trim()),
+      text: document.querySelector('app-panel')?.innerText ?? '',
+    }));
+    // Mutation (Rule 19): `Dispatch.StepTarget` answers `TargetOf` alone -> the card reads V and this goes red.
+    assert.ok(panel.labels.includes(`permissions.users.password ${REDACTED}`), `the password call's card reads its target as the redaction mark: ${JSON.stringify(panel.labels)}`);
+    assert.equal(panel.text.includes(secret), false, 'V is not in the panel');
 
     await page.goto(`${config.origin}${LEDGER_URL}`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('app-ledger-page #ocu-ledger-route', { timeout: config.navigationTimeoutMs });

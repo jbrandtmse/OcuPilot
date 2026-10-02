@@ -511,11 +511,12 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                 Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tStopWire, .tStopResolved)
                 If $IsObject(tStopResolved) Set tStopName = tStopResolved.%Get("name")
                 Set tStopInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-                Set tStopTarget = $ClassMethod(..DispatchClass(), "TargetOf", tStopInput)
-                Set tStopArgs = $ClassMethod(..DispatchClass(), "StepArguments", tStopInput, ..SecretNamesOf($Get(tStopResolved)), pLimitsClass, .tStopArgsTruncated)
+                Set tStopSecretNames = ..SecretNamesOf($Get(tStopResolved))
+                Set tStopTarget = $ClassMethod(..DispatchClass(), "StepTarget", tStopInput, tStopSecretNames)
+                Set tStopArgs = $ClassMethod(..DispatchClass(), "StepArguments", tStopInput, tStopSecretNames, pLimitsClass, .tStopArgsTruncated)
                 Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tStopName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, tStopTarget, tStopArgs, , , , tStopArgsTruncated)
                 If $$$ISOK(tStopSC) Set pLastSeq = tStopSeq
-                Do ..RecordRefusedRow(pKey, pUser, pRoute, tStopName, tStopTarget, tStopInput, "stopped", tStopCode, pLimitsClass, $Get(tStopResolved))
+                Do ..RecordRefusedRow(pKey, pUser, pRoute, tStopName, $ClassMethod(..DispatchClass(), "TargetOf", tStopInput), tStopInput, "stopped", tStopCode, pLimitsClass, $Get(tStopResolved))
             }
             Quit
         }
@@ -528,8 +529,9 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tName, .tResolvedTool)
             If $IsObject(tResolvedTool) Set tName = tResolvedTool.%Get("name")
             Set tBudgetInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-            Set tBudgetTarget = $ClassMethod(..DispatchClass(), "TargetOf", tBudgetInput)
-            Set tBudgetArgs = $ClassMethod(..DispatchClass(), "StepArguments", tBudgetInput, ..SecretNamesOf($Get(tResolvedTool)), pLimitsClass, .tBudgetArgsTruncated)
+            Set tBudgetSecretNames = ..SecretNamesOf($Get(tResolvedTool))
+            Set tBudgetTarget = $ClassMethod(..DispatchClass(), "StepTarget", tBudgetInput, tBudgetSecretNames)
+            Set tBudgetArgs = $ClassMethod(..DispatchClass(), "StepArguments", tBudgetInput, tBudgetSecretNames, pLimitsClass, .tBudgetArgsTruncated)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -540,7 +542,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tName, "error", tCode, "", tCode, pLimitsClass, .tSeq, .tStored, tBudgetTarget, tBudgetArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), "", tBudgetArgsTruncated)
             If $$$ISERR(tSC) Quit
             Set pLastSeq = tSeq
-            Do ..RecordRefusedRow(pKey, pUser, pRoute, tName, tBudgetTarget, tBudgetInput, "error", tCode, pLimitsClass, $Get(tResolvedTool))
+            Do ..RecordRefusedRow(pKey, pUser, pRoute, tName, $ClassMethod(..DispatchClass(), "TargetOf", tBudgetInput), tBudgetInput, "error", tCode, pLimitsClass, $Get(tResolvedTool))
             Set tEntry = {}
             Do tEntry.%Set("name", tName, "string")
             Do tEntry.%Set("code", tCode, "string")
@@ -555,8 +557,10 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tRunningName, .tRunningResolved)
         If $IsObject(tRunningResolved) Set tRunningName = tRunningResolved.%Get("name")
         Set tRunningInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-        Set tRunningArgs = $ClassMethod(..DispatchClass(), "StepArguments", tRunningInput, ..SecretNamesOf(tRunningResolved), pLimitsClass, .tRunningArgsTruncated)
-        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, , , , tRunningArgsTruncated)
+        Set tRunningSecretNames = ..SecretNamesOf(tRunningResolved)
+        Set tRunningTarget = $ClassMethod(..DispatchClass(), "StepTarget", tRunningInput, tRunningSecretNames)
+        Set tRunningArgs = $ClassMethod(..DispatchClass(), "StepArguments", tRunningInput, tRunningSecretNames, pLimitsClass, .tRunningArgsTruncated)
+        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, tRunningTarget, tRunningArgs, , , , tRunningArgsTruncated)
         If $$$ISERR(tSC) Quit
         Set pLastSeq = tSeq
 
@@ -566,7 +570,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             ; A client-fulfilled call (Story 4.7, AD-11 rule 3): Dispatch validates it and answers
             ; a directive rather than a result; this method announces it, waits for the browser,
             ; and settles the tool step from the outcome.
-            Set tSC = ..AnswerClientCall(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, pLimitsClass, tBlock, tSeq, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, tRunningArgsTruncated, .pLastSeq, .tResult, .tName, .tCode, .pState, .pCode, pRoute)
+            Set tSC = ..AnswerClientCall(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, pLimitsClass, tBlock, tSeq, tRunningTarget, tRunningArgs, tRunningArgsTruncated, .pLastSeq, .tResult, .tName, .tCode, .pState, .pCode, pRoute)
             If $$$ISERR(tSC) Quit
             If pState '= "" Quit
             Set tEntry = {}
@@ -582,7 +586,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames, pContextRowCap, tBudget, .tDetails, pRoute)
             If $$$ISERR(tSC) {
                 Set tUnavailableCode = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
-                Do ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tRunningName, "error", tUnavailableCode, pLimitsClass, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailableCode), "", tRunningArgsTruncated)
+                Do ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tRunningName, "error", tUnavailableCode, pLimitsClass, tRunningTarget, tRunningArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailableCode), "", tRunningArgsTruncated)
                 Quit
             }
             Set tResult = tResults.%Get(0)

@@ -1,7 +1,8 @@
-/// <p>Three seams <class>OcuPilot.Test.Ledger</class> has no room for: the tool step's argument
-/// string, which must run the same two redaction layers a ledger row's does (AD-3), the result
-/// content a finished tool step stores and its bound (AD-33), and the store's answer for a row that
-/// is gone by the time it is read (AD-9, AD-24).</p>
+/// <p>Four seams <class>OcuPilot.Test.Ledger</class> has no room for: the tool step's argument
+/// string, which must run the same two redaction layers a ledger row's does (AD-3), the tool step's
+/// target, which carries the redaction mark where it holds a declared secret's value (AD-33), the
+/// result content a finished tool step stores and its bound (AD-33), and the store's answer for a
+/// row that is gone by the time it is read (AD-9, AD-24).</p>
 /// <p><b>Live-safe.</b> It spawns nothing, creates no principal and touches no registration. Every
 /// turn it reserves names a user starting with
 /// <parameter>OcuPilot.Test.TurnFixture.PROBEPREFIX</parameter>, and
@@ -81,6 +82,49 @@ Method TestAToolStepsPreDispatchArgumentsAreDeclarationRedacted()
     Do $$$AssertEquals(tSteps [ ..#SECRETVALUE, 0, "and carries the declared secret in no column: " _ tSteps)
     Do $$$AssertTrue(tSteps [ "[redacted]", "which reads as redacted instead")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+}
+
+/// <p>The tool step's target where the model sends a declared secret's value as the call's
+/// <code>id</code>, at each write <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> makes
+/// before a call is dispatched: the step a refused dispatch keeps from its pre-dispatch write
+/// (<class>OcuPilot.Test.LedgerRunningProbe</class>), the reply-budget refusal
+/// (<class>OcuPilot.Test.LedgerLoopProbe</class>) and the boundary stop
+/// (<class>OcuPilot.Test.LedgerLoopStopProbe</class>). Each stores the redaction mark as its target
+/// and the value in no column. The dispatched call's own finish is
+/// <class>OcuPilot.Test.TurnConversation</class>'s.</p>
+/// <p>Mutation (Rule 19): set any one of those three targets from
+/// <method>OcuPilot.Kernel.Agent.Dispatch.TargetOf</method> again -- that probe's leg goes red.</p>
+Method TestEachPreDispatchStepWriteMarksASecretSentAsTheId()
+{
+    Set tUser = ..#PROBEUSER
+    For tCase = $ListBuild("OcuPilot.Test.LedgerRunningProbe", ..#LIMITS), $ListBuild("OcuPilot.Test.LedgerLoopProbe", $Parameter("OcuPilot.Test.Ledger", "BUDGET")), $ListBuild("OcuPilot.Test.LedgerLoopStopProbe", ..#LIMITS) {
+        Set tProbe = $List(tCase, 1)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), tProbe _ ": a turn is reserved")
+        If $Get(tKey) = "" Continue
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), tProbe _ ": and begun")
+        Set tBlock = {"id": "toolu_target"}
+        Do tBlock.%Set("name", "probe_ledger_read", "string")
+        Set tInput = {"Name": "probe"}
+        Do tInput.%Set("id", ..#SECRETVALUE, "string")
+        Do tInput.%Set("Value", ..#SECRETVALUE, "string")
+        Do tBlock.%Set("input", tInput)
+        Set tUses = []
+        Do tUses.%Push(tBlock)
+        Set tLog = []
+        Set tMessages = 0
+        Do $ClassMethod(tProbe, "AnswerTools", tKey, tUser, "1", "", tUses, $List(tCase, 2), .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+        Set tTargets = ""
+        If $$$ISOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows)) {
+            Set tIterator = tRows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If tRow.%Get("kind") = "tool" Set tTargets = tTargets _ $ListBuild(tRow.%Get("target"))
+            }
+        }
+        Do $$$AssertEquals($ListToString(tTargets), ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, tProbe _ ": its one tool step's target is the redaction mark")
+        Set tSteps = ##class(OcuPilot.Test.Ledger).StepText(tKey)
+        Do $$$AssertEquals(tSteps [ ..#SECRETVALUE, 0, tProbe _ ": and the value is in no column: " _ tSteps)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+    }
 }
 
 /// <p>A finished tool step stores the result content the model was handed, so the panel's card can

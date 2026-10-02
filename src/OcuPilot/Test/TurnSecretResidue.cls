@@ -1,8 +1,8 @@
 /// <p>AD-35 across a whole turn (Story 5.4, AC5): a canary provider key is driven through a turn
 /// that <b>completes</b> and a turn that <b>fails</b>, and every place the turn left a record --
-/// every ledger column, every transcript step column and the progress record -- is swept for it.
-/// The console log is the sibling's, named below. The in-memory holder is asked directly whether it is empty when the call
-/// returns.</p>
+/// every ledger column, every transcript step column and the progress record -- is swept for it,
+/// and the console log (<code>messages.log</code>) lines written over each turn are swept for it.
+/// The in-memory holder is asked directly whether it is empty when the call returns.</p>
 /// <p><b>The sibling this does not duplicate.</b> <class>OcuPilot.Test.ProviderSecret</class> pins
 /// the key out of the two logs and the envelope under forced failures, from the adapter's own call
 /// stack. What is new here is the turn's own storage: the rows and steps a completed turn and a
@@ -128,10 +128,13 @@ Method TestTheKeyIsDiscardedWhenTheTurnEnds()
 }
 
 /// <p><b>AC5</b> -- no part of the canary reaches any column of any ledger row, any column of any
-/// transcript step, or the progress record, for a turn that completed and a turn that failed.</p>
+/// transcript step, the progress record, or the <code>messages.log</code> lines written over the
+/// turn (<class>OcuPilot.Test.SslSinks</class>), for a turn that completed and a turn that
+/// failed.</p>
 /// <p>Mutation (Rule 19): remove the declared-secret drop from
 /// <method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method> -> the tool row stores the
-/// canary and this goes red.</p>
+/// canary and this goes red. Log the key from <method>OcuPilot.Kernel.Provider.Base.Invoke</method>
+/// after its key-shape gate -> the log sweep goes red.</p>
 Method TestNoKeyReachesTheLedger()
 {
     Set tUser = ..#PROBEUSER
@@ -144,6 +147,7 @@ Method TestNoKeyReachesTheLedger()
 
         Set tHttp = $Select(tOutcome = "completed": 200, 1: 500)
         Set tBody = $Select(tOutcome = "completed": $Parameter("OcuPilot.Test.Provider", "OKBODY"), 1: "{""error"":""probe""}")
+        Set tOffset = ##class(OcuPilot.Test.SslSinks).LogOffset()
         Do $$$AssertStatusOK(..Drive(tHttp, tBody, .tResponse, .tCallHttp, .tFault), tOutcome _ ": the provider call returns")
 
         ; The row the turn writes for that call, through the shipped writer.
@@ -165,6 +169,10 @@ Method TestNoKeyReachesTheLedger()
         Do $$$AssertEquals($Select($IsObject($Get(tProgress)): tProgress.%ToJSON(), 1: "") [ ..#CANARYMARK, 0, tOutcome _ ": and the progress record carries none of it")
 
         Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, $Select(tOutcome = "completed": "completed", 1: "failed"), "", "", "done", 0, ..#LIMITS)
+
+        Do $$$AssertTrue(##class(OcuPilot.Test.SslSinks).Flush(tOffset), tOutcome _ ": messages.log has written every line logged over the turn")
+        Set tLogText = ##class(OcuPilot.Test.SslSinks).LogSince(tOffset)
+        Do $$$AssertEquals(tLogText [ ..#CANARYMARK, 0, tOutcome _ ": and none of those lines carries the key")
     }
 }
 
