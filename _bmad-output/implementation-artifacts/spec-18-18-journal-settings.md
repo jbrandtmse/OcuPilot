@@ -2,7 +2,7 @@
 title: 'Story 18.18: Journal settings'
 type: 'feature'
 created: '2026-10-02'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -38,7 +38,7 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
 - **The tool.** `Screen/Tool/JournalSettingsUpdate.cls`, `osmgmt.journalsettings.update`:
   - A merge write (AD-4) through `JournalPort` (AD-52): `READTYPE` `GET`, `WRITETYPE` `PUT`, `SENDSBODY` 1. The target is the singleton: `IDRULES` `journal-settings:singleton` reads every id as `SYSTEM` (`EntityRef.cls:147`), and the agent's `Name` is described as that literal (`OAuthAuthorizationServerUpdate` keeps the same inherited `Name`).
   - `PERMITTEDFIELDS` `BackupsBeforePurge,DaysBeforePurge,FileSizeLimit,FreezeOnError,JournalFilePrefix,JournalcspSession,PurgeArchived,CompressFiles`. `EXCLUDEDFIELDS` `CurrentDirectory,AlternateDirectory,ArchiveName,wijdir,targwijsz`. `SettableFields` is those eight plus the arguments `primaryRoot`, `primaryPath`, `alternateRoot`, `alternatePath`. A directory is set only through its arguments, so the vendor receives a composed path under its own field and no caller names a path (AD-21's sixth case).
-  - Pairs: `JournalSettings`' three; `%Admin_FileSystemAccess:USE` when a root is sent (`ArgumentPairs`, the `LocalDatabaseUpdate` model); `%DB_IRISSYS:WRITE` only when Task 0 measures a refusal without it. Each is refused by name before any port call. `CLASSICPAGES` is empty: the descriptor's own page performs the save (AD-44).
+  - Pairs: `JournalSettings`' three; `%Admin_FileSystemAccess:USE` when a root is sent (`ArgumentPairs`, the `LocalDatabaseUpdate` model); `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE` (measured; orchestrator merge gate 2026-10-02; AD-8). Each is refused by name before any port call. `CLASSICPAGES` is empty: the descriptor's own page performs the save (AD-44).
   - Governance: `osmgmt.journalsettings.update` joins `Baseline.cls` `true`, because it is an ordinary merge that erases nothing. If the story commits after 2026-10-04, the runner asks the owner first (AD-22).
 - **The body.** The fresh `GET`'s ten settable keys (`CurrentDirectory`, `AlternateDirectory` and the eight above), with the change applied and `ArchiveName`, `wijdir` and `targwijsz` omitted (proposed AD-4 named exception). The merge copies the whole fresh read (`Mint.Merge`), so the tool's `MergeUpdate` drops the three before it merges, and the port drops them again before the `PUT`.
   - An unchanged directory is sent as read, unless Task 0 measures that a `PUT` carrying an unchanged directory starts a journal file. Then an unchanged directory is omitted too, under the same exception.
@@ -191,7 +191,7 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
 
 ## Tasks & Acceptance
 
-**Task 0: the implement stage's first task, before any tool, descriptor or form.** Run it on `ocupilot-b-ci` only; load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
+**Task 0: the implement stage's first task, before any tool, descriptor or form.** **Resumed 2026-10-02 after its step-5 halt, which the orchestrator ruled (Spec Change Log): steps 1-4 are measured (Design Notes › Measured at implement), and step 1's plumbing is parked in `_bmad-output/implementation-artifacts/spec-18-18-task0-plumbing.patch`; `git apply` it first, do not re-run the measurements, and continue at step 6, then the Execution tasks.** Run it on `ocupilot-b-ci` only; load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing.** `Port/AdminPort.cls` `MUTATINGTYPES` gains `Journal.Settings/PUT` with its sentence (add-only; never in `BODYLESSTYPES`), and `Test/PortFixture.cls:21` follows. `JournalPort` gets its `GET` and `PUT` branches (Execution). `Test/JournalProbe.cls` gains `SeedDirectory(suffix)`, which creates `DirectoryFor(suffix)`; every `PUT` below goes through its timed `Run("Journal.Settings", "PUT", , body)`.
 2. **Snapshot S0** with `Snapshot`, and keep `JournalSettings()` for every restore.
@@ -327,6 +327,8 @@ baseline_revision: '79987ecf0e69e3fdcf964539a16d58bf141e4703'
   - EXPERIENCE.md reads 1001 lines.
 
 ## Spec Change Log
+
+- 2026-10-02, orchestrator merge gate on the Task 0 step-5 halt (by=merge_gate, under the owner's standing grant), applied by the runner: the tool and the Save declare `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, each refused by name before any port call (Boundaries pairs; AD-8 written), so OcuPilot never causes the measured half-applied write (stored, no new file); the narrower-than-classic audience follows the 18.15, 18.16 and 18.5 precedent. AD-4's `Journal.Settings` exception is written (omitted keys kept, measured). No AD-15/AD-53 case: every vendor `PUT` is audited. The prefix rule without a dot and `FileSizeLimit` from 0 stand. Evidence: the runner's four-row re-measure, `/tmp/epic-18-d6/1818-remeasure-out.txt`. Status reset to `in-progress`; Task 0 resumes at step 6.
 
 - 2026-10-02, runner at the Task 0 halt (Rule 5 tier 1, and evidence for the orchestrator): the prefix rule drops the dot (`^[A-Za-z0-9_-]{0,64}$`, "Use up to 64 letters, digits, hyphens or underscores."), because the vendor refuses one (#7209 on `Config.Journal:JournalFilePrefix`, confirmed by the stage). `FileSizeLimit`'s lower bound becomes 0 by the spec's own step-10 rule (the vendor stored 0; `Config.Journal` declares `MINVAL = 0, MAXVAL = 4079`). The runner re-measured the changing settings `PUT` (`{FileSizeLimit: 1025}`, through `AdminPort`, `RunAs`, the plumbing patch applied and reverted) on `ocupilot-b-ci`: Journal settings' three pairs, 500 `<PROTECT>%SaveData+26^Config.Journal.1 ^SYS`, nothing stored; plus `%DB_IRISSYS:WRITE`, 500 `#1142 Error switching journal file: Operation requires %Admin_Operate:Use privilege` with the change STORED and no new file (a half-applied write); plus `%Admin_Operate:USE` alone, the same `<PROTECT>`, nothing stored; plus both, 200, stored, new journal file. Every row matches the handoff's; journal settings restored byte-equal after each row, probes removed, monitor 0 (evidence `/tmp/epic-18-d6/1818-remeasure-out.txt`). The extra `%Admin_Operate:USE` pair (HALT 2) waits for the orchestrator's ruling.
 
