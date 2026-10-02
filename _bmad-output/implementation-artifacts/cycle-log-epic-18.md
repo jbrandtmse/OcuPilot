@@ -423,3 +423,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-02T11:56:55Z	Story 18.16	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none note=no_AD_commits_agent-time_tooling;AD-21_seventh_case_pinned_by_RemoteDatabaseListing(license_leg)
 2026-10-02T11:56:55Z	Story 18.16	ledger_harvest	deferred=0
 2026-10-02T11:57:10Z	Story 18.16	stage_spawned	stage=qa spawn_at=2026-10-02T11:57:10Z model=sonnet agent_name=18-16-remote-databases-qa-1 cycle_iteration=2
+2026-10-02T11:58:58Z	Story 18.16	qa_complete	spawn_at=2026-10-02T11:57:10Z model=sonnet tests_added=0 mutations_demonstrated=0(audit:24_recorded_mutation_lines_cover_AC1-AC8;runs_2175-2208) first_run_failures=0 clarifications=0 closing_sections_present=true note=audit-only;Rule3_browser_spec_covers_hint,license_refusal,delete_dialog;Rule8_browser-reset_clean,ci.test_80/80;remark_on_cycle-log-parallel_was_outside_the_worktree(tree_clean)
+2026-10-02T11:58:58Z	Story 18.16	stage_spawned	stage=code-review spawn_at=2026-10-02T11:58:58Z model=opus agent_name=18-16-remote-databases-code-review-1 cycle_iteration=2 review_tier=full-opus scope=e52a9107..fddd2f07
