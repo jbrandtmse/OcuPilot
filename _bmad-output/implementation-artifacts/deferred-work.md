@@ -2938,6 +2938,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813: state-conflict.test.mjs pins both specs' constant to Error.cls; reddens on a rewording; run 36960333685
 
 ### DW-435: Two first writers to a singleton store can both create a row, and GuardedCurrent's TOP 1 then hides the second
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
@@ -4385,6 +4386,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:19:37Z occurrence=23-3-the-range-end-cleanup-part-3 note=batch b stage: proposal-demo AC3 :617 red 2 of 5 on post-sweep ocupilot-b-ci (30 s wait to the audit screen); a batch c member candidate
+- 2026-10-02T04:07:24Z status=wontfix-accepted by=adjudication note=reopen_if=a browser spec fails alone after the class sweep and passes on a fresh container; 23.3 pass of 132 files found none
+- 2026-10-02T04:07:24Z occurrence=23-3-the-range-end-cleanup-part-3 note=corrects the 23:19 occurrence: proposal-demo AC3 inherited its own last run's late call record, not the sweep; fixed in 12790813 (DW-1916)
 
 ### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -7639,6 +7642,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-27T19:21:32Z status=open owner=range-end-cleanup by=orchestrator note=test isolation, not a product defect; each test should create and clean up its own definition state or tolerate existing definitions
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813+5c811f01: definitions set aside and restored byte-identical; 25 red under a seed (not 29), green after; run 36960333685
 ### DW-1704: CLAUDE.md tells agents to read all 56 ADs; the spine holds 57 since AD-57 landed at Story 16.1's spec gate
 - source: spec-16-1-the-try-it-request-console.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
@@ -8442,6 +8446,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-29T19:58:42Z status=routed owner=range-end-cleanup by=orchestrator note=test isolation: each test sets and restores the governance state it relies on, or tolerates overrides
 - 2026-09-30T06:34:02Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p1 (CI flake or test isolation)
 - 2026-10-01T18:33:02Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T04:07:24Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=12790813+5c811f01: per-test snapshot, clear and restore in 5 classes; 7 red under an override, green after; run 36960333685
 ### DW-1832: Story 16.10's Start and Stop tools declare no CLASSICPAGES for the classic ExternalLanguageServerStart/Stop pages (and the Stop dialog), so a custom resource on those pages is not honored (AD-44)
 - source: spec-16-10-external-language-servers.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: the implement stage deferred it believing CLASSICPAGES absent on this branch; git grep finds Parameter CLASSICPAGES on Namespace*, *Mapping* and Gate.cls (lead, 2026-09-29)
