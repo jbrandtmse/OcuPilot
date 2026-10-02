@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer,foldcase-firstpart,integerset,directoryset,documentset";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -127,6 +127,13 @@ Parameter RULEINTEGERSET = "integerset";
 /// database's own directory id is unchanged. <method>OcuPilot.Port.DatabasePort.CanonicalSet</method>
 /// is the rule, and <file>ui/src/app/core/entity-ref.ts</file> mirrors it.</p>
 Parameter RULEDIRECTORYSET = "directoryset";
+
+/// <p>The class and routine rule (Story 19.2, AD-13 as amended 2026-10-02): a value holding a comma
+/// names a set of documents -- a compile's or a delete's target. Its canonical form splits on commas,
+/// drops the empty pieces, keeps each name once and sorts them by character code, joined by a comma;
+/// a value holding no comma, a single document or the literal <code>import</code>, is kept exactly.
+/// <file>ui/src/app/core/entity-ref.ts</file> mirrors it.</p>
+Parameter RULEDOCUMENTSET = "documentset";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
 /// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
@@ -278,6 +285,7 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     If tRule = ..#RULEINTEGER Quit ..PlainInteger(pId)
     If tRule = ..#RULEINTEGERSET Quit ..PlainIntegerSet(pId)
     If tRule = ..#RULEDIRECTORYSET Quit ##class(OcuPilot.Port.DatabasePort).CanonicalSet(pId)
+    If tRule = ..#RULEDOCUMENTSET Quit ..DocumentSet(pId)
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule = ..#RULEFOLDCASEFIRSTPART {
         Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
@@ -356,6 +364,28 @@ ClassMethod PlainIntegerSet(pId As %String) As %String [ Private ]
             If tDigits = "" Quit
             Set tSet = tSet _ $Select(tSet = "": "", 1: ",") _ tPlain
         }
+    }
+    Quit tSet
+}
+
+/// <p><var>pId</var> as a set of documents (<parameter>RULEDOCUMENTSET</parameter>): unchanged when
+/// it holds no comma, and otherwise its non-empty comma-separated pieces, each once, sorted by
+/// character code and joined by a comma.</p>
+ClassMethod DocumentSet(pId As %String) As %String [ Private ]
+{
+    If pId '[ "," Quit pId
+    Kill tSorted
+    For tI = 1:1:$Length(pId, ",") {
+        Set tPart = $Piece(pId, ",", tI)
+        ; Subscripted behind a letter so every name collates as a string, never as a number.
+        If tPart '= "" Set tSorted("n" _ tPart) = tPart
+    }
+    Set tSet = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey), 1, tPart)
+        If tKey = "" Quit
+        Set tSet = tSet _ $Select(tSet = "": "", 1: ",") _ tPart
     }
     Quit tSet
 }

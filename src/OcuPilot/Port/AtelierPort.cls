@@ -8,7 +8,11 @@
 /// <parameter>REQUESTTYPE</parameter>: <parameter>ENDPOINTCLASSES</parameter> and
 /// <parameter>ENDPOINTROUTINES</parameter>, a namespace's classes and routines as rows, and
 /// <parameter>ENDPOINTCLASS</parameter> and <parameter>ENDPOINTROUTINE</parameter>, one document's
-/// structure as rows with its text beside them.</p>
+/// structure as rows with its text beside them. The two list endpoints also serve a set of documents
+/// (<parameter>NAMESKEY</parameter>): <parameter>TYPEDOCS</parameter>, which of them the namespace
+/// holds, and the writes <parameter>TYPECOMPILE</parameter> and <parameter>TYPEDELETE</parameter>,
+/// each composed here from the caller's declared values and gated on WRITE on the namespace's
+/// routines database as well (AD-51, AD-61).</p>
 /// <p><b>The order of every call is fixed</b> (AD-61): the gate, in the caller's process
 /// (<parameter>PAIRS</parameter>, then READ on the target namespace's routines and globals
 /// databases and on every other database it maps code from, resolved at call time); the endpoint;
@@ -39,7 +43,7 @@ Parameter VERSIONCLASSPREFIX = "%Api.Atelier.v";
 Parameter PINNEDVERSION As INTEGER = 8;
 
 /// <p>The lowest version each route this port calls needs, as <code>method:version</code>.</p>
-Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2";
+Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1";
 
 /// <p>The pair set every call requires whatever its namespace, comma-separated as
 /// <code>resource:permission</code>, in the order the gate reports in (AD-8, AD-29). READ on the
@@ -67,6 +71,45 @@ Parameter ENDPOINTROUTINE = "Routine";
 
 /// <p>The one request type every endpoint serves.</p>
 Parameter REQUESTTYPE = "LIST";
+
+/// <p>The list endpoints' read of a set of documents: <code>{Present, Modified, Absent, Namespace}</code>,
+/// each a canonical string (<method>Docs</method>), with the compile's three declared values empty
+/// beside them.</p>
+Parameter TYPEDOCS = "DOCS";
+
+/// <p>The list endpoints' compile of a set of documents (<method>CompileSet</method>).</p>
+Parameter TYPECOMPILE = "COMPILE";
+
+/// <p>The list endpoints' delete of a set of documents (<method>DeleteSet</method>).</p>
+Parameter TYPEDELETE = "DELETE";
+
+/// <p>The writes whose vendor call this port composes from the caller's declared values, as
+/// <code>endpoint/type</code> (AD-51): a compile from its three booleans and a delete from the set
+/// alone.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE";
+
+/// <p>The query key carrying a set of documents: their names, comma-separated.</p>
+Parameter NAMESKEY = "names";
+
+/// <p>The query keys carrying a compile's three declared values, each <code>1</code> or
+/// <code>0</code> (<code>true</code> or <code>false</code> are read the same): keep the generated
+/// source (<code>k</code>), compile dependents (<code>b</code>) and skip documents already up to date
+/// (<code>u</code>).</p>
+Parameter KEEPSOURCEKEY = "KeepSource";
+
+Parameter COMPILEDEPENDENTSKEY = "CompileDependents";
+
+Parameter SKIPUPTODATEKEY = "SkipUpToDate";
+
+/// <p>The most documents one set names.</p>
+Parameter MAXDOCUMENTS As INTEGER = 100;
+
+/// <p>The vendor's message numbers for a privilege or read-only refusal, which the source code API
+/// answers as a soft error rather than as <code>&lt;PROTECT&gt;</code> (AD-61 rule 6).</p>
+Parameter ACCESSDENIEDCODES = "5838,5883,302";
+
+/// <p>The vendor's message number for a document another process holds.</p>
+Parameter LOCKEDCODE = 5864;
 
 /// <p>The query key carrying the namespace the read runs in.</p>
 Parameter NAMESPACEKEY = "namespace";
@@ -184,6 +227,12 @@ Parameter REASONACCESSDENIED = "The source code API refused this read for this a
 /// <p>The reason an answer above <parameter>CAPTURECEILING</parameter> is refused with.</p>
 Parameter REASONTOOLARGE = "The source code API's answer is too large to read in one call.";
 
+/// <p>The reason a missing or malformed set of documents is refused with.</p>
+Parameter REASONNAMES = "Name 1 to 100 documents of this list, separated by commas.";
+
+/// <p>The reason a missing or malformed compile value is refused with.</p>
+Parameter REASONFLAGS = "KeepSource, CompileDependents and SkipUpToDate must each be true or false.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -295,11 +344,24 @@ ClassMethod NamespacePairs(pNamespace As %String) As %List
     Quit tPairs
 }
 
-/// <p>The lowest version <var>pEndpoint</var>'s routes need: the highest of its routes'
-/// <parameter>MINVERSIONS</parameter>.</p>
-ClassMethod MinVersion(pEndpoint As %String) As %Integer
+/// <p><method>NamespacePairs</method> plus WRITE on the resource guarding <var>pNamespace</var>'s
+/// routines database, which a compile or a delete writes and the source code API itself does not
+/// check (AD-61 rule 1, measured); <code>""</code> when the namespace's pairs cannot be resolved,
+/// which the caller refuses rather than admits.</p>
+ClassMethod WritePairs(pNamespace As %String) As %List
 {
-    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tPairs = ..NamespacePairs(pNamespace)
+    If tPairs = "" Quit ""
+    Do ..DatabaseResources(pNamespace, .tRoutine, .tGlobal, .tMapped, .tResolved)
+    If 'tResolved || (tRoutine = "") Quit ""
+    Quit tPairs _ $ListBuild($ListBuild(tRoutine, "WRITE"))
+}
+
+/// <p>The lowest version <var>pEndpoint</var>'s routes need for request type <var>pType</var>: the
+/// highest of its routes' <parameter>MINVERSIONS</parameter>.</p>
+ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}) As %Integer
+{
+    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -324,13 +386,21 @@ ClassMethod MinVersion(pEndpoint As %String) As %Integer
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>
 /// <code>{name, form, available, content, modified, database, generates}</code>, which the row cap
 /// never cuts.</p>
+/// <p>The list endpoints also serve a set of documents, named in <code>names</code>
+/// (<method>SetNames</method>), in <code>namespace</code> or, where it is absent, the request's
+/// resolved scope (<method>OcuPilot.Kernel.Scope.Current</method>): <parameter>TYPEDOCS</parameter>
+/// answers <method>Docs</method>'s object; <parameter>TYPECOMPILE</parameter> and
+/// <parameter>TYPEDELETE</parameter> answer <method>CompileSet</method>'s and
+/// <method>DeleteSet</method>'s, and require WRITE on the namespace's routines database
+/// (<method>WritePairs</method>).</p>
 /// <p>Otherwise an error status is returned with <var>pResult</var> and <var>pDocument</var> empty,
 /// <var>pHttpStatus</var> the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, before any vendor call; 501
 /// <code>PORT.NOTIMPLEMENTED</code> for an endpoint not served or an instance whose version is too
 /// old; 400 <code>PORT.VALIDATION</code> for a malformed argument or a value the vendor refused;
-/// 404 <code>PORT.NOTFOUND</code>; 403 <code>PORT.ACCESSDENIED</code> for the vendor's own
-/// privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
+/// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
+/// document the namespace does not hold, with nothing sent; 403 <code>PORT.ACCESSDENIED</code> for
+/// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace,
 /// <code>%request</code>, <code>%response</code>, <code>%session</code> and
@@ -349,12 +419,15 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
+        If (tNamespace = "") && tSetType Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
             Quit
         }
-        Set tNamespacePairs = ..NamespacePairs(tNamespace)
+        Set tNamespacePairs = $Select(tWrite: ..WritePairs(tNamespace), 1: ..NamespacePairs(tNamespace))
         If tNamespacePairs = "" {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
             Quit
@@ -366,11 +439,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         Set tList = (pEndpoint = ..#ENDPOINTCLASSES) || (pEndpoint = ..#ENDPOINTROUTINES)
         Set tOne = (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE)
-        If (pType '= ..#REQUESTTYPE) || ('tList && 'tOne) {
+        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne)) || (tSetType && tList)
+        If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
-        Set tNeeded = ..MinVersion(pEndpoint)
+        Set tNeeded = ..MinVersion(pEndpoint, pType)
         Set tHighest = +..HighestVersion()
         If tHighest < tNeeded {
             Set tReason = $Replace($Replace(..#REASONVERSION, "{highest}", tHighest), "{needed}", tNeeded)
@@ -378,6 +452,24 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         Set tVersion = $Select(tHighest > ..#PINNEDVERSION: ..#PINNEDVERSION, 1: tHighest)
+
+        If tSetType {
+            Set tNames = ..SetNames(pEndpoint, $Get(pQuery(..#NAMESKEY)))
+            If tNames = "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMES, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPEDOCS {
+                Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pType = ..#TYPECOMPILE {
+                Set tSC = ..CompileSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..DeleteSet(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
 
         Set tMax = $Get(pQuery(..#MAXROWSKEY))
         If (tMax '= "") && '$Match(tMax, "^[1-9][0-9]*$") {
@@ -598,6 +690,250 @@ ClassMethod GlobMatches(pSubject As %String, pGlob As %String) As %Boolean
     Quit tMatched
 }
 
+/// <p><var>pValue</var> as a canonical set of document names of <var>pEndpoint</var>'s kind, as a
+/// <class>%List</class>: split on commas, empty pieces dropped, each name once, sorted by character
+/// code. <code>""</code> when the set is empty, names more than <parameter>MAXDOCUMENTS</parameter>,
+/// or holds a name that is not a class (<parameter>CLASSNAMEPATTERN</parameter>) on the classes
+/// list or a routine (<parameter>ROUTINENAMEPATTERN</parameter>) on the routines list.</p>
+ClassMethod SetNames(pEndpoint As %String, pValue As %String) As %List
+{
+    Set tPattern = $Select(pEndpoint = ..#ENDPOINTCLASSES: ..#CLASSNAMEPATTERN, 1: ..#ROUTINENAMEPATTERN)
+    Kill tSorted
+    Set tValid = 1
+    For tI = 1:1:$Length(pValue, ",") {
+        Set tName = $Piece(pValue, ",", tI)
+        If tName = "" Continue
+        If '$Match(tName, tPattern) {
+            Set tValid = 0
+            Quit
+        }
+        ; Subscripted behind a letter so every name collates as a string, never as a number.
+        Set tSorted("n" _ tName) = tName
+    }
+    If 'tValid Quit ""
+    Set tNames = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey), 1, tName)
+        If tKey = "" Quit
+        Set tNames = tNames _ $ListBuild(tName)
+    }
+    If ($ListLength(tNames) = 0) || ($ListLength(tNames) > ..#MAXDOCUMENTS) Quit ""
+    Quit tNames
+}
+
+/// <p>Which of the documents <var>pNames</var> the namespace holds, from one <code>docnames</code> read
+/// of the endpoint's category with its generated documents: <code>{Present, Modified, Absent,
+/// Namespace}</code>, where <code>Present</code> and <code>Absent</code> are the held and the missing
+/// names comma-joined in the set's order, <code>Modified</code> is each held name and its modified
+/// time as <code>name=time</code>, comma-joined, and <code>Namespace</code> is <var>pNamespace</var>.
+/// <code>KeepSource</code>, <code>CompileDependents</code> and <code>SkipUpToDate</code> are answered
+/// <code>null</code> beside them, so a compile's declared values merge over this read (AD-4,
+/// AD-51).</p>
+ClassMethod Docs(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Kill tParams
+        Set tParams("generated") = 1
+        Set tSC = ..Route(pVersion, pNamespace, "GetDocNames", $Select(pEndpoint = ..#ENDPOINTCLASSES: "CLS", 1: "RTN"), .tParams, "", .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+        If '$IsObject(tContent) || 'tContent.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("GetDocNames answered no content array", $$$ERROR($$$GeneralError, "docnames answered no content array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Kill tWanted, tFound
+        For tI = 1:1:$ListLength(pNames) {
+            Set tWanted($List(pNames, tI)) = ""
+        }
+        Set tIterator = tContent.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tDoc) {
+            If '$IsObject(tDoc) || 'tDoc.%IsA("%Library.DynamicObject") Continue
+            Set tName = tDoc.%Get("name")
+            If (tName = "") || '$Data(tWanted(tName)) Continue
+            Set tFound(tName) = tDoc.%Get("ts")
+        }
+        Set tPresent = ""
+        Set tModified = ""
+        Set tAbsent = ""
+        For tI = 1:1:$ListLength(pNames) {
+            Set tName = $List(pNames, tI)
+            If $Data(tFound(tName)) {
+                Set tPresent = tPresent _ $Select(tPresent = "": "", 1: ",") _ tName
+                Set tModified = tModified _ $Select(tModified = "": "", 1: ",") _ tName _ "=" _ tFound(tName)
+            } Else {
+                Set tAbsent = tAbsent _ $Select(tAbsent = "": "", 1: ",") _ tName
+            }
+        }
+        Set pResult = {}
+        Do pResult.%Set("Present", tPresent, "string")
+        Do pResult.%Set("Modified", tModified, "string")
+        Do pResult.%Set("Absent", tAbsent, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        For tKey = ..#KEEPSOURCEKEY, ..#COMPILEDEPENDENTSKEY, ..#SKIPUPTODATEKEY {
+            Do pResult.%Set(tKey, "", "null")
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the document set read failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The fresh read every write of a set makes first: <method>Docs</method>, refused 404
+/// <code>EXPLORER.DOCUMENT.ABSENT</code> with <code>detail.documents</code> naming each absent
+/// document when the namespace no longer holds them all, so nothing is sent.</p>
+ClassMethod PresentSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ..Docs(pVersion, pNamespace, pEndpoint, pNames, .tDocs, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tAbsent = tDocs.%Get("Absent")
+    If tAbsent = "" Quit $$$OK
+    Quit ..AbsentRefusal(tAbsent, .pHttpStatus, .pFault)
+}
+
+/// <p>The refusal of a write naming documents the namespace does not hold, <var>pAbsent</var>
+/// comma-joined: 404 <code>EXPLORER.DOCUMENT.ABSENT</code>, its <code>detail.documents</code> naming
+/// each. The one producer of that refusal, for the port's write and the agent's mint alike.</p>
+ClassMethod AbsentRefusal(pAbsent As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tDetail = {"documents": []}
+    For tI = 1:1:$Length(pAbsent, ",") {
+        If $Piece(pAbsent, ",", tI) '= "" Do tDetail.documents.%Push($Piece(pAbsent, ",", tI), "string")
+    }
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#DOCUMENTABSENT, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTABSENT, .pHttpStatus, .pFault, tDetail)
+}
+
+/// <p>Whether <var>pValue</var> is one of the spellings a compile value takes, in
+/// <var>pOn</var>.</p>
+ClassMethod FlagValue(pValue As %String, Output pOn As %Boolean) As %Boolean [ Private ]
+{
+    Set pOn = 0
+    If (pValue = "1") || (pValue = "true") {
+        Set pOn = 1
+        Quit 1
+    }
+    Quit (pValue = "0") || (pValue = "false")
+}
+
+/// <p>The compiler flags a compile sends: <code>c</code>, then <code>u</code>, <code>k</code> and
+/// <code>b</code> for each of <var>pSkipUpToDate</var>, <var>pKeepSource</var> and
+/// <var>pCompileDependents</var> that is on. Nothing else ever reaches the compiler.</p>
+ClassMethod CompileFlags(pKeepSource As %Boolean, pCompileDependents As %Boolean, pSkipUpToDate As %Boolean) As %String
+{
+    Quit "c" _ $Select(pSkipUpToDate: "u", 1: "") _ $Select(pKeepSource: "k", 1: "") _ $Select(pCompileDependents: "b", 1: "")
+}
+
+/// <p>Compile the documents <var>pNames</var> in one call, with <method>CompileFlags</method> built
+/// from <var>pQuery</var>'s three values, after <method>PresentSet</method>. <var>pResult</var> is
+/// <code>{lines, errors}</code>: the compiler's console lines and whether it reported an error. A
+/// compile error is the compile's own result, never a fault: the route answers it as a soft error,
+/// whose first error alone is in its status, so the lines are the record.</p>
+ClassMethod CompileSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tFlagsOk = ..FlagValue($Get(pQuery(..#KEEPSOURCEKEY)), .tKeep) && ..FlagValue($Get(pQuery(..#COMPILEDEPENDENTSKEY)), .tDependents) && ..FlagValue($Get(pQuery(..#SKIPUPTODATEKEY)), .tSkip)
+        If 'tFlagsOk {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONFLAGS, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tBody = []
+        For tI = 1:1:$ListLength(pNames) {
+            Do tBody.%Push($List(pNames, tI), "string")
+        }
+        Kill tParams
+        Set tParams("flags") = ..CompileFlags(tKeep, tDependents, tSkip)
+        Set tParams("source") = 0
+        Set tSC = ..Route(pVersion, pNamespace, "Compile", "", .tParams, tBody.%ToJSON(), .tAnswer, .pHttpStatus, .pFault, 1, .tConsole, .tErrors)
+        If $$$ISERR(tSC) Quit
+        Set pResult = {}
+        Do pResult.%Set("lines", $Select($IsObject(tConsole): tConsole, 1: []))
+        Do pResult.%Set("errors", ''tErrors, "boolean")
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the compile failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Delete the documents <var>pNames</var> in one call, after <method>PresentSet</method>.
+/// <var>pResult</var> is <code>{documents}</code>, one <code>{name, deleted, reason}</code> per
+/// document the route answered, where a refused document carries its port-owned reason
+/// (<method>DeleteReason</method>) and its vendor text is logged, never sent (AD-39). A refused
+/// document is not a fault.</p>
+ClassMethod DeleteSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tBody = []
+        For tI = 1:1:$ListLength(pNames) {
+            Do tBody.%Push($List(pNames, tI), "string")
+        }
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "DeleteDocs", "", .tNoParams, tBody.%ToJSON(), .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("DeleteDocs answered no result array", $$$ERROR($$$GeneralError, "deletedocs answered no result array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tDocuments = []
+        Set tIterator = tAnswer.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tItem) {
+            If '$IsObject(tItem) || 'tItem.%IsA("%Library.DynamicObject") Continue
+            Set tStatus = tItem.%Get("status")
+            Set tDocument = {}
+            Do tDocument.%Set("name", tItem.%Get("name"), "string")
+            Do tDocument.%Set("deleted", (tStatus = ""), "boolean")
+            Do tDocument.%Set("reason", ..DeleteReason(tStatus), "string")
+            Do tDocuments.%Push(tDocument)
+            If tStatus '= "" Do ..LogFault("DeleteDocs refused one document", $$$ERROR($$$GeneralError, tItem.%Get("name") _ ": " _ tStatus))
+        }
+        Set pResult = {}
+        Do pResult.%Set("documents", tDocuments)
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the delete failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The port-owned reason for a deleted document whose vendor status is <var>pStatus</var>:
+/// <code>""</code> for one deleted; otherwise, by the vendor's message number, the access sentence
+/// for a privilege refusal or a <code>&lt;PROTECT&gt;</code>, the locked sentence for a document
+/// another process holds, the absent sentence for one the vendor no longer found, and the failed
+/// sentence for anything else (<class>OcuPilot.Api.AtelierError</class>).</p>
+ClassMethod DeleteReason(pStatus As %String) As %String
+{
+    If pStatus = "" Quit ""
+    If pStatus [ "<PROTECT>" Quit ##class(OcuPilot.Api.AtelierError).#DELETEACCESS
+    Set tCode = ..MessageNumber(pStatus)
+    If (tCode '= "") && $ListFind($ListFromString(..#ACCESSDENIEDCODES), tCode) Quit ##class(OcuPilot.Api.AtelierError).#DELETEACCESS
+    If tCode = ..#LOCKEDCODE Quit ##class(OcuPilot.Api.AtelierError).#DELETELOCKED
+    If (tCode = ..#NODOCUMENTCODE) || ((tCode = 5001) && (pStatus [ "Does Not Exist")) Quit ##class(OcuPilot.Api.AtelierError).#DELETEABSENT
+    Quit ##class(OcuPilot.Api.AtelierError).#DELETEFAILED
+}
+
+/// <p>The first vendor message number <var>pText</var> names as <code>#&lt;number&gt;:</code>, or
+/// <code>""</code>.</p>
+ClassMethod MessageNumber(pText As %String) As %String [ Private ]
+{
+    Set tAt = $Locate(pText, "#[0-9]+:", 1, tEnd, tMatched)
+    If tAt = 0 Quit ""
+    Quit $Extract(tMatched, 2, *-1)
+}
+
 /// <p>One document's structure as rows, and its text in the requested form as
 /// <var>pDocument</var>.</p>
 /// <p>The name is checked against the endpoint's own shape and the form against
@@ -606,7 +942,9 @@ ClassMethod GlobMatches(pSubject As %String, pGlob As %String) As %Boolean
 /// as the name itself (<code>udl</code>), its XML export (<code>xml</code>), or the first
 /// generated <code>.int</code> the index names (<code>int</code>; an <code>.int</code> document is
 /// its own). A form the instance keeps no text for answers <code>available</code> false and an empty
-/// <code>content</code>; that is not a fault.</p>
+/// <code>content</code>; that is not a fault. A routine the index holds and whose text read answers
+/// 404 with no status and no timestamp of its own is kept only as object code, and its document also
+/// carries <code>reason</code> <code>objectonly</code>.</p>
 ClassMethod Document(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pDocument As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -661,9 +999,20 @@ ClassMethod Document(pVersion As %Integer, pNamespace As %String, pEndpoint As %
             Set tTextName = $Select($ZConvert($Piece(tName, ".", $Length(tName, ".")), "L") = "int": tName, 1: tFirstInt)
         }
         Set tAvailable = 0
+        Set tObjectOnly = 0
         Set tLines = []
         If tTextName '= "" {
             Set tSC = ..Route(pVersion, pNamespace, "GetDoc", tTextName, .tParams, "", .tText, .pHttpStatus, .pFault)
+            ; A routine the index holds whose text the read answers 404 with an empty status and an
+            ; empty timestamp is one the instance keeps only as object code; a name it does not hold
+            ; answers #16005.
+            If $$$ISERR(tSC) && 'tIsClass && (pHttpStatus = 404) && $IsObject($Get(tText)) && (tText.%Get("status") = "") && (tText.%Get("ts") = "") {
+                Set tSC = $$$OK
+                Set pHttpStatus = 0
+                Set pFault = ""
+                Set tObjectOnly = 1
+                Set tText = ""
+            }
             If $$$ISERR(tSC) Quit
             Set tTextContent = $Select($IsObject(tText): tText.%Get("content"), 1: "")
             If $IsObject(tTextContent) && tTextContent.%IsA("%Library.DynamicArray") {
@@ -681,6 +1030,7 @@ ClassMethod Document(pVersion As %Integer, pNamespace As %String, pEndpoint As %
         Do tDocument.%Set("modified", tIndex.%Get("ts"))
         Do tDocument.%Set("database", tIndex.%Get("db"))
         Do tDocument.%Set("generates", tGenerates)
+        If tObjectOnly Do tDocument.%Set("reason", "objectonly", "string")
         Set pDocument = tDocument
         Set pHttpStatus = 200
     } Catch ex {
@@ -857,8 +1207,9 @@ ClassMethod PlainText(pDesc) As %String
 /// read back and deleted; either way it never reaches the caller's device, which is current again
 /// on return. <code>$NAMESPACE</code> is switched to <var>pNamespace</var> immediately around the
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
-/// class is called while it is switched. The outcome is <method>Outcome</method>'s.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
+/// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -965,22 +1316,29 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
     If tFile '= "" Do ##class(%File).Delete(tFile)
     If $IsObject($Get(%response)) Set tHttp = +%response.Status
     If $$$ISERR(tCallSC) && ($System.Status.GetErrorText(tCallSC) [ "<MAXSTRING>") Set tOverflow = 1
-    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault)
+    Set tSC = ..Outcome(pMethod, tCallSC, tHttp, tText, tOverflow, .pResult, .pHttpStatus, .pFault, pSoft, .pConsole, .pErrors)
     Quit tSC
 }
 
 /// <p>What one route call's outcome means. <var>pText</var> is the captured envelope.</p>
 /// <p>An answer at the capture's ceiling is 503 <code>PORT.UNAVAILABLE</code>. A non-2xx status is
-/// 404 <code>PORT.NOTFOUND</code> (not logged: a read answered 404 has found an absence), 400
+/// 404 <code>PORT.NOTFOUND</code> (not logged: a read answered 404 has found an absence), with the
+/// envelope's <code>result</code> in <var>pResult</var> where it parses, 400
 /// <code>PORT.VALIDATION</code>, 403 <code>PORT.ACCESSDENIED</code>, or the internal fault. Under a
 /// 2xx status, an error in the route's own status, in <code>status.errors</code> or in the result's
 /// own <code>status</code> is 403 <code>PORT.ACCESSDENIED</code> when it is a
-/// <code>&lt;PROTECT&gt;</code> and the internal fault otherwise, as is an envelope that does not
-/// parse. Otherwise <var>pResult</var> is the envelope's <code>result</code>. The vendor's own text
-/// is logged on every logged path and never put on the wire.</p>
-ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <code>&lt;PROTECT&gt;</code> or one of <parameter>ACCESSDENIEDCODES</parameter> (AD-61 rule 6) and
+/// the internal fault otherwise, as is an envelope that does not parse. Otherwise <var>pResult</var>
+/// is the envelope's <code>result</code>. The vendor's own text is logged on every logged path and
+/// never put on the wire.</p>
+/// <p>With <var>pSoft</var> (a compile), such an error under a 2xx status is the call's own result
+/// rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
+/// <code>console</code> array on every 2xx answer that parses.</p>
+ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
     Set pResult = ""
+    Set pConsole = ""
+    Set pErrors = 0
     Set tRaw = pMethod _ " answered HTTP " _ pHttp
     If $$$ISERR(pCallSC) Set tRaw = tRaw _ "; " _ $System.Status.GetErrorText(pCallSC)
     If pOverflow {
@@ -995,10 +1353,16 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
         Set tEnvelope = ""
     }
     Set tErrors = ""
-    If $IsObject(tEnvelope) && tEnvelope.%IsA("%Library.DynamicObject") {
+    Set tCodes = ""
+    Set tParsed = $IsObject(tEnvelope) && tEnvelope.%IsA("%Library.DynamicObject")
+    If tParsed {
         Set tStatusPart = tEnvelope.%Get("status")
         If $IsObject(tStatusPart) && $IsObject(tStatusPart.%Get("errors")) && (tStatusPart.%Get("errors").%Size() > 0) {
             Set tErrors = tStatusPart.%Get("errors").%ToJSON()
+            Set tErrorIterator = tStatusPart.%Get("errors").%GetIterator()
+            While tErrorIterator.%GetNext(.tErrorIndex, .tError) {
+                If $IsObject(tError) && (tError.%Get("code") '= "") Set tCodes = tCodes _ $ListBuild("" _ tError.%Get("code"))
+            }
         }
         Set tResultPart = tEnvelope.%Get("result")
         If $IsObject(tResultPart) && tResultPart.%IsA("%Library.DynamicObject") && (tResultPart.%GetTypeOf("status") = "string") && (tResultPart.%Get("status") '= "") {
@@ -1010,6 +1374,7 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
 
     If (pHttp < 200) || (pHttp >= 300) {
         If pHttp = 404 {
+            If tParsed Set pResult = tEnvelope.%Get("result")
             Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONNOTFOUND, .pHttpStatus, .pFault)
         }
         If pHttp = 400 {
@@ -1022,8 +1387,16 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
         Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
         Quit tSC
     }
-    If $$$ISERR(pCallSC) || (tErrors '= "") || '$IsObject(tEnvelope) || 'tEnvelope.%IsA("%Library.DynamicObject") {
-        If tRaw [ "<PROTECT>" {
+    If tParsed && pSoft {
+        Set tConsolePart = tEnvelope.%Get("console")
+        Set pConsole = $Select($IsObject(tConsolePart) && tConsolePart.%IsA("%Library.DynamicArray"): tConsolePart, 1: [])
+        Set pErrors = ($$$ISERR(pCallSC) || (tErrors '= ""))
+        Set pResult = tEnvelope.%Get("result")
+        Set pHttpStatus = pHttp
+        Quit $$$OK
+    }
+    If $$$ISERR(pCallSC) || (tErrors '= "") || 'tParsed {
+        If (tRaw [ "<PROTECT>") || ..AccessDenied(tCodes, tRaw) {
             Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, ..#REASONACCESSDENIED, .pHttpStatus, .pFault)
             Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
             Quit tSC
@@ -1033,6 +1406,23 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
     Set pResult = tEnvelope.%Get("result")
     Set pHttpStatus = pHttp
     Quit $$$OK
+}
+
+/// <p>Whether a soft error is the vendor's privilege or read-only refusal: a message number in
+/// <var>pCodes</var>, or one <var>pRaw</var> names as <code>#&lt;number&gt;:</code>, is one of
+/// <parameter>ACCESSDENIEDCODES</parameter>.</p>
+ClassMethod AccessDenied(pCodes As %List, pRaw As %String) As %Boolean [ Private ]
+{
+    Set tDenied = $ListFromString(..#ACCESSDENIEDCODES)
+    Set tFound = 0
+    For tI = 1:1:$ListLength(tDenied) {
+        Set tCode = $List(tDenied, tI)
+        If $ListFind(pCodes, tCode) || (pRaw [ ("#" _ tCode _ ":")) {
+            Set tFound = 1
+            Quit
+        }
+    }
+    Quit tFound
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39). Overridable so a fixture can capture
@@ -1068,17 +1458,54 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p><code>""</code>: no write reaches the source code API through this port, so no request type
-/// has a script form (AD-59).</p>
+/// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter> and
+/// <parameter>TYPEDELETE</parameter>, the two writes this port carries; <code>""</code> for every
+/// read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
+    If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
+    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) Quit "objectscript"
     Quit ""
 }
 
-/// <p>No step: every branch of <method>Invoke</method> is a read (AD-59).</p>
+/// <p><method>Invoke</method>'s branches as a script (AD-59), in the namespace <code>namespace</code>
+/// names: <parameter>TYPECOMPILE</parameter> is the compile the route makes,
+/// <code>$System.OBJ.CompileList</code> over the set with the flags <method>CompileFlags</method>
+/// builds, and <parameter>TYPEDELETE</parameter> the route's <code>%RoutineMgr</code>
+/// <code>Delete</code> of each document. A read writes nothing and answers no step. Every value is
+/// rendered as a string literal, so nothing the query carries runs as code.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    Set tNames = $Get(pQuery(..#NAMESKEY))
+    If pType = ..#TYPECOMPILE {
+        Do ..FlagValue($Get(pQuery(..#KEEPSOURCEKEY)), .tKeep)
+        Do ..FlagValue($Get(pQuery(..#COMPILEDEPENDENTSKEY)), .tDependents)
+        Do ..FlagValue($Get(pQuery(..#SKIPUPTODATEKEY)), .tSkip)
+        Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(..CompileFlags(tKeep, tDependents, tSkip)) _ ")"
+        Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    } Else {
+        Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"
+        Set tText = tText _ $Char(10) _ "     Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI))"
+        Set tText = tText _ $Char(10) _ "     Do $System.Status.DisplayError(tSC)"
+        Set tText = tText _ $Char(10) _ " }"
+    }
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a
+/// <code>$Char</code>.</p>
+ClassMethod Literal(pValue As %String) As %String [ Private ]
+{
+    Set tText = """" _ $Replace(pValue, """", """""") _ """"
+    For tCode = 0:1:31 {
+        If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
+    }
+    Quit tText
 }
 
 }

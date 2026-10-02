@@ -1,15 +1,16 @@
 /// <p>Pins the governance baseline (AD-22, Story 14.2): every key a registered write tool yields
 /// has a line in <class>OcuPilot.Kernel.Governance.Baseline</class>, the audit purge's, the
 /// namespace delete's, the database delete's, the task import's, Story 18.4's eight disk
-/// operations' and Story 18.15's enable of interoperability's lines are <code>false</code>, and every
-/// other line is <code>true</code>.</p>
+/// operations', Story 18.15's enable of interoperability's and Story 19.2's two document deletes'
+/// lines are <code>false</code>, and every other line is <code>true</code>.</p>
 /// <p><b>What it needs from the environment:</b> the compiled tool registry. Live-safe: it reads
 /// the registry and the baseline and writes nothing.</p>
 Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 {
 
-/// <p>The lines some story's criteria ship disabled, in name order, comma-separated.</p>
-Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, security.auditing.purge, tasks.schedule.import";
+/// <p>The lines some story's criteria ship disabled, in the baseline's own line order,
+/// comma-separated.</p>
+Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is
 /// asserted too, so an empty registry cannot pass by looping zero times.</p>
@@ -65,7 +66,7 @@ Method TestThePurgeIsTheOneDisabledLine()
         Do $$$AssertEquals(tList.%GetTypeOf(tKey), "boolean", tKey _ ": the line is a JSON boolean")
         If 'tValue Set tDisabled = tDisabled _ $ListBuild(tKey)
     }
-    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations and the enable of interoperability are the lines listed false")
+    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability and the two document deletes are the lines listed false")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("probe.not.listed", .tListed) _ "|" _ tListed, "0|0", "an unlisted key reads disabled and unlisted")
 }
 

@@ -19,7 +19,7 @@ XData Cases
     "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
     "entityType": "process", "secondaryEntityTypes": [],
     "scope": "instance", "parentScope": "", "id": {"kind": "single", "parts": []},
-    "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "broadcast", "selfProtection": ""}],
+    "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "broadcast", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}],
     "context": {"fields": ["Pid", "CanReceiveBroadcast"], "secretFields": []},
     "emptyStateKey": "processListEmpty", "commandAliases": [], "classicPage": "",
     "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
@@ -35,7 +35,7 @@ XData Cases
       "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.multiselectcorpus",
-    "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20, "ineligibleKey": "processBroadcastIneligible"}
+    "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20, "ineligibleKey": "processBroadcastIneligible", "extraActions": []}
   },
   "cases": [
     {"name": "the Processes shape is sound", "expected": null},
@@ -58,7 +58,18 @@ XData Cases
     {"name": "a fractional max", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 2.5, "ineligibleKey": "processBroadcastIneligible"}, "expected": "multiSelect.max must be a whole number from 1 to 1000"},
     {"name": "a max spelled as a string", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": "20", "ineligibleKey": "processBroadcastIneligible"}, "expected": "multiSelect.max must be a whole number from 1 to 1000"},
     {"name": "no max", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "ineligibleKey": "processBroadcastIneligible"}, "expected": "multiSelect.max must be a whole number from 1 to 1000"},
-    {"name": "an empty ineligibleKey", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20, "ineligibleKey": ""}, "expected": "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"}
+    {"name": "an empty ineligibleKey", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20, "ineligibleKey": ""}, "expected": "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"},
+    {"name": "a list (server criteria) archetype is sound", "archetype": "list (server criteria)", "expected": null},
+    {"name": "a log-viewer archetype is not a list the table checks", "archetype": "log-viewer", "expected": "multiSelect is declared on a 'log-viewer' archetype, and a multi-select is a list's own (AD-5)"},
+    {"name": "no eligible field and no ineligibleKey is sound", "multiSelect": {"action": "broadcast", "max": 100}, "expected": null},
+    {"name": "an ineligibleKey without an eligible field", "multiSelect": {"action": "broadcast", "max": 100, "ineligibleKey": "processBroadcastIneligible"}, "expected": "multiSelect.ineligibleKey is declared without multiSelect.eligible, and the two are declared together"},
+    {"name": "an eligible field without an ineligibleKey", "multiSelect": {"action": "broadcast", "eligible": "CanReceiveBroadcast", "max": 20}, "expected": "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads"},
+    {"name": "an extra action is sound", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": ["resume"]}, "expected": null},
+    {"name": "extraActions spelled as a string", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": "resume"}, "expected": "multiSelect.extraActions is not an array of row action ids"},
+    {"name": "an empty extra action", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": [""]}, "expected": "multiSelect.extraActions is not an array of row action ids"},
+    {"name": "an extra action no row action declares", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": ["terminate"]}, "expected": "multiSelect.extraActions names 'terminate', which is not one of rowActions"},
+    {"name": "the multi-select's own action as an extra one", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": ["broadcast"]}, "expected": "multiSelect.extraActions names 'broadcast', which is the multi-select's own action"},
+    {"name": "an extra action named twice", "multiSelect": {"action": "broadcast", "max": 100, "extraActions": ["resume", "resume"]}, "expected": "multiSelect.extraActions names 'resume' more than once"}
   ]
 }
 }

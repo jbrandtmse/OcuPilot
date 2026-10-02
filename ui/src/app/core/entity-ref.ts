@@ -114,6 +114,14 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // as compact JSON, or its one member when one remains -- what
   // `OcuPilot.Port.DatabasePort.CanonicalSet` answers. Any other value is kept exactly.
   directoryset: (id) => canonicalDirectorySet(id),
+  // A class or routine id may name a set of documents (Story 19.2): a value holding a comma splits
+  // on commas, drops the empty pieces, keeps each name once and sorts them by UTF-16 code unit,
+  // joined by a comma -- what `OcuPilot.Kernel.EntityRef.DocumentSet` answers. A value holding no
+  // comma, a single document or the literal `import`, is kept exactly.
+  documentset: (id) => {
+    if (!id.includes(',')) return id;
+    return [...new Set(id.split(',').filter((part) => part !== ''))].sort().join(',');
+  },
 };
 
 /**

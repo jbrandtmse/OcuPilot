@@ -274,6 +274,10 @@ XData Coverage
 <tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
+<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndFourWrites" corpus="the four System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndFourWrites" corpus="the four System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndFourWrites" corpus="the four System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndFourWrites" corpus="the four System Explorer writes are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

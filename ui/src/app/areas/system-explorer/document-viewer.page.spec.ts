@@ -44,12 +44,15 @@ const ROUTINE_ROWS = [
 
 function documentFor(name: string, form: string, rows: readonly unknown[]) {
   const deployed = name.startsWith('Demo.Deployed');
-  const generates = deployed ? [] : name.endsWith('.cls') ? ['Demo.Probe.1.int'] : ['Demo.Probe.int'];
-  const available = (form !== 'xml' || name.endsWith('.cls')) && !(deployed && form === 'int');
+  // A routine kept only as object code (Story 19.2): no form is available, and each says why.
+  const objectOnly = name.startsWith('Demo.ObjectOnly');
+  const generates = deployed || objectOnly ? [] : name.endsWith('.cls') ? ['Demo.Probe.1.int'] : ['Demo.Probe.int'];
+  const available = (form !== 'xml' || name.endsWith('.cls')) && !(deployed && form === 'int') && !objectOnly;
   return {
     name,
     form,
     available,
+    ...(objectOnly ? { reason: 'objectonly' } : {}),
     content: available ? [`${form} line 1`, form === 'udl' ? HOSTILE : `${form} line 2`] : [],
     modified: '2026-10-01 10:00:00',
     database: 'HSCUSTOM',
@@ -227,6 +230,15 @@ describe('the class and routine viewers', () => {
     expect(host.querySelector('[role="grid"]')).toBeNull();
     await view('documentation');
     expect(host.querySelector('[data-ocu-source="no-structure"]')?.textContent?.trim()).toBe(STRINGS.explorerRoutineNoStructure);
+  });
+
+  it('Story 19.2 AC8: a routine kept only as object code says so, in place of the empty state', async () => {
+    // Mutation (Rule 19): drop the `OBJECT_ONLY_REASON` branch from the page's `notAvailable` -> red.
+    const { host } = await mount(ROUTINE_VIEWER, 'Demo.ObjectOnly.mac', ROUTINE_ROWS);
+    expect(host.querySelector('[data-ocu-source="header"]')).not.toBeNull();
+    expect(host.querySelector('.ocu-data-table-empty-title')).toBeNull();
+    expect(host.querySelector('pre[data-ocu-source="text"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-source="not-available"]')?.textContent?.trim()).toBe(STRINGS.explorerViewerObjectOnly);
   });
 
   it('a document the namespace no longer holds reads as the viewer empty state', async () => {

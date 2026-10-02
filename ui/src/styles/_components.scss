@@ -7458,6 +7458,44 @@ app-log-hub-page {
   padding-block: var(--ocu-space-2);
 }
 
+// System Explorer's compile and delete output (Story 19.2), inside the list page's own gutter: the
+// polite status line, Stop while a compile sequence runs, and the pane of console lines and
+// per-document results on the code surface above the list.
+.ocu-explorer-status {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-explorer-status:not(:empty) {
+  padding-block: var(--ocu-space-2);
+}
+
+.ocu-explorer-output-controls {
+  display: flex;
+  padding-block-end: var(--ocu-space-2);
+}
+
+.ocu-explorer-output {
+  flex: 0 0 auto;
+  max-height: 30vh;
+  margin: 0 0 var(--ocu-space-2);
+}
+
+// A confirmed compile's console lines on the proposal card, held to the page pane's height and
+// scrolled from the keyboard inside their focusable block.
+.ocu-proposal-card-output .ocu-code-block-pre {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.ocu-explorer-compile-flag {
+  display: flex;
+  margin-block-end: var(--ocu-space-2);
+}
+
 // The data table's checked set (Story 16.6): a 24px checkbox at the leading edge of a multi-select
 // list's name cell and name header, which never shrinks under a narrow column (DW-1337).
 .ocu-data-table-check {

@@ -444,9 +444,13 @@ export interface ScreenRowTarget {
  */
 export interface ScreenMultiSelect {
   readonly action: string;
-  readonly eligible: string;
+  /** The read field that makes a row checkable; absent, every row is (Story 19.2). */
+  readonly eligible?: string;
   readonly max: number;
-  readonly ineligibleKey: string;
+  /** The reason an ineligible row's checkbox carries; declared together with `eligible`. */
+  readonly ineligibleKey?: string;
+  /** Further row actions that act on the checked set (Story 19.2). */
+  readonly extraActions?: readonly string[];
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -529,7 +533,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
   "database-configuration": "foldcase",
-  "database": "directoryset"
+  "database": "directoryset",
+  "class": "documentset",
+  "routine": "documentset"
 };
 
 /**
@@ -4160,7 +4166,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "compile",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4303,15 +4318,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerClassListEmptyAgent"
     },
     "toolIdentifier": "explorer.classes",
+    "multiSelect": {
+      "action": "compile",
+      "max": 100,
+      "extraActions": [
+        "delete"
+      ]
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4495,7 +4516,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "compile",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4638,15 +4668,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerRoutineListEmptyAgent"
     },
     "toolIdentifier": "explorer.routines",
+    "multiSelect": {
+      "action": "compile",
+      "max": 100,
+      "extraActions": [
+        "delete"
+      ]
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""

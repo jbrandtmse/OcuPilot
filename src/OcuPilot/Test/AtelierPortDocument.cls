@@ -158,9 +158,9 @@ Method TestAMissingDocumentIsNotFoundAndUnlogged()
 
 /// <p>Each vendor outcome maps to its code, with the vendor's own text logged and never in the
 /// fault: a 400 is <code>PORT.VALIDATION</code>; a <code>&lt;PROTECT&gt;</code> in the envelope's
-/// errors or raised by the route is <code>PORT.ACCESSDENIED</code>; a soft error the result's own
-/// status carries, an envelope that does not parse, and any other status are the internal
-/// fault.</p>
+/// errors or raised by the route, and a privilege soft error the result's own status carries
+/// (AD-61 rule 6), are <code>PORT.ACCESSDENIED</code>; any other soft error, an envelope that does
+/// not parse, and any other status are the internal fault.</p>
 Method TestVendorOutcomesMapToCodesWithTheTextLogged()
 {
     For tCase = $ListBuild("GetDocNames", "400 Bad Request", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", "400 PORT.VALIDATION"), $ListBuild("GetDocNames", "200 OK", "{""status"":{""errors"":[{""error"":""ERROR #5002: ObjectScript error: <PROTECT>fetch^Probe""}],""summary"":""x""},""console"":[],""result"":{""content"":[]}}", "403 PORT.ACCESSDENIED"), $ListBuild("GetDocNames", "200 OK", "not an envelope", "500 INTERNAL"), $ListBuild("GetDocNames", "415 Unsupported Media Type", "", "500 INTERNAL") {
@@ -189,9 +189,54 @@ Method TestVendorOutcomesMapToCodesWithTheTextLogged()
     Do ..ArmDocument()
     Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("GetDoc", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Alpha.One.cls"",""status"":""ERROR #5838: You need %Development:Use privilege to run this application."",""content"":[]}}")
     Set tSC = ..Read("Class", "Alpha.One.cls", "", .tRows, .tDocument, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ " " _ tFault.code _ " " _ tFault.reason, "500 INTERNAL " _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, "a soft error answered with 200 is a failure, in OcuPilot's words")
+    Do $$$AssertEquals(tHttp _ " " _ tFault.code _ " " _ tFault.reason, "403 PORT.ACCESSDENIED " _ ##class(OcuPilot.Port.AtelierPort).#REASONACCESSDENIED, "a privilege soft error answered with 200 is the vendor's refusal, in OcuPilot's words")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ "#5838", "with the vendor's text in the log: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
     Do $$$AssertEquals(tRows _ tDocument, "", "and no rows or document")
+
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ..ArmDocument()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("GetDoc", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Alpha.One.cls"",""status"":""ERROR #5001: something else went wrong"",""content"":[]}}")
+    Set tSC = ..Read("Class", "Alpha.One.cls", "", .tRows, .tDocument, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tFault.code _ " " _ tFault.reason, "500 INTERNAL " _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, "any other soft error answered with 200 is a failure, in OcuPilot's words")
+}
+
+/// <p>A routine the index holds whose text read answers 404 with no status of its own is kept only as
+/// object code: 200, the routine's row present and the document unavailable with reason
+/// <code>objectonly</code>. A name the index does not hold stays 404 <code>PORT.NOTFOUND</code>, and a
+/// class's text answered 404 is not object code. One leg reads the live instance's
+/// <code>EnsJob.mac</code> in the install namespace.</p>
+/// <p>Mutation (Rule 19): answer the object-only 404 as <code>PORT.NOTFOUND</code> in
+/// <method>OcuPilot.Port.AtelierPort.Document</method> -- the first leg goes red.</p>
+Method TestARoutineKeptOnlyAsObjectCodeReadsAsSo()
+{
+    Do ##class(OcuPilot.Test.AtelierPortFixture).UseFakeRoutes()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).SetVersion(8)
+    Do ##class(OcuPilot.Test.AtelierPortFixture).SetResources("%DB_PROBEHOME", "%DB_PROBEHOME", "")
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("Index", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""content"":[{""name"":""Probe.mac"",""db"":""HOME"",""ts"":"""",""upd"":false,""cat"":""RTN"",""gen"":false,""others"":[],""status"":"""",""content"":{}}]}}")
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("GetDoc", "404 Not Found", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.mac"",""db"":""HOME"",""ts"":"""",""upd"":false,""cat"":""RTN"",""status"":"""",""enc"":false,""flags"":0,""content"":[]}}")
+    Set tSC = ..Read("Routine", "Probe.mac", "", .tRows, .tDocument, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "an object-only routine reads")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tRows)): tRows.%Size() _ " " _ tRows.%Get(0).Name, 1: ""), "200 1 Probe.mac", "its row is present")
+    Do $$$AssertEquals($Select($IsObject($Get(tDocument)): tDocument.available _ " " _ tDocument.%Get("reason") _ " " _ tDocument.content.%ToJSON(), 1: ""), "0 objectonly []", "and its document says it holds only object code")
+
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("GetDoc", "404 Not Found", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.mac"",""db"":"""",""ts"":"""",""cat"":""RTN"",""enc"":false,""content"":"""",""status"":""ERROR #16005: Document 'Probe.mac' does NOT exist""}}")
+    Set tSC = ..Read("Routine", "Probe.mac", "", .tRows, .tDocument, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404 PORT.NOTFOUND", "a text read naming no document stays not found")
+
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
+    Do ..ArmDocument()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("GetDoc", "404 Not Found", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Alpha.One.cls"",""status"":"""",""content"":[]}}")
+    Set tSC = ..Read("Class", "Alpha.One.cls", "", .tRows, .tDocument, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404 PORT.NOTFOUND", "and a class answered so is not object code")
+
+    ; The instance's own interoperability library keeps EnsJob.mac as object code alone.
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
+    Kill tQuery
+    Set tQuery("namespace") = $Namespace
+    Set tQuery("name") = "EnsJob.mac"
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).Invoke("Routine", "LIST", .tQuery, "", .tRows, .tHttp, .tFault, .tDocument)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tDocument)): tDocument.available _ " " _ tDocument.%Get("reason"), 1: ""), "200 0 objectonly", "the live EnsJob.mac reads as object code alone")
 }
 
 /// <p>An answer above the capture's ceiling is 503 <code>PORT.UNAVAILABLE</code>, logged, with the

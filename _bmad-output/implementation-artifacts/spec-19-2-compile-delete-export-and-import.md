@@ -2,8 +2,10 @@
 title: 'Story 19.2: Compile, delete, export and import'
 type: 'feature'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '4eb3fd50534271e5802f53da31b786438f5352b5'
+baseline_commit: '4eb3fd50534271e5802f53da31b786438f5352b5'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -19,7 +21,7 @@ deferred: []
 
 **Approach:** Add the area's first write tools on `Port/AtelierPort`: compile, delete, XML export and import for each of the Classes and Routines lists. Each tool is reached by two callers, the agent's confirmed proposal and the list's own action (AD-53, AD-55), over the checked rows. The screen streams compile output one document per request. Export and import reach server files through `PathPort`, and the browser through the action's answer and the request body.
 
-The work splits at a seam. **Part A** is compile, delete, DW-1922 and the write plumbing. **Part B** is export and import (Design Notes › Split).
+The work splits at a seam. **Part A** is compile, delete, DW-1922 and the write plumbing, and is this story. **Part B**, export and import (AC4, AC5), moved to Story 19.13 at the spec gate (split 2026-10-02, by=merge_gate); every item marked `[B]` or `(19.13)` below is that story's, not this one's.
 
 ## Boundaries & Constraints
 
@@ -31,7 +33,7 @@ The work splits at a seam. **Part A** is compile, delete, DW-1922 and the write 
 - **Every agent write is a proposal (AD-6).** Each tool is action-style (AD-51, `SENDSBODY` 0). The port builds the vendor body from the tool's declared arguments, and each tool declares a fingerprint subject over the fresh read. The prohibited set, the per-target lock (AD-34), the read-back (AD-58), the change event, the marker and the ledger are the shared operation's (`Kernel/Proposal/Operation.cls`).
 - **Targets are sets.** A compile, delete or export target is a set of document names, joined by commas into one id under the `class` or `routine` entity type (AD-13). An import's target is the literal `import`, as `TaskImport`'s is. A set holds at most 100 documents, on both callers.
 - **Vendor console text reaches the screen only.** A compile's or import's console lines travel as `output` on the screen action's answer and the confirm's answer, are rendered as text on the code surface, and never reach the model, a tool result, a ledger row, a log line or screen context (the AD-39 exception proposed under Design Notes).
-- **Governance (AD-22).** `Kernel/Governance/Baseline.cls` gains all eight keys in the same change: the compile and export keys `true`, the delete and import keys `false`. An import silently replaces existing code (measured).
+- **Governance (AD-22).** `Kernel/Governance/Baseline.cls` gains this story's four keys in the same change: the compile keys `true`, the delete keys `false`. Story 19.13 adds the export keys `true` and the import keys `false` (an import silently replaces existing code, measured).
 - **Self-protection (AD-10).** A delete, a compile, or an import touching a document whose name begins with `OcuPilot` (case-insensitive), in any namespace, is refused `PROHIBITED.OCUPILOTCODE` on both callers. For an import, the documents checked are the ones the file holds, read at the write.
 - **The XML routes carry the version gate.** `ExportToXMLFile`, `ListDocumentsInXMLFiles` and `LoadXMLFiles` each declare a minimum of 7 in `MINVERSIONS`. An older instance is refused 501 `PORT.NOTIMPLEMENTED`, naming both versions, before any call (AD-61 rule 2).
 - **Server files follow `PathPort` (AD-21, sixth case).** Export is an overwriting `file` consumer, with the overwrite a constant; import is a `source`. Both resolve again at the write.
@@ -63,14 +65,14 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
 | OcuPilot's own code | any target, or any document an import file holds, whose name begins with `OcuPilot` | 403 `PROHIBITED.OCUPILOTCODE`, on both callers. Nothing changes | none |
 | Delete key disabled | the agent calls `explorer.classes.delete` with the baseline in force | Refused by the governance gate: a structured result, and the tool stays advertised (AD-22) | none |
 | Set too large | more than 100 names | 400 `TOOL.ARGUMENTS` (mint) or `PORT.VALIDATION` (port), before any call | none |
-| Export, server file | action `export`, values `{destination:"server", root, path}` | The vendor `xml/export` lines are written as UTF-8 to the resolved file, replacing an existing one. `output` is `{file:"<relative name>"}` | `PATH.ROOT`/`PATH.NAME` per `PathPort` |
-| Export, this browser | values `{destination:"browser"}` (screen only; the agent schema admits `server` alone) | No file is written. `output` is `{name:"<namespace>-export.xml", lines:[…]}`, which the page saves | an answer above the capture ceiling is 503 `PORT.UNAVAILABLE` |
-| Export, one name missing | a set naming a deleted document | `EXPLORER.DOCUMENT.ABSENT` from the fresh read. The vendor would void the whole export (#6308, measured) | none |
-| Import, server file | `{source:"server", root, path, compile:true}`, an `.xml` export | `xml/list` first: a per-file error or zero documents is refused `EXPLORER.IMPORT.UNREADABLE` before `xml/load` (malformed XML leaves a stub class otherwise, measured). Then `xml/load` with `selected` set to the listed names and `flags` `cuk` or `""`. `output` is `{imported:[…], lines:[…]}` | none |
-| Import changed | the agent's file holds different documents at the confirm | 409 `EXPLORER.IMPORT.CHANGED`; nothing is loaded | none |
-| Import, local file | the screen sends `{source:"local", fileName, content}` (≤ 3,000,000 characters; the page refuses larger files first) | As for a server file, from the sent text | 400 `EXPLORER.IMPORT.TOOLARGE` |
-| Import, UDL document | a `.cls`, `.mac`, `.inc` or `.int` file | The document name is read from its header line (`Class <name>` or `ROUTINE <name>`), then `PUT doc/<name>?ignoreConflict=1`, then a compile when asked. A header that does not parse is `EXPLORER.IMPORT.UNREADABLE` | none |
-| Old instance | the version seam answers 6 | Export and import answer 501 `PORT.NOTIMPLEMENTED`, "…answers version 6, and this … needs version 7…", with no call. Compile and delete are unaffected | the dialog shows the reason |
+| (19.13) Export, server file | action `export`, values `{destination:"server", root, path}` | The vendor `xml/export` lines are written as UTF-8 to the resolved file, replacing an existing one. `output` is `{file:"<relative name>"}` | `PATH.ROOT`/`PATH.NAME` per `PathPort` |
+| (19.13) Export, this browser | values `{destination:"browser"}` (screen only; the agent schema admits `server` alone) | No file is written. `output` is `{name:"<namespace>-export.xml", lines:[…]}`, which the page saves | an answer above the capture ceiling is 503 `PORT.UNAVAILABLE` |
+| (19.13) Export, one name missing | a set naming a deleted document | `EXPLORER.DOCUMENT.ABSENT` from the fresh read. The vendor would void the whole export (#6308, measured) | none |
+| (19.13) Import, server file | `{source:"server", root, path, compile:true}`, an `.xml` export | `xml/list` first: a per-file error or zero documents is refused `EXPLORER.IMPORT.UNREADABLE` before `xml/load` (malformed XML leaves a stub class otherwise, measured). Then `xml/load` with `selected` set to the listed names and `flags` `cuk` or `""`. `output` is `{imported:[…], lines:[…]}` | none |
+| (19.13) Import changed | the agent's file holds different documents at the confirm | 409 `EXPLORER.IMPORT.CHANGED`; nothing is loaded | none |
+| (19.13) Import, local file | the screen sends `{source:"local", fileName, content}` (≤ 3,000,000 characters; the page refuses larger files first) | As for a server file, from the sent text | 400 `EXPLORER.IMPORT.TOOLARGE` |
+| (19.13) Import, UDL document | a `.cls`, `.mac`, `.inc` or `.int` file | The document name is read from its header line (`Class <name>` or `ROUTINE <name>`), then `PUT doc/<name>?ignoreConflict=1`, then a compile when asked. A header that does not parse is `EXPLORER.IMPORT.UNREADABLE` | none |
+| (19.13) Old instance | the version seam answers 6 | Export and import answer 501 `PORT.NOTIMPLEMENTED`, "…answers version 6, and this … needs version 7…", with no call. Compile and delete are unaffected | the dialog shows the reason |
 | DW-1922 | Routines viewer, `EnsJob.mac` (object code only) | 200. The routine row is present, and `document.available` false with `reason:"objectonly"`. The viewer says the instance holds only the routine's object code. A truly missing name stays 404 `PORT.NOTFOUND` | the two 404 bodies differ: `result.status` "" with `ts` "" against #16005 (measured) |
 
 </intent-contract>
@@ -170,10 +172,10 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
 **Execution:**
 
 - **Task 0, on `ocupilot-a2-ci` only, before the port code.** Write the results under Design Notes › Measured at plan, beneath the plan's own lines.
-  - T0.1: for `ExportToXMLFile`, `ListDocumentsInXMLFiles` and `LoadXMLFiles`, run 10 background jobs of 20 calls each under `%SYS.Capture`. Any process death puts that route in `FILEDEVICEROUTES`.
+  - T0.1: (19.13) for the XML routes under `%SYS.Capture`; not this story.
   - T0.2: time the `DOCS` fresh read over `docnames` filtered to a set, on HSCUSTOM. Above 0.5 s, `DOCS` reads `HEAD doc/<name>` per name instead: its ETag is `ts`, and 404 means absent.
-  - T0.3: run a UDL import of a `.cls` and a `.mac` named from the header, and confirm no other document is created. If one is, UDL import is refused `EXPLORER.IMPORT.UNREADABLE` and becomes a named limitation.
-  - T0.4: compile an `.inc`, and import one export that holds both kinds. If the `.inc` compile answers an error, the page leaves `.inc` rows out of a compile sequence, as the classic page does.
+  - T0.3: (19.13) the UDL import check; not this story.
+  - T0.4: compile an `.inc`. If it answers an error, the page leaves `.inc` rows out of a compile sequence, as the classic page does.
   - T0.5: record whether `%System/%SMPExplorer/*` is enabled by default. This changes only the wording of amendment 6.
 - **[A] `src/OcuPilot/Port/AtelierPort.cls`.**
   - Types on `Classes` and `Routines`: `DOCS` (fresh read), `COMPILE`, `DELETE`, `EXPORT`, `PREVIEW` (the import's fresh read) and `IMPORT`.
@@ -211,12 +213,11 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
   - Update the pin at `screen-mirror.test.mjs` :843.
 - **[A] Descriptors.**
   - Each list declares:
-    - `rowActions` compile, export and delete;
-    - `primaryAction` import, which is Part B;
-    - `multiSelect {action:"compile", extraActions:["export","delete"], max:100}`;
+    - `rowActions` compile and delete (19.13 adds export, and import as the `primaryAction`);
+    - `multiSelect {action:"compile", extraActions:["delete"], max:100}`;
     - the write-capable empty-state keys.
   - Regenerate `ui/src/app/core/screens.generated.ts`.
-- **[A] `Kernel/Governance/Baseline.cls`.** Add the eight keys, and the delete and import keys to `GovernanceBaseline.DISABLED`.
+- **[A] `Kernel/Governance/Baseline.cls`.** Add the four compile and delete keys, and the delete keys to `GovernanceBaseline.DISABLED`.
 - **[A] Client, `code-list.page.ts` and `.store.ts`.** The page owns its dialogs and output pane, registered the way the Namespaces page registers Copy mappings.
   - The compile dialog has three checkboxes: keep source on, dependents off, skip up-to-date on.
   - The sequence runs one action per checked document in list order. A framework-free store holds the queue, the stop flag and the lines (AD-19).
@@ -225,34 +226,34 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
   - It shows the per-document results.
 - **[A] `shell/proposal-card.ts`.** Render `output.lines` in `code-block` when present.
 - **[A] `document-viewer.page.ts`.** Render DW-1922's sentence.
-- **[B] `AtelierPort` `EXPORT`.**
+- **[B, Story 19.13; not this story] `AtelierPort` `EXPORT`.**
   - It locates the file through `PathPort` as `KINDFILE`, with overwrite a constant, and writes the lines as UTF-8.
   - `destination` `browser` writes nothing and answers the lines.
-- **[B] `AtelierPort` `PREVIEW`/`IMPORT`.**
+- **[B, Story 19.13; not this story] `AtelierPort` `PREVIEW`/`IMPORT`.**
   - The source comes from `PathPort` (`KINDSOURCE`) or the screen's `content`, refused above 3,000,000 characters.
   - An `.xml` file goes through `xml/list`, which refuses `UNREADABLE`, then `xml/load` with `selected`.
   - A UDL file goes through header parse, `PUT doc?ignoreConflict=1`, then `COMPILE` when asked.
   - `PREVIEW` answers `documents`, a canonical "name new" or "name replaces <ts>" summary.
-- **[B] Export tools, `explorer.{classes,routines}.export`.**
+- **[B, Story 19.13; not this story] Export tools, `explorer.{classes,routines}.export`.**
   - `EXPORT`, `updated`, not destructive.
   - Arguments: `Names`, `destination`, `root` and `path`. The schema enum is `["server"]`; the screen also sends `browser`.
   - Subject: `Present,Absent,destination,root,path`.
   - `CLASSICPAGES`: `.Dialog.Export`.
-- **[B] Import tools, `explorer.{classes,routines}.import`.**
+- **[B, Story 19.13; not this story] Import tools, `explorer.{classes,routines}.import`.**
   - `PREVIEW`/`IMPORT`, `created`, `DESTRUCTIVE` 1.
   - Arguments: `root`, `path` and `compile`. `SCREENVALUES` adds `source`, `fileName` and `content`. The mint refuses `content` with `TOOL.ARGUMENTS`.
   - A mint class stores `documents`, as `TaskImportMint` does. The subject is `root,path,documents`, and the port refuses `CHANGED`.
   - `ArgumentPairs` adds `PathPort.PAIRS` only when `root` is sent.
   - `CLASSICPAGES`: `.Dialog.Import`.
-- **[B] Client.**
+- **[B, Story 19.13; not this story] Client.**
   - The export dialog offers a server file (`server-path-picker`, kind file) or this browser, which saves the answer's lines like `csv.ts`.
   - The import dialog offers a server file or a local file (`FileReader`, accepting `.xml,.cls,.mac,.inc,.int`), plus a compile checkbox, on by default. A refused version is shown in the dialog.
 - **[A+B] Strings and docs.**
   - `strings.ts` gets new keys only. EXPERIENCE.md gets Fixed-strings rows after :588: labels, flags, the dialogs, the reasons, the count prompt and the output status lines. The closed dialog set at :173 names the compile, export and import dialogs.
   - Run `bash scripts/lint-docs.sh` and `cd ui && npm run test:tools`.
 - **[A+B] Rosters.** Update each roster in the Code Map list, with every new name read from the instance.
-  - Replace `ExplorerDescriptor.TestTheAreaIsReadOnly` with a roster test: the four reads plus eight writes, each key's baseline value, and the descriptors' actions.
-  - [B] `DeveloperFloor.TOOLS` gains the two export tools. Its "none is a write" assertion becomes "its writes are exactly the two exports": a `%Developer` lacks `%DB_HSCUSTOM:WRITE`, so compile, delete and import stay unheld.
+  - Replace `ExplorerDescriptor.TestTheAreaIsReadOnly` with a roster test: the four reads plus four writes, each key's baseline value, and the descriptors' actions.
+  - (19.13) `DeveloperFloor.TOOLS` gains the two export tools. Its "none is a write" assertion becomes "its writes are exactly the two exports": a `%Developer` lacks `%DB_HSCUSTOM:WRITE`, so compile, delete and import stay unheld.
   - The new arming classes get their `# classes:` line.
 - **New tests**, each class at most about 500 lines:
   - `Test/AtelierPortWrite.cls` (in process, with the `ImplClass`/`HighestVersion` seams): every [A] matrix row; `work` never called; the namespace restored; `Snippet` per type.
@@ -261,13 +262,13 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
     - routines RW succeeds;
     - a `%Developer`-role principal compiles and deletes a probe in `USER`, and is refused in `HSCUSTOM`.
   - `Test/ExplorerWrite.cls` (HTTP):
-    - screen compile, delete, export and import on probe documents in `USER`;
+    - screen compile and delete on probe documents in `USER`, created by the test in setup;
     - agent mint and confirm for compile and delete. The delete key is enabled through its stored setting and restored, as `Test/GovernanceRestore.cls` does;
     - `OCUPILOTCODE` on both callers.
-  - `Test/ExplorerImportExport.cls` [B]: the server and local round trip with source compared through `GET doc`, `UNREADABLE` with no stub left, `CHANGED`, UDL, and the version seam at 6.
+  - (19.13) `Test/ExplorerImportExport.cls`: the server and local round trip with source compared through `GET doc`, `UNREADABLE` with no stub left, `CHANGED`, UDL, and the version seam at 6.
   - `code-list.page.spec.ts`: the sequence, Stop, the error line, and the typed count.
   - `proposal-card.spec.ts`: `output` rendered as text.
-  - `ui/browser/system-explorer-write.browser-spec.mjs`: a local import of a probe XML, then compile with streamed lines, export to the browser, delete, and the probe gone. Its `structural()` walk covers the new dialogs, light and dark.
+  - `ui/browser/system-explorer-write.browser-spec.mjs`: probe documents created in setup, then compile with streamed lines, delete, and the probe gone. Its `structural()` walk covers the new dialogs, light and dark.
 
 **Acceptance Criteria:**
 
@@ -277,16 +278,81 @@ Routes are `POST /screens/explorer.classes/action` (or `explorer.routines`) and 
   - Stop sends no further request.
 - **AC2 (criteria 2, delete).** Given checked documents, when Delete is confirmed by typing their name or count, then they read back absent and the list re-fetches without them. Given the agent's `delete` proposal, when it is confirmed after the key is enabled, then the same holds. With the baseline in force, the agent's call is refused by governance.
 - **AC3 (Integration, Rule 1).** Given a turn on Classes, when the agent calls `explorer.classes.compile`, then the minted card names the documents and flags. Confirming compiles them and shows the console on the card. The turn's tool result holds no console line.
-- **AC4 (criteria 2, export and import).** Given probe documents exported to a server file, when they are deleted and then imported from that file, then each document's `GET doc` source equals what it was before. The same holds for an export to this browser imported as a local file. Each write goes through a confirmed proposal from the agent, or the screen's own action.
-- **AC5 (criterion 3).** Given an instance whose highest Atelier version is below 7, when export or import runs, then the dialog shows "…answers version 6, and this … needs version 7…" and nothing was sent. Compile and delete still run.
+- **AC4 (criteria 2, export and import) [SPLIT to 19.13].** Given probe documents exported to a server file, when they are deleted and then imported from that file, then each document's `GET doc` source equals what it was before. The same holds for an export to this browser imported as a local file. Each write goes through a confirmed proposal from the agent, or the screen's own action.
+- **AC5 (criterion 3) [SPLIT to 19.13].** Given an instance whose highest Atelier version is below 7, when export or import runs, then the dialog shows "…answers version 6, and this … needs version 7…" and nothing was sent. Compile and delete still run.
 - **AC6 (gate).** Given a principal holding the read pairs without routines WRITE, when it compiles, deletes or imports, then it is refused 403 naming `<routines resource>:WRITE`, and no document changes.
 - **AC7 (self-protection).** Given any `OcuPilot*` document, or an import file holding one, when either caller compiles, deletes or imports it, then the answer is `PROHIBITED.OCUPILOTCODE` and nothing changes.
 - **AC8 (DW-1922).** Given `EnsJob.mac` in HSCUSTOM, when its viewer opens, then it states that only object code is installed, and does not show the empty state for a missing document.
-- **AC9.** Given the registry after this story, when `ExplorerDescriptor` enumerates `explorer.*`, then it finds four reads and eight writes, the delete and import keys disabled, and the structural walk adds no `structural-baseline.json` entry.
+- **AC9.** Given the registry after this story, when `ExplorerDescriptor` enumerates `explorer.*`, then it finds four reads and four writes, the delete keys disabled, and the structural walk adds no `structural-baseline.json` entry.
+
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 40 rows, 12 entries (high 0, med 3, low 9), 19 rejected.
+
+- [x] [Review][Patch] med, fix-risk low (pin the scope at the sequence's start), in-story: a screen compile sequence followed the shell's namespace, so a namespace switch mid-run compiled the remaining names in the new namespace [ui/src/app/areas/system-explorer/code-list.page.ts:391]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: the deletes' fingerprint subject (`Modified`) and every write's precondition were pinned by no test [src/OcuPilot/Test/ExplorerWrite.cls:311]
+- [x] [Review][Patch] med, fix-risk low (test-only), in-story: AC3's "no console line on the ledger" check never asserted that a ledger row was read [src/OcuPilot/Test/ExplorerWrite.cls:251]
+- [x] [Review][Patch] low, fix-risk low, in-story: the lists' empty-state invitation offered delete, which the baseline disables (EXPERIENCE.md: "a write it could propose here") [ui/src/app/core/strings.ts:4271]
+- [x] [Review][Patch] low, fix-risk low, in-story: the card's console block had no height cap, unlike the page's pane [ui/src/styles/_components.scss:7489]
+- [x] [Review][Patch] low, fix-risk low, in-story: `AtelierError.Codes()` and `ReasonFor()` had no caller and no test, and are removed [src/OcuPilot/Api/AtelierError.cls:51]
+- [x] [Review][Patch] low, fix-risk low, in-story: `GovernanceBaseline.DISABLED` claimed name order; the test compares the baseline's line order [src/OcuPilot/Test/GovernanceBaseline.cls:13]
+- [x] [Review][Defer] low, fix-risk med, in-story: at confirm the tools' routines-WRITE pair is resolved for the confirm request's `?ns=`, not the proposal's namespace; the port re-gates the right namespace before any write [src/OcuPilot/Screen/Tool/ExplorerWrite.cls:102] — deferred: DW-1930 wontfix-accepted (spec-prescribed `Scope.Current()`; kernel or client change)
+- [x] [Review][Defer] low, fix-risk med, out-of-footprint: a document-set change sentence reads "A.cls,B.cls was deleted" and marks no row [ui/src/app/core/toasts.ts:103] — deferred: DW-1931 wontfix-accepted (shared sentence builder; the process-set precedent reads the same)
+- [x] [Review][Defer] low, fix-risk low, in-story: the Routines list's delete warning keeps the class-data sentence [ui/src/app/core/strings.ts:4267] — deferred: DW-1932 wontfix-accepted (irrelevant, not false; new copy)
+- [x] [Review][Defer] low, fix-risk med, in-story: a `DeleteDocs` envelope error after some deletions (a source-control `UserAction` error, `GetDbForDoc` failing mid-set) is answered as a fault [src/OcuPilot/Port/AtelierPort.cls:872] — deferred: DW-1933 wontfix-theoretical
+- [x] [Review][Defer] low, fix-risk med, in-story: every write reads `DOCS` over the whole category twice (three times for a delete), about 0.35 s each on HSCUSTOM classes, under the same capture ceiling as the list [src/OcuPilot/Port/AtelierPort.cls:733] — deferred: DW-1934 wontfix-accepted
+
+Rejected:
+
+- `false`: a compile's `<PROTECT>` becomes output rather than 403. The amended AD-61 rule 6 carves out "inside a compile's output and a delete's per-item results", and `DeleteReason` treats a per-item `<PROTECT>` the same way. A capture failure parses no envelope and stays `INTERNAL`.
+- `false`: a compile writes a mapped database without a gated WRITE. IRIS enforces database permissions in process, and the measured answers are #302 and #5883 (M7).
+- `false`: AC2's re-fetch and AC9's walk lack `mutation:` lines. Rule 19 asks for one per AC, and both ACs have recorded mutations.
+- `false`: `MultiSelectCorpus`'s base no longer mirrors `ProcessList`. The base is a synthetic validation subject, and an empty `extraActions` is valid.
+- `low`, spec-bound: a compile with errors is announced `updated`. AD-14 publishes every applied write, and the pane and card show the errors.
+- `low`, spec-bound: the Routines dialog shows the class-only "dependents" flag. The spec gives both lists' tools the same three booleans.
+- `low`, spec-bound: the set's delete dialog reads "Delete 2". The spec confirms a set by its typed count.
+- `low`, spec-bound: the agent's delete card shows no per-document lines. The spec renders `output.lines` only.
+- `low`, spec-bound: compile ships non-destructive and enabled, and an `.inc` compile reports success. Both follow AD-22's baseline and T0.4.
+- `low`, spec-bound: overlapping sets take different AD-34 locks. AD-13 keys the lock on the canonical set, as the process and database sets do.
+- `low`: deleting a mapped document carries no warning. The classic page deletes the same way (inference).
+- `low`: the 100 limit is written in several places. A mismatch is unlikely, and the fix adds a cross-check.
+- `low`: Compile and Delete stay pressable while a write runs. The status line and Stop show the run.
+- `low`: a refused delete clears the pane. Its refusal is the list's banner.
+- `low`: `lastOutput` is shared handler state. It follows the shipped `continued()` pattern and needs two screens' sends in one microtask window.
+- `low`: `ClassicPageGate.OWNPAIRS` names `%DB_HSCUSTOM`. CI and throwaways install in HSCUSTOM.
+- Not a finding: AD-15/AD-53's no-audit case lands at ship.
+- Rejected because the fix edits the spec: the `OcuPilotProbe192` package lies outside the probe-package line.
 
 ## Spec Change Log
 
+- 2026-10-02, spec gate (orchestrator, by=merge_gate): split approved. This story is Part A (AC1-AC3, AC6-AC9); Part B (AC4, AC5, the `[B]` items and `(19.13)` rows) is Story 19.13. The `Prohibited.cls` edits approved with disjoint hunks. The lead applied amendments 1-5 and 7-10 for Part A to the spine; amendment 6's wording follows T0.5 and lands at ship.
+
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 20 findings — high 0, medium 5, low 12, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` No test told KeepSource from SkipUpToDate, so a swap of `k` and `u` stayed green — added `100`→`ck` and `001`→`cu` at the port and over HTTP, and the page spec finds the checkbox by its label; both swaps observed red.
+  - `[medium]` `[patch]` The panel's `[output]` binding to the card was untested — `panel.spec.ts` test added; dropping the binding goes red.
+  - `[low]` `[patch]` AC2's agent half had no `mutation:` line — observed (delete key true in the baseline, run 944) and recorded.
+  - `[medium]` `[patch]` AC7's "still compiled" check could not fail and its delete legs named absent documents — rebuilt on an uncompiled `OcuPilotProbe192.Own` probe in USER, asserting it is neither compiled nor deleted; arm-drop observed red.
+  - `[low]` `[patch]` The "no console line for the model" check read the mint before any compile — the agent legs now call the tool's `View` (the model's tool result), and the stored proposal and its turn's ledger rows are checked for console text after the confirm.
+  - `[medium]` `[patch]` AC3 was exercised by calling the mint directly rather than the model-reachable surface — same fix as the row above (`View` under a stashed turn).
+  - `[low]` `[reject]` The confirm's HTTP route is not exercised for `output` — `Api/Confirm.cls:43-48` renders `Confirm.Confirm`'s answer whole; an HTTP leg adds no behavior.
+  - `[low]` `[reject]` "Stays advertised" is not asserted for the delete keys — advertising is key-independent and pinned by `ToolDispatch.TestAGateDenialReachesNothingAndTheToolStaysAdvertised` and `Governance.TestADisabledKeyIsRefusedAtDispatchAndStaysAdvertised`.
+  - `[false]` `[reject]` The HTTP legs cannot tell the tool's pair gate from the port's — both refuse 403 naming the pair before any vendor call; the tool's declaration is pinned on its own (`AtelierPortWriteDenial.TestTheToolsDeclareTheRequestNamespacesWritePair`, run 923).
+  - `[low]` `[patch]` Ledger rows were not asserted free of console text — covered by the stored-rows check above.
+  - `[low]` `[reject]` A document gone between mint and confirm answers 409 target-changed, not 404 — AD-6's fingerprint refusal precedes every confirm's write and nothing is sent; the 404 is answered at the mint and the screen's write.
+  - `[low]` `[reject]` A compile's privilege soft error is untested as such — AD-61 rule 6 makes it the compile's output (`errors` true) on the same path `TestACompileErrorIsTheCompilesOwnOutput` pins.
+  - `[low]` `[patch]` No HTTP leg for a screen set above 100 — added to `TestTheMintRefusesAnOversizedOrMissingSet` (400).
+  - `[low]` `[patch]` No successful routine delete or include compile — added a routine-set delete leg and an `.inc` compile leg to `ExplorerWrite`.
+  - `[false]` `[reject]` "The list re-fetches" tested only in a browser — that is the tier for it; `system-explorer-write.browser-spec.mjs` asserts the rows leave.
+  - `[low]` `[reject]` A confirmed delete's card shows no per-document lines — the spec renders `output.lines`; the card's read-back line reports the delete.
+  - `[medium]` `[patch]` `ExplorerWrite`'s AC7 compile leg targeted a real OcuPilot class — legs now target probes; install-namespace legs name absent documents.
+  - `[low]` `[reject]` DW-1922 has no browser leg — the jsdom viewer spec and the live `EnsJob.mac` port read cover both halves.
+  - `[false]` `[reject]` Code-point, UTF-16 and local-array orders may differ — document names are ASCII (`AtelierPort.cls` `CLASSNAMEPATTERN`/`ROUTINENAMEPATTERN`), where they agree.
+  - `[low]` `[patch]` The object-only 404 keyed on `status` alone — now `status` and `ts` empty, as the matrix states; `AtelierPortDocument` green.
 
 ## Design Notes
 
@@ -318,6 +384,9 @@ Per-document requests reach the same end state as one call over the set, in any 
 
   `%Development:USE` plus `%DB_USER:RW` sufficed. `xml/export` and `xml/list` answer even without `%Development`.
 - **M8.** With the default event set, compile, delete, load and PUT record no audit row. `%System/%System/RoutineChange`, disabled by default, records a compile only.
+- **T0.2** (`ocupilot-a2-ci`, 2026-10-02): one `docnames` read with `generated=1`, parsed and filtered to a three-name set, took 0.33-0.36 s on HSCUSTOM `CLS` (14,698 rows, 1.96 MB) and 0.25-0.31 s on `RTN` (9,914 rows). Under 0.5 s, so `DOCS` reads `docnames`.
+- **T0.4**: compiling an `.inc` through the route answered 200 with no error and compiled nothing (`cuk` and `ck`). `.inc` rows stay in a compile sequence.
+- **T0.5**: on the throwaway's stock event set, all five `%System/%SMPExplorer/*` events (`Change`, `ExecuteQuery`, `Export`, `Import`, `ViewContents`) read `Enabled` 0, as does `%System/%System/RoutineChange`.
 
 **Proposed spine amendments**, for the lead's spec gate (Rule 20):
 
@@ -348,7 +417,7 @@ Per-document requests reach the same end state as one call over the set, in any 
 
 **Footprint (Rule 11).** The concurrent worktrees were checked on 2026-10-01. `epic-18` had no diff. `epic-23` is running.
 
-- **Contended and not strictly add-only; these need the lead's approval.**
+- **Contended and not strictly add-only; approved by the orchestrator at the spec gate with disjoint hunks (by=merge_gate 2026-10-02).** Re-check `git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-23 diff` plus `status -s` at edit time; if Epic 23's hunks reach these lines, HALT `blocked`. `COVEREDTYPES` (:250) is a one-line shared list: a forward merge unions it.
   - `Kernel/Proposal/Prohibited.cls`: one-line edits at :250, :658 and :995, plus an appended arm. Epic 23's uncommitted hunks are at :4134-4187.
   - `Test/Prohibited.cls`: :219 and :687. Epic 23's committed hunks are at :9-54.
 - **Contended and add-only:** `scripts/ci-throwaway.sh` (`# classes:` lines; epic-23 edits :264), `Baseline.cls`, `strings.ts`, EXPERIENCE.md, `ci.test.mjs` and `SurfaceCoverage.cls`.
@@ -400,7 +469,38 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it. R
 
 Record one `mutation: <change> → <test that reddened>` line per AC here as each is observed (Rule 19).
 
+- mutation: AC1, drop `k` from `AtelierPort.CompileFlags` → `ExplorerWrite.TestTheScreenCompilesADocumentWithItsFlags` and `TestTheAgentCompilesThroughConfirm` (run 919).
+- mutation: AC1, ignore the answer's `output` in `code-list.page.ts` `onCompile` → `code-list.page.spec.ts` "AC1: Compile opens on the checked rows…" and "AC1: Stop…"; drop the stop check in `CodeListWrite.runCompile` → "AC1: Stop…".
+- mutation: AC2, `ExplorerDelete.ReadBackGone` answers 1 → `ExplorerWrite.TestTheScreenDeletesASetAndReadsItBack` (run 920); a set typed by its first name in `deleteTarget` → `code-list.page.spec.ts` "AC2: Delete over a set…".
+- mutation: AC3, `output` set on the mint's answer in `ExplorerMint.Mint` → `ExplorerWrite.TestTheAgentCompilesThroughConfirm` (run 921); `confirmed` dropped from `proposal-card.ts` `outputVisible` → `proposal-card.spec.ts` "Story 19.2 AC3…"; the `output` spread dropped from `turn.ts` `recordProposalState` → `tools/turn.test.mjs` "a confirm's console lines…".
+- mutation: AC6, the WRITE pair dropped from `ExplorerWrite.PrivilegePairs` → `AtelierPortWriteDenial.TestTheToolsDeclareTheRequestNamespacesWritePair` (run 923); `NamespacePairs` in place of `WritePairs` in `AtelierPort.Invoke` → `AtelierPortWrite.TestAWriteRequiresTheRoutinesDatabasesWritePair` (run 924).
+- mutation: AC7, the class/routine arm dropped from `Prohibited.Prohibits` → `ExplorerWrite.TestOcuPilotsOwnCodeIsRefusedOnBothCallers`, on its `OcuPilotProbe192` probe legs (run 944).
+- mutation: AC8, the object-only branch disabled in `AtelierPort.Document` → `AtelierPortDocument.TestARoutineKeptOnlyAsObjectCodeReadsAsSo` (run 925); the `objectonly` branch dropped from `document-viewer.page.ts` `notAvailable` → `document-viewer.page.spec.ts` "Story 19.2 AC8…".
+- mutation: AC9, `explorer.classes.delete` true in `Baseline.cls` → `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndFourWrites` (run 926).
+- mutation: AC1, `CompileFlags(tSkip, tDependents, tKeep)` in `AtelierPort.CompileSet` → `AtelierPortWrite.TestACompileSendsCPlusTheDeclaredFlags` (run 945) and `ExplorerWrite.TestTheScreenCompilesADocumentWithItsFlags` (run 944); the KeepSource and SkipUpToDate labels swapped in `explorer-compile-dialog.ts` → `code-list.page.spec.ts` "AC1: Compile opens…".
+- mutation: AC2 (agent), `explorer.classes.delete` true in `Baseline.cls` → `ExplorerWrite.TestTheAgentsDeleteIsGovernedAndThenConfirmed` (run 944).
+- mutation: AC3, the `[output]` binding dropped from `panel.ts` → `panel.spec.ts` "Story 19.2 AC3: a confirmed card carries the console lines…".
+- mutation: matrix "Document gone" (mint), the absent check skipped in `ExplorerMint.Mint` → `ExplorerWrite.TestTheMintRefusesAnOversizedOrMissingSet` (run 934).
+- mutation: AC1, `scope` dropped from the `sendFor` in `code-list.page.ts` `onCompile` → `code-list.page.spec.ts` "AC1: a compile sequence sends every request to the namespace it started in…".
+- mutation: AC2, `ExplorerDelete`'s `FINGERPRINTSUBJECT` and `PRECONDITIONFIELD` moved from `Modified` to `Present` → `ExplorerWrite.TestAnEditAfterTheMintRefusesTheDelete` (run 1358) and `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndFourWrites` (run 1359).
+- mutation: AC3, `ExplorerWrite.StoredText`'s ledger read pointed at a turn with no rows → `ExplorerWrite.TestTheAgentCompilesThroughConfirm` (run 1360).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change (Part A).** `AtelierPort` gains `DOCS`, `COMPILE` and `DELETE` on both lists, gated on the namespace's routines WRITE pair; four action-style tools (`explorer.{classes,routines}.{compile,delete}`) over a `documentset` target, reached by the lists' Compile and Delete over checked rows and by the agent's proposal; `PROHIBITED.OCUPILOTCODE`; `output` on the screen and confirm answers only; DW-1922's `objectonly`; the delete keys ship disabled.
+
+**Files.**
+
+- Server: `Port/AtelierPort.cls`, `Api/AtelierError.cls` (new), `Screen/Tool/Explorer{Write,Compile,Delete,Mint,ClassCompile,ClassDelete,RoutineCompile,RoutineDelete}.cls` (new), `Kernel/Proposal/{Prohibited,Operation,Confirm}.cls`, `Api/ScreenAction.cls`, `Kernel/EntityRef.cls`, `Kernel/Governance/Baseline.cls`, `Screen/Registry.cls`, the two Explorer list descriptors.
+- Client: `code-list.page.ts`/`.store.ts`, `explorer-compile-dialog.ts` (new), the viewer page and store, `multi-select.ts`, `data-table.ts`, `screen-action-handler.ts`, `screen-actions.ts`, `proposal-card.ts`, `panel.ts`, `turn.ts`, `entity-ref.ts`, `strings.ts`, `screens.generated.ts`, `_components.scss`, `angular.json` (warning re-based 2420→2433 kB, DW-1166).
+- Docs and tools: EXPERIENCE.md (two Fixed-strings rows at :589-590, dialog set at :173, citations moved +2), `screen-mirror.mjs`, `scripts/ci-throwaway.sh` (`# classes:` line).
+- Tests: new `AtelierPortWrite`, `AtelierPortWriteDenial`, `ExplorerWrite`, `ExplorerProbe`, `system-explorer-write.browser-spec.mjs`; rosters moved in `ExplorerDescriptor`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `ToolWrite`, `MappingDescriptor`, `ClassicPageGate` (principals gain `%Development:U` and code-database WRITE), `AuditingUpdate`, `Prohibited`, `RefusalCopy`, `EntityRef`, `MultiSelectCorpus`, `AtelierPort`, `AtelierPortDocument`, and the client tool and component specs.
+
+**Review.** 20 findings: 11 patched (5 medium, 6 low), 9 rejected (6 low, 3 false), 0 deferred; reasons in the triage log. Follow-up review: `false` — the five medium patches are test-only, each with its mutation observed red, and the sweep ran after them.
+
+**Verification.** `check-objectscript` 0 problems, harness 144 OK; `lint-docs` 0. Full ObjectScript sweep on `ocupilot-a2-ci`: 405 classes, 3,322 tests, 2 red, both rosters this story tripped (`AuditingUpdate` code count, `ToolWrite` other-port count), fixed and re-run green (runs 1352, 1353); no probe leftovers. `npm test`: 1,770 tool tests and 2,088 component tests green. Browser, after build and deploy: `system-explorer-write` 1/1, `system-explorer` 4/4, `a11y-structural-invariants` 12/12, `structural-baseline.json` unchanged. The spec's `ng test --include 'src/app/areas/system-explorer/**'` also matches non-spec files; `**/*.spec.ts` was run. Probe documents, globals and principals are gone from USER and HSCUSTOM.
+
+**Residual risk.** The full browser suite is CI's. Export and import (AC4, AC5) are Story 19.13's.
