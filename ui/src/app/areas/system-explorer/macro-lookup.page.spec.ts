@@ -42,12 +42,13 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(options: { rows?: readonly unknown[]; prefill?: string; arrivals?: ScreenArrivals } = {}) {
+async function mount(options: { rows?: readonly unknown[]; prefill?: string; arrivals?: ScreenArrivals; refusal?: { status: number; code: string; reason: string | null } } = {}) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
+      if (options.refusal !== undefined) return { kind: 'error', status: options.refusal.status, code: options.refusal.code, reason: options.refusal.reason, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: options.rows ?? [ROW], truncated: false, banner: '' } as T };
     },
   };
@@ -131,6 +132,14 @@ describe('System Explorer Macros', () => {
     await lookUp('Demo.Probe.cls', 'Nothing');
     expect(host.querySelector('[data-ocu-macro="empty"]')?.textContent?.trim()).toBe(STRINGS.explorerMacroUndefined.replace('<macro>', 'Nothing').replace('<document>', 'Demo.Probe.cls'));
     expect(host.querySelector('[data-ocu-macro="result"]')).toBeNull();
+  });
+
+  it("draws a refused lookup with the instance's reason, and no definition or undefined sentence", async () => {
+    const { host, lookUp } = await mount({ refusal: { status: 400, code: 'PORT.VALIDATION', reason: STRINGS.explorerMacroReason } });
+    await lookUp('Demo.Probe', 'OK');
+    expect(host.querySelector('[data-ocu-macro="fault"] .ocu-data-table-refusal-message')?.textContent?.trim()).toBe(STRINGS.explorerMacroReason);
+    expect(host.querySelector('[data-ocu-macro="result"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-macro="empty"]')).toBeNull();
   });
 
   it("runs an agent's arrival once, with its criteria shown in the form", async () => {

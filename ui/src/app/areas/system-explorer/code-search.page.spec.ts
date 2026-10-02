@@ -48,13 +48,14 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(options: { rows?: readonly unknown[]; truncated?: boolean; arrivals?: ScreenArrivals } = {}) {
+async function mount(options: { rows?: readonly unknown[]; truncated?: boolean; arrivals?: ScreenArrivals; refusal?: { status: number; code: string; reason: string | null } } = {}) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const bus = new ChangeBus();
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
+      if (options.refusal !== undefined) return { kind: 'error', status: options.refusal.status, code: options.refusal.code, reason: options.refusal.reason, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: options.rows ?? ROWS, truncated: options.truncated ?? false, banner: '' } as T };
     },
   };
@@ -162,6 +163,20 @@ describe('System Explorer Search', () => {
     await search('needle');
     expect(host.querySelector('[data-ocu-search="empty"]')?.textContent?.trim()).toBe(STRINGS.explorerSearchEmpty);
     expect(host.querySelector('[data-ocu-search="results"]')).toBeNull();
+  });
+
+  it("draws a refused search with the instance's reason, and no rows or empty state", async () => {
+    const { host, search } = await mount({ refusal: { status: 400, code: 'PORT.VALIDATION', reason: STRINGS.explorerSearchTextReason } });
+    await search('needle');
+    expect(host.querySelector('[data-ocu-search="fault"] .ocu-data-table-refusal-message')?.textContent?.trim()).toBe(STRINGS.explorerSearchTextReason);
+    expect(host.querySelector('[data-ocu-search="results"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-search="empty"]')).toBeNull();
+  });
+
+  it('falls back to the generic sentence for a refusal that carries no reason', async () => {
+    const { host, search } = await mount({ refusal: { status: 403, code: 'AUTH.NOPRIVILEGE', reason: null } });
+    await search('needle');
+    expect(host.querySelector('[data-ocu-search="fault"] .ocu-data-table-refusal-message')?.textContent?.trim()).toBe(STRINGS.connectivityRequestRefused);
   });
 
   it("runs an agent's arrival once, with its criteria shown in the form", async () => {

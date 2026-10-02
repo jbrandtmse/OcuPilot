@@ -2,7 +2,7 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,13 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['multiple-goals', 'oversized']
 deferred:
-  - 'Screen/Tool/Read.AddCriteria describes every text criterion as a comma-separated name list where * matches, which misdescribes Search''s text and Macros'' document and macro to the model.'
+  - summary: >-
+      Screen/Tool/Read.AddCriteria describes every text criterion as a comma-separated name list where * matches, which misdescribes Search's text and Macros' document and macro to the model.
+    evidence: |-
+      Occurrence of DW-1001 (owner range-end-cleanup). The three are required free text or one name: an omitted or malformed value is refused PORT.VALIDATION with a reason, but a * in text is searched literally and answers no rows with no refusal. No test pins the descriptions. Not fixed here: the fix DW-1001 names is a descriptor-declared criterion description, which needs the criteria grammar in Screen/Registry.cls (this story may not edit it) and the screen mirror; a port-supplied hint would be a second source for the tool schema beside the descriptor (AD-5).
+    location: >-
+      src/OcuPilot/Screen/Tool/Read.cls:171
+    severity: medium
 ---
 
 <intent-contract>
@@ -206,6 +212,25 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-10-02 — Review pass
+
+- verdicts: 14 findings — high 0, medium 5, low 5, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` No test pins what `explorer.search.read` and `explorer.macro.read` tell the model about `text`, `document` and `macro` — grouped with the two description findings below; deferred with its reason (DW-1001 occurrence).
+  - `[low]` `[patch]` Compare's re-compare was verified only for the second document — `code-compare.page.spec.ts` now also publishes an unrelated class (no read) and the first document (re-compare); the "only the right side" mutation reddens it.
+  - `[false]` `[reject]` Rule 19 clauses without their own `mutation:` line — each of the nine ACs has its line; Rule 19 asks one per AC, not per clause.
+  - `[medium]` `[defer]` The two tools' criterion descriptions contradict the port (required, not a name list; `*` literal) — same root cause as the first row: `AddCriteria`'s one text description, DW-1001; the descriptor-declared fix needs `Screen/Registry.cls`.
+  - `[medium]` `[patch]` Search and Macros never show the instance's reason for a refusal — both stores now keep the refused answer's reason and the refusal strip shows it, falling back to the generic sentence; two page-spec cases pin it.
+  - `[low]` `[patch]` A change event re-comparing overwrote the names the person was typing — `recompare` now reads the compared sides without touching the form; a page-spec case pins it and reddens under the old overwrite.
+  - `[medium]` `[defer]` The advertised schema (`required: []`, name-list descriptions) diverges from the port — same root cause as the first row.
+  - `[low]` `[reject]` Each derived read tool's own description is generic ("Read the rows the explorer.search screen lists") — the shared description of every derived read, unchanged here; a product-wide change for no user-met defect.
+  - `[medium]` `[patch]` The matrix's "Banner" reading with the port's reason is not met on Search and Macros — same root cause and fix as the refusal-reason row above.
+  - `[low]` `[reject]` Compare across two namespaces is shown in jsdom only — the per-side `scope` is asserted there and the browser spec covers the same read path in USER; a second-namespace browser leg would need probes in two namespaces for no reachable defect.
+  - `[false]` `[reject]` `Definition` is not shown cut or wrapped — `Kernel/Agent/Bound.Apply` cuts every string field of every row whatever its name, and AD-60 wraps the whole block; `Text`'s test exercises that path for this read.
+  - `[false]` `[reject]` `max` defaults to 200 when no cap is named — the spec's Tasks state it (`max` is `maxRows`, else 200).
+  - `[low]` `[reject]` Compare's prompts lead the agent to other reads — the prompts are the spec's Design Notes › Strings, and the agent has no compare by design (AC6).
+  - `[false]` `[reject]` The spec's run-result section still said `Status: blocked` — finalize rewrites that section; nothing in code.
+
 ## Design Notes
 
 **Measured on `ocupilot-a2-ci`, 2026-10-02.** Probe documents `OcuProbe194*` in USER and a probe port subclass in HSCUSTOM ran the shipped `Route` and `Outcome`; all were removed and checked gone.
@@ -355,10 +380,21 @@ Load source into `ocupilot-a2-ci` and never restart it:
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: contended edit needs lead approval: `ui/tools/strings.test.mjs:575-576`. This story's Fixed-strings row takes the table to 2032 distinct literals against the bound of 2000 (`npm run test:tools`: 1 of 1,777 red), and Epic 18's 081bbd5e (Story 18.5) changes the same two assertion lines from 2000 to 2100. The 19.1 approval covered disjoint hunks only.
+Status: done
+Blocking condition: none
 
-- Plan (2026-10-02): search, macro and capture behavior measured on `ocupilot-a2-ci` (Design Notes), every `OcuProbe194*` document, the probe port class and its global removed and checked gone; the classic pages read on slot A and in `irissys/`; no diff library needed; ledger inbox empty.
-- For the spec gate: the drafted AD-61, AD-7 and AD-36 amendments; Search declaring no classic page; the contended non-additive edits (`ReadTool`, `ToolRoundTrip`, `strings.ts`, the budget, the spine).
-- Implement (2026-10-02, baseline `6f718d934244b6f45b511e5cb72f1d15038bac7e`, all work uncommitted in the tree): every task is implemented. The story's 14 ObjectScript classes are green on `ocupilot-a2-ci`, one per call. Their latest runs, 2350-2358 and 2370-2375, were read back from `%UnitTest_Result`; the red runs 2359-2369 are the recorded mutations. Also green: `ng test` (162 files) and the three browser specs (bundle 2,525,385 bytes, warning re-based to 2526kB); every AC's `mutation:` line is recorded. `check-objectscript` passes, the `%Atelier` literal is absent, and no probe documents or principals are left. Not run yet: the full ObjectScript sweep, the step-04 review layers and the Matrix Test Audit.
-- Recommended resolution: change only those two lines from 2000 to 2100, byte-identical to 18.5's, with no comment line of this story's. A three-way `git merge-file` of that edit against 18.5's file gave 0 conflicts and a result identical to 18.5's file. The two stories together add at most 2072 literals, which fits under 2100. Keep the baseline above when re-dispatching, so the review diff covers the whole story.
+- Prior halt: closed by the lead's Fixed-strings bound edit (Spec Change Log); the work-in-progress commit `524de82d` carried the implementation.
+- Summary: Search and Macros are declared reads through `AtelierPort` (`SearchRows`, `MacroRows`, `MacroContext`), each an advertised read tool; Compare is a form page that reads both sides through the viewers' declared read and diffs them with the project's own Myers diff (`line-diff.ts`). The viewer links to Compare and Macros.
+- Files:
+  - `src/OcuPilot/Port/AtelierPort.cls` -- the two endpoints, their validation, the macro context and the four reasons.
+  - `src/OcuPilot/Screen/Descriptor/ExplorerSearch.cls`, `ExplorerMacro.cls`, `ExplorerCompare.cls` -- the three listed screens.
+  - `src/OcuPilot/Test/AtelierPortSearch.cls`, `AtelierPortMacro.cls`, `ExplorerFind.cls`, `ExplorerFindProbe.cls` -- port, wire and tool legs and their probe documents; `AtelierPortDenial`, `AtelierDenialProbe`, `AtelierPortFixture`, `InjectionChannels`, `InjectionSeed` -- denial legs, canned routes and source (i); `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `Descriptor`, `DeveloperFloor`, `ExplorerDescriptor` -- rosters.
+  - `ui/src/app/areas/system-explorer/line-diff.ts`, `code-search.*`, `macro-lookup.*`, `code-compare.*` and their specs -- the diff and the three pages; `document-viewer.page.ts` -- the two links.
+  - `ui/src/app/shell/screen-outlet.ts`, `core/screens.generated.ts`, `core/strings.ts`, `styles/_components.scss` -- page registration, mirror, strings, diff styles.
+  - `ui/browser/system-explorer-find.browser-spec.mjs`, `system-explorer.browser-spec.mjs`; `ui/tools/navigation.test.mjs`, `screen-mirror.test.mjs`, `strings.test.mjs` (the lead's bound), `angular-json.test.mjs` with `ui/angular.json` -- browser legs, client rosters, budget.
+  - EXPERIENCE.md -- the :594 Fixed-strings row and line 159.
+- This pass: the Matrix Test Audit added a refused-read case to the Search and Macros page specs. Review patches: both pages show the instance's reason for a refused read (falling back to the generic sentence); Compare's re-compare reads the compared sides without overwriting the form; Compare's change-event case now covers the first document and an unrelated class. The budget re-based to 2527kB (measured 2,526,006 bytes).
+- Review: 14 findings (medium 5, low 5, false 4). Patched 3 entries: 1 medium (refusal reason, 2 rows), 2 low. Deferred 1 entry (3 rows): the criterion descriptions, a DW-1001 occurrence (frontmatter `deferred:`). Rejected: the generic read-tool description, two-namespace browser coverage and Compare's prompts (low); per-clause mutation lines, `Definition`'s bound, the `max` default and this section's stale status (false), each with its reason in the triage log.
+- Follow-up review: not recommended (no high and one medium entry patched).
+- Verification: the story's 14 ObjectScript classes green one per call (runs 2376-2389); the full sweep once on `ocupilot-a2-ci`, 416 classes, 3,428 tests, 2 red, both residue of the throwaway's age, not this story: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (1,583 task-history rows, DW-1554) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` (24 `_SYSTEM` conversation entries from browser-spec turns since 2026-10-01T22:56Z, older than the one-day retention the test's probe definition sets; no 19.4 test leaves an entry). `npm test` once: tools 1,777/1,777, components 2,170/2,170 in 162 files. `system-explorer-find` 3/3 after the rebuilt bundle was deployed; `lint-docs` and `check-objectscript` clean. Each new page-spec case reddened under its mutation and the tree was restored.
+- Residual risk: the two new tools' criterion descriptions stay wrong until DW-1001 lands; a `*` in a model's search text answers no rows rather than a refusal.

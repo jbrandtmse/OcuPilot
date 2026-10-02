@@ -104,7 +104,16 @@ export class CodeCompareState {
    */
   async compare(read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
     if (!this.ready()) return false;
-    const sides = { left: { ...this.sides.left, name: this.sides.left.name.trim() }, right: { ...this.sides.right, name: this.sides.right.name.trim() } };
+    return this.run({ left: { ...this.sides.left, name: this.sides.left.name.trim() }, right: { ...this.sides.right, name: this.sides.right.name.trim() } }, read);
+  }
+
+  /** Read the last compare's sides again, leaving the form as the person has it. */
+  async recompare(read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
+    if (this.compared === null) return false;
+    return this.run({ left: { ...this.compared.left }, right: { ...this.compared.right } }, read);
+  }
+
+  private async run(sides: Record<CompareSideKey, CompareSide>, read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
     const generation = (this.generation += 1);
     this.compared = sides;
     this.outcomeValue = { kind: 'running' };
@@ -134,13 +143,6 @@ export class CodeCompareState {
       const side = this.compared?.[key];
       return side !== undefined && event.scope === side.namespace && event.type === documentKind(side.name) && ids.includes(side.name);
     });
-  }
-
-  /** Read the last compare's sides again. */
-  async recompare(read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
-    if (this.compared === null) return false;
-    this.sides = { left: { ...this.compared.left }, right: { ...this.compared.right } };
-    return this.compare(read);
   }
 
   private settle(outcome: CompareOutcome): void {

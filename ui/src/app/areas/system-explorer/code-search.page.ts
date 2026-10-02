@@ -67,7 +67,8 @@ function heldFor(store: ScreenStore | null): CodeSearchState {
  * **A page-owned table.** Each match's document links to that document's own viewer -- the class
  * viewer for a class, the routine viewer otherwise -- so the link target is per row. Its location
  * reads `Member+Line`, or `[Attribute]` for a match in the document's own attribute. A match's line
- * is document text and renders as text (AD-11). A cut list says so under the form.
+ * is document text and renders as text (AD-11). A cut list says so under the form, and a refused
+ * search shows the instance's reason.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -113,7 +114,7 @@ function heldFor(store: ScreenStore | null): CodeSearchState {
       <p class="ocu-explorer-status" role="status" data-ocu-search="status">{{ statusLine }}</p>
       @if (showFault) {
         <div class="ocu-data-table-refusal" role="alert" data-ocu-search="fault">
-          <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
+          <span class="ocu-data-table-refusal-message">{{ refusalText }}</span>
           <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
         </div>
       }
@@ -260,6 +261,12 @@ export class CodeSearchPage {
     this.generation();
     const fault = this.fault;
     return fault !== null && !isBannerFault(fault);
+  }
+
+  /** The instance's reason for the refusal, or the generic sentence when it gave none. */
+  protected get refusalText(): string {
+    this.generation();
+    return this.state.refusal() || STRINGS.connectivityRequestRefused;
   }
 
   private get rows(): readonly unknown[] {

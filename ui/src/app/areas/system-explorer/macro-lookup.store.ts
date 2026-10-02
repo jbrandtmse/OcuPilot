@@ -9,7 +9,7 @@
  * up has been pressed with a document and a macro, or an agent's arrival has named both.
  */
 
-import type { ApiService } from '../../core/api';
+import type { ApiRequestInit, ApiService, JsonResult } from '../../core/api';
 import type { RefreshRead, RefreshReadResult } from '../../core/refresh';
 import type { ScreenArrival } from '../../core/screen-arrival';
 import { createScreenRead, type ScreenReadCriteria } from '../../core/screen-read';
@@ -58,6 +58,8 @@ export class MacroLookupState {
 
   private cachedRead: RefreshRead | null = null;
 
+  private refusalValue = '';
+
   private readonly listeners = new Set<() => void>();
 
   subscribe(listener: () => void): () => void {
@@ -65,6 +67,17 @@ export class MacroLookupState {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** The instance's reason for refusing the last read, or `''` when it was not refused. */
+  refusal(): string {
+    return this.refusalValue;
+  }
+
+  setRefusal(reason: string): void {
+    if (reason === this.refusalValue) return;
+    this.refusalValue = reason;
+    this.notify();
   }
 
   document(): string {
@@ -132,10 +145,18 @@ export class MacroLookupState {
 
 /**
  * The Macros screen's `RefreshRead`: no request and no rows while `state` holds no lookup, and the
- * declared read with the lookup's criteria otherwise.
+ * declared read with the lookup's criteria otherwise. Each answer's refusal reason, or `''`, is
+ * kept on `state` for the page to show.
  */
 export function createMacroRead(api: Pick<ApiService, 'requestJson'>, declaration: ScreenDeclaration, state: MacroLookupState): RefreshRead {
-  const read = createScreenRead(api, declaration, () => state.criteria() ?? {});
+  const recording: Pick<ApiService, 'requestJson'> = {
+    requestJson: async <T,>(path: string, init?: ApiRequestInit): Promise<JsonResult<T>> => {
+      const result = await api.requestJson<T>(path, init);
+      state.setRefusal(result.kind === 'error' ? (result.reason ?? '') : '');
+      return result;
+    },
+  };
+  const read = createScreenRead(recording, declaration, () => state.criteria() ?? {});
   return async (options): Promise<RefreshReadResult> => {
     if (state.criteria() === null) return { kind: 'ok', rows: [], truncated: false };
     return read(options);

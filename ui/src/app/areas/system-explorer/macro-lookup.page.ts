@@ -44,7 +44,7 @@ function heldFor(store: ScreenStore | null): MacroLookupState {
  *
  * **The definition is document text** and renders as text on the code surface (AD-11); "Defined in"
  * links the viewer of the include that defines it. A macro the context does not define
- * reads as the sentence that says so.
+ * reads as the sentence that says so, and a refused lookup shows the instance's reason.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -91,7 +91,7 @@ function heldFor(store: ScreenStore | null): MacroLookupState {
       </form>
       @if (showFault) {
         <div class="ocu-data-table-refusal" role="alert" data-ocu-macro="fault">
-          <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
+          <span class="ocu-data-table-refusal-message">{{ refusalText }}</span>
           <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
         </div>
       }
@@ -208,6 +208,12 @@ export class MacroLookupPage {
     this.generation();
     const fault = this.fault;
     return fault !== null && !isBannerFault(fault);
+  }
+
+  /** The instance's reason for the refusal, or the generic sentence when it gave none. */
+  protected get refusalText(): string {
+    this.generation();
+    return this.state.refusal() || STRINGS.connectivityRequestRefused;
   }
 
   protected get definition() {

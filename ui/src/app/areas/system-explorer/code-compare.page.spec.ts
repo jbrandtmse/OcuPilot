@@ -166,5 +166,30 @@ describe('System Explorer Compare', () => {
     bus.publish({ kind: 'changed', type: 'class', scope: 'USER', id: 'Demo.Right.cls', action: 'updated' });
     await wait();
     expect(reads).toHaveLength(4);
+    bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Other.cls', action: 'updated' });
+    await wait();
+    expect(reads).toHaveLength(4);
+    bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Left.cls', action: 'updated' });
+    await wait();
+    expect(reads).toHaveLength(6);
+  });
+
+  it('re-compares the documents it compared and keeps what the person is typing', async () => {
+    const { host, side, reads, compare, bus, settle: wait } = await mount({ 'HSCUSTOM|Demo.Left.cls': ['a'], 'HSCUSTOM|Demo.Right.cls': ['b'] });
+    await compare('Demo.Right.cls');
+    const name = side('right').querySelector('[data-ocu-compare="name"]') as HTMLInputElement;
+    name.value = 'Demo.Typed.cls';
+    name.dispatchEvent(new Event('input'));
+    await wait();
+    bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Right.cls', action: 'updated' });
+    await wait();
+    expect(reads.slice(2)).toEqual([
+      'HSCUSTOM /api/ocupilot/screens/explorer.class/read?maxRows=1&name=Demo.Left.cls&form=udl',
+      'HSCUSTOM /api/ocupilot/screens/explorer.class/read?maxRows=1&name=Demo.Right.cls&form=udl',
+    ]);
+    expect((side('right').querySelector('[data-ocu-compare="name"]') as HTMLInputElement).value).toBe('Demo.Typed.cls');
+    (host.querySelector('[data-ocu-compare="submit"]') as HTMLButtonElement).click();
+    await wait();
+    expect(reads.at(-1)).toBe('HSCUSTOM /api/ocupilot/screens/explorer.class/read?maxRows=1&name=Demo.Typed.cls&form=udl');
   });
 });
