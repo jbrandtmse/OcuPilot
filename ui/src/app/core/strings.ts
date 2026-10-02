@@ -332,6 +332,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:310 */
   navAreaSecurity: 'Security and secrets',
   /** EXPERIENCE.md:310 */
+  navAreaSystemExplorer: 'System Explorer',
+  /** EXPERIENCE.md:310 */
   navAreaAgent: 'Agent co-pilot',
   /** EXPERIENCE.md:311 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
@@ -2088,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:626 */
+  /** EXPERIENCE.md:629 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4157,6 +4159,81 @@ export const STRINGS = {
   egressLineNone: 'This turn sent no screen context to <provider>.',
   /** EXPERIENCE.md:335 */
   agentDefinitionModelUnused: 'This endpoint has no {model} placeholder, so Model is not used; calls go to the model the endpoint names.',
+  // Story 19.1: System Explorer's lists, viewers and prompts.
+  /** EXPERIENCE.md:586 */
+  explorerClassListLabel: 'Classes',
+  /** EXPERIENCE.md:586 */
+  explorerRoutineListLabel: 'Routines',
+  /** EXPERIENCE.md:586 */
+  explorerClassPatternLabel: 'Class name',
+  /** EXPERIENCE.md:586 */
+  explorerRoutinePatternLabel: 'Routine and include files',
+  /** EXPERIENCE.md:586 */
+  explorerSystemLabel: 'System items',
+  /** EXPERIENCE.md:586 */
+  explorerGeneratedLabel: 'Generated items',
+  /** EXPERIENCE.md:586 */
+  explorerMappedLabel: 'Mapped items',
+  /** EXPERIENCE.md:586 */
+  explorerColumnModified: 'Last modified',
+  /** EXPERIENCE.md:586 */
+  explorerColumnGenerated: 'Generated',
+  /** EXPERIENCE.md:586 */
+  explorerClassListEmpty: 'No classes in <NAMESPACE> match.',
+  /** EXPERIENCE.md:586 */
+  explorerRoutineListEmpty: 'No routines in <NAMESPACE> match.',
+  /** EXPERIENCE.md:587 */
+  explorerClassDocumentLabel: 'Class',
+  /** EXPERIENCE.md:587 */
+  explorerFormLabel: 'Form',
+  /** EXPERIENCE.md:587 */
+  explorerColumnFlags: 'Flags',
+  /** EXPERIENCE.md:587 */
+  explorerViewXml: 'XML',
+  /** EXPERIENCE.md:587 */
+  explorerViewInt: 'Intermediate code',
+  /** EXPERIENCE.md:587 */
+  explorerViewStructure: 'Structure',
+  /** EXPERIENCE.md:587 */
+  explorerGenerates: 'Generates',
+  /** EXPERIENCE.md:587 */
+  explorerSourceNotAvailable: 'The instance keeps no source for this document.',
+  /** EXPERIENCE.md:587 */
+  explorerXmlNotAvailable: 'The instance keeps no XML form of this document.',
+  /** EXPERIENCE.md:587 */
+  explorerIntNotAvailable: 'This document generates no intermediate code.',
+  /** EXPERIENCE.md:587 */
+  explorerRoutineNoStructure: 'A routine has no class structure.',
+  /** EXPERIENCE.md:587 */
+  explorerNoDocumentation: 'This class carries no documentation.',
+  /** EXPERIENCE.md:587 */
+  explorerClassDocumentEmpty: 'This class no longer exists.',
+  /** EXPERIENCE.md:587 */
+  explorerRoutineDocumentEmpty: 'This routine no longer exists.',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt1: 'Which classes in this namespace changed most recently?',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt2: 'Which classes here are mapped from another database?',
+  /** EXPERIENCE.md:588 */
+  explorerClassListPrompt3: 'Which packages hold the most classes?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt1: 'Which routines changed most recently?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt2: 'Which include files does this namespace hold?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineListPrompt3: 'Which routines here are generated?',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt1: 'Summarize what this class does.',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt2: 'Which methods does this class define?',
+  /** EXPERIENCE.md:588 */
+  explorerClassDocumentPrompt3: 'Which members are deprecated or internal?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt1: 'When did this routine last change?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt2: 'Which database holds this routine?',
+  /** EXPERIENCE.md:588 */
+  explorerRoutineDocumentPrompt3: 'Which intermediate routines does this routine generate?',
 } as const;
 
 /**

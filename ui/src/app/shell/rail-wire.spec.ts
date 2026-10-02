@@ -24,8 +24,8 @@ import { stubAccountPreferences } from '../testing/account-preferences';
  * `OcuPilot.Test.Wire`'s throwaway ADMINUSER principal (created by `OnBeforeAllTests`, holding
  * exactly `%Admin_Operate:U`, removed by `OnAfterAllTests` -- no real account was touched).
  * `OcuPilot.Test.Wire.TestTheNavigationMapGatesEveryAreaForARealPrincipal` asserts the identical
- * nine facts against the real `$System.Security.Check` for this same principal -- three allowed and
- * five denied, Logs opening on the messages.log viewer since an area is allowed when any screen it
+ * ten facts against the real `$System.Security.Check` for this same principal -- three allowed and
+ * six denied, Logs opening on the messages.log viewer since an area is allowed when any screen it
  * lists is (AD-8, DW-1768; the Logs verdict below was edited by hand for it) -- so the rendered DOM
  * here and that ObjectScript assertion are pinned against one known state rather than against each
  * other -- a field either the server renames or the client mis-reads breaks one of the two.
@@ -515,7 +515,46 @@ const LIVE_PAYLOAD = {
         },
       ],
     },
-    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 8, navigates: false, pinBottom: true, allowed: true, screens: [] },
+    {
+      key: 'system-explorer',
+      labelKey: 'navAreaSystemExplorer',
+      railPosition: 8,
+      navigates: false,
+      pinBottom: false,
+      allowed: false,
+      failedPair: '%Development:USE',
+      screens: [
+        {
+          route: 'system-explorer/classes/document',
+          labelKey: 'explorerClassDocumentLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/routines/document',
+          labelKey: 'processColumnRoutine',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/classes',
+          labelKey: 'explorerClassListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+        {
+          route: 'system-explorer/routines',
+          labelKey: 'explorerRoutineListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Development:USE',
+        },
+      ],
+    },
+    { key: 'agent', labelKey: 'navAreaAgent', railPosition: 9, navigates: false, pinBottom: true, allowed: true, screens: [] },
   ],
 };
 
@@ -561,11 +600,11 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
   });
 
   it('renders every area the live map answered for, none hidden', () => {
-    expect(items()).toHaveLength(8);
+    expect(items()).toHaveLength(9);
     for (const item of items()) expect(item.hidden).toBe(false);
   });
 
-  it('marks exactly the five areas the live principal was denied as aria-disabled, each naming its own pair', () => {
+  it('marks exactly the six areas the live principal was denied as aria-disabled, each naming its own pair', () => {
     // The two that never gate, and Logs, which a screen it lists opens for this principal (AD-8 as
     // amended for DW-1768): the messages.log viewer declares `%Admin_Operate:USE` alone.
     for (const label of [STRINGS.navAreaHome, STRINGS.navAreaAgent, STRINGS.navAreaLogs]) {
@@ -580,6 +619,8 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       [STRINGS.navAreaPermissions, '%Admin_Secure:USE'],
       [STRINGS.navAreaWebApplications, '%Admin_Secure:USE'],
       [STRINGS.navAreaSecurity, '%Admin_Secure:USE'],
+      // Story 19.1: System Explorer's screens all declare `%Development:USE`.
+      [STRINGS.navAreaSystemExplorer, '%Development:USE'],
     ];
     for (const [label, pair] of denied) {
       const item = byLabel(label);

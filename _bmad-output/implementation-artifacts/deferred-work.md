@@ -3835,6 +3835,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T18:57:35Z status=routed owner=burndown by=spec_gate note=declined by 11.1 plan: needs a descriptor-declared criterion-description mechanism (Read.cls, registry, mirror); not floor-blocking
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
+- 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8532,6 +8533,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-1768 review | severity: low | fix-risk: low | footprint: in-epic
 - evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
 - 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
+- 2026-10-02T00:35:41Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=reopened: 19.12's charter (owner DW-1903 decision) gives every floor-only screen its classic page's own pair
 
 ### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
 - source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
@@ -8806,7 +8808,56 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: instance shard 3/3 was cancelled by its 46-min timeout with every class green (13:24:34, run 36862943319); refreshed timings estimate the largest leg at 37.5 min, so AC9 needed 60.7; the timeout was raised to 61 meanwhile
 - 2026-10-01T13:39:04Z status=routed owner=range-end-cleanup by=harvest note=priority p1 (CI health), orchestrator 2026-10-01: add a fourth instance shard (and a browser one if its legs follow) so a run's wall time falls
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
+- 2026-10-02T01:12:40Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=merge_gate note=restores the 2026-10-01T21:22:56Z adjudication trailer the 19.1 staging union merge moved under DW-1914: 98e71205 (cd14a21f), four instance legs, run 36923461500
+
+### DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor?
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Screen.Gate's ADMINRESOURCES floor refuses an account holding no %Admin_* resource and the stock %Developer role holds none (read on ocupilot), so a developer-only account cannot open System Explorer although AD-61's %Development:USE gate would admit it
+- 2026-10-01T18:39:19Z status=decision-pending owner=23-3-the-range-end-cleanup-part-3 by=spec_gate note=orchestrator kept the floor for 19.1 (product-wide security change); for the owner, who may reverse it
+- 2026-10-01T19:14:57Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=owner decided: %Development:USE admits a caller, as the classic portal does; Story 19.12 implements it
+
+### DW-1905: IRIS defect candidate: the Atelier action/index route called in process under %SYS.Capture ends the calling process with signal 11
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.1 Task 0 on ocupilot-ci: 8 of 20 background jobs of 20 index calls died under %SYS.Capture (messages.log, 14 caught signal 11 lines 20:17-20:21Z); through a file device and through the vendor's HTTP route none; AD-61 rule 5 routes index through a temporary file
+- 2026-10-01T21:38:12Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to file it with InterSystems, as DW-1527 and DW-1640 were
+- 2026-10-02T02:16:04Z status=wontfix-accepted owner=burndown by=owner reopen_if=the owner asks to report it, or the crash reproduces on an instance with a healthy IRISTEMP note=owner 2026-10-01: hold the upstream report for now; the product avoids the route through AD-61 rule 5's temporary file. Measured only on ocupilot-ci, whose IRISTEMP had no IRIS.DAT and hit <FILEFULL> (inference: may be a factor); Epic 19 re-measures on ocupilot-a2-ci
+
+### DW-1908: A text-form read that fails after the index answered fails the whole document read, so the viewer's source and XML not-available sentences cannot appear
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.Document quits on any GetDoc error; available is 0 only when no .int is named; on ocupilot-slot-a every listed .cls, .mac, .int and .inc answered udl and xml
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a document whose index answers but whose source or XML read fails opens as This class no longer exists.
+
+### DW-1909: Every structure read, the agent's included, also fetches the document text, so it runs the namespace's source-control hooks and fails past the capture ceiling
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.Document calls GetDoc on every Class and Routine read and Tool/Read.View drops the document; the spec's endpoints read Index then GetDoc
+- 2026-10-02T00:25:26Z status=by-design owner=19-1-classes-and-routines-listed-and-viewed by=cr note=spec Tasks: Class and Routine are Index then GetDoc; AD-61 rule 8 names the hook cost
+
+### DW-1910: List sort and the changed-most-recently prompts work only inside the max-rows cut, which follows the vendor's name order
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ListRows cuts at maxRows in docnames order and ApplyView sorts the cut; HSCUSTOM holds 13,867 classes against the 1,000 default cap
+- 2026-10-02T00:25:26Z status=by-design owner=19-1-classes-and-routines-listed-and-viewed by=cr note=AD-36: the cap bounds the read and only filters run before it; from and to narrow by date before the cap
+
+### DW-1911: The viewer's Documentation view lists only the rows under Max rows and shows no cap notice
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: document-viewer.page.ts builds Documentation from store.data(), the capped rows; only Structure's shared table draws the footer notice
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a class with more members than Max rows shows a shorter Documentation than Structure with no notice
+
+### DW-1912: The Classes and Routines pattern field gives no hint that matching is case-sensitive, a leading quote excludes and a comma takes no space
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: code-list.page.ts draws the pattern as a bare field; the classic page matches the same way; a malformed pattern is refused PORT.VALIDATION naming the grammar
+- 2026-10-02T00:25:26Z status=wontfix-accepted owner=19-1-classes-and-routines-listed-and-viewed by=cr note=reopen_if=a user reports a lower-case or spaced pattern answering no rows or a refusal with no on-form explanation
+
+### DW-1913: AtelierPort's defensive branches have no trigger here: an unresolvable code-database resource is refused 400 PORT.VALIDATION, and IndexRefusal's PROTECT and Outcome's 403 are untested
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DatabaseResources quits on a mapped database reporting no resource; GetAllNSInfo names one for every local database; Community licenses no ECP
+- 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real on a licensed instance whose namespace maps code from, or keeps globals on, a remote (ECP) database
+
+### DW-1914: AtelierPortDenial grants its principals READ on the routines database alone, so a separate globals database would fail its setup rather than the product
+- source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AtelierPortDenial.OnBeforeAllTests grants tHome only while the port also requires the globals resource; the two coincide on every CI and throwaway instance
+- 2026-10-02T00:25:27Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=cr note=real only on an install namespace whose globals database differs from its routines database
 - 2026-10-01T21:22:56Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=98e71205 (cd14a21f): four instance legs, run 36923461500 green, longest leg 38.4 min, wall 38.7 (was 46.1)
+- 2026-10-02T01:12:40Z status=wontfix-theoretical owner=19-1-classes-and-routines-listed-and-viewed by=merge_gate note=restores the 2026-10-02T00:25:27Z cr trailer; the line above it belongs to DW-1901 (union-merge move)
 
 ### DW-1904: The spine's Operational Envelope Build and CI row lists the client unit tests among the suites run against throwaway containers and never names the browser specs it then splits across three shards
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
@@ -8823,3 +8874,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: scripts/ci-throwaway.sh:264 vs src/OcuPilot/Test/AdminPortAbsence.cls (6e6b8dcc): the class no longer reads $SYSTEM.Monitor or alerts.log
 - 2026-10-01T23:37:15Z status=open owner=23-3-the-range-end-cleanup-part-3 by=cr note=one-word comment fix; Epic 19 is editing ci-throwaway.sh (add-only), so not patched in batch b's review
+
+### DW-1915: CI flake: OAuthResourceServerAuditMask.TestARowCarryingAProbeKeyReadsMasked's audit-screen read answered 200 without the key but not the expected '1 3' masked counts (AssertMasked+7)
+- source: CI run 36949919497 attempt 1, instance shard 4/4 (OCU-1-staging-19-1 abb61579) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: same class, same position and same four predecessors passed on runs 36940146133, 36943583139 and 36946450097; abb61579's code differs from green 6f5a99e2 only by two doc-comment lines; the probe's rows not yet visible to the screen read is an (inference) to reproduce
+- 2026-10-02T01:52:17Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; rerun --failed on attempt 2; next cleanup story reproduces it (audit write vs read visibility, or the screen's row window)

@@ -1,4 +1,4 @@
-/// <p>The closed area vocabulary: the eight rail entries, in the daily-use order
+/// <p>The closed area vocabulary: the nine rail entries, in the daily-use order
 /// <file>EXPERIENCE.md</file> "**The rail, top to bottom (daily-use order):**" fixes, each with its rail position, its label key in the
 /// one string source, whether its rail item navigates, and its own privilege pair set
 /// (AD-8).</p>
@@ -20,9 +20,13 @@
 /// what AD-48 records for the application error log, which is the Logs area's other Release 1
 /// source and has no admin API endpoint behind it; the Logs slice (Epic 7) resolves the rest per
 /// namespace.</p>
-/// <p><b>Every gated area names <code>%DB_IRISSYS:READ</code></b>: the port runs the admin API's
-/// endpoints in <code>%SYS</code>, and a caller holding an area's administrative resource without
-/// read on that database fails inside every screen one of them backs.</p>
+/// <p><b>Every area the admin API backs names <code>%DB_IRISSYS:READ</code></b>: the port runs the
+/// admin API's endpoints in <code>%SYS</code>, and a caller holding an area's administrative
+/// resource without read on that database fails inside every screen one of them backs.</p>
+/// <p><b>System Explorer names <code>%Development:USE</code> alone</b>, the one pair
+/// <class>OcuPilot.Port.AtelierPort</class> requires in every namespace; the read on a namespace's
+/// code databases it also requires depends on the namespace, so the port resolves it at call time
+/// and no declaration can name it.</p>
 /// <p><b>Logs names three pairs, and the first is not the audit database viewer's endpoint gate.</b>
 /// <code>%Admin_Operate:USE</code> is AD-48's, and it is also what
 /// <code>%Api.Admin.Endpoints.AsyncResult</code> requires -- the endpoint the port polls a queued
@@ -62,7 +66,7 @@ Class OcuPilot.Screen.Area Extends %RegisteredObject
 
 /// <p>The one declaration. Read by <class>OcuPilot.Screen.Registry</class> on the server and
 /// by <file>ui/tools/screen-mirror.mjs</file> off disk, so the rail the browser draws and the
-/// navigation map the instance computes come from the same eight lines.</p>
+/// navigation map the instance computes come from the same nine lines.</p>
 XData Areas
 {
 {"areas":[
@@ -73,7 +77,8 @@ XData Areas
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
+  {"key":"system-explorer","railPosition":8,"labelKey":"navAreaSystemExplorer","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Development","permission":"USE"}]},
+  {"key":"agent","railPosition":9,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }
 

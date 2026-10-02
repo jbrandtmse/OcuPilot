@@ -5,14 +5,14 @@
 /// <class>OcuPilot.Test.InjectionCompromised</class> and the seeded-injection browser spec share.</p>
 /// <p>The sources are <code>a</code> an audit user name (a failed login), <code>b</code> a
 /// messages.log line, <code>c</code> an application error's text in <parameter>ERRORNAMESPACE</parameter>,
-/// <code>d</code> a probe task's description, <code>e</code> the probe role's description and
-/// <code>f</code> a probe user's name. The failed-login audit row and the messages.log line are
+/// <code>d</code> a probe task's description, <code>e</code> the probe role's description,
+/// <code>f</code> a probe user's name and <code>h</code> a probe class's doc comment. The failed-login audit row and the messages.log line are
 /// append-only: <method>Remove</method> answers OK for them and removes nothing.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
 /// removing <code>c</code>, <parameter>TASKVARIABLE</parameter> for <code>d</code> and
-/// <parameter>ARMINGVARIABLE</parameter> for the probe role and user.</p>
+/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user and class.</p>
 Class OcuPilot.Test.InjectionSeed Extends %RegisteredObject
 {
 
@@ -37,6 +37,9 @@ Parameter ROLEDESCRIPTION = "OcuPilot seeded-injection probe role";
 
 /// <p>The probe user's name is this followed by the seed.</p>
 Parameter USERPREFIX = "OcuPilotProbeInject ";
+
+/// <p>The probe class whose doc comment is source <code>h</code>'s seed.</p>
+Parameter PROBECLASS = "OcuPilot.Test.InjectProbeDoc";
 
 /// <p>The probe task's name is this followed by the nonce; it carries
 /// <class>OcuPilot.Test.TaskEditProbe</class>'s prefix.</p>
@@ -104,10 +107,11 @@ ClassMethod Armed(pVariable As %String) As %Status
     Quit $$$OK
 }
 
-/// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>).
-/// <var>pRef</var> is what <method>Remove</method> removes by: <code>""</code> for the append-only
-/// <code>a</code> and <code>b</code>, <code>date|number</code> for <code>c</code>, the task id for
-/// <code>d</code>, the role name for <code>e</code> and the user name for <code>f</code>.</p>
+/// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
+/// <code>h</code>). <var>pRef</var> is what <method>Remove</method> removes by: <code>""</code> for
+/// the append-only <code>a</code> and <code>b</code>, <code>date|number</code> for <code>c</code>,
+/// the task id for <code>d</code>, the role name for <code>e</code>, the user name for
+/// <code>f</code> and the class name for <code>h</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
 {
     Set pRef = ""
@@ -138,6 +142,9 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf pSource = "f" {
             Set tSC = ..CreateUser(..#USERPREFIX _ pSeed)
             If $$$ISOK(tSC) Set pRef = ..#USERPREFIX _ pSeed
+        } ElseIf pSource = "h" {
+            Set tSC = ..CreateProbeClass(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#PROBECLASS
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -167,6 +174,8 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..RemoveTarget()
         } ElseIf pSource = "f" {
             Set tSC = ..DeleteUser(pRef)
+        } ElseIf pSource = "h" {
+            Set tSC = ..DeleteProbeClass()
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -305,6 +314,29 @@ ClassMethod CreateUser(pName As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Create and compile <parameter>PROBECLASS</parameter> in this namespace with
+/// <var>pSeed</var> as its doc comment, replacing any class of that name.</p>
+ClassMethod CreateProbeClass(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteProbeClass()
+    If $$$ISERR(tSC) Quit tSC
+    Set tDefinition = ##class(%Dictionary.ClassDefinition).%New(..#PROBECLASS)
+    Set tDefinition.Description = pSeed
+    Set tDefinition.ProcedureBlock = 1
+    Set tSC = tDefinition.%Save()
+    If $$$ISOK(tSC) Set tSC = $System.OBJ.Compile(..#PROBECLASS, "ck-d")
+    Quit tSC
+}
+
+/// <p>Delete <parameter>PROBECLASS</parameter> when this namespace holds it.</p>
+ClassMethod DeleteProbeClass() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    If '##class(%Dictionary.ClassDefinition).%ExistsId(..#PROBECLASS) Quit $$$OK
+    Quit $System.OBJ.Delete(..#PROBECLASS, "-d")
+}
+
 /// <p>Delete user <var>pName</var>, matched exactly, when the instance holds it.</p>
 ClassMethod DeleteUser(pName As %String) As %Status
 {
@@ -346,6 +378,9 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
         Do tCall.%Set("name", "tasks_schedule_read", "string")
     } ElseIf pSource = "e" {
         Do tCall.%Set("name", "permissions_roles_read", "string")
+    } ElseIf pSource = "h" {
+        Do tCall.%Set("name", "explorer_class_read", "string")
+        Do tCall.input.%Set("name", pRef _ ".cls", "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }

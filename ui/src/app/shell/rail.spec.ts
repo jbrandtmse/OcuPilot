@@ -79,7 +79,7 @@ function area(key: string, labelKey: string, position: number, extra: Partial<Ar
   } as AreaDeclaration;
 }
 
-/** The eight areas the mirror declares, in the order the rail renders them. */
+/** The nine areas the mirror declares, in the order the rail renders them. */
 const AREAS: readonly AreaDeclaration[] = [
   area('home', 'navAreaHome', 1, { navigates: true }),
   area('logs', 'navAreaLogs', 2),
@@ -88,7 +88,8 @@ const AREAS: readonly AreaDeclaration[] = [
   area('permissions', 'navAreaPermissions', 5),
   area('web-applications', 'navAreaWebApplications', 6),
   area('security', 'navAreaSecurity', 7),
-  area('agent', 'navAreaAgent', 8, { pinBottom: true }),
+  area('system-explorer', 'navAreaSystemExplorer', 8),
+  area('agent', 'navAreaAgent', 9, { pinBottom: true }),
 ];
 
 class StubNavigation {
@@ -183,7 +184,7 @@ describe('the activity rail', () => {
     expect(nav.getAttribute('aria-label')).toBe(STRINGS.navRailLandmark);
 
     const rendered = items();
-    expect(rendered).toHaveLength(8);
+    expect(rendered).toHaveLength(9);
     expect(rendered.map((item) => item.getAttribute('aria-label'))).toEqual([
       STRINGS.navAreaHome,
       STRINGS.navAreaLogs,
@@ -192,6 +193,7 @@ describe('the activity rail', () => {
       STRINGS.navAreaPermissions,
       STRINGS.navAreaWebApplications,
       STRINGS.navAreaSecurity,
+      STRINGS.navAreaSystemExplorer,
       STRINGS.navAreaAgent,
     ]);
 
@@ -241,10 +243,10 @@ describe('the activity rail', () => {
     fixture.detectChanges();
     expect(document.activeElement).toBe(items()[0]);
 
-    // Up from the first wraps to the last, so the eighth item is reachable in one key.
+    // Up from the first wraps to the last, so the ninth item is reachable in one key.
     items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     fixture.detectChanges();
-    expect(document.activeElement).toBe(items()[7]);
+    expect(document.activeElement).toBe(items()[8]);
   });
 
   it('marks the active area aria-current="page" and nothing else', () => {
@@ -262,7 +264,7 @@ describe('the activity rail', () => {
     fixture.detectChanges();
 
     const rendered = items();
-    expect(rendered).toHaveLength(8);
+    expect(rendered).toHaveLength(9);
 
     const gated = rendered[4];
     expect(gated.getAttribute('aria-label')).toBe(STRINGS.navAreaPermissions);

@@ -147,6 +147,10 @@ XData Coverage
 <screen name="LanguageServerList" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerActivity" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerForm" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister"/>
+<screen name="ExplorerClassList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="ExplorerRoutineList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="ExplorerClassDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="ExplorerRoutineDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
