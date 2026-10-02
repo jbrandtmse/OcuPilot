@@ -9077,3 +9077,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rule 6 ends 'anything else is INTERNAL' and its 19.3 amendment names only PutDoc 409 and 423; Outcome answers a parsed PutDoc 2xx error that is no access refusal 422 SAVEREFUSED, logged (matrix row 'Vendor soft refusal').
 - 2026-10-02T19:20:03Z status=routed owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=lead amends AD-61 rule 6 (Rule 20) with the 2xx soft refusal case; code matches the spec gate
 - 2026-10-02T19:23:32Z status=resolved-by:19-3-the-source-editor-with-etag-conflict-detection owner=19-3-the-source-editor-with-etag-conflict-detection by=adjudication note=AD-61 rule 6 amended at ARCHITECTURE-SPINE.md:916 (Rule 20, memlog entry 303): a PutDoc 2xx error that is no access refusal is 422 EXPLORER.SAVE.REFUSED, logged, never sent
+
+### DW-1957: IRIS defect candidate: the Atelier action/search route splices the bracketed part of its documents parameter into SQL
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: documents=OcuProbe194*.mac[1=0] found nothing and [1=] answered an SQL error where the bare mask found the probe (%Library.RoutineMgr:1146,1257-1262 turns the bracketed part into Filter); AtelierPort builds documents from the declared scope only (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905 and DW-1926
+
+### DW-1958: IRIS defect candidate: the Atelier action/search route runs a caller-supplied regex with no operation limit
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: FindInFilesRegex builds %Regex.Matcher with OperationLimit 0; (a+)+c against 22 a's took 0.094 s and quadrupled per two characters (inference: hours at 40), a denial-of-service shape; AtelierPort always sends regex=0 (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926 and the documents splice
