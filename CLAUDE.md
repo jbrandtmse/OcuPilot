@@ -102,7 +102,7 @@ The MCP-server rule above and the container detail below this block are the oper
 
 - Read
   `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md`
-  in full before writing code — all 60 ADs, not the ones that look relevant. It is a contract:
+  in full before writing code — all 61 ADs, not the ones that look relevant. It is a contract:
   change an AD there rather than working around it in a slice. Read it once and keep it: re-read
   only a region that changed since (Rule 26 in `_bmad/custom/skill-rules.md`).
 - Epics and stories: `_bmad-output/planning-artifacts/epics.md` (22 epics). PRD, UX and research sit
@@ -140,11 +140,11 @@ The MCP-server rule above and the container detail below this block are the oper
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, seven jobs: `gates`,
   `instance-shard`, `instance`, `browser-shard`, `browser`, `images`, `package`). The ObjectScript
-  suite and the browser specs each run as three shard legs, every leg on its own fresh throwaway and
+  suite runs as four shard legs and the browser specs as three, every leg on its own fresh throwaway and
   still one class or spec file at a time; the `instance` and `browser` roll-ups fail unless every
   class and spec ran in exactly one leg. Shares come longest-first from `ui/tools/ci-timings.json`;
   refresh it from a green run with `cd ui && node tools/ci-shards.mjs refresh --run <id>`. A run
-  takes about 21 minutes (run 36376868939). A test that needs something a sibling test left, or an
+  takes about 39 minutes (run 36923461500). A test that needs something a sibling test left, or an
   instance older than a few minutes, fails in whichever leg it lands in. `gates` runs **once per Node band `engines.node` declares, at each
   band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
   `engines.node` equal in both directions, so a declared band with no leg is red. A single-version

@@ -6,6 +6,9 @@
 /// truncation signal -- observed over the state source.</p>
 /// <p>Every definition this class creates is named with <parameter>PROBEPREFIX</parameter> and
 /// removed in <method>OnAfterOneTest</method>, which then asserts none survives.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.StateRead Extends %UnitTest.TestCase
 {
 
@@ -17,6 +20,19 @@ Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.AgentDefinitionList";
 
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
+
+/// <p>Set the instance's own definitions aside for the class, so a read's rows are this class's
+/// own.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
 
 Method OnBeforeOneTest() As %Status
 {

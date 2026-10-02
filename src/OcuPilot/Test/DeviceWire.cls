@@ -9,7 +9,8 @@
 /// <code>%Admin_Manage</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>,
 /// because the legs create and delete three users, three roles and devices.
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not; every probe is removed by exact
-/// name.</p>
+/// name. Every test starts from no stored governance policy and puts back the policy it found,
+/// asserting the restore.</p>
 Class OcuPilot.Test.DeviceWire Extends %UnitTest.TestCase
 {
 
@@ -57,6 +58,9 @@ Parameter MANAGEROLE = "OcuPilotWireDeviceWriterRole";
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -102,12 +106,26 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+Method OnBeforeOneTest() As %Status
+{
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
+}
+
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
     Do $$$AssertStatusOK(tSC, "every probe device is removed by exact name")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Do $$$AssertStatusOK(tSC, "the policy found before the test is put back")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tRows), "and reads back as it was")
     Quit $$$OK
 }
 

@@ -169,7 +169,8 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
 /// <method>Answer</method> reads <code>TOOLROWS</code>/<code>TOOLRESULTMAXLENGTH</code> from it,
 /// so a test overriding the limits class sees its override here too.</p>
 /// <p><var>pTarget</var> and <var>pArguments</var> (Story 4.5, DW-451) describe the call and are
-/// set as soon as its input is parsed, whichever branch below answers it; <var>pArgumentsTruncated</var>
+/// set as soon as its input is parsed, whichever branch below answers it, <var>pTarget</var> being
+/// <method>StepTarget</method>'s answer once the tool resolves; <var>pArgumentsTruncated</var>
 /// is <method>RedactedArguments</method>'s own answer for whether its cap cut <var>pArguments</var>.
 /// <var>pResultInfo</var> is JSON <code>{rowsReturned, rowsSent, truncated}</code> on a rows-shaped
 /// success, else <code>""</code>. <var>pReason</var> is the failing code's published sentence
@@ -195,7 +196,8 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Set tInput = pBlock.%Get("input")
         }
         Set pName = tWire
-        Set pTarget = ..TargetOf(tInput)
+        Set tRawTarget = ..TargetOf(tInput)
+        Set pTarget = tRawTarget
         Set pArguments = ..RedactedArguments(tInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .pArgumentsTruncated)
         Set tRegistry = ..RegistryClass()
 
@@ -218,6 +220,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         ; tool resolved has no declaration to read; a pattern-only summary of a resolved call's
         ; arguments would store a secret held in a field called Value in clear (AD-3).
         Set pArguments = ..StepArguments(tInput, tSecretNames, pLimitsClass, .pArgumentsTruncated)
+        Set pTarget = ..StepTarget(tInput, tSecretNames)
 
         If $Username '= pUser {
             Do ..LogFault("turn " _ pKey _ ": a tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
@@ -350,7 +353,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     ; whatever the call got as far as (Story 4.9). tPairs and tArgumentPairs are undefined on a
     ; refusal that never reached them, which is what $Get guards; a row whose call was refused
     ; before its pairs were read records none, which is the truth about that call.
-    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared), $Get(tPairsRead))
+    Do ..RecordLedger(pKey, pUser, pRoute, pName, $Get(tRawTarget), $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared), $Get(tPairsRead))
     Quit tIsError
 }
 
@@ -393,8 +396,9 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// <p><var>pPending</var> is 1 only once every check has passed and <code>Directive</code> answered
 /// a route to open, with <var>pRoute</var>/<var>pEntityId</var> the values it validated and
 /// <var>pToolName</var> the canonical name the caller records the announce and tool steps under.
-/// <var>pTarget</var>, <var>pArguments</var> and <var>pArgumentsTruncated</var> are set the same way
-/// <method>AnswerOne</method> sets them (Story 4.5), whichever branch answers.</p>
+/// <var>pTarget</var> is <method>TargetOf</method>'s raw answer, and <var>pArguments</var> and
+/// <var>pArgumentsTruncated</var> are set the same way <method>AnswerOne</method> sets them
+/// (Story 4.5), whichever branch answers.</p>
 /// <p>Otherwise <var>pPending</var> is 0 and <var>pIsError</var>/<var>pContent</var>/<var>pReason</var>
 /// are the finished <code>tool_result</code> -- always <code>is_error</code> true, and always
 /// answered before any announce step or directive exists (AC2): a refusal from a check before
@@ -606,9 +610,10 @@ ClassMethod SettleClient(pDetail As %DynamicObject, pOutcome As %String, pCode A
 
 /// <p>A tool step's target (Story 4.5): <var>pInput</var>'s <code>id</code>, else
 /// <code>entity</code>, else <code>route</code>, else <code>""</code> -- whichever is present
-/// first and is a non-empty string. Public so <class>OcuPilot.Kernel.Agent.Loop</class> can
-/// derive the same target for a step that never reached dispatch (the size-budget refusal, and a
-/// stop that trips before the call).</p>
+/// first and is a non-empty string, raw: a step stores <method>StepTarget</method>'s answer. Public so
+/// <class>OcuPilot.Kernel.Agent.Loop</class> can hand the same raw target to the ledger row of a
+/// call that never reached dispatch (the size-budget refusal, and a stop that trips before the
+/// call).</p>
 ClassMethod TargetOf(pInput As %DynamicObject) As %String
 {
     Set tTarget = ""
@@ -625,6 +630,22 @@ ClassMethod TargetOf(pInput As %DynamicObject) As %String
     } Catch ex {
         Set tTarget = ""
     }
+    Quit tTarget
+}
+
+/// <p>The target a <code>tool</code> step stores for <var>pInput</var>: <method>TargetOf</method>'s
+/// answer, or <parameter>OcuPilot.Kernel.Audit.Log.REDACTED</parameter> where that answer carries the
+/// value of a name in <var>pSecretNames</var>
+/// (<method>OcuPilot.Kernel.Audit.Ledger.CarriesSecretValue</method>, which fails closed), set at
+/// write time as the ledger row's target is (AD-33, AD-41). Every step write takes its target here,
+/// except a call refused before its tool resolves, which has no declaration to read and keeps
+/// <method>TargetOf</method>'s answer, the one this gives for no names. <method>TargetOf</method>
+/// stays raw: a ledger row makes the same decision itself
+/// (<method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method>).</p>
+ClassMethod StepTarget(pInput As %DynamicAbstractObject, pSecretNames As %List) As %String
+{
+    Set tTarget = ..TargetOf(pInput)
+    If ##class(OcuPilot.Kernel.Audit.Ledger).CarriesSecretValue(tTarget, pInput, pSecretNames) Set tTarget = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
     Quit tTarget
 }
 

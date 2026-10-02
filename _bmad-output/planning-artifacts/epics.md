@@ -7482,6 +7482,8 @@ So that the Explorer is not read-only.
 - **When** the instance is older
 - **Then** the version gate reports it rather than failing obscurely.
 
+- DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER) (ledger; routed by harvest 2026-10-02)
+
 ### Story 19.3: The source editor, with ETag conflict detection
 
 As a developer,
@@ -7634,6 +7636,34 @@ So that the operations agent and the developer agent can differ.
 - **Given** the agent's SQL tool
 - **When** it runs a statement
 - **Then** it passes the same DML and DDL guard the console does, and any mutating statement is a confirmed proposal.
+
+### Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows
+
+As a developer whose account holds `%Development` and no administrative resource,
+I want System Explorer to open for me as the classic portal's does,
+So that OcuPilot does not shut out the people the explorer is for.
+
+[ADDED 2026-10-01, owner decision on DW-1903, Rule 5 split by=merge_gate: placed right after Story 19.1 in the run order.]
+
+**Acceptance Criteria:**
+
+- **Given** the classic portal, where `/csp/sys` carries no resource and `ClassList`, `RoutineList`, `GlobalList` and `SQL/Home` each declare `Parameter RESOURCE = "%Development"` (`SQL/QButtons/RuntimeStats` declares `%Development:USE`)
+- **When** an account holding `%Development:USE` and no `%Admin_*` resource signs in to OcuPilot
+- **Then** it passes the API's floor, which becomes any `ADMINRESOURCES` member or `%Development:USE`, kept in `Screen/Gate.cls` as its one home with the router and the provider port deriving from it (AD-8).
+
+- **Given** every screen, route and tool that today relies on that floor alone
+- **When** the floor widens
+- **Then** each declares its own pair matching its classic page's `RESOURCE`, read from `irissys/` and never recalled, so a caller past the floor opens nothing the classic portal would refuse them (DW-1853: Logs opens for any caller past the floor, because `%DeepSee_Portal` is public).
+
+- **Given** a `%Development`-only caller
+- **When** it starts a turn
+- **Then** it reaches the agent only through tools whose own pairs it holds, and the spec states how the provider port's floor changes.
+
+- **Given** a real `%Developer`-only principal on the throwaway
+- **When** it signs in
+- **Then** it reaches System Explorer and is refused everywhere a classic `%Developer` is refused, and a Rule 19 mutation that restores the old floor reddens that test.
+
+- DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor? (ledger; routed by merge_gate 2026-10-01)
 
 ---
 

@@ -1376,7 +1376,7 @@ class TestRestraintContainmentReach(FixtureTreeCase):
 
 class TestToolDispatchRule(FixtureTreeCase):
     """Story 4.2: one caller of `InvokeTool`, no HTTP on the dispatch path, no handler named by a
-    shell read or a tool, and no output capture outside the admin port."""
+    shell read or a tool, and no output capture outside the three capturing ports."""
 
     def cls(self, rel: str, name: str, line: str) -> None:
         self.write(rel, f"Class {name} Extends %RegisteredObject\n{{\n\nClassMethod Go()\n{{\n    {line}\n}}\n\n}}\n")
@@ -1429,6 +1429,7 @@ class TestToolDispatchRule(FixtureTreeCase):
     def test_a_capture_outside_the_admin_port_is_refused(self):
         self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Port/AdminPort.cls", "OcuPilot.Port.AdminPort", 'Set tSC = $ClassMethod(..#CAPTURECLASS, "BeginCaptureOutput", .tCookie)')
+        self.cls("src/OcuPilot/Port/AtelierPort.cls", "OcuPilot.Port.AtelierPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Test/AdminPortFault.cls", "OcuPilot.Test.AdminPortFault", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         problems = self.problems()
         self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Dispatch.cls:6:") and "capture" in p for p in problems), f"got {problems}")

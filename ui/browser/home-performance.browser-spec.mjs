@@ -346,7 +346,7 @@ test('AC3: a caller without %DB_IRISSYS:READ is answered 403 and sees no heading
     assert.equal(state.row, false, 'no row');
     assert.equal(state.items, 0, 'no value and no zero');
     assert.equal(state.heading, false, 'no heading');
-    assert.equal(state.tiles, 6, 'the tiles are all there');
+    assert.equal(state.tiles, 7, 'the tiles are all there');
     assert.ok(state.blocks >= 4, `and so are the blocks: ${JSON.stringify(state)}`);
   } finally {
     await context.close();

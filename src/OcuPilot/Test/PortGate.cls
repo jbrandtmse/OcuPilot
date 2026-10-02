@@ -5,10 +5,10 @@
 /// held -- observed by driving the refusal, not by reading the source. A port added without a
 /// gate is therefore red on the day it arrives rather than on the day somebody reads it, which
 /// is what makes Epic 6's <class>MonitorPort</class> fail closed.</p>
-/// <p>It also pins the administrative floor's one home: the list
+/// <p>It also pins the floor's one home: the list
 /// <method>OcuPilot.Api.Router.HoldsAdminResource</method> tests and the list
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method> tests are the same list, derived from
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> at compile time. A stale
+/// <method>OcuPilot.Screen.Gate.FloorResources</method> at compile time. A stale
 /// compilation is what this catches.</p>
 /// <p><b>Live-safe</b>: it spawns nothing, creates no principal and writes nothing. Every denial
 /// is driven through the ports' own gate seams, because <code>%UnitTest</code> runs as an account
@@ -25,7 +25,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -36,6 +36,11 @@ Parameter VENDORGATE = "<vendor>";
 /// than a port: it has no outbound entry, so it has no gate to name, and the test asserts it defines
 /// no <code>Invoke</code>.</p>
 Parameter TABLEROW = "<table>";
+
+/// <p>The roster value for a class in the package that is a request stub a port hands a vendor
+/// route rather than a port: it has no outbound entry, so it has no gate to name, and the test
+/// asserts it defines no <code>Invoke</code>.</p>
+Parameter STUBROW = "<stub>";
 
 /// <p>The gate whose held set a test declares, in place of the instance's own answer.</p>
 Parameter GATE = "OcuPilot.Test.ScreenGate";
@@ -55,6 +60,7 @@ Method OnAfterOneTest() As %Status
     Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
     Do ##class(OcuPilot.Test.ProviderGate).Allow()
     Do ##class(OcuPilot.Test.PathPortFixture).Reset()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
     Quit $$$OK
 }
 
@@ -111,6 +117,10 @@ Method TestEveryPortDeclaresANamedGate()
             Do $$$AssertTrue('##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Invoke"), tClass _ ": is a table with no outbound entry")
             Continue
         }
+        If tRow = ..#STUBROW {
+            Do $$$AssertTrue('##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Invoke"), tClass _ ": is a request stub with no outbound entry")
+            Continue
+        }
         If tRow = ..#VENDORGATE {
             ; AdminPort's declared gate is the vendor's own ResourcesOR(), which AD-29 fixes as a
             ; lower bound. What is asserted is that the seam evaluating it still exists.
@@ -148,8 +158,9 @@ Method TestAMalformedPairSpecFailsClosed()
 /// declared gate is not held, before the call it guards is made, and <class>OcuPilot.Port.PathPort</class>
 /// refuses on its own <code>PORT.ACCESSDENIED</code>. Driven, not read.</p>
 /// <p>Mutation: remove <method>OcuPilot.Port.ProviderPort.Invoke</method>'s
-/// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s or
-/// <method>OcuPilot.Port.MonitorPort.Performance</method>'s <code>EvaluateRequired</code> call -> this
+/// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s,
+/// <method>OcuPilot.Port.MonitorPort.Performance</method>'s or
+/// <method>OcuPilot.Port.AtelierPort.Invoke</method>'s <code>EvaluateRequired</code> call -> this
 /// goes red.</p>
 Method TestEveryPortEvaluatesItsDeclaredGate()
 {
@@ -205,11 +216,26 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Do $$$AssertStatusNotOK(tSC, "PathPort.Rows refuses a caller holding its pairs but the first")
     Do $$$AssertEquals(tHttp7 _ "|" _ $Select($IsObject(tFault7): tFault7.%Get("code"), 1: "") _ "|" _ ##class(OcuPilot.Test.PathPortFixture).Calls(), "403|" _ ##class(OcuPilot.Api.Error).#PORTACCESSDENIED _ "|0", "with PORT.ACCESSDENIED, before the allow-list is read")
     Do ##class(OcuPilot.Test.PathPortFixture).Reset()
+
+    ; AtelierPort (Story 19.1): a caller holding the namespace's database pair but not the declared
+    ; set is refused naming the declared pair, before any route is called.
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).UseFakeRoutes()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).SetGateClass(..#GATE)
+    Do ##class(OcuPilot.Test.AtelierPortFixture).SetResources("%DB_PROBEHOME", "%DB_PROBEHOME")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_PROBEHOME", "READ")
+    Kill tQuery
+    Set tQuery("namespace") = $Namespace
+    Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke("Classes", "LIST", .tQuery, "", .tRows8, .tHttp8, .tFault8)
+    Do $$$AssertStatusNotOK(tSC, "AtelierPort.Invoke refuses a caller holding the database pair but not its declared set")
+    Set tDetail8 = $Select($IsObject(tFault8) && $IsObject(tFault8.%Get("detail")): tFault8.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp8 _ "|" _ $Select($IsObject(tFault8): tFault8.%Get("code"), 1: "") _ "|" _ tDetail8 _ "|" _ ##class(OcuPilot.Test.AtelierPortFixture).CallCount(), ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%Development:USE|0", "with AUTH.NOPRIVILEGE naming %Development:USE, before any route is called")
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
 }
 
-/// <p><b>AC6</b> -- the administrative floor has one home. The router's list and the provider
-/// port's declared pair set are both derived from
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, so a caller the router would refuse
+/// <p><b>AC6</b> -- the floor has one home. The router's list and the provider port's declared
+/// pair set are both derived from <method>OcuPilot.Screen.Gate.FloorResources</method>, which is
+/// the administrative list plus <code>%Development</code>, so a caller the router would refuse
 /// cannot make the instance call a provider.</p>
 /// <p>Mutation: edit either derived parameter into a literal that differs -> this goes red. It is
 /// also what catches a compile-time derivation left stale.</p>
@@ -217,11 +243,15 @@ Method TestTheAdministrativeFloorHasOneHome()
 {
     Set tHome = ##class(OcuPilot.Screen.Gate).#ADMINRESOURCES
     Do $$$AssertNotEquals(tHome, "", "the gate declares the administrative resource list")
-    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#ADMINRESOURCES, tHome, "the router's list is the gate's, not a copy")
-    Do $$$AssertEquals($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"), ##class(OcuPilot.Screen.Gate).AdminPairSpec(), "and the provider port's gate is that list at USE")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#ADMINRESOURCES, tHome, "the router's administrative list is the gate's, not a copy")
+    Set tFloor = ##class(OcuPilot.Screen.Gate).FloorResources()
+    Do $$$AssertEquals(tFloor, tHome _ ",%Development", "the floor is the administrative list plus %Development")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Router).#FLOORRESOURCES, tFloor, "the router's floor is the gate's, not a copy")
+    Do $$$AssertEquals($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"), ##class(OcuPilot.Screen.Gate).FloorPairSpec(), "and the provider port's gate is that floor at USE")
 
     Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec($Parameter("OcuPilot.Port.ProviderPort", "INVOKEPAIRS"))
-    Do $$$AssertEquals($ListLength(tPairs), $Length(tHome, ","), "one pair per named resource")
+    Do $$$AssertEquals($ListLength(tPairs), $Length(tFloor, ","), "one pair per named resource")
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), $Piece(tHome, ",", 1) _ ":USE", "an administrative pair still leads, so a refusal naming the first pair is unchanged")
 }
 
 /// <p>A minimal message array, the shape

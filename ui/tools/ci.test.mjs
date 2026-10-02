@@ -119,13 +119,13 @@ export const DECLARED_GATES = [
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
   'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
-  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
+  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/4 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser:shard -- --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
   // instance and browser -- the roll-ups, one check each over their shard jobs' records.
-  'node tools/ci-shards.mjs check --suite objectscript --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
+  'node tools/ci-shards.mjs check --suite objectscript --shards 4 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
   'node tools/ci-shards.mjs check --suite browser --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}',
   // browser-shard -- the same script fully parameterised onto a second throwaway, so the two
   // suites that dominated the old instance job run side by side instead of end to end.
@@ -2709,10 +2709,13 @@ test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, c
 
 // --- The shard jobs and their roll-ups (Story 13.5) ------------------------------------------
 
-/** Each sharded suite: its shard job, the roll-up that keeps the old job name, and its record suite. */
+/**
+ * Each sharded suite: its shard job, the roll-up that keeps the old job name, its record suite, and
+ * the number of legs its matrix runs.
+ */
 const SHARDED = [
-  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs' },
-  { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard' },
+  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs', legs: 4 },
+  { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard', legs: 3 },
 ];
 
 /** The setup minutes a shard job spends before its suite: checkout, build, bring-up, readiness. */
@@ -2744,11 +2747,18 @@ export function jobSteps(text, job) {
     }));
 }
 
-// Mutation (Rule 19): delete `3` from either shard matrix -> this goes red naming the job.
-test('both suites run as a [1, 2, 3] shard matrix, and every k/n and --shards n is its length (AC1, AC2, AC8)', () => {
-  for (const { shard, rollUp, suite, command } of SHARDED) {
+// Mutation (Rule 19): delete the last leg from either shard matrix, or label a shard job's legs with
+// another count -> this goes red naming the job; set a roll-up's --shards to another count -> red.
+test("each suite's shard matrix is 1..legs (instance 4, browser 3), and every k/n and --shards n is its length (AC1, AC2, AC8)", () => {
+  for (const { shard, rollUp, suite, command, legs } of SHARDED) {
     const matrix = shardMatrix(workflow, shard);
-    assert.deepEqual(matrix, [1, 2, 3], `${shard} runs legs 1, 2 and 3; it declares ${JSON.stringify(matrix)}`);
+    const expected = Array.from({ length: legs }, (_, i) => i + 1);
+    assert.deepEqual(matrix, expected, `${shard} runs legs 1 to ${legs}; it declares ${JSON.stringify(matrix)}`);
+    assert.match(
+      jobSlice(workflow, shard),
+      new RegExp(`^ {4}name: .* \\$\\{\\{ matrix\\.shard \\}\\}/${matrix.length}$`, 'm'),
+      `${shard} labels its legs k/${matrix.length}, the matrix's own length`
+    );
     const runs = runCommands(jobSlice(workflow, shard)).filter((run) => run.startsWith(command));
     assert.equal(runs.length, 1, `${shard} runs its suite exactly once per leg`);
     assert.match(

@@ -145,7 +145,7 @@ ClassMethod HandleStart() As %Status
         Set tValues("namespace") = $Namespace
         Set tValues("message") = tBody.%Get(..#MESSAGEFIELD)
         Set tValues("readOnly") = ''$Get(tVerdict("enforcedReadOnly"))
-        Set tValues("resources") = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
+        Set tValues("resources") = ##class(OcuPilot.Api.Router).#FLOORRESOURCES
         Set tValues("scope") = ##class(OcuPilot.Kernel.Scope).Current()
         Set tValues("context") = tContextJson
         Set tValues("contextRowCap") = tRowCap

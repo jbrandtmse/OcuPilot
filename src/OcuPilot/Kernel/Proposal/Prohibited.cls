@@ -4131,10 +4131,11 @@ ClassMethod ServiceWeakening(pId As %String, pPayload As %DynamicObject, pTarget
     Quit ""
 }
 
-/// <p>Whether <var>pPayload</var>'s <code>ClientSystems</code> gives an address a privileged role
-/// (<method>IsPrivilegedRole</method>) that <var>pTarget</var>'s does not give that address. An entry
-/// is <code>address</code> or <code>address|role,role</code>; addresses and roles are compared
-/// without case.</p>
+/// <p>Whether <var>pPayload</var>'s <code>ClientSystems</code> gives an address a role that grants
+/// <code>%All</code> or an administrative privilege (<method>RoleGrantsAdministrativePrivilege</method>,
+/// which counts a role it cannot read as privileged) that <var>pTarget</var>'s does not give that
+/// address. Both sides are read by <method>EntryParts</method>, so an entry counts in either spelling;
+/// addresses and roles are compared without case.</p>
 ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
 {
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf("ClientSystems") '= "array") Quit 0
@@ -4143,11 +4144,10 @@ ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %Dynam
         Set tIterator = pTarget.%Get("ClientSystems").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tEntry) {
             If $IsObject(tEntry) Continue
-            Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
-            Set tRoles = $Piece(tEntry, "|", 2, *)
-            For tI = 1:1:$Length(tRoles, ",") {
-                Set tRole = $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U")
-                If tRole '= "" Set tHeld(tAddress, tRole) = ""
+            Do ..EntryParts(tEntry, .tAddress, .tRoles)
+            For tI = 1:1:$ListLength(tRoles) {
+                Set tRole = $ZStrip($List(tRoles, tI), "<>W")
+                If tRole '= "" Set tHeld($ZConvert(tAddress _ "|" _ tRole, "U")) = ""
             }
         }
     }
@@ -4155,16 +4155,34 @@ ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %Dynam
     Set tIterator = pPayload.%Get("ClientSystems").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If $IsObject(tEntry) Continue
-        Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
-        Set tRoles = $Piece(tEntry, "|", 2, *)
-        For tI = 1:1:$Length(tRoles, ",") {
-            Set tRole = $ZStrip($Piece(tRoles, ",", tI), "<>W")
-            If (tRole = "") || $Data(tHeld(tAddress, $ZConvert(tRole, "U"))) Continue
-            If ..IsPrivilegedRole(tRole) Set tGrants = 1 Quit
+        Do ..EntryParts(tEntry, .tAddress, .tRoles)
+        For tI = 1:1:$ListLength(tRoles) {
+            Set tRole = $ZStrip($List(tRoles, tI), "<>W")
+            If (tRole = "") || $Data(tHeld($ZConvert(tAddress _ "|" _ tRole, "U"))) Continue
+            If ..RoleGrantsAdministrativePrivilege(tRole) Set tGrants = 1 Quit
         }
         If tGrants Quit
     }
     Quit tGrants
+}
+
+/// <p>An allowed-connection entry's address and roles, split the way the classic dialog reads one
+/// (<class>%CSP.UI.Portal.Dialog.Service</class>'s <code>DrawConnectionTable</code>): the separator is
+/// <code>|</code> when the entry holds a <code>|</code> or more than one <code>:</code> (an IPv6
+/// address), and <code>:</code> otherwise. <var>pAddress</var> is the part before it, and
+/// <var>pRoles</var> the comma-separated part after it as a <class>%List</class>, empty names
+/// dropped. The one reading of an entry: <method>AddressGrantsPrivilege</method> judges both sides
+/// with it, and the service editor's rules answer it.</p>
+ClassMethod EntryParts(pEntry As %String, Output pAddress As %String, Output pRoles As %List)
+{
+    Set pRoles = ""
+    Set tSeparator = $Select((pEntry [ "|") || ($Length(pEntry, ":") > 2): "|", 1: ":")
+    Set pAddress = $Piece(pEntry, tSeparator, 1)
+    Set tList = $Piece(pEntry, tSeparator, 2)
+    For tI = 1:1:$Length(tList, ",") {
+        Set tRole = $Piece(tList, ",", tI)
+        If tRole '= "" Set pRoles = pRoles _ $ListBuild(tRole)
+    }
 }
 
 /// <p>An LDAP configuration's settable fields (Story 9.9): the vendor template's thirty keys less

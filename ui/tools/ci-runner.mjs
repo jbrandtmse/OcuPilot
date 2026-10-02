@@ -39,7 +39,7 @@
  *   node tools/ci-runner.mjs --container <name> --class OcuPilot.Test.Wire --class ...
  *   node tools/ci-runner.mjs --container <name> --shard k/n [--timings PATH] [--record PATH]
  *
- * **`--shard k/n`** is one leg of CI's `instance shard k/3` (Story 13.5). The listing and the
+ * **`--shard k/n`** is one leg of CI's `instance shard k/4` (Story 13.5). The listing and the
  * on-disk floor are unchanged; the run then keeps only this shard's share of the offered classes,
  * as `ci-shards.mjs` assigns it from `--timings` (default `ui/tools/ci-timings.json`), in the order
  * the instance offered them, and labels its summary and problems with the shard. A shard assigned

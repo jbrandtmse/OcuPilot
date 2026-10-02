@@ -96,7 +96,7 @@ export function browserConfig(env = process.env) {
   };
 }
 
-/** The launch options, so the spec states none of its own. */
+/** The launch options every spec starts from; a spec that needs another option spreads these and adds it. */
 export function launchOptions(config) {
   const options = {
     headless: true,

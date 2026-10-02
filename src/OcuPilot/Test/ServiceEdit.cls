@@ -162,7 +162,7 @@ Method TestTheFormReadNamesEachServicesGroups()
     For tI = 1:1:$Length(tMethods, ",") Set tOrder = tOrder _ $Select(tI = 1: "", 1: ",") _ $Piece($Piece(tMethods, ",", tI), ":", 1)
     Do $$$AssertEquals(tOrder, "64,16,131072,32,128,4,2,1,512,256,8,8192,2048,2097152,1048576,33554432,67108864", "the methods follow the classic dialog's AuthList order")
     Do $$$AssertEquals($Get(tLabels(..#CACHEDIRECT, 64)) _ " / " _ $Get(tLabels(..#CACHEDIRECT, 32)), ..Message("AutheUnauthenticatedStr") _ " / " _ ..Message("AutheCacheStr"), "bit 64 reads the instance's Unauthenticated label and bit 32 its Password label")
-    Do $$$AssertEquals($Get(tMarks(..#ECP, "%All"), "<absent>") _ " " _ $Get(tMarks(..#ECP, "%Operator"), "<absent>"), "1 0", "ECP's role options carry the kernel's verdict: %All privileged, %Operator not")
+    Do $$$AssertEquals($Get(tMarks(..#ECP, "%All"), "<absent>") _ " " _ $Get(tMarks(..#ECP, "%Manager"), "<absent>") _ " " _ $Get(tMarks(..#ECP, "%Operator"), "<absent>") _ " " _ $Get(tMarks(..#ECP, "%Developer"), "<absent>"), "1 1 1 0", "ECP's role options carry the kernel's verdict: %All, %Manager and %Operator privileged, %Developer not")
 }
 
 /// <p>The instance's own message <var>pKey</var> from the domain the classic dialog's method labels
