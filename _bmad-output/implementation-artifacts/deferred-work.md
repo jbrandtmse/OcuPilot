@@ -8820,6 +8820,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.1 Task 0 on ocupilot-ci: 8 of 20 background jobs of 20 index calls died under %SYS.Capture (messages.log, 14 caught signal 11 lines 20:17-20:21Z); through a file device and through the vendor's HTTP route none; AD-61 rule 5 routes index through a temporary file
 - 2026-10-01T21:38:12Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to file it with InterSystems, as DW-1527 and DW-1640 were
+- 2026-10-02T02:16:04Z status=wontfix-accepted owner=burndown by=owner reopen_if=the owner asks to report it, or the crash reproduces on an instance with a healthy IRISTEMP note=owner 2026-10-01: hold the upstream report for now; the product avoids the route through AD-61 rule 5's temporary file. Measured only on ocupilot-ci, whose IRISTEMP had no IRIS.DAT and hit <FILEFULL> (inference: may be a factor); Epic 19 re-measures on ocupilot-a2-ci
 
 ### DW-1908: A text-form read that fails after the index answered fails the whole document read, so the viewer's source and XML not-available sentences cannot appear
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: low | fix-risk: med | footprint: in-story
