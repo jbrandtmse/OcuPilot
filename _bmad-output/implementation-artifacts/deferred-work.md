@@ -9052,3 +9052,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Task 0 step 9 (2026-10-02): the caller cannot delete its own finished INTEGRITYCHECK row; AwaitTask's ForgetTask leaves it for SweepOwnTasks (within 24 h)
 - 2026-10-02T15:01:52Z status=by-design owner=18-5-journals by=merge_gate note=named limit like the record list's task row; ruled by the orchestrator under the owner's standing grant 2026-10-02
+
+### DW-1950: A switch-directory proposal confirmed after the alternate stops being distinct answers 500 INTERNAL instead of a target-changed refusal
+- source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
+- 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal

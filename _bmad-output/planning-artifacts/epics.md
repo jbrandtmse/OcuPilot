@@ -7450,6 +7450,8 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
+- DW-1950: A switch-directory proposal confirmed after the alternate stops being distinct answers 500 INTERNAL instead of a target-changed refusal (ledger; routed by harvest 2026-10-02)
+
 ### Story 18.19: Journal record browser
 
 As an operator,

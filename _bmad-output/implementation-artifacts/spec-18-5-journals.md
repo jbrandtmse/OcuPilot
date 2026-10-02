@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-10-02'
 status: 'done'
 baseline_revision: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
+baseline_commit: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -57,8 +58,8 @@ How it is built:
   | Descriptor | Route | Archetype | Pos | Entity type | Pairs | `classicPage` |
   | --- | --- | --- | --- | --- | --- | --- |
   | `JournalList` | `os-management/journals` | list | 13 | `journal-file`, id `Name` | `%Admin_Operate:USE`, `%DB_IRISSYS:READ` | `%cspapp.op.utilsysjournals` |
-  | `JournalFileDetails` | `os-management/journals/:id` (parent `JournalList`) | detail | 0 | `journal-file` | as Journals | `%cspapp.op.utilsysjournalsummary` |
-  | `JournalFileDatabaseList` | `os-management/journals/:id/databases` (parent `JournalList`) | list | 0 | `journal-file-database`, id `SFN` | as Journals | `%cspapp.op.utilsysjournalsummary` |
+  | `JournalFileDetails` | `os-management/journals/details`, opened at `<route>/<file>` (parent `JournalList`) | detail | 0 | `journal-file` | as Journals | `%cspapp.op.utilsysjournalsummary` |
+  | `JournalFileDatabaseList` | `os-management/journals/databases`, opened at `<route>/<file>` (parent `JournalList`) | list | 0 | `journal-file-database`, id `SFN` | as Journals | `%cspapp.op.utilsysjournalsummary` |
   | `JournalRecordList` | `os-management/journal-records` (not under `journals/`, where `:id` would match it) | list (server criteria) | 0 | `journal-record`, id `Address` | as Journals | `%cspapp.op.utilsysjournal` |
   | `JournalSettings` | `os-management/journal-settings` | form-page | 14 | `journal-settings` (singleton) | `%Admin_Manage:USE`, `%Admin_Journal:USE` (own pair, AD-8), `%DB_IRISSYS:READ` | `%CSP.UI.Portal.Journal` |
 
@@ -124,7 +125,7 @@ How it is built:
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 | --- | --- | --- | --- |
-| List (A) | Stock throwaway, about 110 files | Journals and `osmgmt.journals.read` answer the same rows: Name, Size, CreationTime, Reason, DataSize, newest first. The side bar lists Journals 13th and Journal settings 14th, both under OS management. | none |
+| List (A) | Stock throwaway, about 110 files | Journals and `osmgmt.journals.read` answer the same rows: Name, Size, CreationTime, Reason, DataSize, newest first. The side bar lists Journals 13th under OS management (Journal settings is Story 18.18's). | none |
 | Details (A) | Open a file's name | The summary fields, with `PrevFile.File` and `NextFile.File`. Its databases list reads the same `GET`'s `Databases`. | none |
 | Unlisted file (A, C) | `file=/tmp/x.001`, or a listed name with a trailing `z` | Refused before the vendor call for the target, on the details, the records, the record dialog and integrity | 404 `JOURNAL.FILE.UNLISTED` |
 | Switch file (A) | Either caller; current file F | `SWITCHFILE` with no body. The list re-reads with a new newest file. The card and the dialog name F. | none |
@@ -494,7 +495,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 **Acceptance Criteria:**
 
 - **AC0:** Given every journal route on `ocupilot-b-ci`, when the implement stage starts, then Task 0's payloads, durations, effects, pairs and audit events are recorded before any tool, descriptor or form exists, and S2 equals S0 apart from the declared differences. A contradiction halts the story.
-- **AC1:** Given the instance's journal files, when Journals opens and `osmgmt.journals.read` runs, then both answer the same rows newest first. The side bar lists Journals 13th and Journal settings 14th under OS management, and the Logs area lists neither.
+- **AC1:** Given the instance's journal files, when Journals opens and `osmgmt.journals.read` runs, then both answer the same rows newest first. The side bar lists Journals 13th under OS management, and the Logs area does not list it (Journal settings' position is Story 18.18's).
 - **AC2:** Given a listed file, when its details open, then the summary and its databases list read that file's `GET`. Given an unlisted name on any guarded route or tool, the answer is `JOURNAL.FILE.UNLISTED`, and the vendor is not called for it.
 - **AC3:** Given current file F, when a person switches the file or the agent's proposal is confirmed, then `SWITCHFILE` is sent with no body and the list shows a new newest file after the change event. A switch made since the mint refuses the confirm.
 - **AC4:** Given one configured directory, when either caller switches the directory, then it is refused `JOURNAL.SWITCHDIR.NOOTHER` and nothing switches. Given a distinct alternate, journaling moves there, and a second switch returns it; the card names the other directory. Given a vendor 200 that leaves journaling in the same directory (the port called by a principal without `%Admin_Manage:USE`), it is refused `JOURNAL.SWITCHDIR.UNMOVED` and never reads as a switch.
@@ -515,6 +516,8 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - **AC11:** Given the rosters, when the story lands, then every roster and pinned side-bar list includes the new screens and tools, every screen has three prompts, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 999 lines.
 
 ## Spec Change Log
+
+- 2026-10-02, runner at dev_complete (Rule 5 tier 1, corrected at origin): the Boundaries screen table's routes read `journals/details` and `journals/databases`, opened at `<route>/<file>` as built (a journal file name holds slashes; the DatabaseDetails convention keeps the id one path segment, AD-13); the matrix's List row and AC1 drop "Journal settings 14th", which is Story 18.18's under the split. AD-51's JournalPort case gains `DIRSTATE`. The deferred stale-confirm 500 is DW-1950, routed to 18.18.
 
 - 2026-10-02, orchestrator merge gate on the Task 0 step-9 halt (by=merge_gate, under the owner's standing grant), applied by the runner (Rule 5): switch directory declares `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE` (tools table; AD-8 written); `JournalPort` answers `JOURNAL.SWITCHDIR.UNMOVED` for a 200 that stays in the same directory (Execution A, matrix row, new code); the switch-directory card names the other directory (Decisions); the integrity task row is a named limit, `by-design` (DW-1947). The orchestrator required the handoff-only rows re-measured before AD-8 stated them: the runner re-measured on `ocupilot-b-ci` (evidence `/tmp/epic-18-d6/185-remeasure/out.txt`, `switchfile-out.txt`; `messages.log` 9033-9034): Journals' two pairs only, 500 `<PROTECT>etINT1+2^JRNSWTCH ^%SYS("JOURNAL","PROCESS","JRNSWTCH")`; plus `%Admin_Manage:USE` only, the same 500; plus both, 200 into `ocuprobe185alt/20261002.085`, and a second switch 200 back to `journal/20261002.086`; switch file with Journals' two pairs, 200 to `20261002.088`. Every row matches the handoff's. Journal settings restored byte-equal, journaling in the primary, probes removed, monitor 0. AD-15 and AD-53 gain their twelfth named case and gap (the journal switches and integrity check, unaudited). Status reset to `in-progress`; Task 0 resumes at step 10.
 
