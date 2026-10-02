@@ -248,7 +248,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/allowed-directories',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
+      // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
+      'system-explorer/classes/editor',
       'system-explorer/routines/document',
+      'system-explorer/routines/editor',
       'system-explorer/classes',
       'system-explorer/routines',
       'agent/definitions/edit',

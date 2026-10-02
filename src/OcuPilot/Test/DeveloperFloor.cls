@@ -27,9 +27,9 @@ Parameter AREAS = "home,logs,system-explorer,agent";
 /// <p>The package the screens below are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
-/// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four
-/// and the analytics log (Story 19.12's audit).</p>
-Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassList,ExplorerRoutineDocument,ExplorerRoutineList,Home,LogAnalyticsViewer";
+/// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four and
+/// its two editors (Story 19.3), and the analytics log (Story 19.12's audit).</p>
+Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
 Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
