@@ -561,3 +561,7 @@ Blocking condition: none
 **Residual risks.** `CHANGED` compares the reviewed summary, so a server file whose content changes with the same documents imports unreviewed content (by design, Design Notes › The summary). Named limitations stand (export above about 3.6 million characters; a local file dense in escapes; a 504 on a long compile).
 
 **Merge notes (Rule 11).** The bundle-warning literal (`ui/angular.json` :54 and its pin) is also raised by Epic 18's 18.16: re-measure at the forward merge. Contended rosters to union then: `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `Governance` (renamed parameter), `ToolDispatch`, `ClassicPageGate`; add-only: `Baseline.cls`, `SurfaceCoverage.cls`; adjacent: `proposal-view.ts`, `strings.ts`, EXPERIENCE.md; regenerate `screens.generated.ts`.
+
+QA pass (19.13): no test added, every AC and matrix row already holds a real-runtime pin. The Rule 19 mutation lines above stand.
+
+- mutation: AC7 (QA, re-demonstrated), `"explorer.classes.import": true` in `Baseline.cls` -> `ExplorerTransfer.TestTheBaselineShipsTheImportsDisabled` and `TestTheAgentExportsAndImportsThroughConfirm` (run 1824); reverted byte-identical (sha1 52337c84), recompiled, `ExplorerTransfer` green again.
