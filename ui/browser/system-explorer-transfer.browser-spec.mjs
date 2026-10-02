@@ -233,7 +233,9 @@ test('AC1: two checked probes are exported to a server file, deleted, and import
     const local = join(localDirectory, 'Gamma.cls');
     writeFileSync(local, 'Class OcuProbe1913.Gamma Extends %RegisteredObject\n{\n}\n');
     await commandBar(page, STRINGS.actionImport);
-    await page.waitForSelector('input[data-explorer-import-source="local"]', { timeout: config.navigationTimeoutMs });
+    // The dialog opens on the server file while the allowed directories are read. Their answer grows
+    // the picker and re-centres the dialog, moving the source radio, so it is pressed once the picker is drawn.
+    assert.equal(await pickerRoot(page), root, 'the dialog opens on the server file, its picker drawn');
     await page.click('input[data-explorer-import-source="local"]');
     await page.waitForSelector('input[data-explorer-import-file]', { timeout: config.navigationTimeoutMs });
     assert.deepEqual(await structural(page), [], 'the import dialog with its local file input adds no structural entry');

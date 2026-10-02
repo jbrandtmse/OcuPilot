@@ -2,8 +2,8 @@
 title: 'Story 19.13: XML export and import'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
-baseline_revision: '830f7fc890e1e38a9506126e90ecc2e0da052237'
+status: 'done'
+baseline_revision: '18d5533c14b180eb1f13a6547008464b8df81014'
 baseline_commit: '830f7fc890e1e38a9506126e90ecc2e0da052237'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -332,7 +332,7 @@ Each is listed with its current literal and what moves it:
       - a local import through the file input;
       - the two dialogs walked by `structural()`, light and dark.
 
-- [ ] [CI] browser shard 1/3, run 37012695762 (head 1291b759): `ui/browser/system-explorer-transfer.browser-spec.mjs:182` timed out waiting for `input[data-explorer-import-file]` -- intermittent: the implement head's run passed it, and one of four local runs on `ocupilot-a2-ci` failed the same way (36 s) right after a redeploy. Find the race (the dialog's source switch and the local-file input's rendering, the spec's wait, or the review's `setSource` change at `explorer-import-dialog.ts`), fix it at its cause in the dialog or the spec, and prove it with five consecutive green runs of that spec file on `ocupilot-a2-ci` against a rebuilt and redeployed bundle, one run per call. Write or update its `mutation:` line.
+- [x] [CI] browser shard 1/3, run 37012695762 (head 1291b759): `ui/browser/system-explorer-transfer.browser-spec.mjs:182` timed out waiting for `input[data-explorer-import-file]` -- intermittent: the implement head's run passed it, and one of four local runs on `ocupilot-a2-ci` failed the same way (36 s) right after a redeploy. Find the race (the dialog's source switch and the local-file input's rendering, the spec's wait, or the review's `setSource` change at `explorer-import-dialog.ts`), fix it at its cause in the dialog or the spec, and prove it with five consecutive green runs of that spec file on `ocupilot-a2-ci` against a rebuilt and redeployed bundle, one run per call. Write or update its `mutation:` line.
 
 **Acceptance Criteria:**
 
@@ -425,6 +425,16 @@ Rejected:
   - `[low]` `[patch]` `AtelierPortWriteDenial`'s new legs name 19.2's probe package and a file directly under the manager directory — the refused export's file moved to `OcuProbe1913/denied.xml`; the class keeps its own probe package, which its setup and teardown remove.
   - `[false]` `[reject]` A failed `PUT` logs the document's name — the spec sends a file `status`'s vendor text to the log; the `PUT` error is that channel, and the name is the caller's own file's.
   - `[false]` `[reject]` DW-1932 sits outside the intent — Task 8 and the spawn prompt route it here.
+
+### 2026-10-02 — Review pass (rework iteration 1, `[CI]`)
+
+- verdicts: 5 findings — high 0, medium 0, low 3, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The dialogs' source radios still move up when the allowed-directories read lands, so a click during the read can hit the root `<select>` — a human click inside a local read's window is unlikely, and the fix reserves the shared picker's loading height or re-anchors the shared dialog (new layout rules on shared components); reopen_if a user reports a misclick on the import or export source.
+  - `[low]` `[reject]` Same root cause, read as the screen's promise (intent reading R2): no test watches the dialog during the read — as the row above.
+  - `[false]` `[reject]` The timing fix has no recorded red — the held-read diagnostic reproduced the miss every time and hit after the picker was drawn; a race cannot redden deterministically by reverting the wait, and the `[CI]` item asks five consecutive greens, recorded.
+  - `[low]` `[reject]` carried — AC1's browser half is not driven through the page's save and file input with source equality — same claim as the logged "no browser download leg" row; this diff does not touch it.
+  - `[false]` `[reject]` The `[CI]` box is open, the old result reads done, and the two baselines differ — the run's in-flight state: finalize ticks the item and writes the result; `baseline_revision` marks this pass, `baseline_commit` the story.
 
 ## Design Notes
 
@@ -584,10 +594,17 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 - mutation (review): matrix, in one recompile of `AtelierPort`: `ignoreConflict` renamed → `TestAUdlFileIsPutAndCompiled` "a second text of the class replaces it"; the UDL compile made unconditional → `TestFilesAreReadAndWrittenAsUtf8` "without compiling"; `ExportSet`'s delete disabled → `TestAFailedExportWriteDeletesOnlyTheFileItCreated` first leg; `ExportSet` carrying on after a failed route → `TestAnExportAboveTheCeilingIsUnavailable` (all `AtelierPortTransfer`, run 1832); its `tAbsent` guard dropped → the cleanup test's second leg (run 1833).
 - mutation (review): `ExplorerImportDialog.onSource` keeping `local` → `code-list.page.spec.ts` "a local file read before the source was switched away and back is not sent…"; `export` dropped from `ExplorerRoutineList`'s labels → `tools/screen-actions.test.mjs`. Every mutation reverted with the tree byte-identical; final runs green: `AtelierPortTransfer` 1841, `ExplorerTransfer` 1842, `AtelierPortWriteDenial` 1843, `AtelierPortWrite`, `npm run test:tools` 1772/1772, system-explorer specs 34/34, `system-explorer-transfer` browser spec on the rebuilt bundle.
 
+**`[CI]` run 37012695762.** Cause: the import dialog opens on the server file with the allowed-directories read in flight, and its answer grows the picker and re-centres the dialog, moving the source radio up 64 px. A `page.click` whose point is taken before the answer and pressed after it lands on the picker's root `<select>`, so the source stays on the server and the file input never renders. A diagnostic that held the read reproduced this every time; a click taken and pressed while the read was held, or after the picker was drawn, hit. Fix: the spec's local leg waits for the drawn picker (`pickerRoot`, as the server legs do) before pressing the radio. No client code changed.
+
+- mutation: AC1, `ExplorerImportDialog.onSource` setting the source to `server` whatever was chosen → `system-explorer-transfer.browser-spec.mjs` red at its file-input wait (:240) on the rebuilt bundle; reverted byte-identical (blob d832e765), rebuilt to the same `main-EUGSEAEJ.js`, redeployed.
+- Five consecutive runs of `system-explorer-transfer.browser-spec.mjs` on `ocupilot-a2-ci` against that bundle, one per call: 1/1 green each (6.7-6.8 s). System-explorer component specs 34/34.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework iteration 1 (`[CI]`, run 37012695762).** Change: the transfer browser spec's local leg waits for the import dialog's drawn picker (`pickerRoot`) before pressing the local-source radio, since the allowed-directories answer re-centres the dialog and moved the radio under a click taken before it (`ui/browser/system-explorer-transfer.browser-spec.mjs` :236-238); no client or server code changed. Review (verification-gap, intent-alignment): 5 findings, none patched or deferred; 3 low rejected (the product's layout shift during the read, twice; AC1's browser half carried) and 2 false, reasons in the triage log. Follow-up review: false (follow-up pass, no high patched). Verification: the mutation and five consecutive green runs under `## Verification`; system-explorer component specs 34/34; one more green run after a rebuild and redeploy (`main-EUGSEAEJ.js`). Residual risk: the dialogs' radios move when the directory read lands (rejected low, reopen_if in the triage log).
 
 **Change.** Export of the checked set (to a server file, or to this browser) and import of an XML export or one UDL document (from a server file, or a local file) on the Classes and Routines lists, through `AtelierPort`'s new `EXPORTDOCS`, `EXPORT`, `IMPORTTARGET`, `PREVIEW` and `IMPORT` types and four action-style tools reached by the agent and the screen; the import reads before it writes, refuses `CHANGED` against its reviewed summary, and is refused `OCUPILOTCODE` for OcuPilot's own documents; DW-1932's Routines delete sentences.
 
