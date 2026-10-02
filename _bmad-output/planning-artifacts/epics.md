@@ -7181,8 +7181,8 @@ So that the transaction record is inspectable from the portal.
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
 
-- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. Ask for twice the page and mark the list when the limit is reached. It answers 202, so it runs through the port's async path.
-- `POST /v2/journal/switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees.
+- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
+- `POST /v2/journal/switch-dir` takes no body. It swaps between the configured primary and alternate directories, and answers 409 when the two are the same, as on `ocupilot-b-ci` (read in the vendor source, `System.cls:81-126`, at Story 18.5's plan; Task 0 measures it). The specification says it switches only to the alternate. [AMENDED 2026-10-02 — see the story change log]
 
 ### Story 18.6: Licensing and ECP
 
