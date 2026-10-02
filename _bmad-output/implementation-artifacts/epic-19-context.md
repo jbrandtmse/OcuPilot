@@ -4,12 +4,12 @@
 
 ## Goal
 
-Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API. Classes and routines are listed, viewed, compiled, deleted, exported and imported as XML, and edited with a save checked against the ETag it read. Code can be searched, compared and looked up by macro. The SQL catalog gets a query console behind a DML and DDL guard, and rows are browsed and edited in a grid harvested from iris-table-editor. Documatic, DocDB, SQL activity, and an agent picker with guarded agent SQL complete the stage. Everything reaches Atelier through one port, `Port/AtelierPort`, in process as the signed-in user; it never handles the user's password and never modifies a vendor web application. Like the classic portal, the explorer admits a `%Development` holder who holds no administrative resource, and every screen keeps the one contract earlier stages followed.
+Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API. Classes and routines are listed, viewed, compiled, deleted, exported and imported as XML, and edited with a save checked against the version it read. Code can be searched, compared and looked up by macro. The SQL catalog gets a query console behind a DML and DDL guard, and rows are browsed and edited in a grid harvested from iris-table-editor. Documatic, DocDB, SQL activity, and an agent picker with guarded agent SQL complete the stage. Everything reaches Atelier through one port, `Port/AtelierPort`, in process as the signed-in user. It never handles the user's password and never modifies a vendor web application. As in the classic portal, a `%Development` holder with no administrative resource gets in. Every screen keeps the one contract earlier stages followed.
 
 ## Stories
 
 - Story 19.1: Classes and routines, listed and viewed
-- Story 19.2: Compile, delete, export and import (compile and delete shipped; export and import split to 19.13)
+- Story 19.2: Compile, delete, export and import (export and import split to 19.13)
 - Story 19.3: The source editor, with ETag conflict detection
 - Story 19.4: Search, compare and macro lookup
 - Story 19.5: The SQL catalog browser
@@ -24,132 +24,152 @@ Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API
 
 ## Requirements & Constraints
 
-- **One contract (FR-80).** One descriptor declares each screen, and the screen reaches outside through one port. Its read tool's and write tools' field lists derive from that descriptor. Every agent write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker. Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time. Acceptance is this contract plus each catalog row's backing route (CP-36, OS-23, EX-02 to EX-34, DT-01). Each story's plan writes its finer criteria; none are invented in advance.
-- **Backing routes**, relative to `/api/atelier/v<N>/:ns`:
-  - 19.2 (shipped): `POST action/compile` and `DELETE docs`.
-  - 19.13: the v7 routes `POST action/xml/export`, `action/xml/list` and `action/xml/load`, plus `PUT doc/:name` with `ignoreConflict=1` for a single UDL file.
-  - 19.3: `PUT doc/:name` carrying the ETag.
-  - 19.4: v2 `action/search`, v2 `getmacrodefinition` and `getmacrolocation`, and two document reads diffed in the client.
-  - `POST action/query`: 19.5 (`INFORMATION_SCHEMA` and `CALL %SQL_Manager.Catalog`), 19.6 (`{query, parameters}` and `EXPLAIN`), 19.7 and 19.8 (the data browser), and 19.10 (`INFORMATION_SCHEMA.CURRENT_STATEMENTS`; cancelling a statement is Stage 4).
+- **One contract (FR-80).**
+  - One descriptor declares each screen, and the screen reaches the outside through one port.
+  - The read tool's and the write tools' field lists derive from that descriptor.
+  - Every agent write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker.
+  - Every read is bounded and reports truncation, and every gate checks the caller's own privileges at call time.
+  - Acceptance is this contract plus each catalog row's backing route. Each story's plan writes its finer criteria; none are invented in advance.
+- **Backing routes still to build**, relative to `/api/atelier/v<N>/:ns`:
+  - 19.3: `PUT doc/:name` carrying the version it read.
+  - 19.4: v2 `action/search`, `getmacrodefinition` and `getmacrolocation`, and two document reads diffed in the client.
+  - `POST action/query`, used by:
+    - 19.5, through `INFORMATION_SCHEMA` and `CALL %SQL_Manager.Catalog`;
+    - 19.6, through `{query, parameters}` and `EXPLAIN`;
+    - 19.7 and 19.8, the data browser;
+    - 19.10, through `INFORMATION_SCHEMA.CURRENT_STATEMENTS`. Cancelling a statement is Stage 4.
   - 19.9: Documatic at `/csp/documatic/%25CSP.Documatic.cls`, and DocDB at `/api/docdb/v1/:ns`.
-- **What gates the stage.**
-  - `action/query` runs any statement type unguarded and applies no row limit. The guard therefore ships with the console, and OcuPilot applies the row cap and reports truncation itself.
-  - XML export and load need Atelier v7. The 2026.2 floor answers v8, so the gate never fires there; test it through the port's version seam answering 6.
-  - Observe the ETag conflict on document `PUT` on a throwaway before building on it.
-  - DocDB needs `%Service_DocDB` enabled. Report the requirement; never assume it.
-- **Who gets in.** A caller holding neither an `%Admin_*` resource nor `%Development` is shown "no administrative privileges on this instance", and the turn endpoint refuses them with the same message. A `%Development`-only caller reaches System Explorer and is refused everywhere a classic `%Developer` is refused.
-- **Governance (AD-22).** Every new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled.
-  - 19.2 shipped the compile keys `true` and the delete keys `false`.
-  - 19.13's plan sets the export keys `true` and the import keys `false`, because an import silently replaces existing code (measured).
-  - After 2026-10-04 the owner decides how new keys enter.
-- **Limits carried knowingly from the harvest.** Only single-column primary keys. The identifier pattern refuses delimited names. `rowsAffected` always reads 1. `%VID` offset paging re-reads earlier rows and runs a separate `COUNT(*)` per page, and a failed count shows zero rows.
-- **Measure, never assume.** Take each pair set from the handler's own checks plus a purpose-built least-privileged principal on the throwaway, never `%Operator`. Read a classic page's `RESOURCE` in `irissys/`; never recall it.
+- **The ETag conflict path must be observed on the throwaway, not assumed.** The behavior below was read in the vendor's `PutDoc` and has not been observed.
+  - The save compares the client's `If-None-Match` value with the document's current version. A mismatch answers 409 with the instance's current text.
+  - A document absent at the write is saved whatever the value, so a document deleted since the read is re-created.
+  - A lock held by another process answers 423, and a text the instance cannot store answers 200 with the error in its status. Code that merely fails to compile is stored (201, measured at 19.13).
+  - `ignoreConflict=1` skips the check. 19.13's import uses it; the editor must not.
+  - In process there is no HTTP header, so the port would seed the stub request's `HTTP_IF_NONE_MATCH` CGI value (inference).
+  - Measured at 19.2: content naming another class creates that class (#16023).
+- **The other gates of the stage.**
+  - `action/query` runs any statement type unguarded and applies no row limit. The guard ships with the console, and OcuPilot applies the row cap and reports truncation itself.
+  - DocDB needs `%Service_DocDB` enabled. Report that requirement; never assume it.
+- **The agent never authors code.**
+  - 19.2's and 19.13's tools carry no document text in any tool schema. A local file's text is a screen-only action value of at most 3,000,000 characters.
+  - A 19.3 save tool that took source text from the model would cross that line. It is an owner decision at the spec gate, never an implementation choice (inference).
+- **Who gets in.**
+  - A caller holding neither an `%Admin_*` resource nor `%Development` is shown "no administrative privileges on this instance". The turn endpoint refuses them with the same message.
+  - A `%Development`-only caller reaches System Explorer and is refused wherever a classic `%Developer` is refused.
+- **Governance (AD-22).**
+  - Every new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled.
+  - From 2026-10-04, the owner decides how new keys enter the baseline.
+  - As shipped: compile `true`, delete `false`, export `true`, import `false`.
+- **Limits carried knowingly from the harvest (19.7, 19.8):**
+  - only single-column primary keys;
+  - the identifier pattern refuses delimited names;
+  - `rowsAffected` always reads 1;
+  - `%VID` offset paging re-reads earlier rows and runs a `COUNT(*)` per page, and a failed count shows zero rows.
+- **Measure, never assume.**
+  - Take each pair set from the handler's own checks plus a purpose-built least-privileged principal on the throwaway, never `%Operator`.
+  - Read a classic page's `RESOURCE` in `irissys/`; never recall it.
 
 ## Technical Decisions
 
-- **AD-61, the Atelier port.** `Port/AtelierPort` is the only class that names an `%Api.Atelier.*` class, and it names them only through parameters. The literal `%Atelier` is forbidden under `src/` and `ui/`, comments included. The port calls `%Api.Atelier.v8`'s route methods in the caller's process, as the signed-in user, one route at a time. The browser never calls `/api/atelier`, nothing sends a Basic header, and JWT is never enabled on the vendor application.
-  - **Gate first (AD-29).** Before any vendor call the port checks `%Development:USE`. It then checks READ, per namespace at call time, on the routines and globals databases and on every database the namespace maps code from except IRISSYS (from `findmappings^%R`, whose signature a test pins). A refusal names the failed pair and is never answered as an empty list.
-  - **The write gate.** A write (compile and delete; import from 19.13) also requires WRITE on the resource guarding the target namespace's routines database, resolved at call time, because the API checks no WRITE itself. The write tools declare the same pair (AD-8), so both callers are refused by name before any port call. A `%Developer` therefore writes in USER (`%DB_USER:RW`) and is refused in HSCUSTOM. An export needs the read pairs alone.
-  - **Version.** The port calls `v<min(N, 8)>`. Each route declares its minimum in `MINVERSIONS`, and on an older instance the port refuses `PORT.NOTIMPLEMENTED`, naming both versions, before any call. 19.13's XML routes declare 7.
-  - **Stub CSP state and namespace.** The port runs `New %request, %response, %session, %SourceControl` and seeds query parameters into `%request.Data`. It omits trailing route arguments, and uses `Port/AtelierRequest` where a route checks the body's content type. It switches the namespace by explicit save and restore around the vendor call only (AD-16) and restores it first in every `Catch`. No `OcuPilot.*` class is called while switched.
+- **AD-61: the Atelier port.**
+  - **What it is.** `Port/AtelierPort` is the only class that names an `%Api.Atelier.*` class, and it names them only through parameters. `scripts/check-objectscript.py` refuses the literal `%Atelier`. The port calls route methods in the caller's process, one route at a time. The browser never calls `/api/atelier`, nothing sends a Basic header, and JWT is never enabled on the vendor application.
+  - **Gate first (AD-29).**
+    - `%Development:USE` is checked first.
+    - Then READ, per namespace at call time, on the routines and globals databases and on every database the namespace maps code from except IRISSYS.
+    - A write (compile, delete, import, and any later save) also needs WRITE on the target namespace's routines-database resource, because the API checks no WRITE. An export needs only the read pairs.
+    - Each write tool declares the same pairs (AD-8), so a caller without one is refused by name before any port call.
+  - **Version.** The port calls `v<min(N, 8)>`. Each route declares its minimum in `MINVERSIONS`, and an older instance is refused `PORT.NOTIMPLEMENTED` before any call. The 2026.2 floor answers 8; tests reach older versions through the version seam.
+  - **Stub CSP state.**
+    - The port runs `New %request, %response, %session, %SourceControl`, seeds query parameters and writes a body it builds to the stub's content stream.
+    - It switches namespace by explicit save and restore around the vendor call only (AD-16), and calls no `OcuPilot.*` class while switched.
   - **Capture.**
-    - The port captures each route's output, so the vendor envelope never reaches OcuPilot's response (AD-12).
-    - An answer above about 3.6 million characters is refused `PORT.UNAVAILABLE`. A large export can reach it.
-    - Compile measured safe under the capture: 800 calls, no process death.
-    - The XML routes are unmeasured under the capture (19.2's deferred T0.1, now 19.13's).
-    - `action/index` alone writes through a port-owned temporary file (`FILEDEVICEROUTES`), because under the capture it ended the process with signal 11. A later route that needs the file device is named in AD-61.
-  - **Outcome from four places:** the `%Status`, `%response.Status`, the envelope's `status.errors` and the result's own `status`.
-    - A 404 is `PORT.NOTFOUND`: unlogged on a read, logged on a write.
-    - A 400 is `PORT.VALIDATION`.
-    - The API answers a privilege or read-only refusal as a soft error (#5838, #5883, #302), never as `<PROTECT>`. Those soft errors and a `<PROTECT>` are both `PORT.ACCESSDENIED`, except inside a compile's output and a delete's per-item results, where they are that write's own output.
+    - An answer above about 3.6 million characters is refused `PORT.UNAVAILABLE`.
+    - `action/index` alone goes through a temporary file, because the capture killed the process with signal 11.
+  - **Outcomes** are read from four places: the `%Status`, `%response.Status`, the envelope's `status.errors` and the result's `status`.
+    - 404 is `PORT.NOTFOUND`, unlogged on a read.
+    - 400 is `PORT.VALIDATION`.
+    - Soft refusals (#5838, #5883, #302) and `<PROTECT>` are `PORT.ACCESSDENIED`, except inside a compile's or an import's output and a delete's per-item results.
     - Vendor text is logged, never sent (AD-39).
-  - **Never** send `docnames`' `filter`, which the vendor splices into SQL; the port filters parsed rows before the cap. **Never** call `POST modified`, which writes `^ISC.Src.Jrn` in every mapped database. **Never** call the `work` routes (`QueueAsync`, `PollAsync`, `CancelAsync`): the poll checks no owner, and the queue runs a routine the caller names (DW-1926).
+  - **Never** send `docnames`' `filter`, call `POST modified`, or call the `work` routes (DW-1926).
   - A call Atelier cannot carry, such as DocDB, needs its own named entry in AD-61 or a new port, as a spine amendment at that story's spec gate (inference).
-- **The API's floor (AD-8), shipped by 19.12.** Before any route runs, the API refuses a caller who holds no member of `Screen.Gate.FloorResources()`, which is `ADMINRESOURCES` plus `%Development`, each at USE.
-  - `Screen/Gate.cls` is the floor's one home. The router, `ProviderPort` and the turn's per-step check derive it at compile time.
-  - `%Development` never joins `ADMINRESOURCES`.
-  - Each new screen, route and tool declares its own `%Development`-class pair, matching its classic page's `RESOURCE` and unioned with any custom resource on that page (AD-44).
-  - A write tool names in `CLASSICPAGES` each further classic page whose operation it performs. The compile tools name `%CSP.UI.Portal.Dialog.Compile`, and the deletes name none. Export and import name `.Dialog.Export` and `.Dialog.Import` (19.13).
-- **The write-tool pattern 19.2 established**, for 19.3, 19.13 and every later explorer write:
-  - **Action-style (AD-51).** `AtelierPort` builds the vendor query or body from the tool's declared arguments, a named AD-51 case. It answers the fresh read through the port-composed `DOCS` type (`{Present, Modified, Absent}`), from one `docnames` read of about 0.35 s on HSCUSTOM's classes. Each tool declares a fingerprint subject over that read. Compile flags are always `c` plus three declared booleans (`k`, `b`, `u`), never free text.
-  - **Targets (AD-13).** A `class` or `routine` id may name a document set under the `documentset` rule: split on commas, drop empty pieces, keep unique names, sort by code point. A single name, the literal `import` included, reads as itself. A set holds at most 100 documents, on both callers.
-  - **Two callers (AD-53, AD-55).** A list's action acts on its checked rows through `multiSelect {action, extraActions, max}`. AD-5 was amended to add `extraActions`, and `eligible` with `ineligibleKey` became optional as a pair. The agent's caller is the proposal.
-    - The screen caller mints no proposal, emits no marker, and is not gated by read-only or the kill switch.
-    - Both callers get the prohibited set, the per-target lock (AD-34, keyed on the canonical set), the read-back and the change event.
-  - **Self-protection (AD-10).** Deleting or compiling a document whose name begins with `OcuPilot`, in any case and in any namespace, is refused `PROHIBITED.OCUPILOTCODE` on both callers. 19.13 adds importing a file that holds one, checked against the file's documents at the write.
-  - **Console output (AD-39's fifth exception).** A compile's console lines (an import's from 19.13) travel as `output` on the screen action's and the confirm's answer. They render as text on the screen and on the proposal card, and never reach the model, a tool result, a ledger row, a log line or screen context.
-  - **Audit (AD-15 and AD-53, tenth case).** With the stock event set, no vendor event records a compile or a delete, and the classic `%System/%SMPExplorer/*` events are disabled by default. The agent's marker is the only record, and a screen action leaves none. 19.2's plan measured that load and `PUT` record none either; 19.13 names its own case at ship.
-  - **Errors.** New codes go in `Api/AtelierError.cls`, never `Api/Error.cls`. It holds `EXPLORER.DOCUMENT.ABSENT` and the three import codes (`EXPLORER.IMPORT.UNREADABLE`, `.CHANGED` and `.TOOLARGE`), which stay unused until 19.13; their Fixed strings are already published.
-  - **Snippets.** `Invoke` needs a `Snippet` for every type (AD-59), or the registry test fails.
-- **Server files (AD-21's sixth case, 19.13).** A server file is named by a `PathPort` root plus a relative name, never a path, and resolved again at the write. The export is an overwriting `file` consumer whose overwrite is a constant, and the import is a `source`. The tool declares `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ` only when `root` is sent. Naming these consumers in AD-21, and the XML routes in AD-61 rule 2, are 19.13's spec-gate amendments. A local file's content is a screen-only value of at most 3,000,000 characters and never appears in a tool's schema: the agent never authors code.
-- **Streaming (decided at 19.2).** The screen compiles a selection as one screen action per document, in list order, and appends each answer's lines as it lands. Each action is a complete foreground write (AD-7) answering one envelope (AD-12), so no new channel is needed. The agent's confirm compiles the whole set in one call. A compile with dependents that outlasts the Web Gateway's 60 s answers 504 while the instance completes it (inference).
+- **The write pattern 19.2 and 19.13 set** (each later explorer write follows it, amending the spine at its own spec gate):
+  - **Action-style (AD-51).** Each story adds a named case: the port builds the vendor query or body from the tool's declared arguments. The fresh read is a port-composed type, and the tool declares the fingerprint subject over it.
+  - **Two callers (AD-53, AD-55).** A screen action or Save and the agent's proposal reach one tool. Text the model must not author travels as a declared screen-only value (`SCREENVALUES`), never in the input schema.
+  - **The per-target lock (AD-34)** orders a confirm and a screen action. A screen Save does not hold it yet (DW-1882).
+  - **Self-protection (AD-10).** `PROHIBITED.OCUPILOTCODE` refuses deleting, compiling or replacing-by-import a document named `OcuPilot*`, in any case and any namespace, on both callers. A save also replaces code, so 19.3 extends the arm (inference).
+  - **Console output (AD-39's fifth exception).** Compile and import lines reach the screen and the proposal card only, never the model, a tool result, the ledger, a log line or screen context. A story whose output joins them widens the exception.
+  - **Audit (AD-15 and AD-53, eleventh case).** The stock event set records no compile, delete, export, import, load or `PUT` (measured), so the agent marker is the only record. A save names its own case (inference).
+  - **Classic pages (AD-44).** Each tool lists, in `CLASSICPAGES`, the classic pages whose operation it performs, as a screen does. The classic portal has no editor, so the editor declares that it has no classic equivalent (AC2: new capability, not parity).
+  - **Server files (AD-21's sixth case).** A file is named by a `PathPort` root plus a relative name and resolved again at the write. `PathPort`'s pairs are declared only when `root` is sent.
+  - **Codes, scripts and output.**
+    - New codes go in `Api/AtelierError.cls`, never `Api/Error.cls`, each with its Fixed string.
+    - Every write type needs a `Snippet` (AD-59).
+    - Read-back (AD-58) and the change event (AD-14) apply.
+  - **Long work.** A long compile or import past the gateway's 60 s answers 504 while the instance finishes it (inference). The screen compiles a selection one action per document and streams the lines.
 - **Reads (AD-36, AD-24).**
-  - One declared read serves both the screen and the tool, under the row cap and the context caps. A `text` or `choice` criterion may declare a `default`.
-  - Source, XML and `.int` text is the screen-only `document`, which never reaches a tool's view or the screen context. The agent reads structure rows, with `Description` cut at 1,000 characters and sanitized.
+  - One declared read serves the screen and its tool.
+  - Source, XML and `.int` text is the screen-only `document`, never in a tool's view or the screen context. Text being edited is the same.
   - Query results and cell values are untrusted content to the model (AD-11, AD-60). Secret-typed fields never leave the instance.
-- **SQL (AD-21) and the guard.**
-  - Every caller value is bound. Table and column names cannot be bound, and validation never substitutes for binding, so the identifier path needs either a named AD-21 case or names first resolved against `INFORMATION_SCHEMA` (inference).
-  - One classifier on the instance serves both the console and the agent's SQL tool; a client-only check is not a gate (AD-10, AD-40; inference).
-  - A DML or DDL statement needs an explicit confirmation in the console and is an ordinary confirmed proposal from the agent. Release 1 gave the agent catalog SELECTs only.
-- **The iris-table-editor harvest.** Keep its call sites, never its names, and bridge its `--ite-*` tokens to OcuPilot's.
-  - Lift `SqlBuilder`, `DataTypeFormatter`, `UrlBuilder`, `ErrorHandler`, the model types, `grid-styles.css` and the CSV helpers.
-  - Port three algorithms out of `grid.js`: keyboard navigation; the filter row and tri-state sort; staging with primary-key reconciliation and stale-index recovery.
-  - Rework its Atelier services behind a transport seam aimed at the OcuPilot API. Never carry its plaintext-password session.
-- **Documatic and agent definitions.** Documatic loads from the instance under the browser-level session. A token never enters a frame (AD-28), and the content-security policy names only the instance's origin (AD-47). The picker chooses among enabled definitions. Moving the default marker stays a security change, and the egress chip and line follow the definition a turn uses (AD-42).
+- **SQL and the guard.**
+  - Every caller value is bound. Table and column names cannot be bound, so the identifier path needs a named AD-21 case or names first resolved against `INFORMATION_SCHEMA` (inference).
+  - One classifier on the instance serves both the console and the agent's SQL tool. A client-only check is not a gate (AD-10, AD-40; inference).
+  - DML and DDL need explicit confirmation in the console and are ordinary confirmed proposals from the agent.
+- **The iris-table-editor harvest.**
+  - Keep its call sites, never its names.
+  - Lift `SqlBuilder`, `DataTypeFormatter`, `UrlBuilder`, `ErrorHandler`, the model types, `grid-styles.css` (bridged to OcuPilot's tokens) and the CSV helpers.
+  - Port three algorithms from `grid.js`: keyboard navigation; the filter row and tri-state sort; and staging with primary-key reconciliation and stale-index recovery.
+  - Never carry its plaintext-password session.
+- **Documatic and agent definitions.**
+  - Documatic loads under the browser-level session. A token never enters a frame (AD-28), and the content-security policy names only the instance's origin (AD-47).
+  - Moving the default definition is a security change, and the egress line follows the definition a turn uses (AD-42).
 
 ## UX & Interaction Patterns
 
-- **The area.** "System Explorer" is rail position 8; Agent co-pilot is 9, pinned at the bottom. Its side bar lists Classes and Routines, each with an unlisted viewer at `<list route>/document`. Home's tile reads "Classes · Routines", and prompts use the group "Code". Each story's plan decides where its screens sit; the catalog files SQL activity under system operation.
+- **The area.**
+  - System Explorer is rail position 8, listing Classes and Routines. Each opens an unlisted viewer at `<list route>/document`.
+  - Prompts use the group "Code". Each story's plan places its screens.
 - **Every screen** registers the 10-item screen contract, at least three suggested prompts, aliases and its Fixed strings. The side bar lists only built screens.
 - **Line-cited documents.**
-  - System Explorer's Fixed-strings rows are EXPERIENCE.md :586 to :590; append new rows after :590. Rows :589 and :590 already carry 19.2's strings and the import refusals.
-  - The closed dialog set at :173 names the compile dialog; each new dialog joins it in place.
-  - Edit DESIGN.md only in place, and move every citation the suites hold (`npm run test:tools` names them).
-- **Code and tables.**
-  - Source, XML, `.int`, query text and console output render as text on `code-surface` in `<pre tabindex=0>`, never as markup, with identifiers set in `code`. Each write's output pane carries a polite live status line.
-  - Lists use the shared data table with the max-rows footer.
-  - The harvested grid's roving tabindex gives way to the portal's model, and its CSV writer to the shipped Download CSV (inference).
-  - Design tokens only.
-- **Dialogs** are a closed set and never stack. A destructive action uses the one-level `typed-name-dialog`: one document is confirmed by typing its name, and a set by typing its count. The compile dialog opens with keep source checked, dependents unchecked and skip up-to-date checked. The 19.13 dialogs offer a server file (`server-path-picker`) or this browser, plus a compile checkbox, checked by default, on import, and a refused version is shown in the dialog.
-- **The editor (19.3)** follows form-page conventions: a sticky Save, and an unsaved-changes guard that can also refuse an agent navigation. An ETag conflict is refused by name, never silently overwritten.
+  - In EXPERIENCE.md, System Explorer's Fixed-strings rows are :586 to :592; append new rows after :592.
+  - The closed dialog set is at :173; a new dialog joins it in place.
+  - Edit DESIGN.md only in place, and move every citation the suites hold (`npm run test:tools`).
+- **The editor (19.3)** is a full-page form-page route:
+  - a sticky Save and Cancel bar, with "Saved" as a status;
+  - an unsaved-changes guard ("Leave without saving?") that also answers an agent navigation (AD-11 rule 3);
+  - a conflict refused by name, never silently overwritten.
+- **Code** renders as text on `code-surface` (`<pre tabindex=0>`), never as markup. Output panes carry a polite live status line.
+- **Dialogs** are a closed set and never stack. Destructive actions use `typed-name-dialog`: a name for one document, a count for a set.
 
 ## Cross-Story Dependencies
 
-- **19.1 (done)** landed `Port/AtelierPort`, `Port/AtelierRequest`, `MINVERSIONS`, `FILEDEVICEROUTES`, the criterion `default`, the area and four read tools. Its named limit: a namespace whose names exceed about 3.6 million characters is refused `PORT.UNAVAILABLE` (HSCUSTOM's classes use 1.83 MB).
-- **19.12 (done)** widened the floor.
-  - `Test.DeveloperFloor`, `DeveloperFloorRoutes` and `DeveloperFloorTurn` pin a real `%Developer` principal to 4 areas, 10 screens, 10 tools (none a write) and 29 routes.
-  - Every later screen, tool and route joins those rosters.
-  - A test class that arms principals needs its `# classes:` line in `scripts/ci-throwaway.sh`.
-- **19.2 (done, Part A)** shipped the following:
-  - the `DOCS`, `COMPILE` and `DELETE` types;
-  - the tools `explorer.{classes,routines}.{compile,delete}` over the abstract bases `ExplorerWrite`, `ExplorerCompile`, `ExplorerDelete` and `ExplorerMint`;
-  - the write gate, `PROHIBITED.OCUPILOTCODE`, `documentset`, `extraActions` and the `output` channel;
-  - DW-1922's `objectonly`: a routine kept only as object code is stated as such rather than shown as not found.
-
-  The registry now holds 200 tools, 127 of them writes. `ExplorerDescriptor.TestTheAreaHoldsFourReadsAndFourWrites` replaced the read-only tripwire. DW-1930 to DW-1934 were accepted as limits; DW-1934 is that every write reads `DOCS` over the whole category two or three times.
-- **19.13 is next.** It takes AC4 and AC5 verbatim, and it starts from 19.2's spec, whose items marked `[B]` or `(19.13)` hold its design and measurements.
-  - **Types and tools.** It adds the `EXPORT`, `PREVIEW` and `IMPORT` types, the tools `explorer.{classes,routines}.{export,import}`, and import as each list's `primaryAction`.
-  - **Measured vendor behavior.**
-    - Run `xml/list` before `xml/load` and refuse an unreadable file first: malformed XML otherwise leaves a stub class.
-    - Load with `selected` set to the listed names.
-    - One missing name voids a whole export (#6308), so the fresh read refuses it first.
-    - A UDL file's document name comes from its header line.
-  - **Rosters it trips.** `DeveloperFloor` gains the two export tools, and its "none is a write" becomes "exactly the two exports". `ExplorerDescriptor` goes to four reads and eight writes, and `ReadTool`'s count moves with them.
-  - **DW-1932** reopens if 19.13 revises the Routines list's dialogs and the delete warning still names a persistent class.
-  - **Named limits.** It does not read classic `%RO` files, and it imports every document the file holds.
-- **On `AtelierPort`:**
-  - 19.3 takes the ETag from the viewer read's `ts`, and can reuse `DOCS`, `documentset` and the `output` channel for a save-and-compile.
-  - 19.4 adds search and macro lookup and reuses the write gate.
-  - 19.5 to 19.8, 19.10 and 19.11 go through `action/query`.
-  - 19.8's staging may reuse `extraActions` (inference).
-- **The guard is shared.** 19.6's third criterion and 19.11's second describe the same agent SQL tool behind one guard; whichever story introduces the tool wires it through the guard.
-- **Data screens.** 19.7 and 19.8 can issue 19.5's declared catalog reads rather than write a second query (AD-5), and 19.8 edits 19.7's grid.
-- **New libraries.** 19.3 and 19.4 may need an editor or a diff library. Ask the owner first (Rule 5); anything added is vendored, with no CDN.
+- **Done.**
+  - 19.1 shipped the port, the area and the four read tools.
+  - 19.12 widened the floor. `Test.DeveloperFloor*` pins a real `%Developer`, and every later screen, tool and route joins those rosters.
+  - 19.2 shipped compile, delete, `DOCS`, `documentset`, `extraActions` and the `output` channel.
+  - 19.13 shipped `EXPORTDOCS`, `EXPORT`, `IMPORTTARGET`, `PREVIEW` and `IMPORT`, plus four tools. Export keys are on and import keys off.
+    - It added the UDL header rule and the `PUT doc?ignoreConflict=1` path for one UDL document.
+    - Its reviewed import summary carries a sha256 of the file's lines, refused `CHANGED` on any change.
+    - The registry now holds four explorer reads and eight writes. `DeveloperFloor`'s writes are exactly the two exports.
+- **19.3 is next.**
+  - **Version token.** The viewer answers the document's version as `modified`, taken from the index read's `ts`. Whether that equals the value the vendor's conflict check compares is unmeasured; Task 0 settles it on the throwaway (inference).
+  - **Reuse.** It can reuse `DOCS`, `documentset`, the `output` channel for a save-and-compile, and 19.13's header rule, which confirms the text still names the document being saved.
+  - **Rosters.** Its write trips the rosters listed in 19.13's spec under Code Map › Rosters a 19.13 change trips.
+  - **Libraries.** A source-editor library would be a new third-party dependency: Rule 5's ask-first tier, so halt for the owner. It must be vendored with no CDN, run under the content-security policy, and add to the bundle.
+- **19.4** adds search and macro lookup and reuses the write gate. A client diff library is likewise an ask-first decision.
+- **19.5 to 19.8, 19.10 and 19.11** go through `action/query`.
+  - 19.6's third criterion and 19.11's second describe one agent SQL tool behind one guard. Whichever story introduces it wires it through the guard.
+  - 19.7 and 19.8 issue 19.5's declared reads rather than write a second query (AD-5). 19.8 edits 19.7's grid and may reuse `extraActions` (inference).
 - **19.11** builds on the agent definitions and 16.15's egress line. Reuse governance (14.2), the copy-out draft (14.1), the sanitizer (14.3), the read-back (16.17) and Download CSV (16.23).
-- **Bundle.** 19.2 re-based the initial-bundle warning in `ui/angular.json` and `angular-json.test.mjs` to 2,433 kB (measured 2.43 MB). A story that exceeds it re-bases both to the measured size, and stops to ask above 3,800 kB.
+- **Bundle.**
+  - The initial-bundle warning is 2,447 kB, against a measured 2,446,524 bytes at 19.13, so nearly any UI addition crosses it.
+  - Re-base `ui/angular.json` and `angular-json.test.mjs` to the measured size (DW-1166). Stop to ask above 3,800 kB; the hard error is 4,000 kB.
 - **Slot A.**
   - Use the `ocupilot-slot-a` profile.
-  - The throwaway is `ocupilot-a2-ci` (52780/1979, `/tmp/ocupilot-a2-ci`), owned by this epic's runner and never restarted. Load source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir` inside the container. Run one test class at a time. Every probe writes only documents it created itself and removes them afterwards.
-  - Story 23.3 has closed, and Epic 18 runs on slot B (18.16, then 18.5 to 18.13). Before editing a shared file, check `.worktrees/epic-18`'s diff and status.
-  - Shared-file edits stay add-only. Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
-  - DW-1905 and DW-1926, whether to report the `index` crash and the `work` routes to InterSystems, are the owner's; no story acts on them.
+  - The throwaway is `ocupilot-a2-ci` (52780/1979). This epic's runner owns it, and it is never restarted.
+  - Load source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then run `$System.OBJ.LoadDir`.
+  - Run one test class at a time. Probes write and remove only their own documents and files.
+- **Concurrency.**
+  - Epic 18 runs on slot B (18.16, then 18.5 to 18.13), and Epic 23 is closed.
+  - Six roster files are unioned with 18.16 by whichever reaches feature second: `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `Governance`, `ToolDispatch` and `ClassicPageGate`.
+  - Check `.worktrees/epic-18`'s diff and status before editing a shared file, and keep shared edits add-only.
+  - Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
+  - DW-1905 (the `index` crash) and DW-1926 (the `work` routes) are the owner's; no story acts on them.
