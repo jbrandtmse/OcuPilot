@@ -4,11 +4,17 @@
 /// still running at the port's bound answers started on both callers, its read-back unchecked; and
 /// the port sends the flag each caller chose, unchecked as false and checked as true.</p>
 /// <p>The check itself is answered by <class>OcuPilot.Test.JournalIntegrityPort</class>, never sent to
-/// the vendor, so it needs no corrupt file. It needs OcuPilot installed, journaling on with a closed
-/// journal file listed, and a caller holding <code>%All</code>; it writes only proposals, ledger rows
-/// and agent markers, and removes the proposals it minted.</p>
+/// the vendor, so it needs no corrupt file. It needs OcuPilot installed, journaling on, and a caller
+/// holding <code>%All</code>. Where the journal file list names no closed file,
+/// <method>OnBeforeAllTests</method> first switches the journal file to close one
+/// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), only when
+/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is kept. Otherwise it
+/// writes only proposals, ledger rows and agent markers, and removes the proposals it minted.</p>
 Class OcuPilot.Test.JournalIntegrity Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms the journal switch a list without a closed file needs.</p>
+Parameter JOURNALVARIABLE = "OCUPILOT_ALLOW_JOURNAL";
 
 Parameter SCREEN = "OcuPilot.Screen.Descriptor.JournalList";
 
@@ -24,6 +30,11 @@ Parameter CONFIRM = "OcuPilot.Test.JournalIntegrityConfirm";
 Parameter LINEONE = "OcuProbe185 bad record at offset 131088";
 
 Parameter LINETWO = "OcuProbe185 checksum mismatch in block 7";
+
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.JournalProbe).EnsureClosedFile($System.Util.GetEnviron(..#JOURNALVARIABLE) = 1)
+}
 
 Method OnBeforeOneTest() As %Status
 {

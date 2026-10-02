@@ -2,8 +2,8 @@
 title: 'Story 18.5: Journals'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
-baseline_revision: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
+status: 'done'
+baseline_revision: '463bd7f8887a7a295bba7af84d61b1c91e9986b9'
 baseline_commit: '2d8b499e62e72caadf3ef1d629bd8936340ab29d'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -541,7 +541,7 @@ Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-
 
 ### Rework 1 (CI)
 
-- [ ] [CI] instance shards 1-4 of run 37057086419 (`f1e3376c`): every journal test that needs a closed journal file or at least two listed files fails on a fresh CI instance, which lists exactly one journal file (the current one): `JournalRead` (3: "the instance lists at least two journal files", "lists journal files: 1"), `JournalWrite.TestACleanCheckAnswersBothCallersAtBothLevels`, `JournalIntegrity` (2), `JournalWriteGate` (2), `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` ("a closed journal file is listed") -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37057086419 -- the fix: each class arranges its own precondition instead of relying on an old instance's journal history (a `JournalProbe` helper, called before the class's tests, that switches the journal file by test-only `%SYS` seeding until the list names a closed file and at least two files; never deletes a file), so the classes pass on an instance whose journal holds one file; prove it by making the helper's precondition branch run (a seam or a check that it switched when the list held one file).
+- [x] [CI] instance shards 1-4 of run 37057086419 (`f1e3376c`): every journal test that needs a closed journal file or at least two listed files fails on a fresh CI instance, which lists exactly one journal file (the current one): `JournalRead` (3: "the instance lists at least two journal files", "lists journal files: 1"), `JournalWrite.TestACleanCheckAnswersBothCallersAtBothLevels`, `JournalIntegrity` (2), `JournalWriteGate` (2), `AdminPortAsync.TestAJournalChecksConsoleIsAnsweredCutAndOnFailure` ("a closed journal file is listed") -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37057086419 -- the fix: each class arranges its own precondition instead of relying on an old instance's journal history (a `JournalProbe` helper, called before the class's tests, that switches the journal file by test-only `%SYS` seeding until the list names a closed file and at least two files; never deletes a file), so the classes pass on an instance whose journal holds one file; prove it by making the helper's precondition branch run (a seam or a check that it switched when the list held one file).
 
 ## Spec Change Log
 
@@ -599,6 +599,23 @@ Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-
   - `[false]` `[reject]` (intent) `IsAbsence` changes every GET-sourced read — reads go through `AdminPort`, whose vendor 404s all map to `PORT.NOTFOUND` (`Kernel/Fault.cls:129`; `TYPEFAULTS` names no `GET`); only the journal guard answers another 404 code.
   - `[low]` `[patch]` (intent) `JournalError` said its sentences are published in EXPERIENCE.md — they are not (the `DatabaseError` precedent); the two clauses are deleted.
   - `[false]` `[reject]` (intent) the pass-1 Auto Run Result was stale — same as above; finalize rewrites it.
+
+### 2026-10-02 — Review pass (rework 1, CI)
+
+- verdicts: 12 findings — high 0, medium 0, low 5, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` the new precondition test's last assertion repeated the helper's own predicate, and "switches once" was the helper's own counter — replaced with `JournalIntegrity.ClosedFile()` equal to the file current before the switch; red alone under a double switch (run 3185).
+  - `[low]` `[reject]` `EnsureClosedFile`'s `SWITCHLIMIT` give-up branch is untested — reaching it needs a list seam on every read; the guard is three readable lines over a condition never observed.
+  - `[low]` `[reject]` in CI's current leg placement `AdminPortAsync` precedes `JournalRead` in shard 1, so `JournalRead`'s own call never switches there — a dropped call surfaces as a named red when placement changes; pinning the wiring needs a new structural roster.
+  - `[false]` `[reject]` the post-change runs and the result are unrecorded — finalize records runs 3179-3186.
+  - `[false]` `[reject]` run 3176 is an unrecorded red — it was a superseded mutation attempt that crashed instead of asserting; 3177 is the recorded one.
+  - `[false]` `[reject]` the changed browser `before` hook has no run — `journals.browser-spec.mjs` ran 5/5 after the change.
+  - `[low]` `[reject]` (intent) every call site takes the no-switch path on the old throwaway, so the one-file proof rests on CI — same root and reason as the shard-placement row; the item offers the seam, which is taken.
+  - `[low]` `[reject]` (intent) the seam replaces only the first read, so the limit and "row 1 is current" never run on a real list — the limit is the `SWITCHLIMIT` row; "row 1 is current" is pinned by direct `NeedsSwitch` assertions; the patched assertion now observes the closed file at row 1 after a real switch.
+  - `[false]` `[reject]` (intent) arming adds a refusal path and changes `JournalRead`'s contract — CI arms the variable container-wide, the headers say so, and an unarmed one-file instance refusing loudly is correct.
+  - `[false]` `[reject]` (intent) `AdminPortAsync` calls the helper inside a test — its other five tests need no closed file (green on the fresh CI instance), and the call precedes the one leg that does.
+  - `[false]` `[reject]` (intent) the browser spec goes beyond the named failures — the lead's item asked for the same fix wherever the dependency exists; it ran 5/5.
+  - `[false]` `[reject]` (intent) the `[CI]` box is unticked and no result is written — finalize does both.
 
 ## Design Notes
 
@@ -793,26 +810,24 @@ The `PathPort` widening is consumed by every overwriting file consumer: 16.4's t
 - mutation (code review): `JournalPort.SameDirectory` folds case → `JournalDescriptor.TestDirectoriesCompareAsTheVendorComparesThem` red (run 3164)
 - mutation (code review): `JournalPort.OtherDirectory` drops its one-directory test → `JournalWriteGate.TestExactlyTheDeclaredPairsReachThePort` red on the before-any-switch leg alone (run 3166)
 - mutation (code review): the details page no longer clears the databases store when it opens → `journal-file-details.page.spec.ts`'s earlier-file leg red (vitest); each review mutation reverted byte-identical, reloaded, classes green again (runs 3167-3170)
+- mutation (rework 1, CI): `JournalProbe.NeedsSwitch` answers 0 for a list of fewer than two files → `JournalWrite.TestAListWithNoClosedFileIsSwitchedUntilItHasOne` red on its one-file, unarmed-refusal and armed-switch legs (run 3177); reverted byte-identical, reloaded, class green again (run 3178)
+- mutation (rework 1, review): `JournalProbe.SwitchFile` switches twice per call → `JournalWrite.TestAListWithNoClosedFileIsSwitchedUntilItHasOne` red on its closed-file leg alone (run 3185); reverted byte-identical, reloaded, class green again (run 3186)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-- **Implement pass 2 (2026-10-02), Part A.** Task 0 resumed at step 10 on the parked plumbing (Design Notes › Measured at implement). Built: `Port/JournalPort.cls` (`STATE`, `DIRSTATE`, the integrity body and started answer, NOOTHER and UNMOVED); `AdminPort`'s journal file guard, `CONSOLEDTYPES` and the guard's script step; `PathPort`'s DW-1797 directories (journal history, write-image journal); three descriptors (Journals 13th, Journal file details, Journal file databases) with nine prompts; three tools over `JournalAction`/`JournalSwitch` and `JournalMint`; `Api/JournalError.cls`; rows over a `GET` in `Read`, `Registry` and the mirror; the Journals and details pages; strings and EXPERIENCE.md :164, :173, :378 (999 lines); the baseline's three keys; the rosters; `OCUPILOT_ALLOW_JOURNAL`.
-- **Review pass:** 27 findings (medium 7, low 8, false 12): 12 patched, 15 rejected, none deferred; rows in `## Review Triage Log`. The patches are tests, plus moving `Read.IsAbsence` above `ApplyView`'s doc comment and deleting `JournalError`'s false EXPERIENCE.md claim. Patched by verdict: medium 7, low 5. Follow-up review: false; each patch is a test whose red was observed (runs 2717-2721, vitest), so no unverified risk can be named.
-- **Deferred (frontmatter, from the handoff's report, reproduced):** a switch-directory confirm after the alternate stops being distinct answers 500 INTERNAL; it fails closed.
-- **Verification:**
-  - Full ObjectScript sweep, once, one class at a time on `ocupilot-b-ci` (runs 2722-3135, totals from `%UnitTest_Result`): 414 classes, 3,381 tests, 3,379 passed, 2 failed. Both failures are the throwaway's age: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` hits the 1,000-row cap on the task history, and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` finds expired rows that other suites left on this 37-hour-old instance (inference: both pass on a fresh CI instance).
-  - `npm test`: tools 1,776/1,776, components 2,126/2,126 in 159 files. `npm run build`: green. The initial bundle measures 2,479,753 bytes, so `maximumWarning` is re-based from 2459kB to 2480kB (DW-1166), with its history row.
-  - Browser, rebuilt and redeployed: `journals`, `license-usage` and `remote-databases`, 11/11.
-  - `check-objectscript`: 0 problems. `lint-docs`: 0. `smoke.sh --container ocupilot-b-ci`: 50/50.
-- **Throwaway end state:** journal settings and `Config.config` (`wijdir` "", `targwijsz` 0) as found; journaling in `/durable/iris/mgr/journal/`; no `OCUPROBE185*` object or `^OcuProbe185`; 0 agent definitions; 0 policy rows. The monitor read 2 and was cleared to 0 with `$SYSTEM.Monitor.Clear()`. Async task rows: 348 against 337 at S0, all from the Wire suites' principals (their 24-hour sweep removes them). The switches' journal files are kept.
-- **Footprint:**
-  - Value edits to shared files beyond adding lines: the sanctioned budget pair (`ui/angular.json`, `angular-json.test.mjs`); `ui/tools/strings.test.mjs`'s literal bound, 2000 to 2100, which Epic 19 is not editing; roster counts, for this story's additions only; one member added to `Prohibited.cls`'s type-gate line.
-  - EXPERIENCE.md :173 is edited in place, and Epic 19 also edits :173, so it unions at the second merge.
-- **For the runner:**
-  - Boundaries' routes `journals/:id` and `:id/databases` are built as `journals/details` and `journals/databases` (Spec Change Log).
-  - AC1's "Journal settings 14th" belongs to Story 18.18.
-  - The NOOTHER and UNMOVED sentences follow the `DatabaseError` precedent and are not published in EXPERIENCE.md; the Locks precedent would publish them.
-  - `ReasonFor(UNMOVED)` would render `<directory>` unfilled on the confirm route (inference: unreachable while the tool requires `%Admin_Manage:USE`).
+- **Rework 1 (CI), 2026-10-02.** Run 37057086419 was red because a fresh CI instance lists one journal file, and every journal test that needs a closed file depended on an old instance's history. Each affected class now arranges its own precondition; no journal file is ever deleted.
+- **Files changed:**
+  - `src/OcuPilot/Test/JournalProbe.cls`: `NeedsSwitch` (fewer than two listed files, or the second is the current file), `EnsureClosedFile(armed, .switched, first)` (switches until `NeedsSwitch` answers 0, at most 3 times; unarmed, a needed switch is an error and nothing switches) and `SwitchFile` (test-only `RollToNextFile` in `%SYS`, explicit save and restore).
+  - `Test/JournalRead.cls`, `Test/JournalIntegrity.cls`: `OnBeforeAllTests` calls the helper, armed by a new `JOURNALVARIABLE` parameter.
+  - `Test/JournalWrite.cls`, `Test/JournalWriteGate.cls`: their armed `OnBeforeAllTests` call it; `JournalWrite.TestAListWithNoClosedFileIsSwitchedUntilItHasOne` drives the switch branch with a one-file list.
+  - `Test/AdminPortAsync.cls`: armed the same way; the helper runs at the start of its journal check test only.
+  - `ui/browser/journals.browser-spec.mjs`: the `before` hook calls the helper, since its integrity and details legs relied on the switch-file leg running first.
+  - `scripts/ci-throwaway.sh` (contended, add-only): a `# classes: AdminPortAsync, JournalIntegrity, JournalRead` line under `OCUPILOT_ALLOW_JOURNAL`, which `ci.test.mjs`'s arming roster requires.
+  - `JournalDescriptor`, `PathPortInstance` and `PathPortServed` have no such dependency.
+- **Review:** 12 findings (low 5, false 7). One low patched: the precondition test's closing assertion now observes the closed file the suites read. 11 rejected; rows in `## Review Triage Log`. None deferred. Follow-up review: false (follow-up pass, no high patched; patched by verdict: low 1).
+- **Verification (`ocupilot-b-ci`, one class per call, totals from `%UnitTest_Result`):** runs 3179-3183 green (JournalRead 5/5, JournalWrite 8/8, JournalIntegrity 2/2, JournalWriteGate 2/2, AdminPortAsync 6/6); after the review patch JournalWrite 8/8 (3184), red under its mutation (3185), green after the revert (3186). `journals.browser-spec.mjs` 5/5. `ci.test.mjs` 80/80; `check-objectscript` 0; `lint-docs` 0.
+- **Throwaway end state:** journal settings as found, journaling in `/durable/iris/mgr/journal/`, no `OCUPROBE185*` object, 0 agent definitions, 0 policy rows. The monitor read 2 and was cleared to 0 with `$SYSTEM.Monitor.Clear()`. The switches' journal files are kept.
+- **Residual risk:** the one-file path has run only through the seam; the next CI run is its first on a real one-file instance. In CI's current leg placement `AdminPortAsync` precedes `JournalRead` in shard 1, so `JournalRead`'s own switch is a no-op there (inference from `ci-shards.mjs assign`).

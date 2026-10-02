@@ -1,5 +1,6 @@
 /// <p>Test-only helper for Story 18.5's journal suites. It seeds, in <code>%SYS</code> by explicit save
-/// and restore, a probe alternate journal directory and probe principals; restores the journal state a
+/// and restore, a probe alternate journal directory and probe principals; switches the journal file
+/// where the list names no closed file (<method>EnsureClosedFile</method>); restores the journal state a
 /// caller captured before it ran; and takes canonical snapshots of what a journal read or write can
 /// change, so a run can be compared with the state before it. Every object it creates or removes is
 /// named with <parameter>PREFIX</parameter> (users and roles compared without case), and it never
@@ -23,6 +24,9 @@ Parameter DIRPREFIX = "ocuprobe185";
 
 /// <p>The probe alternate journal directory's suffix.</p>
 Parameter ALTSUFFIX = "alt";
+
+/// <p>How many journal file switches <method>EnsureClosedFile</method> makes before it gives up.</p>
+Parameter SWITCHLIMIT = 3;
 
 Parameter PORT = "OcuPilot.Port.AdminPort";
 
@@ -295,6 +299,67 @@ ClassMethod Newest() As %String
     Set tRows = ..Listed()
     If '$IsObject(tRows) || (tRows.%Size() = 0) Quit ""
     Quit tRows.%Get(0).%Get("Name")
+}
+
+/// <p>Whether the journal file list <var>pRows</var> (<method>Listed</method>'s answer) lacks what the
+/// journal suites need, so a switch must close a file: it names fewer than two files, or its second
+/// is <var>pCurrent</var>, the file journaling writes now.</p>
+ClassMethod NeedsSwitch(pRows As %DynamicArray, pCurrent As %String) As %Boolean
+{
+    If pRows.%Size() < 2 Quit 1
+    Quit (pRows.%Get(1).%Get("Name") = pCurrent)
+}
+
+/// <p>Arrange the journal suites' shared precondition on an instance of any age: while the journal
+/// file list needs a switch (<method>NeedsSwitch</method>), switch the journal file
+/// (<method>SwitchFile</method>), at most <parameter>SWITCHLIMIT</parameter> times. Unless
+/// <var>pArmed</var> is true, a list that needs a switch is an error and nothing is switched.
+/// <var>pSwitched</var> is how many switches were made. <var>pFirst</var>, when given, stands in for
+/// the first list read, so a test can hand it a list the instance no longer has. No journal file is
+/// deleted.</p>
+ClassMethod EnsureClosedFile(pArmed As %Boolean, Output pSwitched As %Integer, pFirst As %DynamicArray = "") As %Status
+{
+    Set pSwitched = 0
+    Set tSC = $$$OK
+    Set tRows = pFirst
+    For {
+        If '$IsObject(tRows) Set tRows = ..Listed()
+        If '$IsObject(tRows) {
+            Set tSC = $$$ERROR($$$GeneralError, "the journal file list could not be read")
+            Quit
+        }
+        If '..NeedsSwitch(tRows, ##class(%SYS.Journal.System).GetCurrentFileName()) Quit
+        If 'pArmed {
+            Set tSC = $$$ERROR($$$GeneralError, "the journal file list names " _ tRows.%Size() _ " file(s) and no closed one, and closing one takes a journal switch the calling class is not armed for here, so nothing was switched")
+            Quit
+        }
+        If pSwitched >= ..#SWITCHLIMIT {
+            Set tSC = $$$ERROR($$$GeneralError, "the journal file list names no closed file after " _ pSwitched _ " switches")
+            Quit
+        }
+        Set tSC = ..SwitchFile()
+        If $$$ISERR(tSC) Quit
+        Set pSwitched = pSwitched + 1
+        Set tRows = ""
+    }
+    Quit tSC
+}
+
+/// <p>Close the file journaling writes now and start the next one in the same directory (test-only
+/// <code>%SYS.Journal.System</code> seeding in <code>%SYS</code>).</p>
+ClassMethod SwitchFile() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(%SYS.Journal.System).RollToNextFile(, .tNewFile)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>One admin API call through <parameter>PORT</parameter> (or <var>pPort</var>), timed: the query

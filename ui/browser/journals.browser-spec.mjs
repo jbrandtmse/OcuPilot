@@ -19,7 +19,9 @@
  *    walk at wide light, narrow light and wide dark.
  *
  * **It refuses the live and development containers.** Its switches close the throwaway's journal
- * file; the files they create are the instance's transaction record and stay. It creates no probe
+ * file, the first before any leg where the list names no closed file
+ * (`OcuPilot.Test.JournalProbe.EnsureClosedFile`); the files they create are the instance's
+ * transaction record and stay. It creates no probe
  * object, and asserts the journal settings and directory it found are the ones it leaves.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
@@ -109,6 +111,11 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec switches the journal, so it never runs inside the live container');
   assert.ok(!/^ocupilot-slot-/.test(config.container), 'nor inside a development instance');
   await assertThrowaway(config);
+  const { values, output } = iris(
+    [`Set sc=##class(${PROBE}).EnsureClosedFile(1)`, mark('ENSURED', '$Select($System.Status.IsOK(sc):"OK",1:$System.Status.GetErrorText(sc))')],
+    ['ENSURED']
+  );
+  assert.equal(values.ENSURED, 'OK', `the throwaway lists a closed journal file, switched for one where none was:\n${output}`);
   found = journalState();
   browser = await puppeteer.launch(launchOptions(config));
 });

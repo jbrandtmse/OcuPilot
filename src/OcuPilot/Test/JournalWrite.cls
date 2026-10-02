@@ -3,7 +3,9 @@
 /// proposal and confirmation: the file switch, a switch made since the mint refusing the confirm, the
 /// one-directory refusal of a directory switch, a directory switch to a seeded alternate and back, a
 /// switch the vendor answers without moving refused as unmoved, and a clean integrity check at both
-/// levels; and their read-backs.</p>
+/// levels; and their read-backs. It also pins the journal suites' closed-file precondition
+/// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), which its own
+/// <method>OnBeforeAllTests</method> runs first.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account, journaling on in a stock configuration (one
 /// journal directory), a caller holding <code>%All</code>, and both
@@ -62,6 +64,8 @@ Method OnBeforeAllTests() As %Status
     Set tSettings = $ClassMethod(..#PROBE, "JournalSettings")
     If tSettings.%Get("CurrentDirectory") = "" Quit $$$ERROR($$$GeneralError, "the journal settings could not be read")
     Set ..SavedSettings = tSettings.%ToJSON()
+    Set tSC = $ClassMethod(..#PROBE, "EnsureClosedFile", 1)
+    If $$$ISERR(tSC) Quit tSC
     Quit $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
 }
 
@@ -297,6 +301,34 @@ Method TestTheCheckSendsTheFlagItWasGiven()
     Set tQuery("file") = tListed.%Get(1).%Get("Name")
     Set tSC = ##class(OcuPilot.Port.JournalPort).Invoke("Journal.File", "INTEGRITYCHECK", .tQuery, {"CheckDetails": true}, .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ $Get(tHttp) _ " " _ ..Code($Get(tFault)), "0 500 INTERNAL", "a caller body is refused")
+}
+
+/// <p>The journal suites' precondition: a list of one file, or one whose second file is the file
+/// journaling writes now, needs a switch, and one whose second file is closed does not; handed a
+/// one-file list, the unarmed helper refuses and switches nothing, and the armed helper switches the
+/// journal file once, after which the closed file the suites read is the file journaling wrote
+/// before.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Test.JournalProbe.NeedsSwitch</method> answer 0 for a
+/// one-file list -&gt; nothing is switched and this goes red; make
+/// <method>OcuPilot.Test.JournalProbe.SwitchFile</method> switch twice -&gt; the closed-file leg goes
+/// red.</p>
+Method TestAListWithNoClosedFileIsSwitchedUntilItHasOne()
+{
+    Set tProbe = ..#PROBE
+    Set tCurrent = ##class(%SYS.Journal.System).GetCurrentFileName()
+    Set tOne = [{"Name": (tCurrent)}]
+    Do $$$AssertEquals($ClassMethod(tProbe, "NeedsSwitch", tOne, tCurrent), 1, "a list of one file needs a switch")
+    Do $$$AssertEquals($ClassMethod(tProbe, "NeedsSwitch", [{"Name": "/j/20261002.002"}, {"Name": (tCurrent)}], tCurrent), 1, "and so does one whose second file is being written")
+    Do $$$AssertEquals($ClassMethod(tProbe, "NeedsSwitch", [{"Name": (tCurrent)}, {"Name": "/j/20261002.001"}], tCurrent), 0, "while one whose second file is closed does not")
+    Set tBefore = $ClassMethod(tProbe, "Newest")
+    Set tSC = $ClassMethod(tProbe, "EnsureClosedFile", 0, .tSwitched, tOne)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tSwitched, "0 0", "unarmed, a one-file list is refused and nothing is switched: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals($ClassMethod(tProbe, "Newest"), tBefore, "the newest file is unchanged")
+    Set tSC = $ClassMethod(tProbe, "EnsureClosedFile", 1, .tSwitched, tOne)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tSwitched, "1 1", "armed, it switches the journal file once: " _ $System.Status.GetErrorText(tSC))
+    Set tAfter = $ClassMethod(tProbe, "Newest")
+    Do $$$AssertTrue((tAfter '= "") && (tAfter '= tBefore) && (tAfter = ##class(%SYS.Journal.System).GetCurrentFileName()), "the instance writes a new newest file: " _ tBefore _ " -> " _ tAfter)
+    Do $$$AssertEquals(##class(OcuPilot.Test.JournalIntegrity).ClosedFile(), tBefore, "the closed file the suites read is the one this switch closed, so exactly one switch was made")
 }
 
 /// <p>Mint <var>pToolClass</var>'s proposal for id <var>pId</var> with the extra arguments

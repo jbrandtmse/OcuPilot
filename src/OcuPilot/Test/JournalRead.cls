@@ -5,11 +5,17 @@
 /// screen's read, the integrity check's screen action and the integrity tool's mint, with no vendor
 /// call for the target and no echo of the name; and the record list's omitted file reads the newest
 /// listed file.</p>
-/// <p>It reads only, and writes nothing to the instance. It needs journaling on, at least two listed
-/// journal files, a caller holding <code>%All</code>, and OcuPilot serving over HTTP as
+/// <p>Its tests read only. Where the journal file list names no closed file,
+/// <method>OnBeforeAllTests</method> first switches the journal file to close one
+/// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), only when
+/// <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is kept. It needs
+/// journaling on, a caller holding <code>%All</code>, and OcuPilot serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account.</p>
 Class OcuPilot.Test.JournalRead Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms the journal switch a list without a closed file needs.</p>
+Parameter JOURNALVARIABLE = "OCUPILOT_ALLOW_JOURNAL";
 
 Parameter LIST = "OcuPilot.Screen.Descriptor.JournalList";
 
@@ -27,6 +33,11 @@ Parameter UNLISTED = "JOURNAL.FILE.UNLISTED";
 
 /// <p>A name no journal file list answers.</p>
 Parameter FOREIGNFILE = "/tmp/x.001";
+
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.JournalProbe).EnsureClosedFile($System.Util.GetEnviron(..#JOURNALVARIABLE) = 1)
+}
 
 /// <p>The instance's journal file list, whole, through the admin port.</p>
 ClassMethod Listed() As %DynamicArray

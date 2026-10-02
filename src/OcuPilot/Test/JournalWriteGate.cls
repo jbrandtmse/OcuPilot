@@ -8,10 +8,11 @@
 /// <class>OcuPilot.Test.JournalIntegrityPort</class> was asked; the integrity check is answered by that
 /// seam and never sent to the vendor.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, journaling on in a stock
-/// configuration (one journal directory), a closed journal file listed, a caller holding
-/// <code>%All</code>, and both <parameter>ARMINGVARIABLE</parameter> and
-/// <parameter>JOURNALVARIABLE</parameter> reading <code>1</code>: it creates and removes probe
-/// principals, and the floor's file switch switches the instance's journal file.</p>
+/// configuration (one journal directory), a caller holding <code>%All</code>, and both
+/// <parameter>ARMINGVARIABLE</parameter> and <parameter>JOURNALVARIABLE</parameter> reading
+/// <code>1</code>: it creates and removes probe principals, switches the journal file first where the
+/// list names no closed file (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), and the
+/// floor's file switch switches the instance's journal file.</p>
 Class OcuPilot.Test.JournalWriteGate Extends %UnitTest.TestCase
 {
 
@@ -52,6 +53,8 @@ Method OnBeforeAllTests() As %Status
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.JournalWriteGate creates users and roles and switches the journal file on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " and " _ ..#JOURNALVARIABLE _ " must both read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets them.")
     }
     Set ..SavedSettings = $ClassMethod(..#PROBE, "JournalSettings").%ToJSON()
+    Set tSC = $ClassMethod(..#PROBE, "EnsureClosedFile", 1)
+    If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Length(..#PRINCIPALS, ",") {

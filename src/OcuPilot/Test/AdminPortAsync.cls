@@ -12,9 +12,15 @@
 /// poll and delete run. Needs <code>%Admin_Operate:U</code> and <code>%Admin_Secure:U</code>, a
 /// mounted globals database for the test namespace, and auditing enabled. Each test queues one
 /// vendor task row, which the port deletes; the row count read through the port is asserted
-/// unchanged.</p>
+/// unchanged. Where the journal file list names no closed file, the journal check's test first
+/// switches the journal file to close one (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>),
+/// only when <parameter>JOURNALVARIABLE</parameter> reads <code>1</code>; the file it closes is
+/// kept.</p>
 Class OcuPilot.Test.AdminPortAsync Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms the journal switch a list without a closed file needs.</p>
+Parameter JOURNALVARIABLE = "OCUPILOT_ALLOW_JOURNAL";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -198,6 +204,8 @@ Method TestAJournalChecksConsoleIsAnsweredCutAndOnFailure()
 {
     Set tPort = "OcuPilot.Test.JournalConsolePort"
     Set tTaskClass = $Parameter("OcuPilot.Port.AdminPort", "ASYNCTASKCLASS")
+    Set tSC = ##class(OcuPilot.Test.JournalProbe).EnsureClosedFile($System.Util.GetEnviron(..#JOURNALVARIABLE) = 1)
+    Do $$$AssertStatusOK(tSC, "the journal file list names a closed file: " _ $System.Status.GetErrorText(tSC))
     Set tFile = ##class(OcuPilot.Test.JournalIntegrity).ClosedFile()
     Do $$$AssertTrue(tFile '= "", "a closed journal file is listed")
     If tFile = "" Quit
