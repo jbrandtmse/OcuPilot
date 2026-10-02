@@ -3,9 +3,13 @@
 /// convention; DW-20's promotion rules on every path that can leave the marker stranded; the
 /// security-change disable; and a credential reference that names nothing still reading back.</p>
 /// <p>Every method starts from an instance holding <b>no</b> definitions, which
-/// <method>OnBeforeOneTest</method> establishes and each method asserts rather than assumes -- the
+/// <method>OnBeforeAllTests</method> and <method>OnBeforeOneTest</method> establish and each method
+/// asserts rather than assumes -- the
 /// promotion rules are about creation order, so a definition left behind by something else would
 /// make the results mean something different.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.AgentState Extends %UnitTest.TestCase
 {
 
@@ -27,6 +31,18 @@ Method %OnNew(initvalue As %String = "") As %Status
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedInstanceEmpty = 0
     Quit $$$OK
+}
+
+/// <p>Set the instance's own definitions aside for the class.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
 }
 
 /// <p>Clear any probe definition a previous method left, then record whether the instance holds

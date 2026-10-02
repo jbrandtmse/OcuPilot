@@ -9,7 +9,8 @@
 /// against a real web application is <class>OcuPilot.Test.ProhibitedRoute</class>'s, which is armed
 /// for a throwaway container.</p>
 /// <p>Every row it seeds hangs off a turn <method>OcuPilot.Test.ProposalFixture.SeedTurn</method>
-/// created, which is what <method>OnAfterOneTest</method> removes them by.</p>
+/// created, which is what <method>OnAfterOneTest</method> removes them by. Every test starts from no
+/// stored governance policy and puts back the policy it found, asserting the restore.</p>
 Class OcuPilot.Test.Prohibited Extends %UnitTest.TestCase
 {
 
@@ -29,6 +30,9 @@ Parameter TOOLCLASS = "OcuPilot.Screen.Tool.WebAppUpdate";
 /// so nothing resolves it either way.</p>
 Parameter TARGET = "/csp/ocupilotprobeprohibited";
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -36,7 +40,11 @@ Method OnBeforeOneTest() As %Status
     ; The confirm asks the seam for a class; this fixture subclass runs the shipped predicates
     ; against the armed target rather than against the instance.
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited(..#SET)
-    Quit $$$OK
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
 Method OnAfterOneTest() As %Status
@@ -46,6 +54,11 @@ Method OnAfterOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Do $$$AssertStatusOK(tSC, "the policy found before the test is put back")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tRows), "and reads back as it was")
     Quit $$$OK
 }
 

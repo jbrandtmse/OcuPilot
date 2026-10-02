@@ -9,6 +9,9 @@
 /// <parameter>PROVIDERVARIABLE</parameter> read 1.</b> Only <file>scripts/ci-throwaway.sh</file>
 /// sets them. After every method no probe job is alive and no probe turn, slot or stub node
 /// remains.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.TurnWire Extends %UnitTest.TestCase
 {
 
@@ -54,9 +57,13 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.TurnWireFixture).EnsurePrincipal($Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, tResources)
     If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.TurnWireFixture).EnsurePrincipal($Parameter(..#FIXTURE, "USERB"), ..PreparedPassword, tResources)
     If $$$ISERR(tSC) Quit tSC
+    ; The instance's own definitions are set aside first, so none can take the default marker
+    ; from the prepared definition or serve a turn this class starts.
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+    If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPrior = $ClassMethod(..#FIXTURE, "MarkedDefault")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsureDefinition", ..#TAG, .tId)
-    If $$$ISERR(tSC) Quit tSC
+    If $$$ISERR(tSC) Quit $$$ADDSC(tSC, ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions())
     Set ..PreparedDefinitionId = tId
     Set ..PreparedSetupOk = ($SYSTEM.Security.CheckUserPermission($Parameter(..#FIXTURE, "USERA"), "%Admin_Operate", "USE") = 1)
     Quit $$$OK
@@ -67,7 +74,8 @@ Method OnAfterAllTests() As %Status
     If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron(..#PROVIDERVARIABLE) '= 1) Quit $$$OK
     Set tSC = $ClassMethod(..#FIXTURE, "RemoveDefinition", ..PreparedPrior)
     Set tLeft = ##class(OcuPilot.Test.TurnWireFixture).RemovePrincipals()
-    If tLeft '= "" Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnWire teardown left:" _ tLeft)
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions())
+    If tLeft '= "" Quit $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnWire teardown left:" _ tLeft))
     Quit tSC
 }
 

@@ -8914,3 +8914,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-2-compile-delete-export-and-import.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.2 plan on ocupilot-a2-ci: PollAsync answers another caller's queued job (no owner check) and QueueAsync accepts a caller-named routine (testrtn) to run; AtelierPort never calls the work routes (AD-61 rule 7)
 - 2026-10-02T04:52:52Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905
+### DW-1916: turnprobe-spec.mjs nextTag restarts per process, so a browser spec whose last provider call lands after its own forget leaves a call record the same file's next run on that container inherits
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci: proposal-demo AC3 red alone from its own previous run's DEMO5 record (fixed there in 12790813); IMPACTLINE2, PRIVLINE2/3, PROPOSAL4 held a late returned node, EGRESS3-6 full records (egress-line forgets no tag)
+- 2026-10-02T02:53:58Z status=routed owner=range-end-cleanup by=harvest note=test isolation on a reused container; fresh CI legs run each file once (inference); other turnprobe callers unchecked
+
+### DW-1917: governance.browser-spec.mjs resetGovernancePolicy leaves an empty-preset policy row where it found none, which later class runs on the same container read as a stored override
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci left one Policy row after governance.browser-spec.mjs; removed by the stage; DW-1839's classes now clear and restore the store themselves
+- 2026-10-02T02:53:58Z status=routed owner=range-end-cleanup by=harvest note=test isolation on a reused container; reset should delete the row when none existed
+- 2026-10-02T03:20:45Z status=routed owner=range-end-cleanup by=cr note=correction: resetGovernancePolicy lives in preferences-reset.mjs:119 and runs from resetRememberedState (133 specs reach it)
+
+### DW-1918: about-help-links' stamp leg reds on a throwaway whose bundle was redeployed by docker cp, the recipe objectscript-testing.md gives, because the installer's stamp still names the bundle it installed
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci: one about-help-links check red after docker cp redeploy; not a sweep effect
+- 2026-10-02T02:53:58Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=a stage or review reports about-help-links' stamp red as a regression after a docker cp redeploy
+
+### DW-1919: data-table and data-table-columns fail under a bare node --test because the table harness pretest:browser builds is skipped, and Rule 29's per-file recipe runs specs that way
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 batch c DW-1204 pass on ocupilot-b-ci: both red under a bare node --test pass, green through npm run test:browser
+- 2026-10-02T02:53:58Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=a stage reports data-table or data-table-columns red from a bare node --test run as a product or isolation defect
+
+### DW-1920: audit-copy-purge.browser-spec.mjs copies the whole audit database and waits 30 s for it, which a post-sweep container (about 4.3M audit rows) may outlast (inference)
+- source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: 23.3 plan: excluded from the DW-1204 pass on ocupilot-b-ci (4,325,263 audit rows) so as not to copy them into USER; not measured
+- 2026-10-02T02:53:58Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=audit-copy-purge reds on its 30 s wait in CI or on a post-sweep container

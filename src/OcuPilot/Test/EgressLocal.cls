@@ -17,6 +17,9 @@
 /// definition and its settings row and then puts both back. An unconditional delete here removed
 /// a configured proxy permanently, which is the same defect <class>OcuPilot.Test.Egress</class>
 /// scoped away next door.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.EgressLocal Extends %UnitTest.TestCase
 {
 
@@ -65,6 +68,19 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..DisplacedEgress = 0
     Kill ..DisplacedEgressValues
     Quit $$$OK
+}
+
+/// <p>Set the instance's own definitions aside for the class, so a security-field edit cannot hand
+/// the default marker to one of them.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
 }
 
 /// <p>Store one enabled, default, marked-local definition on the shipped row, and clear the
