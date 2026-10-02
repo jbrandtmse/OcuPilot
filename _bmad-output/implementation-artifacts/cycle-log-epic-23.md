@@ -233,3 +233,7 @@
 2026-10-01T23:57:28Z	Story 23.3	smoke_complete	batch=b method=browser+cli result=pass iterations=1 defects_caught=0 evidence=stage_runs_on_ocupilot-b-ci(AdminPortAbsence_1627/1628/1629;audit-events_4/4;a11y_12/12;proposal-demo_3/3)+CI_36940146133 model=claude-opus-5-5
 2026-10-01T23:57:28Z	Story 23.3	ledger_adjudicated	batch=b owned=5(DW-1866,1865,1808,1822,1906) resolved=5 reowned=0 terminal=0 open_carried=DW-1907(epic19_contended_file)
 2026-10-01T23:57:28Z	Story 23.3	batch_boundary_reported	batch=b to=main code_head=6e6b8dcc run=36940146133 review_patches=191b35d2(unpushed_until_forward_merge) feature_code_moved=no
+2026-10-02T00:38:30Z	Story 23.3	ci_resolved	batch=b_followup story=23.3 run=36943583139 head=fe7e529e result=success attempt=1 superseded=36943517396(cancelled_by_forward_merge_push) resolved_at=before_next_implement
+2026-10-02T00:38:30Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@68bb6946(batch_b_merged) merge=fe7e529e(after_c9521b39_from_7b7ab4bc) conflicts=none code_changes=none ci=success(36943583139) before=batch_c
+2026-10-02T00:38:30Z	Story 23.3	rework_opened	cycle_iteration=3 iteration=batch_c trigger=next_batch items=DW-1759,DW-1839,DW-1204,DW-434 held=DW-1907(epic19_ci-throwaway.sh,orchestrator) scope_baseline=HEAD spec=status_only(oversized)
+2026-10-02T00:38:30Z	Story 23.3	stage_spawned	stage=implement batch=c spawn_at=2026-10-02T00:38:30Z model=opus agent_name=23-3-the-range-end-cleanup-part-3-implement-c cycle_iteration=3 prior_ci=success(36943583139) feature=68bb6946
