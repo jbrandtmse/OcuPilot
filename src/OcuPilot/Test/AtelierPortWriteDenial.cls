@@ -1,9 +1,12 @@
-/// <p>Pins the routines database's WRITE pair on System Explorer's compile and delete against real
-/// principals over HTTP (AD-8, AD-29, AD-61 rule 1, Story 19.2 AC6): a principal holding the read
-/// pairs and READ alone on <code>USER</code>'s database is refused each by name with nothing changed;
-/// one holding READ and WRITE compiles and deletes; and a <code>%Developer</code> principal compiles
-/// and deletes in <code>USER</code>, whose database its role writes, and is refused in the install
-/// namespace by name. The tools declare the pair for the request's namespace.</p>
+/// <p>Pins the routines database's WRITE pair on System Explorer's compile, delete and import against
+/// real principals over HTTP (AD-8, AD-29, AD-61 rule 1, Story 19.2 AC6, Story 19.13 AC4): a principal
+/// holding the read pairs and READ alone on <code>USER</code>'s database is refused each by name with
+/// nothing changed, exports to this browser, and is refused an export to a server file naming the
+/// file pair it lacks; one holding READ and WRITE compiles and deletes, and is refused an import of a
+/// server file naming the file pair it lacks; and a <code>%Developer</code>
+/// principal compiles, deletes and imports in <code>USER</code>, whose database its role writes, is
+/// refused in the install namespace by name, and exports to this browser there. The tools declare
+/// the pair for the request's namespace.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates three users and
 /// three roles, read back before any test and removed after the last. It creates and removes the
@@ -95,6 +98,70 @@ Method Act(pUser As %String, pNamespace As %String, pAction As %String, pId As %
     Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
 }
 
+/// <p>One screen action on the Classes list in <var>pNamespace</var> as <var>pUser</var>:
+/// <var>pAction</var> on <var>pId</var> with <var>pValues</var>; the HTTP status and the parsed
+/// envelope.</p>
+Method ActWith(pUser As %String, pNamespace As %String, pAction As %String, pId As %String, pValues As %DynamicObject, Output pStatus As %Integer, Output pBody)
+{
+    Set pBody = ""
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    If $IsObject(pValues) Do tRequest.%Set("values", pValues)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/screens/explorer.classes/action?ns=" _ pNamespace, pUser, ..PreparedPassword, .pStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Try { Set pBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pBody = $Get(tRaw) }
+}
+
+/// <p>A local file holding one probe class, <var>pName</var> in the probe package, as the
+/// <code>import-local</code> values.</p>
+ClassMethod LocalFile(pName As %String) As %DynamicObject
+{
+    Set tValues = {"fileName": "Imported.cls", "Compile": "true"}
+    Do tValues.%Set("content", "Class " _ $Parameter(..#PROBE, "PACKAGE") _ "." _ pName _ " Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}" _ $Char(10), "string")
+    Quit tValues
+}
+
+/// <p>Story 19.13 AC4: holding the read pairs and READ alone on <code>USER</code>'s database, an
+/// import is refused 403 naming <code>%DB_USER:WRITE</code> with nothing created, an export to a
+/// server file 403 naming the file pair the principal lacks, and an export to this browser goes
+/// through.</p>
+Method TestAnImportWithoutWriteIsRefusedByName()
+{
+    Do ..ActWith(..#READONLYUSER, ..#OTHERNAMESPACE, "import-local", "import", ..LocalFile("Imported"), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "403 AUTH.NOPRIVILEGE %DB_USER:WRITE", "the import is refused naming the routines database's WRITE pair")
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#OTHERNAMESPACE, $Parameter(..#PROBE, "PACKAGE") _ ".Imported.cls"), "and nothing is created")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#OTHERNAMESPACE, $Parameter(..#PROBE, "PACKAGE") _ ".Alpha"), "a probe class is saved")
+    Do ..ActWith(..#READONLYUSER, ..#OTHERNAMESPACE, "export-browser", $Parameter(..#PROBE, "PACKAGE") _ ".Alpha.cls", "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "an export to this browser goes through: " _ $Select($IsObject(tBody): $Extract(tBody.%ToJSON(), 1, 200), 1: $Get(tBody)))
+    Do ..ActWith(..#READONLYUSER, ..#OTHERNAMESPACE, "export", $Parameter(..#PROBE, "PACKAGE") _ ".Alpha.cls", {"root": ($System.Util.ManagerDirectory()), "path": "OcuProbe1913/denied.xml"}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "403 AUTH.NOPRIVILEGE %Admin_FileSystemAccess:USE", "an export to a server file is refused naming the file pair")
+}
+
+/// <p>Story 19.13 AC4: a <code>%Developer</code> principal imports a probe class into <code>USER</code>,
+/// is refused an import in the install namespace naming that namespace's code database's WRITE pair
+/// with nothing created, and exports a class to this browser there.</p>
+Method TestADeveloperImportsInUserAndExportsAnywhere()
+{
+    Set tPackage = $Parameter(..#PROBE, "PACKAGE")
+    Do ..ActWith(..#DEVELOPERUSER, ..#OTHERNAMESPACE, "import-local", "import", ..LocalFile("Imported"), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "it imports in " _ ..#OTHERNAMESPACE _ ": " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: $Get(tBody)))
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#OTHERNAMESPACE, tPackage _ ".Imported"), "the class is created and compiled")
+    Do ..ActWith(..#DEVELOPERUSER, $Namespace, "import-local", "import", ..LocalFile("Imported"), .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "403 AUTH.NOPRIVILEGE " _ ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource() _ ":WRITE", "it is refused an import in the install namespace by name")
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", $Namespace, tPackage _ ".Imported.cls"), "with nothing created")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", $Namespace, tPackage _ ".Alpha"), "a probe class is saved in the install namespace")
+    Do ..ActWith(..#DEVELOPERUSER, $Namespace, "export-browser", tPackage _ ".Alpha.cls", "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody) && $IsObject(tBody.%Get("output")): (tBody.output.lines.%ToJSON() [ "<Export"), 1: ""), "200 1", "and exports to this browser there")
+}
+
+/// <p>Story 19.13 AC4: holding WRITE on <code>USER</code>'s database but not PathPort's pairs, an import
+/// naming a server file is refused 403 naming <code>%Admin_FileSystemAccess:USE</code>.</p>
+Method TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName()
+{
+    Do ..ActWith(..#READWRITEUSER, ..#OTHERNAMESPACE, "import", "import", {"root": ($System.Util.ManagerDirectory()), "path": "OcuProbe1913/denied.xml", "Compile": "true"}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Refusal(tBody), "403 AUTH.NOPRIVILEGE %Admin_FileSystemAccess:USE", "the import is refused naming the file pair")
+}
+
 /// <p>The code and failed pair an envelope <var>pBody</var> carries, as <code>code pair</code>.</p>
 ClassMethod Refusal(pBody) As %String
 {
@@ -102,17 +169,24 @@ ClassMethod Refusal(pBody) As %String
     Quit pBody.%Get("code") _ " " _ $Select($IsObject(pBody.%Get("detail")): pBody.detail.%Get("failedPair"), 1: "")
 }
 
-/// <p>The tools declare the routines database's WRITE pair of the namespace the request is scoped to,
-/// beside the list's own pair.</p>
+/// <p>The compile, delete and import tools declare the routines database's WRITE pair of the
+/// namespace the request is scoped to, beside the list's own pair; the export tools declare the
+/// list's pair alone.</p>
 /// <p>Mutation (Rule 19): drop the WRITE pair from
-/// <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> -- this goes red.</p>
+/// <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> -- this goes red; give the import
+/// <class>OcuPilot.Screen.Tool.ExplorerExport</class>'s <method>PrivilegePairs</method> -- the import
+/// legs go red.</p>
 Method TestTheToolsDeclareTheRequestNamespacesWritePair()
 {
     For tCase = $ListBuild(..#OTHERNAMESPACE, "%DB_USER"), $ListBuild($Namespace, ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()) {
         Do ##class(OcuPilot.Kernel.Scope).Set($List(tCase, 1))
-        For tTool = "OcuPilot.Screen.Tool.ExplorerClassCompile", "OcuPilot.Screen.Tool.ExplorerRoutineDelete" {
+        For tTool = "OcuPilot.Screen.Tool.ExplorerClassCompile", "OcuPilot.Screen.Tool.ExplorerRoutineDelete", "OcuPilot.Screen.Tool.ExplorerClassImport", "OcuPilot.Screen.Tool.ExplorerRoutineImport" {
             Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
             Do $$$AssertTrue(tResolved && $ListFind(tPairs, $ListBuild("%Development", "USE")) && $ListFind(tPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " declares " _ $List(tCase, 2) _ ":WRITE beside %Development:USE")
+        }
+        For tTool = "OcuPilot.Screen.Tool.ExplorerClassExport", "OcuPilot.Screen.Tool.ExplorerRoutineExport" {
+            Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
+            Do $$$AssertTrue(tResolved && $ListFind(tPairs, $ListBuild("%Development", "USE")) && '$ListFind(tPairs, $ListBuild($List(tCase, 2), "WRITE")), tTool _ " in " _ $List(tCase, 1) _ " declares %Development:USE and no WRITE pair")
         }
     }
 }

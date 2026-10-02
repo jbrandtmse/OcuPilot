@@ -853,7 +853,7 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
   for (const screen of declaring.filter((entry) => entry !== processes)) {
-    assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete'] }, `${screen.className} checks every row for compile and, as its extra action, delete`);
+    assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
   }
 
   const broken = { ...processes.declaration, multiSelect: { ...processes.declaration.multiSelect, max: 0 } };

@@ -4174,6 +4174,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -4326,7 +4342,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "action": "compile",
       "max": 100,
       "extraActions": [
-        "delete"
+        "delete",
+        "export"
       ]
     },
     "refreshDefault": 0,
@@ -4524,6 +4541,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
       }
     ],
     "context": {
@@ -4676,7 +4709,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "action": "compile",
       "max": 100,
       "extraActions": [
-        "delete"
+        "delete",
+        "export"
       ]
     },
     "refreshDefault": 0,

@@ -28,8 +28,9 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 /// <p>The enable of interoperability, which the baseline also disables (Story 18.15).</p>
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
-/// <p>Story 19.2's two document deletes, which the baseline disables.</p>
-Parameter EXPLORERDELETES = "explorer.classes.delete,explorer.routines.delete";
+/// <p>Story 19.2's two document deletes and Story 19.13's two document imports, which the baseline
+/// disables.</p>
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
@@ -102,8 +103,8 @@ Method Store(pPreset As %String, pKey As %String = "", pSetting As %String = "")
 
 /// <p>Matrix row 1 and AC2: with no stored policy every registered write key is enabled by the
 /// baseline except the purge, the namespace delete, the database delete, the task import, Story
-/// 18.4's eight disk operations and Story 19.2's two document deletes, which the baseline
-/// disables.</p>
+/// 18.4's eight disk operations, Story 19.2's two document deletes and Story 19.13's two document
+/// imports, which the baseline disables.</p>
 Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Governance.Policy).WriteKeys(.tKeys), "the write keys are read")
@@ -114,11 +115,11 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tKey = $Order(tKeys(tKey))
         If tKey = "" Quit
         Set tCount = tCount + 1
-        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDELETES), tKey): "0|baseline", 1: "1|baseline")
+        Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability and the two document deletes disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes and the two document imports disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

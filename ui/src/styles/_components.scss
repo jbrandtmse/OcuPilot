@@ -7496,6 +7496,19 @@ app-log-hub-page {
   margin-block-end: var(--ocu-space-2);
 }
 
+// The export and import dialogs (Story 19.13): the two destinations or sources, then the chosen
+// file's controls; a long local file name wraps rather than widening the dialog.
+.ocu-explorer-transfer-choice {
+  margin-block-end: var(--ocu-space-3);
+}
+
+.ocu-explorer-import-file {
+  display: block;
+  max-inline-size: 100%;
+  margin-block-end: var(--ocu-space-3);
+  overflow-wrap: anywhere;
+}
+
 // The data table's checked set (Story 16.6): a 24px checkbox at the leading edge of a multi-select
 // list's name cell and name header, which never shrinks under a narrow column (DW-1337).
 .ocu-data-table-check {

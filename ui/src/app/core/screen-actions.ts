@@ -198,9 +198,10 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LocalDatabaseList': { expand: STRINGS.databaseExpandAction },
   // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
   'OcuPilot.Screen.Descriptor.LockList': { remove: STRINGS.lockRemoveAction },
-  // Story 19.2: the Classes and Routines lists' Compile, over the checked rows.
-  'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction },
-  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction },
+  // Story 19.2: the Classes and Routines lists' Compile, over the checked rows; Story 19.13 their
+  // Export, which opens the export dialog over them.
+  'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
 };
 
 export class ScreenActions {

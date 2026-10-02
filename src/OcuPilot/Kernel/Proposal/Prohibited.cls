@@ -434,15 +434,25 @@ Parameter TYPECLASS = "class";
 
 Parameter TYPEROUTINE = "routine";
 
-/// <p>The write would compile or delete one of OcuPilot's own documents (<method>IsOcuPilotCode</method>),
-/// in any namespace (AD-10 as amended 2026-10-02): those documents are the code that answers
-/// OcuPilot's addresses (AD-9). Refused whatever the caller.</p>
+/// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
+/// arm does not judge.</p>
+Parameter EXPORTWRITETYPE = "EXPORT";
+
+/// <p>The one target a class or routine import takes (Story 19.13), compared without regard to case;
+/// its documents are the stored payload's <parameter>IMPORTDOCUMENTS</parameter>.</p>
+Parameter IMPORTTARGET = "import";
+
+Parameter IMPORTDOCUMENTS = "documents";
+
+/// <p>The write would compile, delete or replace by import one of OcuPilot's own documents
+/// (<method>IsOcuPilotCode</method>), in any namespace (AD-10 as amended 2026-10-02): those documents
+/// are the code that answers OcuPilot's addresses (AD-9). Refused whatever the caller.</p>
 Parameter OCUPILOTCODE = "PROHIBITED.OCUPILOTCODE";
 
 /// <p>The one sentence <parameter>OCUPILOTCODE</parameter> carries, caller-neutral, published in
 /// EXPERIENCE.md's Fixed strings and pinned equal to <code>explorerRefusalOcuPilot</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
-Parameter OCUPILOTCODEREASON = "This is OcuPilot's own code. It cannot be compiled or deleted from OcuPilot.";
+Parameter OCUPILOTCODEREASON = "This is OcuPilot's own code. It cannot be compiled, deleted or replaced from OcuPilot.";
 
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
@@ -1035,9 +1045,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; set, which the process predicates do not read.
         If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
 
-        ; Story 19.2: a document set is judged by its own names, so the arm reads no target.
+        ; Story 19.2: a document set is judged by its own names, so the arm reads no target. Story
+        ; 19.13: an export only reads and is not judged, and an import is judged by the documents its
+        ; reviewed file holds.
         If (tType = ..#TYPECLASS) || (tType = ..#TYPEROUTINE) {
-            Set tSC = ..Code(tId, .pProhibits, .pCode)
+            If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#EXPORTWRITETYPE Quit
+            Set tSC = ..Code($Select($ZConvert(tId, "L") = ..#IMPORTTARGET: ..ImportedNames(pPayload), 1: tId), .pProhibits, .pCode)
             Quit
         }
 
@@ -1918,9 +1931,9 @@ ClassMethod IsOcuPilotLock(pReference As %String) As %Boolean
     Quit ($Extract(..GlobalName(pReference), 1, $Length(..#OWNGLOBALPREFIX)) = ..#OWNGLOBALPREFIX)
 }
 
-/// <p>The code arm (AD-10 as amended 2026-10-02): a compile or delete of the document set
-/// <var>pId</var>, its names comma-separated, is refused <parameter>OCUPILOTCODE</parameter> when any
-/// of them is one of OcuPilot's own documents (<method>IsOcuPilotCode</method>), and is otherwise
+/// <p>The code arm (AD-10 as amended 2026-10-02): a compile, delete or import of the documents
+/// <var>pId</var> names, comma-separated, is refused <parameter>OCUPILOTCODE</parameter> when any of
+/// them is one of OcuPilot's own documents (<method>IsOcuPilotCode</method>), and is otherwise
 /// permitted. Such a write sends no body and its card rows are the state and the declared values its
 /// fingerprint subject covers, so no field reaches a sweep.</p>
 ClassMethod Code(pId As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
@@ -1934,6 +1947,27 @@ ClassMethod Code(pId As %String, Output pProhibits As %Boolean, Output pCode As 
         }
     }
     Quit $$$OK
+}
+
+/// <p>The documents an import's stored payload <var>pPayload</var> reviewed, comma-joined: the name
+/// before the first space of each <code>", "</code>-separated entry of its <code>documents</code>
+/// summary (<method>OcuPilot.Port.AtelierPort.Examine</method>). <code>""</code> when it carries
+/// none.</p>
+ClassMethod ImportedNames(pPayload As %String) As %String [ Private ]
+{
+    Set tNames = ""
+    Set tSummary = ""
+    Try {
+        Set tObject = ##class(%DynamicAbstractObject).%FromJSON(pPayload)
+        If $IsObject(tObject) && tObject.%IsA("%Library.DynamicObject") && (tObject.%GetTypeOf(..#IMPORTDOCUMENTS) = "string") Set tSummary = tObject.%Get(..#IMPORTDOCUMENTS)
+    } Catch {
+        Set tSummary = ""
+    }
+    For tI = 1:1:$Length(tSummary, ", ") {
+        Set tName = $Piece($Piece(tSummary, ", ", tI), " ", 1)
+        If tName '= "" Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
+    }
+    Quit tNames
 }
 
 /// <p>Whether document <var>pName</var> is one of OcuPilot's own: its name begins, ignoring case,
