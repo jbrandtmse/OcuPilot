@@ -26,6 +26,19 @@ Parameter OTHERUSER = "OcuPilotProbeHoldOther";
 /// <p>The prefix every probe definition this class creates is named with.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 
+/// <p>Set the instance's own definitions aside for the class, so the definition in force is one
+/// this class created or none.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.SwitchFixture).Reset(.tRemaining)

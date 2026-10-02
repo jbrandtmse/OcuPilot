@@ -5,7 +5,9 @@
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and an account holding
 /// <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:WRITE</code>. Every write reaches the instance through
 /// <class>OcuPilot.Test.DeviceRecordPort</class>; every device it creates is named with
-/// <parameter>OcuPilot.Test.DeviceProbe.PREFIX</parameter> and removed by exact name.</p>
+/// <parameter>OcuPilot.Test.DeviceProbe.PREFIX</parameter> and removed by exact name. Every test
+/// starts from no stored governance policy and puts back the policy it found, asserting the
+/// restore.</p>
 Class OcuPilot.Test.DeviceDelete Extends %UnitTest.TestCase
 {
 
@@ -21,13 +23,22 @@ Parameter SHARED = "OcuPilot.Test.DeviceCreate";
 /// <p>The eight fields in the classic page's order: the removal rows and the fingerprint subject.</p>
 Parameter FIELDS = "PhysicalDevice,Type,SubType,OpenParameters,Description,Alias,AlternateDevice,Prompt";
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#RECORD, "Clear")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
     If $$$ISERR(tSC) Quit tSC
-    Quit $ClassMethod(..#PROBE, "Add", ..Name("Del"), {"Description": "gone soon", "Alias": 9933, "Prompt": 1})
+    Set tSC = $ClassMethod(..#PROBE, "Add", ..Name("Del"), {"Description": "gone soon", "Alias": 9933, "Prompt": 1})
+    If $$$ISERR(tSC) Quit tSC
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
 Method OnAfterOneTest() As %Status
@@ -39,6 +50,11 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertTrue($ClassMethod(..#PROBE, "CpfValid", .tNamesProbe), "and the configuration file validates")
     Do $$$AssertEquals(tNamesProbe, 0, "naming no probe device")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Do $$$AssertStatusOK(tSC, "the policy found before the test is put back")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tRows), "and reads back as it was")
     Quit $$$OK
 }
 

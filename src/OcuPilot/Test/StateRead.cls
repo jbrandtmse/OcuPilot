@@ -18,6 +18,19 @@ Parameter DESCRIPTOR = "OcuPilot.Screen.Descriptor.AgentDefinitionList";
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
 
+/// <p>Set the instance's own definitions aside for the class, so a read's rows are this class's
+/// own.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)

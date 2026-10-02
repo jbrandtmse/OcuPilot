@@ -2,10 +2,10 @@
 title: 'Story 23.3: The range-end cleanup, part 3'
 type: 'bugfix'
 created: '2026-10-01'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '4e05a61db02729d5d6ee24000f72ad7b656bab45'
-baseline_commit: '4e05a61db02729d5d6ee24000f72ad7b656bab45'
+baseline_revision: '66f2e7162232257c1afaa55fc5891874cb87841c'
+baseline_commit: '66f2e7162232257c1afaa55fc5891874cb87841c'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -227,7 +227,7 @@ deferred:
 
 ### Batch c: test isolation (DW-1759, DW-1839, DW-1204, DW-434)
 
-- [ ] **DW-1759** — With any agent definition present, it is the lower id, so it holds or retakes the default marker, and 29 methods fail.
+- [x] **DW-1759** — With any agent definition present, it is the lower id, so it holds or retakes the default marker, and 29 methods fail.
   - **Reproduce** on `ocupilot-b-ci`:
     - Seed one enabled definition that is not named as a probe: `UpgradeSeedAgent` through `Agent.GuardedCreate`, with provider `anthropic` and `CredType` `env`.
     - Run the seven classes one at a time. Expect 13 + 7 + 3 + 3 + 1 + 1 + 1 red before the fix.
@@ -247,7 +247,7 @@ deferred:
       - If `OnBeforeAllTests` fails after the move, it restores on that error path.
   - Files: `Test/AgentFixture.cls` and the seven classes. ADs: Conventions › Tests, AD-9.
   - AC: Given one enabled definition and, in a second pass, a second disabled one, when each of the seven classes runs, then it passes, and each seeded row's `BaseD(id)` and id read back byte-identical.
-- [ ] **DW-1839** — A stored override disables `osmgmt.devices.delete`. Confirm then refuses it as `GOVERNANCE.DISABLED` (`Confirm.cls:318-325`), and Prohibited's baseline precondition fails.
+- [x] **DW-1839** — A stored override disables `osmgmt.devices.delete`. Confirm then refuses it as `GOVERNANCE.DISABLED` (`Confirm.cls:318-325`), and Prohibited's baseline precondition fails.
   - **Reproduce:** run `Kill s Set s("osmgmt.devices.delete")="disabled"` and then `GovernanceFixture.Apply("",.s)`, and run the five classes (7 red before the fix). Afterwards run `Policy.DeleteAllGuarded()` and read back 0 rows.
   - **Fix:** copy `Governance.cls:53-80` into all five classes:
     - `OnBeforeOneTest` snapshots and clears the whole store, because a stored read-only preset would disable more.
@@ -256,7 +256,7 @@ deferred:
     - Prohibited's "leaves every key to the baseline" stays, as the class's own precondition.
   - Files: `Test/{DeviceDelete,DeviceWire,DeviceWriteGate,Prohibited,ToolDispatch}.cls`. ADs: AD-22, Conventions › Tests.
   - AC: Given that override, when each of the five classes runs, then it passes, and the override reads back unchanged.
-- [ ] **DW-1204** — A browser spec that relies on instance state the class sweep disturbs fails on a container the sweep has run on.
+- [x] **DW-1204** — A browser spec that relies on instance state the class sweep disturbs fails on a container the sweep has run on.
   - **Reproduce by running.** This is a one-time measurement, not verification. `ocupilot-b-ci` is post-sweep.
     - Redeploy the bundle.
     - Run `audit.browser-spec.mjs` alone first.
@@ -270,7 +270,7 @@ deferred:
   - **No member found:** the lead closes the entry `wontfix-accepted`, `reopen_if=` a browser spec fails alone on a container after the ObjectScript sweep and passes on a fresh one.
   - ADs: Conventions › Tests.
   - AC: Given the post-sweep throwaway, when each member spec runs alone, then it passes.
-- [ ] **DW-434** — Both specs transcribe `REASONSTATECONFLICT` behind `not.toContain`, so a server rewording leaves them green and vacuous.
+- [x] **DW-434** — Both specs transcribe `REASONSTATECONFLICT` behind `not.toContain`, so a server rewording leaves them green and vacuous.
   - **Fix:** a new `ui/tools/state-conflict.test.mjs`, about 25 lines. It reads `Api/Error.cls` with the `serverValue` regex and each spec's `const CONFLICT_ENVELOPE_REASON = '…'`, asserts every match exists, and asserts both constants equal the server's value, naming the file. Neither spec changes.
   - ADs: Conventions › Concurrent writes, AD-39.
   - AC: Given one word of `REASONSTATECONFLICT` changed, when `npm run test:tools` runs, then it fails naming both spec files.
@@ -412,6 +412,24 @@ Rejected:
   - `[low]` `[patch]` The class header claims the verified delete posts nothing for `alerts.log`; the test reads only this process's port lines. — Clause deleted. The filter itself is the Fix's: AD-2's rule is the port's, and the re-read runs in-process.
   - `[low]` `[defer]` `scripts/ci-throwaway.sh:264` says the class "reads the alert state". — Epic 19 is editing the file; DW-1907 `open` for this story.
 
+### 2026-10-01 — Review pass (batch c)
+
+- verdicts: 13 findings — high 0, medium 2, low 11, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The set-aside and restore never run in CI, where no definition exists, and no committed test pins the AC's byte-identical half. — New `Test/AgentAside.cls`: round trip, refusal, left copy; five mutations red (Verification › Batch c).
+  - `[low]` `[patch]` DW-1839's "reads back as it was" compares empty with empty in CI and has no mutation line. — Mutation recorded: ToolDispatch without its restore is red under the override (run 1682).
+  - `[low]` `[reject]` Only `proposal-demo` forgets its tag before use; the shared `nextTag` does not. — Named for filing, the spec's route for a fix in another file; CI runs each file once on a fresh container.
+  - `[low]` `[patch]` The component fixtures answer with the constant the assertions exclude, so a server rewording leaves them discriminating; the new test's header says otherwise. — Header reworded: the test keeps the fixtures carrying the server's reason.
+  - `[low]` `[reject]` TurnContext's and TurnWire's error-path restore is unobservable: `%UnitTest.Manager` runs `OnAfterAllTests` after a failed `OnBeforeAllTests` (`Manager.cls:1295-1306`). — Spec-prescribed (Tasks › DW-1759); the second restore finds nothing held, and `RemoveDefinition("")` removes only probes.
+  - `[low]` `[reject]` `PreparedPrior` and `DisplacedDefaultId` now always read empty, so their marker-restore branches no longer run in these classes. — By design: nothing is displaced while the rows are aside; the branches sit in fixtures other classes share.
+  - `[medium]` `[patch]` (same root cause as row 1) Only CI's empty case runs durably; nothing committed seeds a definition or an override. — Row 1's class seeds definitions on every run. A seeded override in CI needs state ahead of the class, outside the spine's Tests row.
+  - `[low]` `[reject]` DW-1759 says 29 red; one seed gave 25, and TurnContext's other four were never red. — Recorded in Verification; the fix acts per class, and every class passes under one and two seeds.
+  - `[low]` `[reject]` DW-1204's one member is not a sweep effect, its fix clears leftovers, `DEMO5` still lands after each green run, and the batch b frontmatter entry names another cause. — The spec defines a member as a file that fails alone; Verification says it is not the sweep, for the lead's trailer. The stage forgot its `DEMO5`. Correcting the batch b entry edits this spec; reported to the lead.
+  - `[low]` `[patch]` (same root cause as row 4) DW-434 is a false green, not a false red, and the wire link is held elsewhere. — Same fix as row 4.
+  - `[low]` `[patch]` Reproduction state left on the throwaway: `EGRESS3` to `EGRESS6` and `DEMO5`. — Their `at` times fall inside the DW-1204 pass (inference); forgotten with four late-call fragments, and the turn-provider global reads empty.
+  - `[low]` `[patch]` (same root cause as row 1) The restore's refusal, the left-copy branch and the row-marker predicate have no mutation line. — Each now has one (runs 1680, 1688, 1685), and the index list too (1691).
+  - `[low]` `[reject]` ToolDispatch's "Live-safe" header changed: a run cut off between clear and restore leaves no stored override. — Spec-prescribed (DW-1839 names ToolDispatch); the header says what it writes.
+
 ## Design Notes
 
 **Integration ACs (Rules 1 and 2):** No consumers in this story; it introduces no service. `Dispatch.StepTarget`, `Prohibited.EntryParts` and the `AgentFixture` set-aside each have their consumers in the same batch. Consumes: none.
@@ -465,6 +483,10 @@ No AC contradicts an AD.
 - `audit-copy-purge.browser-spec.mjs` copies the whole audit database and waits 30 s for it. That a post-sweep container (4.3M rows) outlasts the wait is (inference).
 - Step and transcript rows written before the DW-1782 fix keep the value until retention purges them. No scrub is planned.
 - Every DW-1204 non-member, and every member beyond the cap.
+- `about-help-links`' stamp leg reds on any throwaway whose bundle was redeployed by `docker cp`, the recipe `.claude/rules/objectscript-testing.md` gives, because the installer's stamp still names the bundle it installed. Not a sweep effect.
+- `data-table-columns` and `data-table` fail without the table harness `pretest:browser` builds; a bare `node --test` over the specs skips it. An invocation gap, not a product or isolation defect.
+- `turnprobe-spec.mjs`'s `nextTag` restarts per process, so a spec whose last provider call lands after its own forget leaves a call record the file's next run inherits. Fixed locally in `proposal-demo`; other callers are unchecked. After the DW-1204 pass, `IMPACTLINE2`, `PRIVLINE2`, `PRIVLINE3` and `PROPOSAL4` held a late call's `returned` node on `ocupilot-b-ci`, and `EGRESS3` to `EGRESS6` full call records (`egress-line` forgets no tag); all forgotten.
+- `governance.browser-spec.mjs`'s `resetGovernancePolicy` leaves an empty-preset policy row where it found none. It reads as the default; removed after the DW-1204 run.
 
 ## Verification
 
@@ -511,12 +533,32 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 **Batch c (loop):**
 
 - DW-1759 and DW-1839: run the seven and five classes clean, then seeded as each task says. Read the seeded rows and the override back unchanged, then remove them and read back 0.
+  - Observed before the DW-1759 fix, `UpgradeSeedAgent` re-enabled and re-marked before each class: AgentState 13/13 red (run 1630), TurnContext 3/16 (1631: `:607`, `:514`, `:317`), TurnWire 1/15 (1632), AgentWire 3/18 (1633), StateRead 3/7 (1634), EgressLocal 1/2 (1635), Restraint 1/15 (1636). 25 red, not 29: TurnContext's other four stayed green. TurnContext's turn ran on the seed and left it disabled and unverified at row version 10.
+  - Observed after: clean, all seven green (1642 to 1648). With the seed (1649 to 1655), and with a second, disabled definition beside it (1656 to 1662), all green, and after every class both rows' `BaseD(id)`, index nodes and ids diff byte-identical against the snapshot. A fixture probe: a second set-aside over a held copy restores it first; a restore with a third definition present is refused, the copy kept; once it is removed the restore is byte-identical. Seeds removed: 0 definitions, `$Data(^OcuPilotTestAgentAside)` 0.
+  - Observed before the DW-1839 fix, under the override: DeviceDelete 3/6 red (1637), DeviceWire 1/7 (1638), DeviceWriteGate 1/3 (1639), Prohibited 1/13 (1640), ToolDispatch 1/18 (1641). After: clean, all five green (1664 to 1668); under the override, all green (1669 to 1673), the override reading back `osmgmt.devices.delete` `disabled` with an empty preset after each. Then `DeleteAllGuarded`: 0 rows.
 - `mutation:` drop `SetAsideDefinitions` from `AgentState.OnBeforeAllTests` → AgentState goes 13/13 red under the seed.
+  - Observed: 13/13 red under both seeds (run 1663); the enabled seed's row version moved from 1 to 5. Reverted and reloaded; `git status --short` and `git diff --stat` unchanged.
+- `Test/AgentAside.cls` pins the fixture itself, which a fresh CI container never moves: a round trip reads back byte-identical, a restore over a stray `NameIdx` node is refused with the copy kept, and a set-aside over a crashed class's copy restores it first. It finds rows by SQL over the master map and indexes in the class dictionary, not from the fixture's marker or index list. Observed: 3/3 green (final version, runs 1690, 1692).
+- `mutation:` comment out `RestoreDefinitions`' index merge → AgentAside 3/3 red, each on its byte-identical assertion (run 1687).
+- `mutation:` make `SetAsideDefinitions`' left-copy branch `If 0` → `TestSetAsideRestoresALeftCopyFirst` alone red (1688).
+- `mutation:` make `RestoreDefinitions`' refusal `If 0` → `TestRestoreRefusedWhileAnIndexNodeRemains` alone red, on the refusal and the kept copy (1680).
+- `mutation:` set `ROWMARKER` to a store that does not exist → AgentAside 3/3 red (1685). The mutated restore left four orphan index nodes, removed by exact id.
+- `mutation:` drop `DefaultIdx` from `AGENTINDEXES` → `TestRoundTripIsByteIdentical` red on "no Agent row or Agent index node is left in place", with the left-copy test (1691). Each mutation reverted (`shasum` and `git diff --stat` unchanged) and reloaded; 0 definitions, no Agent index node and no holding global after each.
 - `mutation:` drop the clear in `DeviceDelete.OnBeforeOneTest` → DeviceDelete red under the override.
+  - Observed: 3/6 red on `GOVERNANCE.DISABLED` (run 1674). Reverted and reloaded; tree unchanged.
+- `mutation:` replace `ToolDispatch.OnAfterOneTest`'s `Restore(.tRows)` with `Set tSC = $$$OK` → under the override, ToolDispatch red on "and reads back as it was".
+  - Observed: 1/18 red, its first test, on that assertion (run 1682); the later tests snapshot the store the first left cleared. Reverted and reloaded: 18/18 (1683), 0 policy rows.
+- Stage re-runs after the reverts: AgentState 13/13 (1675), DeviceDelete 6/6 (1676), `proposal-demo` 3/3 alone.
 - DW-1204: the run as the task says. Each member spec passes alone on the post-sweep container.
+  - Observed: bundle rebuilt and redeployed (2.39 MB). `audit` alone 7/7 green, so not a member. The pass over the other 132 files (`/tmp/epic-23-c/full-pass.log`, `.tap`), 54 min: 581 tests, 552 pass, 29 fail, in `data-table-columns` (18), `data-table` (9), `about-help-links` (1) and `proposal-demo` (AC3, `:620`).
+  - Alone: `data-table-columns` 18/18 and `data-table` 9/9 once the table harness was built (`pretest:browser`, which a bare `node --test` skips). `about-help-links` red only on its stamp leg: the page runs the redeployed `main-QCRHWLAM.js`, the installer stamped `main-XLTI77LS.js`. `proposal-demo` green, red at `:620`, green.
+  - One member, `proposal-demo`, and not through the sweep. Its tag counter restarts with each run, and AC3's "yes" turn makes its last provider call after the leg's `finally` forgot `openTag`, leaving `DEMO5` at `calls=1` after every green run. The next run's first call then reads script entry 2 ("Here it is."), no navigation is proposed, and `:620` times out. Fix: `nextTag` forgets each tag before use. Green alone over a `DEMO5` leftover, and again.
 - `mutation:` revert a member's own-rows predicate → that member goes red there.
+  - Observed: restoring `proposal-demo`'s original `nextTag`, with a `DEMO5` leftover present → AC3 red at `:620` (`Waiting failed: 30000ms exceeded`). Restored; `git status --short` and `git diff --stat` unchanged.
 - `cd ui && npm run test:tools && npm run test:components`. Expected: green.
+  - Observed: tools 1,766 pass, 0 fail; components 153 files, 2,063 tests, all pass.
 - `mutation:` change one word of `REASONSTATECONFLICT` → `state-conflict.test.mjs` goes red naming both specs. Edit the switches constant → red naming that file.
+  - Observed: "instance" to "server" in `Error.cls` → red "differs ... in ui/src/app/areas/agent/switches.page.spec.ts and ui/src/app/areas/agent/definition-form.page.spec.ts"; "read" to "loaded" in the switches constant → red naming that file alone. Each reverted byte-identical.
 
 **Batch d (loop):**
 
@@ -535,15 +577,17 @@ Slot B: MCP profile `ocupilot-slot-b`. The throwaway is `ocupilot-b-ci`: dir `/t
 Status: done
 Blocking condition: none
 
-**Batch b only (DW-1866, DW-1865, DW-1808, DW-1822);** batches c and d are untouched. Batch a closed in `cd14a21f`..`06c9fa1b` (CI 36928231112 green). Test-only changes; no product code moved.
+**Batch c only (DW-1759, DW-1839, DW-1204, DW-434);** batch d is untouched. Test-only changes; no product code moved.
 
-- `src/OcuPilot/Test/AdminPortAbsence.cls`: the verified-delete test reads this process's `messages.log` lines from `SslSinks.LogOffset()`, asserts `Flush`, then no `(<$JOB>) ` `[OcuPilot.Log]` adminport line; the alert counter, the state check, `LOGMONITORWAIT`, the `Hang` and both `alerts.log` helpers are gone.
-- `ui/browser/proposal-demo.browser-spec.mjs`: AC1 waits for the tool card to read done; a timeout falls through to the assertions, which name the card's state.
-- `ui/browser/audit-events.browser-spec.mjs`: AC2 arms a wait for the list's re-read before each Apply, then waits for that round's POST answer and the re-read.
-- `ui/browser/a11y-structural-invariants.browser-spec.mjs:48`: the launch line sets `protocolTimeout: 600_000`.
+- `src/OcuPilot/Test/AgentFixture.cls`: `SetAsideDefinitions` moves every Agent row's `BaseD(id)` and the `NameIdx` and `DefaultIdx` subtrees raw into `^OcuPilotTestAgentAside`, restoring a crashed copy first. `RestoreDefinitions` removes probes, refuses while an Agent row, index node or held id remains, and otherwise merges back and kills the copy.
+- AgentState, AgentWire, StateRead, Restraint, EgressLocal: set aside in `OnBeforeAllTests`, restore in `OnAfterAllTests`. TurnContext, TurnWire: set aside before `MarkedDefault`, restore on the setup error path and last in teardown.
+- `src/OcuPilot/Test/AgentAside.cls` (new, review patch): pins the fixture's round trip, refusal and left-copy recovery on every CI run.
+- DeviceDelete, DeviceWire, DeviceWriteGate, Prohibited, ToolDispatch: `Governance.cls`'s snapshot, clear, restore and `Matches`. DeviceWire and DeviceWriteGate gain `OnBeforeOneTest`.
+- `ui/browser/proposal-demo.browser-spec.mjs`: `nextTag` forgets each tag before use (the DW-1204 member).
+- `ui/tools/state-conflict.test.mjs` (new): both component specs' `CONFLICT_ENVELOPE_REASON` equal `Error.cls` `REASONSTATECONFLICT`.
 
-**Review:** 17 findings: 3 low patched (2 entries: a re-read-wait mutation, a wait that falls through to its assertions), 2 deferred (1 medium, 1 low; frontmatter), 5 low and 7 false rejected (Review Triage Log › batch b). Follow-up review: false (follow-up pass; no high patched; patched: low 3).
+**Review:** 13 findings from verification-gap and intent-alignment (blind-hunter and edge-case-hunter are disabled by config). Patched: 4 entries, medium 1 and low 3 (7 findings: the AgentAside class, DW-1839's restore mutation, the state-conflict header, the leftover probe records). Rejected: 6 low (Review Triage Log › batch c). Deferred: none. Follow-up review: false (follow-up pass; no high patched; patched: medium 1, low 3).
 
-**Verification:** each item red under its reproducing condition before the fix and green under it after (Verification › Batch b). Stage re-runs on `ocupilot-b-ci`: `AdminPortAbsence` 3/3 clean (run 1627) and under (ii) with the numbered poster (1628); `audit-events` 4/4; `a11y-structural-invariants` 12/12 (walk 183 s); `proposal-demo` 3/3 after the patch, AC1 green under the rewrite. Four `mutation:` lines for batch b plus the added re-read one, each red and reverted byte-identical. `check-objectscript`, `client-lint`, `browser-reset` and `lint-docs` clean; the bundle did not move (2.39 MB). Throwaway read-back: 0 agent definitions, 0 policy rows, 849 `OcuPilot.Test` of 1,291 `OcuPilot.*` classes, monitor state 0; every poster process gone.
+**Verification:** Verification › Batch c. DW-1759: 25 red with one seed before the fix (runs 1630 to 1636); all seven green clean, with one seed and with two (1642 to 1662), the rows byte-identical. DW-1839: 7 red under the override (1637 to 1641); green clean and under it (1664 to 1673), the override unchanged. DW-1204: `audit` alone 7/7; the 132-file pass (54 min) failed 29 tests in four files; one member, `proposal-demo`, fixed and 3/3 alone (also a stage re-run). DW-434: tools 1,766/1,766, components 2,063/2,063. Ten `mutation:` lines, each red and reverted byte-identical. Stage re-runs: AgentState (1675), DeviceDelete (1676), ToolDispatch (1683), AgentAside (1692). `check-objectscript`, `client-lint` and `lint-docs` clean. Throwaway read-back: 0 agent definitions, 0 policy rows, 850 `OcuPilot.Test` of 1,292 `OcuPilot.*` classes (AgentAside added), monitor state 0 (held 95 s after a second `Clear()`), `$Data(^OcuPilotTestAgentAside)` 0, no Agent index node, the turn-provider global empty.
 
-**Residual risk:** the DW-1866 reproductions needed numbered lines, and `:103` was not reproduced (the window is 6 to 9 ms). proposal-demo AC3 reddens on the post-sweep throwaway (deferred, a DW-1204 candidate). About 9,000 numbered severity-2 test lines were written to the throwaway's `messages.log`.
+**Residual risk:** the seven and five classes meet a definition or an override only on a non-fresh instance; CI exercises the fixture through AgentAside's own seeds. DW-1204's member is the file's own leftover, not the sweep; `about-help-links`, `data-table` and `data-table-columns` failed the pass for reasons named for filing. The batch b frontmatter entry's cause for proposal-demo AC3 (post-sweep audit volume) is superseded by Verification › Batch c.

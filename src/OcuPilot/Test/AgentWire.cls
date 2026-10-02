@@ -21,6 +21,19 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
 
+/// <p>Set the instance's own definitions aside for the class, so a create's "this is the first
+/// definition" outcome means what it says.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
+
 /// <p>Clear any definition a previous method left behind, so a create's "this is the first
 /// definition" outcome means what it says.</p>
 Method OnBeforeOneTest() As %Status

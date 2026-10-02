@@ -67,6 +67,19 @@ Method %OnNew(initvalue As %String = "") As %Status
     Quit $$$OK
 }
 
+/// <p>Set the instance's own definitions aside for the class, so a security-field edit cannot hand
+/// the default marker to one of them.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
+
 /// <p>Store one enabled, default, marked-local definition on the shipped row, and clear the
 /// instance's outbound settings so each method states its own proxy.</p>
 Method OnBeforeOneTest() As %Status

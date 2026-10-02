@@ -5,8 +5,9 @@
 /// the <code>tool_result</code> content <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> renders
 /// and on the counting fixtures' record of what was reached.</p>
 /// <p>Driven through <class>OcuPilot.Test.ToolDispatchProbe</class> over
-/// <class>OcuPilot.Test.DispatchTool.Registry</class>. <b>Live-safe</b>: it spawns nothing, writes
-/// nothing and reads only the registry.</p>
+/// <class>OcuPilot.Test.DispatchTool.Registry</class>. <b>Live-safe</b>: it spawns nothing, and the
+/// one thing it writes is the stored governance policy, cleared before each test and put back after
+/// it, the restore asserted.</p>
 Class OcuPilot.Test.ToolDispatch Extends %UnitTest.TestCase
 {
 
@@ -20,17 +21,29 @@ Parameter WRITER = "probe.counter.write";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
+/// <p>The policy found before the test, put back after it.</p>
+Property StoredPolicy [ MultiDimensional ];
+
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
     Do $ClassMethod(..#COUNTER, "Clear")
-    Quit $$$OK
+    Kill ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Merge ..StoredPolicy = tRows
+    Quit ##class(OcuPilot.Test.GovernanceFixture).Clear()
 }
 
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
     Do $ClassMethod(..#COUNTER, "Clear")
+    Kill tRows
+    Merge tRows = ..StoredPolicy
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Do $$$AssertStatusOK(tSC, "the policy found before the test is put back")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tRows), "and reads back as it was")
     Quit $$$OK
 }
 
