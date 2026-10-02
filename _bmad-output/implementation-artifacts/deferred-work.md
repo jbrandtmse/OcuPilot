@@ -9047,3 +9047,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-19.md (Story 19.2 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
 - 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
+
+### DW-1947: A least-privileged caller's finished journal integrity-check task row outlives the port's read until SweepOwnTasks removes it
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 step 9 (2026-10-02): the caller cannot delete its own finished INTEGRITYCHECK row; AwaitTask's ForgetTask leaves it for SweepOwnTasks (within 24 h)
+- 2026-10-02T15:01:52Z status=by-design owner=18-5-journals by=merge_gate note=named limit like the record list's task row; ruled by the orchestrator under the owner's standing grant 2026-10-02

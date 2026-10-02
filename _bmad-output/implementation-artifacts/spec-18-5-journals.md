@@ -2,7 +2,7 @@
 title: 'Story 18.5: Journals'
 type: 'feature'
 created: '2026-10-02'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '8f06ee016f2ed388ee32c7f6e3284b270985f2a8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -59,9 +59,9 @@ How it is built:
 
   | Tool | Descriptor | Port | Kind | Write type | Fresh read / subject | Extra pairs | `CLASSICPAGES` |
   | --- | --- | --- | --- | --- | --- | --- | --- |
-  | `osmgmt.journals.switchfile` | `JournalList` | `JournalPort` | action (AD-51), bodyless; literal id `current` | `Journal.Settings` `SWITCHFILE` | `STATE` / `CurrentFile` | `%DB_IRISSYS:WRITE` when Task 0 step 5 measures a refusal without it | `%cspapp.op.utilsysjournalproperties` |
-  | `osmgmt.journals.switchdirectory` | `JournalList` | `JournalPort` | as above | `SWITCHDIR` | `STATE` / `CurrentFile,CurrentDirectory` | as switch file | `%cspapp.op.utilsysjournalswitchdirectory` |
-  | `osmgmt.journals.integrity` | `JournalList` | `JournalPort` | action; port-built body (AD-51); queued (AD-26) | `Journal.File` `INTEGRITYCHECK` | `GET` / `FileGUID` | none expected; whatever Task 0 step 4 measures | `%cspapp.op.utilsysjournalintegrity` |
+  | `osmgmt.journals.switchfile` | `JournalList` | `JournalPort` | action (AD-51), bodyless; literal id `current` | `Journal.Settings` `SWITCHFILE` | `STATE` / `CurrentFile` | none (measured: Journals' two pairs suffice) | `%cspapp.op.utilsysjournalproperties` |
+  | `osmgmt.journals.switchdirectory` | `JournalList` | `JournalPort` | as above | `SWITCHDIR` | `STATE` / `CurrentFile,CurrentDirectory` | `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE` (measured; merge gate 2026-10-02, AD-8) | `%cspapp.op.utilsysjournalswitchdirectory` |
+  | `osmgmt.journals.integrity` | `JournalList` | `JournalPort` | action; port-built body (AD-51); queued (AD-26) | `Journal.File` `INTEGRITYCHECK` | `GET` / `FileGUID` | none (measured at Task 0) | `%cspapp.op.utilsysjournalintegrity` |
   | `osmgmt.journalsettings.update` | `JournalSettings` | `JournalPort` | merge (AD-4); id `instance` | `Journal.Settings` `PUT` | `GET` | `%Admin_FileSystemAccess:USE` when a directory root is sent; `%DB_IRISSYS:WRITE` when Task 0 step 6 measures a refusal without it | none (the descriptor's own page) |
 
   A measured extra pair is always one of these; any other pair halts the story (Task 0 step 9).
@@ -123,6 +123,7 @@ How it is built:
 | Switch moved (A) | Another switch happens between mint and confirm | The confirm is refused, because the fingerprint moved, and nothing switches | the proposal closes target-changed (`REASONTARGETCHANGED`, existing) |
 | Switch directory, one directory (A) | `CurrentDirectory` equals `AlternateDirectory` (stock) | Refused. Nothing switches. | 409 `JOURNAL.SWITCHDIR.NOOTHER` |
 | Switch directory (A) | Probe alternate `<mgr>ocuprobe185alt/` configured | The current file lands in the alternate. A second switch returns it to the primary. | none |
+| Switch directory that does not move (A) | The port called directly by a principal holding `%DB_IRISSYS:WRITE` without `%Admin_Manage:USE`, alternate configured (the vendor answers 200 and starts a new file in the same directory) | Refused: the answered `CurrentFile` sits in the directory journaling wrote in before, so the switch is a fault, never a success. | 409 `JOURNAL.SWITCHDIR.UNMOVED` |
 | Integrity, clean (A) | A closed file; flag Check every record off, then on | Queued `{CheckDetails:false|true}`. Then "Integrity check finished." and "No errors were found in <file>." | none |
 | Integrity, errors (A, seam) | The seam answers two console lines | "Errors were found in <file>." and both lines, on the page and the card only. The tool result, ledger and context carry no line. | none |
 | Integrity, started (A, seam) | The seam answers `PORT.TIMEOUT` | 202 `continues`, the still-running sentence, read-back `unchecked` | none |
@@ -270,7 +271,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 
 **Scope after the split (orchestrator merge gate 2026-10-02, Rule 5): this story builds Part A only.** That is Task 0 steps 1, 2, 4, 5, 7 and 8 (step 3 is Story 18.19's, step 6 Story 18.18's), Execution A, AC0-AC6 and AC9-AC11, the Part A test classes (`JournalRead`, `JournalWrite`, `JournalIntegrity`, `JournalWriteGate`, `JournalDescriptor`, `PathPortInstance`, `PathPortServed`), and three descriptors (Journals, Journal file details, Journal file databases) with their nine prompts, strings and EXPERIENCE.md lines. **Execution B (AC7) moves to Story 18.18 and Execution C (AC8) to Story 18.19**: build neither, nor their descriptors, prompts, strings, EXPERIENCE.md lines, `JournalRecords` or `JournalSettingsWrite`; those stories' plans start from these sections. The guard's file rule may already name `Journal.Record`, which 18.19 consumes; the record filter's closed sets, the doubled `maxRows` and the settings `PUT` branch are 18.19's and 18.18's.
 
-**Task 0: the implement stage's first task, before any tool, descriptor or form.** Run it on `ocupilot-b-ci` only. Load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
+**Task 0: the implement stage's first task, before any tool, descriptor or form.** **Resumed 2026-10-02 after its step-9 halt, which the orchestrator ruled (Spec Change Log): steps 1-8 are measured (Design Notes › Measured at implement), and step 1's plumbing is parked in `_bmad-output/implementation-artifacts/spec-18-5-task0-plumbing.patch`; `git apply` it first, do not re-run the measurements, and continue at step 10, then Execution A.** Run it on `ocupilot-b-ci` only. Load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing.**
    - `Port/AdminPort.cls` gets its Part A entries (Execution A, first bullet), so the types are reachable.
@@ -346,7 +347,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - `src/OcuPilot/Port/JournalPort.cls` (new, extends `AdminPort`):
   - `COMPOSEDTYPES` `Journal.Settings/STATE` answers `{CurrentFile, CurrentDirectory}` from `Journal.File` `LIST` `maxRows` 1, the directory being the name's parent.
   - `INTEGRITYCHECK` builds `{CheckDetails}` from the tool's declared boolean and refuses a caller body. A `PORT.TIMEOUT` becomes started (`STARTEDHTTP`, the `DatabasePort` :459 model).
-  - `SWITCHDIR`'s vendor 409 maps to `JOURNAL.SWITCHDIR.NOOTHER`.
+  - `SWITCHDIR`'s vendor 409 maps to `JOURNAL.SWITCHDIR.NOOTHER`. A `SWITCHDIR` the vendor answers 200 whose `CurrentFile` sits in the directory journaling wrote in before the call answers `JOURNAL.SWITCHDIR.UNMOVED` (merge gate 2026-10-02): measured, the vendor does that for a caller without `%Admin_Manage:USE`, so its 200 never reads as a switch.
   - The `PUT` branch is Part B's.
   - `Snippet` mirrors every branch.
 - `src/OcuPilot/Port/PathPort.cls`, for **DW-1797**:
@@ -377,6 +378,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - `src/OcuPilot/Api/JournalError.cls` (new; the `LockError` model) holds the codes and sentences below. `Api/Error.cls` gains only the dispatch lines in `ReasonForViolation` and `ReasonForToolCode` and a `JournalViolationCodes` call.
   - `JOURNAL.FILE.UNLISTED` (404): "This instance's journal file list does not name that file."
   - `JOURNAL.SWITCHDIR.NOOTHER` (409): "This instance has one journal directory. Set a different alternate directory in Journal settings first."
+  - `JOURNAL.SWITCHDIR.UNMOVED` (409): "The journal did not move to the other directory. It is still written in <directory>."
   - `JOURNAL.FILTER.SHAPE` (400): "Choose a column and a comparison from the lists."
   - `JOURNAL.OFFSET.SHAPE` (400): "Enter a record offset as a whole number."
   - `JOURNAL.RECORD.UNREADABLE` (404): "That record is not in this file, or its database is one you cannot read."
@@ -487,7 +489,7 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - **AC1:** Given the instance's journal files, when Journals opens and `osmgmt.journals.read` runs, then both answer the same rows newest first. The side bar lists Journals 13th and Journal settings 14th under OS management, and the Logs area lists neither.
 - **AC2:** Given a listed file, when its details open, then the summary and its databases list read that file's `GET`. Given an unlisted name on any guarded route or tool, the answer is `JOURNAL.FILE.UNLISTED`, and the vendor is not called for it.
 - **AC3:** Given current file F, when a person switches the file or the agent's proposal is confirmed, then `SWITCHFILE` is sent with no body and the list shows a new newest file after the change event. A switch made since the mint refuses the confirm.
-- **AC4:** Given one configured directory, when either caller switches the directory, then it is refused `JOURNAL.SWITCHDIR.NOOTHER` and nothing switches. Given a distinct alternate, journaling moves there, and a second switch returns it.
+- **AC4:** Given one configured directory, when either caller switches the directory, then it is refused `JOURNAL.SWITCHDIR.NOOTHER` and nothing switches. Given a distinct alternate, journaling moves there, and a second switch returns it; the card names the other directory. Given a vendor 200 that leaves journaling in the same directory (the port called by a principal without `%Admin_Manage:USE`), it is refused `JOURNAL.SWITCHDIR.UNMOVED` and never reads as a switch.
 - **AC5:** Given a listed file, when either caller checks its integrity, then the body is `{CheckDetails}` from the flag, the page shows the finished line and the verdict, and on errors the lines appear on the page and the card only. Past the bound, the answer is started.
 - **AC6 (DW-1797):** Given a former journal directory and a WIJ directory, when an overwriting file consumer names a file in either, then `PathPort` refuses it as it refuses a journal file.
 - **AC7:** Given Journal settings, when a person saves or the agent's proposal is confirmed:
@@ -505,6 +507,8 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 - **AC11:** Given the rosters, when the story lands, then every roster and pinned side-bar list includes the new screens and tools, every screen has three prompts, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 999 lines.
 
 ## Spec Change Log
+
+- 2026-10-02, orchestrator merge gate on the Task 0 step-9 halt (by=merge_gate, under the owner's standing grant), applied by the runner (Rule 5): switch directory declares `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE` (tools table; AD-8 written); `JournalPort` answers `JOURNAL.SWITCHDIR.UNMOVED` for a 200 that stays in the same directory (Execution A, matrix row, new code); the switch-directory card names the other directory (Decisions); the integrity task row is a named limit, `by-design` (DW-1947). The orchestrator required the handoff-only rows re-measured before AD-8 stated them: the runner re-measured on `ocupilot-b-ci` (evidence `/tmp/epic-18-d6/185-remeasure/out.txt`, `switchfile-out.txt`; `messages.log` 9033-9034): Journals' two pairs only, 500 `<PROTECT>etINT1+2^JRNSWTCH ^%SYS("JOURNAL","PROCESS","JRNSWTCH")`; plus `%Admin_Manage:USE` only, the same 500; plus both, 200 into `ocuprobe185alt/20261002.085`, and a second switch 200 back to `journal/20261002.086`; switch file with Journals' two pairs, 200 to `20261002.088`. Every row matches the handoff's. Journal settings restored byte-equal, journaling in the primary, probes removed, monitor 0. AD-15 and AD-53 gain their twelfth named case and gap (the journal switches and integrity check, unaudited). Status reset to `in-progress`; Task 0 resumes at step 10.
 
 - 2026-10-02, implement Task 0 (HALT, step 9; Design Notes › Measured at implement). For the runner, pending the decision on the halt:
   - **AD-8, measured pairs per tool:** "Story 18.5's journal tools: switch file and the integrity check need only Journals' `%Admin_Operate:USE` and `%DB_IRISSYS:READ`; switch directory needs `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE` beyond them, because without the first the vendor's switch is refused `<PROTECT>`, and without the second it answers 200 having switched to a new file in the same directory (measured on `ocupilot-b-ci`, 2026-10-02)."
@@ -540,12 +544,14 @@ Tests: `Test/PathPortFixture.cls` :107-132; `Test/PathPortInstance.cls` `Journal
 
 - **The file is an enum value, not a path.** Every journal route takes a full path. Accepting it only as the instance's own list spells it is what the seventh case did for a remote directory. A file copied elsewhere, or a non-journal file, is never opened.
 - **The guard lives in `AdminPort`.** Reads reach `AdminPort` directly through `Screen/Read.cls`, so the guard must sit there to bind the screen and the tool alike. A new read port would mean a grammar change.
-- **The switches act on `current`.** `STATE` reads only `Journal.File` (`%Admin_Operate`). The settings `GET` that names the other directory requires `%Admin_Manage` or `%Admin_Journal`, which the classic switch page (`%Admin_Operate`) does not. So the card says "the other configured journal directory", and the vendor's 409 is the precondition. That 409 comes before any switch (`Journal.Settings.cls:113-118`).
+- **The switches act on `current`.** `STATE` reads only `Journal.File` (`%Admin_Operate`). The settings `GET` that names the other directory requires `%Admin_Manage` or `%Admin_Journal`, which the classic switch page (`%Admin_Operate`) does not. So the card said "the other configured journal directory". **Amended 2026-10-02 (merge gate):** switch directory now declares `%Admin_Manage:USE` (AD-8), which reads the settings `GET`, so its card names the other directory; switch file's card is unchanged. The vendor's 409 is the precondition. That 409 comes before any switch (`Journal.Settings.cls:113-118`).
 - **WIJ and the archive target are shown, never set.** A `wijdir` change activates at once and moves the file the instance recovers from after a crash, 1.83 GB here. Observing it needs a restart path the runner may not use on `ocupilot-b-ci`. The admin API has no read of archive targets to choose from. Both stay classic-portal actions. Omitting them is safe because the vendor keeps an omitted key (`:71-85`; Task 0 step 6).
 - **Record values are screen-only** under the AD-48 reasoning: the payload has no schema and can hold patient data or a secret that a vendor body journaled (AD-26's 16.14 paragraph). `GlobalNode` stays ordinary, as lock references do.
 - **Journals stays in System Operation** (catalog judgment, `feature-catalog.md:681`; AC2 of the story).
 
 **Named limits:**
+
+0. A least-privileged caller's finished integrity-check task row outlives the port's read: the caller cannot delete it, so `ForgetTask` leaves it for `SweepOwnTasks`, which removes it within 24 hours, as the record list's row (merge gate 2026-10-02, `by-design`, DW-1947).
 
 1. A caller who cannot read some databases gets fewer rows per page, and the list may read as complete while later records remain. Next records always continues (`ListTask.cls:80`, inference until Task 0 step 3).
 2. A records scan or a detail-level check longer than `ASYNCTIMEOUT` (30 s) fails, or answers started. A started check's verdict is not kept, because the port reads a task's end once (AD-26). Task 0 records the durations.
