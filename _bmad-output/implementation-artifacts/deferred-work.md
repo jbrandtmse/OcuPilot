@@ -8855,3 +8855,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ARCHITECTURE-SPINE.md:1050 (amended in 98e71205): the client unit tests run in gates with no container; Stack > CI (:913) states both suites correctly
 - 2026-10-01T20:58:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=cr note=reopen_if=a plan or review cites the Build and CI row for where client unit tests or browser specs run (spine contended: add-only)
+
+### DW-1921: The interoperability event log screen lacks %Ens_Portal:USE, which the classic EnsPortal.EventLog page requires
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: irislib/EnsPortal/Application.cls:234-248 CheckPrivileges requires %Ens_Portal:USE; LogSourcePort.cls:239 EVENTLOGPAIRS declares %Ens_EventLog:USE alone, so an %Ens_EventLog holder without %Ens_Portal opens it here and is refused there
+- 2026-10-02T03:22:54Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking, out of Epic 19's footprint (Logs area); found by 19.12's classic-parity audit
+
+### DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER)
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: On ocupilot-a2-ci as _SYSTEM, explorer.routines lists EnsJob.mac (Database HSCUSTOM) and explorer.routine?name=EnsJob.mac answers 404 PORT.NOTFOUND; USER's Ens*.mac do the same
+- 2026-10-02T03:22:55Z status=routed owner=19-2-compile-delete-export-and-import by=harvest note=19.1's AtelierPort surface; 19.2 acts on these documents next
