@@ -798,3 +798,7 @@
 2026-10-02T15:42:37Z	orchestrator	ci_green_verified	run=37022720474 head=c1851c14 (19.13 + feature ca5bcd20 with 18.16, rosters unioned): success
 2026-10-02T15:42:37Z	orchestrator	merge_enqueued	epic=19 story=19.13 XML export and import head=bad05fba (bookkeeping over c1851c14) route=fast-forward
 2026-10-02T15:42:39Z	orchestrator	merged	epic=19 story=19.13 head=bad05fba by fast-forward; verified on origin
+2026-10-02T18:46:39Z	planner	owner_decision_pending	owner on 18.16/19.2/19.13: 'Instead of doing 2 releases, let's wait until those features are ready and do the cut then' - Planner confirming whether that means one cut now (published with 1.0.6 on OEX) or later; hold any cut until relayed. Orchestrator: no cut timer armed; candidate c1851c14 (CI 37022720474 green exact, on feature) needs no new upgrade check (no Kernel/State, %Persistent, Install, start-path change since 0f55b740)
+2026-10-02T18:51:23Z	owner	owner_decision	cut release/1.0.7 now from c1851c14 (owner via Planner ocupilot-19: 'Yes'); 1.0.6 stays in the IPM registry but is not published separately on Open Exchange; one publish as 1.0.7 with notes since 1.0.5
+2026-10-02T18:51:23Z	orchestrator	release_cut	release/1.0.7 at c1851c14f396d498d8d2bbd0bc1e7142066b7821 (CI 37022720474 success on exact sha; 1.0.6 + 18.16, 19.2, 19.13; upgrade check: 1.0.6 PASS covers 0f55b740..c1851c14 - no Kernel/State, %Persistent, Install, start-path change)
+2026-10-02T18:51:41Z	orchestrator	release_reported	release/1.0.7 sha c1851c14 + plain contents since 1.0.6 sent to the Planner (ocupilot-19)
