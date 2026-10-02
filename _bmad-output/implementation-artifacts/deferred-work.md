@@ -7942,6 +7942,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the router's comment names the prerequisite; same text in 1.0.1; %Manager plus %DB_HSCUSTOM works
 - 2026-09-28T01:18:58Z status=routed owner=range-end-cleanup by=orchestrator note=plain one-line README note (owner collateral rule)
 - 2026-09-30T06:34:06Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): a one-line README prerequisite (READ on the install namespace's database) belongs with the README; the Planner is told for the release prep
+- 2026-10-02T03:58:04Z occurrence=19-12-a-development-holder-reaches-system-explorer-as-the-classic
 
 ### DW-1764: home-findings.browser-spec.mjs AC1 failed once nondeterministically: an Integrity Check or Automatic Table Statistics line appeared in the Operations findings, and the assertion does not name which task
 - source: feature CI run 36359053662 attempt 1 on c46cafa9 (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: ui/browser/home-findings.browser-spec.mjs, src/OcuPilot/Kernel/Shell/Findings.cls
@@ -8539,6 +8540,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: no rule refuses a listed screen with privileges []; recorded in AD-8's DW-1768 paragraph (review, 2026-09-29)
 - 2026-09-29T23:51:42Z status=wontfix-accepted owner=16-25-the-external-language-server-editor by=cr note=reopen_if=a listed screen in a gated area declares privileges: []
 - 2026-10-02T00:35:41Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=reopened: 19.12's charter (owner DW-1903 decision) gives every floor-only screen its classic page's own pair
+- 2026-10-02T04:01:21Z status=resolved-by:19-12-a-development-holder-reaches-system-explorer-as-the-classic by=adjudication note=parity: analytics log declares its classic page's %DeepSee_Portal; DeveloperFloor parity leg asserts each screen's own classic pair (mutation run 894)
 
 ### DW-1854: The pair a gated area names can be neither necessary nor sufficient to open it (e.g. OS management names %Admin_Manage:USE to an Operate-only holder, while %DB_IRISSYS:READ alone would open it through Locks)
 - source: DW-1768 review | severity: low | fix-risk: med | footprint: in-epic
@@ -8820,6 +8822,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen.Gate's ADMINRESOURCES floor refuses an account holding no %Admin_* resource and the stock %Developer role holds none (read on ocupilot), so a developer-only account cannot open System Explorer although AD-61's %Development:USE gate would admit it
 - 2026-10-01T18:39:19Z status=decision-pending owner=23-3-the-range-end-cleanup-part-3 by=spec_gate note=orchestrator kept the floor for 19.1 (product-wide security change); for the owner, who may reverse it
 - 2026-10-01T19:14:57Z status=routed owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=merge_gate note=owner decided: %Development:USE admits a caller, as the classic portal does; Story 19.12 implements it
+- 2026-10-02T04:01:21Z status=resolved-by:19-12-a-development-holder-reaches-system-explorer-as-the-classic by=adjudication note=floor admits %Development:USE (Gate.FloorResources); DeveloperFloor 9/9 runs 893,897 on a real %Developer; AD-8 amended
 
 ### DW-1905: IRIS defect candidate: the Atelier action/index route called in process under %SYS.Capture ends the calling process with signal 11
 - source: spec-19-1-classes-and-routines-listed-and-viewed.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -8870,6 +8873,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:1050 (amended in 98e71205): the client unit tests run in gates with no container; Stack > CI (:913) states both suites correctly
 - 2026-10-01T20:58:24Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=cr note=reopen_if=a plan or review cites the Build and CI row for where client unit tests or browser specs run (spine contended: add-only)
 
+### DW-1921: The interoperability event log screen lacks %Ens_Portal:USE, which the classic EnsPortal.EventLog page requires
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: irislib/EnsPortal/Application.cls:234-248 CheckPrivileges requires %Ens_Portal:USE; LogSourcePort.cls:239 EVENTLOGPAIRS declares %Ens_EventLog:USE alone, so an %Ens_EventLog holder without %Ens_Portal opens it here and is refused there
+- 2026-10-02T03:22:54Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking, out of Epic 19's footprint (Logs area); found by 19.12's classic-parity audit
+
+### DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER)
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: On ocupilot-a2-ci as _SYSTEM, explorer.routines lists EnsJob.mac (Database HSCUSTOM) and explorer.routine?name=EnsJob.mac answers 404 PORT.NOTFOUND; USER's Ens*.mac do the same
+- 2026-10-02T03:22:55Z status=routed owner=19-2-compile-delete-export-and-import by=harvest note=19.1's AtelierPort surface; 19.2 acts on these documents next
+- 2026-10-02T03:58:04Z occurrence=19-12-a-development-holder-reaches-system-explorer-as-the-classic
+
+### DW-1923: Home's performance tick re-fetches the navigation map every 10 s for a caller refused /ui/performance (now every %Developer)
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: core/performance.ts read answers a 403 as ok rows so Home's 10 s tick keeps running; api.ts:373 calls onForbidden on every 403, which re-fetches /navigation; /ui/performance answers a %Developer 403 (probe, ocupilot-a2-ci)
+- 2026-10-02T03:58:04Z status=wontfix-accepted owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=cr note=reopen_if=Home as a caller refused /ui/performance shows /navigation refetched each tick at measurable cost
+
+### DW-1924: EXPERIENCE.md :182 and :214 still say screens gate on %Admin_* resources; System Explorer gates on %Development
+- source: spec-19-12-a-development-holder-reaches-system-explorer-as-the-classic.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: EXPERIENCE.md:182 (Privilege resource: the %Admin_* or OcuPilot administrator resource) and :214 (screens gate on the admin API's %Admin_* privilege map); System Explorer's descriptors declare %Development:USE since 19.1
+- 2026-10-02T03:58:04Z status=wontfix-accepted owner=19-12-a-development-holder-reaches-system-explorer-as-the-classic by=cr note=reopen_if=EXPERIENCE.md :182 or :214 still reads %Admin_*-only when the lead writes 19.12's ship amendments
+- 2026-10-02T04:01:21Z status=resolved-by:19-12-a-development-holder-reaches-system-explorer-as-the-classic by=adjudication note=EXPERIENCE.md :182 and :214 now name %Development for System Explorer, edited in place at ship
 ### DW-1906: browser.config.mjs launchOptions doc comment says a spec states no launch option of its own, but two specs add one
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/browser.config.mjs:99 vs data-table-columns.browser-spec.mjs:441 (ignoreDefaultArgs) and a11y-structural-invariants.browser-spec.mjs:48 (protocolTimeout, batch b)
@@ -8911,3 +8935,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 plan: excluded from the DW-1204 pass on ocupilot-b-ci (4,325,263 audit rows) so as not to copy them into USER; not measured
 - 2026-10-02T02:53:58Z status=wontfix-accepted owner=23-3-the-range-end-cleanup-part-3 by=harvest note=reopen_if=audit-copy-purge reds on its 30 s wait in CI or on a post-sweep container
+### DW-1925: CI flake: reply.browser-spec (b) found the remote link's href null in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.12 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36959874466 (head 42b7a8fc) browser shard 3/3: reply.browser-spec.mjs:340 expected 'https://203.0.113.9/p', got null; the same spec ran 5/5 on ocupilot-a2-ci from the same tree, and neither the spec nor the panel changed since Epic 4
+- 2026-10-02T04:06:35Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake, for the standing cleanup story

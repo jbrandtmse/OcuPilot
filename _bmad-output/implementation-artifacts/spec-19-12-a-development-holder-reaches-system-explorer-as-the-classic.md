@@ -2,7 +2,9 @@
 title: 'Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows'
 type: 'feature'
 created: '2026-10-01'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '315f73a347dd8e2c7da0d64775480c10b7cbdcd4'
+baseline_commit: '315f73a347dd8e2c7da0d64775480c10b7cbdcd4'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -13,6 +15,13 @@ deferred:
     evidence: 'irislib/EnsPortal/Template/standardPage.cls:441-448 calls EnsPortal.Application.CheckPrivileges, which requires %Ens_Portal:USE (irislib/EnsPortal/Application.cls:234-248); LogSourcePort.cls:239 declares %Ens_EventLog:USE alone. A holder of %Ens_EventLog without %Ens_Portal opens it here and is refused there. It does not rely on the floor (the %Developer principal holds neither), so it is outside this story.'
     location: 'src/OcuPilot/Screen/Descriptor/LogEventViewer.cls'
     severity: 'med'
+  - summary: >-
+      System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for
+    evidence: |-
+      On ocupilot-a2-ci as _SYSTEM, GET /screens/explorer.routines/read lists EnsJob.mac (Database HSCUSTOM), and GET /screens/explorer.routine/read?name=EnsJob.mac answers 404 PORT.NOTFOUND; USER's listed Ens*.mac routines do the same. Story 19.1's surface, observed while choosing this story's fixture documents.
+    location: >-
+      src/OcuPilot/Port/AtelierPort.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -145,11 +154,68 @@ D is the principal described above.
 - **AC4 (fourth criterion).** Given `FloorResources()` returning `ADMINRESOURCES` alone (the old floor), when `DeveloperFloor`, `DeveloperFloorTurn` and the browser spec run, then each reddens.
 - **AC5.** Given D on Home, when System information loads, then it shows "not reported" for the dashboard members and writes nothing to `messages.log`.
 
+### Review Findings
+
+Code review 2026-10-02 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 9 patch (applied), 3 defer, 19 rejected.
+
+- [x] [Review][Patch] (med) The parity leg never checked that an open screen declares its own pair from its classic page's `RESOURCE` (AC2, AD-8) [src/OcuPilot/Test/DeveloperFloor.cls:397]
+- [x] [Review][Patch] (low) The parity leg read a classic `RESOURCE` member's `:PERM` suffix as `USE` [src/OcuPilot/Test/DeveloperFloor.cls:391]
+- [x] [Review][Patch] (low) Setup never proved the developer and below-the-floor principals hold no `%Admin_*` resource [src/OcuPilot/Test/DeveloperFloorFixture.cls:206]
+- [x] [Review][Patch] (low) The administrator leg's no-log check passed when `messages.log` was unreadable [src/OcuPilot/Test/DeveloperFloor.cls:341]
+- [x] [Review][Patch] (low) Both Home legs quit on an unparsable 200 without failing [src/OcuPilot/Test/DeveloperFloor.cls:320]
+- [x] [Review][Patch] (low) The fixture's `%SYS` switches restored after the `Catch`, not as its first line (AD-16) [src/OcuPilot/Test/DeveloperFloorFixture.cls:108]
+- [x] [Review][Patch] (low) `Screen.Gate.AdminPairSpec` had no caller left; deleted [src/OcuPilot/Screen/Gate.cls:299]
+- [x] [Review][Patch] (low) Prose outside the diff still stated the old floor: `Error.cls` :104, `SystemInfo.cls` :9, `navigation.ts` :886, `Wire.cls` :234, `WireSecurityRead.cls` :19, `instance-notice.ts` :26 [src/OcuPilot/Api/Error.cls:104]
+- [x] [Review][Patch] (low) New test prose disagreed with the code: principal and role counts, the throwaway comment, the route roster's reason [scripts/ci-throwaway.sh:286]
+- [x] [Review][Defer] (low) Home's performance tick re-fetches the navigation map every 10 s for a caller refused `/ui/performance` [ui/src/app/core/performance.ts:118] — deferred: pre-existing since Story 16.18, DW-1923 `wontfix-accepted`
+- [x] [Review][Defer] (low) README's sign-in prerequisite names only `%Manager`; a `%Developer` needs the same database READ [README.md:314] — deferred: out of footprint, DW-1763 occurrence; EXPERIENCE.md :182 and :214 (stale since 19.1) are DW-1924 `wontfix-accepted`
+- [x] [Review][Defer] (low) The USER own-database assertion rests on the `Ens*.mac` rows DW-1922 concerns [src/OcuPilot/Test/DeveloperFloor.cls:242] — deferred: DW-1922 occurrence, owner 19.2
+
+Rejected:
+
+- (false) Other roster GETs log as D: probe on `ocupilot-a2-ci`, 19 GETs as a real `%Developer` (`/ui/findings`, `/ui/help`, `/ui/guardrails`, `/ui/performance` among them) wrote no `messages.log` line.
+- (false) Viewers never exercise D's code-database grant: `AtelierPort`'s gate requires the namespace's code-database READ for every read there (AD-61 rule 1).
+- (false) The USER assertion depends on names and `maxRows`: `USER`'s database is `USER` on every stock instance, and its Routines list holds a handful of rows.
+- (false) The 114/113 mutation gap: the mutation reddened; one refused route names its pair through its own writer.
+- (false) The browser spec hard-codes `HSCUSTOM`: 129 specs do; the browser tier runs only on IRIS for Health.
+- (by-design) The AC3 principal holds `TurnWireFixture.Resources(0)`, credential READ included: the I/O matrix's Turn row defines it.
+- (by-design) Non-GET roster routes are not sent: the I/O row and Tasks scope the open check to GET.
+- (by-design) AD-8, AD-61 rule 1 and PRD FR-3/FR-65 wording: the lead's ship amendments.
+- (low) A failed `OnBeforeAllTests` leaves its principals: only on an already-red setup, as `TurnWire` and `AtelierPortDenial` do; the fix adds cleanup branches.
+- (low) Three `:id` roster GETs answer 404 on absent ids: owner scoping is pinned by `TranscriptGate`, `TranscriptsWire` and `LedgerWire`; a real-id leg writes rows that outlive D.
+- (low) `Router.ADMINRESOURCES` has no product reader and `HoldsAdminResource` keeps its name: seven `Turn*` harnesses and `PortGate` read it; a rename is churn with no named harm.
+- (low) A relocated console file, a concurrent `uisystem` line or a mid-test rotation: one class runs at a time on a default throwaway.
+- (low) `Resources(0)` answering `""`, `resetRememberedState` resetting the suite account, `production` off an interoperability namespace: each reddens or cannot occur on CI's IRIS for Health throwaway.
+- (low) Matrix rows without `mutation:` lines: they are not ACs (Rule 19).
+- (low) The browser spec does not read D's grants back: a missing grant can only redden it; the HTTP classes read the same fixture's grants back.
+- (low) The Auto Run Result miscounts the earlier review: its fix edits build-auto's own section.
+
 ## Spec Change Log
 
 - 2026-10-02, spec gate (lead): DW-1853 resolved by parity accepted (the screen already declares its classic page's `RESOURCE` member); the non-additive edits approved, none contended at gate time, re-checked at edit time; the AD-8 sentence, AD-61 rule 1's wording and PRD FR-3/FR-65 are amended by the lead when the story ships.
 
 ## Review Triage Log
+
+### 2026-10-01 — Review pass
+
+- verdicts: 16 findings — high 0, medium 4, low 10, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `Dashboard`'s `%DB_IRISSYS` guard is pinned on its admitted side only by `%All` callers, which pass a misspelled name — the fixture gains an administrator (code READ plus `%DB_IRISSYS:R`, `%Admin_Operate:U`, no `%All`) and `DeveloperFloor.TestHomeSystemInformationAnswersAnAdministratorWithoutAll` asserts the members answer (mutation run 486).
+  - `[low]` `[reject]` `DeveloperFloorRoutes` sends none of the 12 non-GET roster routes — the intent's route-sweep row scopes the open check to GET; those calls write D's own restraint, context, preferences and password rows, which outlive D; `POST /conversation` and `POST /turn` run in `DeveloperFloorTurn`.
+  - `[medium]` `[patch]` The route sweep never checks that a refused route names its failed pair (AC2) — the refused branch asserts `AUTH.NOPRIVILEGE` and `detail.failedPair`; all 114 refused routes meet it (run 484; mutation run 488).
+  - `[low]` `[patch]` Two browser assertions cannot fail (the notice after the rail wait; an absent explorer item reads as available) — waits for the frame or a settled notice message, asserts no message, asserts the item exists; the AC4 mutation now reddens at the notice assertion.
+  - `[low]` `[reject]` Reverse parity: `LogTaskErrorViewer` refuses D while `%CSP.UI.Portal.BackgroundTaskError` compiles `RESOURCE` `""` — probed as D on `ocupilot-a2-ci`: the page loads only by direct URL and errors (`<SUBSCRIPT>` in `ErrorLogFetch`) without a task id, and its parent list under `/csp/sys/op` refuses D; the fix drops a pair, which the intent forbids.
+  - `[medium]` `[patch]` The parity leg reads `%CSP.UI.System.ViewCode`'s missing `RESOURCE` row as empty, so `ExplorerRoutineDocument` passed unchecked — `ClassicResource` tells a missing row apart and `INTERNALCHECKS` records ViewCode's `OnPreHTTP` `%Development` check (irislib `%CSP/UI/System/ViewCode.cls`:15-17); mutation run 487.
+  - `[low]` `[reject]` "Plus its own data" is not tested as D — owner scoping is identity-based and pinned for non-`%All` principals by `TranscriptGate`, `TranscriptsWire` and `LedgerWire`.
+  - `[low]` `[reject]` Tools are never invoked by D — the Tasks specify the held set through `Effective`; AC3 invokes a tool as a `%Development` principal in a real turn.
+  - `[low]` `[reject]` Logs is not opened in the UI — landing on an area's first open screen is principal-independent and pinned by `ui/tools/navigation.test.mjs` and `area-verdict.spec.ts`; `DeveloperFloor` pins D's map.
+  - `[low]` `[reject]` Home is checked at the API only — the intent's Home row is the API call; `""` rendering as "Not reported" is pinned by `home.page.spec.ts` and `home-system-information.browser-spec.mjs`.
+  - `[false]` `[reject]` Below the floor is split across two classes — the reason is one constant in `Router.OnPreDispatch`, and `ConfigGate` sweeps every route with a code-READ-only principal; the row is met.
+  - `[medium]` `[patch]` The route sweep checks status only — same root cause and fix as the third row.
+  - `[low]` `[reject]` Turn harnesses still pass `Router.#ADMINRESOURCES` to `Loop.Run` — their principals hold `%All`, so the list cannot change their outcome; the product value is pinned over HTTP by `DeveloperFloorTurn`, and `TurnWire.cls` is being edited by Epic 23.
+  - `[low]` `[patch]` Doc comments outside the diff still state the old floor — corrected in place: `ConfigGate.cls` :9 and :384, `ProhibitedRoute.cls` :96, `LogSourceDenial.cls` :237, `navigation.ts` :19, `instance-notice.ts` :26; the spine, PRD and DW-1853 note are the lead's at ship.
+  - `[low]` `[reject]` D is created on every armed throwaway, not only `ocupilot-a2-ci` — the `ci-throwaway.sh` lines the Tasks require arm exactly that; the variable confines it to throwaways and each class removes its principals.
+  - `[false]` `[reject]` `## Auto Run Result` still reads `ready-for-dev` — finalize rewrites that section.
 
 ## Design Notes
 
@@ -240,7 +306,47 @@ Load the source into `ocupilot-a2-ci` without the MCP tools, and never restart t
 
 Record one `mutation: <change> → <test that reddened>` line per AC here as each is observed (Rule 19).
 
+- mutation: AC1/AC4, `Gate.FloorResources()` answers `ADMINRESOURCES` alone (Router, ProviderPort, Turn recompiled) → `DeveloperFloor` red, 6 of 8 (run 459); `DeveloperFloorTurn` red, start refused `AUTH.NOADMIN` (run 460); `developer-floor.browser-spec.mjs` red at "the frame, not the no-privileges notice" (the notice renders "no administrative privileges on this instance").
+- mutation: AC2, `WebAppList` privileges `[]` → `DeveloperFloor` red: parity leg (opens outside the roster, `%Admin_Secure` unheld), sign-in, administrative-screen and tools legs (run 461).
+- mutation: AC2, `LogMessageViewer` privileges `%DeepSee_Portal:USE` → `DeveloperFloor` red: parity, tools (`logs.messages.read` joins the held set), Logs and sign-in legs (run 462).
+- mutation: AC2, `Gate()` deleted from `Area/WebApp/FormRules.HandleForm` → `DeveloperFloorRoutes` red on `GET /web-applications/form` (run 467).
+- mutation: AC3, `Turn.cls` :148 back to `Router.#ADMINRESOURCES` → `DeveloperFloorTurn` red, turn not completed (run 464).
+- mutation: AC3, `INVOKEPAIRS` back to the `ADMINRESOURCES` members alone at `USE` → `DeveloperFloorTurn` red, turn not completed (run 465).
+- mutation: AC5, `%DB_IRISSYS` guard removed from `SystemInfo.Dashboard` → `DeveloperFloor.TestHomeSystemInformationLogsNothingForTheDeveloper` red alone (run 463).
+- mutation: one home, `Router.FLOORRESOURCES` a literal → `PortGate.TestTheAdministrativeFloorHasOneHome` red (run 466).
+- mutation: AC5 admitted side, the `Dashboard` guard checks a misspelled `%DB_IRISYS` → `DeveloperFloor.TestHomeSystemInformationAnswersAnAdministratorWithoutAll` red alone (run 486).
+- mutation: AC2 parity, `DeveloperFloor.INTERNALCHECKS` emptied → `TestEveryOpenScreenMatchesItsClassicPage` red on `ExplorerRoutineDocument` (`%CSP.UI.System.ViewCode` compiles no `RESOURCE`) (run 487).
+- mutation: AC2 routes, `Kernel.Denial.Detail` answers `""` for every pair → `DeveloperFloorRoutes` red, 113 refused routes naming no pair (run 488).
+- mutation: AC2 parity, own pair, `ExplorerClassList` privileges `[]` (throwaway copy only) → `TestEveryOpenScreenMatchesItsClassicPage` red alone, "declares its own pair from %CSP.UI.Portal.ClassList's RESOURCE" (run 894; reverted, green run 897).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The floor is any `%Admin_*` resource or `%Development` at USE, held once in `Screen/Gate.cls` (`DEVELOPMENTRESOURCE`, `FloorResources()`, `FloorPairSpec()`) and derived at compile time by `Router.FLOORRESOURCES`, `ProviderPort.INVOKEPAIRS` and the turn's `resources`. `SystemInfo.Dashboard` answers the five members empty, with no switch or log line, for a caller without `%DB_IRISSYS:READ`. Four new test classes and one browser spec pin the rosters.
+
+**Files.**
+
+- `Screen/Gate.cls`, `Api/Router.cls`, `Port/ProviderPort.cls`, `Api/Turn.cls`: the floor and its three consumers.
+- `Kernel/Shell/SystemInfo.cls`: the `%DB_IRISSYS` guard. `Api/Error.cls`: two doc sentences.
+- `Test/DeveloperFloorFixture.cls`, `DeveloperFloor.cls`, `DeveloperFloorRoutes.cls`, `DeveloperFloorTurn.cls`, `ui/browser/developer-floor.browser-spec.mjs`: new.
+- `Test/PortGate.cls`, `Test/Wire.cls`: floor pins moved. `scripts/ci-throwaway.sh`: roster lines.
+- EXPERIENCE.md (four rows in place), `docs/DEVELOPMENT.md`, `ui/src/app/core/instance.ts`: docs.
+- Footprint extensions, doc comments only: `Test/ConfigGate.cls`, `Test/ProhibitedRoute.cls`, `Test/LogSourceDenial.cls`, `ui/src/app/core/navigation.ts`, `ui/src/app/shell/instance-notice.ts`.
+
+**Review.** 16 findings. Patched: 3 medium entries (the dashboard guard's admitted side, refused routes naming their pair, the ViewCode parity pass) and 2 low. Rejected: 9 low and 2 false, each with its reason in the triage log. Deferred: one new item (the Routines list shows routines its viewer cannot open). Follow-up review: `false`. The count rule reads `true` (three medium patched), but no unverified risk can be named: each patch has an observed mutation and the full sweep ran after it.
+
+**Verification (`ocupilot-a2-ci`).**
+
+- Loop: check-objectscript and its harness, lint-docs and `npm run test:tools` (1766) all green.
+- Classes: DeveloperFloor (9, run 491), DeveloperFloorRoutes (490), DeveloperFloorTurn (477), PortGate (478), Wire (479), ConfigGate (480), TurnWire (481), ProviderPortOwner (482), WireAreaAnyScreen (483).
+- The browser spec is green after rebuilding and redeploying.
+- Full ObjectScript sweep, once, after the patches: 400 classes, 3294 tests, 0 failed, 0 overlaps.
+- Bundle 2.42 MB, no budget warning.
+
+**Residual.**
+
+- Three test-runner calls once went out in one message (runs 473 to 475). Their fixtures do not overlap, all were green, and each was re-run alone (476 to 478).
+- The handoff's AC5 mutation left one severity-2 `uisystem` line in this throwaway's `messages.log`. The sweep was green regardless.
+- The lead's ship amendments are pending: AD-8, AD-61 rule 1, PRD FR-3 and FR-65, and DW-1853's ledger note.
