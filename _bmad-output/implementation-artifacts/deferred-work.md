@@ -8995,3 +8995,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
+
+### DW-1935: CI flake: turn.browser-spec 'Second send' timed out waiting for the lock banner in browser shard 3/3
+- source: cycle-log-epic-19.md (Story 19.2 implement-head CI) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
+- 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
