@@ -136,7 +136,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// "state the expected format explicitly in the parameter's description" is what keeps it from
 /// guessing one: a name criterion is a comma list the vendor matches with <code>*</code>, and a
 /// <code>datetime</code> one is the instance's own local <code>YYYY-MM-DD HH:MM:SS</code>, time
-/// part included -- <method>OcuPilot.Screen.Read.SeedCriteria</method> refuses a date alone.</p>
+/// part included -- <method>OcuPilot.Screen.Read.SeedCriteria</method> refuses a date alone. A
+/// criterion that declares a default (<code>defaultHoursAgo</code>, or <code>default</code> on a
+/// <code>text</code> or <code>choice</code> one) names it, since omitting it reads that value.</p>
 ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Private ]
 {
     Set tCriteria = pRead.%Get("criteria")
@@ -155,15 +157,19 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         ; keyword, so it needs no description of its own.
         Set tMaxLength = tField.%Get("maxLength")
         If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
+        ; AD-36: an omitted text or choice criterion is read with its declared default.
+        Set tDefault = $Select(tField.%GetTypeOf("default") = "string": tField.%Get("default"), 1: "")
         If tKind = "datetime" {
             Set tHours = tField.%Get("defaultHoursAgo")
             Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ $Select(tHours = 1: " hour", 1: " hours") _ " back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
             Do tProperty.%Set("description", "A server-search criterion, as instance local time in the form YYYY-MM-DD HH:MM:SS. The time part is required; a date alone is refused before the search runs. " _ tOmit)
         } ElseIf tKind = "choice" {
-            Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs.")
+            Set tOmit = $Select(tDefault '= "": " Omit it to use the screen's default (" _ tDefault _ "); an empty string leaves it unset.", 1: "")
+            Do tProperty.%Set("description", "A server-search criterion. One of the listed values, spelled exactly; any other value is refused before the search runs." _ tOmit)
             Do tProperty.%Set("enum", ##class(%DynamicAbstractObject).%FromJSON(tField.%Get("options").%ToJSON()))
         } Else {
-            Do tProperty.%Set("description", "A server-search criterion, as a comma-separated list of names. * matches any name. Omit it to match every name.")
+            Set tOmit = $Select(tDefault '= "": "Omit it to use the screen's default (" _ tDefault _ "); an empty string matches every name.", 1: "Omit it to match every name.")
+            Do tProperty.%Set("description", "A server-search criterion, as a comma-separated list of names. * matches any name. " _ tOmit)
         }
         Do pSchema.properties.%Set(tParam, tProperty)
     }

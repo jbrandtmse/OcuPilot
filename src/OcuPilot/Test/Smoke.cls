@@ -771,17 +771,17 @@ Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
 /// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>,
 /// <code>upcoming</code>, <code>taskhistory</code>, <code>systemusage</code> and <code>locks</code>
 /// (Story 6.10), plus <code>databases</code> and <code>databasefreespace</code> (Story 6.11),
-/// <code>devices</code> (Story 6.12), <code>alerts</code> (Story 6.13) and <code>messages</code>
-/// (Story 6.14) checks, issue exactly those twenty-eight screen reads, in that order, and nothing else in
-/// <method>CheckAreaLists</method> reads a screen.
+/// <code>devices</code> (Story 6.12), <code>alerts</code> (Story 6.13), <code>messages</code>
+/// (Story 6.14) and <code>classes</code> (Story 19.1) checks, issue exactly those twenty-nine screen
+/// reads, in that order, and nothing else in <method>CheckAreaLists</method> reads a screen.
 /// <method>OcuPilot.Install.Smoke.CheckTaskDetails</method> (Story 6.7) runs after it and re-reads
-/// the task schedule for an id first, a twenty-ninth screen path; under this fixture's one-row,
+/// the task schedule for an id first, a thirtieth screen path; under this fixture's one-row,
 /// no-<code>Id</code> body that lookup finds none, so <code>taskdetails</code> itself fails
 /// without reading its own path. <code>CheckProcessDetails</code> (Story 6.8) runs after that and
-/// re-reads the processes list for a pid, a thirtieth screen path; under the same one-row,
+/// re-reads the processes list for a pid, a thirty-first screen path; under the same one-row,
 /// no-<code>Pid</code> body that lookup also finds none, so <code>processdetails</code> fails too.
 /// <code>CheckDatabaseDetails</code> (Story 6.11) runs last and re-reads the Databases list for a
-/// directory, a thirty-first and last screen path, shared by <code>databasedetails</code> and
+/// directory, a thirty-second and last screen path, shared by <code>databasedetails</code> and
 /// <code>databasevolumes</code>, which both fail under the same one-row, no-<code>Directory</code>
 /// body.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
@@ -800,7 +800,7 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages", "classes" {
         ; Matched to the end of the line: "messages" is a prefix of "messageslog", so an unterminated
         ; match is satisfied by the console-log page check even with no messages check at all. Every
         ; name in this roster is a CheckAreaLists name, and CheckAreaLists runs before the checks
@@ -816,10 +816,10 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Do $$$AssertTrue(tReport [ ("  fail     processdetails"), "and processdetails fails for lack of a pid to key its read by: " _ ..Line(tReport, "processdetails"))
     Do $$$AssertTrue(tReport [ ("  fail     databasedetails"), "and databasedetails fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasedetails"))
     Do $$$AssertTrue(tReport [ ("  fail     databasevolumes"), "and databasevolumes fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasevolumes"))
-    Do $$$AssertEquals($ListLength(tPaths), 31, "a credentialed run reads exactly thirty-one screens: the twenty-eight generic lists, then taskdetails' own re-read of the task schedule, processdetails' own re-read of the processes list, and databasedetails/databasevolumes' shared re-read of the Databases list: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 31 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#LOCKLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASEFREESPACELISTTOOL, ##class(OcuPilot.Install.Smoke).#DEVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#ALERTLISTTOOL, ##class(OcuPilot.Install.Smoke).#MESSAGESLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL)
-    For tI = 1:1:31 {
+    Do $$$AssertEquals($ListLength(tPaths), 32, "a credentialed run reads exactly thirty-two screens: the twenty-nine generic lists, then taskdetails' own re-read of the task schedule, processdetails' own re-read of the processes list, and databasedetails/databasevolumes' shared re-read of the Databases list: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 32 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#LOCKLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASEFREESPACELISTTOOL, ##class(OcuPilot.Install.Smoke).#DEVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#ALERTLISTTOOL, ##class(OcuPilot.Install.Smoke).#MESSAGESLISTTOOL, ##class(OcuPilot.Install.Smoke).#CLASSLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL)
+    For tI = 1:1:32 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -918,7 +918,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages", "taskdetails", "processdetails", "databasedetails", "databasevolumes", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "messages", "classes", "taskdetails", "processdetails", "databasedetails", "databasevolumes", "messageslog", "applicationerrors", "sign-out" {
         ; Matched through the reason separator for the same reason as above: without it
         ; "  skipped  messages" is satisfied by the messageslog line. Every skipped line carries a
         ; reason, so " -- " terminates the name on all of them -- including sign-out, the last line,

@@ -280,6 +280,9 @@ services:
       # The LDAP test class also tests authentication as a principal without the LDAP editor's pairs.
       # classes: LdapTest
       # classes: EgressLine
+      # The source code API's denial class also makes one mapped code database's resource non-public
+      # for its leg and restores it.
+      # classes: AtelierPortDenial
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

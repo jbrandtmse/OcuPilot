@@ -941,7 +941,10 @@ export const SOURCE_TIMELINE = 'timeline';
 
 /** The background tasks read through `OcuPilot.Port.BackgroundTaskPort` (AD-27, Story 16.5). */
 export const SOURCE_BACKGROUND = 'background';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND];
+
+/** The source code API read through `OcuPilot.Port.AtelierPort` (AD-61, Story 19.1). */
+export const SOURCE_ATELIER = 'atelier';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1185,8 +1188,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}' or '${SOURCE_BACKGROUND}', ` +
-      'the seven sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}' or '${SOURCE_ATELIER}', ` +
+      'the eight sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1318,6 +1321,14 @@ export function readProblem(declaration) {
   if (source.port === SOURCE_MGMNT && isObject(source.rowGet)) {
     return (
       'read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management ' +
+      'API and has no per-row detail call (AD-36)'
+    );
+  }
+  // An atelier source answers whole rows from the source code API (AD-61), whose port issues no
+  // per-row detail call.
+  if (source.port === SOURCE_ATELIER && isObject(source.rowGet)) {
+    return (
+      'read.source.rowGet is declared on an atelier source, which reads whole rows from the source code ' +
       'API and has no per-row detail call (AD-36)'
     );
   }
@@ -1667,8 +1678,8 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_TIMELINE) {
-    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt and timeline ports alone (AD-21)`;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE) {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier and timeline ports alone (AD-21)`;
   }
 
   const params = [];
@@ -1718,8 +1729,8 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'options']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -1758,9 +1769,12 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     if (maxLengthFault !== null) return maxLengthFault;
     const defaultFault = criteriaDefaultProblem(field, where, readFields);
     if (defaultFault !== null) return defaultFault;
-    if (field.kind !== 'choice') continue;
-    const optionsFault = criteriaOptionsProblem(field, where);
-    if (optionsFault !== null) return optionsFault;
+    if (field.kind === 'choice') {
+      const optionsFault = criteriaOptionsProblem(field, where);
+      if (optionsFault !== null) return optionsFault;
+    }
+    const valueDefaultFault = criteriaValueDefaultProblem(field, where);
+    if (valueDefaultFault !== null) return valueDefaultFault;
   }
   return null;
 }
@@ -1798,7 +1812,7 @@ const CRITERION_MAX_HOURS = 8760;
 function criteriaDefaultProblem(field, where, readFields) {
   if (field.defaultHoursAgo !== undefined) {
     if (field.kind !== 'datetime') {
-      return `${where} declares defaultHoursAgo on kind '${field.kind}', and only a datetime criterion carries a default (AD-36)`;
+      return `${where} declares defaultHoursAgo on kind '${field.kind}', and only a datetime criterion carries defaultHoursAgo (AD-36)`;
     }
     const hours = field.defaultHoursAgo;
     if (typeof hours !== 'number' || !Number.isInteger(hours) || hours < 1 || hours > CRITERION_MAX_HOURS) {
@@ -1816,6 +1830,26 @@ function criteriaDefaultProblem(field, where, readFields) {
   if (field.vendorParam !== undefined) {
     return `${where} declares atOrAfterField with vendorParam, and a criterion compared on the instance is never sent to the vendor (AD-36)`;
   }
+  return null;
+}
+
+/**
+ * What is wrong with a criterion's `default`, or `null` (AD-36 as amended, Story 19.1): admitted on a
+ * `text` criterion, as a string no longer than its `maxLength`, and on a `choice` criterion, as one
+ * of its `options`; a `datetime` criterion's default is `defaultHoursAgo`.
+ * `OcuPilot.Screen.Registry.CriteriaValueDefaultProblem` returns the same sentences.
+ */
+function criteriaValueDefaultProblem(field, where) {
+  if (field.default === undefined) return null;
+  if (field.kind === 'datetime') {
+    return `${where} declares default on kind 'datetime', and a datetime criterion's default is defaultHoursAgo (AD-36)`;
+  }
+  if (typeof field.default !== 'string') return `${where} default is not a string`;
+  if (field.kind === 'text') {
+    if (field.default.length > field.maxLength) return `${where} default '${field.default}' is longer than its maxLength`;
+    return null;
+  }
+  if (!field.options.includes(field.default)) return `${where} default '${field.default}' is not one of its options`;
   return null;
 }
 
@@ -3271,6 +3305,12 @@ export interface ReadCriterion {
    * to the vendor (AD-36): earlier rows are dropped before truncation is judged.
    */
   readonly atOrAfterField?: string;
+  /**
+   * The value a caller that omits this \`text\` or \`choice\` criterion is read with (AD-36 as
+   * amended, Story 19.1); a choice's is one of its \`options\`. An explicit empty value leaves the
+   * criterion unset instead. The form opens on it.
+   */
+  readonly default?: string;
   readonly options?: readonly string[];
 }
 

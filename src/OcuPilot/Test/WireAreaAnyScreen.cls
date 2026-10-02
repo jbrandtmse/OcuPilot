@@ -266,7 +266,7 @@ Method TestOperatorsPairsOpenLogsAndOsManagement()
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the four principals' pairs")
     Set tMap = ..MapFor(..#OPERATORUSER)
     Do $$$AssertTrue($IsObject(tMap), "the navigation map answers the principal")
-    Do $$$AssertEquals(..AreaVerdicts(tMap), "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE agent=open", "Logs, OS management, Tasks and Web applications open, and Permissions and Security stay gated: " _ ..AreaVerdicts(tMap))
+    Do $$$AssertEquals(..AreaVerdicts(tMap), "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE system-explorer=%Development:USE agent=open", "Logs, OS management, Tasks and Web applications open, and Permissions and Security stay gated: " _ ..AreaVerdicts(tMap))
     Do $$$AssertEquals(..ListedVerdicts(tMap, "logs"), "logs/alerts=open logs/messages=open logs/errors=open logs/audit=%Admin_Secure:USE logs/systemmonitor=open logs/taskerrors=open logs/xdbc=open logs/sqldiagnostics=open logs/eventlog=%Ens_EventLog:USE logs/analytics=open logs/hub=open", "Logs lists every screen, the audit viewer and the event log naming the pair each needs: " _ ..ListedVerdicts(tMap, "logs"))
     Do $$$AssertEquals(..ListedVerdicts(tMap, "os-management"), "os-management/processes=%Admin_Manage:USE os-management/locks=open os-management/system-usage=open os-management/databases=%Admin_Manage:USE os-management/databases/integrity-log=open os-management/devices=%Admin_Manage:USE os-management/namespaces=%Admin_Manage:USE os-management/license-usage=open os-management/dashboard=open os-management/language-servers=%Admin_ExternalLanguageServerEdit:USE os-management/local-databases=%Admin_Manage:USE", "OS management lists every screen, those needing another resource naming it: " _ ..ListedVerdicts(tMap, "os-management"))
     Set tRead = ..ReadOutcome(..#OPERATORUSER, "osmgmt.locks")
@@ -285,7 +285,7 @@ Method TestAWalletHolderAndAnOAuthHolderOpenSecurity()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the four principals' pairs")
     Set tWallet = ..MapFor(..#WALLETUSER)
-    Do $$$AssertEquals(..AreaVerdicts(tWallet), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=open agent=open", "the wallet holder opens Security and secrets, and Logs on the public analytics log: " _ ..AreaVerdicts(tWallet))
+    Do $$$AssertEquals(..AreaVerdicts(tWallet), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=open system-explorer=%Development:USE agent=open", "the wallet holder opens Security and secrets, and Logs on the public analytics log: " _ ..AreaVerdicts(tWallet))
     Do $$$AssertEquals(..ListedVerdicts(tWallet, "security"), "security/ssl=%Admin_Secure:USE security/x509=%Admin_Secure:USE security/ldap=%Admin_Secure:USE security/wallet=open security/oauth=%Admin_OAuth2_Client:USE security/auditing=%Admin_Secure:USE security/allowed-directories=%Admin_FileSystemAccess:USE", "and sees only Wallet open: " _ ..ListedVerdicts(tWallet, "security"))
     Set tRead = ..ReadOutcome(..#WALLETUSER, "security.wallet")
     Do $$$AssertEquals(tRead, 200, "which reads: " _ tRead)
@@ -293,7 +293,7 @@ Method TestAWalletHolderAndAnOAuthHolderOpenSecurity()
     Do $$$AssertEquals(tRead, "403 AUTH.NOPRIVILEGE %Admin_Secure:USE", "while SSL/TLS keeps its own gate: " _ tRead)
 
     Set tOAuth = ..MapFor(..#OAUTHUSER)
-    Do $$$AssertEquals(..AreaVerdicts(tOAuth), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=open agent=open", "the OAuth 2.0 client holder opens Security and secrets, and Logs on the public analytics log: " _ ..AreaVerdicts(tOAuth))
+    Do $$$AssertEquals(..AreaVerdicts(tOAuth), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=open system-explorer=%Development:USE agent=open", "the OAuth 2.0 client holder opens Security and secrets, and Logs on the public analytics log: " _ ..AreaVerdicts(tOAuth))
     Do $$$AssertEquals(..ListedVerdicts(tOAuth, "security"), "security/ssl=%Admin_Secure:USE security/x509=%Admin_Secure:USE security/ldap=%Admin_Secure:USE security/wallet=%Admin_Wallet:USE security/oauth=open security/auditing=%Admin_Secure:USE security/allowed-directories=%Admin_FileSystemAccess:USE", "and sees only OAuth 2.0 open: " _ ..ListedVerdicts(tOAuth, "security"))
     Set tRead = ..ReadOutcome(..#OAUTHUSER, "security.oauthserverdescriptions")
     Do $$$AssertEquals(tRead, 200, "which reads: " _ tRead)
@@ -308,15 +308,15 @@ Method TestAWalletHolderAndAnOAuthHolderOpenSecurity()
 /// publicly.</p>
 /// <p>Mutation (Rule 19): the all-pairs rule turns only the Logs verdict red here, since it and the
 /// rule it replaces agree for a holder of none; have <method>OcuPilot.Screen.Gate.EvaluateArea</method>
-/// answer allowed when no listed screen opens -> the five gated areas go red.</p>
+/// answer allowed when no listed screen opens -> the six gated areas go red.</p>
 Method TestAHolderOfNoneOfAnAreasScreensSeesItGated()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the four principals' pairs")
     Set tMap = ..MapFor(..#NONEUSER)
     Do $$$AssertTrue($IsObject(tMap), "the navigation map answers a principal holding one administrative resource")
-    Do $$$AssertEquals(..AreaVerdicts(tMap), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE agent=open", "the five gated areas it holds no screen of each name their set's first pair: " _ ..AreaVerdicts(tMap))
+    Do $$$AssertEquals(..AreaVerdicts(tMap), "home=open logs=open os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE agent=open", "the six gated areas it holds no screen of each name their set's first pair: " _ ..AreaVerdicts(tMap))
     Set tOpen = ""
-    For tArea = "logs", "os-management", "tasks", "permissions", "web-applications", "security" {
+    For tArea = "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer" {
         Set tListed = ..ListedVerdicts(tMap, tArea)
         Do $$$AssertTrue(tListed '= "", tArea _ " still lists its screens")
         For tI = 1:1:$Length(tListed, " ") {

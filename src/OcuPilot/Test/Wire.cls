@@ -377,7 +377,7 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tObj.areas.%Size(), 8, "every area is listed, denied ones included -- nothing is hidden")
+    Do $$$AssertEquals(tObj.areas.%Size(), 9, "every area is listed, denied ones included -- nothing is hidden")
 
     Kill tVerdict, tFailed, tHasFailed
     Set tIterator = tObj.areas.%GetIterator()
@@ -391,10 +391,10 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
 
     ; The principal holds %Admin_Operate and nothing else. Home and Agent co-pilot declare no pair
     ; and never gate; Logs opens because its alerts.log and messages.log viewers need that one pair
-    ; (AD-8 as amended for DW-1768); the five other gated areas list no screen it can open. All eight
+    ; (AD-8 as amended for DW-1768); the six other gated areas list no screen it can open. All nine
     ; verdicts are asserted, not a sample: ui/src/app/shell/rail-wire.spec.ts and
-    ; ui/tools/navigation-wire.test.mjs read the same eight verdicts off a payload captured for this
-    ; principal, and a claim that the three readings agree has to cover the same eight.
+    ; ui/tools/navigation-wire.test.mjs read the same nine verdicts off a payload captured for this
+    ; principal, and a claim that the three readings agree has to cover the same nine.
     Do $$$AssertEquals($Get(tVerdict("home")), 1, "Home never gates")
     Do $$$AssertEquals($Get(tVerdict("agent")), 1, "and the agent rail item never gates")
     Do $$$AssertEquals($Get(tVerdict("logs")), 1, "Logs opens, since a screen it lists needs only this principal's pair")
@@ -417,6 +417,8 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals($Get(tFailed("web-applications")), "%Admin_Secure:USE", "on the same pair its two siblings name")
     Do $$$AssertEquals($Get(tVerdict("tasks")), 0, "and the tasks area")
     Do $$$AssertEquals($Get(tFailed("tasks")), "%Admin_Task:USE", "which wants a different resource again")
+    Do $$$AssertEquals($Get(tVerdict("system-explorer")), 0, "and System Explorer, whose screens all need %Development")
+    Do $$$AssertEquals($Get(tFailed("system-explorer")), "%Development:USE", "naming that pair")
     Do $$$AssertEquals($Get(tHasFailed("home")), 0, "an allowed entry omits the failed-pair key rather than sending it empty")
     Do $$$AssertEquals($Get(tHasFailed("permissions")), 1, "while a denied one carries it")
 }
