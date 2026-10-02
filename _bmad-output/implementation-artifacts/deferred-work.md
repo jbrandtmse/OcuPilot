@@ -3837,6 +3837,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
+- 2026-10-02T23:22:38Z occurrence=19-4-search-compare-and-macro-lookup note=explorer.search.read text and explorer.macro.read document and macro are described as a comma list where * matches; a * in search text is searched literally and answers no rows with no refusal; fix needs a descriptor-declared criterion description (Screen/Registry.cls criteria grammar)
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8998,6 +8999,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
+- 2026-10-02T23:22:39Z occurrence=19-4-search-compare-and-macro-lookup note=Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest red in the 19.4 sweep on ocupilot-a2-ci (up over 24 h): 24 _SYSTEM conversation entries left by browser-spec turns, oldest 2026-10-01T22:56Z, past the one-day retention the test arranges; a fresh CI throwaway holds none
 
 ### DW-1939: A change toast for a remote database opens Local databases: Local and Remote databases share entity type database-configuration and screenForEntityType takes the lowest side-bar position
 - source: spec-18-16-remote-databases.md | severity: med | fix-risk: high | footprint: out-of-footprint
