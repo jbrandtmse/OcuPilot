@@ -18,6 +18,9 @@
 /// <code>tool_result</code>'s payload -- <i>is</i> a string: the payload JSON inside
 /// <class>OcuPilot.Kernel.Agent.Sanitize</class>'s frame, so <method>ResultPayload</method>
 /// unwraps it and that one call is where a second <method>%FromJSON</method> belongs.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.TurnContext Extends %UnitTest.TestCase
 {
 
@@ -66,9 +69,13 @@ Method OnBeforeAllTests() As %Status
     ; sharing choice is per user, so a wire-level check needs a second caller who has stored none.
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", $Parameter(..#FIXTURE, "USERB"), ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources"))
     If $$$ISERR(tSC) Quit tSC
+    ; The instance's own definitions are set aside first, so none can take the default marker
+    ; from the prepared definition or serve a turn this class starts.
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+    If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPrior = $ClassMethod(..#FIXTURE, "MarkedDefault")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsureDefinition", ..#TAG, .tId)
-    If $$$ISERR(tSC) Quit tSC
+    If $$$ISERR(tSC) Quit $$$ADDSC(tSC, ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions())
     Set ..PreparedDefinitionId = tId
     Quit $$$OK
 }
@@ -78,7 +85,8 @@ Method OnAfterAllTests() As %Status
     If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron(..#PROVIDERVARIABLE) '= 1) Quit $$$OK
     Set tSC = $ClassMethod(..#FIXTURE, "RemoveDefinition", ..PreparedPrior)
     Set tLeft = ##class(OcuPilot.Test.TurnWireFixture).RemovePrincipals()
-    If tLeft '= "" Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnContext teardown left:" _ tLeft)
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions())
+    If tLeft '= "" Quit $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnContext teardown left:" _ tLeft))
     Quit tSC
 }
 

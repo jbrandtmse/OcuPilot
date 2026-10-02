@@ -12,6 +12,9 @@
 /// console-log page back.</p>
 /// <p>Every definition this class creates is named with <parameter>PROBEPREFIX</parameter> and
 /// removed in <method>OnAfterOneTest</method>, which then asserts none survives.</p>
+/// <p>The instance's own agent definitions are set aside for the class and put back after it
+/// (<method>OcuPilot.Test.AgentFixture.SetAsideDefinitions</method>), so the account also writes
+/// OcuPilot's protected globals.</p>
 Class OcuPilot.Test.AgentWire Extends %UnitTest.TestCase
 {
 
@@ -20,6 +23,19 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
+
+/// <p>Set the instance's own definitions aside for the class, so a create's "this is the first
+/// definition" outcome means what it says.</p>
+Method OnBeforeAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).SetAsideDefinitions()
+}
+
+/// <p>Put the definitions set aside back.</p>
+Method OnAfterAllTests() As %Status
+{
+    Quit ##class(OcuPilot.Test.AgentFixture).RestoreDefinitions()
+}
 
 /// <p>Clear any definition a previous method left behind, so a create's "this is the first
 /// definition" outcome means what it says.</p>

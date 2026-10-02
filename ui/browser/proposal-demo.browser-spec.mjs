@@ -123,7 +123,14 @@ function runIris(lines) {
   return sharedRunIris(config.container, lines);
 }
 
-const nextTag = () => sharedNextTag(probe);
+/** A fresh tag with nothing recorded under it. The counter restarts with every run of this file, and
+ * a turn's last provider call can land after its leg has forgotten the tag, so an earlier run's call
+ * can sit under the same name and shift this run's script by one: it is cleared before use. */
+const nextTag = () => {
+  const tag = sharedNextTag(probe);
+  sharedForgetTag(probe, tag);
+  return tag;
+};
 const setTag = (tag) => sharedSetTag(probe, preparedId, tag);
 const forgetTag = (tag) => sharedForgetTag(probe, tag);
 const scriptReply = (tag, bodyExpr) => sharedScriptReply(probe, tag, 0, bodyExpr);
