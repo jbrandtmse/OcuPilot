@@ -35,16 +35,23 @@ Parameter CONTENTTYPE = "application/json";
 /// for <code>ng serve</code> either.</p>
 Parameter HandleCorsRequest = 0;
 
-/// <p>The closed list of IRIS administrative resources <method>HoldsAdminResource</method>
-/// tests, comma-separated. Holding <b>any one</b> of them at <code>USE</code> is what the
-/// FR-65 gate requires of a caller; holding none of them is a 403, whatever else the caller
-/// holds.</p>
+/// <p>The closed list of IRIS administrative resources, comma-separated: the
+/// <code>%Admin_*</code> half of <parameter>FLOORRESOURCES</parameter>.</p>
 /// <p><b>Derived, not held.</b> The list's one home is
-/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, which
-/// <class>OcuPilot.Port.ProviderPort</class> reads too; this parameter is that value at
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>; this parameter is that value at
 /// compile time, so no second copy exists to drift. <class>OcuPilot.Test.PortGate</class>
 /// asserts the two equal at run time, which is what catches a stale compilation.</p>
 Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOURCES};
+
+/// <p>The floor's members <method>HoldsAdminResource</method> tests, comma-separated: every
+/// <parameter>ADMINRESOURCES</parameter> member and <code>%Development</code>. Holding <b>any
+/// one</b> of them at <code>USE</code> is what the FR-65 gate requires of a caller; holding none
+/// of them is a 403, whatever else the caller holds. A turn's step boundary reads the same list
+/// (<class>OcuPilot.Api.Turn</class>, AD-31).</p>
+/// <p><b>Derived, not held</b>: <method>OcuPilot.Screen.Gate.FloorResources</method> at compile
+/// time, the list <class>OcuPilot.Port.ProviderPort</class>'s gate is spelled from too.
+/// <class>OcuPilot.Test.PortGate</class> asserts the two equal at run time.</p>
+Parameter FLOORRESOURCES As %String = {##class(OcuPilot.Screen.Gate).FloorResources()};
 
 /// <p><code>%CSP.REST</code> tries routes in file order and dispatches to the first one
 /// whose URL pattern and HTTP method both match. A <code>:param</code> segment becomes the capture
@@ -1167,7 +1174,7 @@ ClassMethod IsEnabled(pUser As %String, Output pUnavailable As %Boolean) As %Boo
 }
 
 /// <p>Whether the calling process holds at least one of
-/// <parameter>ADMINRESOURCES</parameter> at <code>USE</code>, evaluated in that process at
+/// <parameter>FLOORRESOURCES</parameter> at <code>USE</code>, evaluated in that process at
 /// the moment of the call and never cached (AD-8). <code>$System.Security.Check</code> is a
 /// <code>%SYSTEM</code> call and needs no namespace switch.</p>
 /// <p>The list it reads is what <class>OcuPilot.Test.Wire</class> checks against the
@@ -1175,7 +1182,7 @@ ClassMethod IsEnabled(pUser As %String, Output pUnavailable As %Boolean) As %Boo
 ClassMethod HoldsAdminResource() As %Boolean
 {
     Set tHolds = 0
-    Set tList = ..#ADMINRESOURCES
+    Set tList = ..#FLOORRESOURCES
     For tI = 1:1:$Length(tList, ",") {
         Set tResource = $Piece(tList, ",", tI)
         If (tResource '= "") && ($System.Security.Check(tResource, "USE")) {
@@ -1251,9 +1258,9 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
 /// the restore; nothing is switched in this method's own frame.</li>
 /// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
-/// <code>%Admin_*</code> resource at <code>USE</code>
+/// <code>%Admin_*</code> resource, or <code>%Development</code>, at <code>USE</code>
 /// (<method>HoldsAdminResource</method>, against the closed
-/// <parameter>ADMINRESOURCES</parameter> list); otherwise 403 with the machine code
+/// <parameter>FLOORRESOURCES</parameter> list); otherwise 403 with the machine code
 /// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
 /// database never reaches this method at all</b>: the framework's own
 /// <method>%CSP.REST.AccessCheck</method> requires that read and, when it fails, sets 403
@@ -1353,7 +1360,7 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
 
         If '..HoldsAdminResource() {
             Set pContinue = 0
-            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds no InterSystems IRIS administrative privilege; OcuPilot requires USE on at least one %Admin_ resource", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
+            Do ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, "This account holds neither an InterSystems IRIS administrative privilege nor %Development; OcuPilot requires USE on at least one %Admin_ resource or on %Development", ##class(OcuPilot.Api.Error).#AUTHNOADMIN)
             Quit
         }
 

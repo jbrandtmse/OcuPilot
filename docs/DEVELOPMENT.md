@@ -343,8 +343,8 @@ deleting it.
 **Two things an API caller needs.** Read on that same database, or the framework's own
 `%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`
 that OcuPilot never sees — see the roles section above for which resource and what was measured.
-And `USE` on at least one `%Admin_*` resource, or the router answers one `403` envelope with the
-code `AUTH.NOADMIN` (FR-65).
+And `USE` on at least one `%Admin_*` resource or on `%Development`, or the router answers one
+`403` envelope with the code `AUTH.NOADMIN` (FR-65).
 
 **The bundle.** Build it with `npm --prefix ui run build`; the output lands in
 `ui/dist/ocupilot-ui/browser/`, which the container sees through the read-only `./ui` mount. The

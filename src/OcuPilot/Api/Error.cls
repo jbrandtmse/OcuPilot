@@ -89,20 +89,21 @@ Parameter STATICBADPATH = "STATIC.BADPATH";
 /// <code>warn</code> and completes regardless.</p>
 Parameter STATICNOBUNDLE = "STATIC.NOBUNDLE";
 
-/// <p>Machine code (AD-12, AD-39): the caller is authenticated but holds no
-/// <code>%Admin_*</code> resource at <code>USE</code>, so
+/// <p>Machine code (AD-12, AD-39): the caller is authenticated but holds neither a
+/// <code>%Admin_*</code> resource nor <code>%Development</code> at <code>USE</code>, so
 /// <class>OcuPilot.Api.Router</class>'s administrative gate refuses before any route
 /// runs. Rendered on the <parameter>FORBIDDEN</parameter> slug.</p>
 Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 
-/// <p>Machine code (AD-12, AD-39): the caller holds an administrative resource and so cleared
+/// <p>Machine code (AD-12, AD-39): the caller holds a <code>%Admin_*</code> resource or
+/// <code>%Development</code> and so cleared
 /// <class>OcuPilot.Api.Router</class>'s instance-level gate, but does not hold one screen's own
 /// <code>(resource, permission)</code> pair set (AD-8). Rendered on the
 /// <parameter>FORBIDDEN</parameter> slug, with the failed pair as the envelope's
 /// <code>detail</code>.</p>
 /// <p><b>Distinct from <parameter>AUTHNOADMIN</parameter> on purpose.</b> That one means "this
-/// account administers nothing on this instance" and drives a blocking notice whose only
-/// control is Sign out; this one means "this account administers this instance but not this
+/// account cannot use OcuPilot on this instance" and drives a blocking notice whose only
+/// control is Sign out; this one means "this account uses OcuPilot but cannot open this
 /// screen" and drives an inline refusal beside a working shell. A client that read one for the
 /// other would show the wrong surface.</p>
 /// <p>Declared here, with no call site yet: the screen reads that render it are Epic 2's, and

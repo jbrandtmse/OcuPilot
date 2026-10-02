@@ -23,7 +23,7 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  *
  * **One composition, three variants, and none dresses as another.** A version mismatch
  * names the version the instance reported and offers the classic portal; a caller holding
- * no administrative resource is told exactly that; an install state the gate cannot read
+ * neither an administrative resource nor `%Development` is told it holds no administrative privilege; an install state the gate cannot read
  * (DW-96) says waiting will not help and offers one Retry, with no backoff behind it.
  * Presenting any as another is the failure EXPERIENCE.md "No administrative privileges" names outright. `app.ts`
  * renders the third from the session state, ahead of the signed-in gate.
