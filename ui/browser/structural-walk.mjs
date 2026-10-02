@@ -7,9 +7,10 @@
  * **The screens come from the registry at run time** (`navigation.ts` `builtScreens()`, AD-5), never
  * from a hand-written route list, so a screen a later epic adds is walked the day it merges. A
  * declared screen that is not built has no route and is counted, not walked. A screen that needs
- * an id -- one that declares `parentScope`, or the one-object viewer -- is walked at
- * `<route>/<id>`, the id taken from its parent list's first rendered row (or, for the viewer, the
- * `/api/ocupilot` application the REST explorer lists); one whose id cannot be found is named in
+ * an id -- one that declares `parentScope`, or a one-object viewer -- is walked at
+ * `<route>/<id>`, the id taken from its parent list's first rendered row (or, for the OpenAPI viewer,
+ * the `/api/ocupilot` application the REST explorer lists, and for a source viewer the document
+ * `SOURCE_VIEWER_IDS` names); one whose id cannot be found is named in
  * `SKIP` with its reason, and one in neither place fails the gate. The Transcripts list, which a
  * fresh instance leaves empty, gets one conversation seeded for the walk (`seedConversation`),
  * removed by its exact key when the walk ends.
@@ -78,6 +79,15 @@ const VIEWER_ARCHETYPE = 'viewer (OpenAPI)';
 
 /** The application the viewer is opened on: the precedent `rest-apis.browser-spec.mjs` uses. */
 const VIEWER_ID = '/api/ocupilot';
+
+/** The source viewers' archetype, each opened on the document `SOURCE_VIEWER_IDS` names for its route. */
+const SOURCE_VIEWER_ARCHETYPE = 'viewer (source)';
+
+/** A class every install carries and a routine every IRIS for Health namespace maps (Story 19.1). */
+const SOURCE_VIEWER_IDS = {
+  'system-explorer/classes/document': 'OcuPilot.Port.AtelierPort.cls',
+  'system-explorer/routines/document': 'HS.HC.Info.mac',
+};
 
 /**
  * Id-requiring screens the walk does not open, each with its reason. A screen named here is
@@ -166,7 +176,7 @@ export function componentMinimums() {
 
 /** Whether a declared screen can only be opened at `<route>/<id>`. */
 export function needsId(screen) {
-  return screen.parentScope !== '' || screen.archetype === VIEWER_ARCHETYPE;
+  return screen.parentScope !== '' || screen.archetype === VIEWER_ARCHETYPE || screen.archetype === SOURCE_VIEWER_ARCHETYPE;
 }
 
 /** The key's route: the declared route, `/` for Home, and `/:id` where the screen takes an id. */
@@ -643,7 +653,15 @@ export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
 function urlFor(screen, segments) {
   if (screen.route === '') return `/ocupilot/${NAMESPACE_QUERY}`;
   if (!needsId(screen)) return `/ocupilot/${screen.route}${NAMESPACE_QUERY}`;
-  const segment = screen.archetype === VIEWER_ARCHETYPE ? encodeEntityId(VIEWER_ID) : segments.get(screen.parentScope) ?? null;
+  const sourceId = screen.archetype === SOURCE_VIEWER_ARCHETYPE ? SOURCE_VIEWER_IDS[screen.route] ?? null : null;
+  const segment =
+    screen.archetype === VIEWER_ARCHETYPE
+      ? encodeEntityId(VIEWER_ID)
+      : screen.archetype === SOURCE_VIEWER_ARCHETYPE
+        ? sourceId === null
+          ? null
+          : encodeEntityId(sourceId)
+        : segments.get(screen.parentScope) ?? null;
   if (segment === null) return null;
   return `/ocupilot/${screen.route}/${segment}${NAMESPACE_QUERY}`;
 }

@@ -1,0 +1,232 @@
+/// <p>Subclass of <class>OcuPilot.Port.AtelierPort</class> overriding only its seams, so
+/// <class>OcuPilot.Test.AtelierPort</class> runs the port's real gate order, argument checks,
+/// filters, capture and status mapping against canned route answers.</p>
+/// <p>Unless a test arms <method>UseFakeRoutes</method>, <method>ImplClass</method> answers the
+/// vendor's own class and the port reads the live instance. Armed, it answers this class, whose
+/// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method> and
+/// <method>Index</method> stand in for the vendor's routes: each records what it was handed --
+/// the namespace and device current while it ran and whether output was redirected, its arguments,
+/// the request's query data, content type and body -- leaves <code>%SourceControl</code> set, as
+/// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
+/// <method>HighestVersion</method> and <method>DatabaseResources</method> answer what a test arms,
+/// and <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>.
+/// State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
+/// <p>A canned route runs while the port has switched to the read's namespace, so a test that arms
+/// one reads the install namespace.</p>
+Class OcuPilot.Test.AtelierPortFixture Extends OcuPilot.Port.AtelierPort
+{
+
+/// <p>How many characters <method>WriteOversize</method> writes in one string, and how many such
+/// strings: together above the capture's ceiling.</p>
+Parameter OVERSIZECHUNK As INTEGER = 30000;
+
+/// <p>See <parameter>OVERSIZECHUNK</parameter>.</p>
+Parameter OVERSIZECHUNKS As INTEGER = 130;
+
+/// <p>Forget every override, every armed answer and every recorded call.</p>
+ClassMethod Clear()
+{
+    Kill ^||OcuPilotAtelierFixture
+}
+
+/// <p>Answer <method>GateClass</method> with <var>pClass</var>; <code>""</code> restores the real
+/// gate.</p>
+ClassMethod SetGateClass(pClass As %String)
+{
+    Set ^||OcuPilotAtelierFixture("gate") = pClass
+}
+
+/// <p>Answer <method>ImplClass</method> with this class, so the armed routes answer.</p>
+ClassMethod UseFakeRoutes()
+{
+    Set ^||OcuPilotAtelierFixture("fake") = 1
+}
+
+/// <p>Answer <method>HighestVersion</method> with <var>pVersion</var>.</p>
+ClassMethod SetVersion(pVersion As %Integer)
+{
+    Set ^||OcuPilotAtelierFixture("version") = pVersion
+}
+
+/// <p>Answer <method>DatabaseResources</method> with these resources for every namespace:
+/// <var>pMapped</var> is a comma-separated list of mapped databases' resources, and an empty
+/// <var>pRoutine</var> reads as unresolved.</p>
+ClassMethod SetResources(pRoutine As %String, pGlobal As %String, pMapped As %String = "")
+{
+    Set ^||OcuPilotAtelierFixture("resources") = $ListBuild(pRoutine, pGlobal, $Select(pMapped = "": "", 1: $ListFromString(pMapped)))
+}
+
+/// <p>Arm route <var>pMethod</var> to set <var>pStatus</var> (an HTTP status line) and write
+/// <var>pText</var>, and to return <var>pReturn</var>.</p>
+ClassMethod Arm(pMethod As %String, pStatus As %String, pText As %String, pReturn As %Status = {$$$OK})
+{
+    Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild(pStatus, pText, pReturn, 0)
+}
+
+/// <p>Arm route <var>pMethod</var> to write an answer above the capture's ceiling, the way the
+/// vendor's renderer writes one: in pieces, inside a <code>Try</code> whose error it returns.</p>
+ClassMethod ArmOversize(pMethod As %String)
+{
+    Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 1)
+}
+
+/// <p>Arm route <var>pMethod</var> to raise an exception naming <var>pError</var> (an ObjectScript
+/// error name such as <code>&lt;PROTECT&gt;</code>) after writing nothing.</p>
+ClassMethod ArmThrow(pMethod As %String, pError As %String)
+{
+    Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild("200 OK", "", $$$OK, 2, pError)
+}
+
+/// <p>How many routes were called since the last <method>Clear</method>.</p>
+ClassMethod CallCount() As %Integer
+{
+    Quit +$Get(^||OcuPilotAtelierFixture("calls"))
+}
+
+/// <p>Recorded call <var>pIndex</var> (1-based) as <code>{method, current, device, redirect,
+/// namespace, arg, typePassed, params, contentType, body}</code>, or <code>{}</code>.</p>
+ClassMethod CallAt(pIndex As %Integer) As %DynamicObject
+{
+    Set tJson = $Get(^||OcuPilotAtelierFixture("call", pIndex))
+    If tJson = "" Quit {}
+    Quit ##class(%DynamicObject).%FromJSON(tJson)
+}
+
+ClassMethod GateClass() As %String
+{
+    Set tForced = $Get(^||OcuPilotAtelierFixture("gate"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
+}
+
+ClassMethod ImplClass(pVersion As %Integer) As %String
+{
+    Set ^||OcuPilotAtelierFixture("implVersion") = pVersion
+    If $Get(^||OcuPilotAtelierFixture("fake")) Quit ..%ClassName(1)
+    Quit ##super(pVersion)
+}
+
+/// <p>The version <method>ImplClass</method> was last asked for, or <code>""</code>.</p>
+ClassMethod ImplVersion() As %String
+{
+    Quit $Get(^||OcuPilotAtelierFixture("implVersion"))
+}
+
+ClassMethod HighestVersion() As %Integer
+{
+    If $Data(^||OcuPilotAtelierFixture("version")) Quit ^||OcuPilotAtelierFixture("version")
+    Quit ##super()
+}
+
+ClassMethod DatabaseResources(pNamespace As %String, Output pRoutineResource As %String, Output pGlobalResource As %String, Output pMapped As %List, Output pResolved As %Boolean)
+{
+    If $Data(^||OcuPilotAtelierFixture("resources"), tArmed) {
+        Set pRoutineResource = $ListGet(tArmed, 1)
+        Set pGlobalResource = $ListGet(tArmed, 2)
+        Set pMapped = $ListGet(tArmed, 3)
+        Set pResolved = (pRoutineResource '= "")
+        Quit
+    }
+    Do ##super(pNamespace, .pRoutineResource, .pGlobalResource, .pMapped, .pResolved)
+}
+
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Do ##class(OcuPilot.Test.FaultProbe).LogRaw("atelierport", pMessage, pStatus, pCode)
+}
+
+/// <p>The canned <code>GetNamespace</code> route.</p>
+ClassMethod GetNamespace(pNamespace) As %Status
+{
+    Quit ..Answer("GetNamespace", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>GetDocNames</code> route; it records whether a type argument was passed.</p>
+ClassMethod GetDocNames(pNamespace As %String, pCat, pType) As %Status
+{
+    Quit ..Answer("GetDocNames", pNamespace, $Get(pCat), $Data(pType))
+}
+
+/// <p>The canned <code>GetDoc</code> route.</p>
+ClassMethod GetDoc(pNamespace As %String, pDocName As %String) As %Status
+{
+    Quit ..Answer("GetDoc", pNamespace, pDocName, 0)
+}
+
+/// <p>The canned <code>Index</code> route.</p>
+ClassMethod Index(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Index", pNamespace, "", 0)
+}
+
+/// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an
+/// empty envelope when nothing is armed.</p>
+ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, pTypePassed As %Boolean) As %Status [ Private ]
+{
+    Set tCall = {}
+    Do tCall.%Set("method", pMethod)
+    Do tCall.%Set("current", $NAMESPACE)
+    Do tCall.%Set("device", $IO)
+    Do tCall.%Set("redirect", +$ZUtil(82, 12), "number")
+    Do tCall.%Set("namespace", pNamespace)
+    Do tCall.%Set("arg", pArg)
+    Do tCall.%Set("typePassed", ''pTypePassed, "boolean")
+    Set tParams = {}
+    Set tKey = ""
+    For {
+        Set tKey = $Order(%request.Data(tKey))
+        If tKey = "" Quit
+        Do tParams.%Set(tKey, $Get(%request.Data(tKey, 1)))
+    }
+    Do tCall.%Set("params", tParams)
+    Do tCall.%Set("contentType", %request.ContentType)
+    Set tBody = ""
+    If $IsObject(%request.Content) {
+        Do %request.Content.Rewind()
+        Set tBody = %request.Content.Read(32000)
+        Do %request.Content.Rewind()
+    }
+    Do tCall.%Set("body", tBody)
+    Set tIndex = $Increment(^||OcuPilotAtelierFixture("calls"))
+    Set ^||OcuPilotAtelierFixture("call", tIndex) = tCall.%ToJSON()
+    ; A vendor route leaves the namespace's source-control object behind, as this does.
+    Set %SourceControl = "left by the canned route"
+
+    Set tArmed = $Get(^||OcuPilotAtelierFixture("route", pMethod), $ListBuild("200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", $$$OK, 0))
+    Set %response.Status = $ListGet(tArmed, 1)
+    Set tMode = $ListGet(tArmed, 4)
+    If tMode = 1 Quit ..WriteOversize()
+    If tMode = 2 Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$ObjectScriptError, $ListGet(tArmed, 5) _ " in the canned route"))
+    Do ..Emit($ListGet(tArmed, 2))
+    Quit $ListGet(tArmed, 3)
+}
+
+/// <p>Write <var>pText</var> to the current device, as a route's renderer does.</p>
+ClassMethod Emit(pText As %String) [ Private ]
+{
+    Set tStream = ##class(%Stream.TmpCharacter).%New()
+    Do tStream.Write(pText)
+    Do tStream.OutputToDevice()
+}
+
+/// <p>Write an envelope above the capture's ceiling, as the vendor's renderer does: its
+/// <code>%ToJSON()</code> to the device inside one <code>Try</code>, whose error is returned.</p>
+ClassMethod WriteOversize() As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tContent = []
+        Set tChunk = $Translate($Justify("", ..#OVERSIZECHUNK), " ", "x")
+        For tI = 1:1:..#OVERSIZECHUNKS {
+            Do tContent.%Push(tChunk)
+        }
+        Set tEnvelope = {"status": {"errors": [], "summary": ""}, "console": [], "result": {}}
+        Do tEnvelope.result.%Set("content", tContent)
+        Do tEnvelope.%ToJSON()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+}

@@ -95,12 +95,12 @@ function ok(body) {
 
 // --- The registry over the mirror ---------------------------------------------------------
 
-test('the mirror carries the eight areas in rail order, with Agent co-pilot pinned bottom', () => {
+test('the mirror carries the nine areas in rail order, with Agent co-pilot pinned bottom', () => {
   const areas = orderedAreas();
-  assert.equal(areas.length, 8);
+  assert.equal(areas.length, 9);
   assert.deepEqual(
     areas.map((area) => area.key),
-    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'agent']
+    ['home', 'logs', 'os-management', 'tasks', 'permissions', 'web-applications', 'security', 'system-explorer', 'agent']
   );
   areas.forEach((area, index) => assert.equal(area.railPosition, index + 1));
   assert.equal(areas.filter((area) => area.pinBottom).length, 1);
@@ -242,6 +242,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing',
       // Story 18.1: Allowed directories, the seventh Security and secrets entry.
       'security/allowed-directories',
+      // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
+      'system-explorer/classes/document',
+      'system-explorer/routines/document',
+      'system-explorer/classes',
+      'system-explorer/routines',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -251,7 +256,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 

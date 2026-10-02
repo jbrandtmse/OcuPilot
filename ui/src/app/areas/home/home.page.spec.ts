@@ -41,9 +41,9 @@ import {
 } from '../../testing/performance';
 
 /**
- * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
+ * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Seven tiles in daily-use order").
  *
- * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the six
+ * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the seven
  * tiles and the two absences are exactly what the declaration says and a stubbed roster would
  * assert the stub. The verdicts are stubbed, because a denial needs a principal the suite must
  * not mint, and the screen roster is stubbed for the reason `NavigationService` carries that
@@ -115,7 +115,7 @@ function screen(route: string, labelKey: string, area: string, position: number)
 const PROCESSES = screen('os-management/processes', 'navAreaOsManagement', 'os-management', 1);
 const LOCKS = screen('os-management/locks', 'navAreaTasks', 'os-management', 2);
 
-/** The shipped mirror: the six tiles and the two absences are the declaration's, not a stub's. */
+/** The shipped mirror: the seven tiles and the two absences are the declaration's, not a stub's. */
 const REAL_AREAS = orderedAreas();
 
 class StubNavigation {
@@ -387,7 +387,7 @@ describe('Home', () => {
   });
 
   it('renders one tile per area in rail order, with Home and Agent co-pilot absent', () => {
-    expect(tiles()).toHaveLength(6);
+    expect(tiles()).toHaveLength(7);
     expect(tileNames()).toEqual([
       STRINGS.navAreaLogs,
       STRINGS.navAreaOsManagement,
@@ -395,9 +395,10 @@ describe('Home', () => {
       STRINGS.navAreaPermissions,
       STRINGS.navAreaWebApplications,
       STRINGS.navAreaSecurity,
+      STRINGS.navAreaSystemExplorer,
     ]);
     // Home is the surface the tiles sit on and Agent co-pilot is reached from the rail, so
-    // neither gets one (EXPERIENCE.md "Six tiles in daily-use order") -- and neither name appears anywhere on the page.
+    // neither gets one (EXPERIENCE.md "Seven tiles in daily-use order") -- and neither name appears anywhere on the page.
     expect(tileNames()).not.toContain(STRINGS.navAreaHome);
     expect(tileNames()).not.toContain(STRINGS.navAreaAgent);
 
@@ -408,10 +409,10 @@ describe('Home', () => {
     expect(REAL_AREAS.filter((area) => area.pinBottom).map((area) => area.key)).toEqual(['agent']);
   });
 
-  it('the grid is a list of six items, so the set has size and boundaries announced', () => {
+  it('the grid is a list of seven items, so the set has size and boundaries announced', () => {
     const grid = fixture.nativeElement.querySelector('.ocu-area-tile-grid');
     expect(grid.getAttribute('role')).toBe('list');
-    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(6);
+    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(7);
   });
 
   it("each tile's aria-hidden icon slot holds its area's 24x24 drawing and adds nothing to its name (Story 15.7)", () => {
@@ -1471,7 +1472,7 @@ describe('Home', () => {
     expect(refresh.fault()).toBeNull();
     expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
     // The rest of Home is as it was.
-    expect(tiles()).toHaveLength(6);
+    expect(tiles()).toHaveLength(7);
     expect(fixedBlocks().length).toBeGreaterThan(0);
   });
 
