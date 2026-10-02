@@ -8948,6 +8948,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch d (f2168084) marks the target at write time only; existing OcuPilot_Kernel_State.Step.Target and Entry.StepsJson rows are unchanged; visible to the turn's owner and to OcuPilotAdmin readers of transcripts
 - 2026-10-02T06:12:24Z status=decision-pending owner=burndown by=harvest note=recommended: wontfix-accepted (retention clears them; owner and admin only); alternative: a one-time install-time scrub
+- 2026-10-02T07:27:07Z status=wontfix-accepted by=merge_gate reopen_if=retention can be disabled or set past 30 days, or a user asks for a scrub note=pre-fix rows are visible only to their owner and OcuPilotAdmin and retention purges them; no install-time scrub
 
 ### DW-1928: TurnConversation's DW-1782 method writes error-level log lines on every run, which raise the instance's alert state, as agent-ledger already does
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: in-epic
