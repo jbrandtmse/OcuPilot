@@ -9026,3 +9026,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-13-xml-export-and-import.md (rework 1) | severity: low | fix-risk: med | footprint: in-epic
 - evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
+- 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)

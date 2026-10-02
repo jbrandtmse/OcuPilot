@@ -385,6 +385,23 @@ Rejected:
 - `low`: radios without a group name; `overflow-wrap` on a file input; no final line feed in the browser file; schema descriptions and file keys declared twice (2 rows); routine tools not minted; no browser download leg; an unasserted setup export; the status line's root join (Task schedule's precedent).
 - `low`: a locked document's `PUT` answers 500; an export a few kilobytes under the ceiling can fail at the response write (shared `Api/Response`) — rare, each fix adds a branch.
 
+Code review 2026-10-02, rework re-review of `18d5533c..fb7be227` (full-opus; four layers): 27 rows, 11 entries (high 0, med 0, low 8, false 3); 3 patched, 8 rejected. The `[CI]` item is fixed at its cause in the spec. The held-read harness now proves the wait (below).
+
+- [x] [Review][Patch] low, fix-risk low (tracking line), in-story, Rule 19: the recorded mutation reddens with the old wait too, so the wait had no discriminating red. A held-read harness reddens the pre-rework wait and leaves `pickerRoot` green [spec `## Verification`, `[CI]` block]
+- [x] [Review][Patch] low, fix-risk low, in-story: the rework triage row said `baseline_commit` marks the story; both baselines are `18d5533c`. Corrected at its origin [spec `## Review Triage Log`, rework row 5]
+- [x] [Review][Patch] low, fix-risk low, in-story: DW-1946 gives 64 px for both dialogs, but only the import dialog was measured. A trailer now labels the export figure (inference) [deferred-work.md DW-1946]
+
+Rejected:
+
+- `false`: the green-run counts disagree — the five runs are recorded under `## Verification`; "one more" is a sixth, later run.
+- `false`: the wait relies on an unstated ordering — `openTransfer` calls `load()`, which sets `loading` synchronously before the dialog's first render, so a stale picker cannot satisfy `pickerRoot`.
+- `false`: three copies of the open-then-wait pattern, and the third has no title wait — the selector is scoped to `.ocu-dialog-body`, and the previous dialog is closed (`dialogOpen()` guard).
+- `low`: the product's layout shift remains, the in-story fixes were not weighed, and the rejection rests on an unmeasured likelihood (3 rows) — this is DW-1946 (`wontfix-accepted`). The dialogs are outside the rework range, and the defect is not HIGH.
+- `low`: the cycle log's `dev_complete` reads `review_loop_iteration=1` against the frontmatter's 0, and `deferred=0` sits beside DW-1946 `by=harvest`. Both are the lead's log and ledger lines.
+- `low`: DW-1946's `reopen_if` is a report, not a probe; it does not name the spec; the task dialogs may share the cause (maybe-false). The entry is terminal and append-only.
+- `low`: the cause is stated several times in an oversized spec (2 rows) — partly consolidated by the first patch above; the triage rows and the Auto Run Result are the stage's own records.
+- `low`: `pickerRoot` times out bare, before the assertion message or a refusal sentence can show (2 rows); the `[CI]` item names `setSource` for `onSource`. Each is cosmetic.
+
 ## Spec Change Log
 
 - 2026-10-02, rework iteration 1 (trigger ci): run 37012695762 red on the transfer browser spec's local-file input wait; one `[CI]` item re-opens the story.
@@ -434,7 +451,7 @@ Rejected:
   - `[low]` `[reject]` Same root cause, read as the screen's promise (intent reading R2): no test watches the dialog during the read — as the row above.
   - `[false]` `[reject]` The timing fix has no recorded red — the held-read diagnostic reproduced the miss every time and hit after the picker was drawn; a race cannot redden deterministically by reverting the wait, and the `[CI]` item asks five consecutive greens, recorded.
   - `[low]` `[reject]` carried — AC1's browser half is not driven through the page's save and file input with source equality — same claim as the logged "no browser download leg" row; this diff does not touch it.
-  - `[false]` `[reject]` The `[CI]` box is open, the old result reads done, and the two baselines differ — the run's in-flight state: finalize ticks the item and writes the result; `baseline_revision` marks this pass, `baseline_commit` the story.
+  - `[false]` `[reject]` The `[CI]` box is open, the old result reads done, and the two baselines differ — the run's in-flight state: finalize ticks the item and writes the result, and the lead points both baselines at the rework for the scoped re-review.
 
 ## Design Notes
 
@@ -594,9 +611,10 @@ Load source into `ocupilot-a2-ci` without the MCP tools, and never restart it:
 - mutation (review): matrix, in one recompile of `AtelierPort`: `ignoreConflict` renamed → `TestAUdlFileIsPutAndCompiled` "a second text of the class replaces it"; the UDL compile made unconditional → `TestFilesAreReadAndWrittenAsUtf8` "without compiling"; `ExportSet`'s delete disabled → `TestAFailedExportWriteDeletesOnlyTheFileItCreated` first leg; `ExportSet` carrying on after a failed route → `TestAnExportAboveTheCeilingIsUnavailable` (all `AtelierPortTransfer`, run 1832); its `tAbsent` guard dropped → the cleanup test's second leg (run 1833).
 - mutation (review): `ExplorerImportDialog.onSource` keeping `local` → `code-list.page.spec.ts` "a local file read before the source was switched away and back is not sent…"; `export` dropped from `ExplorerRoutineList`'s labels → `tools/screen-actions.test.mjs`. Every mutation reverted with the tree byte-identical; final runs green: `AtelierPortTransfer` 1841, `ExplorerTransfer` 1842, `AtelierPortWriteDenial` 1843, `AtelierPortWrite`, `npm run test:tools` 1772/1772, system-explorer specs 34/34, `system-explorer-transfer` browser spec on the rebuilt bundle.
 
-**`[CI]` run 37012695762.** Cause: the import dialog opens on the server file with the allowed-directories read in flight, and its answer grows the picker and re-centres the dialog, moving the source radio up 64 px. A `page.click` whose point is taken before the answer and pressed after it lands on the picker's root `<select>`, so the source stays on the server and the file input never renders. A diagnostic that held the read reproduced this every time; a click taken and pressed while the read was held, or after the picker was drawn, hit. Fix: the spec's local leg waits for the drawn picker (`pickerRoot`, as the server legs do) before pressing the radio. No client code changed.
+**`[CI]` run 37012695762.** Cause: the import dialog opens with the allowed-directories read in flight; its answer grows the picker and re-centres the dialog, moving the source radio up 64 px, so a click whose point is taken before the answer and pressed after it lands on the picker's `<select>` and the file input never renders. Fix: the local leg presses the radio once `pickerRoot` has drawn the picker. No client code changed.
 
-- mutation: AC1, `ExplorerImportDialog.onSource` setting the source to `server` whatever was chosen → `system-explorer-transfer.browser-spec.mjs` red at its file-input wait (:240) on the rebuilt bundle; reverted byte-identical (blob d832e765), rebuilt to the same `main-EUGSEAEJ.js`, redeployed.
+- mutation: AC1, `ExplorerImportDialog.onSource` setting the source to `server` whatever was chosen → `system-explorer-transfer.browser-spec.mjs` red at its file-input wait (:240) on the rebuilt bundle; reverted byte-identical (blob d832e765), rebuilt to the same `main-EUGSEAEJ.js`, redeployed. It pins AC1's local leg, not the wait.
+- mutation (review), the wait: a scratch harness held the `security.alloweddirectories` read and released it when `page.mouse.click` was entered, after the click point was taken (else after 1.5 s). With the pre-rework radio wait restored → red at the file-input wait, the radio's top 397 → 333 px; with `pickerRoot` → green. The spec file was restored byte-identical (blob 656b3d0d), and HEAD ran green on the redeployed `main-EUGSEAEJ.js` beforehand.
 - Five consecutive runs of `system-explorer-transfer.browser-spec.mjs` on `ocupilot-a2-ci` against that bundle, one per call: 1/1 green each (6.7-6.8 s). System-explorer component specs 34/34.
 
 ## Auto Run Result
