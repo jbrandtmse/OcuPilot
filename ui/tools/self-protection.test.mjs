@@ -278,6 +278,8 @@ const KERNEL_REFUSALS = [
   // Story 16.12: a lock on one of OcuPilot's own globals, alone or among an owner's, which the
   // Remove locks dialog states in place when either caller is answered with it.
   ['OCUPILOTLOCK', 'lockRefusalOcuPilot'],
+  // Story 19.2: OcuPilot's own code, whose compile or delete either caller is answered with.
+  ['OCUPILOTCODE', 'explorerRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -491,4 +493,32 @@ test('Story 18.15: the refusal of %SYS and %ALL is one sentence on both surfaces
   assert.notEqual(server, null, 'NamespaceEnableInterop.cls declares SYSTEMREASON');
   assert.equal(server[1], stringValue('namespaceEnableInteropSystem'), 'SYSTEMREASON and namespaceEnableInteropSystem are one published sentence');
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "SYSTEMREASON's sentence is published in EXPERIENCE.md's Fixed strings");
+});
+
+/** Story 19.2's error class, which declares System Explorer's write refusals and delete reasons. */
+const ATELIER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AtelierError.cls');
+
+/** Story 19.2's eight published sentences and Story 19.13's export directory refusal: `[parameter, strings.ts key]`. */
+const ATELIER_REFUSALS = [
+  ['REASONDOCUMENTABSENT', 'explorerDocumentAbsent'],
+  ['REASONEXPORTDIRECTORY', 'explorerExportDirectory'],
+  ['REASONIMPORTUNREADABLE', 'explorerImportUnreadable'],
+  ['REASONIMPORTCHANGED', 'explorerImportChanged'],
+  ['REASONIMPORTTOOLARGE', 'explorerImportTooLarge'],
+  ['DELETEACCESS', 'explorerDeleteAccess'],
+  ['DELETELOCKED', 'explorerDeleteLocked'],
+  ['DELETEABSENT', 'explorerDeleteAbsent'],
+  ['DELETEFAILED', 'explorerDeleteFailed'],
+];
+
+test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of DELETELOCKED in AtelierError.cls -> this goes red naming both.
+  const source = readFileSync(ATELIER_ERROR, 'utf8');
+  for (const [parameter, key] of ATELIER_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `AtelierError.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
 });

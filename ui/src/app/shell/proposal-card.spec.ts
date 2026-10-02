@@ -759,6 +759,39 @@ describe('the proposal card', () => {
     expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
   });
 
+  it('Story 18.16, AC5: a remote database proposal states the listing\u2019s bound and its data server before the confirm', () => {
+    // Mutation (Rule 19): drop the remote list block from the template, or make `remoteListSentence`
+    // answer '' -> this goes red.
+    const sentence = (server: string) => STRINGS.remoteDatabaseListConsequence.replace('<server>', server).replace('<n>', '20');
+    const created = mount(
+      liveView({ consequence: 'DATABASE.REMOTELIST', changed: [{ field: 'Server', before: '', after: 'DATASRV' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    const lines = created.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(sentence('DATASRV'));
+    expect(lines[0].getAttribute('role')).toBe('status');
+
+    // A re-point that keeps the server names it from the unchanged half.
+    const repointed = mount(
+      liveView({
+        consequence: 'DATABASE.REMOTELIST',
+        changed: [{ field: 'Directory', before: '/a/', after: '/b/' }],
+        unchanged: [{ field: 'Server', value: 'KEPTSRV' }],
+        maskedFields: [],
+      }),
+      { phase: 'live' }
+    );
+    expect(repointed.card.querySelector('[data-slot="consequence"]')?.textContent).toContain(sentence('KEPTSRV'));
+
+    // Another consequence states no bound, even over a proposal that names a data server.
+    const other = mount(
+      liveView({ consequence: 'WEBAPP.UNAUTHENTICATED', changed: [{ field: 'Server', before: '', after: 'DATASRV' }], maskedFields: [] }),
+      { phase: 'live' }
+    );
+    expect(other.card.textContent).not.toContain(sentence('DATASRV'));
+  });
+
   it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
     // The kernel marks the proposal destructive and carries the code; an unauthenticated
     // application that is also privileged carries one combined code, never two lines.
@@ -1033,6 +1066,22 @@ describe('the proposal card', () => {
     fixture.detectChanges();
     expect(card.querySelector('.ocu-proposal-card-confirm')).toBeNull();
     expect(card.querySelector('.ocu-proposal-card-cancel')).toBeNull();
+  });
+
+  it("Story 19.2 AC3: a confirmed card shows the write's console lines as text in a code block, and a canceled one shows none", () => {
+    // Mutation (Rule 19): draw the block whatever the phase, dropping `confirmed` from `outputVisible` -> red.
+    const lines = ['Compiling class <b>OcuProbe192.Alpha</b>', 'Compilation finished successfully.'];
+    const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'canceled-by-you' });
+    fixture.componentRef.setInput('output', lines);
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-status')).not.toBeNull();
+    expect(card.querySelector('[data-slot="output"]')).toBeNull();
+    fixture.componentRef.setInput('phase', 'confirmed');
+    fixture.detectChanges();
+    const block = card.querySelector('[data-slot="output"] pre') as HTMLElement;
+    expect(block.textContent).toBe(lines.join('\n'));
+    expect(block.querySelector('b')).toBeNull();
+    expect(block.getAttribute('tabindex')).toBe('0');
   });
 
   it('AC4: the fingerprint refusal draws its line inside the warning banner, with only Re-propose', () => {

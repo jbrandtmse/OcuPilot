@@ -185,6 +185,8 @@ interface PanelProposalView {
   readonly confirmedAt: string;
   /** The confirmed write's read-back, for the card's line under that status line (AD-58). */
   readonly readBack: ReadBack | null;
+  /** The confirmed write's console lines, for the card's code block (Story 19.2). */
+  readonly output: readonly string[];
 }
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
@@ -491,6 +493,7 @@ interface PanelTurnView {
                   [userName]="userName"
                   [confirmedAt]="proposal.confirmedAt"
                   [readBack]="proposal.readBack"
+                  [output]="proposal.output"
                   (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
                   (repropose)="onCardRepropose($event)"
@@ -1065,6 +1068,7 @@ export class Panel {
       phase: this.phaseFor(proposal),
       confirmedAt: clockOf(proposal.confirmedAt),
       readBack: proposal.readBack ?? null,
+      output: proposal.output ?? [],
     };
   }
 

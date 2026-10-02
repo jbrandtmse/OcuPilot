@@ -194,6 +194,26 @@ test('Story 18.4: a database dismount carries no parts, and states the prohibite
   assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), '/db/'), reason, 'a protected database states the refusal');
 });
 
+// Mutation (Rule 19): drop `remote-database-delete` from IMPACT_PARTS -> every read below is null and this goes red.
+test('Story 18.16: a remote database delete names the namespaces that use it and the applications in them, and no shared file', () => {
+  assert.deepEqual(IMPACT_PARTS['remote-database-delete'], ['namespaces', 'applications']);
+  const read = (parts, refused = null) => impactOf({ kind: 'remote-database-delete', refused, parts });
+  assert.notEqual(read([part('namespaces', 0), part('applications', 0)]), null, 'the kind and its two parts are in the vocabulary');
+  assert.equal(read([part('namespaces', 0), part('applications', 0), part('sharedFile', 0)]), null, 'a shared-file part is not');
+  assert.equal(
+    impactLine(read([part('namespaces', 1, ['OCUPROBE1816N']), part('applications', 1, ['/csp/a'])]), 'OCUPROBE1816B'),
+    'Impact: 1 namespace uses it and must stop using it first: OCUPROBE1816N; 1 web application runs in those namespaces: /csp/a.'
+  );
+  assert.equal(impactLine(read([part('namespaces', 0), part('applications', 0)]), 'OCUPROBE1816B'), 'Impact: no namespace uses it.');
+  assert.equal(
+    impactLine(read([part('namespaces', 0, [], '%Admin_Manage:USE'), part('applications', 2, ['/csp/a', '/csp/b'])]), 'OCUPROBE1816B'),
+    'Impact: which namespaces use it was not checked (requires %Admin_Manage:USE).',
+    'an unchecked namespaces part says so, and the applications part renders nothing'
+  );
+  const reason = STRINGS.databaseRefusalOcuPilot;
+  assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), 'OCUPILOT'), reason, 'a refused delete states the refusal');
+});
+
 test('the proposal row carries the impact to the card view, and a row without one carries null', () => {
   const row = (impact) => ({
     proposalId: 'p1',

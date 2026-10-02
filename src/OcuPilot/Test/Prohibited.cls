@@ -229,7 +229,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock", "the set covers exactly thirty-one entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4 and the lock since Story 16.12")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine", "the set covers exactly thirty-three entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "rest-service")
@@ -421,8 +421,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), "osmgmt.localdatabases.delete:DeleteFile", tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
-            ; a key; Story 18.14's copy of mappings from its source namespace.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            ; a key; Story 18.14's copy of mappings from its source namespace; Story 19.13's export
+            ; from its file and its import from its file, its reviewed summary and its compile choice.
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -697,7 +698,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 24, "the set declares twenty-four codes")
+    Do $$$AssertEquals($ListLength(tCodes), 25, "the set declares twenty-five codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

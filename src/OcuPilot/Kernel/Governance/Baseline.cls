@@ -48,6 +48,9 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.processes.suspend": true,
   "osmgmt.processes.terminate": true,
   "osmgmt.processes.terminatewitherror": true,
+  "osmgmt.remotedatabases.create": true,
+  "osmgmt.remotedatabases.delete": false,
+  "osmgmt.remotedatabases.update": true,
   "osmgmt.routinemappings.create": true,
   "osmgmt.routinemappings.delete": true,
   "osmgmt.routinemappings.update": true,
@@ -139,7 +142,15 @@ XData Keys [ MimeType = application/json ]
   "tasks.schedule.startmanager": true,
   "osmgmt.locks.remove": true,
   "osmgmt.locks.removeprocess": true,
-  "osmgmt.locks.removeclient": true
+  "osmgmt.locks.removeclient": true,
+  "explorer.classes.compile": true,
+  "explorer.classes.delete": false,
+  "explorer.routines.compile": true,
+  "explorer.routines.delete": false,
+  "explorer.classes.export": true,
+  "explorer.routines.export": true,
+  "explorer.classes.import": false,
+  "explorer.routines.import": false
 }
 }
 

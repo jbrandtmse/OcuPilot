@@ -12,7 +12,19 @@
 /// <p><b>Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter></b>; the port
 /// also requires READ on the namespace's code databases, resolved at call time (AD-29, AD-61). It
 /// replaces <code>%CSP.UI.Portal.RoutineList</code>, whose custom resource also gates it (AD-44). It
-/// declares no action and does not refresh (AD-43).</p>
+/// does not refresh (AD-43).</p>
+/// <p><b>Its row actions</b> (AD-5, Stories 19.2 and 19.13): <code>compile</code>, its
+/// <code>multiSelect</code> action, and <code>delete</code> and <code>export</code>, its extra actions,
+/// each act on the checked rows, at most <parameter>OcuPilot.Port.AtelierPort.MAXDOCUMENTS</parameter>
+/// documents, every row checkable; <code>export-browser</code> exports them to this browser, and
+/// <code>import</code> and <code>import-local</code> import one file from the server or from this
+/// computer. Their tools are <class>OcuPilot.Screen.Tool.ExplorerRoutineCompile</class>,
+/// <class>OcuPilot.Screen.Tool.ExplorerRoutineDelete</class>,
+/// <class>OcuPilot.Screen.Tool.ExplorerRoutineExport</class> and
+/// <class>OcuPilot.Screen.Tool.ExplorerRoutineImport</class>; the page sends one compile per checked
+/// document, one delete or export for the whole set, and one import per file. The page draws
+/// <code>export</code> and the screen-level Import, never <code>export-browser</code> or
+/// <code>import-local</code>, which its dialogs send.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerRoutineList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -34,7 +46,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "compile", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}],
   "context": {"fields": ["Name", "Modified", "Database", "Generated"], "secretFields": []},
   "emptyStateKey": "explorerRoutineListEmpty",
   "commandAliases": ["routines", "include files", "mac routines"],
@@ -69,10 +81,11 @@ XData Declaration
       {"field": "Database", "labelKey": "systemInfoDatabase", "kind": "identifier"},
       {"field": "Generated", "labelKey": "explorerColumnGenerated", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "explorerRoutineListEmptyAgent"
   },
-  "toolIdentifier": "explorer.routines"
+  "toolIdentifier": "explorer.routines",
+  "multiSelect": {"action": "compile", "max": 100, "extraActions": ["delete", "export"]}
 }
 }
 

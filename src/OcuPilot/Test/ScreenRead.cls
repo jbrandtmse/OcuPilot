@@ -203,7 +203,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || ('$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) && (tRowsMember = "")) Continue
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList"), tClass) Continue
+        ; Story 18.16: a fresh instance holds no remote database; RemoteDatabaseDescriptor holds the
+        ; Remote databases list's fields to two seeded probe rows instead.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

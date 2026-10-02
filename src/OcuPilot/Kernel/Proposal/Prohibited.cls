@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -427,6 +427,32 @@ Parameter OCUPILOTLOCKREASON = "This lock keeps OcuPilot's own state consistent.
 
 /// <p>The prefix every global OcuPilot locks begins with, compared with its case.</p>
 Parameter OWNGLOBALPREFIX = "OcuPilot";
+
+/// <p>A class and a routine (Story 19.2), whose compile and delete the <method>Code</method> arm
+/// judges by the documents' own names.</p>
+Parameter TYPECLASS = "class";
+
+Parameter TYPEROUTINE = "routine";
+
+/// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
+/// arm does not judge.</p>
+Parameter EXPORTWRITETYPE = "EXPORT";
+
+/// <p>The one target a class or routine import takes (Story 19.13), compared without regard to case;
+/// its documents are the stored payload's <parameter>IMPORTDOCUMENTS</parameter>.</p>
+Parameter IMPORTTARGET = "import";
+
+Parameter IMPORTDOCUMENTS = "documents";
+
+/// <p>The write would compile, delete or replace by import one of OcuPilot's own documents
+/// (<method>IsOcuPilotCode</method>), in any namespace (AD-10 as amended 2026-10-02): those documents
+/// are the code that answers OcuPilot's addresses (AD-9). Refused whatever the caller.</p>
+Parameter OCUPILOTCODE = "PROHIBITED.OCUPILOTCODE";
+
+/// <p>The one sentence <parameter>OCUPILOTCODE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>explorerRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTCODEREASON = "This is OcuPilot's own code. It cannot be compiled, deleted or replaced from OcuPilot.";
 
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
@@ -654,10 +680,10 @@ Parameter READTYPE = "GET";
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
-/// <method>Lock</method> adds last -- twenty-four in all.</p>
+/// <method>Lock</method> adds, and the one <method>Code</method> adds last -- twenty-five in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -693,6 +719,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTMAPPING Quit ..#OCUPILOTMAPPINGREASON
     If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
     If pCode = ..#OCUPILOTLOCK Quit ..#OCUPILOTLOCKREASON
+    If pCode = ..#OCUPILOTCODE Quit ..#OCUPILOTCODEREASON
     Quit ""
 }
 
@@ -992,7 +1019,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1017,6 +1044,15 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; recipient for both callers. Asked before the target read: a broadcast's target is a pid
         ; set, which the process predicates do not read.
         If (tType = ..#TYPEPROCESS) && (..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#BROADCASTWRITETYPE) Quit
+
+        ; Story 19.2: a document set is judged by its own names, so the arm reads no target. Story
+        ; 19.13: an export only reads and is not judged, and an import is judged by the documents its
+        ; reviewed file holds.
+        If (tType = ..#TYPECLASS) || (tType = ..#TYPEROUTINE) {
+            If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#EXPORTWRITETYPE Quit
+            Set tSC = ..Code($Select($ZConvert(tId, "L") = ..#IMPORTTARGET: ..ImportedNames(pPayload), 1: tId), .pProhibits, .pCode)
+            Quit
+        }
 
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
@@ -1895,6 +1931,62 @@ ClassMethod IsOcuPilotLock(pReference As %String) As %Boolean
     Quit ($Extract(..GlobalName(pReference), 1, $Length(..#OWNGLOBALPREFIX)) = ..#OWNGLOBALPREFIX)
 }
 
+/// <p>The code arm (AD-10 as amended 2026-10-02): a compile, delete or import of the documents
+/// <var>pId</var> names, comma-separated, is refused <parameter>OCUPILOTCODE</parameter> when any of
+/// them is one of OcuPilot's own documents (<method>IsOcuPilotCode</method>), and is otherwise
+/// permitted. Such a write sends no body and its card rows are the state and the declared values its
+/// fingerprint subject covers, so no field reaches a sweep.</p>
+ClassMethod Code(pId As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    For tI = 1:1:$Length(pId, ",") {
+        If ..IsOcuPilotCode($Piece(pId, ",", tI)) {
+            Do ..Refuse(..#OCUPILOTCODE, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>The documents an import's stored payload <var>pPayload</var> reviewed, comma-joined: the name
+/// before the first space of each <code>", "</code>-separated entry of its <code>documents</code>
+/// summary (<method>OcuPilot.Port.AtelierPort.Examine</method>). <code>""</code> when it carries
+/// none.</p>
+ClassMethod ImportedNames(pPayload As %String) As %String [ Private ]
+{
+    Set tNames = ""
+    Set tSummary = ""
+    Try {
+        Set tObject = ##class(%DynamicAbstractObject).%FromJSON(pPayload)
+        If $IsObject(tObject) && tObject.%IsA("%Library.DynamicObject") && (tObject.%GetTypeOf(..#IMPORTDOCUMENTS) = "string") Set tSummary = tObject.%Get(..#IMPORTDOCUMENTS)
+    } Catch {
+        Set tSummary = ""
+    }
+    For tI = 1:1:$Length(tSummary, ", ") {
+        Set tName = $Piece($Piece(tSummary, ", ", tI), " ", 1)
+        If tName '= "" Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
+    }
+    Quit tNames
+}
+
+/// <p>Whether document <var>pName</var> is one of OcuPilot's own: its name begins, ignoring case,
+/// with one of <method>OwnNameStems</method>.</p>
+ClassMethod IsOcuPilotCode(pName As %String) As %Boolean
+{
+    Set tLower = $ZConvert(pName, "L")
+    Set tStems = ..OwnNameStems()
+    Set tOwn = 0
+    For tI = 1:1:$ListLength(tStems) {
+        Set tStem = $List(tStems, tI)
+        If (tStem '= "") && ($Extract(tLower, 1, $Length(tStem)) = tStem) {
+            Set tOwn = 1
+            Quit
+        }
+    }
+    Quit tOwn
+}
+
 /// <p>The global name <var>pReference</var> locks, as <method>IsOcuPilotLock</method> reads it, or
 /// <code>""</code> for a reference that names no global. A quoted directory inside the prefix may
 /// hold <code>]</code> or <code>|</code>, so the prefix is skipped outside quotes only.</p>
@@ -2144,15 +2236,18 @@ ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDire
 
 /// <p>A database configuration's reviewed change fields: the mounting edit's three and the file
 /// edit's seven, with the file edit's two volume-directory arguments.</p>
+/// <p>Story 18.16's remote re-point adds the data server and the directory.</p>
 ClassMethod DatabaseChangeFields() As %List [ Private ]
 {
-    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath")
+    Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath", "Server", "Directory")
 }
 
 /// <p>A database create's fields: its five declared arguments.</p>
+/// <p>Story 18.16's remote create adds the data server and the directory; the local tools' derived
+/// lists exclude both, so they never send them.</p>
 ClassMethod DatabaseCreateFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName")
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Server", "Directory")
 }
 
 /// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>

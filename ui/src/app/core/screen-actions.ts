@@ -41,10 +41,10 @@ export const DOWNLOAD_CSV_ACTION_ID = 'download-csv';
 export const PERMISSION_CHECK_ACTION_ID = 'permission-check';
 
 /**
- * Import on Task schedule (Story 16.4): screen-level like Check permission. It names a server file,
- * not a row, so it is never held back for want of a selection. The descriptor declares `import` so
- * the action route admits it; this id is what the Task schedule's page registers and the two
- * surfaces draw.
+ * Import on Task schedule (Story 16.4), and on System Explorer's Classes and Routines lists (Story
+ * 19.13): screen-level like Check permission. It names a file, not a row, so it is never held back
+ * for want of a selection. Each descriptor declares `import` so the action route admits it; this id
+ * is what those pages register and the two surfaces draw.
  */
 export const TASK_IMPORT_ACTION_ID = 'task-import';
 
@@ -198,6 +198,10 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LocalDatabaseList': { expand: STRINGS.databaseExpandAction },
   // Story 16.12: the Locks list's one row entry, Remove locks, which opens its dialog.
   'OcuPilot.Screen.Descriptor.LockList': { remove: STRINGS.lockRemoveAction },
+  // Story 19.2: the Classes and Routines lists' Compile, over the checked rows; Story 19.13 their
+  // Export, which opens the export dialog over them.
+  'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
 };
 
 export class ScreenActions {

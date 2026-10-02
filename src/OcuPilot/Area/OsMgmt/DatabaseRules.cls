@@ -590,6 +590,8 @@ ClassMethod FieldOf(pCode As %String) As %String
     If tPart = "INITIALSIZE" Quit "InitialSize"
     If tPart = "INTEGRITY" Quit ..#FIELDDATABASES
     If tPart = "GLOBALS" Quit ..#FIELDGLOBALS
+    If tPart = "SERVER" Quit "Server"
+    If tPart = "REMOTEDIRECTORY" Quit "Directory"
     Quit ""
 }
 

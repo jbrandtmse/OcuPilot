@@ -159,7 +159,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
@@ -2440,8 +2440,11 @@ export function rowTargetProblem(declaration) {
   return null;
 }
 
-/** The keys a declared `multiSelect` carries (AD-5, Story 16.6). */
-export const MULTI_SELECT_KEYS = ['action', 'eligible', 'max', 'ineligibleKey'];
+/** The keys a declared `multiSelect` carries (AD-5, Stories 16.6 and 19.2). */
+export const MULTI_SELECT_KEYS = ['action', 'eligible', 'max', 'ineligibleKey', 'extraActions'];
+
+/** The archetypes whose page draws the shared table a multi-select checks rows in. */
+export const MULTI_SELECT_ARCHETYPES = ['list', 'list (server criteria)'];
 
 /** The most rows a `multiSelect` may let a person check. */
 export const MULTI_SELECT_MAX = 1000;
@@ -2452,11 +2455,14 @@ export const MULTI_SELECT_MAX = 1000;
  * table draws a checkbox on each row whose `eligible` read field is true, and the declared `action`
  * acts on the checked rows from the command bar and the command box.
  *
- * Declarable only on a `list` archetype that declares a `read` and a `table`. Its `action` is one of
- * the screen's `rowActions`, its `eligible` one of `read.fields`, its `max` a whole number from 1 to
- * `MULTI_SELECT_MAX`, and its `ineligibleKey` a non-empty string key, which `declaredStringKeys`
- * holds to the string source. `OcuPilot.Screen.Registry.MultiSelectProblem` returns the same
- * sentence for every case in `OcuPilot.Test.MultiSelectCorpus`.
+ * Declarable only on a `MULTI_SELECT_ARCHETYPES` archetype that declares a `read` and a `table`. Its
+ * `action` is one of the screen's `rowActions`, its `max` a whole number from 1 to `MULTI_SELECT_MAX`.
+ * `eligible`, one of `read.fields`, and `ineligibleKey`, a non-empty string key `declaredStringKeys`
+ * holds to the string source, are declared together or not at all; absent, every row is checkable
+ * (Story 19.2). `extraActions`, where declared, is an array of further `rowActions` that also act on
+ * the checked set, each once and none the `action` itself.
+ * `OcuPilot.Screen.Registry.MultiSelectProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.MultiSelectCorpus`.
  */
 export function multiSelectProblem(declaration) {
   const { multiSelect } = declaration;
@@ -2466,7 +2472,7 @@ export function multiSelectProblem(declaration) {
   }
   const keysFault = unknownKeyProblem('multiSelect', multiSelect, MULTI_SELECT_KEYS);
   if (keysFault !== null) return keysFault;
-  if (declaration.archetype !== 'list') {
+  if (!MULTI_SELECT_ARCHETYPES.includes(declaration.archetype)) {
     return `multiSelect is declared on a '${shown(declaration.archetype)}' archetype, and a multi-select is a list's own (AD-5)`;
   }
   if (!isObject(declaration.read)) {
@@ -2484,19 +2490,35 @@ export function multiSelectProblem(declaration) {
   if (!actions.includes(multiSelect.action)) {
     return `multiSelect.action '${multiSelect.action}' is not one of rowActions`;
   }
-  if (typeof multiSelect.eligible !== 'string' || multiSelect.eligible === '') {
+  // Story 19.2: eligible and ineligibleKey are declared together or not at all.
+  const hasEligible = multiSelect.eligible !== undefined && multiSelect.eligible !== null;
+  if (!hasEligible && multiSelect.ineligibleKey !== undefined && multiSelect.ineligibleKey !== null) {
+    return 'multiSelect.ineligibleKey is declared without multiSelect.eligible, and the two are declared together';
+  }
+  if (hasEligible && (typeof multiSelect.eligible !== 'string' || multiSelect.eligible === '')) {
     return 'multiSelect.eligible is empty, and a multi-select names the read field that makes a row checkable';
   }
   const fields = Array.isArray(declaration.read.fields) ? declaration.read.fields : [];
-  if (!fields.includes(multiSelect.eligible)) {
+  if (hasEligible && !fields.includes(multiSelect.eligible)) {
     return `multiSelect.eligible '${multiSelect.eligible}' is not one of read.fields`;
   }
   const { max } = multiSelect;
   if (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > MULTI_SELECT_MAX) {
     return `multiSelect.max must be a whole number from 1 to ${MULTI_SELECT_MAX}`;
   }
-  if (typeof multiSelect.ineligibleKey !== 'string' || multiSelect.ineligibleKey === '') {
+  if (hasEligible && (typeof multiSelect.ineligibleKey !== 'string' || multiSelect.ineligibleKey === '')) {
     return "multiSelect.ineligibleKey is empty, and a multi-select names the string key an ineligible row's checkbox reads";
+  }
+  const { extraActions } = multiSelect;
+  if (extraActions === undefined || extraActions === null) return null;
+  if (!Array.isArray(extraActions)) return 'multiSelect.extraActions is not an array of row action ids';
+  const seen = [];
+  for (const extra of extraActions) {
+    if (typeof extra !== 'string' || extra === '') return 'multiSelect.extraActions is not an array of row action ids';
+    if (!actions.includes(extra)) return `multiSelect.extraActions names '${extra}', which is not one of rowActions`;
+    if (extra === multiSelect.action) return `multiSelect.extraActions names '${extra}', which is the multi-select's own action`;
+    if (seen.includes(extra)) return `multiSelect.extraActions names '${extra}' more than once`;
+    seen.push(extra);
   }
   return null;
 }
@@ -3501,9 +3523,13 @@ export interface ScreenRowTarget {
  */
 export interface ScreenMultiSelect {
   readonly action: string;
-  readonly eligible: string;
+  /** The read field that makes a row checkable; absent, every row is (Story 19.2). */
+  readonly eligible?: string;
   readonly max: number;
-  readonly ineligibleKey: string;
+  /** The reason an ineligible row's checkbox carries; declared together with \`eligible\`. */
+  readonly ineligibleKey?: string;
+  /** Further row actions that act on the checked set (Story 19.2). */
+  readonly extraActions?: readonly string[];
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

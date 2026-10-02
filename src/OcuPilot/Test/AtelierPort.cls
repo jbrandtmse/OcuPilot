@@ -117,7 +117,7 @@ Method TestNamespaceAndEndpointRefusals()
     Set tQuery("namespace") = $Namespace
     Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke("Modified", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ tFault.code, "501 PORT.NOTIMPLEMENTED", "an endpoint the port does not serve is 501")
-    Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke("Classes", "DELETE", .tQuery, "", .tRows, .tHttp, .tFault)
+    Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke("Classes", "PUT", .tQuery, "", .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ tFault.code, "501 PORT.NOTIMPLEMENTED", "and so is a request type it does not serve")
     Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortFixture).CallCount(), 0, "no route was called")
 }

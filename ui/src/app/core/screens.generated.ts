@@ -444,9 +444,13 @@ export interface ScreenRowTarget {
  */
 export interface ScreenMultiSelect {
   readonly action: string;
-  readonly eligible: string;
+  /** The read field that makes a row checkable; absent, every row is (Story 19.2). */
+  readonly eligible?: string;
   readonly max: number;
-  readonly ineligibleKey: string;
+  /** The reason an ineligible row's checkbox carries; declared together with `eligible`. */
+  readonly ineligibleKey?: string;
+  /** Further row actions that act on the checked set (Story 19.2). */
+  readonly extraActions?: readonly string[];
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -529,7 +533,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "routine-mapping": "foldcase-firstpart",
   "package-mapping": "foldcase-firstpart",
   "database-configuration": "foldcase",
-  "database": "directoryset"
+  "database": "directoryset",
+  "class": "documentset",
+  "routine": "documentset"
 };
 
 /**
@@ -4160,7 +4166,32 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "compile",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4303,15 +4334,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerClassListEmptyAgent"
     },
     "toolIdentifier": "explorer.classes",
+    "multiSelect": {
+      "action": "compile",
+      "max": 100,
+      "extraActions": [
+        "delete",
+        "export"
+      ]
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -4495,7 +4533,32 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "compile",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "export",
+        "selfProtection": ""
+      },
+      {
+        "id": "export-browser",
+        "selfProtection": ""
+      },
+      {
+        "id": "import",
+        "selfProtection": ""
+      },
+      {
+        "id": "import-local",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4638,15 +4701,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "explorerRoutineListEmptyAgent"
     },
     "toolIdentifier": "explorer.routines",
+    "multiSelect": {
+      "action": "compile",
+      "max": 100,
+      "extraActions": [
+        "delete",
+        "export"
+      ]
+    },
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
@@ -10121,6 +10191,221 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RemoteDatabaseForm",
+    "route": "os-management/remote-databases/edit",
+    "area": "os-management",
+    "labelKey": "remoteDatabaseFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.RemoteDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.remotedatabaseform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.RemoteDatabaseList",
+    "route": "os-management/remote-databases",
+    "area": "os-management",
+    "labelKey": "remoteDatabaseListLabel",
+    "sideBarPosition": 12,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "remoteDatabaseListEmpty",
+    "commandAliases": [
+      "remote databases",
+      "ecp databases",
+      "create remote database"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "remoteDatabaseListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.RemoteDatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.ConfigCRUD",
+        "type": "LIST",
+        "query": {
+          "remoteOnly": "1"
+        }
+      },
+      "fields": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "filter": [
+        "Name",
+        "Server",
+        "Directory",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Server",
+          "Directory",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Server",
+          "labelKey": "remoteDatabaseServer",
+          "kind": "identifier"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "remoteDatabaseListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.remotedatabases",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",

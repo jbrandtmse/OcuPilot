@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:629 */
+  /** EXPERIENCE.md:633 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -3793,6 +3793,47 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   localDatabaseDeleteConsequence:
     'Deleting this database removes it from the instance\'s configuration. Its file stays unless you also delete it here. This cannot be undone.',
+  // Story 18.16: Remote databases, its form and the bounded listing of a data server's databases.
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListLabel: 'Remote databases',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListEmpty: 'No remote databases on this instance.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListEmptyAgent: 'create a remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormRefusedAction: 'change this remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormLabel: 'Remote database',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseServer: 'Data server',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseStreamLocation: 'Stream location',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListAgain: 'List databases',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListHint: 'Choosing a data server lists its databases over ECP, which can take up to <n> seconds.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListRunning: 'Listing the databases on <server> since <time>',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListNone: '<server> lists no databases.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListConsequence:
+    'Confirming lists the databases on <server> to check the directory, which can take up to <n> seconds.',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt1: 'Which remote databases does this instance define, and on which data servers?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt2: 'Which namespaces use a remote database?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseListPrompt3: 'What would removing a remote database take with it?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt1: 'Which data server is this database\'s file on?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt2: 'Which namespaces use this remote database?',
+  /** EXPERIENCE.md:377 */
+  remoteDatabaseFormPrompt3: 'What happens to this database\'s file when it is removed here?',
+  /** EXPERIENCE.md:479 */
+  remoteDatabaseDeleteConsequence:
+    'Deleting this remote database removes it from this instance\'s configuration. Its file on the data server stays. This cannot be undone.',
   /** EXPERIENCE.md:481 */
   databaseRefusalOcuPilot:
     'OcuPilot or the instance itself depends on this database. It cannot be deleted or dismounted, and its directory, resource and read-only setting cannot be changed.',
@@ -4234,6 +4275,93 @@ export const STRINGS = {
   explorerRoutineDocumentPrompt2: 'Which database holds this routine?',
   /** EXPERIENCE.md:588 */
   explorerRoutineDocumentPrompt3: 'Which intermediate routines does this routine generate?',
+  // Story 19.2: System Explorer's compile and delete, and their published refusals.
+  /** EXPERIENCE.md:589 */
+  explorerCompileAction: 'Compile',
+  /** EXPERIENCE.md:589 */
+  explorerCompileTitle: 'Compile <n> documents',
+  /** EXPERIENCE.md:589 */
+  explorerCompileTitleOne: 'Compile 1 document',
+  /** EXPERIENCE.md:589 */
+  explorerCompileKeepSource: 'Keep generated source code',
+  /** EXPERIENCE.md:589 */
+  explorerCompileDependents: 'Compile dependent classes',
+  /** EXPERIENCE.md:589 */
+  explorerCompileSkipUpToDate: 'Skip documents that are up to date',
+  /** EXPERIENCE.md:589 */
+  explorerOutputLabel: 'Output',
+  /** EXPERIENCE.md:589 */
+  explorerCompileRunning: 'Compiling <i> of <n> \u00b7 <name>',
+  /** EXPERIENCE.md:589 */
+  explorerCompileSummary: 'Compiled <done> of <n> documents, <errors> with errors.',
+  /** EXPERIENCE.md:589 */
+  explorerCompileStopped: 'Stopped after <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDocumentResult: '<name>: <reason>',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteDeleted: '<name>: deleted',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteRunning: 'Deleting <n> documents',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSummary: 'Deleted <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteConsequence: 'The document\'s source and compiled code are removed and cannot be restored from OcuPilot. A persistent class\'s stored data is kept.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot, and a persistent class\'s stored data is kept.',
+  /** EXPERIENCE.md:589 */
+  explorerClassListEmptyAgent: 'compile classes',
+  /** EXPERIENCE.md:589 */
+  explorerRoutineListEmptyAgent: 'compile routines',
+  /** EXPERIENCE.md:589 */
+  explorerViewerObjectOnly: 'This instance holds only this routine\'s object code, so it has no source to show.',
+  /** EXPERIENCE.md:590 */
+  explorerRefusalOcuPilot: 'This is OcuPilot\'s own code. It cannot be compiled, deleted or replaced from OcuPilot.',
+  /** EXPERIENCE.md:590 */
+  explorerDocumentAbsent: 'This namespace no longer holds a document this change names.',
+  /** EXPERIENCE.md:590 */
+  explorerImportUnreadable: 'The file holds no document this instance can read.',
+  /** EXPERIENCE.md:590 */
+  explorerImportChanged: 'The file, or a document it would replace, has changed since this import was proposed.',
+  /** EXPERIENCE.md:590 */
+  explorerImportTooLarge: 'The file is longer than 3,000,000 characters, the most one import reads.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteAccess: 'This account cannot change the database that holds this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteLocked: 'Another process is editing this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteAbsent: 'This namespace no longer holds this document.',
+  /** EXPERIENCE.md:590 */
+  explorerDeleteFailed: 'The source code API could not delete this document.',
+  /** EXPERIENCE.md:591 */
+  explorerExportTitle: 'Export <n> documents',
+  /** EXPERIENCE.md:591 */
+  explorerExportTitleOne: 'Export 1 document',
+  /** EXPERIENCE.md:591 */
+  explorerTransferServer: 'A file on the server',
+  /** EXPERIENCE.md:591 */
+  explorerTransferBrowser: 'This browser',
+  /** EXPERIENCE.md:591 */
+  explorerTransferLocal: 'A file on this computer',
+  /** EXPERIENCE.md:591 */
+  explorerImportCompile: 'Compile imported documents',
+  /** EXPERIENCE.md:591 */
+  explorerImportReplaces: 'Importing replaces each document of the same name in this namespace, without asking.',
+  /** EXPERIENCE.md:591 */
+  explorerExportDone: 'Exported <n> documents to <path>.',
+  /** EXPERIENCE.md:591 */
+  explorerExportSaved: 'Saved <n> documents as <file>.',
+  /** EXPERIENCE.md:591 */
+  explorerImportRunning: 'Importing <file>',
+  /** EXPERIENCE.md:591 */
+  explorerImportDone: 'Imported <n> documents.',
+  /** EXPERIENCE.md:591 */
+  explorerImportDoneErrors: 'Imported <n> documents, with compile errors.',
+  /** EXPERIENCE.md:591 */
+  explorerExportDirectory: 'There is no such directory under that allowed directory.',
+  /** EXPERIENCE.md:592 */
+  explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:592 */
+  explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
 } as const;
 
 /**

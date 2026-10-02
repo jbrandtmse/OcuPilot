@@ -94,6 +94,7 @@ const NO_OUTCOME: ProposalOutcome = {
   auditMarked: false,
   continues: false,
   readBack: null,
+  output: [],
 };
 
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
@@ -268,6 +269,12 @@ export interface TurnProposal {
    */
   readonly readBack?: ReadBack | null;
   /**
+   * The confirmed write's console lines as its confirm answered them (AD-39's fifth exception,
+   * Story 19.2), held in memory only: the proposal row records none, so a reloaded card shows none.
+   * Optional so a literal built before it existed still compiles.
+   */
+  readonly output?: readonly string[];
+  /**
    * The impact of the removal this proposal carries (AD-8), as the instance read it at the mint, or
    * `null` for a write with none. Optional so a literal built before it existed still compiles.
    */
@@ -420,6 +427,12 @@ export interface ProposalOutcome {
    * `null` on every answer that is not a confirmed write, and where the answer carried none.
    */
   readonly readBack: ReadBack | null;
+  /**
+   * The confirmed write's console lines, off the confirm's own `output.lines` (AD-39's fifth
+   * exception, Story 19.2); `[]` on every other answer. Optional so a literal built before it
+   * existed still compiles.
+   */
+  readonly output?: readonly string[];
 }
 
 /**
@@ -451,6 +464,13 @@ function numberAt(source: Record<string, unknown>, key: string): number {
 
 function boolAt(source: Record<string, unknown>, key: string): boolean {
   return source[key] === true;
+}
+
+/** The string `lines` of a confirm's `output` (Story 19.2), or `[]`. */
+export function outputLinesOf(output: unknown): readonly string[] {
+  if (output === null || typeof output !== 'object') return [];
+  const lines = (output as Record<string, unknown>)['lines'];
+  return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
 }
 
 /**
@@ -1362,6 +1382,7 @@ export class TurnStore {
         auditMarked: boolAt(result.body, 'auditMarked'),
         continues: boolAt(result.body, 'continues'),
         readBack: readBackOf(result.body?.['readBack']),
+        output: outputLinesOf(result.body?.['output']),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1405,6 +1426,7 @@ export class TurnStore {
       auditMarked: false,
       continues: false,
       readBack: null,
+      output: [],
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
     // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
@@ -1436,6 +1458,7 @@ export class TurnStore {
                   closedReason: outcome.closedReason,
                   confirmedAt: outcome.confirmedAt,
                   ...(outcome.readBack === null ? {} : { readBack: outcome.readBack }),
+                  ...((outcome.output ?? []).length === 0 ? {} : { output: outcome.output }),
                 }
               : proposal
           )

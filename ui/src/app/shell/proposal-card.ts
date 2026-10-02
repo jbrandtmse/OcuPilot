@@ -13,6 +13,7 @@ import {
   type ProposalPhase,
   type ProposalPrivilegeLine,
   consequenceSentence,
+  remoteListSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -33,6 +34,7 @@ import {
   formatProposalTitle,
   formatUnchangedCaption,
 } from './example-proposal';
+import { CodeBlock } from './code-block';
 
 /**
  * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
@@ -105,6 +107,7 @@ export interface ProposalConfirmRequest {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CodeBlock],
   template: `<article
     class="ocu-proposal-card"
     [class.ocu-proposal-card-destructive]="destructive"
@@ -259,6 +262,17 @@ export interface ProposalConfirmRequest {
       </p>
     }
 
+    @if (remoteListVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ remoteListText }}</span>
+      </p>
+    }
+
     @if (refusalVisible) {
       <p
         class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
@@ -297,6 +311,9 @@ export interface ProposalConfirmRequest {
             </p>
             @if (readBackText !== '') {
               <p class="ocu-proposal-card-read-back" data-slot="read-back">{{ readBackText }}</p>
+            }
+            @if (outputVisible) {
+              <app-code-block class="ocu-proposal-card-output" data-slot="output" [steps]="outputSteps" />
             }
           }
         }
@@ -404,6 +421,12 @@ export class ProposalCard {
    * renders the line under its confirmed status line and compares nothing itself.
    */
   readonly readBack = input<ReadBack | null>(null);
+
+  /**
+   * The confirmed write's console lines, as the confirm answered them (AD-39's fifth exception,
+   * Story 19.2): a compile's. Rendered as text in a code block under the confirmed status line.
+   */
+  readonly output = input<readonly string[]>([]);
 
   /**
    * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
@@ -704,6 +727,19 @@ export class ProposalCard {
   }
 
   /**
+   * A remote database proposal's bound sentence (Story 18.16, AD-21's seventh case): the confirm
+   * lists the data server the proposal names before it writes, and the card states how long that can
+   * take before Confirm is pressed. `''` for every other proposal.
+   */
+  protected get remoteListText(): string {
+    return remoteListSentence(this.view());
+  }
+
+  protected get remoteListVisible(): boolean {
+    return this.phase() !== null && this.remoteListText !== '';
+  }
+
+  /**
    * Whether the tool declared this write destructive, which turns the card's left-edge bar and its
    * Confirm to the destructive treatment (DESIGN.md `:1181`, `:1242`).
    *
@@ -838,6 +874,15 @@ export class ProposalCard {
   /** The read-back line under a confirmed card's status line, or `''` (AD-58). */
   protected get readBackText(): string {
     return this.confirmed ? readBackLine(this.readBack()) : '';
+  }
+
+  protected get outputVisible(): boolean {
+    return this.confirmed && this.output().length > 0;
+  }
+
+  /** The console lines as one output step, which the code block renders as text (AD-11). */
+  protected get outputSteps(): readonly { readonly kind: string; readonly text: string }[] {
+    return [{ kind: 'output', text: this.output().join('\n') }];
   }
 
   /**

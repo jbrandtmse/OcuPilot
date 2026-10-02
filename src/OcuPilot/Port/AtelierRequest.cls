@@ -7,16 +7,22 @@
 Class OcuPilot.Port.AtelierRequest Extends %CSP.Request
 {
 
-/// <p>Make <var>pJson</var>, a JSON text, this request's body, with content type
-/// <code>application/json</code>. The body is a process-private character stream, so it reads
-/// the same in whichever namespace the route runs.</p>
-Method SetJsonBody(pJson As %String) As %Status
+/// <p>Make <var>pJson</var> this request's body, with content type <code>application/json</code>:
+/// a JSON text, or a <class>%DynamicAbstractObject</class> written straight into the stream with
+/// <code>%ToJSON</code>, so a body of file lines is never held as one string. The body is a
+/// process-private character stream, so it reads the same in whichever namespace the route
+/// runs.</p>
+Method SetJsonBody(pJson) As %Status
 {
     Set tSC = $$$OK
     Try {
         Set tStream = ##class(%CSP.CharacterStream).%New()
-        Set tSC = tStream.Write(pJson)
-        If $$$ISERR(tSC) Quit
+        If $IsObject(pJson) {
+            Do pJson.%ToJSON(tStream)
+        } Else {
+            Set tSC = tStream.Write(pJson)
+            If $$$ISERR(tSC) Quit
+        }
         Do tStream.Rewind()
         Set i%ContentType = "application/json"
         Set ..Content = tStream

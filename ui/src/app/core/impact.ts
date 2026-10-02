@@ -17,7 +17,8 @@ export type ImpactKind =
   | 'role-removal'
   | 'namespace-delete'
   | 'database-delete'
-  | 'database-dismount';
+  | 'database-dismount'
+  | 'remote-database-delete';
 
 export type ImpactPartName =
   | 'holders'
@@ -42,6 +43,9 @@ export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]
   // Story 18.4: a dismount carries no parts; the instance answers it only to state the prohibited
   // set's refusal of a protected database when the Dismount dialog opens.
   'database-dismount': [],
+  // Story 18.16: a remote database's file is on its data server, so no configuration here shares it
+  // and the instance answers no shared-file part; the two it answers render as a local delete's.
+  'remote-database-delete': ['namespaces', 'applications'],
 };
 
 /** A part's `unchecked` when its read was cut at its cap. */

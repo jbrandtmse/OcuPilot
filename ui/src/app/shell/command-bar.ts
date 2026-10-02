@@ -752,8 +752,8 @@ export class CommandBar {
   }
 
   /**
-   * Import on Task schedule (Story 16.4), drawn after Check permission on exactly the screen that
-   * registered it. Screen-level: it names a server file, not a row, so it is never `aria-disabled`
+   * Import on Task schedule (Story 16.4) and on the Classes and Routines lists (Story 19.13), drawn
+   * after Check permission on exactly the screen that registered it. Screen-level: it names a server file, not a row, so it is never `aria-disabled`
    * for want of a selection.
    */
   protected get hasTaskImportAction(): boolean {

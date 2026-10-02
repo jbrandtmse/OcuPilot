@@ -153,9 +153,10 @@ prose into one checker.
     no `OcuPilot.Port.*` class but `OcuPilot.Port.ProviderPort`, no `OcuPilot.Area.*` class, no
     `OcuPilot.Screen.*` class but `OcuPilot.Screen.Tool.Registry`, and no `OcuPilot.Api.*` class
     but the vocabulary class `OcuPilot.Api.Error`; and a `JOB` command -- outside a string literal
-    -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls` and in
-    `OcuPilot/Kernel/Provider/TestCall.cls`, Test connection's child job (AD-42, Story 10.5). Test
-    classes under `Test/` may spawn their own helpers.
+    -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls`, in
+    `OcuPilot/Kernel/Provider/TestCall.cls`, Test connection's child job (AD-42, Story 10.5), and in
+    `OcuPilot/Port/RemoteDatabasePort.cls`, the remote-directory listing's child job (AD-21's seventh
+    case, AD-42, Story 18.16). Test classes under `Test/` may spawn their own helpers.
 
 20. **Tool dispatch (AD-1, AD-22, Story 4.2).** Outside `Test/`, `InvokeTool` is named only in
     `Screen/Tool/Registry.cls`, which defines it, and `Kernel/Agent/Dispatch.cls`, its one caller;
@@ -850,13 +851,14 @@ def check_state_package_isolation(problems: list[str]) -> None:
 #
 # A turn job runs for minutes as the user, outside any request. What it may reach is the provider
 # port and OcuPilot's own state, and nothing that acts on the instance: no other port, no slice, no
-# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the two
-# spawns in shipped code are the job's own and Test connection's child (`Kernel.Provider.TestCall`,
-# AD-42), so a third `JOB` cannot quietly start a process from a frame nobody checked for
-# escalation. Test classes spawn their own helpers and are outside it.
+# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the three
+# spawns in shipped code are the job's own, Test connection's child (`Kernel.Provider.TestCall`,
+# AD-42) and the remote-directory listing's child (`Port.RemoteDatabasePort`, AD-21's seventh case),
+# so a fourth `JOB` cannot quietly start a process from a frame nobody checked for escalation. Test
+# classes spawn their own helpers and are outside it.
 
 AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
-JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls"})
+JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls", "src/OcuPilot/Port/RemoteDatabasePort.cls"})
 AGENT_REACH_RE = re.compile(
     r"OcuPilot\.Port\.(?!ProviderPort\b)\w+(?:\.\w+)*"
     r"|OcuPilot\.Area\.\w+(?:\.\w+)*"
@@ -886,7 +888,8 @@ def check_agent_job_reach(problems: list[str]) -> None:
             if rel not in JOB_ALLOWED and JOB_RE.search(STRING_LITERAL_RE.sub('""', raw)):
                 problems.append(
                     f"{rel}:{i}: 'JOB' command outside {', '.join(sorted(JOB_ALLOWED))} -- the turn "
-                    f"job and Test connection's child are the only spawns in shipped code (AD-9, AD-42)"
+                    f"job, Test connection's child and the remote-directory listing's child are the only "
+                    f"spawns in shipped code (AD-9, AD-21, AD-42)"
                 )
 
 

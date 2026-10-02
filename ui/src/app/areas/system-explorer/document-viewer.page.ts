@@ -14,6 +14,7 @@ import { STRINGS } from '../../core/strings';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
 import {
+  OBJECT_ONLY_REASON,
   SOURCE_VIEWS,
   SourceViewerState,
   createSourceRead,
@@ -295,10 +296,12 @@ export class SourceViewerPage {
     return this.state.document()?.content ?? '';
   }
 
+  /** The sentence in place of the text: a routine kept only as object code has its own (Story 19.2). */
   protected get notAvailable(): string {
     this.generation();
     const view = this.state.view();
-    return isTextView(view) ? NOT_AVAILABLE[view] : '';
+    if (!isTextView(view)) return '';
+    return this.state.document()?.reason === OBJECT_ONLY_REASON ? STRINGS.explorerViewerObjectOnly : NOT_AVAILABLE[view];
   }
 
   protected get showNoStructure(): boolean {

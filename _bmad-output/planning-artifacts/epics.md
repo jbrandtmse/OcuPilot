@@ -7163,11 +7163,11 @@ So that "disks" means operating on them rather than only reading them.
 
 As an operator,
 I want journal settings, files, integrity checks and the record browser,
-So that the transaction record is inspectable from the portal.
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split for size, Rule 5 -- 18.5 keeps the file list, the file summary, integrity check and the two switches; journal settings moved to Story 18.18 and the record browser to Story 18.19]
 
 **Acceptance Criteria:**
 
-- **Given** journal settings, the file list, the file summary, integrity check, switch file, switch directory and the record browser
+- **Given** journal settings, the file list, the file summary, integrity check, switch file, switch directory and the record browser [SPLIT to 18.18 / 18.19 2026-10-02: journal settings to 18.18, the record browser to 18.19; 18.5 keeps the file list, the file summary, integrity check, switch file and switch directory]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
@@ -7181,8 +7181,8 @@ So that the transaction record is inspectable from the portal.
 [20 places where the SysAdmin API specification and IRIS disagree](https://community.intersystems.com/post/20-places-where-sysadmin-api-specification-and-iris-disagree);
 "checked" means seen on slot A that day, "reported" means the article's word only]
 
-- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. Ask for twice the page and mark the list when the limit is reached. It answers 202, so it runs through the port's async path.
-- `POST /v2/journal/switch-dir` takes no body, so it switches only to the alternate directory already configured. The specification agrees.
+- `POST /v2/journal/file/records` [SPLIT to 18.19 2026-10-02: the record list's behavior moved with the record browser]
+- `POST /v2/journal/switch-dir` takes no body. It swaps between the configured primary and alternate directories, and answers 409 when the two are the same, as on `ocupilot-b-ci` (read in the vendor source, `System.cls:81-126`, at Story 18.5's plan; Task 0 measures it). The specification says it switches only to the alternate. [AMENDED 2026-10-02 — see the story change log]
 
 ### Story 18.6: Licensing and ECP
 
@@ -7438,6 +7438,34 @@ So that a mapping that reaches the system globals says so, creating a database f
 - DW-1824: the New Namespace form's Create a database leaves the form and discards what was typed; keep the form and return to it, as the classic portal does (ledger; routed by merge_gate 2026-09-30)
 - DW-1858: the Integrity log has no way in but the Check integrity flow; give it an OS management side-bar position right after Databases (ledger; routed by merge_gate 2026-09-30)
 
+### Story 18.18: Journal settings
+
+As an operator,
+I want journal settings,
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split from 18.5 for size, Rule 5; planned as Part B (AC7) of `spec-18-5-journals.md`]
+
+**Acceptance Criteria:**
+
+- **Given** journal settings
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+### Story 18.19: Journal record browser
+
+As an operator,
+I want the record browser,
+So that the transaction record is inspectable from the portal. [AMENDED 2026-10-02, orchestrator merge gate: split from 18.5 for size, Rule 5; planned as Part C (AC8) of `spec-18-5-journals.md`; consumes Story 18.5's journal-file guard]
+
+**Acceptance Criteria:**
+
+- **Given** the record browser
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+**Admin API behavior to design for.** (moved from Story 18.5, 2026-10-02)
+
+- `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
@@ -7476,11 +7504,11 @@ So that the Explorer is not read-only.
 
 - **Given** delete, export to XML, and import from a server or local file
 - **When** each runs
-- **Then** it round-trips, each write through a confirmed proposal.
+- **Then** it round-trips, each write through a confirmed proposal. [SPLIT to 19.13 2026-10-02: export and import moved; delete stays in 19.2]
 
 - **Given** export and import are Atelier v7 routes
 - **When** the instance is older
-- **Then** the version gate reports it rather than failing obscurely.
+- **Then** the version gate reports it rather than failing obscurely. [SPLIT to 19.13 2026-10-02]
 
 - DW-1922: System Explorer's Routines list shows routines its viewer answers PORT.NOTFOUND for (EnsJob.mac in HSCUSTOM, Ens*.mac in USER) (ledger; routed by harvest 2026-10-02)
 
@@ -7664,6 +7692,25 @@ So that OcuPilot does not shut out the people the explorer is for.
 - **Then** it reaches System Explorer and is refused everywhere a classic `%Developer` is refused, and a Rule 19 mutation that restores the old floor reddens that test.
 
 - DW-1903: Should System Explorer admit a %Developer-only account below OcuPilot's %Admin_* floor? (ledger; routed by merge_gate 2026-10-01)
+
+
+### Story 19.13: XML export and import
+
+As a developer,
+I want to export and import the code I am browsing,
+So that code moves in and out of a namespace without leaving the portal.
+
+[ADDED 2026-10-02, Rule 5 split of Story 19.2 by=merge_gate: its export and import criteria moved here verbatim; run right after 19.2.]
+
+**Acceptance Criteria:**
+
+- **Given** delete, export to XML, and import from a server or local file
+- **When** each runs
+- **Then** it round-trips, each write through a confirmed proposal.
+
+- **Given** export and import are Atelier v7 routes
+- **When** the instance is older
+- **Then** the version gate reports it rather than failing obscurely.
 
 ---
 

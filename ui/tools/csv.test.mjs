@@ -116,3 +116,39 @@ test('the name is the label slug plus the local date and time; a label with no A
   assert.equal(csv.csvFileName('', at), 'table-20260907-050403.csv');
   assert.equal(csv.csvFileName('\u00e9\u00e8 \u2014 ?', at), 'table-20260907-050403.csv');
 });
+
+test('saveText saves the text under its name and type through an anchor it removes, and revokes the URL later (Story 19.13)', async () => {
+  const appended = [];
+  const anchors = [];
+  const doc = {
+    createElement(tag) {
+      const anchor = { tag, href: '', download: '', hidden: false, clicked: 0, removed: 0, click() { this.clicked += 1; }, remove() { this.removed += 1; } };
+      anchors.push(anchor);
+      return anchor;
+    },
+    body: { appendChild(node) { appended.push(node); } },
+  };
+  const made = [];
+  const revoked = [];
+  const realCreate = URL.createObjectURL;
+  const realRevoke = URL.revokeObjectURL;
+  URL.createObjectURL = (blob) => {
+    made.push(blob);
+    return 'blob:probe';
+  };
+  URL.revokeObjectURL = (url) => revoked.push(url);
+  try {
+    csv.saveText(doc, '<?xml version="1.0"?>\n<Export>', 'USER-export.xml', 'application/xml');
+    assert.equal(anchors.length, 1);
+    assert.deepEqual([anchors[0].tag, anchors[0].href, anchors[0].download, anchors[0].hidden, anchors[0].clicked, anchors[0].removed], ['a', 'blob:probe', 'USER-export.xml', true, 1, 1]);
+    assert.equal(appended[0], anchors[0], 'the anchor is put in the document before it is clicked');
+    assert.equal(made[0].type, 'application/xml', 'the file carries the type it was given');
+    assert.equal(await made[0].text(), '<?xml version="1.0"?>\n<Export>', 'and exactly the text');
+    assert.deepEqual(revoked, [], 'the URL outlives the click');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(revoked, ['blob:probe'], 'and is revoked on a later task');
+  } finally {
+    URL.createObjectURL = realCreate;
+    URL.revokeObjectURL = realRevoke;
+  }
+});

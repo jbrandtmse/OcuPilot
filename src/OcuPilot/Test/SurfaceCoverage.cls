@@ -151,6 +151,8 @@ XData Coverage
 <screen name="ExplorerRoutineList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
 <screen name="ExplorerClassDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
 <screen name="ExplorerRoutineDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
+<screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -274,6 +276,17 @@ XData Coverage
 <tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
+<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
+<tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
+<tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

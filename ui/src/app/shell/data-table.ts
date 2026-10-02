@@ -667,7 +667,7 @@ export class DataTable implements OnInit {
     // single selection rather than in place of it.
     const multiSelect = screen.multiSelect;
     const checked = store.checked();
-    const ineligible = multiSelect === null ? '' : this.lookup(multiSelect.ineligibleKey);
+    const ineligible = multiSelect === null || (multiSelect.ineligibleKey ?? '') === '' ? '' : this.lookup(multiSelect.ineligibleKey ?? '');
     return this.view().map((row, index) => {
       const key = rowKey(row, screen);
       const checkable = multiSelect !== null && key !== '' && isCheckable(screen, row);

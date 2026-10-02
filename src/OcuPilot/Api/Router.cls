@@ -135,6 +135,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/database/check" Method="POST" Call="DatabaseCheck"/>
   <Route Url="/database/:id" Method="PUT" Call="DatabaseUpdate"/>
   <Route Url="/database" Method="POST" Call="DatabaseCreate"/>
+  <Route Url="/remote-database/form" Method="GET" Call="RemoteDatabaseFormRead"/>
+  <Route Url="/remote-database/directories" Method="GET" Call="RemoteDatabaseDirectories"/>
+  <Route Url="/remote-database/:id" Method="PUT" Call="RemoteDatabaseUpdate"/>
+  <Route Url="/remote-database" Method="POST" Call="RemoteDatabaseCreate"/>
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
@@ -689,6 +693,35 @@ ClassMethod DatabaseCreate() As %Status
 ClassMethod DatabaseUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DatabaseSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /remote-database/form</code> (Story 18.16): the
+/// remote database form's read, delegating to <class>OcuPilot.Area.OsMgmt.RemoteDatabaseRules</class>.
+/// The two sub-resources precede <code>/remote-database/:id</code>.</p>
+ClassMethod RemoteDatabaseFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.RemoteDatabaseRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /remote-database/directories</code>: the bounded
+/// listing of one data server's databases (AD-21's seventh case).</p>
+ClassMethod RemoteDatabaseDirectories() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.RemoteDatabaseRules).HandleDirectories()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /remote-database</code>: the remote database
+/// form's create, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RemoteDatabaseCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.RemoteDatabaseSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /remote-database/:id</code>: the remote database
+/// form's re-point, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RemoteDatabaseUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.RemoteDatabaseSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story

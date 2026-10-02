@@ -219,8 +219,11 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['database-configuration', 'foldcase'],
     // Story 18.4: a database id is its directory, or an integrity check's set of directories.
     ['database', 'directoryset'],
+    // Story 19.2: a class or routine id may name a set of documents.
+    ['class', 'documentset'],
+    ['routine', 'documentset'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -319,7 +322,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -841,11 +844,18 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
 
   const sources = readSources();
   const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
-  assert.deepEqual(declaring.map((screen) => screen.className), ['OcuPilot.Screen.Descriptor.ProcessList'], 'Processes is the one list that declares a multi-select');
-  assert.equal(multiSelectProblem(declaring[0].declaration), null, 'and its declaration passes');
-  assert.ok(declaredStringKeys(declaring[0].declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
+  assert.deepEqual(
+    declaring.map((screen) => screen.className).sort(),
+    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.ProcessList'],
+    'Processes and, since Story 19.2, the Classes and Routines lists are the lists that declare a multi-select'
+  );
+  for (const screen of declaring) assert.equal(multiSelectProblem(screen.declaration), null, `${screen.className}'s declaration passes`);
+  const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
+  assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
+  for (const screen of declaring.filter((entry) => entry !== processes)) {
+    assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
+  }
 
-  const processes = declaring[0];
   const broken = { ...processes.declaration, multiSelect: { ...processes.declaration.multiSelect, max: 0 } };
   assert.throws(
     () => buildMirror({ ...sources, screens: sources.screens.map((screen) => (screen === processes ? { ...screen, declaration: broken } : screen)) }),

@@ -201,6 +201,12 @@ export const CONSEQUENCE_COPYMAPPINGS = 'NAMESPACE.COPYMAPPINGS';
 /** Story 16.4: a task export, which replaces a file already at its name. */
 export const CONSEQUENCE_TASKEXPORTREPLACES = 'TASK.EXPORT.REPLACES';
 
+/** Story 19.13: a System Explorer export to a server file, which replaces a file already at its name. */
+export const CONSEQUENCE_EXPLOREREXPORTREPLACES = 'EXPLORER.EXPORT.REPLACES';
+
+/** Story 19.13: a System Explorer import, which replaces each document of the same name. */
+export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
+
 /** Story 16.25, AD-4: a change to a Python language server's own settings, which resets two the read never shows. */
 export const CONSEQUENCE_PYTHONCUSTOM = 'LANGUAGESERVER.PYTHONCUSTOM';
 
@@ -212,6 +218,35 @@ export const CONSEQUENCE_LOCKINTRANSACTION = 'LOCK.INTRANSACTION';
 
 /** Story 18.15: an enable of interoperability, which on IRIS for Health changes the whole instance. */
 export const CONSEQUENCE_NAMESPACEINTEROP = 'NAMESPACE.INTEROP';
+
+/**
+ * Story 18.16: a remote database create or re-point, whose confirm lists the data server's databases
+ * before it writes. `consequenceSentence` answers `''` for it; the card states it through
+ * `remoteListSentence`, which names the data server the proposal sends.
+ */
+export const CONSEQUENCE_REMOTELIST = 'DATABASE.REMOTELIST';
+
+/** The bound the confirm's listing waits for, in seconds: `RemoteDatabasePort`'s `LISTSECONDS`. */
+export const REMOTE_DATABASE_LIST_SECONDS = 20;
+
+/** The field a remote database proposal names its data server in. */
+const REMOTE_SERVER_FIELD = 'Server';
+
+/**
+ * The card's bound sentence for a remote database proposal (AD-21's seventh case), or `''` for any
+ * other consequence: the data server is the proposal's own `Server` value -- a changed row's after
+ * value, else an unchanged row's -- and the bound is `REMOTE_DATABASE_LIST_SECONDS`. Each value is
+ * inserted through a replacer, so a name holding a placeholder is shown as written.
+ */
+export function remoteListSentence(view: Pick<ProposalCardView, 'consequence' | 'changed' | 'unchanged'>): string {
+  if (view.consequence !== CONSEQUENCE_REMOTELIST) return '';
+  const changed = view.changed.find((row) => row.field === REMOTE_SERVER_FIELD);
+  const unchanged = (view.unchanged ?? []).find((row) => row.field === REMOTE_SERVER_FIELD);
+  const server = changed !== undefined ? changed.after : (unchanged?.value ?? '');
+  return STRINGS.remoteDatabaseListConsequence
+    .replace('<server>', () => server)
+    .replace('<n>', () => String(REMOTE_DATABASE_LIST_SECONDS));
+}
 
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
@@ -243,6 +278,10 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_COPYMAPPINGS) return STRINGS.namespaceCopyMappingsConsequence;
   // The export dialog's own replace line, published once.
   if (code === CONSEQUENCE_TASKEXPORTREPLACES) return STRINGS.taskExportReplaces;
+  // An export to a server file replaces one at its name, as a task export does.
+  if (code === CONSEQUENCE_EXPLOREREXPORTREPLACES) return STRINGS.taskExportReplaces;
+  // The import dialog's own consequence line, published once.
+  if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
   // The editor's own consequence line, published once.
   if (code === CONSEQUENCE_PYTHONCUSTOM) return STRINGS.languageServerPythonConsequence;
   // The warning dialog's own consequence sentence, published once.
