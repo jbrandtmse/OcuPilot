@@ -2,7 +2,7 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 baseline_commit: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 review_loop_iteration: 0
@@ -195,6 +195,8 @@ deferred:
   - client rosters: `navigation.test.mjs` :249-266, `navigation-wire.test.mjs` :528-602, `rail-wire.spec.ts` :533-730, `screen-mirror.test.mjs` `withCriteria` :1247-1270.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs` -- rebase `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
+- [ ] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
+
 **Acceptance Criteria:**
 
 - AC1: Given probe documents in USER holding a needle, when a person searches it across classes and routines, then each match lists with its document, member and line as the instance answers them, and its document link opens that document's viewer.
@@ -232,6 +234,8 @@ Code review 2026-10-02 (four layers, full-opus): 58 rows, 18 entries (high 0, me
 Rejected: screen context lacks `Attribute` (spec's context fields; the tool row carries it) · `IncludeGenerator` sent as `includes` (generator methods see those macros; the body is AD-61 rule 3's) · "Defined in X, line " with no line (no case shown where the instance names a document without a line) · Compare's prompts and empty context (closed in the triage log; AC6) · "1 lines" plurals (spec strings) · Compare pressed with a blank side sends nothing (as Search and Macros do) · location column header, cut match line, no line anchor, no result count, per-visit Compare state (features, or the viewer's precedent) · Macros not re-run on a class edit (spec: entity `routine`) · a failed location route fails the read (fails loudly; no reachable case) · strings bound with no comment (the lead's byte-identical edit) · probe classes share a package (needs two runs at once, which the one-run rule forbids) · Search/Macros duplication and the `hits` getter (no named defect; bounded) · one line-number column (layout change, low) · search timeout (false: AD-61 rule 8 measured) · per-clause mutation lines (closed; one per AC) · 1,000-edit time cost (needs ~50k-line documents; fix adds a worker) · DESIGN.md "reserved" sentence (scoped to Release 1, still true) and the 14.3:1 figure (spec edit) · client rosters untouched and QA leg uncommitted (no defect; the lead commits).
 
 ## Spec Change Log
+
+- 2026-10-03, lead (CI rework 1): re-opened for the `[CI]` item under Tasks & Acceptance (run 37080963199, `definitions.browser-spec.mjs` test 5).
 
 - 2026-10-02, lead (implement halt resolved, by=merge_gate): `ui/tools/strings.test.mjs:575-576` moves the Fixed-strings bound from 2000 to 2100, byte-identical to Epic 18's 081bbd5e on those two lines and with no comment line of this story's (a three-way merge with 18.5's file is clean and identical to it). The lead applied the edit; `npm run test:tools` 1777/1777. The implementation is committed locally as a work-in-progress commit; `baseline_revision` stays `6f718d93`.
 
