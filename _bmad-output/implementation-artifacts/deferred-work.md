@@ -9214,8 +9214,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
 - 2026-10-03T14:19:33Z status=escalated owner=burndown by=cr note=shared shell table; design call (wrapping info row, expandable cell or scrollable tooltip) for the decision sheet
+- 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=design item for the shared data-table cell; driving cases: a view's text (up to 5,856 characters measured), a procedure's description, trigger code
 
 ### DW-1977: The SQL statements tabs' statistics are the last aggregated ones: a statement run since the instance last aggregated reads blank Executions, times and First seen, and nothing but a StatementIndex-style aggregation call fills them, so 'which statements run most often' can answer blank or stale with no sign on screen
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Measured on slot A (HSCUSTOM): freshly run statements read StatCount, StatTotal and StatFirst NULL through INFORMATION_SCHEMA.STATEMENTS; no %SYS.Task aggregates SQL statistics (only AutoStatsCollection). Design Notes accepted 'classic counts can be newer' as an inference
 - 2026-10-03T14:19:38Z status=decision-pending owner=burndown by=cr note=options: accept as is; add one sentence on the three tabs and in the tool's description that statistics are as of the last aggregation (recommended); aggregate (refused by AD-61 rule 7)
+- 2026-10-03T14:36:23Z status=routed owner=burndown by=merge_gate note=accepted as recommended: one sentence on the three statements tabs and in the tool description that the figures are as of the instance's last aggregation; a follow-up head after 19.14 merges if green and merged by 19:00Z, else Epic 19's burn-down
+
+### DW-1978: The SQL table's nine-tab strip hides its last tabs at common widths: 3 to 5 tabs fall outside the visible strip from 1024 to 1600 px (Constraints, Cached queries and SQL statements always among them); all nine fit at 1920
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
+- evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
+- 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call

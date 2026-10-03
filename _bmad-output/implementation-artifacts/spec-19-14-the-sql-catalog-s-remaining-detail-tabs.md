@@ -2,7 +2,7 @@
 title: "Story 19.14: The SQL catalog's remaining detail tabs"
 type: 'feature'
 created: '2026-10-03'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '8c24bca121f307d187915edd05ed7ec288004da9'
 baseline_commit: '8c24bca121f307d187915edd05ed7ec288004da9'
@@ -135,6 +135,8 @@ deferred: []
   - `system-explorer-sql.browser-spec.mjs`: nine table tabs; Partitions empty on `Visible`; SQL statements shows the probe statement; open a view (View info shows its text, then Fields, then SQL statements); open a procedure.
 - [ ] `ui/angular.json`, `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Repair the cut comment lines at :424, :430 and :433. Stop and ask above 3,800 kB.
 
+- [ ] [Follow-up] DW-1977 (by=merge_gate): one sentence, a Fixed string in this story's EXPERIENCE.md row, saying the statistics are as of the instance's last aggregation (a recently run statement can read blank), shown as the note on the three SQL statements tabs and in the three statements read tools' descriptions. No aggregation, no `StatementIndex`, no read changes. Pin it with a test and a `mutation:` line.
+
 **Acceptance Criteria:**
 
 - AC1: Given a table in SQL tables, when the person opens it, then the strip holds Table info, Fields, Maps/Indices, Partitions, Partition mappings, Triggers, Constraints, Cached queries and SQL statements in that order. The four new tabs show the instance's rows for that table, and switching tabs keeps the table.
@@ -182,6 +184,8 @@ Rejected:
 - spec-only: the Residual risks line about Design Notes' wording.
 
 ## Spec Change Log
+
+- 2026-10-03, lead (rework 1, orchestrator follow-up): re-opened for the `[Follow-up]` item (DW-1977, the statistics note).
 
 - 2026-10-03, lead (code review close): the statement-text cut is 1,021 characters plus `...`, as the classic tab does (review patch); the intent's Always bullet, the Long text matrix row, Design Notes and AD-36 now say so.
 
