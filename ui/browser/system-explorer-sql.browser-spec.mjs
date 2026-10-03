@@ -6,7 +6,8 @@
  * statements the probe's statement (19.14 AC1, AC4); the side bar marks SQL tables for every tab; the
  * System box adds system tables (19.5 AC1); a view's name opens View info with its text, then Fields
  * and SQL statements, and a procedure's name opens Stored procedure info, then SQL statements, each
- * tab reading the object through its own declared read (19.14 AC2, AC3, AC11). The list, the Triggers
+ * tab reading the object through its own declared read (19.14 AC2, AC3, AC11); each SQL statements tab
+ * shows the statistics note above its rows, and Partitions shows none. The list, the Triggers
  * tab and a view's three tabs, which the structural walk skips, pass its checks at 1280 light, 720
  * light and 1280 dark, with no entry beyond the baseline.
  *
@@ -140,6 +141,11 @@ async function openTab(page, route) {
   await page.keyboard.press('Enter');
 }
 
+/** The text of the read's note the list page draws above its table, or `null` when it draws none. */
+function noteShown(page) {
+  return page.evaluate(() => document.querySelector('app-list-page .ocu-list-page-note')?.textContent?.trim() ?? null);
+}
+
 /** The side bar's current entry's label, or `''`, opening the bar first where the width has yielded it. */
 async function currentEntry(page) {
   if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -210,10 +216,14 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     await openTab(page, `${TABS_ROUTE}/partitions`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/partitions/${id}`);
     await page.waitForSelector('.ocu-data-table-empty', { timeout: config.navigationTimeoutMs });
+    assert.equal(await noteShown(page), null, 'Partitions declares no note and draws none');
     // Story 19.14 AC1: SQL statements shows the probe statement, its kept literal as text.
     await openTab(page, `${TABS_ROUTE}/statements`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/statements/${id}`);
     await rowShowing(page, LITERAL);
+    // Mutation (Rule 19): drop the note paragraph from `ListPage`'s template, rebuilt and redeployed ->
+    // the three note assertions go red.
+    assert.equal(await noteShown(page), STRINGS.explorerSqlStatementsNote, 'SQL statements shows the statistics note above its rows');
     assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqltablestatements/read?`) && read.includes(`table=${encodeURIComponent(TABLE)}`)), `SQL statements reads the table through its own read: ${JSON.stringify(reads)}`);
   } finally {
     await context.close();
@@ -246,6 +256,7 @@ test('Story 19.14 AC2, AC11: a view opens to View info with its text, then Field
     await openTab(page, `${VIEWS_ROUTE}/statements`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${VIEWS_ROUTE}/statements/${id}`);
     await rowShowing(page, VIEW_LITERAL);
+    assert.equal(await noteShown(page), STRINGS.explorerSqlStatementsNote, 'the view\'s SQL statements shows the statistics note');
     assert.deepEqual(await structural(page, `${VIEWS_ROUTE}/statements/:id`), [], 'SQL statements adds no structural entry');
     for (const tool of ['explorer.sqlview', 'explorer.sqlviewfields', 'explorer.sqlviewstatements']) {
       assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`view=${encodeURIComponent(VIEW)}`)), `${tool} reads the view through its own read: ${JSON.stringify(reads)}`);
@@ -273,6 +284,7 @@ test('Story 19.14 AC3, AC11: a procedure opens to Stored procedure info, then SQ
     await openTab(page, `${PROCEDURES_ROUTE}/statements`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${PROCEDURES_ROUTE}/statements/${id}`);
     await rowShowing(page, '"NAMES"');
+    assert.equal(await noteShown(page), STRINGS.explorerSqlStatementsNote, 'the procedure\'s SQL statements shows the statistics note');
     for (const tool of ['explorer.sqlprocedure', 'explorer.sqlprocedurestatements']) {
       assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`procedure=${encodeURIComponent(QUERY)}`)), `${tool} reads the procedure through its own read: ${JSON.stringify(reads)}`);
     }

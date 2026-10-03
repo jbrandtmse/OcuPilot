@@ -46,10 +46,14 @@ ClassMethod NameFor(pDescriptor As %String) As %String
 
 /// <p>The description the model is given: <parameter>DESCRIPTION</parameter> with the descriptor's
 /// <code>toolIdentifier</code> in place of "the named screen", so each read tool says which screen it
-/// reads.</p>
+/// reads, followed by the <code>text</code> of the read's <code>note</code> where it declares one
+/// (AD-36), the sentence its screen shows above the rows.</p>
 ClassMethod Description(pDescriptor As %String = "") As %String
 {
-    Quit $Replace(..#DESCRIPTION, "the named screen", "the " _ $ClassMethod(pDescriptor, "ToolIdentifier") _ " screen")
+    Set tDescription = $Replace(..#DESCRIPTION, "the named screen", "the " _ $ClassMethod(pDescriptor, "ToolIdentifier") _ " screen")
+    Set tRead = $ClassMethod(pDescriptor, "Read")
+    If $IsObject(tRead) && (tRead.%GetTypeOf("note") = "object") Set tDescription = tDescription _ " " _ tRead.%Get("note").%Get("text")
+    Quit tDescription
 }
 
 /// <p>What <var>pDescriptor</var> requires of the caller:

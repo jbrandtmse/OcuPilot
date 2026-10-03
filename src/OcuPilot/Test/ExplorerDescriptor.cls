@@ -5,9 +5,10 @@
 /// Compare and Macros since Story 19.4, two reads with no classic page and a form page keyed to the
 /// classic Compare Routines page; the SQL catalog's four lists and a table's five parent-scoped tabs
 /// since Story 19.5, and a table's four further tabs and a view's three and a procedure's two since
-/// Story 19.14, each keyed to the classic SQL page and gated by a custom resource on it; and the area's
-/// tools since Story 19.2: twenty-four reads and the two lists' compile, delete, export, import and
-/// save, each write's baseline key, and the actions the lists declare for them.</p>
+/// Story 19.14, each keyed to the classic SQL page and gated by a custom resource on it, the three SQL
+/// statements reads carrying the statistics note; and the area's tools since Story 19.2: twenty-four
+/// reads and the two lists' compile, delete, export, import and save, each write's baseline key, and
+/// the actions the lists declare for them.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registry and the classic portal's
 /// classes. Live-safe: it reads and writes nothing.</p>
 Class OcuPilot.Test.ExplorerDescriptor Extends %UnitTest.TestCase
@@ -303,6 +304,37 @@ Method TestTheViewAndProcedureTabsFormTheirGroups()
     }
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
     Do $$$AssertStatusOK(tSC, "the roster, its tab groups among it, validates: " _ $Get(tProblem))
+}
+
+/// <p>Story 19.14 (DW-1977): the three SQL statements reads declare the statistics note, and the
+/// description each read tool is registered with is the read tools' sentence naming its screen, then
+/// the note's text; Table info's read declares none, and its tool's description is that sentence
+/// alone.</p>
+/// <p>Mutation (Rule 19): drop the note from
+/// <class>OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements</class> -- its two legs go red; drop the
+/// append from <method>OcuPilot.Screen.Tool.Read.Description</method>, or replace the sentence with the
+/// note instead of appending it -- the three description legs go red.</p>
+Method TestTheStatementsToolsEndWithTheStatisticsNote()
+{
+    Set tText = "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
+    Set tWant = {"key": "explorerSqlStatementsNote", "text": (tText)}.%ToJSON()
+    For tCase = $ListBuild("ExplorerSqlTableStatements", "explorer.sqltablestatements.read"), $ListBuild("ExplorerSqlViewStatements", "explorer.sqlviewstatements.read"), $ListBuild("ExplorerSqlProcedureStatements", "explorer.sqlprocedurestatements.read") {
+        Set tClass = "OcuPilot.Screen.Descriptor." _ $List(tCase, 1)
+        Set tRead = $ClassMethod(tClass, "Read")
+        Do $$$AssertEquals($Select($IsObject(tRead) && (tRead.%GetTypeOf("note") = "object"): tRead.note.%ToJSON(), 1: ""), tWant, tClass _ ": its read declares the note")
+        Kill tEntry
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " resolves")
+        Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
+        Do $$$AssertEquals(tDescription, "Read the rows the " _ $Piece($List(tCase, 2), ".", 1, 2) _ " screen lists, bounded and with secret fields removed. " _ tText, $List(tCase, 2) _ ": its description is the read sentence, then the note")
+    }
+    Set tRead = ##class(OcuPilot.Screen.Descriptor.ExplorerSqlTable).Read()
+    Do $$$AssertEquals(tRead.%GetTypeOf("note"), "unassigned", "Table info's read declares no note")
+    Kill tEntry
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.sqltable.read", .tEntry, 1)
+    Do $$$AssertStatusOK(tSC, "explorer.sqltable.read resolves")
+    Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
+    Do $$$AssertEquals(tDescription, "Read the rows the explorer.sqltable screen lists, bounded and with secret fields removed.", "explorer.sqltable.read's description is the read sentence alone")
 }
 
 /// <p>Stories 19.5 AC6 and 19.14 AC9: a custom resource an operator assigns to the classic SQL page

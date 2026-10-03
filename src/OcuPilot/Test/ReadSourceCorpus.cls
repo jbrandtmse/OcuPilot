@@ -8,8 +8,9 @@
 /// when it carries one (Story 6.7's route-id GET cases), sets <code>declaration.read.fields</code>,
 /// <code>filter</code>, <code>sort</code>, <code>table</code> and <code>context</code> when it carries
 /// them (Story 6.9's parts cases, whose fields cannot start with the shared declaration's own), sets
-/// <code>declaration.area</code> when it carries one (Story 16.9's timeline cases), and names the
-/// exact sentence both engines return, or <code>null</code> for a sound shape.</p>
+/// <code>declaration.area</code> when it carries one (Story 16.9's timeline cases), sets
+/// <code>declaration.read.note</code> when it carries one, <code>null</code> included (Story 19.14),
+/// and names the exact sentence both engines return, or <code>null</code> for a sound shape.</p>
 Class OcuPilot.Test.ReadSourceCorpus Extends %RegisteredObject
 {
 
@@ -157,7 +158,15 @@ XData Cases
     {"name": "a sound monitor part beside an admin part (Story 16.7)", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "DASHBOARDMAIN", "as": "Dashboard"}, {"port": "monitor", "type": "SENSORS", "as": "Sensors"}]}, "fields": ["Sensors.cpuUsage", "Dashboard.Status.UpTime"], "filter": [], "sort": {"fields": ["Dashboard.Status.UpTime"], "default": "Dashboard.Status.UpTime", "direction": "asc"}, "table": {"columns": [{"field": "Dashboard.Status.UpTime", "labelKey": "tableColumnName", "kind": "name"}], "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""}, "context": {"fields": ["Sensors.cpuUsage", "Dashboard.Status.UpTime"], "secretFields": []}, "expected": null},
     {"name": "a part port that is neither admin nor monitor", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"port": "mgmnt", "type": "SENSORS", "as": "Sensors"}]}, "expected": "read.source.parts entry #1 port 'mgmnt' is not 'admin' or 'monitor', the two ports a part is answered through (AD-36)"},
     {"name": "a monitor part of another type", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"port": "monitor", "type": "DASHBOARDMAIN", "as": "Sensors"}]}, "expected": "read.source.parts entry #1 type 'DASHBOARDMAIN' is declared on a monitor part, which answers only 'SENSORS' (AD-29, AD-36)"},
-    {"name": "a second monitor part", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"port": "monitor", "type": "SENSORS", "as": "Sensors"}, {"port": "monitor", "type": "SENSORS", "as": "More"}]}, "expected": "read.source.parts entry #2 is a second monitor part, and a parts read names at most one (AD-36)"}
+    {"name": "a second monitor part", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"port": "monitor", "type": "SENSORS", "as": "Sensors"}, {"port": "monitor", "type": "SENSORS", "as": "More"}]}, "expected": "read.source.parts entry #2 is a second monitor part, and a parts read names at most one (AD-36)"},
+    {"name": "a note of a key and a sentence is sound (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": "One sentence about the rows."}, "expected": null},
+    {"name": "a null note declares none (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": null, "expected": null},
+    {"name": "a note that is a string (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": "One sentence about the rows.", "expected": "read.note is not an object declaring its key and text (AD-36)"},
+    {"name": "a note that is an array (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": ["explorerSqlStatementsNote"], "expected": "read.note is not an object declaring its key and text (AD-36)"},
+    {"name": "a note with an unknown key (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": "One sentence.", "severity": "info"}, "expected": "read.note declares the unknown key 'severity'"},
+    {"name": "a note with no text (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote"}, "expected": "read.note.text is not a non-empty string (AD-36)"},
+    {"name": "a note with an empty key (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "", "text": "One sentence."}, "expected": "read.note.key is not a non-empty string (AD-36)"},
+    {"name": "a note whose text is a number (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": 5}, "expected": "read.note.text is not a non-empty string (AD-36)"}
   ]
 }
 }
@@ -183,8 +192,8 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 }
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>source</code> in place, its
-/// <code>criteria</code> when it carries one, and its <code>parentScope</code> when it carries one
-/// (Story 6.7), as a new object.</p>
+/// <code>criteria</code> when it carries one, its <code>parentScope</code> when it carries one
+/// (Story 6.7), and its read <code>note</code> when it carries one (Story 19.14), as a new object.</p>
 /// <p>A part-shaped case may also override <code>fields</code>, <code>filter</code>,
 /// <code>sort</code>, <code>table</code> and <code>context</code> -- the corpus's shared OAuth
 /// declaration carries fields no parts field can start with, so a case that exercises a parts
@@ -202,6 +211,10 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     If pCase.%GetTypeOf("table") = "object" Do tDeclaration.%Set("table", ##class(%DynamicObject).%FromJSON(pCase.table.%ToJSON()))
     If pCase.%GetTypeOf("context") = "object" Do tDeclaration.%Set("context", ##class(%DynamicObject).%FromJSON(pCase.context.%ToJSON()))
     If pCase.%GetTypeOf("area") = "string" Do tDeclaration.%Set("area", pCase.area)
+    Set tNoteType = pCase.%GetTypeOf("note")
+    If (tNoteType = "object") || (tNoteType = "array") Do tDeclaration.read.%Set("note", ##class(%DynamicAbstractObject).%FromJSON(pCase.note.%ToJSON()))
+    If (tNoteType = "null") Do tDeclaration.read.%Set("note", "", "null")
+    If (tNoteType = "string") || (tNoteType = "number") Do tDeclaration.read.%Set("note", pCase.note, tNoteType)
     Quit tDeclaration
 }
 
