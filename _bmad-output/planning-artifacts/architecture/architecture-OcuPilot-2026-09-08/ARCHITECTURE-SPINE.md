@@ -333,6 +333,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`journal-settings` is a singleton** (Story 18.18) [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
 
+  **A `journal-record` id is the record's `Address` within the file its list read, kept exactly**; it names no write target (Story 18.19) [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20].
+
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
 - **Binds:** FR-14; every list and detail screen
@@ -396,6 +398,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The eighth is a journal file** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]. Every journal route takes a full path, so `AdminPort` accepts a `file` on `Journal.File` (and on `Journal.Record`, which Story 18.19 consumes) only when it equals, character for character, a `Name` the instance's journal file list answers at that call (`Journal.File` `LIST`, `%SYS.Journal.File:ByTimeReverseOrder`), read whole and never cached, and refuses any other `JOURNAL.FILE.UNLISTED` before that call: a file copied elsewhere, or a non-journal file, is never opened. The sixth case's overwrite refusal also covers every directory a file the journal list names sits in, and the write-image journal's directory (`Config.config` `wijdir`, the manager directory when empty), read at call time (DW-1797). The list stops at the first missing file, so a former directory older than a gap is not refused (named limit, Story 18.5).
 
   Journal settings' two directories are sixth-case vendor-writes directories, named by a root and a relative name, which must already exist and are never cleared (Story 18.18) [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
+
+  **The record list's filter is never code a caller writes** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]. On `Journal.Record` `LIST`, `AdminPort` takes `matchColumnName` only from the classic page's eight columns and `matchOperator` only from its six operators, because the vendor splices the operator into code it executes (`%SYS.Journal.Record` `ZUFetch`); it refuses anything else `JOURNAL.FILTER.SHAPE` before any vendor call, sends the three filter keys together or not at all, and takes `initialOffset`, and the record `GET`'s `address`, only as digits. `NewValue`, `OldValue` and `GlobalReference` are never matchable.
 
   Where a log source is a **global** rather than a file, the same discipline governs the namespace: it is chosen from the set the user can read, never taken as a caller string (AD-48).
 
@@ -467,6 +471,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.15's queued write** [AMENDED 2026-10-01, Story 18.15 spec gate, Rule 20]: `QUEUEDWRITES` also names `Namespace.Namespace` `INTEROP` (enable interoperability), which takes no body and queues through `ShouldRunAsync()` (read on this build); its finished result is read once, by the port's one poller, and past the bound it has started.
 
   **Story 18.5's queued write** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: `QUEUEDWRITES` also names `Journal.File` `INTEGRITYCHECK`, which queues through `ShouldRunAsync()` (read in the vendor source at Story 18.5's plan; Task 0 measures it), carries a port-built `{CheckDetails}` and changes nothing; its console lines are read once with its end.
+
+  **Story 18.19's self-queued read** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `Journal.Record` `LIST` queues itself and is polled like the audit list. Because the vendor's list counts each kept row twice, the port sends twice the rows the read asks (checked on slot A on 2026-09-28: 10 gave 5 and 40 gave 20; Story 18.19's Task 0 confirms it), which is exact only when no row is skipped. Its rows and filter sit in the vendor's task row until the port deletes it or AD-37's sweep does.
 
 ### AD-27 — The dependency on the experimental admin API is confined to the port and always has a fallback
 
@@ -589,6 +595,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Only the vendor's own 404 reads as no rows** [AMENDED 2026-10-02, Story 18.5 code review, Rule 20]: a single-object `GET` read answers no rows for a 404 the port maps to `PORT.NOTFOUND`, or one carrying no code; a 404 on any other code is a refusal and fails the read, so a journal file AD-21's eighth case refuses `JOURNAL.FILE.UNLISTED` is never shown as a file holding no databases (`Screen/Read.cls` `IsAbsence`).
 
+  **A journal record's values are screen-only** (Story 18.19) [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `NewValue`, `OldValue` and `GlobalReference` reach the journal record detail dialog through `GET /journal/record`, under the record browser's pairs and AD-21's eighth case, and never reach a read tool, screen context, the model, the ledger or a log line, because the payload has no schema and can hold patient data or a secret a vendor body journaled (AD-48's reasoning). The record list's eight fields, `GlobalNode` among them, are ordinary row fields, and its paging is the offset criterion. **A criterion may declare `hint`**: one sentence the read tool publishes as that criterion's description in place of its kind's generic one; the screen never shows it.
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -703,6 +711,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.5's `CLASSICPAGES`** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: switch file `%cspapp.op.utilsysjournalproperties`, switch directory `%cspapp.op.utilsysjournalswitchdirectory`, and the integrity check `%cspapp.op.utilsysjournalintegrity`, each Hidden and spelled as `NormalizePage` answers (read at Story 18.5's plan; Task 0 confirms).
 
   **Story 18.18's settings update declares no `CLASSICPAGES`**: the descriptor's own page, `%CSP.UI.Portal.Journal`, performs it [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
+
+  **Story 18.19's Journal records** declares the classic record browser `%cspapp.op.utilsysjournal` (Hidden, spelled as `NormalizePage` answers, measured at Story 18.5's Task 0); it has no write tool, so it declares no `CLASSICPAGES` [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20].
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
