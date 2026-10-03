@@ -447,6 +447,27 @@ These rows are Part A's.
 - **A6:** Given a bad name, address or port, an absent target, or a caller lacking a declared pair, when either caller writes, then it is refused on the field, as not found, or 403 naming the pair, and nothing is sent.
 - **A7:** Given the rosters, when the story lands, then License key and License servers are OS management's fifteenth and sixteenth entries with three prompts each, the four keys are in the baseline (activate and delete disabled), every roster and pinned side-bar list includes them, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1005 lines.
 
+### Review Findings
+
+Code review 2026-10-03 (`full-opus`; diff `23b5dfc2..30de9834` plus QA's uncommitted leg; 49 rows, 40 entries).
+
+- [x] [Review][Patch] [med] The address rule accepted what `Config.Host` refuses (a space, a trailing dot, 256 characters, a non-string), so the vendor's #7200 reached the caller as a logged internal error and raised the monitor state -- `LicenseRules.IsAddress` now applies `Config.Host`'s own check, `ADDRESSMAXLENGTH` 255 [LicenseRules.cls]
+- [x] [Review][Patch] [med] A6 was unpinned for the agent's update, and the matrix lacked a dotted name and a refused address -- update legs (port 0, 65536, empty, `my host`) on both callers, plus create legs [LicenseServerWrite.cls]
+- [x] [Review][Patch] [med] Printing in the dark theme put light text on bare paper -- `print-color-adjust: exact` on print media, A4 browser leg [_print.scss, license-key.browser-spec.mjs]
+- [x] [Review][Patch] [med] The key-secrecy test's proposal leg could not fail on the paths it drove, and its name still said Ledger -- leg dropped (the roster test owns it), method renamed `TestTheKeyTextReachesNoLogOrAnswer`, log-leg mutation recorded [LicenseKey.cls]
+- [x] [Review][Patch] [med] The delete's real key-server read was unpinned (every leg passed with a `KeyServer` answering `""`) -- equality with `$SYSTEM.License.KeyServer()` [LicenseDescriptor.cls]
+- [x] [Review][Patch] [med] Four of five reduction kinds were unpinned on the server and three on the client -- `LicensePort.Answer` and `validationOf` pinned over all five [LicenseDescriptor.cls, license-key.page.spec.ts]
+- [x] [Review][Patch] [low] The `CHECKTYPES` 500 branch accepted any non-empty answer -- now only `IsValid` false (point (e)) [AdminPort.cls]
+- [x] [Review][Patch] [low] `License.Key/PUT/400` in `UNLOGGEDREFUSALS` and `LicensePort.Snippet`'s two steps were unpinned -- pinned [LicenseDescriptor.cls]
+- [x] [Review][Patch] [low] No server write was run without `%Admin_Manage:USE` -- create, update and delete legs [LicenseWriteGate.cls]
+- [x] [Review][Patch] [low] Browser-menu print kept a stale printed-by time; a check with no sentence showed nothing; a badly shaped name was marked only on Save; Load from file had no test -- `beforeprint` host listener, "request refused" fallback, the blur look-up's 422, four component tests [license-key.page.ts, license-server-form.store.ts, specs]
+- [x] [Review][Patch] [low] Docs and test hygiene: `LicenseServerSave`'s body-key sentence, the form page's name sentence, an unguarded `%FromJSON`, QA's leg title, mutation comment and header
+- [x] [Review][Defer] [low] wontfix-accepted: DW-1989 (screen delete lacks the multi-key line), DW-1990 (form/name gate refusal untested), DW-1991 (`LicenseLines` cost), DW-1992 (restart unstated after Activate), DW-1993 (validate's 400 reason), DW-1994 ("thirteen" labels, contended), DW-1995 (contended lines rewritten)
+- [x] [Review][Defer] [low] wontfix-theoretical: DW-1996, DW-1997 (`Taken`), DW-1998 (`License.Key/PUT` on `AdminPort`), DW-1999 (`<MAXSTRING>`), DW-2000 (file-read race), DW-2001 (queued check), DW-2002 (wire 200 needs a valid key)
+- [x] [Review][Defer] [med] The Save's look-up-then-upsert window is DW-1882's (no per-target hold for a Save) -- occurrence appended
+- [x] [Review][Dismiss] by-design: Task 0's `Run`/`RunAs`/`Diff` helpers (Task 0 step 1 names them); a failed `Upgrade()` after `iris.key` is written (Named limit 1); the agent's taken-name create refused by AD-54's absence read
+- [x] [Review][Dismiss] false: the stored name is upper case by `CAPITALNAME` 1 (measured); a `secretFields` descriptor's screen context carries no rows (`Context.Build`, pinned by `TurnContext`); a closed dialog's activation still re-reads on the change event; the Auto Run Result records the implement pass
+
 ## Spec Change Log
 
 - 2026-10-03, runner (orchestrator merge gate): split approved; this spec keeps Part A, and Parts B and C (Stories 18.20 and 18.21) were removed from it (their outlines stay at commit `fe080653`). Decisions 1 to 6 confirmed. Task 0 step e and its halt condition gained the orchestrator's activation-probe condition. The runner wrote AD-13, AD-21, AD-36, AD-44, AD-51, AD-52 and AD-53 at the spec gate; AD-8's pairs and any AD-15/AD-53 vendor-event case wait for Task 0.
@@ -643,6 +664,16 @@ These rows are Part A's.
 - mutation: `LicenseRules.IsPort` drops the range → `LicenseServerWrite.TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite` red alone, port 65536 written (run 4532)
 - mutation: `osmgmt.licensekey.activate` dropped from the baseline → `GovernanceBaseline` red on both its key-line and disabled-line tests (run 4533)
 - mutation: `LicenseKey` `sideBarPosition` 0 → `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 4534), and `navigation.test.mjs` red on its two OS management rosters after the mirror is regenerated
+- mutation: `LicenseRules.IsPort`'s shape match admits port 0 → `license-servers.browser-spec.mjs` A6 red, the Port field never refusing (browser run 2026-10-03T21:25Z, after reload on `ocupilot-b-ci`; reverted, 3/3 green again)
+- (QA) `ui/browser/license-servers.browser-spec.mjs`: added the A6 refusal-on-a-field leg (create with port 0 stays on the form, Port marked invalid, nothing written)
+- (review) mutation: `LicenseServerUpdate.ArgumentProblem` answers no problem → `LicenseServerWrite.TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite` red alone, on the four agent-update legs (run 4991)
+- (review) mutation: `LicenseRules.IsAddress` accepts any non-blank text → the same test red alone, on both callers' `my host` and 256-character legs, each then refused by the vendor with #7200 (run 4992)
+- (review) mutation: `LicenseServerDelete.KeyServer` reads `KeyServer` → `LicenseDescriptor.TestTheDeleteNamesAMultiServerKeyAsItsConsequence` red alone, on the key-server leg (run 4993)
+- (review) mutation: `LicensePort.REDUCTIONKINDS` `Cores` → `LicenseDescriptor.TestTheLicensePortAnswersEveryReductionAndScriptsBothSteps` red alone (run 4994)
+- (review) mutation: `LicensePort.Validate` writes its text to `messages.log` → `LicenseKey.TestTheKeyTextReachesNoLogOrAnswer` red alone (run 4995)
+- (review) mutation: `_print.scss` loses `print-color-adjust: exact` → `license-key.browser-spec.mjs` A4 red alone, `'economy' !== 'exact'`, after rebuild and redeploy (browser run 2026-10-03T22:11Z)
+- (review) mutation: `REDUCTION_SENTENCES` loses `Product`, the `beforeprint` host listener is dropped, `onValidate`'s fallback passes `''`, `onFile` sets `''`, `onBlur`'s 422 arm is skipped → the five new component tests red, each alone (vitest 2026-10-03T22:05Z; the three reshaped ones again at 22:11Z)
+- (review) verification: `LicenseDescriptor` 8/8, `LicenseKey` 9/9, `LicenseServerWrite` 6/6, `LicenseWriteGate` 5/5 (runs 4996-4999, `%UnitTest_Result`); tools 1781/1781; components 2264/2264; build within 2677kB; `license-key` and `license-servers` specs 6/6 on the redeployed bundle
 
 ## Auto Run Result
 

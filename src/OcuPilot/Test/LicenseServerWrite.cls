@@ -173,14 +173,15 @@ Method TestADeleteRemovesTheServerOnBothCallers()
     Do $$$AssertTrue((tListed '= "") && '(tListed [ ",OCUPROBE186D,") && '(tListed [ ",OCUPROBE186E,"), "neither is listed: " _ tListed)
 }
 
-/// <p>A6: a name of the wrong shape or one the instance holds in any case, an empty address, and a
-/// port outside 1 to 65535 or not a number are each refused on their field on both callers, before any
-/// vendor write.</p>
+/// <p>A6: a name of the wrong shape or one the instance holds in any case, an address that is empty or
+/// one <class>Config.Host</class> refuses, and a port outside 1 to 65535 or not a number are each
+/// refused on their field on both callers' create, and an address or port of either kind on both
+/// callers' update, before any vendor write.</p>
 /// <p>Mutation (Rule 19): drop the range from <method>OcuPilot.Area.OsMgmt.LicenseRules.IsPort</method>
 /// -- port 65536 is written and this goes red.</p>
 Method TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite()
 {
-    For tCase = $ListBuild("local", "127.0.0.1", "4999", "Name:LICENSE.SERVER.NAME.TAKEN"), $ListBuild("1 a", "127.0.0.1", "4999", "Name:LICENSE.SERVER.NAME.SHAPE"), $ListBuild("ocuprobe186r", "", "4999", "Address:LICENSE.SERVER.ADDRESS"), $ListBuild("ocuprobe186r", "127.0.0.1", "0", "Port:LICENSE.SERVER.PORT"), $ListBuild("ocuprobe186r", "127.0.0.1", "65536", "Port:LICENSE.SERVER.PORT"), $ListBuild("ocuprobe186r", "127.0.0.1", "x", "Port:LICENSE.SERVER.PORT") {
+    For tCase = $ListBuild("local", "127.0.0.1", "4999", "Name:LICENSE.SERVER.NAME.TAKEN"), $ListBuild("1 a", "127.0.0.1", "4999", "Name:LICENSE.SERVER.NAME.SHAPE"), $ListBuild("a.b", "127.0.0.1", "4999", "Name:LICENSE.SERVER.NAME.SHAPE"), $ListBuild("ocuprobe186r", "", "4999", "Address:LICENSE.SERVER.ADDRESS"), $ListBuild("ocuprobe186r", "my host", "4999", "Address:LICENSE.SERVER.ADDRESS"), $ListBuild("ocuprobe186r", $Translate($Justify("", 256), " ", "a"), "4999", "Address:LICENSE.SERVER.ADDRESS"), $ListBuild("ocuprobe186r", "127.0.0.1", "0", "Port:LICENSE.SERVER.PORT"), $ListBuild("ocuprobe186r", "127.0.0.1", "65536", "Port:LICENSE.SERVER.PORT"), $ListBuild("ocuprobe186r", "127.0.0.1", "x", "Port:LICENSE.SERVER.PORT") {
         Do $ClassMethod(..#SEAM, "Clear")
         Set tBody = {}
         Do tBody.%Set("Name", $List(tCase, 1), "string")
@@ -199,6 +200,20 @@ Method TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite()
         Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.Error).ReasonForViolation($Piece($List(tCase, 4), ":", 2))), $ListToString(tCase, " ") _ ": and the agent's is refused with the same sentence: " _ tProblem)
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "no probe server was created")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBE186W"), "a probe license server to update")
+    For tCase = $ListBuild("Port", 0, "Port:LICENSE.SERVER.PORT"), $ListBuild("Port", 65536, "Port:LICENSE.SERVER.PORT"), $ListBuild("Address", "", "Address:LICENSE.SERVER.ADDRESS"), $ListBuild("Address", "my host", "Address:LICENSE.SERVER.ADDRESS") {
+        Do $ClassMethod(..#SEAM, "Clear")
+        Set tBody = {}
+        Do tBody.%Set($List(tCase, 1), $List(tCase, 2), $Select($List(tCase, 1) = "Port": "number", 1: "string"))
+        Set tSC = $ClassMethod(..#SAVE, "Handle", "update", "OCUPROBE186W", tBody, .tAnswer, .tStatus)
+        Do $$$AssertEquals(tStatus _ " " _ ..Violation(tAnswer), "422 " _ $List(tCase, 3), $ListToString(tCase, " ") _ ": the form's update is refused on its field")
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", $ListToString(tCase, " ") _ ": before any vendor write")
+        Do tBody.%Set("Name", "OCUPROBE186W", "string")
+        Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, "OCUPROBE186W", tBody, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.Error).ReasonForViolation($Piece($List(tCase, 3), ":", 2))), $ListToString(tCase, " ") _ ": and the agent's update is refused with the same sentence: " _ tProblem)
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", $ListToString(tCase, " ") _ ": with nothing written")
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", "OCUPROBE186W", "Address") _ ":" _ $ClassMethod(..#PROBE, "Stored", "OCUPROBE186W", "Port"), $Parameter(..#PROBE, "SERVERADDRESS") _ ":" _ $Parameter(..#PROBE, "SERVERPORT"), "and the server is as seeded")
 }
 
 /// <p>A6: an update or delete of a server the instance no longer defines sends nothing: the Save and

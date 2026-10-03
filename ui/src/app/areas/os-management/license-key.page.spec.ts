@@ -89,7 +89,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function mount(options: { validate?: 'valid' | 'invalid'; activate?: 'ok' | 'invalid' } = {}) {
+async function mount(options: { validate?: 'valid' | 'invalid' | 'unreached'; activate?: 'ok' | 'invalid' } = {}) {
   TestBed.resetTestingModule();
   const declaration = SCREENS.find((screen) => screen.descriptor === LICENSE_KEY) ?? null;
   const sent: Sent[] = [];
@@ -101,6 +101,7 @@ async function mount(options: { validate?: 'valid' | 'invalid'; activate?: 'ok' 
       }
       if (path === LICENSE_KEY_VALIDATE_PATH) {
         if ((options.validate ?? 'valid') === 'invalid') return INVALID as unknown as JsonResult<T>;
+        if (options.validate === 'unreached') return { kind: 'error', status: 0, code: null, reason: null, detail: null };
         return { kind: 'ok', status: 200, body: VALID as T };
       }
       if (path === ACTION_PATH) {
@@ -279,6 +280,30 @@ describe('License key', () => {
     expect(button(mounted.host, 'activate').getAttribute('aria-disabled')).toBe('true');
   });
 
+  it('A2: a check that never reached the instance says so in the dialog, and Activate stays unavailable', async () => {
+    const mounted = await mount({ validate: 'unreached' });
+    await openDialog(mounted);
+    await typeKey(mounted, KEY_TEXT);
+    button(mounted.host, 'validate').click();
+    await settle(mounted.fixture);
+    // Mutation (Rule 19): pass the answer's empty reason through unchanged -> red.
+    expect(mounted.host.querySelector('[role="dialog"] .ocu-banner-warning')?.textContent?.trim()).toBe(STRINGS.connectivityRequestRefused);
+    expect(button(mounted.host, 'activate').getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('Load from file reads the picked key file into the field, and nothing is sent', async () => {
+    const mounted = await mount();
+    await openDialog(mounted);
+    const input = mounted.host.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.getAttribute('accept')).toBe('.key');
+    Object.defineProperty(input, 'files', { value: [new File([KEY_TEXT], 'probe.key', { type: 'text/plain' })], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await settle(mounted.fixture);
+    // Mutation (Rule 19): make onFile's reader set '' -> red.
+    expect((mounted.host.querySelector(`#${LICENSE_KEY_TEXT_ID}`) as HTMLTextAreaElement).value).toBe(KEY_TEXT);
+    expect(mounted.sent.some((entry) => entry.body.includes(MARKER))).toBe(false);
+  });
+
   it('closing the dialog clears the text', async () => {
     const mounted = await mount();
     await openDialog(mounted);
@@ -307,6 +332,20 @@ describe('License key', () => {
     // Print sits outside the region, so print media shows the fields alone.
     expect(region?.contains(button(mounted.host, 'print'))).toBe(false);
   });
+
+  it("A4: the browser's own print stamps the printed-by time too", async () => {
+    const mounted = await mount();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(2031, 0, 2, 3, 4, 5));
+      window.dispatchEvent(new Event('beforeprint'));
+    } finally {
+      vi.useRealTimers();
+    }
+    await settle(mounted.fixture);
+    // Mutation (Rule 19): drop the page's `beforeprint` listener -> red.
+    expect(mounted.host.querySelector('[data-license="printed"]')?.textContent?.trim()).toBe('Printed by probeuser on 2031-01-02 03:04:05.');
+  });
 });
 
 describe('License key helpers', () => {
@@ -329,6 +368,32 @@ describe('License key helpers', () => {
       features: [],
     });
     expect(answer).toEqual({ requiresRestart: false, lines: [STRINGS.licenseKeyReductionUsers.replace('<from>', () => '$&').replace('<to>', '5')] });
+  });
+
+  it('validationOf states every reduction kind LicensePort names, in its order', () => {
+    const answer = validationOf({
+      valid: true,
+      requiresRestart: true,
+      reductions: [
+        { kind: 'Cores', from: '20', to: '8' },
+        { kind: 'Users', from: '25', to: '5' },
+        { kind: 'Server', from: 'Multi', to: 'Single' },
+        { kind: 'LicenseType', from: 'Concurrent User', to: 'Named User' },
+        { kind: 'Product', from: 'Enterprise', to: 'Standard' },
+      ],
+      features: [],
+    });
+    // Mutation (Rule 19): drop a kind from REDUCTION_SENTENCES -> red.
+    expect(answer).toEqual({
+      requiresRestart: true,
+      lines: [
+        STRINGS.licenseKeyReductionCores.replace('<from>', '20').replace('<to>', '8'),
+        STRINGS.licenseKeyReductionUsers.replace('<from>', '25').replace('<to>', '5'),
+        STRINGS.licenseKeyReductionServer.replace('<from>', 'Multi').replace('<to>', 'Single'),
+        STRINGS.licenseKeyReductionLicenseType.replace('<from>', 'Concurrent User').replace('<to>', 'Named User'),
+        STRINGS.licenseKeyReductionProduct.replace('<from>', 'Enterprise').replace('<to>', 'Standard'),
+      ],
+    });
   });
 
   it('printedTime reads the local date and clock time', () => {

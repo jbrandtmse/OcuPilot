@@ -147,6 +147,8 @@ export function printedTime(date: Date): string {
   selector: 'app-license-key-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog],
+  // The browser's own print (its menu or shortcut) stamps the time too, not only Print here.
+  host: { '(window:beforeprint)': 'onBeforePrint()' },
   template: `<section class="ocu-details-page" [attr.aria-busy]="busy">
     @if (faultFlag) {
       <div class="ocu-data-table-refusal" role="alert">
@@ -266,7 +268,7 @@ export class LicenseKeyPage {
 
   private readonly working = signal(false);
 
-  /** When Print was last pressed, which the print-only line names. */
+  /** When the page was last printed, which the print-only line names. */
   private readonly printedAt = signal<Date>(new Date());
 
   /** Which request is current; an answer carrying an older one is stale. */
@@ -401,8 +403,12 @@ export class LicenseKeyPage {
   }
 
   protected onPrint(): void {
-    this.printedAt.set(new Date());
+    this.onBeforePrint();
     window.print();
+  }
+
+  protected onBeforePrint(): void {
+    this.printedAt.set(new Date());
   }
 
   protected closeDialog(): void {
@@ -452,7 +458,8 @@ export class LicenseKeyPage {
     this.working.set(false);
     if (result.kind !== 'ok') {
       this.validation.set(null);
-      this.refused(result.kind === 'error' ? violationsOf(result) : [], result.kind === 'error' ? (result.reason ?? '') : '');
+      // An answer with no sentence, such as a request that never reached the instance, reads "request refused".
+      this.refused(result.kind === 'error' ? violationsOf(result) : [], (result.kind === 'error' && result.reason) || STRINGS.connectivityRequestRefused);
       return;
     }
     const answer = validationOf(result.body);
@@ -478,7 +485,7 @@ export class LicenseKeyPage {
     }
     const refusal = this.handler.lastRefusal();
     this.validation.set(null);
-    this.refused(refusal?.violations ?? [], refusal?.reason ?? '');
+    this.refused(refusal?.violations ?? [], refusal === null ? '' : refusal.reason || STRINGS.connectivityRequestRefused);
   }
 
   // --- internals -------------------------------------------------------------------------------

@@ -154,17 +154,17 @@ Method TestTheActivationValidatesThenWritesOnlyWhenValid()
 }
 
 /// <p>A3: a key text carrying a marker, checked and activated through the seam and checked by the
-/// vendor, reaches no <code>messages.log</code> or <code>alerts.log</code> line, proposal or answer.
-/// A screen action writes no ledger row; the ledger leg is
-/// <method>TestTheActivationIsAbsentFromEveryRosterTheAgentSees</method>'s, where a model's call does.</p>
+/// vendor, reaches no <code>messages.log</code> or <code>alerts.log</code> line and no answer. A
+/// screen action mints no proposal and writes no ledger row; the proposal and ledger legs are
+/// <method>TestTheActivationIsAbsentFromEveryRosterTheAgentSees</method>'s, where a model's call is
+/// refused and ledgered.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.LicensePort.Validate</method> log the text it
 /// checks -- the log leg goes red.</p>
-Method TestTheKeyTextReachesNoLogLedgerProposalOrAnswer()
+Method TestTheKeyTextReachesNoLogOrAnswer()
 {
     Set tMarker = "OCUPROBE186MARKER" _ $Translate($ZTimeStamp, ",.", "")
     Set tFrom = $ClassMethod(..#PROBE, "LineCount", "messages.log")
     Set tAlertsFrom = $ClassMethod(..#PROBE, "LineCount", "alerts.log")
-    Set tProposals = ..Count("SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ToolName) = ?", ..#TOOL)
     Set tAnswers = ""
     Set tSC = $ClassMethod(..#SEAM, "Validate", tMarker, .tAnswer, .tHttp, .tFault)
     Set tAnswers = tAnswers _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: "")
@@ -178,7 +178,6 @@ Method TestTheKeyTextReachesNoLogLedgerProposalOrAnswer()
     Set tLines = $ClassMethod(..#PROBE, "LinesAfter", "messages.log", tFrom)
     Do $$$AssertTrue(tLines.%ToJSON() '[ tMarker, "no messages.log line carries it")
     Do $$$AssertTrue($ClassMethod(..#PROBE, "LinesAfter", "alerts.log", tAlertsFrom).%ToJSON() '[ tMarker, "nor any alerts.log line")
-    Do $$$AssertEquals(..Count("SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ToolName) = ?", ..#TOOL), tProposals, "and no proposal was minted")
 }
 
 /// <p>A3, AD-53: the activation is in neither the provider's tool list, the dispatch lookup, a

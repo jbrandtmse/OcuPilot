@@ -1,3 +1,5 @@
+Include %syINET
+
 /// <p>The licensing screens' rules (AD-39, AD-55, Story 18.6): the one rule set every caller of
 /// <class>OcuPilot.Screen.Tool.LicenseServerCreate</class> and
 /// <class>OcuPilot.Screen.Tool.LicenseServerUpdate</class> applies before the port is touched
@@ -6,8 +8,10 @@
 /// screen-only check (<method>HandleValidate</method>).</p>
 /// <p><b>The rules close the vendor's gaps</b>: the instance accepts a name with a space or a dot and
 /// any port, 0 and 70000 included (measured at Story 18.6's Task 0), and each is refused here, on both
-/// callers. Every sentence is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s, and every read
-/// is made as the caller through the tools' own port.</p>
+/// callers. An address is held to <class>Config.Host</class>'s own check
+/// (<method>IsAddress</method>), so one the vendor would refuse is refused on its field instead.
+/// Every sentence is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s, and every read is made
+/// as the caller through the tools' own port.</p>
 Class OcuPilot.Area.OsMgmt.LicenseRules Extends %RegisteredObject
 {
 
@@ -28,8 +32,8 @@ Parameter KEYPORT = "OcuPilot.Port.LicensePort";
 /// underscores. <class>Config.LicenseServers</class> stores at most 64 characters.</p>
 Parameter NAMEPATTERN = "[A-Za-z0-9][A-Za-z0-9_-]{0,63}";
 
-/// <p>The longest address <class>Config.LicenseServers</class> stores.</p>
-Parameter ADDRESSMAXLENGTH As INTEGER = 256;
+/// <p>The longest host name <class>Config.Host</class> accepts: fewer than 256 characters.</p>
+Parameter ADDRESSMAXLENGTH As INTEGER = 255;
 
 Parameter NAMEMAXLENGTH As INTEGER = 64;
 
@@ -75,8 +79,7 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             }
         }
         If tCreates || (pArgs.%GetTypeOf(..#FIELDADDRESS) '= "unassigned") {
-            Set tAddress = ..Text(pArgs, ..#FIELDADDRESS)
-            If ($ZStrip(tAddress, "<>W") = "") || ($Length(tAddress) > ..#ADDRESSMAXLENGTH) Do ..Add(.pViolations, ..#FIELDADDRESS, ##class(OcuPilot.Api.LicenseError).#SERVERADDRESS)
+            If (pArgs.%GetTypeOf(..#FIELDADDRESS) '= "string") || '..IsAddress(pArgs.%Get(..#FIELDADDRESS)) Do ..Add(.pViolations, ..#FIELDADDRESS, ##class(OcuPilot.Api.LicenseError).#SERVERADDRESS)
         }
         If tCreates || (pArgs.%GetTypeOf(..#FIELDPORT) '= "unassigned") {
             If '..IsPort(pArgs) Do ..Add(.pViolations, ..#FIELDPORT, ##class(OcuPilot.Api.LicenseError).#SERVERPORT)
@@ -91,6 +94,19 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
 ClassMethod NameViolation(pName As %String, Output pViolations)
 {
     If '$Match(pName, ..#NAMEPATTERN) Do ..Add(.pViolations, ..#FIELDNAME, ##class(OcuPilot.Api.LicenseError).#SERVERNAMESHAPE)
+}
+
+/// <p>Whether <var>pAddress</var> is one <class>Config.Host</class> stores: an IP address, or a host
+/// name of letters, digits, hyphens and underscores in dot-separated labels, each beginning and ending
+/// with a letter or digit, not all digits, and at most <parameter>ADDRESSMAXLENGTH</parameter>
+/// characters. The vendor refuses any other non-empty value with a datatype error.</p>
+ClassMethod IsAddress(pAddress As %String) As %Boolean
+{
+    If $ZStrip(pAddress, "<>W") = "" Quit 0
+    If $$$ISIP(pAddress) Quit 1
+    If $Length(pAddress) > ..#ADDRESSMAXLENGTH Quit 0
+    If $Translate(pAddress, ".", "") ? .N Quit 0
+    Quit pAddress ? 1AN.(1AN,1"-",1"_").(1"."1.(1AN,1"-",1"_")).AN
 }
 
 /// <p>Whether <var>pArgs</var>'s <code>Port</code> is a whole number from 1 to

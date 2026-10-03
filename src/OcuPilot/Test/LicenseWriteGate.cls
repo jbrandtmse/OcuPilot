@@ -153,10 +153,10 @@ Method TestEachRouteAnswersJsonOverTheWire()
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
     Set tUser = ..User(2)
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#FORMPATH, tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
-    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tAnswer = ##class(OcuPilot.Test.LicenseKey).Parsed(tBody)
     Do $$$AssertEquals(tStatus, 200, "GET " _ ..#FORMPATH _ " answers: " _ $Extract(tBody, 1, 200))
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as JSON")
-    Do $$$AssertEquals(tAnswer.%GetTypeOf("requiredFields") _ " " _ tAnswer.%GetTypeOf("rules"), "array array", "with its required fields and its rules")
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%GetTypeOf("requiredFields") _ " " _ tAnswer.%GetTypeOf("rules"), 1: ""), "array array", "with its required fields and its rules")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#NAMEPATH _ "?name=local", tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "GET " _ ..#NAMEPATH _ " answers: " _ $Extract(tBody, 1, 200))
     Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as JSON")
@@ -210,21 +210,28 @@ Method TestTheMissingWritePairIsRefusedBeforeAnyPortCall()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ServerExists", "OCUPROBE186GD") _ $ClassMethod(..#PROBE, "ServerExists", "OCUPROBE186GE"), "11", "and nothing was deleted")
 }
 
-/// <p>Without <code>%Admin_Manage:USE</code>: the key check and the activation are refused 403 naming
-/// it, with zero port calls.</p>
+/// <p>Without <code>%Admin_Manage:USE</code>: the key check, the activation, and the form's create and
+/// update and the list's delete are refused 403 naming it, with zero port calls and nothing
+/// changed.</p>
 /// <p>Mutation (Rule 19): drop the gate from <method>OcuPilot.Area.OsMgmt.LicenseRules.HandleValidate</method>
 /// -- the check reaches the port and this goes red.</p>
-Method TestTheKeyCheckAndTheActivationNeedTheScreensPairs()
+Method TestEveryWriteAndTheKeyCheckNeedTheScreensPairs()
 {
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBE186GU"), "a license server to update")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBE186GD"), "and one to delete")
     Set tUser = ..User(3)
     Set tPlan = []
     Do tPlan.%Push({"kind": "validate", "body": {"Key": ($Parameter(..#PROBE, "MALFORMEDKEY"))}})
     Do tPlan.%Push({"kind": "activate", "armed": true, "body": {"Key": "OCUPROBE186 seam key"}})
+    Do tPlan.%Push({"kind": "create", "name": "", "body": {"Name": "OCUPROBE186GC", "Address": "127.0.0.1", "Port": 4999}})
+    Do tPlan.%Push({"kind": "update", "name": "OCUPROBE186GU", "body": {"Port": 4998}})
+    Do tPlan.%Push({"kind": "delete", "name": "OCUPROBE186GD"})
     Set tRun = ..RunAs(tUser, tPlan)
     Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
-    For tI = 1:1:2 {
+    For tI = 1:1:5 {
         Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %Admin_Manage:USE calls=0 writes=", "leg " _ tI _ " is refused naming the screen's pair before any port call")
     }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "ServerExists", "OCUPROBE186GC") _ " " _ $ClassMethod(..#PROBE, "Stored", "OCUPROBE186GU", "Port") _ " " _ $ClassMethod(..#PROBE, "ServerExists", "OCUPROBE186GD"), "0 4999 1", "and nothing was created, updated or deleted")
 }
 
 /// <p>A principal holding exactly the declared pairs: the form's create and update, the list's delete

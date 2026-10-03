@@ -4980,7 +4980,7 @@ export const STRINGS = {
   journalRecordListPrompt2: 'Which globals changed in these records?',
   /** EXPERIENCE.md:378 */
   journalRecordListPrompt3: 'Are any of these records inside a transaction?',
-  // Story 18.6: License key and License servers -- their titles, License key's thirteen field labels
+  // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
   // beyond License usage's "License units", the authorization-key line, the activate dialog's
   // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
   // line, the license server form's hints, the multi-key consequence (the agent's card line) and

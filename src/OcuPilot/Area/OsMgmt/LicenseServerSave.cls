@@ -7,8 +7,9 @@
 /// and no proposal minted.</p>
 /// <p><b>The vendor's <code>PUT</code> is an upsert</b>, so an edit whose server is gone by the time its
 /// fresh read is made answers 404 and sends nothing, rather than re-creating it. A body key outside
-/// <code>Address</code> and <code>Port</code>, <code>KeyDirectory</code> included, is 400
-/// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> (AD-21).</p>
+/// <code>Name</code>, <code>Address</code> and <code>Port</code>, <code>KeyDirectory</code> included,
+/// is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> (AD-21). An edit's name is its
+/// path segment's, and a body <code>Name</code> there is ignored, so nothing is renamed.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
 /// Production overrides neither.</p>
 Class OcuPilot.Area.OsMgmt.LicenseServerSave Extends %RegisteredObject

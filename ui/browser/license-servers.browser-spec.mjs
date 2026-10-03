@@ -13,6 +13,8 @@
  *    consequence, sends the delete, and the row leaves the list.
  * 3. **DW-1337** (A7): the list, the form and the Delete dialog pass the structural walk at wide
  *    light, narrow light and wide dark.
+ * 4. **A refusal on its field** (A6): a create with port 0 stays on the form with the Port field
+ *    marked and its reason shown, and nothing reaches the instance.
  *
  * **It refuses the live and development containers.** It touches only `OCUPROBE186*` license servers,
  * removing every probe object with `OcuPilot.Test.LicenseProbe.RemoveAll` before and after and
@@ -214,6 +216,27 @@ async function assertStructure(page, route, dialog = false) {
   const fresh = compare(collapse(entriesFound), readBaseline()?.entries ?? []).fresh;
   assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], `no structural or contrast violation on ${route}`);
 }
+
+// A6. Mutation (Rule 19): let LicenseRules.IsPort's shape match admit port 0, reload the throwaway
+// -> the Port field never refuses and this goes red.
+test('A6: a create with port 0 is refused on the Port field and nothing reaches the instance', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${FORM_ROUTE}?ns=HSCUSTOM`, VIEWPORTS.wide);
+  try {
+    await page.waitForSelector('#ocu-license-server-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-license-server-Name', 'ocuprobe186v');
+    await page.type('#ocu-license-server-Address', '127.0.0.1');
+    await page.type('#ocu-license-server-Port', '0');
+    await page.click('.ocu-form-bar-actions button.ocu-button-primary');
+    await page.waitForFunction(
+      () => document.querySelector('#ocu-license-server-Port')?.getAttribute('aria-invalid') === 'true' && (document.querySelector('#ocu-license-server-Port-reason')?.textContent ?? '').trim() !== '',
+      { timeout: 90000 }
+    );
+    assert.equal(new URL(page.url()).pathname.endsWith(`/${FORM_ROUTE}`), true, 'the form stays open on the refusal');
+    assert.equal(stored('OCUPROBE186V').exists, false, 'no license server was written');
+  } finally {
+    await context.close();
+  }
+});
 
 // A7. Mutation (Rule 19): give LicenseServerList `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.

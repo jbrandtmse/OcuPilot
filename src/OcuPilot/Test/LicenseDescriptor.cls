@@ -1,8 +1,9 @@
 /// <p>Pins Story 18.6's declarations (AC A7): License key, License servers and the license server form --
 /// their routes, side-bar positions, pairs, classic pages, prompts, entity types, id rules and secret
 /// fields; the four tools' kinds, ports, fields, pairs, classic pages and advertisement;
-/// <class>OcuPilot.Api.LicenseError</class>'s codes and sentences; and the baseline's four keys, the
-/// activation and the delete disabled.</p>
+/// <class>OcuPilot.Api.LicenseError</class>'s codes and sentences; the license port's check answer,
+/// unlogged refusal and script; and the baseline's four keys, the activation and the delete
+/// disabled.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and no custom resource assigned to
 /// the replaced classic pages. It writes nothing.</p>
 Class OcuPilot.Test.LicenseDescriptor Extends %UnitTest.TestCase
@@ -142,17 +143,21 @@ Method TestTheLicenseCodesCarryTheirSentences()
     Do $$$AssertEquals(##class(OcuPilot.Api.LicenseError).#REASONSERVERPORT, "Enter a port from 1 to 65535.", "and the port's")
 }
 
-/// <p>The license server delete's consequence names a multi-server key: on this instance's own key it
-/// is the code exactly when <code>$SYSTEM.License.KeyServer()</code> reads <code>Multi</code>, and
+/// <p>The license server delete's consequence names a multi-server key: the delete reads this
+/// instance's own key server type through the license port, as <code>$SYSTEM.License.KeyServer()</code>
+/// answers it; on that key the consequence is the code exactly when it reads <code>Multi</code>; and
 /// through the seam's key server type, the code for <code>Multi</code> and nothing for
 /// <code>Single</code>.</p>
 /// <p>Mutation (Rule 19): invert the comparison in
-/// <method>OcuPilot.Screen.Tool.LicenseServerDelete.Consequence</method> -- every leg goes red.</p>
+/// <method>OcuPilot.Screen.Tool.LicenseServerDelete.Consequence</method> -- every leg goes red; make
+/// <method>OcuPilot.Screen.Tool.LicenseServerDelete.KeyServer</method> read a member the read does not
+/// answer -- the key server leg goes red.</p>
 Method TestTheDeleteNamesAMultiServerKeyAsItsConsequence()
 {
     Set tCode = $Parameter("OcuPilot.Screen.Tool.LicenseServerDelete", "CONSEQUENCEMULTIKEY")
     Set tServer = $SYSTEM.License.KeyServer()
     Do $$$AssertTrue((tServer = "Single") || (tServer = "Multi"), "the instance's key names its key server type: " _ tServer)
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.LicenseServerDelete).KeyServer(), tServer, "the delete reads that key server type through the license port")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.LicenseServerDelete).Consequence({}), $Select(tServer = "Multi": tCode, 1: ""), "the delete's consequence follows this instance's own key")
     Kill ^||OcuPilotLicenseSeam
     Set ^||OcuPilotLicenseSeam("keyServer") = "Multi"
@@ -160,6 +165,29 @@ Method TestTheDeleteNamesAMultiServerKeyAsItsConsequence()
     Set ^||OcuPilotLicenseSeam("keyServer") = "Single"
     Do $$$AssertEquals(##class(OcuPilot.Test.SeamLicenseServerDelete).Consequence({}), "", "and a single-server key is not")
     Kill ^||OcuPilotLicenseSeam
+}
+
+/// <p>The license port: a valid check's answer carries each of the five reduction kinds the vendor
+/// names, in the classic dialog's order, and the features, as text; a refused activation's 400 is the
+/// one license answer the admin port leaves unlogged (AD-2); and the activation's script is the check
+/// and then the <code>PUT</code>, each carrying the key's placeholder alone (AD-59).</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Port.LicensePort.REDUCTIONKINDS</parameter>
+/// <code>Cores</code> alone -- the reductions leg goes red.</p>
+Method TestTheLicensePortAnswersEveryReductionAndScriptsBothSteps()
+{
+    Set tChecked = {"IsValid": true, "RequiresRestart": false, "Reductions": {"Product": {"From": "Enterprise", "To": "Standard"}, "LicenseType": {"From": "Concurrent User", "To": "Named User"}, "Server": {"From": "Multi", "To": "Single"}, "Users": {"From": 25, "To": 5}, "Cores": {"From": 20, "To": 8}, "Features": ["Sharding", "Vector Search"]}}
+    Set tAnswer = ##class(OcuPilot.Port.LicensePort).Answer(tChecked)
+    Do $$$AssertEquals(tAnswer.%ToJSON(), "{""valid"":true,""requiresRestart"":false,""reductions"":[{""kind"":""Cores"",""from"":""20"",""to"":""8""},{""kind"":""Users"",""from"":""25"",""to"":""5""},{""kind"":""Server"",""from"":""Multi"",""to"":""Single""},{""kind"":""LicenseType"",""from"":""Concurrent User"",""to"":""Named User""},{""kind"":""Product"",""from"":""Enterprise"",""to"":""Standard""}],""features"":[""Sharding"",""Vector Search""]}", "every reduction kind, in the classic dialog's order, and the features, as text")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsUnloggedRefusal("License.Key", "PUT", 400) && '##class(OcuPilot.Port.AdminPort).IsUnloggedRefusal("License.Key", "PUT", 500) && '##class(OcuPilot.Port.AdminPort).IsUnloggedRefusal("License.Key", "VALIDATE", 400), "a refused activation's 400 alone goes unlogged (AD-2)")
+    Kill tQuery
+    Set tSteps = ##class(OcuPilot.Port.LicensePort).Snippet("License.Key", "PUT", .tQuery, {"Key": "<Key>"}, {"origin": "https://instance.example", "user": "<User>"})
+    Set tTexts = ""
+    If $IsObject(tSteps) {
+        For tI = 0:1:tSteps.%Size() - 1 Set tTexts = tTexts _ $ListBuild(tSteps.%Get(tI).%Get("text"))
+    }
+    Do $$$AssertEquals($ListLength(tTexts), 2, "the activation's script is two steps")
+    Do $$$AssertTrue(($ListGet(tTexts, 1) [ "-X POST") && ($ListGet(tTexts, 1) [ "/license/key/validate") && ($ListGet(tTexts, 2) [ "-X PUT") && ($ListGet(tTexts, 2) '[ "/validate"), "the check, then the PUT: " _ $ListToString(tTexts, " | "))
+    Do $$$AssertTrue(($ListGet(tTexts, 1) [ """Key"":""<Key>""") && ($ListGet(tTexts, 2) [ """Key"":""<Key>"""), "each carrying the key's placeholder alone")
 }
 
 /// <p>The baseline lists the four keys, the activation and the delete disabled (AD-22).</p>

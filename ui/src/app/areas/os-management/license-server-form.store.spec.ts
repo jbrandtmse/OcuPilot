@@ -60,6 +60,20 @@ describe('LicenseServerForm', () => {
     expect(store.violations()).toEqual([{ field: 'Name', code: NAME_TAKEN_CODE, reason: 'A license server of that name already exists.' }]);
   });
 
+  it("a name of the wrong shape takes the look-up's own refusal on blur", async () => {
+    const shape = { field: 'Name', code: 'LICENSE.SERVER.NAME.SHAPE', reason: 'Use up to 64 letters, digits, hyphens and underscores, starting with a letter or digit.' };
+    const { store } = mount((path) =>
+      path.startsWith(LICENSE_SERVER_NAME_PATH)
+        ? { kind: 'error', status: 422, code: 'LICENSE.SERVER.VALIDATION', reason: 'The request was refused.', detail: { violations: [shape] } }
+        : { kind: 'ok', status: 200, body: RULES }
+    );
+    await store.open('');
+    store.setValue('Name', 'a b');
+    await store.onBlur('Name');
+    // Mutation (Rule 19): drop the 422 branch from onBlur -> red.
+    expect(store.violations()).toEqual([shape]);
+  });
+
   it("an empty required address takes the form read's own sentence on blur", async () => {
     const { store } = mount(() => ({ kind: 'ok', status: 200, body: RULES }));
     await store.open('');

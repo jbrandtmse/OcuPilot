@@ -2,13 +2,19 @@
 // the shell's chrome -- rail, header, side bar, locator and command bars, panel, status bar and
 // toasts -- is hidden, and so is everything else on the page outside the region. A page with no
 // region prints as it did before. `.ocu-print-only` is shown on print media alone (License key's
-// "Printed by <user> on <time>." line). Tokens only.
+// "Printed by <user> on <time>." line). The page's own background prints too, so the dark theme's
+// light text never lands on bare white paper. Tokens only.
 
 .ocu-print-only {
   display: none;
 }
 
 @media print {
+  // Inherited: the body and the print region take it from here.
+  html:has(.ocu-print-region) {
+    print-color-adjust: exact;
+  }
+
   body:has(.ocu-print-region) {
     background: var(--ocu-surface-container-lowest);
     color: var(--ocu-on-surface);

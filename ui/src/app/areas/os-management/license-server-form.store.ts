@@ -320,8 +320,8 @@ export class LicenseServerForm {
   /**
    * On blur: drop a refusal that no longer describes what the field holds, render the server's
    * required-field sentence on an empty required field, and -- for the name of a create alone --
-   * ask the instance whether it is still free. A look-up that could not be made leaves the field
-   * unmarked.
+   * ask the instance whether it is still free, a name of the wrong shape taking the look-up's own
+   * refusal. A look-up that could not be made leaves the field unmarked.
    */
   async onBlur(field: string): Promise<void> {
     this.dropStaleViolation(field);
@@ -332,15 +332,16 @@ export class LicenseServerForm {
     const generation = this.generation;
     const result = await this.api().requestJson<unknown>(`${LICENSE_SERVER_NAME_PATH}?name=${encodeURIComponent(name)}`);
     if (generation !== this.generation || this.value(NAME_FIELD) !== name) return;
-    if (result.kind !== 'ok') return;
-    const body = result.body;
-    if (body === null || typeof body !== 'object' || (body as Record<string, unknown>)['taken'] !== true) return;
-    const reason = textAt(body, 'reason');
-    if (reason === '') return;
-    this.violationList = [
-      ...this.violationList.filter((entry) => entry.field !== NAME_FIELD),
-      { field: NAME_FIELD, code: NAME_TAKEN_CODE, reason },
-    ];
+    // A name of the wrong shape: the look-up was made and refused it on the field.
+    let marks = result.kind === 'error' && result.status === 422 ? violationsOf(result).filter((entry) => entry.field === NAME_FIELD) : [];
+    if (result.kind === 'ok') {
+      const body = result.body;
+      if (body === null || typeof body !== 'object' || (body as Record<string, unknown>)['taken'] !== true) return;
+      const reason = textAt(body, 'reason');
+      if (reason !== '') marks = [{ field: NAME_FIELD, code: NAME_TAKEN_CODE, reason }];
+    }
+    if (marks.length === 0) return;
+    this.violationList = [...this.violationList.filter((entry) => entry.field !== NAME_FIELD), ...marks];
     this.notify();
   }
 

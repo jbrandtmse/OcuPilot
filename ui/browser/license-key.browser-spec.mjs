@@ -10,7 +10,8 @@
  *    the published sentence, Activate stays unavailable, and the license, `iris.key` and the temporary
  *    key directory read as before.
  * 3. **Print** (A4): under print media the field block and the "Printed by" line show, and the rail,
- *    header, side bar, panel, status bar and Print itself do not.
+ *    header, side bar, panel, status bar and Print itself do not; the page's background prints, the
+ *    dark theme included.
  * 4. **DW-1337** (A7): the page and the activate dialog pass the structural walk at wide light,
  *    narrow light and wide dark.
  *
@@ -304,6 +305,16 @@ test('A4: under print media the field block and the printed-by line show, and th
     for (const chrome of CHROME) {
       assert.equal(await visible(chrome), false, `${chrome} does not print`);
     }
+    // The dark theme on paper: the page's own background prints, so its light text never lands on
+    // bare white. Mutation (Rule 19): drop `print-color-adjust: exact` from _print.scss -> red.
+    await page.evaluate(() => document.documentElement.classList.add('ocu-theme-dark'));
+    await frames(page);
+    const adjust = await page.evaluate(() => {
+      const style = getComputedStyle(document.body);
+      return style.getPropertyValue('print-color-adjust') || style.getPropertyValue('-webkit-print-color-adjust');
+    });
+    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    assert.equal(adjust, 'exact', 'print media prints the page background, the dark theme included');
     await page.emulateMediaType(null);
   } finally {
     await context.close();

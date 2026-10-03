@@ -52,9 +52,9 @@ export function licenseServerHintId(field: string): string {
  * `os-management/license-servers/edit` and edits one on `os-management/license-servers/edit/<name>`
  * (AD-55), on the device editor's model.
  *
- * **Its fields are the classic License Servers page's**: the name, on a create only, because a
- * license server is never renamed here; the address and the port; and, on an edit, the key
- * directory, read-only, with the hint that names where it is set (AD-21).
+ * **Its fields are the classic License Servers page's**: the name, editable on a create only and
+ * read-only on an edit, because a license server is never renamed here; the address and the port;
+ * and, on an edit, the key directory, read-only, with the hint that names where it is set (AD-21).
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page`
  * route guard, answered here. Every control-flow condition is a paren-free member reference, for the

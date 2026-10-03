@@ -1196,10 +1196,11 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tLines = ""
             Quit
         }
-        ; CHECKTYPES: a check the vendor answered with its verdict under an error status -- a 500
-        ; carrying the answer object it built -- has answered. The answer goes to the caller alone and
-        ; nothing of it is logged, because its text can be a key check's own reason (AD-39).
-        If ..IsCheckType(pEndpoint, pType) && $$$ISERR(tSeqSC) && (tHttp = 500) && $IsObject($Get(tAnswer)) && (tAnswer.%Size() > 0) {
+        ; CHECKTYPES: a check the vendor answered with its negative verdict under an error status -- a
+        ; 500 carrying the answer object it built, IsValid false -- has answered. The answer goes to the
+        ; caller alone and nothing of it is logged, because its text can be a key check's own reason
+        ; (AD-39). Any other error status, a positive verdict's included, stays a fault.
+        If ..IsCheckType(pEndpoint, pType) && $$$ISERR(tSeqSC) && (tHttp = 500) && $IsObject($Get(tAnswer)) && tAnswer.%IsA("%Library.DynamicObject") && (tAnswer.%GetTypeOf("IsValid") = "boolean") && 'tAnswer.%Get("IsValid") {
             Set pResult = tAnswer
             Set pHttpStatus = 200
             Set tSC = $$$OK
