@@ -9253,3 +9253,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.6 plan on ocupilot-a2-ci: %Prepare("CREATE USER ... IDENTIFY BY '<fake>'",1) alone, no execute, left the literal in INFORMATION_SCHEMA.STATEMENTS.Statement; a DML literal is stored as ?; the console refuses password text before any prepare (AD-61)
 - 2026-10-03T17:00:28Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957, DW-1958 and DW-1963; the strongest of the vendor items (orchestrator)
+
+### DW-1983: CI flake: toast.browser-spec DW-1405 test waits 30 s for two toasts after a second confirmed turn, and on a slow runner the second turn outlasts the wait; test 2's Confirm wait then fails behind it
+- source: ci-run-37138831685 | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: run 37138831685: attempt 1 toast 3/3 (80 s) on head 66bc52e6, attempt 2 same head 1/3 (100.8 s; test 1 50 s, :347 and :193 timeouts); local ocupilot-a2-ci 3/3 twice
+- 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27: CI flake; the spec should key its waits to the second turn's settled reply, not a fixed 30 s after the click
+
+### DW-1984: gate.browser-spec test 6 (FR-28) clicks Cancel once the form's banner appears, but the Cancel button renders only after the form loads, so a slow form read fails the lookup
+- source: gate-spec settle fix (DW-1975) | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: found by the DW-1975 fix's held-read reproduction: test 6 failed under the hook with the old and new spec when the whole file ran, passed alone; not yet seen in CI
+- 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=one-line fix: wait for .ocu-form-bar-actions before the Cancel lookup
