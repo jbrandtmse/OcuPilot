@@ -19,6 +19,14 @@
 /// <parameter>TYPESAVEDOCS</parameter> and the write <parameter>TYPESAVE</parameter>. Each write is
 /// composed here from the caller's declared values (AD-51); a compile, a delete, an import and a save
 /// are gated on WRITE on the namespace's routines database as well (AD-61).</p>
+/// <p><b>Two reads find code</b> (<parameter>ENDPOINTSEARCH</parameter> and
+/// <parameter>ENDPOINTMACRO</parameter>). A search is always plain text: it sends
+/// <code>regex=0</code>, never <code>word</code> or <code>wild</code>, and its
+/// <code>documents</code> comes from <parameter>SEARCHDOCUMENTS</parameter> alone (AD-61 rule 7). A
+/// macro lookup's body names the include, import and superclass names the document's own text gives
+/// (<method>MacroContext</method>), read first through the document route, never a caller's list.
+/// Each answers rows only; a match's line and a macro's definition are row fields, never a
+/// document's whole text (AD-36).</p>
 /// <p><b>A server file is never a caller's path</b> (AD-21's sixth case): an export or an import
 /// names it by <code>root</code> and <code>path</code>, resolved through
 /// <method>PathPortClass</method> at each call, the export as an overwriting <code>file</code>
@@ -54,7 +62,7 @@ Parameter VERSIONCLASSPREFIX = "%Api.Atelier.v";
 Parameter PINNEDVERSION As INTEGER = 8;
 
 /// <p>The lowest version each route this port calls needs, as <code>method:version</code>.</p>
-Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1,ExportToXMLFile:7,ListDocumentsInXMLFiles:7,LoadXMLFiles:7,PutDoc:1";
+Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1,ExportToXMLFile:7,ListDocumentsInXMLFiles:7,LoadXMLFiles:7,PutDoc:1,Search:2,GetMacroDefinition:2,GetMacroLocation:2";
 
 /// <p>The pair set every call requires whatever its namespace, comma-separated as
 /// <code>resource:permission</code>, in the order the gate reports in (AD-8, AD-29). READ on the
@@ -79,6 +87,48 @@ Parameter ENDPOINTCLASS = "Class";
 
 /// <p>The endpoint answering one routine's structure and text.</p>
 Parameter ENDPOINTROUTINE = "Routine";
+
+/// <p>The endpoint answering a plain-text search of a namespace's code (<method>SearchRows</method>).</p>
+Parameter ENDPOINTSEARCH = "Search";
+
+/// <p>The endpoint answering one macro's definition and location in one document's context
+/// (<method>MacroRows</method>).</p>
+Parameter ENDPOINTMACRO = "Macro";
+
+/// <p>The query keys carrying a search's text, the documents it looks in (<code>all</code>,
+/// <code>classes</code> or <code>routines</code>) and whether it matches case (<code>yes</code> or
+/// <code>no</code>).</p>
+Parameter TEXTKEY = "text";
+
+Parameter SCOPEKEY = "scope";
+
+Parameter CASEKEY = "case";
+
+/// <p>The longest text a search takes.</p>
+Parameter MAXSEARCHTEXT As INTEGER = 256;
+
+/// <p>The vendor's <code>documents</code> for each search scope, as <code>scope=masks</code>
+/// separated by <code>;</code>. A search's <code>documents</code> is taken from here alone, never
+/// from a caller's text, because the vendor splices a bracketed part of it into SQL (AD-61 rule
+/// 7).</p>
+Parameter SEARCHDOCUMENTS = "all=*.cls,*.mac,*.int,*.inc,*.bas,*.mvi,*.mvb;classes=*.cls;routines=*.mac,*.int,*.inc,*.bas,*.mvi,*.mvb";
+
+/// <p>The most matches a search asks the vendor for when its caller names no row cap.</p>
+Parameter SEARCHMAX As INTEGER = 200;
+
+/// <p>The query keys carrying a macro lookup's document, whose text gives the macro's context, and
+/// the macro, as <code>Name</code> or <code>$$$Name</code>.</p>
+Parameter MACRODOCUMENTKEY = "document";
+
+Parameter MACROKEY = "macro";
+
+/// <p>The shape a macro's name must take, its leading <code>$$$</code> optional.</p>
+Parameter MACRONAMEPATTERN = "^(\$\$\$)?%?[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>The shape a name <method>MacroContext</method> keeps, and the most it keeps per list.</p>
+Parameter CONTEXTNAMEPATTERN = "^%?[A-Za-z][A-Za-z0-9.]*$";
+
+Parameter MAXCONTEXTNAMES As INTEGER = 50;
 
 /// <p>The one request type every endpoint serves.</p>
 Parameter REQUESTTYPE = "LIST";
@@ -354,6 +404,18 @@ Parameter REASONSAVENAMES = "A save names exactly one document.";
 /// <p>The reason a save carrying no version is refused with.</p>
 Parameter REASONSAVEVERSION = "version must be the document's version as it was read.";
 
+/// <p>The reason a missing or malformed search text is refused with.</p>
+Parameter REASONSEARCHTEXT = "Name the text to search for: 1 to 256 characters, with no control character.";
+
+/// <p>The reason a search scope outside its options is refused with.</p>
+Parameter REASONSEARCHSCOPE = "scope must be all, classes or routines.";
+
+/// <p>The reason a search case choice outside its options is refused with.</p>
+Parameter REASONSEARCHCASE = "case must be yes or no.";
+
+/// <p>The reason a malformed macro lookup is refused with.</p>
+Parameter REASONMACRO = "Name a class or routine as the macro's context, and a macro, as Name or $$$Name.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -482,13 +544,14 @@ ClassMethod WritePairs(pNamespace As %String) As %List
 /// highest of its routes' <parameter>MINVERSIONS</parameter>. An export's read and write take the
 /// export route's, and an import's target, preview and write each take every route an import may
 /// call, so an instance too old for the write refuses its fresh read too; a save's read and write
-/// take every route a save may call, the same way.</p>
+/// take every route a save may call, the same way. A search takes the search route's, and a macro
+/// lookup the document read's and both macro routes'.</p>
 ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}) As %Integer
 {
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
     Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
-    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tRoutes = $Select(pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -507,12 +570,16 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <code>pattern</code>, <code>system</code>, <code>generated</code>, <code>mapped</code>,
 /// <code>from</code> and <code>to</code>, each optional (<method>ListRows</method>); a document
 /// endpoint reads <code>name</code> (required) and <code>form</code> (<code>udl</code> when absent).
-/// <var>pBody</var> is not read.</p>
+/// <parameter>ENDPOINTSEARCH</parameter> reads <code>text</code>, <code>scope</code> and
+/// <code>case</code> (<method>SearchRows</method>), and <parameter>ENDPOINTMACRO</parameter>
+/// <code>document</code> and <code>macro</code> (<method>MacroRows</method>). <var>pBody</var> is not
+/// read.</p>
 /// <p>On success <var>pResult</var> is a <class>%DynamicArray</class> of rows and
 /// <var>pHttpStatus</var> is 200. A list row is <code>{Name, Modified, Database, Generated}</code>;
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>
 /// <code>{name, form, available, content, modified, database, generates}</code>, which the row cap
-/// never cuts.</p>
+/// never cuts; a search row is <code>{Order, Document, Member, Line, Attribute, Text}</code> and a
+/// macro row <code>{Macro, Document, Line, Definition}</code>, with no document beside them.</p>
 /// <p>The list endpoints also serve a set of documents, named in <code>names</code>
 /// (<method>SetNames</method>), in <code>namespace</code> or, where it is absent, the request's
 /// resolved scope (<method>OcuPilot.Kernel.Scope.Current</method>): <parameter>TYPEDOCS</parameter>
@@ -581,7 +648,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         Set tList = (pEndpoint = ..#ENDPOINTCLASSES) || (pEndpoint = ..#ENDPOINTROUTINES)
         Set tOne = (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE)
-        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne)) || ((tSetType || tImportType) && tList)
+        Set tFind = (pEndpoint = ..#ENDPOINTSEARCH) || (pEndpoint = ..#ENDPOINTMACRO)
+        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne || tFind)) || ((tSetType || tImportType) && tList)
         If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
@@ -655,6 +723,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tMax = $Get(pQuery(..#MAXROWSKEY))
         If (tMax '= "") && '$Match(tMax, "^[1-9][0-9]*$") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSEARCH {
+            Set tSC = ..SearchRows(tVersion, tNamespace, .pQuery, +tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTMACRO {
+            Set tSC = ..MacroRows(tVersion, tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If tList {
@@ -783,6 +859,280 @@ ClassMethod DefaultDatabase(pAnswer) As %String [ Private ]
         }
     }
     Quit tName
+}
+
+/// <p>The rows of a plain-text search of the namespace's code, at most <var>pMax</var> of them when it
+/// is above zero, in the vendor's order. <code>text</code> is required, 1 to
+/// <parameter>MAXSEARCHTEXT</parameter> characters with no control character; <code>scope</code> is
+/// <code>all</code> when absent and <code>case</code> <code>no</code>. Each is checked before the
+/// route is called, and a bad one is refused 400 <code>PORT.VALIDATION</code> with its own
+/// reason.</p>
+/// <p>The route is sent exactly <code>query</code>, <code>documents</code> (the scope's
+/// <parameter>SEARCHDOCUMENTS</parameter> entry), <code>regex=0</code>, <code>case</code>,
+/// <code>sys=0</code>, <code>gen=0</code> and <code>max</code> (<var>pMax</var>, else
+/// <parameter>SEARCHMAX</parameter>), and nothing else (AD-61 rule 7).</p>
+/// <p>A row is <code>{Order, Document, Member, Line, Attribute, Text}</code>: <code>Order</code>
+/// counts from 1, <code>Line</code> is the match's line, else its attribute's line, else
+/// <code>null</code>, and an absent member or attribute is <code>""</code>.</p>
+ClassMethod SearchRows(pVersion As %Integer, pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Set tText = $Get(pQuery(..#TEXTKEY))
+        If (tText = "") || ($Length(tText) > ..#MAXSEARCHTEXT) || ($ZStrip(tText, "*C") '= tText) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHTEXT, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tScope = $Get(pQuery(..#SCOPEKEY))
+        If tScope = "" Set tScope = "all"
+        Set tDocuments = ..SearchDocuments(tScope)
+        If tDocuments = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHSCOPE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tCase = $Get(pQuery(..#CASEKEY))
+        If tCase = "" Set tCase = "no"
+        If (tCase '= "yes") && (tCase '= "no") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHCASE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Kill tParams
+        Set tParams("query") = tText
+        Set tParams("documents") = tDocuments
+        Set tParams("regex") = 0
+        Set tParams("case") = $Select(tCase = "yes": 1, 1: 0)
+        Set tParams("sys") = 0
+        Set tParams("gen") = 0
+        Set tParams("max") = $Select(pMax > 0: pMax, 1: ..#SEARCHMAX)
+        Set tSC = ..Route(pVersion, pNamespace, "Search", "", .tParams, "", .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("Search answered no result array", $$$ERROR($$$GeneralError, "search answered no result array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tRows = []
+        Set tDocs = tAnswer.%GetIterator()
+        While tDocs.%GetNext(.tDocIndex, .tDoc) {
+            If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+            If '$IsObject(tDoc) || 'tDoc.%IsA("%Library.DynamicObject") Continue
+            Set tMatches = tDoc.%Get("matches")
+            If '$IsObject(tMatches) || 'tMatches.%IsA("%Library.DynamicArray") Continue
+            Set tIterator = tMatches.%GetIterator()
+            While tIterator.%GetNext(.tMatchIndex, .tMatch) {
+                If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+                If '$IsObject(tMatch) || 'tMatch.%IsA("%Library.DynamicObject") Continue
+                Set tLine = tMatch.%Get("line")
+                If tLine = "" Set tLine = tMatch.%Get("attrline")
+                Set tRow = {}
+                Do tRow.%Set("Order", tRows.%Size() + 1, "number")
+                Do tRow.%Set("Document", tDoc.%Get("doc"), "string")
+                Do tRow.%Set("Member", tMatch.%Get("member"), "string")
+                If tLine = "" {
+                    Do tRow.%Set("Line", "", "null")
+                } Else {
+                    Do tRow.%Set("Line", +tLine, "number")
+                }
+                Do tRow.%Set("Attribute", tMatch.%Get("attr"), "string")
+                Do tRow.%Set("Text", tMatch.%Get("text"), "string")
+                Do tRows.%Push(tRow)
+            }
+        }
+        Set pRows = tRows
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ..Fail("the search failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's <code>documents</code> for search scope <var>pScope</var>, from
+/// <parameter>SEARCHDOCUMENTS</parameter>; <code>""</code> for a scope it does not declare.</p>
+ClassMethod SearchDocuments(pScope As %String) As %String
+{
+    Set tMasks = ""
+    For tI = 1:1:$Length(..#SEARCHDOCUMENTS, ";") {
+        Set tEntry = $Piece(..#SEARCHDOCUMENTS, ";", tI)
+        If $Piece(tEntry, "=", 1) = pScope Set tMasks = $Piece(tEntry, "=", 2, *)
+    }
+    Quit tMasks
+}
+
+/// <p>The rows of one macro's lookup in one document's context: none when nothing in that context
+/// defines it, else one <code>{Macro, Document, Line, Definition}</code> row, where
+/// <code>Macro</code> is the name without <code>$$$</code>, <code>Document</code> and
+/// <code>Line</code> are where it is defined (<code>Line</code> <code>null</code> when the instance
+/// names none), and <code>Definition</code> is its definition's lines joined by LF.</p>
+/// <p><code>document</code> must match <parameter>CLASSNAMEPATTERN</parameter> or
+/// <parameter>ROUTINENAMEPATTERN</parameter> and <code>macro</code>
+/// <parameter>MACRONAMEPATTERN</parameter>; either refused is 400 <code>PORT.VALIDATION</code> before
+/// any route. The document's text is read first (<code>udl</code>), so one the namespace does not
+/// hold is 404 <code>PORT.NOTFOUND</code>, unlogged. Both macro routes are then sent
+/// <code>{docname, macroname, includes, superclasses, imports}</code>, built here from
+/// <method>MacroContext</method>; the location is asked only for a macro the definition route
+/// answers.</p>
+ClassMethod MacroRows(pVersion As %Integer, pNamespace As %String, ByRef pQuery, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Set tDocument = $Get(pQuery(..#MACRODOCUMENTKEY))
+        Set tMacro = $Get(pQuery(..#MACROKEY))
+        Set tShaped = $Match(tDocument, ..#CLASSNAMEPATTERN) || $Match(tDocument, ..#ROUTINENAMEPATTERN)
+        If 'tShaped || '$Match(tMacro, ..#MACRONAMEPATTERN) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMACRO, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $Extract(tMacro, 1, 3) = ("$$" _ "$") Set tMacro = $Extract(tMacro, 4, *)
+
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "GetDoc", tDocument, .tNoParams, "", .tSource, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tLines = $Select($IsObject(tSource): tSource.%Get("content"), 1: "")
+        If '$IsObject(tLines) || 'tLines.%IsA("%Library.DynamicArray") Set tLines = []
+        Set tContext = ..MacroContext(tDocument, tLines)
+        Set tBody = {}
+        Do tBody.%Set("docname", tDocument, "string")
+        Do tBody.%Set("macroname", tMacro, "string")
+        Do tBody.%Set("includes", tContext.includes)
+        Do tBody.%Set("superclasses", tContext.superclasses)
+        Do tBody.%Set("imports", tContext.imports)
+
+        Set tSC = ..Route(pVersion, pNamespace, "GetMacroDefinition", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+        Set tDefinition = $Select($IsObject(tContent): tContent.%Get("definition"), 1: "")
+        Set tText = ""
+        Set tDefined = 0
+        If $IsObject(tDefinition) && tDefinition.%IsA("%Library.DynamicArray") {
+            Set tIterator = tDefinition.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If $IsObject(tLine) Continue
+                Set tText = tText _ $Select(tDefined: $Char(10), 1: "") _ tLine
+                Set tDefined = 1
+            }
+        }
+        Set pRows = []
+        Set pHttpStatus = 200
+        If 'tDefined Quit
+
+        Set tSC = ..Route(pVersion, pNamespace, "GetMacroLocation", "", .tNoParams, tBody, .tWhere, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) {
+            Set pRows = ""
+            Quit
+        }
+        Set tLocation = $Select($IsObject(tWhere): tWhere.%Get("content"), 1: "")
+        Set tAt = $Select($IsObject(tLocation): tLocation.%Get("document"), 1: "")
+        Set tLineNo = $Select($IsObject(tLocation): tLocation.%Get("line"), 1: "")
+        Set tRow = {}
+        Do tRow.%Set("Macro", tMacro, "string")
+        Do tRow.%Set("Document", tAt, "string")
+        If tLineNo = "" {
+            Do tRow.%Set("Line", "", "null")
+        } Else {
+            Do tRow.%Set("Line", +tLineNo, "number")
+        }
+        Do tRow.%Set("Definition", tText, "string")
+        Do pRows.%Push(tRow)
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ..Fail("the macro lookup failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The context a macro in document <var>pName</var> resolves in, from the document's own UDL
+/// lines <var>pLines</var>: <code>{includes, superclasses, imports}</code>, each an array of
+/// names.</p>
+/// <ul>
+/// <li>A class (<code>.cls</code>): every <code>Include</code> and <code>IncludeGenerator</code>
+/// line before its <code>Class</code> line joins <code>includes</code>, every <code>Import</code>
+/// line <code>imports</code>, each naming one name or a parenthesized, comma-separated list; and the
+/// <code>Class</code> line's <code>Extends</code> list is <code>superclasses</code>. A line inside a
+/// <code>/* */</code> comment is skipped.</li>
+/// <li>A routine: every <code>#include</code> line, matched without regard to case, joins
+/// <code>includes</code>, and an include file names itself there first.</li>
+/// </ul>
+/// <p>A list keeps each name matching <parameter>CONTEXTNAMEPATTERN</parameter> once, in the order
+/// the text gives them, and at most <parameter>MAXCONTEXTNAMES</parameter>.</p>
+ClassMethod MacroContext(pName As %String, pLines As %DynamicArray) As %DynamicObject
+{
+    Set tContext = {"includes": [], "superclasses": [], "imports": []}
+    Set tExtension = $ZConvert($Piece(pName, ".", $Length(pName, ".")), "L")
+    If '$IsObject(pLines) || 'pLines.%IsA("%Library.DynamicArray") Set pLines = []
+    If tExtension '= "cls" {
+        If tExtension = "inc" Do ..ContextAdd(tContext.includes, $Piece(pName, ".", 1, $Length(pName, ".") - 1))
+        Set tIterator = pLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If $IsObject(tLine) Continue
+            Set tTrimmed = $ZStrip($Translate(tLine, $Char(9), " "), "<>W")
+            If $ZConvert($Extract(tTrimmed, 1, 8), "L") '= "#include" Continue
+            Set tRest = $ZStrip($Extract(tTrimmed, 9, *), "<W")
+            If (tRest = "") || ($Extract(tTrimmed, 9) '= " ") Continue
+            Do ..ContextAdd(tContext.includes, $Piece(tRest, " ", 1))
+        }
+        Quit tContext
+    }
+    Set tInComment = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If $IsObject(tLine) Continue
+        Set tTrimmed = $ZStrip($Translate(tLine, $Char(9), " "), "<>W")
+        If tInComment {
+            If tTrimmed [ "*/" Set tInComment = 0
+            Continue
+        }
+        If $Extract(tTrimmed, 1, 2) = "/*" {
+            If $Find(tTrimmed, "*/", 3) = 0 Set tInComment = 1
+            Continue
+        }
+        Set tWord = $ZConvert($Piece(tTrimmed, " ", 1), "L")
+        Set tRest = $ZStrip($Piece(tTrimmed, " ", 2, *), "<W")
+        If tWord = "class" {
+            Set tLower = $ZConvert(tRest, "L")
+            Set tAt = $Find(tLower, " extends ")
+            If tAt > 0 Do ..ContextList(tContext.superclasses, $ZStrip($Extract(tRest, tAt, *), "<W"))
+            Quit
+        }
+        If (tWord = "include") || (tWord = "includegenerator") {
+            Do ..ContextList(tContext.includes, tRest)
+        } ElseIf tWord = "import" {
+            Do ..ContextList(tContext.imports, tRest)
+        }
+    }
+    Quit tContext
+}
+
+/// <p>Add each name <var>pText</var> begins with to <var>pList</var> (<method>ContextAdd</method>):
+/// a parenthesized, comma-separated list, or one name ending at the first space or
+/// <code>[</code>.</p>
+ClassMethod ContextList(pList As %DynamicArray, pText As %String) [ Private ]
+{
+    If $Extract(pText) = "(" {
+        Set tInner = $Piece($Extract(pText, 2, *), ")", 1)
+        For tI = 1:1:$Length(tInner, ",") {
+            Do ..ContextAdd(pList, $ZStrip($Piece(tInner, ",", tI), "<>W"))
+        }
+        Quit
+    }
+    Do ..ContextAdd(pList, $Piece($Piece(pText, " ", 1), "[", 1))
+}
+
+/// <p>Push <var>pName</var> onto <var>pList</var> when it matches
+/// <parameter>CONTEXTNAMEPATTERN</parameter>, the list does not hold it yet, and it holds fewer than
+/// <parameter>MAXCONTEXTNAMES</parameter>.</p>
+ClassMethod ContextAdd(pList As %DynamicArray, pName As %String) [ Private ]
+{
+    If '$Match(pName, ..#CONTEXTNAMEPATTERN) Quit
+    If pList.%Size() >= ..#MAXCONTEXTNAMES Quit
+    Set tHeld = 0
+    Set tIterator = pList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If tName = pName Set tHeld = 1
+    }
+    If 'tHeld Do pList.%Push(pName, "string")
 }
 
 /// <p>Whether <var>pPattern</var> is a comma-separated list of pieces each matching

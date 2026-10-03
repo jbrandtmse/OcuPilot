@@ -279,6 +279,24 @@ describe('the class and routine viewers', () => {
     expect(objectOnly.host.querySelector('a[data-ocu-source="edit"]')).toBeNull();
   });
 
+  it('Story 19.4: offers Compare with and Look up a macro while a document is on screen, carrying it', async () => {
+    const { host, view } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    const compare = host.querySelector('a[data-ocu-source="compare"]') as HTMLAnchorElement;
+    expect(compare.textContent?.trim()).toBe(STRINGS.explorerCompareWith);
+    expect(compare.getAttribute('href')).toBe('/system-explorer/compare?ns=HSCUSTOM&left=Demo.Probe.cls');
+    const macro = host.querySelector('a[data-ocu-source="macro"]') as HTMLAnchorElement;
+    expect(macro.textContent?.trim()).toBe(STRINGS.explorerLookUpMacro);
+    expect(macro.getAttribute('href')).toBe('/system-explorer/macros?ns=HSCUSTOM&document=Demo.Probe.cls');
+    await view('xml');
+    expect(host.querySelector('a[data-ocu-source="compare"]')).not.toBeNull();
+    macro.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(TestBed.inject(Router).url).toBe('/system-explorer/macros?ns=HSCUSTOM&document=Demo.Probe.cls');
+    const gone = await mount(CLASS_VIEWER, 'Demo.Gone.cls', [], true);
+    expect(gone.host.querySelector('a[data-ocu-source="compare"]')).toBeNull();
+    expect(gone.host.querySelector('a[data-ocu-source="macro"]')).toBeNull();
+  });
+
   it('the state keeps an answer only for the name and form on screen', () => {
     const state = new SourceViewerState();
     expect(state.open('A.cls')).toBe(true);

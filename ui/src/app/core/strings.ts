@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:634 */
+  /** EXPERIENCE.md:635 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4466,6 +4466,80 @@ export const STRINGS = {
   journalFileDatabaseListPrompt2: 'How many databases does this journal file cover?',
   /** EXPERIENCE.md:378 */
   journalFileDatabaseListPrompt3: 'Does this journal file hold records for IRISSYS?',
+  /** EXPERIENCE.md:594 */
+  explorerCompareLabel: 'Compare',
+  /** EXPERIENCE.md:594 */
+  explorerMacroLabel: 'Macros',
+  /** EXPERIENCE.md:594 */
+  explorerSearchTextLabel: 'Text',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeLabel: 'Look in',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeAll: 'Classes and routines',
+  /** EXPERIENCE.md:594 */
+  explorerSearchCaseLabel: 'Match case',
+  /** EXPERIENCE.md:594 */
+  explorerColumnDocument: 'Document',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMember: 'Member',
+  /** EXPERIENCE.md:594 */
+  explorerColumnLine: 'Line',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMatch: 'Match',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMacro: 'Macro',
+  /** EXPERIENCE.md:594 */
+  explorerCompareFirst: 'First document',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSecond: 'Second document',
+  /** EXPERIENCE.md:594 */
+  explorerCompareWith: 'Compare with\u2026',
+  /** EXPERIENCE.md:594 */
+  explorerLookUpMacro: 'Look up a macro',
+  /** EXPERIENCE.md:594 */
+  explorerMacroDefinedIn: 'Defined in <document>, line <n>',
+  /** EXPERIENCE.md:594 */
+  explorerCompareIdentical: 'The two documents are identical.',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummary: '<n> lines removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareUnchanged: '<n> unchanged lines',
+  /** EXPERIENCE.md:594 */
+  explorerDiffAdded: 'added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareTooLarge: 'These documents differ in more than 1,000 lines, so they are not compared line by line.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchEmpty: 'Nothing in this namespace matches that text.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchInvite: 'Enter text to find in this namespace\'s classes and routines.',
+  /** EXPERIENCE.md:594 */
+  explorerMacroUndefined: '<macro> is not defined where <document> can see it.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchTextReason: 'Name the text to search for: 1 to 256 characters, with no control character.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeReason: 'scope must be all, classes or routines.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchCaseReason: 'case must be yes or no.',
+  /** EXPERIENCE.md:594 */
+  explorerMacroReason: 'Name a class or routine as the macro\'s context, and a macro, as Name or $$$Name.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt1: 'Which classes in this namespace call ##class(%File)?',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt2: 'Where does this namespace\'s code mention TODO?',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt3: 'Which routines mention ^ERRORS?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt1: 'Which classes changed in the last day?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt2: 'Which routines changed in the last day?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt3: 'Which documents in this namespace mention TODO?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt1: 'What does $$$ISERR expand to?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt2: 'Where is $$$OK defined?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt3: 'What does $$$ThrowOnError do?',
   // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
   // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
   // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse

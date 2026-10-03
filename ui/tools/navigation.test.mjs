@@ -262,6 +262,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/routines/editor',
       'system-explorer/classes',
       'system-explorer/routines',
+      // Story 19.4: Search, Compare and Macros, after Routines.
+      'system-explorer/search',
+      'system-explorer/compare',
+      'system-explorer/macros',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

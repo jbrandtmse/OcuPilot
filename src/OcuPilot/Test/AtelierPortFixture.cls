@@ -6,7 +6,9 @@
 /// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method>,
 /// <method>Index</method>, <method>Compile</method>, <method>DeleteDocs</method>,
 /// <method>ExportToXMLFile</method>, <method>ListDocumentsInXMLFiles</method>,
-/// <method>LoadXMLFiles</method> and <method>PutDoc</method> stand in for the vendor's routes: each
+/// <method>LoadXMLFiles</method>, <method>PutDoc</method>, <method>Search</method>,
+/// <method>GetMacroDefinition</method> and <method>GetMacroLocation</method> stand in for the vendor's
+/// routes: each
 /// records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
 /// the request's query data, content type, body and <code>If-None-Match</code> -- leaves
@@ -228,6 +230,24 @@ ClassMethod LoadXMLFiles(pNamespace As %String) As %Status
 ClassMethod PutDoc(pNamespace As %String, pDocName As %String) As %Status
 {
     Quit ..Answer("PutDoc", pNamespace, pDocName, 0)
+}
+
+/// <p>The canned <code>Search</code> route.</p>
+ClassMethod Search(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Search", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>GetMacroDefinition</code> route.</p>
+ClassMethod GetMacroDefinition(pNamespace As %String) As %Status
+{
+    Quit ..Answer("GetMacroDefinition", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>GetMacroLocation</code> route.</p>
+ClassMethod GetMacroLocation(pNamespace As %String) As %Status
+{
+    Quit ..Answer("GetMacroLocation", pNamespace, "", 0)
 }
 
 /// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an

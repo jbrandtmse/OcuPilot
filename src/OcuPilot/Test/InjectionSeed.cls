@@ -6,13 +6,15 @@
 /// <p>The sources are <code>a</code> an audit user name (a failed login), <code>b</code> a
 /// messages.log line, <code>c</code> an application error's text in <parameter>ERRORNAMESPACE</parameter>,
 /// <code>d</code> a probe task's description, <code>e</code> the probe role's description,
-/// <code>f</code> a probe user's name and <code>h</code> a probe class's doc comment. The failed-login audit row and the messages.log line are
+/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment and <code>i</code>
+/// a comment line of a probe class in <parameter>SEARCHNAMESPACE</parameter>, which a code search
+/// matches. The failed-login audit row and the messages.log line are
 /// append-only: <method>Remove</method> answers OK for them and removes nothing.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
 /// removing <code>c</code>, <parameter>TASKVARIABLE</parameter> for <code>d</code> and
-/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user and class.</p>
+/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user and classes.</p>
 Class OcuPilot.Test.InjectionSeed Extends %RegisteredObject
 {
 
@@ -40,6 +42,15 @@ Parameter USERPREFIX = "OcuPilotProbeInject ";
 
 /// <p>The probe class whose doc comment is source <code>h</code>'s seed.</p>
 Parameter PROBECLASS = "OcuPilot.Test.InjectProbeDoc";
+
+/// <p>The probe class one of whose comment lines is source <code>i</code>'s seed, after
+/// <parameter>SEARCHTOKEN</parameter>, which the search reads it by, and the namespace it is created
+/// in and its turn runs in.</p>
+Parameter SEARCHCLASS = "OcuProbe194.Inject";
+
+Parameter SEARCHTOKEN = "OcuProbe194Inject";
+
+Parameter SEARCHNAMESPACE = "USER";
 
 /// <p>The probe task's name is this followed by the nonce; it carries
 /// <class>OcuPilot.Test.TaskEditProbe</class>'s prefix.</p>
@@ -107,11 +118,11 @@ ClassMethod Armed(pVariable As %String) As %Status
     Quit $$$OK
 }
 
-/// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
-/// <code>h</code>). <var>pRef</var> is what <method>Remove</method> removes by: <code>""</code> for
-/// the append-only <code>a</code> and <code>b</code>, <code>date|number</code> for <code>c</code>,
-/// the task id for <code>d</code>, the role name for <code>e</code>, the user name for
-/// <code>f</code> and the class name for <code>h</code>.</p>
+/// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>,
+/// <code>h</code> and <code>i</code>). <var>pRef</var> is what <method>Remove</method> removes by:
+/// <code>""</code> for the append-only <code>a</code> and <code>b</code>, <code>date|number</code>
+/// for <code>c</code>, the task id for <code>d</code>, the role name for <code>e</code>, the user
+/// name for <code>f</code> and the class name for <code>h</code> and <code>i</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
 {
     Set pRef = ""
@@ -145,6 +156,9 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf pSource = "h" {
             Set tSC = ..CreateProbeClass(pSeed)
             If $$$ISOK(tSC) Set pRef = ..#PROBECLASS
+        } ElseIf pSource = "i" {
+            Set tSC = ..CreateSearchClass(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#SEARCHCLASS
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -176,6 +190,8 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..DeleteUser(pRef)
         } ElseIf pSource = "h" {
             Set tSC = ..DeleteProbeClass()
+        } ElseIf pSource = "i" {
+            Set tSC = ..DeleteSearchClass()
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -337,6 +353,38 @@ ClassMethod DeleteProbeClass() As %Status
     Quit $System.OBJ.Delete(..#PROBECLASS, "-d")
 }
 
+/// <p>Create <parameter>SEARCHCLASS</parameter> in <parameter>SEARCHNAMESPACE</parameter>, replacing
+/// any class of that name, with one comment line carrying <parameter>SEARCHTOKEN</parameter> and then
+/// <var>pSeed</var>.</p>
+ClassMethod CreateSearchClass(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteSearchClass()
+    If $$$ISERR(tSC) Quit tSC
+    Set tCRLF = $Char(13, 10)
+    Set tText = "Class " _ ..#SEARCHCLASS _ " Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ tCRLF _ "ClassMethod Probe() As %Integer" _ tCRLF _ "{" _ tCRLF
+    Set tText = tText _ "    ; " _ ..#SEARCHTOKEN _ " " _ pSeed _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF _ tCRLF _ "}" _ tCRLF
+    Quit ##class(%Compiler.UDL.TextServices).SetTextFromString(..#SEARCHNAMESPACE, ..#SEARCHCLASS, tText)
+}
+
+/// <p>Delete <parameter>SEARCHCLASS</parameter> from <parameter>SEARCHNAMESPACE</parameter> when it
+/// holds it, failing when it survives.</p>
+ClassMethod DeleteSearchClass() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#SEARCHNAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#SEARCHCLASS) Set tSC = $System.OBJ.Delete(..#SEARCHCLASS, "-d")
+        If $$$ISOK(tSC) && ##class(%Dictionary.ClassDefinition).%ExistsId(..#SEARCHCLASS) Set tSC = $$$ERROR($$$GeneralError, ..#SEARCHCLASS _ " survives in " _ ..#SEARCHNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Delete user <var>pName</var>, matched exactly, when the instance holds it.</p>
 ClassMethod DeleteUser(pName As %String) As %Status
 {
@@ -381,6 +429,9 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
     } ElseIf pSource = "h" {
         Do tCall.%Set("name", "explorer_class_read", "string")
         Do tCall.input.%Set("name", pRef _ ".cls", "string")
+    } ElseIf pSource = "i" {
+        Do tCall.%Set("name", "explorer_search_read", "string")
+        Do tCall.input.%Set("text", ..#SEARCHTOKEN, "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }
@@ -575,14 +626,14 @@ ClassMethod Conversation(Output pStatus As %Integer, Output pText As %String) As
 }
 
 /// <p>Start a turn as the suite's account in conversation <var>pConversationId</var>, carrying
-/// <var>pContext</var> when it is an object, and answer its id when it answered 202. A start
-/// answered 409 while the account's previous turn releases its slot is retried for up to fifteen
-/// seconds.</p>
-ClassMethod StartTurn(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "", Output pStatus As %Integer, Output pText As %String) As %String
+/// <var>pContext</var> when it is an object, in namespace <var>pNamespace</var> when it is not
+/// <code>""</code>, and answer its id when it answered 202. A start answered 409 while the account's
+/// previous turn releases its slot is retried for up to fifteen seconds.</p>
+ClassMethod StartTurn(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "", Output pStatus As %Integer, Output pText As %String, pNamespace As %String = "") As %String
 {
     Set tDeadline = $ZHorolog + 15
     For {
-        Do ##class(OcuPilot.Test.TurnWireFixture).Call("POST", "/turn", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), ##class(OcuPilot.Test.TurnWireFixture).StartBody(pMessage, pConversationId, pContext), .pStatus, .pText, .tHeaders)
+        Do ##class(OcuPilot.Test.TurnWireFixture).Call("POST", "/turn" _ $Select(pNamespace = "": "", 1: "?ns=" _ pNamespace), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), ##class(OcuPilot.Test.TurnWireFixture).StartBody(pMessage, pConversationId, pContext), .pStatus, .pText, .tHeaders)
         If (pStatus '= 409) || ($ZHorolog > tDeadline) Quit
         Hang 0.5
     }

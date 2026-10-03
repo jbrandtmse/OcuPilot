@@ -24,6 +24,8 @@ import {
   type DocumentedRow,
   type SourceViewKey,
 } from './document-viewer.store';
+import { COMPARE_ROUTE, LEFT_QUERY } from './code-compare.store';
+import { DOCUMENT_QUERY, MACROS_ROUTE } from './macro-lookup.store';
 import { SOURCE_EDITOR_ROUTE_SUFFIX, isEditableName } from './source-editor.store';
 
 /** The screen this page renders and the store its table reads. */
@@ -64,7 +66,9 @@ const NAME_SEPARATOR = ' \u00b7 ';
  * five views -- Source, XML and Intermediate code, each a re-read with its `form`; Structure, the
  * shared table over the read's rows; and Documentation, each documented row's description under its
  * name. A routine's Structure and Documentation say it has no class structure. While a document's
- * source text is on screen, "Edit source" opens its editor (Story 19.3).
+ * source text is on screen, "Edit source" opens its editor (Story 19.3); while any document is on
+ * screen, "Compare with" opens Compare with it as the first document and "Look up a macro" opens
+ * Macros with it as the context (Story 19.4).
  *
  * **The rows are the screen's; the text is not.** The read binds through the refresh framework, so
  * the table, the panel's screen context and the read tool see the same rows, and the document text
@@ -120,6 +124,12 @@ const NAME_SEPARATOR = ' \u00b7 ';
         </div>
         @if (hasEditLink) {
           <a class="ocu-details-link" data-ocu-source="edit" [href]="editLink.href" (click)="onEdit($event)">{{ STRINGS.explorerEditSource }}</a>
+        }
+        @if (hasCompareLink) {
+          <a class="ocu-details-link" data-ocu-source="compare" [href]="compareLink.href" (click)="onFollow($event, compareLink.url)">{{ STRINGS.explorerCompareWith }}</a>
+        }
+        @if (hasMacroLink) {
+          <a class="ocu-details-link" data-ocu-source="macro" [href]="macroLink.href" (click)="onFollow($event, macroLink.url)">{{ STRINGS.explorerLookUpMacro }}</a>
         }
         @if (showFault) {
           <div class="ocu-data-table-refusal" role="alert" data-ocu-source="fault">
@@ -349,6 +359,45 @@ export class SourceViewerPage {
 
   protected get hasEditLink(): boolean {
     return this.editLink.url !== '';
+  }
+
+  /** "Compare with": Compare in this namespace, the document on screen its first document. */
+  protected get compareLink(): { readonly url: string; readonly href: string } {
+    return this.linkWith(COMPARE_ROUTE, LEFT_QUERY);
+  }
+
+  protected get hasCompareLink(): boolean {
+    return this.compareLink.url !== '';
+  }
+
+  /** "Look up a macro": Macros in this namespace, the document on screen its context. */
+  protected get macroLink(): { readonly url: string; readonly href: string } {
+    return this.linkWith(MACROS_ROUTE, DOCUMENT_QUERY);
+  }
+
+  protected get hasMacroLink(): boolean {
+    return this.macroLink.url !== '';
+  }
+
+  /**
+   * The router URL and href of built screen `route` in this namespace, carrying the document on
+   * screen as `param`; empty while no document is on screen or the screen is not built.
+   */
+  private linkWith(route: string, param: string): { readonly url: string; readonly href: string } {
+    this.generation();
+    const document = this.state.document();
+    const target = screenForRoute(route);
+    if (document === null || this.state.gone() || document.name === '' || target === null || !target.built) return { url: '', href: '' };
+    const base = entityUrl(target.route, '', this.scope.namespace(), this.router.url);
+    const url = `${base}${base.includes('?') ? '&' : '?'}${param}=${encodeURIComponent(document.name)}`;
+    return { url, href: this.locationStrategy.prepareExternalUrl(url) };
+  }
+
+  /** A plain click follows a link in place; a modified click is the browser's. */
+  protected onFollow(event: MouseEvent, url: string): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (url !== '') void this.router.navigateByUrl(url);
   }
 
   /** A plain click opens the editor in place; a modified click is the browser's. */

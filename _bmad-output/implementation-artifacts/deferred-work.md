@@ -3837,6 +3837,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
+- 2026-10-02T23:22:38Z occurrence=19-4-search-compare-and-macro-lookup note=explorer.search.read text and explorer.macro.read document and macro are described as a comma list where * matches; a * in search text is searched literally and answers no rows with no refusal; fix needs a descriptor-declared criterion description (Screen/Registry.cls criteria grammar)
+- 2026-10-03T00:00:31Z status=routed owner=range-end-cleanup by=cr note=19.4 cr: first silent case, explorer.search.read searches *TODO* or a comma list literally and answers 0 rows unrefused; raise priority
+- 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
+- 2026-10-03T01:39:20Z occurrence=19-5-the-sql-catalog-browser note=the nine catalog read tools' schema and table criteria are described as comma lists where * matches; the port takes one exact name
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8999,6 +9003,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
+- 2026-10-02T23:22:39Z occurrence=19-4-search-compare-and-macro-lookup note=Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest red in the 19.4 sweep on ocupilot-a2-ci (up over 24 h): 24 _SYSTEM conversation entries left by browser-spec turns, oldest 2026-10-01T22:56Z, past the one-day retention the test arranges; a fresh CI throwaway holds none
 
 ### DW-1939: A change toast for a remote database opens Local databases: Local and Remote databases share entity type database-configuration and screenForEntityType takes the lowest side-bar position
 - source: spec-18-16-remote-databases.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -9116,3 +9121,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Rule 6 ends 'anything else is INTERNAL' and its 19.3 amendment names only PutDoc 409 and 423; Outcome answers a parsed PutDoc 2xx error that is no access refusal 422 SAVEREFUSED, logged (matrix row 'Vendor soft refusal').
 - 2026-10-02T19:20:03Z status=routed owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=lead amends AD-61 rule 6 (Rule 20) with the 2xx soft refusal case; code matches the spec gate
 - 2026-10-02T19:23:32Z status=resolved-by:19-3-the-source-editor-with-etag-conflict-detection owner=19-3-the-source-editor-with-etag-conflict-detection by=adjudication note=AD-61 rule 6 amended at ARCHITECTURE-SPINE.md:916 (Rule 20, memlog entry 303): a PutDoc 2xx error that is no access refusal is 422 EXPLORER.SAVE.REFUSED, logged, never sent
+
+### DW-1957: IRIS defect candidate: the Atelier action/search route splices the bracketed part of its documents parameter into SQL
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: documents=OcuProbe194*.mac[1=0] found nothing and [1=] answered an SQL error where the bare mask found the probe (%Library.RoutineMgr:1146,1257-1262 turns the bracketed part into Filter); AtelierPort builds documents from the declared scope only (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905 and DW-1926
+
+### DW-1958: IRIS defect candidate: the Atelier action/search route runs a caller-supplied regex with no operation limit
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: FindInFilesRegex builds %Regex.Matcher with OperationLimit 0; (a+)+c against 22 a's took 0.094 s and quadrupled per two characters (inference: hours at 40), a denial-of-service shape; AtelierPort always sends regex=0 (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926 and the documents splice
+
+### DW-1960: AtelierPort's MACRONAMEPATTERN refuses a macro name holding an underscore or starting with a digit, which a few vendor macros use
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irislib's .inc files define 28,574 macro names, 54 of them with an underscore or a leading digit (mostly SQL enum internals such as OSQLEnumAggregateFunctionCOVAR_POP); a lookup of one is refused 400 PORT.VALIDATION. The pattern is the spec's Matrix row (Bad macro input).
+- 2026-10-03T00:00:23Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=spec-bound: the pattern is the I/O Matrix's; reopens only by a spec amendment widening it to [A-Za-z0-9_]
+
+### DW-1961: MacroContext's header parse ignores a /* comment opened mid-line and skips a line a one-line /* */ comment begins, and counts a routine's #include inside /* */ or #if 0, so a lookup can miss or add a context name
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.MacroContext treats /* only at a line's start and closes on any */; routines get no comment or conditional tracking. Names stay inside the gated namespace and CONTEXTNAMEPATTERN keeps , and : out of the vendor's argument string, so a hostile text can only change its own lookup.
+- 2026-10-03T00:00:23Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=cr note=reopen_if=a Macros lookup on a real document reports a macro defined or undefined contrary to the compiler
+
+### DW-1962: Typing Definition and pressing Enter in the command box now opens Macros, not Definitions: Macros' alias macro definition matches and the box lists in declaration order without ranking by match
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
+- 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
+
+### DW-1963: IRIS defect candidate: the Atelier action/query route prepares every statement with SQL privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.5 plan on ocupilot-a2-ci: %Api.Atelier.v6:229 calls %SQL.Statement.%Prepare(query,0); a principal with %Development:USE and %DB_USER:RW and no SQL grant read rows from an ungranted table and ran an UPDATE that persisted; with checkPriv=1 both answer SQLCODE -99
+- 2026-10-03T01:39:20Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957 and DW-1958
+
+### DW-1964: The query console (19.6) and the agent's SQL tool (19.11) must enforce the caller's SQL privileges themselves and never pass caller SQL through Atelier's action/query, which prepares with privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
+- 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on

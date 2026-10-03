@@ -530,3 +530,25 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
   }
 });
+
+/** Story 19.4's port, which declares the search's and the macro lookup's argument refusals. */
+const ATELIER_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AtelierPort.cls');
+
+/** Story 19.4's four published refusal sentences: `[parameter, strings.ts key]`. */
+const FIND_REFUSALS = [
+  ['REASONSEARCHTEXT', 'explorerSearchTextReason'],
+  ['REASONSEARCHSCOPE', 'explorerSearchScopeReason'],
+  ['REASONSEARCHCASE', 'explorerSearchCaseReason'],
+  ['REASONMACRO', 'explorerMacroReason'],
+];
+
+test("Story 19.4: each of Search's and Macros' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONSEARCHTEXT in AtelierPort.cls -> this goes red naming both.
+  const source = readFileSync(ATELIER_PORT, 'utf8');
+  for (const [parameter, key] of FIND_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `AtelierPort.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+  }
+});

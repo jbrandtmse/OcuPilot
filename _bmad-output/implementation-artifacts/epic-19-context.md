@@ -4,7 +4,7 @@
 
 ## Goal
 
-Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API. Classes and routines are already listed, viewed, compiled, deleted, exported and imported as XML, and edited with a save checked against the version it read. The rest of the stage adds search, compare and macro lookup; the SQL catalog; a query console behind a DML and DDL guard; a data grid harvested from iris-table-editor; Documatic, DocDB and SQL activity; and an agent picker with guarded agent SQL. Everything reaches Atelier through one port, `Port/AtelierPort`, in process as the signed-in user. It never handles the user's password and never modifies a vendor web application. As in the classic portal, a `%Development` holder with no administrative resource gets in. Every screen keeps the one contract earlier stages followed.
+Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API. Classes and routines are already listed, viewed, compiled, deleted, exported and imported as XML, edited with a save checked against the version it read, searched and compared, and their macros can be looked up. The rest of the stage adds the SQL catalog, a query console behind a DML and DDL guard, a data grid harvested from iris-table-editor, Documatic, DocDB, SQL activity, and an agent picker with guarded agent SQL. Everything reaches Atelier through one port, `Port/AtelierPort`, in process as the signed-in user. It never handles the user's password and never modifies a vendor web application. As in the classic portal, a `%Development` holder with no administrative resource gets in. Every screen keeps the one contract earlier stages followed.
 
 ## Stories
 
@@ -28,101 +28,97 @@ Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API
   - One descriptor declares each screen, and the screen reaches the outside through one port. The read tool's and the write tools' field lists derive from it.
   - Every agent write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent marker. Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time.
   - Acceptance is this contract plus each catalog row's backing route. Each story's plan writes its finer criteria.
-- **Backing routes still to build**, relative to `/api/atelier/v<N>/:ns`:
-  - 19.4: a text search, which must use a synchronous route observed on the throwaway; `POST action/getmacrodefinition` and `getmacrolocation`; and two document reads diffed in the client. Classic pages: `%CSP.UI.Portal.RoutineCompare`, which compares two routines across namespaces and declares `%Development:USE` (read in `irissys/`); the legacy Find page (`%CSP.UI.System.FindPane`), whose gate is unread. Macro lookup has no classic page and declares that.
-  - `POST action/query`, used by 19.5 (`INFORMATION_SCHEMA`, `CALL %SQL_Manager.Catalog`), 19.6 (`{query, parameters}`, `EXPLAIN`), 19.7 and 19.8 (the data browser), and 19.10 (`INFORMATION_SCHEMA.CURRENT_STATEMENTS`; cancelling a statement is Stage 4).
-  - 19.9: Documatic at `/csp/documatic/%25CSP.Documatic.cls`, and DocDB at `/api/docdb/v1/:ns`.
-- **The stage's own gates.**
-  - `action/query` runs any statement type unguarded and applies no row limit. The guard ships with the console, and OcuPilot applies the row cap and reports truncation itself.
-  - DocDB needs `%Service_DocDB` enabled. Report that requirement; never assume it.
+- **`action/query` is the stage's gate.** It executes **any** statement type unguarded and applies no row limit. So the DML and DDL guard ships **with** the query console (19.6), never after it. OcuPilot applies the row cap and reports truncation itself.
+  - The route is `POST /api/atelier/v<N>/:ns/action/query` (vendor `Query`). It is in the URL map from v1 and redefined in v6. This was read in the vendor source and not yet observed.
+  - Users: 19.5 (catalog reads), 19.6 (`{query, parameters}`, the plan), 19.7 and 19.8 (the data browser), and 19.10 (`INFORMATION_SCHEMA.CURRENT_STATEMENTS`; canceling a statement is Stage 4).
+- **What that means for 19.5's catalog reads.**
+  - They never open a path where caller text reaches a statement. The statement text is fixed and owned by the port, and every caller value (a schema, a table, a filter) is bound.
+  - They use the information schema and the catalog queries the classic SQL pages use.
+  - Candidates for verification on the instance, not facts: the research names `%SQL.Manager.Catalog`'s queries (`Schemas`, `Tables`, `Fields`, `Indices`, `Constraints`, `Triggers`, `Procedures`), called through `action/query`.
+  - Whether a catalog row set is filtered by the caller's SQL privileges is measured with a least-privileged principal (inference).
+- **The classic SQL pages.** 19.5's plan reads each page's `RESOURCE` and detail tabs on the instance. Known: `SQL/Home` declares `%Development`, and `SQL/QButtons/RuntimeStats` declares `%Development:USE`. The research lists Home's catalog tabs (Fields, Indices, Triggers, Constraints, Cached queries, Partitions) and its system and deprecated toggles; that is a research reading, not an observation.
+- **Other backing routes.** 19.9 uses Documatic at `/csp/documatic/%25CSP.Documatic.cls` and DocDB at `/api/docdb/v1/:ns`. DocDB needs `%Service_DocDB` enabled: report that requirement and never assume it.
 - **The agent never authors code.**
   - No tool schema carries document text. A local file's text is a screen-only action value of at most 3,000,000 characters.
-  - The editor's save is screen-only: both save tools are unadvertised and their keys ship `false`. An agent-authored save would be a later story, if the owner asks.
-- **Code text reaching the model** (a search hit's line, a macro's definition) is bound by AD-11 and AD-39. It enters only as delimited tool-result content, bounded by AD-24 and passed through AD-60's sanitizer, never as instruction. Today no source text joins a tool's view, so whether hit or definition text does is a decision for 19.4's spec gate (inference).
+  - The editor's save is screen-only (`explorer.classes.save` and `explorer.routines.save`, unadvertised, keys `false`).
 - **Who gets in.** A caller holding neither an `%Admin_*` resource nor `%Development:USE` is refused the API and the turn. A `%Development`-only caller reaches System Explorer and is refused wherever a classic `%Developer` is.
-- **Governance (AD-22).** Every new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled. From 2026-10-04 the owner decides how new keys enter the baseline. As shipped: compile `true`, delete `false`, export `true`, import `false`, save `false`.
-- **New dependencies (Rule 5).** A third-party library, such as a diff, editor or grid library, is ask-first: halt for the owner before adding it. It must be vendored with no CDN, run under the content-security policy, and count toward the bundle.
-- **Bundle.** The initial-bundle warning is 2,488 kB, against 2,487,199 bytes measured at 19.3, so nearly any UI addition crosses it. Re-base `ui/angular.json` and `angular-json.test.mjs` to the measured size (DW-1166). Stop and ask above 3,800 kB; the hard error is 4,000 kB.
+- **Governance (AD-22).** Every new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change, and every new destructive key ships disabled. From 2026-10-04 the owner decides how new keys enter the baseline. As shipped: compile `true`, delete `false`, export `true`, import `false`, save `false`. Read tools add no key.
+- **New dependencies (Rule 5).** A third-party library, such as an editor or grid library, is ask-first: halt for the owner before adding it. It must be vendored with no CDN, run under the content-security policy, and count toward the bundle. 19.4 wrote its own diff and needed none.
+- **Bundle.** The initial-bundle warning is 2,548 kB, against 2,547,991 bytes measured after 18.5 merged forward, so nearly any UI addition crosses it. Re-base `ui/angular.json` and `angular-json.test.mjs` to the measured size (DW-1166). Stop and ask above 3,800 kB; the hard error is 4,000 kB.
 - **Harvest limits carried knowingly (19.7, 19.8):** only single-column primary keys; the identifier pattern refuses delimited names; `rowsAffected` always reads 1; `%VID` offset paging re-reads earlier rows and runs a `COUNT(*)` per page, and a failed count shows zero rows.
-- **Measure, never assume.** Take each pair set from the handler's own checks plus a purpose-built least-privileged principal on the throwaway, never `%Operator`. Read a classic page's `RESOURCE` in `irissys/`; never recall it.
+- **Measure, never assume.** Take each pair set from the handler's own checks plus a purpose-built least-privileged principal on the throwaway, never `%Operator`. Read a classic page's `RESOURCE` in `irissys/` or on the instance; never recall it.
+- **The ledger.**
+  - DW-1001: every derived read tool describes a text criterion as a comma list where `*` matches. A new read tool repeats this, so record an occurrence and leave the fix alone. Epic 19's burn-down story owns the fix: a criterion description declared in the descriptor (`Screen/Registry.cls`, checking Epic 18's diff at edit time).
+  - DW-1957 (the search route splices `documents` into SQL) and DW-1958 (it runs a caller regex with no operation limit) are vendor-defect candidates. The owner decides whether to report them together with DW-1905 and DW-1926, and no story acts on them.
 
 ## Technical Decisions
 
-- **AD-61: the Atelier port.**
-  - `Port/AtelierPort` is the only class that names an `%Api.Atelier.*` class, through parameters only. It calls route methods in the caller's process, one route at a time. The browser never calls `/api/atelier`.
-  - **Gate first (AD-29).** `%Development:USE`, then READ per namespace at call time on the routines and globals databases and every database the namespace maps code from except IRISSYS. A write (compile, delete, import, save) also needs WRITE on the routines database's resource; an export needs only the read pairs. Each write tool declares the same pairs (AD-8), so a caller without one is refused by name before any port call.
-  - **Version.** The port calls `v<min(N, 8)>`. Each route declares its minimum in `MINVERSIONS`, and an older instance is refused `PORT.NOTIMPLEMENTED` before any call.
-  - **Stub CSP state.** `New %request, %response, %session, %SourceControl`; query parameters seeded into `%request.Data`; a body the port builds written to the stub's content stream; the namespace switched by save and restore around the vendor call only (AD-16).
-  - **Capture.** An answer above about 3.6 million characters is refused `PORT.UNAVAILABLE`. `action/index` alone goes through a temporary file, because the capture killed the process with signal 11; a later route that needs the file device names itself in AD-61.
-  - **Outcome from four places:** the `%Status`, `%response.Status`, the envelope's `status.errors` and the result's `status`.
-    - 404 is `PORT.NOTFOUND`, unlogged on a read; 400 is `PORT.VALIDATION`.
-    - Soft refusals (#5838, #5883, #302) and `<PROTECT>` are `PORT.ACCESSDENIED`, except inside a compile's or an import's output and a delete's per-item results.
-    - `PutDoc` answers 409 `EXPLORER.DOCUMENT.CONFLICT`, 423 `EXPLORER.DOCUMENT.LOCKED` (neither logged as a fault), and a 2xx soft refusal 422 `EXPLORER.SAVE.REFUSED`.
-    - Vendor text is logged, never sent (AD-39).
-  - **Rule 7: never** send `docnames`' `filter` (the vendor splices it into SQL), call `POST modified`, or call the `work` routes (`QueueAsync`, `PollAsync`, `CancelAsync`), which also carry a queued `search` (DW-1926).
-  - A call Atelier cannot carry, such as DocDB or Documatic, needs its own named entry in AD-61 or a new port, amended into the spine at that story's spec gate (inference).
-- **19.4's routes, read in the vendor source and not yet observed.**
-  - v2 `GET action/search` is synchronous. It runs `%Studio.Project.FindInFiles` or `FindInFilesRegex`, requires `query` and `documents`, defaults `regex` on and `max` to 200, captures its own console, and parses it into `{doc, matches[{member, line, attr, text}]}`.
-  - Observe on the throwaway: its cost on a large namespace, how its capture nests under the port's, and whether `query` or `documents` reaches SQL the vendor concatenates. If either does, rule 7's reasoning applies (inference).
-  - The macro routes take a POST JSON body (`docname`, `macroname`, includes, superclasses, imports, mode), so a macro resolves in one document's context. They answer `definition` lines or `{document, line}`, and a failed lookup answers a soft error.
-- **The write pattern 19.2, 19.13 and 19.3 set.** Each later write follows it and amends the spine at its own spec gate.
-  - **Action-style (AD-51).** Each story names its case. The port builds the vendor query or body from the tool's declared arguments, answers the fresh read through a port-composed type (`DOCS`, `EXPORTDOCS`, `IMPORTTARGET`, `PREVIEW`, `SAVEDOCS`), and the tool declares the fingerprint subject.
-  - **Two callers (AD-53, AD-55).** A screen action and the agent's proposal reach one tool. Text the model must not author travels as a declared screen-only value (`SCREENVALUES`), never in the input schema. An unadvertised tool (`ADVERTISED = 0`) is reachable by its screen only; AD-53's named case and AD-8's advertised-set clause list each one.
-  - **The per-target lock (AD-34)** orders a confirm and a screen action, the editor's save included. A form Save through AD-55 does not hold it yet (DW-1882).
-  - **Self-protection (AD-10).** `PROHIBITED.OCUPILOTCODE` refuses deleting, compiling, or replacing by import or by save a document named `OcuPilot*`, in any case and any namespace, on both callers.
-  - **Console output (AD-39's fifth exception).** Compile and import lines, an import's names, an export's XML lines answered to this browser, and a save's compile lines reach the screen and the proposal card only. A story whose output joins them widens the exception.
-  - **Audit (AD-15, AD-53).** The stock event set records no compile, delete, export, import, load or `PUT` (measured), so the agent marker is the only record and a screen write leaves no audit row. Each new write measures and names its case.
-  - **Classic pages (AD-44).** Each tool lists in `CLASSICPAGES` the classic pages whose operation it performs. A screen with no classic equivalent declares that.
-  - **Server files (AD-21's sixth case).** A file is a `PathPort` root plus a relative name, resolved again at the write.
-  - New codes go in `Api/AtelierError.cls` with their Fixed strings. Every write type needs a `Snippet` (AD-59). Read-back (AD-58) and the change event (AD-14) apply.
-  - Work past the gateway's 60 s answers 504 while the instance finishes (inference). The screen compiles a selection one action per document.
-- **Reads (AD-36, AD-24, AD-5).**
-  - One declared read serves the screen and its tool. Source, XML and `.int` text is the screen-only `document`, never in a tool's view or the screen context.
-  - A page may issue another built screen's declared read under that screen's own gate: a compare can issue the viewer's read twice, and 19.7 and 19.8 issue 19.5's reads.
-  - Query results and cell values are untrusted content to the model (AD-11, AD-60). Secret-typed fields never leave the instance.
+- **AD-61: the Atelier port.** `Port/AtelierPort` is the only class that names an `%Api.Atelier.*` class, through parameters only. It calls route methods in the caller's process, one route at a time. The browser never calls `/api/atelier`.
+  1. **Gate first (AD-29).** `%Development:USE`, then READ per namespace at call time on the routines and globals databases and every database the namespace maps code from except IRISSYS. A write also needs WRITE on the routines database's resource; an export needs only the read pairs. A refusal names the failed pair.
+  2. **Version.** The port calls `v<min(N, 8)>`, and each route declares its minimum in `MINVERSIONS` (XML routes 7; `Search` and both macro routes 2). An older instance is refused `PORT.NOTIMPLEMENTED` before any call.
+  3. **Stub CSP state.** `New %request, %response, %session, %SourceControl`, and query parameters are seeded into `%request.Data`. A body the port builds is written to the stub's content stream. A macro lookup's context comes from the document's own text through `GetDoc`; no caller supplies it.
+  4. **Namespace (AD-16).** It is switched by save and restore around the vendor call only, and no `OcuPilot.*` class is called while switched.
+  5. **Capture.** An answer above about 3.6 million characters is refused `PORT.UNAVAILABLE`. `action/index` alone goes through a temporary file (signal 11 under the capture), and a later route that needs the file device names itself.
+  6. **Outcome from four places:** the `%Status`, `%response.Status`, the envelope's `status.errors` and the result's `status`.
+     - 404 is `PORT.NOTFOUND`, unlogged on a read; 400 is `PORT.VALIDATION`.
+     - Soft refusals (#5838, #5883, #302) and `<PROTECT>` are `PORT.ACCESSDENIED`.
+     - Vendor text is logged, never sent (AD-39).
+  7. **Never:** `docnames`' `filter` (spliced into SQL), `POST modified`, or the `work` routes (DW-1926). A search always sends `regex=0`, never `word` or `wild`, and builds `documents` from the declared scope alone (both measured).
+  8. **Cost.** A search reads every document in scope until `max` matches: 1.3 to 1.6 s and about 4.0 million global references over HSCUSTOM's 10,319 classes. `docnames` and search allocate `^CacheTemp` and may rebuild `^rINDEX`; that stays inside AD-7's fourth shape (inference).
+  - **`action/query` has no AD-61 entry yet.** 19.5's spec gate amends rules 2, 3, 5, 7 and 8 for it: its minimum version, a body built only from port-owned statement text plus bound values, its capture behavior, and its measured cost (inference). A call Atelier cannot carry, such as DocDB or Documatic, needs its own named entry or a new port.
+- **Reads (AD-36, AD-24, AD-5, AD-60).**
+  - One declared read serves the screen and its tool, bounded by the row cap and the per-field (1,000) and total (65,536) bounds. Secret-typed fields never leave the instance.
+  - A row may carry one line of code, such as a search match or a macro definition. It is untrusted content, cut by AD-24's per-field bound and passed through AD-60. A document's whole text stays the screen-only payload and never reaches a tool.
+  - Query results and cell values are likewise untrusted content (AD-11, AD-60).
+  - Only the vendor's own 404 reads as no rows (`Screen/Read.cls` `IsAbsence`); any other 404 code fails the read.
+  - A page may issue another built screen's declared read under that screen's gate. Compare issues the viewer's read twice, and 19.7 and 19.8 issue 19.5's reads.
 - **SQL and the guard.**
-  - Every caller value is bound. Table and column names cannot be bound, so the identifier path needs a named AD-21 case, or names first resolved against `INFORMATION_SCHEMA` (inference).
-  - One classifier on the instance serves both the console and the agent's SQL tool. A client-only check is not a gate (AD-10, AD-40; inference).
-  - DML and DDL need explicit confirmation in the console and are ordinary confirmed proposals from the agent.
+  - Every caller value is bound. Table and column names cannot be bound in statement text. So the identifier path needs a named AD-21 case, or the names are first resolved against `INFORMATION_SCHEMA`; a catalog query that takes them as arguments binds them (inference).
+  - One classifier on the instance serves both the console and the agent's SQL tool, and a client-only check is not a gate (AD-10, AD-40; inference). DML and DDL need explicit confirmation in the console and are ordinary confirmed proposals from the agent.
+- **The write pattern (19.2, 19.13, 19.3).** Later writes (19.6, 19.8, 19.9) follow it and amend the spine at their own spec gate.
+  - **Action-style (AD-51).** The port builds the vendor body from declared arguments, and a port-composed type answers the fresh read. `PRECONDITIONCODES` (Story 18.18) lets a confirm read a declared precondition refusal as target-changed.
+  - **Two callers (AD-53, AD-55).** A screen action and the agent's proposal reach one tool. Text the model must not author is a declared `SCREENVALUES` value, and an unadvertised tool is reachable by its screen only.
+  - **Per-target lock (AD-34)** and **self-protection (AD-10)**: `PROHIBITED.OCUPILOTCODE` covers any `OcuPilot*` document.
+  - **Console output (AD-39's fifth exception)** reaches the screen and the proposal card only.
+  - **Audit (AD-15, AD-53).** The stock event set records none of these writes, so each new write measures and names its case.
+  - **Classic pages (AD-44).** Each tool lists its `CLASSICPAGES`, or the screen declares it has no classic equivalent.
+  - **Codes.** New codes go in `Api/AtelierError.cls` with their Fixed strings. Every write type needs a `Snippet` (AD-59). Read-back (AD-58) and the change event (AD-14) apply.
 - **The iris-table-editor harvest.** Keep its call sites, never its names. Lift `SqlBuilder`, `DataTypeFormatter`, `UrlBuilder`, `ErrorHandler`, the model types, `grid-styles.css` (bridged to OcuPilot's tokens) and the CSV helpers. Port three `grid.js` algorithms: keyboard navigation; the filter row and tri-state sort; and staging with primary-key reconciliation and stale-index recovery. Never carry its plaintext-password session.
 - **Documatic and agent definitions.** Documatic loads under the browser-level session; a token never enters a frame (AD-28), and the content-security policy names only the instance's origin (AD-47). Moving the default definition is a security change, and the egress line follows the definition a turn uses (AD-42).
 
 ## UX & Interaction Patterns
 
-- **The area.** System Explorer is rail position 8, listing Classes and Routines. Each opens an unlisted viewer at `<list route>/document` and an unlisted full-page editor at `<list route>/editor/:id`. An unlisted screen takes `sideBarPosition` 0. Prompts use the group "Code".
+- **The area.** System Explorer is rail position 8. Its side bar lists Classes · Routines · Search · Compare · Macros. The viewer (`<list route>/document`) and the editor (`<list route>/editor/:id`) are unlisted with `sideBarPosition` 0. Prompts use the group "Code".
 - **Every screen** registers the 10-item screen contract, at least three suggested prompts, aliases and its Fixed strings. The side bar lists only built screens.
 - **Line-cited documents.**
-  - System Explorer's Fixed-strings rows in EXPERIENCE.md are :586 to :593; append new rows after :593.
+  - System Explorer's Fixed-strings rows in EXPERIENCE.md are :586 to :594; append new rows after :594.
   - The closed dialog set is at :173; a new dialog joins it in place.
   - Edit DESIGN.md only in place, and move every citation the suites hold (`npm run test:tools`).
-- **Code** renders as text on `code-surface` (`<pre tabindex=0>`), never as markup. Output panes carry a polite live status line. A search match takes the log viewer's `secondary-container` highlight.
-- **A diff** has no code-diff component in DESIGN.md. The proposal card's diff colors, `destructive` for before and `success` for after, are the nearest tokens (inference).
-- **The editor** keeps a sticky Save and Cancel bar with "Saved" as a status, asks "Leave without saving?" before any person's or agent's navigation (AD-11 rule 3), and refuses a conflict by name rather than overwriting.
+- **Code** renders as text on `code-surface`, never as markup. Output panes carry a polite live status line. A diff reuses 19.4's `line-diff.ts` and `.ocu-line-diff`.
+- **The editor** keeps a sticky Save and Cancel bar, asks "Leave without saving?" before any navigation (AD-11 rule 3), and refuses a conflict by name.
 - **Dialogs** are a closed set and never stack. Destructive actions use `typed-name-dialog`: a name for one document, a count for a set.
 
 ## Cross-Story Dependencies
 
 - **Done.**
-  - 19.1: the port, the area, the viewers and the four read tools.
-  - 19.12: the floor admits `%Development:USE`. `Test.DeveloperFloor`, `DeveloperFloorRoutes` and `DeveloperFloorTurn` pin a real `%Developer`, and every later screen, tool and route joins those rosters.
-  - 19.2: compile, delete, `DOCS`, `documentset`, `extraActions` and the `output` channel.
-  - 19.13: XML export and import, the UDL header rule (it skips a leading `/* */` comment), and a reviewed import checked by a sha256 of the file's lines.
-  - 19.3: the class and routine editors, `SAVEDOCS`/`SAVE`, `If-None-Match` seeded with the version read and never `ignoreConflict`, and the unadvertised `explorer.classes.save` and `explorer.routines.save`.
-- **19.4 is next.**
-  - Compare can reuse the viewer's declared read. Reading two namespaces passes AD-61's gate in each (inference).
-  - Search and macro routes are v2, so their `MINVERSIONS` entry is 2 (inference from the URL map).
-  - A hit may link to the viewer or the editor (inference).
-  - New read tools and screens trip the read-side rosters listed in 19.3's spec under Rosters: `ExplorerDescriptor`, `ReadTool`, `SurfaceCoverage`, `DeveloperFloor`, the navigation tests, and a regenerated `screens.generated.ts`.
-  - A client diff library is ask-first (Rule 5).
-- **19.5 to 19.8, 19.10 and 19.11** go through `action/query`. 19.6's third criterion and 19.11's second describe one agent SQL tool behind one guard; whichever story introduces it wires it through the guard. 19.8 edits 19.7's grid and may reuse `extraActions` (inference).
-- **19.11** builds on the agent definitions and 16.15's egress line. Reuse governance (14.2), the copy-out draft (14.1), the sanitizer (14.3), the read-back (16.17) and Download CSV (16.23).
+  - 19.1 built the port, the area, the viewers and the four read tools.
+  - 19.12 made the floor admit `%Development:USE`. `DeveloperFloor`, `DeveloperFloorRoutes` and `DeveloperFloorTurn` pin a real `%Developer`, and every later screen, tool and route joins those rosters.
+  - 19.2 built compile and delete; 19.13 built XML export and import; 19.3 built the editors and the ETag-checked save.
+  - 19.4 built Search and Macros, two declared reads exposed as the advertised `explorer.search.read` and `explorer.macro.read`, and Compare, a form page that diffs two viewer reads in the browser. The viewer links to Compare and Macros.
+- **19.5 is next.** Its reads are the ones 19.7 and 19.8 later issue. A new screen or read tool trips these rosters:
+  - `ExplorerDescriptor`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `Descriptor`, and `DeveloperFloor` (screens, tools, reads, count words).
+  - `InjectionChannels`, for a new untrusted channel.
+  - The client's navigation and mirror tests.
+  - A regenerated `screens.generated.ts`.
+- **19.6 and 19.11.** 19.6's third criterion and 19.11's second describe one agent SQL tool behind one guard; whichever story introduces it wires it through the guard. 19.8 edits 19.7's grid and may reuse `extraActions` (inference).
+- **19.11** builds on the agent definitions and 16.15's egress line. It reuses governance (14.2), the copy-out draft (14.1), the sanitizer (14.3), the read-back (16.17) and Download CSV (16.23).
 - **Slot A.**
   - Use the `ocupilot-slot-a` profile. The throwaway is `ocupilot-a2-ci` (52780/1979); this epic's runner owns it, and it is never restarted.
   - Load source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then run `$System.OBJ.LoadDir`. Run one test class per call.
   - Probes write and remove only their own `OcuProbe*` documents and files.
-  - The throwaway holds more than 1,000 task history rows, so `WireSecurityRead`'s cap test reds there; this is known and outside this epic.
+  - Two reds there are known and outside this epic: `WireSecurityRead`'s task-history cap (DW-1554) and `Retention`'s day-old conversations (DW-1929).
 - **Concurrency.**
-  - Epic 18 runs on slot B. 18.5 (journals) was split on 2026-10-02: settings went to 18.18 and the record browser to 18.19.
-  - Shared files, edited add-only and unioned by whichever epic reaches feature second: `Baseline.cls`, `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `Governance`, `ToolDispatch`, `ClassicPageGate`, `SurfaceCoverage`, `screen-outlet.ts`, EXPERIENCE.md and the spine. Edits that are not add-only (`strings.ts` citations, the `angular.json` budget) need the lead's approval.
+  - Epic 18 runs on slot B. 18.5 (journals) merged forward into this epic at 19.4's boundary; 18.18 (journal settings) and 18.19 (the record browser) remain.
+  - Shared files are edited add-only and unioned by whichever epic reaches feature second: `Baseline.cls`, `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `Governance`, `ToolDispatch`, `ClassicPageGate`, `SurfaceCoverage`, `screen-outlet.ts`, EXPERIENCE.md and the spine.
+  - Edits that are not add-only need the lead's approval: `strings.ts` citations, the `strings.test.mjs` Fixed-strings bound (2,100) and the `angular.json` budget.
   - Check `.worktrees/epic-18`'s diff and status before editing a shared file. Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
-  - DW-1905 (the `index` crash) and DW-1926 (the `work` routes) belong to the owner; no story acts on them.

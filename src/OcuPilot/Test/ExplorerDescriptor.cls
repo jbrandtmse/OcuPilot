@@ -1,16 +1,18 @@
 /// <p>Pins Story 19.1's declarations: the System Explorer area's row, its two lists and two viewers
 /// -- each validated, read through the source code API port, gated on the measured pair, keyed to a
 /// classic page the portal's own resolver answers, and carrying at least three prompts in the Code
-/// group -- the two editors since Story 19.3, form pages with no read and no classic page; and the
-/// area's tools since Story 19.2: four reads and the two lists' compile, delete, export, import and
-/// save, each write's baseline key, and the actions the lists declare for them.</p>
+/// group -- the two editors since Story 19.3, form pages with no read and no classic page; Search,
+/// Compare and Macros since Story 19.4, two reads with no classic page and a form page keyed to the
+/// classic Compare Routines page; and the area's tools since Story 19.2: six reads and the two lists'
+/// compile, delete, export, import and save, each write's baseline key, and the actions the lists
+/// declare for them.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registry and the classic portal's
 /// classes. Live-safe: it reads and writes nothing.</p>
 Class OcuPilot.Test.ExplorerDescriptor Extends %UnitTest.TestCase
 {
 
-/// <p>The six descriptors, in side-bar order, then viewers, then editors.</p>
-Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument,OcuPilot.Screen.Descriptor.ExplorerClassEditor,OcuPilot.Screen.Descriptor.ExplorerRoutineEditor";
+/// <p>The nine descriptors: the five listed, in side-bar order, then viewers, then editors.</p>
+Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument,OcuPilot.Screen.Descriptor.ExplorerClassEditor,OcuPilot.Screen.Descriptor.ExplorerRoutineEditor";
 
 /// <p>The measured pair set every screen and the area declare.</p>
 Parameter PAIRS = "[{""resource"":""%Development"",""permission"":""USE""}]";
@@ -26,19 +28,22 @@ Method TestTheAreaIsTheEighthRailItem()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, 9, "Agent co-pilot moves to 9")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("system-explorer", .tListed)
     Do $$$AssertStatusOK(tSC, "the side bar reads")
-    Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList", "its side bar lists Classes then Routines")
+    Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro", "its side bar lists Classes, Routines, Search, Compare and Macros")
 }
 
-/// <p>Each declaration validates, is gated on the measured pair, reads through the atelier port,
-/// and keys a classic page the portal's own resolver answers (AD-44).</p>
+/// <p>Each declaration that reads validates, is gated on the measured pair, reads through the
+/// atelier port, and keys a classic page the portal's own resolver answers (AD-44), or, for Search
+/// and Macros, none.</p>
 Method TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair()
 {
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
     Do $$$AssertStatusOK(tSC, "the roster validates: " _ tProblem)
-    Set tExpected = $ListBuild($ListBuild("system-explorer/classes", 1, "list (server criteria)", "class", "Classes", "%CSP.UI.Portal.ClassList", "explorer.classes"), $ListBuild("system-explorer/routines", 2, "list (server criteria)", "routine", "Routines", "%CSP.UI.Portal.RoutineList", "explorer.routines"), $ListBuild("system-explorer/classes/document", 0, "viewer (source)", "class", "Class", "%CSP.UI.Portal.ClassList", "explorer.class"), $ListBuild("system-explorer/routines/document", 0, "viewer (source)", "routine", "Routine", "%CSP.UI.System.ViewCode", "explorer.routine"))
-    For tI = 1:1:4 {
-        Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
+    Set tPackage = "OcuPilot.Screen.Descriptor."
+    Set tExpected = $ListBuild($ListBuild("ExplorerClassList", "system-explorer/classes", 1, "list (server criteria)", "class", "Classes", "%CSP.UI.Portal.ClassList", "explorer.classes"), $ListBuild("ExplorerRoutineList", "system-explorer/routines", 2, "list (server criteria)", "routine", "Routines", "%CSP.UI.Portal.RoutineList", "explorer.routines"), $ListBuild("ExplorerClassDocument", "system-explorer/classes/document", 0, "viewer (source)", "class", "Class", "%CSP.UI.Portal.ClassList", "explorer.class"), $ListBuild("ExplorerRoutineDocument", "system-explorer/routines/document", 0, "viewer (source)", "routine", "Routine", "%CSP.UI.System.ViewCode", "explorer.routine"), $ListBuild("ExplorerSearch", "system-explorer/search", 3, "list (server criteria)", "class", "Search", "", "explorer.search"), $ListBuild("ExplorerMacro", "system-explorer/macros", 5, "list (server criteria)", "routine", "Macro", "", "explorer.macro"))
+    For tI = 1:1:$ListLength(tExpected) {
         Set tWant = $List(tExpected, tI)
+        Set tClass = tPackage _ $List(tWant, 1)
+        Set tWant = $List(tWant, 2, *)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
         If $$$ISERR(tSC) Continue
@@ -47,8 +52,10 @@ Method TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair()
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#PAIRS, tClass _ ": gated on %Development:USE")
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint, "atelier|" _ $List(tWant, 5), tClass _ ": read through the atelier port")
         Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), $List(tWant, 6), tClass _ ": its classic page")
-        Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("/csp/sys/exp/" _ $Replace($List(tWant, 6), "%", "%25") _ ".zen"), $List(tWant, 6), tClass _ ": which the portal's own resolver answers")
-        Do $$$AssertTrue(##class(%Dictionary.CompiledClass).%ExistsId($List(tWant, 6)), tClass _ ": and which is a compiled class")
+        If $List(tWant, 6) '= "" {
+            Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("/csp/sys/exp/" _ $Replace($List(tWant, 6), "%", "%25") _ ".zen"), $List(tWant, 6), tClass _ ": which the portal's own resolver answers")
+            Do $$$AssertTrue(##class(%Dictionary.CompiledClass).%ExistsId($List(tWant, 6)), tClass _ ": and which is a compiled class")
+        }
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool($List(tWant, 7)), tClass, tClass _ ": its tool identifier resolves to it")
         Do $$$AssertEquals(tDeclaration.read.%Get("document"), "", tClass _ ": declares no document of its own")
     }
@@ -58,7 +65,7 @@ Method TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair()
 /// defaulting to UDL. Their context never names the description or the text.</p>
 Method TestTheCriteriaCarryTheClassicDefaults()
 {
-    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.ExplorerClassList", "pattern=*,system=no,generated=no,mapped=yes,from=,to="), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerRoutineList", "pattern=*.mac,system=no,generated=yes,mapped=yes,from=,to="), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerClassDocument", "name=,form=udl"), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerRoutineDocument", "name=,form=udl") {
+    For tCase = $ListBuild("OcuPilot.Screen.Descriptor.ExplorerClassList", "pattern=*,system=no,generated=no,mapped=yes,from=,to="), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerRoutineList", "pattern=*.mac,system=no,generated=yes,mapped=yes,from=,to="), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerClassDocument", "name=,form=udl"), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerRoutineDocument", "name=,form=udl"), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerSearch", "text=,scope=all,case=no"), $ListBuild("OcuPilot.Screen.Descriptor.ExplorerMacro", "document=,macro=") {
         Set tSC = $ClassMethod($List(tCase, 1), "DeclarationJson", .tDeclaration)
         Set tSeen = ""
         Set tIterator = tDeclaration.read.criteria.fields.%GetIterator()
@@ -104,8 +111,8 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Stories 19.2 AC9 and 19.13 AC7: the area's advertised tools are its four reads and eight
-/// writes, the lists' compile, delete, export and import, each over the source code API port with its
+/// <p>Stories 19.2 AC9, 19.13 AC7 and 19.4 AC6: the area's advertised tools are its six reads and
+/// eight writes, the lists' compile, delete, export and import, each over the source code API port with its
 /// own request type, fingerprint subject and precondition -- a delete covers each document's modified
 /// time and an import its reviewed documents; the compile and export keys are enabled and the delete,
 /// import and save keys disabled at the baseline; and the two lists declare the seven row actions,
@@ -113,7 +120,7 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
 /// editors declare none. The two unadvertised saves are
 /// <method>TestTheTwoSavesAreUnadvertisedDestructiveWrites</method>'s.</p>
 /// <p>Mutation (Rule 19): enable a delete key in the baseline -- the baseline leg goes red.</p>
-Method TestTheAreaHoldsFourReadsAndEightWrites()
+Method TestTheAreaHoldsSixReadsAndEightWrites()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the registry lists")
@@ -128,7 +135,7 @@ Method TestTheAreaHoldsFourReadsAndEightWrites()
         Set tClass = tTool.class
         Set tWriters = tWriters _ $Select(tWriters = "": "", 1: ",") _ tTool.name _ ":" _ $Piece($Parameter(tClass, "DESCRIPTORCLASS"), ".", *) _ "/" _ $ClassMethod(tClass, "PortClass") _ "/" _ $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType") _ "/" _ $ClassMethod(tClass, "Destructive") _ "/" _ $ListToString($ClassMethod(tClass, "FingerprintSubject"), "+") _ "/" _ $ClassMethod(tClass, "PreconditionField")
     }
-    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read", "the area's advertised tools are four reads and eight writes")
+    Do $$$AssertEquals(tExplorer, "explorer.class.read:read,explorer.classes.compile:write,explorer.classes.delete:write,explorer.classes.export:write,explorer.classes.import:write,explorer.classes.read:read,explorer.macro.read:read,explorer.routine.read:read,explorer.routines.compile:write,explorer.routines.delete:write,explorer.routines.export:write,explorer.routines.import:write,explorer.routines.read:read,explorer.search.read:read", "the area's advertised tools are six reads and eight writes, and Compare has none")
     Do $$$AssertEquals(tWriters, "explorer.classes.compile:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.classes.delete:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/DELETE/1/Modified+Absent+Namespace/Modified,explorer.classes.export:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.classes.import:ExplorerClassList/OcuPilot.Port.AtelierPort/Classes/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents,explorer.routines.compile:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/COMPILE/0/Present+Absent+Namespace+KeepSource+CompileDependents+SkipUpToDate/Present,explorer.routines.delete:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/DELETE/1/Modified+Absent+Namespace/Modified,explorer.routines.export:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/EXPORT/0/Present+Absent+Namespace+root+path/Present,explorer.routines.import:ExplorerRoutineList/OcuPilot.Port.AtelierPort/Routines/IMPORT/1/Namespace+root+path+fileName+content+documents+Compile/documents", "each write names its list, the source code API port, its endpoint and type, its fingerprint subject and precondition, and the deletes and imports are destructive")
     Set tSC = ##class(OcuPilot.Kernel.Governance.Baseline).Keys(.tKeys)
     Do $$$AssertStatusOK(tSC, "the baseline reads")
@@ -196,6 +203,38 @@ Method TestTheEditorsAreFormPagesWithNoClassicPage()
         Kill tTools
         Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tClass, .tTools), tClass _ ": its context tools build")
         Do $$$AssertEquals($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: ""), "[]", tClass _ ": and name none")
+    }
+}
+
+/// <p>Story 19.4 AC7: Compare is a listed form page with no read, no table, no action, no context
+/// field and no tool, keyed to the classic Compare Routines page, which the portal's own resolver
+/// answers and whose compiled <code>RESOURCE</code> is <code>%Development:USE</code>, the pair it
+/// declares; Search and Macros declare no classic page.</p>
+/// <p>Mutation (Rule 19): set <class>OcuPilot.Screen.Descriptor.ExplorerCompare</class>'s
+/// <code>classicPage</code> to <code>""</code> -- this goes red.</p>
+Method TestCompareKeysTheClassicCompareRoutinesPage()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.ExplorerCompare"
+    Set tPage = "%CSP.UI.Portal.RoutineCompare"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.secondaryEntityTypes.%ToJSON() _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind, "system-explorer/compare|4|form-page|class|[""routine""]|namespace|none", "a listed form page over classes and routines, keyed by nothing")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("read") _ "|" _ tDeclaration.%GetTypeOf("table") _ "|" _ tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.context.%ToJSON(), "unassigned|unassigned|0||{""fields"":[],""secretFields"":[]}", "no read, no table, no action and no context field")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#PAIRS, "gated on %Development:USE")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage") _ "|" _ tDeclaration.classicLinkExemption.exempt, tPage _ "|0", "keyed to the classic Compare Routines page, with no exemption")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("/csp/sys/exp/" _ $Replace(tPage, "%", "%25") _ ".zen"), tPage, "which the portal's own resolver answers")
+    Set tResource = ##class(%Dictionary.CompiledParameter).%OpenId(tPage _ "||RESOURCE")
+    Do $$$AssertEquals($Select($IsObject(tResource): tResource.Default, 1: ""), "%Development:USE", "and whose compiled RESOURCE is the pair it declares")
+    Do ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.compare.read", .tEntry, 1)
+    Do $$$AssertTrue('$IsObject($Get(tEntry)), "it has no read tool")
+    Kill tTools
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tClass, .tTools), "its context tools build")
+    Do $$$AssertEquals($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: ""), "[]", "and name none")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("explorer.compare"), tClass, "its tool identifier resolves to it")
+    For tOther = "OcuPilot.Screen.Descriptor.ExplorerSearch", "OcuPilot.Screen.Descriptor.ExplorerMacro" {
+        Do $$$AssertEquals($ClassMethod(tOther, "ClassicPage"), "", tOther _ " declares no classic page")
     }
 }
 

@@ -2,14 +2,23 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
+baseline_commit: '69afc567d8be7c7220b13919e3d28fcddc40661f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Screen/Tool/Read.AddCriteria describes every text criterion as a comma-separated name list where * matches, which misdescribes Search's text and Macros' document and macro to the model.
+    evidence: |-
+      Occurrence of DW-1001 (owner range-end-cleanup). The three are required free text or one name: an omitted or malformed value is refused PORT.VALIDATION with a reason, but a * in text is searched literally and answers no rows with no refusal. No test pins the descriptions. Not fixed here: the fix DW-1001 names is a descriptor-declared criterion description, which needs the criteria grammar in Screen/Registry.cls (this story may not edit it) and the screen mirror; a port-supplied hint would be a second source for the tool schema beside the descriptor (AD-5).
+    location: >-
+      src/OcuPilot/Screen/Tool/Read.cls:171
+    severity: medium
 ---
 
 <intent-contract>
@@ -186,6 +195,10 @@ deferred: []
   - client rosters: `navigation.test.mjs` :249-266, `navigation-wire.test.mjs` :528-602, `rail-wire.spec.ts` :533-730, `screen-mirror.test.mjs` `withCriteria` :1247-1270.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs` -- rebase `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
+- [x] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
+
+- [ ] [Follow-up] DW-1962 (by=merge_gate): `Definition` + Enter in the command box opens Macros (alias `macro definition`) instead of Definitions. Rank `command-box.ts` screen rows: exact label, label prefix, other label match, then alias-only; favorites first among equal ranks; declaration order last. Keep the alias. Tests: the command box's component spec (with a ranking mutation), definitions spec asserts Definitions first; every command-box spec reading the first row re-run on a rebuilt bundle.
+
 **Acceptance Criteria:**
 
 - AC1: Given probe documents in USER holding a needle, when a person searches it across classes and routines, then each match lists with its document, member and line as the instance answers them, and its document link opens that document's viewer.
@@ -198,9 +211,74 @@ deferred: []
 - AC8: Given a `%Developer` account, when it opens the three screens in USER, then it searches and looks up there, and is refused by name where it cannot read the code database (`DeveloperFloor`).
 - AC9 (Integration, Rule 1): Given a search hit and a macro location, when the person follows each link, then `SourceViewerPage` reads that document through its own declared read on the real instance.
 
+### Review Findings
+
+Code review 2026-10-02 (four layers, full-opus): 58 rows, 18 entries (high 0, medium 2, low 16), 25 rejected. No AD violation; AC1-AC9 hold, Rule 3 met.
+
+- [x] [Review][Patch] (med) Compare diffed a side the instance keeps no source for as empty text: two object-only routines read identical [ui/src/app/areas/system-explorer/code-compare.page.ts:216]
+- [x] [Review][Patch] Search labeled a match in a member's attribute `Member+attrline`, as a line of its code; now `Member[Attribute]` [ui/src/app/areas/system-explorer/code-search.store.ts:77]
+- [x] [Review][Patch] An arrival omitting a criterion left the earlier search or lookup in effect (Search with no text; Macros keeping the old document or macro) [code-search.store.ts:159, macro-lookup.store.ts:120]
+- [x] [Review][Patch] Macros re-read the earlier lookup beside a `?document=` naming another document [ui/src/app/areas/system-explorer/macro-lookup.page.ts:150]
+- [x] [Review][Patch] Search's cap notice stayed above a refused search [ui/src/app/areas/system-explorer/code-search.page.ts:302]
+- [x] [Review][Patch] `hunks` collapsed a single unchanged line into a "1 unchanged lines" marker [ui/src/app/areas/system-explorer/line-diff.ts:161]
+- [x] [Review][Patch] A change event's re-compare blanked the drawn diff until the re-read landed (AD-14) [ui/src/app/areas/system-explorer/code-compare.store.ts:111]
+- [x] [Review][Patch] No test held Compare's overtaken-answer guard [code-compare.page.spec.ts, "Compare state"]
+- [x] [Review][Patch] No test held a routine side's re-compare on a `routine` change [code-compare.page.spec.ts]
+- [x] [Review][Patch] The four new port refusals were outside the server/client/EXPERIENCE parity roster [ui/tools/self-protection.test.mjs]
+- [x] [Review][Patch] No test held that 256 characters, the bound, are searched [src/OcuPilot/Test/AtelierPortSearch.cls]
+- [x] [Review][Patch] No test held `MacroContext`'s 50-name cap [src/OcuPilot/Test/AtelierPortMacro.cls]
+- [x] [Review][Patch] The viewer's "Compare with" and "Look up a macro" had no browser leg [ui/browser/system-explorer-find.browser-spec.mjs]
+- [x] [Review][Patch] `ExplorerFindProbe.Make`'s doc named the include as compiled; a garbled sentence in `AtelierPortSearch` [src/OcuPilot/Test/ExplorerFindProbe.cls:38]
+- [x] [Review][Defer] (med) DW-1001 occurrence: `explorer.search.read` is the first silent case, `*TODO*` or a comma list searched literally with no refusal [src/OcuPilot/Screen/Tool/Read.cls:171] — deferred: the implement stage's reason holds (Registry grammar, Never list); trailer added, priority raised, owner range-end-cleanup
+- [x] [Review][Defer] `MacroContext` misses a mid-line `/*` and a one-line `/* */ Include X`, and counts a routine's `#include` in `/* */` or `#if 0` [src/OcuPilot/Port/AtelierPort.cls:1060] — deferred: DW-1961 wontfix-accepted
+- [x] [Review][Defer] `MACRONAMEPATTERN` refuses 54 of the image's 28,574 macro names (underscore, leading digit) [src/OcuPilot/Port/AtelierPort.cls:126] — deferred: DW-1960 by-design (the Matrix's pattern)
+
+Rejected: screen context lacks `Attribute` (spec's context fields; the tool row carries it) · `IncludeGenerator` sent as `includes` (generator methods see those macros; the body is AD-61 rule 3's) · "Defined in X, line " with no line (no case shown where the instance names a document without a line) · Compare's prompts and empty context (closed in the triage log; AC6) · "1 lines" plurals (spec strings) · Compare pressed with a blank side sends nothing (as Search and Macros do) · location column header, cut match line, no line anchor, no result count, per-visit Compare state (features, or the viewer's precedent) · Macros not re-run on a class edit (spec: entity `routine`) · a failed location route fails the read (fails loudly; no reachable case) · strings bound with no comment (the lead's byte-identical edit) · probe classes share a package (needs two runs at once, which the one-run rule forbids) · Search/Macros duplication and the `hits` getter (no named defect; bounded) · one line-number column (layout change, low) · search timeout (false: AD-61 rule 8 measured) · per-clause mutation lines (closed; one per AC) · 1,000-edit time cost (needs ~50k-line documents; fix adds a worker) · DESIGN.md "reserved" sentence (scoped to Release 1, still true) and the 14.3:1 figure (spec edit) · client rosters untouched and QA leg uncommitted (no defect; the lead commits).
+
+Code review 2026-10-02 (CI rework re-review, four layers, full-opus, diff from `69afc567`): 13 entries (high 0, medium 0, low 2), 11 rejected. The `[CI]` checklist holds: both recorded mutations match `screenCandidates`, and the sweep is complete (probed over the real mirror).
+
+- [x] [Review][Patch] Test 5 identified the form only by a label key it shares with Macros, so a relabeled form offered in the box passed; now also absent by route-derived row id, with the list's row anchoring the id scheme [ui/browser/definitions.browser-spec.mjs:456]
+- [x] [Review][Patch] The file header's claim 3 said the side bar lists Definitions alone [ui/browser/definitions.browser-spec.mjs:12]
+
+Rejected: Enter on `Definition` now opens Macros (low, real; rows keep declaration order, favorites first, Story 15.2; outside the rework range and not high) · header "Eight claims" against ten tests (pre-existing, outside the range) · the new comment narrates the change (false: it states why membership) · triage-log labels, the acted-on `[reject]` row, the log's `baseline_revision`, two dates for one rework, "alone" in Rework 1, rework narrative in an oversized spec (each fix edits the spec or the lead's log) · the sweep omits Enter's first-row dependency (false: no new label, route or alias contains `web apps` or `sign out`) · `a11y-structural-invariants` unreported locally (outside the range; CI's browser shards run it, Rule 29).
+
 ## Spec Change Log
 
+- 2026-10-03, lead (rework 2, orchestrator follow-up): re-opened for the `[Follow-up]` item under Tasks & Acceptance (DW-1962, command-box ranking).
+
+- 2026-10-03, lead (CI rework 1): re-opened for the `[CI]` item under Tasks & Acceptance (run 37080963199, `definitions.browser-spec.mjs` test 5).
+
+- 2026-10-02, lead (implement halt resolved, by=merge_gate): `ui/tools/strings.test.mjs:575-576` moves the Fixed-strings bound from 2000 to 2100, byte-identical to Epic 18's 081bbd5e on those two lines and with no comment line of this story's (a three-way merge with 18.5's file is clean and identical to it). The lead applied the edit; `npm run test:tools` 1777/1777. The implementation is committed locally as a work-in-progress commit; `baseline_revision` stays `6f718d93`.
+
 ## Review Triage Log
+
+### 2026-10-02 — Review pass
+
+- verdicts: 14 findings — high 0, medium 5, low 5, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` No test pins what `explorer.search.read` and `explorer.macro.read` tell the model about `text`, `document` and `macro` — grouped with the two description findings below; deferred with its reason (DW-1001 occurrence).
+  - `[low]` `[patch]` Compare's re-compare was verified only for the second document — `code-compare.page.spec.ts` now also publishes an unrelated class (no read) and the first document (re-compare); the "only the right side" mutation reddens it.
+  - `[false]` `[reject]` Rule 19 clauses without their own `mutation:` line — each of the nine ACs has its line; Rule 19 asks one per AC, not per clause.
+  - `[medium]` `[defer]` The two tools' criterion descriptions contradict the port (required, not a name list; `*` literal) — same root cause as the first row: `AddCriteria`'s one text description, DW-1001; the descriptor-declared fix needs `Screen/Registry.cls`.
+  - `[medium]` `[patch]` Search and Macros never show the instance's reason for a refusal — both stores now keep the refused answer's reason and the refusal strip shows it, falling back to the generic sentence; two page-spec cases pin it.
+  - `[low]` `[patch]` A change event re-comparing overwrote the names the person was typing — `recompare` now reads the compared sides without touching the form; a page-spec case pins it and reddens under the old overwrite.
+  - `[medium]` `[defer]` The advertised schema (`required: []`, name-list descriptions) diverges from the port — same root cause as the first row.
+  - `[low]` `[reject]` Each derived read tool's own description is generic ("Read the rows the explorer.search screen lists") — the shared description of every derived read, unchanged here; a product-wide change for no user-met defect.
+  - `[medium]` `[patch]` The matrix's "Banner" reading with the port's reason is not met on Search and Macros — same root cause and fix as the refusal-reason row above.
+  - `[low]` `[reject]` Compare across two namespaces is shown in jsdom only — the per-side `scope` is asserted there and the browser spec covers the same read path in USER; a second-namespace browser leg would need probes in two namespaces for no reachable defect.
+  - `[false]` `[reject]` `Definition` is not shown cut or wrapped — `Kernel/Agent/Bound.Apply` cuts every string field of every row whatever its name, and AD-60 wraps the whole block; `Text`'s test exercises that path for this read.
+  - `[false]` `[reject]` `max` defaults to 200 when no cap is named — the spec's Tasks state it (`max` is `maxRows`, else 200).
+  - `[low]` `[reject]` Compare's prompts lead the agent to other reads — the prompts are the spec's Design Notes › Strings, and the agent has no compare by design (AC6).
+  - `[false]` `[reject]` The spec's run-result section still said `Status: blocked` — finalize rewrites that section; nothing in code.
+
+### 2026-10-02 — Review pass (CI rework 1)
+
+- verdicts: 4 findings — high 0, medium 0, low 1, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The `[CI]` item's sweep of the other command-box specs had no recorded outcome, and `## Auto Run Result` still described the earlier pass — the fix is an edit to this spec; finalize records the sweep under Rework 1.
+  - `[false]` `[reject]` The alias `macro definition` could have been narrowed instead of the assertion — the lead's ruling on the `[CI]` item keeps the alias (a person looks up a macro's definition on Macros); Macros being offered for `Definition` is intended.
+  - `[false]` `[reject]` Membership no longer catches any other screen offered for `Definition` — the test's claim is only that the list is offered and the form is not; both recorded mutations redden it, and other areas' screens are not its subject.
+  - `[false]` `[reject]` `macro-lookup.page.ts:101` labels the definition block with the Agent area's `agentDefinitionFormLabel` — `strings.ts` keeps one key per value, so an identical literal renders its existing key; the block reads "Definition" as intended, and the line predates this pass.
 
 ## Design Notes
 
@@ -336,10 +414,51 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - AC8: `ExplorerSearch` privileges dropped → `DeveloperFloor` and the `AtelierPortDenial` search leg.
 - AC9: the hit link always routing to the class viewer, rebuilt and redeployed → `system-explorer-find` routine-hit leg.
 
+
+**Mutations observed (Rule 19)**, each reverted byte for byte and recompiled or rebuilt:
+
+- mutation: AC1, `SearchRows` drops `Member` → `AtelierPortSearch.TestSearchRowsCarryTheInstancesShapes` and `TestTheSearchSendsExactlyItsParameters` (run 2359).
+- mutation: AC2, `SearchRows` sends `max` as `maxRows` − 1 → `AtelierPortSearch.TestTheCapIsReportedThroughTheRead` and `TestTheSearchSendsExactlyItsParameters` (run 2360).
+- mutation: AC3, `regex` sent as 1 → `AtelierPortSearch.TestAMetacharacterIsText`, with four other legs (run 2362); `documents` given the text → `AtelierPortSearch.TestTheSearchSendsExactlyItsParameters` (run 2363).
+- mutation: AC4, `lineDiff` stops trimming the common tail → `line-diff.spec.ts` "keeps the shared head and tail".
+- mutation: AC5, `MacroContext` drops `Extends` → `AtelierPortMacro.TestAMacroIsFoundThroughASuperclass`, `TestBothMacroRoutesAreSentTheBodyTheTextGives` and `TestMacroContextReadsTheDocumentsOwnText` (run 2364).
+- mutation: AC6, `Kernel/Agent/Bound.Apply`'s per-field cut skipped → `ExplorerFind.TestTheReadToolsAnswerBoundedRowsAlone` (run 2365).
+- mutation: AC7, `ExplorerCompare` `classicPage` `""` → `ExplorerDescriptor.TestCompareKeysTheClassicCompareRoutinesPage` (run 2366).
+- mutation: AC8, `ExplorerSearch` privileges `[]` → `AtelierPortDenial.TestSearchAndMacrosAreRefusedNamingThePair` (run 2367) and `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 2369).
+- mutation: AC9, `viewerRouteFor` answers the class viewer for every hit, rebuilt and redeployed → `system-explorer-find` AC1/AC9 and AC5/AC9 tests.
+- (QA) `ui/browser/system-explorer-find.browser-spec.mjs` -- two added legs: Compare identical and refused side, Macros empty state.
+- mutation: Compare's identical status sentence replaced, rebuilt and redeployed -> `system-explorer-find` "AC4 (QA)" went red; Macros' empty sentence given no document -> "AC5 (QA)" went red; both reverted byte for byte.
+- (Review) mutation: `readSide` reads an unavailable side's empty text → `code-compare.page.spec.ts` "names a side the instance keeps no source for"; the generation check dropped, and a re-compare blanking the diff → "Compare state"; a routine side matched to `class` events → "compares a routine again"; `hunks` without its spare line → `line-diff.spec.ts` "never collapses a single unchanged line"; `hitLocation` without the member-attribute case, `useArrival` keeping the sent search, the status line without its fault check → three `code-search.page.spec.ts` cases; Macros keeping an omitted document, and skipping `forget` → two `macro-lookup.page.spec.ts` cases; one word of `REASONSEARCHTEXT` → `self-protection.test.mjs` Story 19.4; text bound `>=`, cap 60, whole tree recompiled → `AtelierPortSearch` (run 2809) and `AtelierPortMacro` (run 2810). Each reverted byte for byte; green after (runs 2811, 2812).
+- (CI) mutation: `screenCandidates` also offers `agent/definitions/edit`, rebuilt and redeployed → `definitions` "AC5: the form is routable and listed nowhere" on the form assertion (offered `["Macros","Definition","Definitions"]`); `screenCandidates` drops `agent/definitions` → the same test on the list assertion (offered `["Macros"]`). Reverted byte for byte, clean bundle redeployed, 10/10 green.
+- (Re-review) mutation: `screenCandidates` also offers `agent/definitions/edit` labeled `actionCreate`, rebuilt and redeployed → whole `definitions` file 9/10, test 5 alone red on "and no row opens the form's route" (the label assertion passed). Reverted byte for byte, `main-CW3DWYXW.js` redeployed, 10/10 green.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Plan (2026-10-02): search, macro and capture behavior measured on `ocupilot-a2-ci` (Design Notes), every `OcuProbe194*` document, the probe port class and its global removed and checked gone; the classic pages read on slot A and in `irissys/`; no diff library needed; ledger inbox empty.
-- For the spec gate: the drafted AD-61, AD-7 and AD-36 amendments; Search declaring no classic page; the contended non-additive edits (`ReadTool`, `ToolRoundTrip`, `strings.ts`, the budget, the spine).
+- Prior halt: closed by the lead's Fixed-strings bound edit (Spec Change Log); the work-in-progress commit `524de82d` carried the implementation.
+- Summary: Search and Macros are declared reads through `AtelierPort` (`SearchRows`, `MacroRows`, `MacroContext`), each an advertised read tool; Compare is a form page that reads both sides through the viewers' declared read and diffs them with the project's own Myers diff (`line-diff.ts`). The viewer links to Compare and Macros.
+- Files:
+  - `src/OcuPilot/Port/AtelierPort.cls` -- the two endpoints, their validation, the macro context and the four reasons.
+  - `src/OcuPilot/Screen/Descriptor/ExplorerSearch.cls`, `ExplorerMacro.cls`, `ExplorerCompare.cls` -- the three listed screens.
+  - `src/OcuPilot/Test/AtelierPortSearch.cls`, `AtelierPortMacro.cls`, `ExplorerFind.cls`, `ExplorerFindProbe.cls` -- port, wire and tool legs and their probe documents; `AtelierPortDenial`, `AtelierDenialProbe`, `AtelierPortFixture`, `InjectionChannels`, `InjectionSeed` -- denial legs, canned routes and source (i); `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `Descriptor`, `DeveloperFloor`, `ExplorerDescriptor` -- rosters.
+  - `ui/src/app/areas/system-explorer/line-diff.ts`, `code-search.*`, `macro-lookup.*`, `code-compare.*` and their specs -- the diff and the three pages; `document-viewer.page.ts` -- the two links.
+  - `ui/src/app/shell/screen-outlet.ts`, `core/screens.generated.ts`, `core/strings.ts`, `styles/_components.scss` -- page registration, mirror, strings, diff styles.
+  - `ui/browser/system-explorer-find.browser-spec.mjs`, `system-explorer.browser-spec.mjs`; `ui/tools/navigation.test.mjs`, `screen-mirror.test.mjs`, `strings.test.mjs` (the lead's bound), `angular-json.test.mjs` with `ui/angular.json` -- browser legs, client rosters, budget.
+  - EXPERIENCE.md -- the :594 Fixed-strings row and line 159.
+- This pass: the Matrix Test Audit added a refused-read case to the Search and Macros page specs. Review patches: both pages show the instance's reason for a refused read (falling back to the generic sentence); Compare's re-compare reads the compared sides without overwriting the form; Compare's change-event case now covers the first document and an unrelated class. The budget re-based to 2527kB (measured 2,526,006 bytes).
+- Review: 14 findings (medium 5, low 5, false 4). Patched 3 entries: 1 medium (refusal reason, 2 rows), 2 low. Deferred 1 entry (3 rows): the criterion descriptions, a DW-1001 occurrence (frontmatter `deferred:`). Rejected: the generic read-tool description, two-namespace browser coverage and Compare's prompts (low); per-clause mutation lines, `Definition`'s bound, the `max` default and this section's stale status (false), each with its reason in the triage log.
+- Follow-up review: not recommended (no high and one medium entry patched).
+- Verification: the story's 14 ObjectScript classes green one per call (runs 2376-2389); the full sweep once on `ocupilot-a2-ci`, 416 classes, 3,428 tests, 2 red, both residue of the throwaway's age, not this story: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (1,583 task-history rows, DW-1554) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` (24 `_SYSTEM` conversation entries from browser-spec turns since 2026-10-01T22:56Z, older than the one-day retention the test's probe definition sets; no 19.4 test leaves an entry). `npm test` once: tools 1,777/1,777, components 2,170/2,170 in 162 files. `system-explorer-find` 3/3 after the rebuilt bundle was deployed; `lint-docs` and `check-objectscript` clean. Each new page-spec case reddened under its mutation and the tree was restored.
+- Residual risk: the two new tools' criterion descriptions stay wrong until DW-1001 lands; a `*` in a model's search text answers no rows rather than a refusal.
+
+### Rework 1 (CI run 37080963199)
+
+Status: done
+Blocking condition: none
+
+- **Change:** `ui/browser/definitions.browser-spec.mjs` test 5 ("AC5: the form is routable and listed nowhere") asserts that the command box's offered screens for `Definition` include `STRINGS.agentDefinitionListLabel` and exclude `STRINGS.agentDefinitionFormLabel`, in place of exact equality with `['Definitions']`; a one-sentence comment says why (Macros' alias `macro definition` legitimately matches). No other line changed.
+- **Sweep:** no other command-box spec holds an exact offered-screen list the new screens widen. `system-explorer` already asserts membership; `account-and-filter`, `security` and `web-applications` read one row by id or selector for needles no new screen matches; `tasks` and `command-bar.spec.ts` read the Actions group; `theme`, `panel` and `audit` type nothing; `command-box.spec.ts` uses a stub roster.
+- **Review:** follow-up pass, two layers (verification-gap, intent-alignment) over the diff from `69afc567`: 4 findings, low 1 and false 3, all rejected with their reasons in the triage log; nothing patched or deferred. Follow-up review recommended: false (no `high` patched).
+- **Verification:** bundle rebuilt and deployed to `ocupilot-a2-ci` (`main-CW3DWYXW.js`, the clean tree's); `definitions` 10/10, `system-explorer-find` 6/6, `system-explorer` 4/4, one file per run; `npm run test:tools` 1,779/1,779; `lint-docs` clean. The `(CI) mutation:` line in `## Verification` records both mutations reddening test 5 alone. No ObjectScript changed, so no class run or sweep (Rule 29). `baseline_revision` kept at the story baseline.
