@@ -88,6 +88,8 @@ interface Options {
   readonly record?: JsonResult<unknown>;
   readonly listFault?: JsonResult<unknown>;
   readonly id?: string;
+  /** Held until it resolves: Journals' read answers only then. */
+  readonly journalsGate?: Promise<void>;
 }
 
 async function mount(options: Options = {}) {
@@ -101,6 +103,7 @@ async function mount(options: Options = {}) {
         return (options.record ?? { kind: 'ok', status: 200, body: { record: RECORD } }) as JsonResult<T>;
       }
       if (options.listFault !== undefined && path.includes('/screens/osmgmt.journalrecords/read')) return options.listFault as JsonResult<T>;
+      if (options.journalsGate !== undefined && path.includes('/screens/osmgmt.journals/read')) await options.journalsGate;
       const list = path.includes('/screens/osmgmt.journals/read') ? [{ Name: NEWEST }] : answerRows;
       return { kind: 'ok', status: 200, body: { fields: [], rows: list, truncated: false, banner: '' } as T };
     },
@@ -203,6 +206,24 @@ describe('Journal records', () => {
     expect(recordsPaths(paths)).toHaveLength(1);
     expect(recordsPaths(paths)[0]).toContain(`&file=${encodeURIComponent(NEWEST)}&`);
     expect(host.querySelector('[data-journal-records="heading"]')?.textContent?.trim()).toBe(STRINGS.journalRecordsHeading.replace('<file>', NEWEST));
+  });
+
+  it('AC1: an arrival while a cold open waits for Journals\u2019 read keeps the arrival\u2019s file', async () => {
+    // Mutation (Rule 19): make the cold open set the newest file whatever the search names by then ->
+    // the heading and the last read name the newest file and this goes red.
+    let release = () => {};
+    const journalsGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const arrivals = new ScreenArrivals();
+    const { fixture, host, paths } = await mount({ arrivals, journalsGate });
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: FILE } });
+    await settle(fixture);
+    release();
+    await settle(fixture);
+    expect(recordsPaths(paths).length).toBeGreaterThan(0);
+    expect(recordsPaths(paths).filter((path) => !path.includes(`&file=${encodeURIComponent(FILE)}&`))).toEqual([]);
+    expect(host.querySelector('[data-journal-records="heading"]')?.textContent?.trim()).toBe(STRINGS.journalRecordsHeading.replace('<file>', FILE));
   });
 
   it('labels each choice\u2019s options in words, and draws no file field', async () => {

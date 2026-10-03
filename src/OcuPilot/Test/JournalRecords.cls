@@ -1,6 +1,7 @@
 /// <p>Pins Story 18.19's journal record list (AD-21, AD-26, AD-36): Journal records and
 /// <code>osmgmt.journalrecords.read</code> answer one read of the eight fields at the cap, from twice
-/// the cap plus two asked; Next records continues in both orders; the filter keeps its column's
+/// the cap plus two asked; Next records continues in both orders, the read tool's too under a context
+/// cap in reverse order; the filter keeps its column's
 /// matches and an empty value sends no match key; a filter, offset or address outside its shape is
 /// refused before any vendor call on the screen, the tool and the port; a principal who cannot read a
 /// database lists none of its rows; no record value reaches the tool or the screen's read; and a read
@@ -208,6 +209,34 @@ Method TestNextRecordsContinuesInBothOrders()
     }
 }
 
+/// <p>AC2, the read tool in reverse order: its <code>order</code> hint tells the caller to send
+/// <code>direction</code> <code>desc</code> with order 1, and with it a context cap below the rows read
+/// keeps the newest ten, and the offset hint's next page continues at the twentieth, none skipped or
+/// repeated.</p>
+/// <p>Mutation (Rule 19): drop the direction clause from the descriptor's <code>order</code> hint
+/// -&gt; this goes red on the hint.</p>
+Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
+{
+    Set tSC = $ClassMethod(..#SCREEN, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(tDeclaration.read.criteria.fields.%Get(2).hint [ "with 1, also send direction desc", "the order hint names the direction to send with order 1")
+    Set tArgs = {"file": (..PreparedFile), "value": ($Parameter(..#PROBE, "PROBEGLOBAL")), "order": "1", "direction": "desc", "maxRows": 20}
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tFirst, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the tool reads in reverse order")
+    If $$$ISERR(tSC) Quit
+    Set tRows = tFirst.%Get("rows")
+    Do $$$AssertEquals(tRows.%Size() _ " " _ ''tFirst.%Get("truncated") _ " " _ tRows.%Get(0).%Get("GlobalNode"), "10 1 ^OcuProbe185(30)", "the context cap keeps the ten newest, newest first")
+    Do ..Bounds(tRows, .tLow, .tHigh)
+    Do tArgs.%Set("offset", (tLow - 1) _ "", "string")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tSecond, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and its next page reads")
+    If $$$ISERR(tSC) Quit
+    Do ..Bounds(tSecond.%Get("rows"), .tNextLow, .tNextHigh)
+    Do $$$AssertEquals(tSecond.%Get("rows").%Get(0).%Get("GlobalNode"), "^OcuProbe185(20)", "the next page starts at the twentieth, none skipped")
+    Do $$$AssertTrue(tNextHigh < tLow, "and repeats none: " _ ..Addresses(tSecond.%Get("rows")) _ " before " _ tLow)
+}
+
 /// <p>The filter keeps its column's matches: <code>GlobalNode</code> <code>=</code> one seeded node
 /// answers that one row, and <code>DatabaseName</code> <code>[</code> the probe directory answers only
 /// rows on it.</p>
@@ -273,13 +302,16 @@ Method TestAnEmptyValueSendsNoMatchKey()
 }
 
 /// <p>AC3: a comparison that is code, a column outside the eight, a value with no column or no
-/// comparison, and an offset or address that is not a whole number are refused before any vendor
-/// call: on the screen 400 <code>READ.CRITERION</code> for the closed choices, on the tool 400
-/// <code>TOOL.ARGUMENTS</code>, and on the port 400 <code>JOURNAL.FILTER.SHAPE</code> or
+/// comparison, and an offset or address that is not a whole number, or is above the highest address
+/// a journal file holds, are refused before any vendor call: on the screen 400
+/// <code>READ.CRITERION</code> for the closed choices, on the tool 400 <code>TOOL.ARGUMENTS</code>,
+/// and on the port, the screen's offset and the tool's 400 <code>JOURNAL.FILTER.SHAPE</code> or
 /// <code>JOURNAL.OFFSET.SHAPE</code>, the guard's list read included; no refusal echoes the value.</p>
 /// <p>Mutation (Rule 19): drop the comparison check from
 /// <method>OcuPilot.Port.AdminPort.JournalRecordRules</method> -&gt; the port leg's injection reaches
-/// the vendor and goes red; drop the digit check -&gt; the offset legs go red.</p>
+/// the vendor and goes red; drop the digit check -&gt; the offset legs go red; drop the
+/// <parameter>OcuPilot.Port.AdminPort.JOURNALMAXADDRESS</parameter> bound -&gt; the two cases above it
+/// go red.</p>
 Method TestInjectionAndShapeAreRefusedBeforeAnyVendorCall()
 {
     Set tPort = ..#COUNTPORT
@@ -313,7 +345,7 @@ Method TestInjectionAndShapeAreRefusedBeforeAnyVendorCall()
         Do $$$AssertEquals(tHttp _ " " _ ..Code(.tFault) _ " " _ $ClassMethod(tPort, "Calls"), "400 " _ tShape _ " 0", "the port refuses column '" _ $List(tCase, 1) _ "' with comparison '" _ $List(tCase, 2) _ "' before any vendor call")
         Do $$$AssertTrue($IsObject($Get(tFault)) && '(tFault.%ToJSON() [ ..#ECHOVALUE) && '(tFault.%ToJSON() [ "OcuInjected185"), "and echoes nothing it was sent")
     }
-    For tCase = "LIST|initialOffset|12a", "GET|address|-1", "GET|address|" {
+    For tCase = "LIST|initialOffset|12a", "GET|address|-1", "GET|address|", "LIST|initialOffset|4294967296", "GET|address|99999999999999999999" {
         Do $ClassMethod(tPort, "Reset")
         Kill tQuery
         Set tQuery("file") = ..PreparedFile
@@ -325,6 +357,9 @@ Method TestInjectionAndShapeAreRefusedBeforeAnyVendorCall()
     Do ..Criteria(.tCriteria, {"offset": "12a"})
     Set tSC = $ClassMethod(..#READFIXTURE, "Execute", ..#SCREEN, 10, .tRead, .tHttp, .tFault, .tCriteria)
     Do $$$AssertEquals(tHttp _ " " _ ..Code(.tFault) _ " " _ $ClassMethod(tPort, "Calls"), "400 " _ tOffset _ " 0", "and the screen's offset meets the port's refusal, before any vendor call")
+    Do $ClassMethod(tPort, "Reset")
+    Set tSC = $ClassMethod(..#TOOLFIXTURE, "View", ..#SCREEN, {"file": (..PreparedFile), "offset": "12a"}, 1000, .tView, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ ..Code(.tFault) _ " " _ $ClassMethod(tPort, "Calls"), "400 " _ tOffset _ " 0", "and so does the tool's, before any vendor call")
     Do $ClassMethod(tPort, "Reset")
 }
 
@@ -340,6 +375,7 @@ Method TestAPrincipalWhoCannotReadADatabaseListsNoneOfItsRows()
     Set tProbe = {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 22, "matchColumnName": "GlobalNode", "matchOperator": "[", "matchValue": ($Parameter(..#PROBE, "PROBEGLOBAL"))}
     Set tSC = ##class(OcuPilot.Test.JournalProbe).SetReadable(.tNode)
     Do $$$AssertStatusOK(tSC, "a record the principal can read is written")
+    If $$$ISERR(tSC) Quit
     Set tReadable = {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 22, "matchColumnName": "GlobalNode", "matchOperator": "=", "matchValue": (tNode)}
     Set tPlan = [{"endpoint": "Journal.Record", "type": "LIST", "query": (tProbe)}, {"endpoint": "Journal.Record", "type": "LIST", "query": {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 200}}, {"endpoint": "Journal.Record", "type": "LIST", "query": (tReadable)}]
     Set tAnswer = $ClassMethod(..#PROBE, "RunAs", $Piece(..#PRINCIPAL, ":", 1), tPlan)

@@ -215,7 +215,8 @@ function recordsRead(api: Pick<ApiService, 'requestJson'>, screen: ScreenDeclara
         if (named.kind === 'fault') return named;
         const first = named.rows[0];
         const name = first !== null && typeof first === 'object' ? (first as Record<string, unknown>)['Name'] : undefined;
-        if (typeof name === 'string') search.setValue('file', name);
+        // An arrival that named a file while Journals' read was in flight keeps its file.
+        if (typeof name === 'string' && search.value('file') === '') search.setValue('file', name);
       }
     }
     return read(options);

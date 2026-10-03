@@ -12,6 +12,8 @@
  *    values as text -- the markup value literally -- and closes on Escape with the criteria kept.
  * 4. **DW-1337** (AC7): the list and the dialog pass the structural walk at wide light, narrow light
  *    and wide dark.
+ * 5. **A refused record** (AC5): a reloaded record route on an address that holds no record shows
+ *    the route's own reason in the dialog.
  *
  * **It refuses the live and development containers.** It seeds the probe database
  * (`OcuPilot.Test.JournalProbe.SeedProbeDatabase`) over `docker exec` before its tests and removes
@@ -301,6 +303,29 @@ test('AC5, AC7: a seeded record opens the dialog, which shows its values as text
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
     const kept = await page.$eval('#ocu-journal-records-value', (node) => node.value);
     assert.equal(kept, 'OcuProbe185', 'closing keeps the criteria');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC5. Mutation (Rule 19): make `loadRecord` set no refusal for a faulted read, rebuild and
+// redeploy -> the dialog shows no reason and this goes red.
+test('AC5: a reloaded record route on an address that holds no record shows the route\u2019s refusal in the dialog', async () => {
+  const { values } = iris([mark('REASON', '##class(OcuPilot.Api.JournalError).#REASONRECORDUNREADABLE')], ['REASON']);
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
+  try {
+    await openRecords(page);
+    // Address 1 is in the journal file's header, before every record, so the vendor finds none. The
+    // reload is a cold open: the page names the newest file through Journals' read, then the dialog
+    // asks for address 1 there.
+    const record = new URL(page.url());
+    record.pathname = `${record.pathname}/1`;
+    await page.goto(record.toString(), { waitUntil: 'networkidle2' });
+    await page.waitForSelector('[data-journal-records="refusal"]', { timeout: config.navigationTimeoutMs });
+    const reason = await page.$eval('[data-journal-records="refusal"]', (node) => node.textContent.trim());
+    assert.equal(reason, values.REASON, 'the dialog states the route\u2019s JOURNAL.RECORD.UNREADABLE reason');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
   } finally {
     await context.close();
   }

@@ -2,7 +2,7 @@
 title: 'Story 18.19: Journal record browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
 baseline_commit: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
 review_loop_iteration: 0
@@ -455,9 +455,50 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
   - the DW-1337 gate holds in both themes;
   - EXPERIENCE.md reads 1003 lines.
 
+### Review Findings
+
+Code review, 2026-10-03 (`full-opus`; four layers; 38 rows, 13 entries after grouping, 15 rejected).
+
+- [x] [Review][Patch] (med) An offset or address above 4294967295 passed the digit rule and the vendor's list failed `<VALUE OUT OF RANGE>`: 500 `INTERNAL` with a logged error, measured. `JOURNALMAXADDRESS` now refuses it `JOURNAL.OFFSET.SHAPE` before any vendor call [src/OcuPilot/Port/AdminPort.cls:2659]
+- [x] [Review][Patch] (med) In order 1 the read tool sorted the newest rows ascending before the context cap cut them, so the offset hint's next page skipped every row the cut dropped. The `order` hint now tells the caller to send `direction` `desc` with 1; `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` pins it at a context cap of 10 [src/OcuPilot/Screen/Descriptor/JournalRecordList.cls:60]
+- [x] [Review][Patch] (low) An `InTransaction` filter compares the journal's 0 or 1, while rows read `true` or `false`, so a filter on `true` matched nothing (measured). The `value` hint says so [src/OcuPilot/Screen/Descriptor/JournalRecordList.cls:63]
+- [x] [Review][Patch] (low) A cold open's Journals answer overwrote a file an arrival had named while it was in flight. It now sets the file only while none is named, pinned by a page-spec leg [ui/src/app/areas/os-management/journal-records.page.ts:219]
+- [x] [Review][Patch] (low) QA's browser refusal leg was titled AC4, passed `?file=` the page never reads, asserted only a non-empty reason, and asserted a value-freedom that could not fail at address 1. It is now an AC5 leg asserting the route's own `JOURNAL.RECORD.UNREADABLE` sentence after a cold reload [ui/browser/journal-records.browser-spec.mjs:313]
+- [x] [Review][Patch] (low) A failed `SetReadable` precondition let the next assertion pass on an unfiltered list. Both callers now stop after it [src/OcuPilot/Test/JournalRecordDetail.cls:209]
+- [x] [Review][Patch] (low) The Verification evidence predated QA's changes: both journal classes, both journal browser specs and the client tiers were re-run on the final tree (Verification › Code review)
+- [x] [Review][Patch] (low) Reverse-order Next records on the instance had no recorded mutation. Recorded: run 4451 [src/OcuPilot/Test/JournalRecords.cls:179]
+- [x] [Review][Patch] (low) The record route's answer, which carries record values, could be stored by the browser's HTTP cache. It now sends `Cache-Control: no-store`, pinned over the wire [src/OcuPilot/Area/OsMgmt/JournalRecordDetail.cls:63]
+- [x] [Review][Patch] (low) The tool's offset refusal had no test of its own. The tool now meets `JOURNAL.OFFSET.SHAPE` with zero vendor calls [src/OcuPilot/Test/JournalRecords.cls:362]
+- [x] [Review][Defer] (low) Newest first draws its newest records oldest first, the descriptor's default sort [ui/src/app/shell/data-table.ts:924] — deferred: DW-1979, routed to `burndown` at adjudication
+- [x] [Review][Defer] (low) The record dialog's body is empty for about 1.7 s while the record loads [ui/src/app/areas/os-management/journal-records.page.ts:430] — deferred: DW-1980 `wontfix-accepted`
+- [x] [Review][Defer] (low) The text criteria carry no `maxlength`; the patch was measured but does not fit the merged 2611kB bundle budget, a contended line [ui/src/app/areas/os-management/journal-records.page.ts:278] — deferred: DW-1981, routed to `burndown` at adjudication
+
+Rejected:
+
+- `low` A dialog reloaded while Journals' read faults stays open with no refusal, and the heading names no file: a fault on a cold reload of a record route, rare, and the shell's fault banner already shows it.
+- `low` No URL carries the file, so a reloaded or shared record route reads the newest file: the cold open reads the newest file by design (matrix row "Cold open"; AD-11 keeps criteria out of the URL).
+- `low` `SeedProbeDatabase` does not check that journaling is on: a stock instance journals, and every leg fails loudly on its row counts if it does not.
+- `false` A sparse filter over a full-size file is likely to time out: a non-matching scan of the 591 MB current file took 6.9 s on `ocupilot-b-ci`; canceling at the bound is AD-26's existing port behavior.
+- `low` Named limit 1 still reads "(inference until Task 0)": the fix is a spec edit.
+- `low` A failed seed leaves the probe database behind: the next seed removes it first, and CI runs on fresh instances.
+- `low` Next records after a faulted search takes the earlier rows: Next sends the form as shown, as the first review adjudicated.
+- `low` A journal switch between the seed and `SetReadable` would flake the readable legs: only a midnight or size switch inside a few seconds reaches it.
+- `false` Order 1 from a block's first record minus 1 may land on a block start: measured at four block boundaries, the list answered the previous record each time.
+- `low` Task 0's cleanup showed `alerts.log` +1, undeclared: its cause, h(ii)'s 500, is recorded; the fix is a spec edit.
+- `low` The matrix row names a refusal strip where the shell's banner draws the timeout: the fix is a spec edit, as the first review found.
+- `low` With the file omitted, the tool cannot keep paging one file across a journal switch: named limit 4, and the switch inside one turn is rare.
+- `false` The dialog shows 13 fields, not every field: the matrix row's fields and the literal list's labels are all shown.
+- `false` "Journal record" is capitalized against the spec's literal: it matches EXPERIENCE.md and the `aboutJournalFile` precedent.
+- `false` `AdminPort` names the vendor's `Fetch`, not `ZUFetch`: `Fetch` (`Record.cls:381`) also executes the operator.
+
+### Rework 1 (CI)
+
+- [ ] [CI] browser shard 1/3 of run 37127676205 (`6344e34f`): `ui/browser/journal-records.browser-spec.mjs` "AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape" failed at `:304` (numbered as at `9becc6df`) with `failed to find element matching selector "#ocu-journal-records-value"`, read at once after the dialog is gone. Closing moves from `journal-records/:id` to `journal-records`, two route entries, so `ScreenOutlet` and the page are created afresh and the form renders on a later change-detection pass (inference). The leg passes on `ocupilot-b-ci`. Make the leg wait for the form before reading it, and check every other leg that reads the page right after a route change.
+
 ## Spec Change Log
 
 - For the runner (AD-26, no factor correction): in the Story 18.19 paragraph, replace "Story 18.19's Task 0 confirms it" with "measured again at Story 18.19's Task 0 on `ocupilot-b-ci`, 2026-10-03: 4, 10, 40 and 2002 gave 2, 5, 20 and 1001".
+- 2026-10-03, runner (rework 1, trigger=ci): re-opened for the `[CI]` item under Tasks & Acceptance; nothing else changes.
 
 ## Review Triage Log
 
@@ -627,8 +668,19 @@ Recorded (each reverted byte-identical, the throwaway reloaded from the reverted
 - mutation: Journal file details' `onViewRecords` sets no arrival → details spec "View records" red alone (vitest), and the browser AC1 leg red after rebuild and redeploy, on "no cold-open read of Journals was needed"
 - mutation: `useArrival` keeps the form's values for criteria an arrival omits → page spec "an arrival for another file" red alone (vitest)
 - mutation: the dialog renders values through `[innerHTML]` → browser AC5 leg red after rebuild and redeploy, on "the markup value is shown as text"
+- mutation: `JournalProbe.RequireJournaled` demands journal state 4 instead of 3 → `JournalRecordDetail.TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable` red alone (run 4443)
+- mutation: `loadRecord` sets no refusal for a faulted read → browser `AC5: a reloaded record route on an address that holds no record shows the route's refusal in the dialog` red alone, after rebuild and redeploy
+- mutation: `JournalRecordDetail.RenderRefusal` renders `PORT.NOTFOUND` as it is → that browser leg red alone, on the reason's equality (code review)
+- mutation: `JournalRecordRules` removes `initialOffset` whatever it holds → `JournalRecords.TestNextRecordsContinuesInBothOrders` red in both orders, with three other legs (run 4451)
+- mutation: the `JOURNALMAXADDRESS` bound removed → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red on its two cases above the bound (run 4450)
+- mutation: the `order` hint's direction clause removed → `JournalRecords.TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` red alone (run 4457)
+- mutation: `JournalRecordDetail.HandleGet` sends no `Cache-Control` → `JournalRecordDetail.TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt` red alone (run 4452)
+- mutation: the cold open sets the newest file whatever the search names by then → page spec "an arrival while a cold open waits for Journals' read" red alone (vitest)
+- (QA) `ui/browser/journal-records.browser-spec.mjs` gained the refusal leg; `src/OcuPilot/Test/JournalProbe.cls` gained `RequireJournaled`, called by `SetReadable`
 
 Final tree, `ocupilot-b-ci` (loaded with `load-throwaway.sh`, 0 compile errors), after the review patches: the full ObjectScript sweep (runs 3998-4422, read back from `%UnitTest_Result`) ran 425 classes and 3,490 tests, 3,488 passed. The story's classes: `JournalRecords` 9/9 (run 4149), `JournalRecordDetail` 5/5 (4148), `JournalDescriptor` 13/13 (4145), `JournalRead` 6/6 (4147), `ReadTool` 28/28 (4287), `Descriptor` 60/60 (4080), `SurfaceCoverage` 4/4 (4334), `EndpointCoverage` 2/2 (4099), `ScreenRead` 30/30 (4313), `Navigation` 14/14 (4208), `Wire` 20/20 (4414), `ToolRoundTrip` 2/2 (4361), `ToolDispatch` 18/18 (4357), `ToolEmit` 11/11 (4359), `AdminPortAsync` 6/6 (4002). Two failures, both in methods this story does not touch, from the throwaway's age (inference; both pass in CI): `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (Task history past 1,000 rows, run 4417, red since run 3130) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` ("this instance holds no expired row another suite created", run 4299). `npm test`: tools 1780/1780, components 2226/2226; `npm run build` passes; initial bundle 2,587,710 bytes (`maximumWarning` 2588kB); rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 3/3 and `journals.browser-spec.mjs` 5/5; `smoke.sh` 50/50; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; EXPERIENCE.md 1003 lines. End state: no `OCUPROBE185*` database, resource, directory, namespace or principal, and no readable probe global; journal settings as found, journaling in `/durable/iris/mgr/journal/`; 0 agent definitions, 0 policy rows; 442 async task rows (445 at S0; none left by this story's classes); monitor 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+
+Code review, 2026-10-03, `ocupilot-b-ci` loaded with `load-throwaway.sh` (0 compile errors), each mutation reverted byte-identical and reloaded: `JournalRecords` 10/10 (run 4458), `JournalRecordDetail` 5/5 (4454), `JournalDescriptor` 13/13 (4456), `JournalRead` 6/6 (4449), `Descriptor` 60/60 (4448); `npm run test:tools` 1780/1780, `npm run test:components` 2232/2232; `npm run build` passes under `maximumWarning` 2611kB; rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 4/4 and `journals.browser-spec.mjs` 5/5; `check-objectscript.py` 0 problems. End state: no `OCUPROBE185*` database, resource or principal; journaling in `/durable/iris/mgr/journal/`, settings as found; 442 async task rows; monitor cleared to 0.
 
 ## Auto Run Result
 

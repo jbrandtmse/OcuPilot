@@ -35,8 +35,9 @@ ClassMethod PortClass() As %String
 }
 
 /// <p>Answer <code>GET /journal/record?file=&lt;f&gt;&amp;address=&lt;a&gt;</code> as
-/// <code>{record}</code> (<method>Record</method>). A caller without Journal records' pairs is
-/// refused naming the pair, with no port call. The port's 404 <code>PORT.NOTFOUND</code> -- no record
+/// <code>{record}</code> (<method>Record</method>), marked <code>Cache-Control: no-store</code>. A
+/// caller without Journal records' pairs is refused naming the pair, with no port call. The port's
+/// 404 <code>PORT.NOTFOUND</code> -- no record
 /// at that address, or one on a database the caller cannot read -- is 404
 /// <code>JOURNAL.RECORD.UNREADABLE</code>; any other refusal, <code>JOURNAL.FILE.UNLISTED</code> and
 /// <code>JOURNAL.OFFSET.SHAPE</code> among them, is rendered as the port answered it.</p>
@@ -58,6 +59,8 @@ ClassMethod HandleGet() As %Status
             Set tSC = ..RenderRefusal(tReadSC, $Get(tHttp), $Get(tFault))
             Quit
         }
+        ; The record's values are screen-only (AD-36), so the browser keeps no copy of the answer.
+        Set %response.Headers("Cache-Control") = "no-store"
         Set tSC = ##class(OcuPilot.Api.Response).JSON({"record": (..Record(tAnswer))})
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

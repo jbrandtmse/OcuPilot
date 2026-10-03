@@ -337,10 +337,34 @@ ClassMethod SetReadable(Output pNode As %String) As %Status
     Set pNode = ""
     Set tSC = ..ReadableReference(.tGlobal)
     If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..RequireJournaled($Piece($Piece(tGlobal, "^^", 2), """|", 1))
+    If $$$ISERR(tSC) Quit tSC
     Set @tGlobal@(1) = "OcuReadable"
     Do ##class(%SYS.Journal.System).Sync()
     Set pNode = "^" _ ..#READABLEGLOBAL _ "(1)"
     Quit $$$OK
+}
+
+/// <p>An error unless journaling is on for the instance and the database in <var>pDirectory</var>
+/// journals its globals, so a test that needs a record of a write there fails on its own
+/// precondition, named, and not on a record that is missing.</p>
+ClassMethod RequireJournaled(pDirectory As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDatabase = ##class(SYS.Database).%OpenId(pDirectory)
+        Set tState = $Select($IsObject(tDatabase): tDatabase.GlobalJournalState, 1: "")
+        Set tSystem = ##class(%SYS.Journal.System).GetState()
+        Set $NAMESPACE = tOrigNS
+        If tState '= 3 Set tSC = $$$ERROR($$$GeneralError, "the database " _ pDirectory _ " does not journal its globals (state " _ tState _ "), so a write to it leaves no journal record")
+        If $$$ISOK(tSC) && (tSystem '= 0) Set tSC = $$$ERROR($$$GeneralError, "journaling is not enabled on this instance (state " _ tSystem _ ")")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Kill what <method>SetReadable</method> set.</p>

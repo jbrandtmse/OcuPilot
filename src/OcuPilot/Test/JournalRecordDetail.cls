@@ -207,6 +207,7 @@ Method TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable()
     Do $$$AssertEquals(tAnswer.%Get("status") _ " " _ ..Code(tAnswer), "404 JOURNAL.RECORD.UNREADABLE", "as an address that holds no record is")
     Set tSC = ##class(OcuPilot.Test.JournalProbe).SetReadable(.tNode)
     Do $$$AssertStatusOK(tSC, "a record the principal can read is written")
+    If $$$ISERR(tSC) Quit
     Kill tQuery
     Set tQuery("file") = ..PreparedFile
     Set tQuery("initialOffset") = ..PreparedAddress(30)
@@ -223,7 +224,7 @@ Method TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable()
     Do $$$AssertEquals(tStep.%Get("status") _ " " _ $Select($IsObject(tRecord): tRecord.%Get("GlobalNode"), 1: "none"), "200 " _ tNode, "while a record on a database it can read opens: " _ $Extract(tStep.%ToJSON(), 1, 300))
 }
 
-/// <p>AC5, AC6: over the wire the route answers 200 JSON <code>{record}</code> to the test account;
+/// <p>AC5, AC6: over the wire the route answers 200 JSON <code>{record}</code>, not to be stored, to the test account;
 /// after the list, the read tool and the route have read seeded records, in process and over the wire,
 /// no <code>messages.log</code> line carries a seeded value; and no tool reaches the route: Journal
 /// records' one tool is its read, and no tool class names <code>Journal.Record</code> as its
@@ -247,6 +248,7 @@ Method TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt()
     Do $$$AssertStatusOK(tSC, "the request was sent")
     Do $$$AssertEquals(tStatus, 200, "the route answers over the wire: " _ $Extract(tBody, 1, 200))
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals($Get(tHeaders("CACHE-CONTROL")), "no-store", "which the browser does not store")
     Set tAnswer = ""
     Try {
         Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)

@@ -742,10 +742,16 @@ Parameter JOURNALMATCHPARAMS = "matchColumnName,matchOperator,matchValue";
 Parameter JOURNALMATCHTYPES = "Journal.Record/LIST";
 
 /// <p>The query parameter each journal record pair takes as a record address, as comma-separated
-/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;param&gt;</code> entries: digits only, at most 20
-/// (<method>JournalRecordRules</method>). The list's empty offset is not sent; the record's empty
-/// address is refused.</p>
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;param&gt;</code> entries: digits only, at most 20, and no
+/// more than <parameter>JOURNALMAXADDRESS</parameter> (<method>JournalRecordRules</method>). The
+/// list's empty offset is not sent; the record's empty address is refused.</p>
 Parameter JOURNALOFFSETPARAMS = "Journal.Record/LIST=initialOffset,Journal.Record/GET=address";
+
+/// <p>The highest record address a journal file holds: a file is at most 4,079 MB
+/// (<code>Config.Journal</code> <code>FileSizeLimit</code>), and the vendor's record list fails
+/// <code>&lt;VALUE OUT OF RANGE&gt;</code> on an offset above it, which the port answered 500 (measured on
+/// <code>ocupilot-b-ci</code>, 2026-10-03).</p>
+Parameter JOURNALMAXADDRESS = 4294967295;
 
 /// <p>The pairs whose vendor list keeps fewer rows than its <code>maxRows</code>, with the factor this
 /// port multiplies <code>maxRows</code> by, as comma-separated
@@ -2620,8 +2626,9 @@ ClassMethod PairValue(pList As %String, pPair As %String) As %String [ Private ]
 /// column or comparison, is refused 400 <code>JOURNAL.FILTER.SHAPE</code>. An empty
 /// <code>matchValue</code> removes all three keys, so the list is sent unfiltered.</li>
 /// <li>The <parameter>JOURNALOFFSETPARAMS</parameter> parameter must match
-/// <code>^[0-9]{1,20}$</code>, else 400 <code>JOURNAL.OFFSET.SHAPE</code>; the list's empty offset is
-/// removed, the record's empty or absent address is refused.</li>
+/// <code>^[0-9]{1,20}$</code> and be no more than <parameter>JOURNALMAXADDRESS</parameter>, else 400
+/// <code>JOURNAL.OFFSET.SHAPE</code>; the list's empty offset is removed, the record's empty or absent
+/// address is refused.</li>
 /// <li>On a <parameter>HALVEDROWTYPES</parameter> pair, a <code>maxRows</code> of digits is multiplied
 /// by its factor; an absent one keeps the vendor's own default.</li>
 /// </ul>
@@ -2649,7 +2656,7 @@ ClassMethod JournalRecordRules(pEndpoint As %String, pType As %String, ByRef pQu
         Set tOffset = $Get(pQuery(tOffsetParam))
         If (tOffset = "") && (pType = "LIST") {
             Kill pQuery(tOffsetParam)
-        } ElseIf '$Match(tOffset, "^[0-9]{1,20}$") {
+        } ElseIf '$Match(tOffset, "^[0-9]{1,20}$") || (+tOffset > ..#JOURNALMAXADDRESS) {
             Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.JournalError).#OFFSETSHAPE, ##class(OcuPilot.Api.JournalError).#REASONOFFSETSHAPE, .pHttpStatus, .pFault)
         }
     }

@@ -9213,3 +9213,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ui/tools/strings.test.mjs:574-577: each prior bound move has a 'the bound moves to N under the same protocol' line; 19.5's move has none, and Epic 18's uncommitted 18.19 diff edits the same lines
 - 2026-10-03T07:09:04Z status=wontfix-accepted owner=19-5-the-sql-catalog-browser by=cr note=contended with Epic 18's same hunk; lead adds it at merge-forward; reopen_if=bound line has no comment naming its merged value after the merge
+
+### DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: The page sorts every read by the descriptor's default Address asc (data-table.ts:924), so order 1 fetches the newest rows and draws them ascending; the rows are right, the label reads wrong.
+- 2026-10-03T14:57:35Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports Newest first showing oldest first; fix needs the page to steer the store's remembered sort
+- 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
+
+### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: loadRecord clears the record and fetches with no loading state; the guard's journal file list read alone took 1.67 s at Task 0, so every dialog opens blank first. A skeleton needs a new string in contended strings.ts and EXPERIENCE.md.
+- 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports the record dialog opening blank, or EXPERIENCE.md gains a dialog loading pattern
+- 2026-10-03T15:02:19Z status=wontfix-accepted owner=18-19-journal-record-browser by=adjudication note=confirmed; reopen_if as filed
+
+### DW-1981: Journal records' offset and value inputs carry no maxlength, so an over-long entry is refused only by the server
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: journal-records.page.ts renders the text criteria without [attr.maxlength] (code-list.page.ts:164 sets it); the server refuses READ.CRITERION. The patch was written and measured but the merged bundle sits 32 bytes under angular.json's 2611kB warning, a contended line.
+- 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=angular.json's budget is next re-based with room, or a user reports a refused over-long offset or value
+- 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down

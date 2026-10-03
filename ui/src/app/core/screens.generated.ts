@@ -7594,7 +7594,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             ],
             "default": "0",
             "vendorParam": "reverse",
-            "hint": "0 lists records in file order from the offset or the file's start, and 1 in reverse from the offset or the file's end."
+            "hint": "0 lists records in file order from the offset or the file's start, and 1 in reverse from the offset or the file's end; with 1, also send direction desc."
           },
           {
             "param": "column",
@@ -7638,7 +7638,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "kind": "text",
             "maxLength": 200,
             "vendorParam": "matchValue",
-            "hint": "The text the column is compared with; omit it to list every record unfiltered."
+            "hint": "The text the column is compared with; omit it to list every record unfiltered. InTransaction reads 0 outside a transaction, not false."
           }
         ]
       }
