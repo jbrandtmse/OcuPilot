@@ -9263,3 +9263,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: gate-spec settle fix (DW-1975) | severity: low | fix-risk: low | footprint: cross-epic
 - evidence: found by the DW-1975 fix's held-read reproduction: test 6 failed under the hook with the old and new spec when the whole file ran, passed alone; not yet seen in CI
 - 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=one-line fix: wait for .ocu-form-bar-actions before the Cancel lookup
+### DW-1985: A one-row count reads '1 rows' (no singular form): seen on the SQL tables list as the demo account and in the agent panel's context line
+- source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
+- 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two

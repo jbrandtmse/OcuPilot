@@ -50,7 +50,7 @@ import { rememberedShellMember, resetRememberedState } from './preferences-reset
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
-const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
+const { AREAS, SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 const { actionLabel } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
 const { FIRST_SIGN_IN_RECORDED, SHELL_FIRST_SIGN_IN } = await import(
   join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts')
@@ -233,27 +233,62 @@ async function submitSignIn(page) {
  */
 async function signedInAndMovedTo(area, screen) {
   const { context, page } = await atSignIn(OTHER_URL);
-  await submitSignIn(page);
-  // **Let the gate's navigation land before anything reads the path as a baseline.** `openScreen`
-  // waits for the path to differ from the one it captured; if the gate has not moved the tab yet
-  // that captured path is still the requested screen's, and clicking that screen navigates to the
-  // same path, so the wait can never succeed. Settling first makes the baseline the gate's answer
-  // whichever way it went.
-  await settlePath(page);
-  await openScreen(page, area, screen);
+  try {
+    await submitSignIn(page);
+    // **The gate's own decision, before any click.** Every caller signs in with nothing enabled and
+    // the first-sign-in record forgotten, so the gate opens the form -- once its reads answer, which
+    // no quiet window bounds. A click issued before it lands races it, and whichever navigation
+    // comes second decides where the tab ends up.
+    await waitForPath(page, FORM_PATH, 'the first-login gate opens the Definition form');
+    await openScreen(page, area, screen);
+  } catch (error) {
+    // Closed here because the caller's `finally` is never reached, and the next test must not run
+    // beside a signed-in page.
+    await context.close().catch(() => {});
+    throw error;
+  }
   return { context, page };
 }
 
-/** Wait until the address bar has stopped moving, so a caller's baseline is a settled one. */
-async function settlePath(page) {
-  let seen = pathOf(page);
-  for (let read = 0; read < 20; read += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const again = pathOf(page);
-    if (again === seen) return seen;
-    seen = again;
-  }
-  assert.fail(`the address bar never settled; last read ${JSON.stringify(seen)}`);
+/**
+ * Wait until the address bar's path is `path`, and fail naming the path it reached instead.
+ *
+ * **A leave confirmation ends the wait too.** Leaving the Definition form passes its unsaved-changes
+ * guard, and nothing here types into the form, so the guard's question is asserted absent rather
+ * than left to surface as a wait that never ends.
+ */
+async function waitForPath(page, path, what) {
+  const question = STRINGS.formLeaveWithoutSaving;
+  // A timeout is not reported from here: the two assertions below say what the wait saw instead.
+  await page
+    .waitForFunction(
+      (wanted, asked) =>
+        window.location.pathname === wanted ||
+        [...document.querySelectorAll('[role="dialog"] .ocu-dialog-title')].some((node) => node.textContent.trim() === asked),
+      { timeout: config.navigationTimeoutMs },
+      path,
+      question
+    )
+    .catch(() => {});
+  const seen = await page.evaluate(
+    (asked) => ({
+      path: window.location.pathname,
+      asked: [...document.querySelectorAll('[role="dialog"] .ocu-dialog-title')].some((node) => node.textContent.trim() === asked),
+    }),
+    question
+  );
+  assert.equal(seen.asked, false, `${what}: the Definition form asked to leave without saving, and nothing here typed into it`);
+  assert.equal(seen.path, path, `${what}: waited for ${path}, and the address bar reads ${seen.path}`);
+}
+
+/** The path a side-bar entry opens: the listed screen in `area` labelled `screen`, read from the mirror. */
+function entryPath(area, screen) {
+  const areaKey = AREAS.find((entry) => STRINGS[entry.labelKey] === area)?.key;
+  const listed = SCREENS.filter(
+    (entry) => entry.area === areaKey && entry.sideBarPosition > 0 && STRINGS[entry.labelKey] === screen
+  );
+  assert.equal(listed.length, 1, `the mirror lists one ${JSON.stringify(screen)} entry in ${area}`);
+  return `${ROOT_URL}${listed[0].route}`;
 }
 
 /**
@@ -276,9 +311,9 @@ async function openSideBar(page, area) {
   assert.fail(`the ${area} side bar never opened`);
 }
 
-/** Open an area's side bar, then click the entry named `screen` and wait for the route to move. */
+/** Open an area's side bar, click the entry named `screen`, and wait for the address bar to reach its route. */
 async function openScreen(page, area, screen) {
-  const before = pathOf(page);
+  const target = entryPath(area, screen);
   await openSideBar(page, area);
   // Matched on the entry's own label span, never on the item's whole `textContent`: a gated entry
   // renders its reason beside the label, so the two are not the same string.
@@ -291,11 +326,7 @@ async function openScreen(page, area, screen) {
     return true;
   }, screen);
   assert.equal(opened, true, `the ${area} side bar lists ${JSON.stringify(screen)}`);
-  await page.waitForFunction(
-    (was) => new URL(window.location.href).pathname !== was,
-    { timeout: config.navigationTimeoutMs },
-    before
-  );
+  await waitForPath(page, target, `the ${area} side bar's ${JSON.stringify(screen)} entry opens its screen`);
 }
 
 const pathOf = (page) => new URL(page.url()).pathname;
