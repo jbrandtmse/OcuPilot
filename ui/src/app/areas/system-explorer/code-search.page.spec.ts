@@ -188,6 +188,28 @@ describe('System Explorer Search', () => {
     expect((host.querySelector('[data-ocu-search="scope"]') as HTMLSelectElement).value).toBe('classes');
   });
 
+  it('drops the earlier search when an arrival names no text', async () => {
+    const arrivals = new ScreenArrivals();
+    const { host, paths, search, settle: wait } = await mount({ arrivals });
+    await search('needle');
+    // Mutation: leave the sent search in place in `useArrival` -> the earlier rows stay and this goes red.
+    arrivals.set({ route: SEARCH.route, criterion: '', criteria: { scope: 'classes' } });
+    await wait();
+    expect(paths).toHaveLength(1);
+    expect(host.querySelector('[data-ocu-search="results"]')).toBeNull();
+    expect(host.querySelector('[data-ocu-search="empty"]')?.textContent?.trim()).toBe(STRINGS.explorerSearchInvite);
+  });
+
+  it('shows no cap notice beside a refused search that followed a cut one', async () => {
+    const options: NonNullable<Parameters<typeof mount>[0]> = { truncated: true };
+    const { host, search } = await mount(options);
+    await search('needle');
+    options.refusal = { status: 400, code: 'PORT.VALIDATION', reason: STRINGS.explorerSearchTextReason };
+    await search('other');
+    expect(host.querySelector('[data-ocu-search="fault"]')).not.toBeNull();
+    expect(host.querySelector('[data-ocu-search="status"]')?.textContent?.trim()).toBe('');
+  });
+
   it('runs the last search again when a class in this namespace changes', async () => {
     const { paths, search, bus, settle: wait } = await mount();
     await search('needle');
@@ -203,5 +225,11 @@ describe('hits and their location', () => {
     const hits = hitsOf(ROWS);
     expect(hits.map(hitLocation)).toEqual(['[Description]', 'Run+4', 'Marked', '3']);
     expect(hits[2].line).toBeNull();
+  });
+
+  it("locates a match in a member's attribute by the member and the attribute, never as a line of its code", () => {
+    // Mutation: drop the member-and-attribute case from `hitLocation` -> this reads Email+2 and goes red.
+    const [hit] = hitsOf([{ Order: 1, Document: 'Demo.Probe.cls', Member: 'Email', Line: 2, Attribute: 'Description', Text: 'needle' }]);
+    expect(hitLocation(hit)).toBe('Email[Description]');
   });
 });

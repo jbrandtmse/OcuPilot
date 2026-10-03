@@ -207,6 +207,30 @@ deferred:
 - AC8: Given a `%Developer` account, when it opens the three screens in USER, then it searches and looks up there, and is refused by name where it cannot read the code database (`DeveloperFloor`).
 - AC9 (Integration, Rule 1): Given a search hit and a macro location, when the person follows each link, then `SourceViewerPage` reads that document through its own declared read on the real instance.
 
+### Review Findings
+
+Code review 2026-10-02 (four layers, full-opus): 58 rows, 18 entries (high 0, medium 2, low 16), 25 rejected. No AD violation; AC1-AC9 hold, Rule 3 met.
+
+- [x] [Review][Patch] (med) Compare diffed a side the instance keeps no source for as empty text: two object-only routines read identical [ui/src/app/areas/system-explorer/code-compare.page.ts:216]
+- [x] [Review][Patch] Search labeled a match in a member's attribute `Member+attrline`, as a line of its code; now `Member[Attribute]` [ui/src/app/areas/system-explorer/code-search.store.ts:77]
+- [x] [Review][Patch] An arrival omitting a criterion left the earlier search or lookup in effect (Search with no text; Macros keeping the old document or macro) [code-search.store.ts:159, macro-lookup.store.ts:120]
+- [x] [Review][Patch] Macros re-read the earlier lookup beside a `?document=` naming another document [ui/src/app/areas/system-explorer/macro-lookup.page.ts:150]
+- [x] [Review][Patch] Search's cap notice stayed above a refused search [ui/src/app/areas/system-explorer/code-search.page.ts:302]
+- [x] [Review][Patch] `hunks` collapsed a single unchanged line into a "1 unchanged lines" marker [ui/src/app/areas/system-explorer/line-diff.ts:161]
+- [x] [Review][Patch] A change event's re-compare blanked the drawn diff until the re-read landed (AD-14) [ui/src/app/areas/system-explorer/code-compare.store.ts:111]
+- [x] [Review][Patch] No test held Compare's overtaken-answer guard [code-compare.page.spec.ts, "Compare state"]
+- [x] [Review][Patch] No test held a routine side's re-compare on a `routine` change [code-compare.page.spec.ts]
+- [x] [Review][Patch] The four new port refusals were outside the server/client/EXPERIENCE parity roster [ui/tools/self-protection.test.mjs]
+- [x] [Review][Patch] No test held that 256 characters, the bound, are searched [src/OcuPilot/Test/AtelierPortSearch.cls]
+- [x] [Review][Patch] No test held `MacroContext`'s 50-name cap [src/OcuPilot/Test/AtelierPortMacro.cls]
+- [x] [Review][Patch] The viewer's "Compare with" and "Look up a macro" had no browser leg [ui/browser/system-explorer-find.browser-spec.mjs]
+- [x] [Review][Patch] `ExplorerFindProbe.Make`'s doc named the include as compiled; a garbled sentence in `AtelierPortSearch` [src/OcuPilot/Test/ExplorerFindProbe.cls:38]
+- [x] [Review][Defer] (med) DW-1001 occurrence: `explorer.search.read` is the first silent case, `*TODO*` or a comma list searched literally with no refusal [src/OcuPilot/Screen/Tool/Read.cls:171] — deferred: the implement stage's reason holds (Registry grammar, Never list); trailer added, priority raised, owner range-end-cleanup
+- [x] [Review][Defer] `MacroContext` misses a mid-line `/*` and a one-line `/* */ Include X`, and counts a routine's `#include` in `/* */` or `#if 0` [src/OcuPilot/Port/AtelierPort.cls:1060] — deferred: DW-1961 wontfix-accepted
+- [x] [Review][Defer] `MACRONAMEPATTERN` refuses 54 of the image's 28,574 macro names (underscore, leading digit) [src/OcuPilot/Port/AtelierPort.cls:126] — deferred: DW-1960 by-design (the Matrix's pattern)
+
+Rejected: screen context lacks `Attribute` (spec's context fields; the tool row carries it) · `IncludeGenerator` sent as `includes` (generator methods see those macros; the body is AD-61 rule 3's) · "Defined in X, line " with no line (no case shown where the instance names a document without a line) · Compare's prompts and empty context (closed in the triage log; AC6) · "1 lines" plurals (spec strings) · Compare pressed with a blank side sends nothing (as Search and Macros do) · location column header, cut match line, no line anchor, no result count, per-visit Compare state (features, or the viewer's precedent) · Macros not re-run on a class edit (spec: entity `routine`) · a failed location route fails the read (fails loudly; no reachable case) · strings bound with no comment (the lead's byte-identical edit) · probe classes share a package (needs two runs at once, which the one-run rule forbids) · Search/Macros duplication and the `hits` getter (no named defect; bounded) · one line-number column (layout change, low) · search timeout (false: AD-61 rule 8 measured) · per-clause mutation lines (closed; one per AC) · 1,000-edit time cost (needs ~50k-line documents; fix adds a worker) · DESIGN.md "reserved" sentence (scoped to Release 1, still true) and the 14.3:1 figure (spec edit) · client rosters untouched and QA leg uncommitted (no defect; the lead commits).
+
 ## Spec Change Log
 
 - 2026-10-02, lead (implement halt resolved, by=merge_gate): `ui/tools/strings.test.mjs:575-576` moves the Fixed-strings bound from 2000 to 2100, byte-identical to Epic 18's 081bbd5e on those two lines and with no comment line of this story's (a three-way merge with 18.5's file is clean and identical to it). The lead applied the edit; `npm run test:tools` 1777/1777. The implementation is committed locally as a work-in-progress commit; `baseline_revision` stays `6f718d93`.
@@ -378,6 +402,9 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: AC7, `ExplorerCompare` `classicPage` `""` → `ExplorerDescriptor.TestCompareKeysTheClassicCompareRoutinesPage` (run 2366).
 - mutation: AC8, `ExplorerSearch` privileges `[]` → `AtelierPortDenial.TestSearchAndMacrosAreRefusedNamingThePair` (run 2367) and `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 2369).
 - mutation: AC9, `viewerRouteFor` answers the class viewer for every hit, rebuilt and redeployed → `system-explorer-find` AC1/AC9 and AC5/AC9 tests.
+- (QA) `ui/browser/system-explorer-find.browser-spec.mjs` -- two added legs: Compare identical and refused side, Macros empty state.
+- mutation: Compare's identical status sentence replaced, rebuilt and redeployed -> `system-explorer-find` "AC4 (QA)" went red; Macros' empty sentence given no document -> "AC5 (QA)" went red; both reverted byte for byte.
+- (Review) mutation: `readSide` reads an unavailable side's empty text → `code-compare.page.spec.ts` "names a side the instance keeps no source for"; the generation check dropped, and a re-compare blanking the diff → "Compare state"; a routine side matched to `class` events → "compares a routine again"; `hunks` without its spare line → `line-diff.spec.ts` "never collapses a single unchanged line"; `hitLocation` without the member-attribute case, `useArrival` keeping the sent search, the status line without its fault check → three `code-search.page.spec.ts` cases; Macros keeping an omitted document, and skipping `forget` → two `macro-lookup.page.spec.ts` cases; one word of `REASONSEARCHTEXT` → `self-protection.test.mjs` Story 19.4; text bound `>=`, cap 60, whole tree recompiled → `AtelierPortSearch` (run 2809) and `AtelierPortMacro` (run 2810). Each reverted byte for byte; green after (runs 2811, 2812).
 
 ## Auto Run Result
 

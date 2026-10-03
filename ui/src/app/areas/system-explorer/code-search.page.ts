@@ -298,11 +298,11 @@ export class CodeSearchPage {
     return this.state.searched() ? STRINGS.explorerSearchEmpty : STRINGS.explorerSearchInvite;
   }
 
-  /** The cap notice while the list is cut, else nothing. */
+  /** The cap notice while the list on screen is cut, else nothing: never beside a refused search. */
   protected get statusLine(): string {
     this.generation();
     const store = this.view?.store;
-    if (store === undefined || !this.state.searched() || !store.truncated()) return '';
+    if (store === undefined || !this.state.searched() || this.fault !== null || !store.truncated()) return '';
     return STRINGS.tableRowCapNotice.replace('<n>', store.maxRows().toLocaleString('en-US'));
   }
 

@@ -147,8 +147,13 @@ export class MacroLookupPage {
     this.state = heldFor(store);
     this.refresh.bind(screen, this.boundRead(screen));
 
+    // A link naming another document than the last lookup's drops that lookup, so no answer is shown
+    // for a document the form no longer names.
     const prefill = this.route.snapshot?.queryParamMap?.get(DOCUMENT_QUERY) ?? null;
-    if (prefill !== null && prefill !== '') this.state.setDocument(prefill);
+    if (prefill !== null && prefill !== '') {
+      this.state.setDocument(prefill);
+      if (prefill !== this.state.sent().document) this.state.forget();
+    }
 
     const arrival = this.arrivals?.take(screen.route) ?? null;
     if (arrival !== null) {

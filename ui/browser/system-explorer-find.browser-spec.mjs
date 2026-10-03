@@ -3,7 +3,8 @@
  * each match, and a routine's and a class's hit each open their own viewer, which reads the document
  * through its own declared read (AC1, AC9); Compare draws two probe classes' line diff from the two
  * viewers' reads (AC4); and Macros shows a probe macro's definition in a subclass's context, its
- * "Defined in" opening the include's viewer (AC5, AC9). Each screen passes the structural walk at
+ * "Defined in" opening the include's viewer (AC5, AC9); and the class viewer's "Compare with" and
+ * "Look up a macro" open those screens on the document it shows. Each screen passes the structural walk at
  * 1280 light, 720 light and 1280 dark, with no entry beyond the baseline.
  *
  * The probes are `OcuPilot.Test.ExplorerFindProbe`'s, created in `before` and removed in `after` by
@@ -170,6 +171,56 @@ test("AC5, AC9: Macros shows a probe macro found through a superclass, and Defin
     assert.deepEqual(await structural(page, MACROS_ROUTE), [], 'Macros with its definition adds no structural entry');
     await page.click('[data-ocu-macro="defined-in"]');
     assert.equal(await viewerShows(page, '#define OcuProbe194Value 42'), '/ocupilot/system-explorer/routines/document/OcuProbe194Inc%252Einc', "Defined in opens the include's viewer, which reads it");
+  } finally {
+    await context.close();
+  }
+});
+
+test("AC4 (QA): Compare says identical for one document twice, and names a side the instance cannot find", async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${COMPARE_ROUTE}?ns=USER&left=OcuProbe194.Parent.cls`, VIEWPORTS.wide);
+  try {
+    await page.waitForSelector('[data-ocu-compare-side="right"] [data-ocu-compare="name"]', { timeout: config.navigationTimeoutMs });
+    await typeInto(page, '[data-ocu-compare-side="right"] [data-ocu-compare="name"]', 'OcuProbe194.Parent.cls');
+    await page.click('[data-ocu-compare="submit"]');
+    await page.waitForFunction((sentence) => document.querySelector('[data-ocu-compare="status"]')?.textContent.trim() === sentence, { timeout: config.navigationTimeoutMs }, STRINGS.explorerCompareIdentical);
+    assert.equal(await page.$('[data-ocu-diff="removed"], [data-ocu-diff="added"]'), null, 'nothing is marked when the two sides are the same');
+
+    await typeInto(page, '[data-ocu-compare-side="right"] [data-ocu-compare="name"]', 'OcuProbe194.Absent.cls');
+    await page.click('[data-ocu-compare="submit"]');
+    await page.waitForSelector('[data-ocu-compare="refusal"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('[data-ocu-compare="diff"]'), null, 'a refused side draws nothing');
+    assert.match(await page.$eval('[data-ocu-compare="refusal"]', (node) => node.textContent), /OcuProbe194\.Absent/, 'the refusal names the side that was refused');
+  } finally {
+    await context.close();
+  }
+});
+
+test("AC5 (QA): Macros names an undefined macro and its document in the empty state", async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${MACROS_ROUTE}?ns=USER&document=OcuProbe194.Child.cls`, VIEWPORTS.wide);
+  try {
+    await page.waitForSelector('[data-ocu-macro="macro"]', { timeout: config.navigationTimeoutMs });
+    await typeInto(page, '[data-ocu-macro="macro"]', 'OcuProbe194Nothing');
+    await page.click('[data-ocu-macro="submit"]');
+    const sentence = STRINGS.explorerMacroUndefined.replace('<macro>', 'OcuProbe194Nothing').replace('<document>', 'OcuProbe194.Child.cls');
+    await page.waitForFunction((wanted) => document.querySelector('[data-ocu-macro="empty"]')?.textContent.trim() === wanted, { timeout: config.navigationTimeoutMs }, sentence);
+    assert.equal(await page.$('[data-ocu-macro="definition"]'), null, 'no definition is shown for an unknown macro');
+  } finally {
+    await context.close();
+  }
+});
+
+test("AC4, AC5: the viewer's Compare with and Look up a macro open those screens on the document it shows", async () => {
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/system-explorer/classes/document/OcuProbe194%252EChild%252Ecls?ns=USER', VIEWPORTS.wide);
+  try {
+    await viewerShows(page, 'Class OcuProbe194.Child');
+    await page.click('[data-ocu-source="macro"]');
+    await page.waitForSelector('[data-ocu-macro="document"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-ocu-macro="document"]', (input) => input.value), 'OcuProbe194.Child.cls', 'Look up a macro opens Macros with the document as its context');
+    await page.goBack({ waitUntil: 'networkidle2' });
+    await viewerShows(page, 'Class OcuProbe194.Child');
+    await page.click('[data-ocu-source="compare"]');
+    await page.waitForSelector('[data-ocu-compare-side="left"] [data-ocu-compare="name"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('[data-ocu-compare-side="left"] [data-ocu-compare="name"]', (input) => input.value), 'OcuProbe194.Child.cls', 'Compare with opens Compare with the document first');
   } finally {
     await context.close();
   }

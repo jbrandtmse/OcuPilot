@@ -107,17 +107,22 @@ export class CodeCompareState {
     return this.run({ left: { ...this.sides.left, name: this.sides.left.name.trim() }, right: { ...this.sides.right, name: this.sides.right.name.trim() } }, read);
   }
 
-  /** Read the last compare's sides again, leaving the form as the person has it. */
+  /**
+   * Read the last compare's sides again, leaving the form as the person has it and the last answer
+   * drawn until the new one lands (AD-14).
+   */
   async recompare(read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
     if (this.compared === null) return false;
-    return this.run({ left: { ...this.compared.left }, right: { ...this.compared.right } }, read);
+    return this.run({ left: { ...this.compared.left }, right: { ...this.compared.right } }, read, true);
   }
 
-  private async run(sides: Record<CompareSideKey, CompareSide>, read: (side: CompareSide) => Promise<SideAnswer>): Promise<boolean> {
+  private async run(sides: Record<CompareSideKey, CompareSide>, read: (side: CompareSide) => Promise<SideAnswer>, inPlace = false): Promise<boolean> {
     const generation = (this.generation += 1);
     this.compared = sides;
-    this.outcomeValue = { kind: 'running' };
-    this.notify();
+    if (!inPlace) {
+      this.outcomeValue = { kind: 'running' };
+      this.notify();
+    }
     const [left, right] = await Promise.all([read(sides.left), read(sides.right)]);
     if (generation !== this.generation) return true;
     if (left.kind === 'refused') {

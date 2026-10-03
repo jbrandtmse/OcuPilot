@@ -118,13 +118,23 @@ export class MacroLookupState {
     return true;
   }
 
-  /** Run an agent arrival's lookup: the criteria it carries, shown in the form. */
+  /**
+   * Run an agent arrival's lookup: the criteria it carries, shown in the form, and a field it omits
+   * emptied. An arrival that does not name both sends nothing and drops the lookup it replaces.
+   */
   useArrival(arrival: ScreenArrival): boolean {
     const criteria = arrival.criteria;
-    if (typeof criteria[DOCUMENT_PARAM] === 'string') this.documentValue = criteria[DOCUMENT_PARAM];
-    if (typeof criteria[MACRO_PARAM] === 'string') this.macroValue = criteria[MACRO_PARAM];
+    this.documentValue = typeof criteria[DOCUMENT_PARAM] === 'string' ? criteria[DOCUMENT_PARAM] : '';
+    this.macroValue = typeof criteria[MACRO_PARAM] === 'string' ? criteria[MACRO_PARAM] : '';
+    if (this.lookUp()) return true;
+    this.forget();
+    return false;
+  }
+
+  /** Drop the lookup last sent, so nothing is read or shown until the next one. */
+  forget(): void {
+    this.sentValue = null;
     this.notify();
-    return this.lookUp();
   }
 
   /** What the next read sends, or `null` while no lookup has been sent. */

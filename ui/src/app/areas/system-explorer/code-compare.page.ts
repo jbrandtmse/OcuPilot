@@ -10,7 +10,7 @@ import { STRINGS } from '../../core/strings';
 import { fillPlaceholders } from './code-list.store';
 import { CLASS_VIEWER_ROUTE, ROUTINE_VIEWER_ROUTE } from './code-search.store';
 import { CodeCompareState, LEFT_QUERY, documentKind, type CompareSide, type CompareSideKey, type SideAnswer } from './code-compare.store';
-import { SourceViewerState, createSourceRead } from './document-viewer.store';
+import { OBJECT_ONLY_REASON, SourceViewerState, createSourceRead } from './document-viewer.store';
 import type { DiffLine, DiffSegment } from './line-diff';
 
 /** The rows a side's read asks for: the text rides beside them, and none of them is shown. */
@@ -196,7 +196,8 @@ export class CodeComparePage {
 
   /**
    * One side's text, read through its viewer's declared read in its own namespace: the text, or the
-   * instance's refusal with its reason.
+   * instance's refusal with its reason. A document the instance keeps no source for is refused with
+   * the viewer's own sentence, never compared as empty text.
    */
   private async readSide(side: CompareSide): Promise<SideAnswer> {
     const viewer: ScreenDeclaration | null = screenForRoute(documentKind(side.name) === 'class' ? CLASS_VIEWER_ROUTE : ROUTINE_VIEWER_ROUTE);
@@ -215,7 +216,10 @@ export class CodeComparePage {
     if (state.gone()) return { kind: 'refused', reason: refusal || STRINGS.connectivityRequestRefused };
     if (result.kind === 'fault') return { kind: 'refused', reason: refusal || STRINGS.connectivityRequestRefused };
     const document = state.document();
-    return { kind: 'text', text: document?.content ?? '' };
+    if (document === null || !document.available) {
+      return { kind: 'refused', reason: document?.reason === OBJECT_ONLY_REASON ? STRINGS.explorerViewerObjectOnly : STRINGS.explorerSourceNotAvailable };
+    }
+    return { kind: 'text', text: document.content };
   }
 
   protected get namespaces(): readonly string[] {

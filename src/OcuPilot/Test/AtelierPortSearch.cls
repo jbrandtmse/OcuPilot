@@ -116,7 +116,7 @@ Method TestCaseAndScopeNarrowTheSearch()
 
 /// <p>AC3: the text is searched as plain text, so a pattern's metacharacters match only themselves:
 /// a needle with a dot for one of its letters, between <code>.*</code> and <code>.*</code>, finds
-/// nothing, where as the vendor's whole-line pattern it would match each probe line.</p>
+/// nothing, where the vendor's pattern search would match each probe line.</p>
 /// <p>Mutation (Rule 19): send <code>regex</code> as 1 in
 /// <method>OcuPilot.Port.AtelierPort.SearchRows</method> -&gt; the dot matches and this goes red.</p>
 Method TestAMetacharacterIsText()
@@ -192,7 +192,7 @@ Method TestTheSearchSendsExactlyItsParameters()
 
 /// <p>Matrix: an empty text, one above 256 characters or holding a control character, and a scope
 /// or case outside its options, are each refused 400 <code>PORT.VALIDATION</code> with its own
-/// reason before any route.</p>
+/// reason before any route; a text of exactly 256 characters is searched.</p>
 Method TestMalformedSearchArgumentsAreRefusedBeforeAnyRoute()
 {
     Do ##class(OcuPilot.Test.AtelierPort).ArmVendor()
@@ -206,6 +206,12 @@ Method TestMalformedSearchArgumentsAreRefusedBeforeAnyRoute()
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: ""), "400 PORT.VALIDATION " _ $List(tCase, 3), $List(tCase, 1) _ " " _ $Extract($List(tCase, 2), 1, 20) _ " is refused with its reason")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortFixture).CallCount(), 0, "before any route")
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("Search", "200 OK", ..#SEARCHANSWER)
+    Kill tQuery
+    Set tQuery("namespace") = $Namespace
+    Set tQuery("text") = $Translate($Justify("", 256), " ", "a")
+    Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke("Search", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ ##class(OcuPilot.Test.AtelierPortFixture).CallCount(), "200 1", "a text of 256 characters, the bound, is searched")
 }
 
 /// <p>AD-61 rule 2: an instance whose highest version is 1 is refused the search 501 naming both

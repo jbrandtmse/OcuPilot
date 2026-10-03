@@ -22,7 +22,8 @@ import { MacroLookupPage } from './macro-lookup.page';
  * `ScreenStores` and `ScreenArrivals` and a stubbed HTTP answer (Story 19.4, AC5): the document
  * prefilled from `?document=`, nothing read until both fields hold text, the lookup's exact
  * criteria, the definition rendered as text with "Defined in" linking the include's viewer, the
- * sentence for a macro the context does not define, and an agent's arrival run once.
+ * sentence for a macro the context does not define, an agent's arrival run once, and neither an
+ * arrival nor a link to another document leaving an earlier lookup on screen.
  */
 
 const MACROS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerMacro') as ScreenDeclaration;
@@ -42,7 +43,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(options: { rows?: readonly unknown[]; prefill?: string; arrivals?: ScreenArrivals; refusal?: { status: number; code: string; reason: string | null } } = {}) {
+async function mount(options: { rows?: readonly unknown[]; prefill?: string; arrivals?: ScreenArrivals; stores?: ScreenStores; refusal?: { status: number; code: string; reason: string | null } } = {}) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const api = {
@@ -52,7 +53,7 @@ async function mount(options: { rows?: readonly unknown[]; prefill?: string; arr
       return { kind: 'ok', status: 200, body: { fields: [], rows: options.rows ?? [ROW], truncated: false, banner: '' } as T };
     },
   };
-  const stores = new ScreenStores({ account: stubAccountPreferences() });
+  const stores = options.stores ?? new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -98,6 +99,7 @@ async function mount(options: { rows?: readonly unknown[]; prefill?: string; arr
       (host.querySelector('[data-ocu-macro="submit"]') as HTMLButtonElement).click();
       await settle(fixture);
     },
+    settle: () => settle(fixture),
   };
 }
 
@@ -148,5 +150,29 @@ describe('System Explorer Macros', () => {
     const { host, paths } = await mount({ arrivals });
     expect(paths).toEqual(['/api/ocupilot/screens/explorer.macro/read?maxRows=1000&document=Demo.Probe.cls&macro=OK']);
     expect((host.querySelector('[data-ocu-macro="macro"]') as HTMLInputElement).value).toBe('OK');
+  });
+
+  it('empties a field an arrival omits, and sends nothing without both', async () => {
+    const arrivals = new ScreenArrivals();
+    const { host, paths, lookUp, settle: wait } = await mount({ arrivals });
+    await lookUp('Demo.Probe.cls', 'OK');
+    // Mutation: keep the earlier document in `useArrival` -> a lookup the agent never named is sent and this goes red.
+    arrivals.set({ route: MACROS.route, criterion: '', criteria: { macro: 'ISERR' } });
+    await wait();
+    expect(paths).toHaveLength(1);
+    expect((host.querySelector('[data-ocu-macro="document"]') as HTMLInputElement).value).toBe('');
+    expect(host.querySelector('[data-ocu-macro="result"]')).toBeNull();
+  });
+
+  it("drops the last lookup when a link names another document, and shows nothing for it", async () => {
+    const stores = new ScreenStores({ account: stubAccountPreferences() });
+    const first = await mount({ stores });
+    await first.lookUp('Demo.Probe.cls', 'OK');
+    expect(first.paths).toHaveLength(1);
+    // Mutation: skip `forget` for another prefilled document -> the earlier lookup is read again and this goes red.
+    const second = await mount({ stores, prefill: 'Demo.Other.cls' });
+    expect(second.paths).toEqual([]);
+    expect(second.host.querySelector('[data-ocu-macro="result"]')).toBeNull();
+    expect((second.host.querySelector('[data-ocu-macro="macro"]') as HTMLInputElement).value).toBe('OK');
   });
 });

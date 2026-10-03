@@ -70,10 +70,12 @@ export function hitsOf(rows: readonly unknown[]): SearchHit[] {
 
 /**
  * Where in its document a hit is: `Member+Line` for a member's line, the member alone where the
- * instance names no line, `[Attribute]` for a match in an attribute of the document itself, and the
- * line alone for a routine's line.
+ * instance names no line, `Member[Attribute]` for a match in one of a member's attributes,
+ * `[Attribute]` for a match in an attribute of the document itself, and the line alone for a
+ * routine's line.
  */
 export function hitLocation(hit: SearchHit): string {
+  if (hit.member !== '' && hit.attribute !== '') return `${hit.member}[${hit.attribute}]`;
   if (hit.member !== '') return hit.line === null ? hit.member : `${hit.member}+${hit.line}`;
   if (hit.attribute !== '') return `[${hit.attribute}]`;
   return hit.line === null ? '' : `${hit.line}`;
@@ -154,15 +156,17 @@ export class CodeSearchState {
 
   /**
    * Run an agent arrival's search: the declared criteria it carries, shown in the form, the others
-   * left at their defaults. An arrival with no text sends nothing.
+   * left at their defaults. An arrival with no text sends nothing and drops the search it replaces.
    */
   useArrival(arrival: ScreenArrival): boolean {
     const criteria = arrival.criteria;
     this.textValue = typeof criteria[TEXT_PARAM] === 'string' ? criteria[TEXT_PARAM] : '';
     this.scopeValue = typeof criteria[SCOPE_PARAM] === 'string' && criteria[SCOPE_PARAM] !== '' ? criteria[SCOPE_PARAM] : SCOPE_ALL;
     this.caseValue = criteria[CASE_PARAM] === CASE_YES ? CASE_YES : CASE_NO;
+    if (this.search()) return true;
+    this.sentValue = null;
     this.notify();
-    return this.search();
+    return false;
   }
 
   /** What the next read sends, or `null` while no search has been sent. */

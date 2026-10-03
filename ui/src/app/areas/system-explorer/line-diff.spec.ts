@@ -84,6 +84,12 @@ describe('hunks', () => {
     expect(segments[0].kind).toBe('lines');
   });
 
+  it('never collapses a single unchanged line, between two changes or before the first', () => {
+    // Mutation: drop the one spare line from the bound in `hunks` -> each goes red with a collapsed 1.
+    expect(hunks(lineDiff(['x', ...lines(7, 'm'), 'y'], ['X', ...lines(7, 'm'), 'Y']) ?? []).map((segment) => segment.kind)).toEqual(['lines']);
+    expect(hunks(lineDiff([...lines(4, 'h'), 'x'], [...lines(4, 'h'), 'y']) ?? []).map((segment) => segment.kind)).toEqual(['lines']);
+  });
+
   it('collapses a script with no change to one run', () => {
     expect(hunks(lineDiff(['a', 'b'], ['a', 'b']) ?? [])).toEqual([{ kind: 'collapsed', count: 2 }]);
   });

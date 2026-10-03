@@ -7,17 +7,18 @@ import { ChangeBus } from '../../core/change-bus';
 import { ScopeService } from '../../core/scope';
 import { STRINGS } from '../../core/strings';
 import { CodeComparePage } from './code-compare.page';
+import { CodeCompareState, type SideAnswer } from './code-compare.store';
 
 /**
  * System Explorer's Compare (Story 19.4, AC4): the first document prefilled from `?left=` and both
  * sides on the route's namespace; Compare issuing the class or routine viewer's declared read once
  * per side, each in its own namespace; the diff drawn with signs, announced directions and collapsed
- * runs; the identical and too-large sentences; a refused side named with the instance's reason and
- * nothing drawn; and a re-compare when either document changes.
+ * runs; the identical and too-large sentences; a refused side, or one the instance keeps no source
+ * for, named with its reason and nothing drawn; and a re-compare when either document changes.
  */
 
-/** Each document's text, keyed by `<namespace>|<name>`. */
-type Texts = Record<string, readonly string[]>;
+/** Each document's text, keyed by `<namespace>|<name>`; `null` for a routine kept only as object code. */
+type Texts = Record<string, readonly string[] | null>;
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   for (let pass = 0; pass < 6; pass += 1) {
@@ -44,7 +45,7 @@ async function mount(texts: Texts, left = 'Demo.Left.cls') {
       if (text === undefined) {
         return { kind: 'error', status: 404, code: 'PORT.NOTFOUND', reason: 'This namespace holds no document by that name.', detail: null };
       }
-      const document = { name, form: 'udl', available: true, content: text, modified: '', database: scope, generates: [] };
+      const document = { name, form: 'udl', available: text !== null, content: text ?? [], modified: '', database: scope, generates: [], reason: text === null ? 'objectonly' : '' };
       return { kind: 'ok', status: 200, body: { fields: [], rows: [], truncated: false, banner: '', document } as T };
     },
   };
@@ -156,6 +157,15 @@ describe('System Explorer Compare', () => {
     expect(host.querySelector('[data-ocu-compare="diff"]')).toBeNull();
   });
 
+  it('names a side the instance keeps no source for and draws nothing, never comparing it as empty', async () => {
+    // Mutation: answer an unavailable side's empty text in `readSide` -> both read as identical and this goes red.
+    const { host, compare } = await mount({ 'HSCUSTOM|DemoObj.mac': null, 'HSCUSTOM|DemoObj2.mac': null }, 'DemoObj2.mac');
+    await compare('DemoObj.mac');
+    expect(host.querySelector('[data-ocu-compare="refusal"]')?.textContent?.trim()).toBe(`DemoObj2.mac: ${STRINGS.explorerViewerObjectOnly}`);
+    expect(host.querySelector('[data-ocu-compare="status"]')?.textContent?.trim()).toBe('');
+    expect(host.querySelector('[data-ocu-compare="diff"]')).toBeNull();
+  });
+
   it('compares again when either document changes', async () => {
     const { reads, compare, bus, settle: wait } = await mount({ 'HSCUSTOM|Demo.Left.cls': ['a'], 'HSCUSTOM|Demo.Right.cls': ['b'] });
     await compare('Demo.Right.cls');
@@ -172,6 +182,17 @@ describe('System Explorer Compare', () => {
     bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Left.cls', action: 'updated' });
     await wait();
     expect(reads).toHaveLength(6);
+  });
+
+  it('compares a routine again when it changes, and not on a class of its name', async () => {
+    const { reads, compare, bus, settle: wait } = await mount({ 'HSCUSTOM|Demo.Left.cls': ['a'], 'HSCUSTOM|Demo.mac': ['b'] });
+    await compare('Demo.mac');
+    bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.mac', action: 'updated' });
+    await wait();
+    expect(reads).toHaveLength(2);
+    bus.publish({ kind: 'changed', type: 'routine', scope: 'HSCUSTOM', id: 'Demo.mac', action: 'updated' });
+    await wait();
+    expect(reads).toHaveLength(4);
   });
 
   it('re-compares the documents it compared and keeps what the person is typing', async () => {
@@ -191,5 +212,33 @@ describe('System Explorer Compare', () => {
     (host.querySelector('[data-ocu-compare="submit"]') as HTMLButtonElement).click();
     await wait();
     expect(reads.at(-1)).toBe('HSCUSTOM /api/ocupilot/screens/explorer.class/read?maxRows=1&name=Demo.Typed.cls&form=udl');
+  });
+});
+
+describe('Compare state', () => {
+  const held = () => {
+    let resolve: (answer: SideAnswer) => void = () => undefined;
+    const promise = new Promise<SideAnswer>((done) => (resolve = done));
+    return { promise, resolve };
+  };
+
+  it('keeps the newer answer when an older compare lands last, and the drawn diff while a change re-reads', async () => {
+    const state = new CodeCompareState();
+    state.defaultNamespace('USER');
+    state.setName('left', 'Demo.mac');
+    state.setName('right', 'Demo2.mac');
+    const slow = held();
+    const first = state.compare(() => slow.promise);
+    await state.compare(async (side) => ({ kind: 'text', text: side.name }));
+    // Mutation: drop the generation check in `run` -> the older answer overwrites the diff and this goes red.
+    slow.resolve({ kind: 'text', text: 'same' });
+    await first;
+    expect(state.outcome().kind).toBe('diff');
+    const again = held();
+    const recompare = state.recompare(() => again.promise);
+    expect(state.outcome().kind).toBe('diff');
+    again.resolve({ kind: 'text', text: 'same' });
+    await recompare;
+    expect(state.outcome().kind).toBe('identical');
   });
 });

@@ -163,8 +163,8 @@ Method TestMalformedLookupsAndAnOldInstanceAreRefusedBeforeAnyRoute()
 /// <p><method>OcuPilot.Port.AtelierPort.MacroContext</method>: a class's header names one include, a
 /// parenthesized list and an import, a <code>/* */</code> banner naming a decoy is skipped, the
 /// <code>Extends</code> list is read in either form, and nothing after the <code>Class</code> line
-/// counts; a routine's <code>#include</code> lines join in any case, and an include file names
-/// itself first.</p>
+/// counts; a routine's <code>#include</code> lines join in any case, an include file names itself
+/// first, and a list keeps at most the first 50 names the text gives.</p>
 Method TestMacroContextReadsTheDocumentsOwnText()
 {
     Set tPort = "OcuPilot.Port.AtelierPort"
@@ -178,6 +178,10 @@ Method TestMacroContextReadsTheDocumentsOwnText()
     Do $$$AssertEquals($ClassMethod(tPort, "MacroContext", "ProbeInc.inc", tLines).%ToJSON(), "{""includes"":[""ProbeInc"",""Other""],""superclasses"":[],""imports"":[]}", "an include file names itself first")
     Set tLines = ["Include (Ok, Bad-Name, ;Drop)", "Class Probe.Gamma Extends %RegisteredObject", "{", "}"]
     Do $$$AssertEquals($ClassMethod(tPort, "MacroContext", "Probe.Gamma.cls", tLines).includes.%ToJSON(), "[""Ok""]", "a name of any other shape is dropped")
+    Set tLines = []
+    For tI = 1:1:60 Do tLines.%Push("#include ProbeInc" _ tI)
+    Set tIncludes = $ClassMethod(tPort, "MacroContext", "ProbeMany.mac", tLines).includes
+    Do $$$AssertEquals(tIncludes.%Size() _ " " _ tIncludes.%Get(49), "50 ProbeInc50", "a list keeps at most 50 names, the first the text gives")
 }
 
 }

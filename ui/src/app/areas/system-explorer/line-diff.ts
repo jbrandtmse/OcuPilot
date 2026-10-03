@@ -132,10 +132,10 @@ function walkBack(trace: readonly Int32Array[], a: readonly string[], b: readonl
 }
 
 /**
- * `script` with every run of unchanged lines longer than the context it needs collapsed to a count:
- * a run between two changes keeps `context` lines after the first and before the second, the run
- * before the first change keeps its last `context`, and the run after the last change its first
- * `context`. A script with no change is one collapsed run.
+ * `script` with every run of unchanged lines that hides at least two lines beyond the context it
+ * needs collapsed to a count: a run between two changes keeps `context` lines after the first and
+ * before the second, the run before the first change keeps its last `context`, and the run after
+ * the last change its first `context`. A script with no change is one collapsed run.
  */
 export function hunks(script: readonly DiffLine[], context: number = CONTEXT_LINES): DiffSegment[] {
   const segments: DiffSegment[] = [];
@@ -158,7 +158,7 @@ export function hunks(script: readonly DiffLine[], context: number = CONTEXT_LIN
     const last = end === script.length;
     const keepBefore = first ? 0 : context;
     const keepAfter = last ? 0 : context;
-    if (run.length <= keepBefore + keepAfter) {
+    if (run.length <= keepBefore + keepAfter + (first && last ? 0 : 1)) {
       lines.push(...run);
     } else {
       lines.push(...run.slice(0, keepBefore));

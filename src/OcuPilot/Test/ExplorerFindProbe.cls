@@ -35,8 +35,8 @@ Parameter LONGNEEDLE = "OcuProbe194Long";
 /// <p>How many characters that line carries.</p>
 Parameter LONGLENGTH As INTEGER = 1500;
 
-/// <p>Create every probe document in <var>pNamespace</var> and compile the include and the
-/// classes.</p>
+/// <p>Create every probe document in <var>pNamespace</var> and compile the classes and
+/// <code>OcuProbe194Mac.mac</code>.</p>
 ClassMethod Make(pNamespace As %String) As %Status
 {
     Set tSC = ..MakeRoutine(pNamespace, ..#INCLUDE _ ".inc", $ListBuild("#define OcuProbe194Value 42", "#define OcuProbe194Multi 1 ##continue", "  + 2"))
