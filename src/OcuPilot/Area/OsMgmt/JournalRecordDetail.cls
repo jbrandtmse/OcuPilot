@@ -101,11 +101,14 @@ ClassMethod CopyScalars(pFrom As %DynamicObject, pTo As %DynamicObject) [ Privat
 }
 
 /// <p><var>pValue</var> cut to <parameter>VALUEMAXLENGTH</parameter> characters, its last U+2026, when
-/// it is longer.</p>
+/// it is longer; one fewer where the cut would keep the first half of a surrogate pair (AD-33's
+/// rule).</p>
 ClassMethod Cut(pValue As %String) As %String
 {
     If $Length(pValue) <= ..#VALUEMAXLENGTH Quit pValue
-    Quit $Extract(pValue, 1, ..#VALUEMAXLENGTH - 1) _ $Char(8230)
+    Set tKeep = ..#VALUEMAXLENGTH - 1
+    If ($Ascii(pValue, tKeep) >= 55296) && ($Ascii(pValue, tKeep) <= 56319) Set tKeep = tKeep - 1
+    Quit $Extract(pValue, 1, tKeep) _ $Char(8230)
 }
 
 /// <p>Render a refused read: the port's <code>PORT.NOTFOUND</code> as 404

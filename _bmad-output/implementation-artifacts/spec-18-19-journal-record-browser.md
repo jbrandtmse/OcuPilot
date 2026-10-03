@@ -2,10 +2,10 @@
 title: 'Story 18.19: Journal record browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -460,6 +460,32 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 
 ## Review Triage Log
 
+### 2026-10-03 — Review pass
+
+- verdicts: 21 findings — high 0, medium 7, low 2, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The read tool's hinted descriptions are unpinned (the choice sentence and the default sentence) — `JournalDescriptor` now asserts `order`'s whole description and `file`'s hint alone; mutation run 3995.
+  - `[medium]` `[patch]` AC4's principal legs pass on an empty list or a blanket refusal — `JournalProbe.SetReadable` writes a record on the database every probe principal reads; the principal lists it (`JournalRecords`) and opens it 200 (`JournalRecordDetail`); mutation run 3997.
+  - `[medium]` `[patch]` AC6's log leg passes when `messages.log` cannot be read — asserts the line count is read; mutation run 3996 (grouped with the window finding below).
+  - `[low]` `[patch]` The no-argument tool test compares two answers that can both be empty — asserts the newest file answers rows.
+  - `[medium]` `[patch]` "The record is never in the screen store" is unpinned — the page spec asserts the store keeps the three list rows and no value; vitest mutation recorded.
+  - `[medium]` `[patch]` The Final tree evidence predated the final tree — re-run after the patches: the full ObjectScript sweep, a rebuilt and redeployed bundle (2,587,710 bytes, 2588kB unchanged) with both journal browser specs, `npm test`; the Final tree line rewritten.
+  - `[low]` `[reject]` The hint branch's datetime description says "1 hours" and drops the time-part sentence — no hinted datetime criterion exists, so no caller meets it, and a correct fix means deciding what a hint replaces for a datetime, more than a direct correction.
+  - `[false]` `[reject]` No test reads the ledger — a ledger row keeps only a tool's call and result (`Kernel/Agent/Loop.cls:604-609`), and the tool result is asserted value-free.
+  - `[medium]` `[patch]` The `messages.log` window covered the route only, not the list and tool reads — the window now also runs the screen read and the read tool over the seeded records.
+  - `[false]` `[reject]` Screen context is checked over stubbed rows — the payload is the real `assembleScreenContext` over the store's rows after the page's read, and those rows' value-freedom is pinned on the instance.
+  - `[medium]` `[patch]` The record is never in the screen store, untested at that surface — grouped with the store finding above.
+  - `[false]` `[reject]` The scan past the bound uses a canned poll and checks the fault, not a rendered banner — the throwaway's longest scan is 13.9 s (Task 0 e), and a 503 is a server fault the shell's fault banner draws from the refresh's fault (`core/fault.ts`, `fault-banner.wire.spec.ts`).
+  - `[false]` `[reject]` The unreadable list is tested at `AdminPort`, not the screen or the tool — both call `AdminPort.Invoke` in the caller's own process with no escalation, so they meet the same vendor skip.
+  - `[false]` `[reject]` Next records takes the form's current order — the offset follows the spec's rule for the order the next search sends, and the page spec pins it.
+  - `[false]` `[reject]` 22 sent is asserted on an unfiltered read and 11 kept is never observed — the doubling is per request type whatever the filter, truncation with 10 shown needs an 11th kept row, and the low-privilege shortfall is named limit 1.
+  - `[false]` `[reject]` Two values in contended files change — the bundle re-base and the strings bound are the spec's own tasks and the lead's sanctioned exceptions.
+  - `[false]` `[reject]` A modified View records click opens the newest file — the spec leaves a modified click to the browser.
+  - `[false]` `[reject]` The tool's echo reads an omitted file as empty — named limit 4.
+  - `[false]` `[reject]` A two-pair principal leaves finished task rows and one Protect audit event — recorded at Task 0 h(i) and named limit 3; the tests remove those rows.
+  - `[false]` `[reject]` A direct port caller without `%DB_IRISSYS:READ` gets 500 — every caller (screen, tool, route) gates on that pair first; only test code calls the port directly.
+  - `[false]` `[reject]` The diff cannot show that Task 0 ran first — not a defect of the change; the order is recorded under Measured at implement.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -572,29 +598,58 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 - AC6: the descriptor's read adds a `rowGet` merging `NewValue` → the no-marker leg goes red.
 - AC7: `sideBarPosition` 1 with the mirror regenerated → `Navigation` and `navigation.test.mjs` go red. One prompt is removed → `JournalDescriptor` goes red.
 
-Recorded (each reverted byte-identical, the throwaway reloaded from the reverted tree):
+Recorded (each reverted byte-identical, the throwaway reloaded from the reverted tree). Each run id was read back from `%UnitTest_Result` on `ocupilot-b-ci`, and each vitest, node and browser leg was re-applied and observed red on the final tree, with the bundle rebuilt and redeployed for each browser leg:
 
 - mutation: the descriptor's read declares `Journal.File` `LIST` → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, with five other legs (run 3760)
-- mutation: `recordsRead` skips Journals' read when no file is named → page spec "a cold open first issues Journals' read" red (vitest)
-- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, "ten rows of the cap, truncated" (run 3759)
-- mutation: `nextOffset` answers the highest or lowest address unchanged → page spec "Next records" red (vitest), and the browser AC2 leg red after rebuild and redeploy
+- mutation: `recordsRead` skips Journals' read when no file is named → page spec "a cold open first issues Journals' read" red, with the dialog leg, whose request names the newest file (vitest)
+- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, "ten rows of the cap, truncated", with three other legs (run 3759)
+- mutation: `nextOffset` answers the highest or lowest address unchanged → page spec "Next records" red alone (vitest), and the browser AC2 leg red after rebuild and redeploy, the eleventh record never shown
 - mutation: `JournalRecordRules` drops the comparison check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the port's injection case (run 3761)
 - mutation: `JournalRecordRules` drops the empty-value removal → `JournalRecords.TestAnEmptyValueSendsNoMatchKey` red alone (run 3762)
 - mutation: `JournalRecordRules` drops the digit check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the offset and address cases (run 3763)
 - mutation: `JournalRecordDetail.RenderRefusal` renders `PORT.NOTFOUND` as it is → `JournalRecordDetail.TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable` red alone (run 3764)
 - mutation: `JournalRecordDetail.Cut` answers its value whole → `JournalRecordDetail.TestARecordAnswersItsFieldsAndValuesCutAtOneThousand` red alone (run 3765)
-- mutation: the route's gate call removed → `JournalRecordDetail.TestTheRouteRefusesACallerWithoutThePairsWithZeroPortCalls` red alone, on its zero port calls (run 3766)
-- mutation: the descriptor's read gains a `rowGet` merging `SetKill.NewValue` → `JournalRecords.TestNoRecordValueReachesTheToolOrTheScreenRead` red, on "all thirty": the detail `GET` names no file, so every row is dropped before a value can arrive (run 3767)
-- mutation: the page writes the open record's `NewValue` into a row's `GlobalNode` in the store → page spec "the screen-context payload carries none of the record's values" red (vitest); keeping the record in the store's rows alone does not redden it, because context keeps only the eight declared fields
-- mutation: `sideBarPosition` 1, mirror regenerated → `navigation.test.mjs` "a side bar lists only built screens" red, and `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 3769)
+- mutation: the route's gate call removed → `JournalRecordDetail.TestTheRouteRefusesACallerWithoutThePairsWithZeroPortCalls` red alone, on its refusal and its zero port calls (run 3766)
+- mutation: the descriptor's read gains `SetKill.NewValue` and a `rowGet` merging it, and `JOURNALNEWESTTYPES` gains `Journal.Record/GET` so the detail `GET` reads the newest file → `JournalRecords.TestNoRecordValueReachesTheToolOrTheScreenRead` red on its four marker assertions (the screen read and the tool view each carry the value and the markup), with two other legs (run 3989)
+- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestAnEmptyValueSendsNoMatchKey` red on "asked ... 22 for the cap of 10", with four other legs (run 3987)
+- mutation: `AdminPort.AwaitTask` answers 200 at the bound instead of refusing → `JournalRecords.TestAScanPastTheBoundIsRefusedTimeout` red alone (run 3988)
+- mutation: `recordsRead` answers an empty ok for a faulted read → page spec "a read past the async bound is the screen's PORT.TIMEOUT fault" red alone (vitest)
+- mutation: `loadRecord` reads without waiting for the page to name its file → page spec "a reload on a record's route" red alone (vitest)
+- mutation: `JournalRecordDetail.Cut` drops its surrogate step → `JournalRecordDetail.TestARecordAnswersItsFieldsAndValuesCutAtOneThousand` red alone, on the pair's leg (run 3991)
+- mutation: the read tool's hinted choice description drops its default sentence → `JournalDescriptor.TestJournalRecordsCriteriaAreThePortsClosedSets` red alone, on the described choice (run 3995)
+- mutation: `JournalRecordDetail.HandleGet` logs the record's new value → `JournalRecordDetail.TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt` red alone, on its log leg (run 3996)
+- mutation: the AC4 principal also holds `%DB_OCUPROBE185D:R` (the read AD-9 never escalates to; the skip itself is the vendor's `HasDBPermission`, so no OcuPilot line can be mutated for it) → `JournalRecords.TestAPrincipalWhoCannotReadADatabaseListsNoneOfItsRows` red alone (run 3997)
+- mutation: the page appends the open record to the store's rows → page spec "neither the screen store nor the screen-context payload carries the record's values" red alone (vitest)
+- mutation: the page writes the open record's `NewValue` into a row's `GlobalNode` in the store → page spec "the screen-context payload carries none of the record's values" red alone (vitest); appending the whole record to the store's rows leaves it green, because context keeps only the eight declared fields
+- mutation: `sideBarPosition` 1, mirror regenerated → `navigation.test.mjs` "a side bar lists only built screens" and "OS management lists ..." red, and `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 3769)
 - mutation: the third prompt removed → `JournalDescriptor.TestJournalRecordsIsAnUnlistedServerCriteriaList` red alone (run 3768)
-- mutation: Journal file details' `onViewRecords` sets no arrival → details spec "View records" red (vitest), and the browser AC1 leg red after rebuild and redeploy
-- mutation: `useArrival` keeps the form's values for criteria an arrival omits → page spec "an arrival for another file" red (vitest)
-- mutation: the dialog renders values through `[innerHTML]` → browser AC5 leg red after rebuild and redeploy
+- mutation: Journal file details' `onViewRecords` sets no arrival → details spec "View records" red alone (vitest), and the browser AC1 leg red after rebuild and redeploy, on "no cold-open read of Journals was needed"
+- mutation: `useArrival` keeps the form's values for criteria an arrival omits → page spec "an arrival for another file" red alone (vitest)
+- mutation: the dialog renders values through `[innerHTML]` → browser AC5 leg red after rebuild and redeploy, on "the markup value is shown as text"
+
+Final tree, `ocupilot-b-ci` (loaded with `load-throwaway.sh`, 0 compile errors), after the review patches: the full ObjectScript sweep (runs 3998-4422, read back from `%UnitTest_Result`) ran 425 classes and 3,490 tests, 3,488 passed. The story's classes: `JournalRecords` 9/9 (run 4149), `JournalRecordDetail` 5/5 (4148), `JournalDescriptor` 13/13 (4145), `JournalRead` 6/6 (4147), `ReadTool` 28/28 (4287), `Descriptor` 60/60 (4080), `SurfaceCoverage` 4/4 (4334), `EndpointCoverage` 2/2 (4099), `ScreenRead` 30/30 (4313), `Navigation` 14/14 (4208), `Wire` 20/20 (4414), `ToolRoundTrip` 2/2 (4361), `ToolDispatch` 18/18 (4357), `ToolEmit` 11/11 (4359), `AdminPortAsync` 6/6 (4002). Two failures, both in methods this story does not touch, from the throwaway's age (inference; both pass in CI): `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (Task history past 1,000 rows, run 4417, red since run 3130) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` ("this instance holds no expired row another suite created", run 4299). `npm test`: tools 1780/1780, components 2226/2226; `npm run build` passes; initial bundle 2,587,710 bytes (`maximumWarning` 2588kB); rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 3/3 and `journals.browser-spec.mjs` 5/5; `smoke.sh` 50/50; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; EXPERIENCE.md 1003 lines. End state: no `OCUPROBE185*` database, resource, directory, namespace or principal, and no readable probe global; journal settings as found, journaling in `/durable/iris/mgr/journal/`; 0 agent definitions, 0 policy rows; 442 async task rows (445 at S0; none left by this story's classes); monitor 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Plan stage only (Halt after planning): the spec is written and checked against the ready-for-development standard; nothing is implemented, nothing is committed, and no instance was written.
+**Inherited and re-verified.** The previous implement pass died at the account limit; its tree was committed as `b174ebc5`. This pass read that diff against every Task, Boundary, matrix row and AC and found the implementation complete. It confirmed every recorded mutation run (3759-3769) in `%UnitTest_Result`, corrected three of those lines to what failed, and re-demonstrated the vitest, node and browser mutation legs on the final tree. Task 0 was not re-run.
+
+**Added or corrected in this pass:**
+
+- `Test/ReadTool.cls`, `Test/Descriptor.cls`, `Test/JournalProbe.cls`: restored a word and a space the WIP had deleted, so the contended edits are add-only.
+- `Area/OsMgmt/JournalRecordDetail.cls`: `Cut` keeps one character fewer where it would keep half a surrogate pair (was the one deferred item).
+- `journal-records.page.ts`: a dialog opened before the page names its file (a reload on a record's route) waits for the cold open's file, instead of asking for a record of no file.
+- Matrix coverage: `JournalRecords.TestAScanPastTheBoundIsRefusedTimeout` with a page-spec leg for the scan-past-the-bound row; the vendor is asked 22 rows for cap 10 (`JournalCountPort.SentValue`).
+- Review patches: the hinted descriptions pinned; AC4 positives through a readable record (`JournalProbe.SetReadable`); the `messages.log` window covers the list and tool reads and proves the file is read; the newest-file read is non-empty; the store is pinned value-free.
+- AC6's mutation re-demonstrated so the marker assertions themselves go red (run 3989).
+- Bundle re-measured at 2,587,710 bytes; the history row updated, `maximumWarning` unchanged at 2588kB.
+
+**Review:** 21 findings (medium 7, low 2, false 12). 5 entries patched (7 medium findings grouped into them, plus 1 low), 0 deferred. Rejected: 1 low (the hint branch's datetime wording, which no criterion uses) and 12 false, each with its reason in the Review Triage Log.
+
+**Verification:** the Final tree line above. Full sweep 3,488 of 3,490 passed; both failures are in untouched methods and come from the throwaway's age (inference). Browser specs ran on the rebuilt, redeployed bundle. Smoke passed 50/50.
+
+**Follow-up review: recommended.** Five medium entries were patched. Unverified risk: the AC4 readable-record legs write a journaled global into the install namespace's routines database. They assume that database is journaled on a fresh CI instance, which was measured only on this throwaway.
+
+**Residual risks:** named limits 1-5 stand. The 30 s scan bound is shown only through a lowered bound, because the longest measured scan is 13.9 s.

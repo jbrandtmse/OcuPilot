@@ -3,7 +3,8 @@
 /// the cap plus two asked; Next records continues in both orders; the filter keeps its column's
 /// matches and an empty value sends no match key; a filter, offset or address outside its shape is
 /// refused before any vendor call on the screen, the tool and the port; a principal who cannot read a
-/// database lists none of its rows; and no record value reaches the tool or the screen's read.</p>
+/// database lists none of its rows; no record value reaches the tool or the screen's read; and a read
+/// still running at the async bound is refused <code>PORT.TIMEOUT</code>.</p>
 /// <p>It seeds its own records: <method>OnBeforeAllTests</method> creates the probe database and 30
 /// journaled sets in it (<method>OcuPilot.Test.JournalProbe.SeedProbeDatabase</method>) and a probe
 /// principal, and <method>OnAfterAllTests</method> removes them and the task rows that principal
@@ -231,10 +232,12 @@ Method TestTheFilterKeepsItsColumnsMatches()
 
 /// <p>AC3: a filter with an empty value is sent with no match key -- the column and comparison take
 /// their defaults, the value none -- and lists records of every global; a direct port call with a
-/// column and a comparison and no value sends none either.</p>
+/// column and a comparison and no value sends none either. AC2: the read at cap 10 asks the vendor
+/// for 22 rows.</p>
 /// <p>Mutation (Rule 19): drop the empty-value removal from
 /// <method>OcuPilot.Port.AdminPort.JournalRecordRules</method> -&gt; the vendor is sent the column and
-/// comparison and this goes red.</p>
+/// comparison and this goes red; empty <parameter>OcuPilot.Port.AdminPort.HALVEDROWTYPES</parameter>
+/// -&gt; the vendor is asked 11 rows and this goes red.</p>
 Method TestAnEmptyValueSendsNoMatchKey()
 {
     Set tPort = ..#COUNTPORT
@@ -244,9 +247,11 @@ Method TestAnEmptyValueSendsNoMatchKey()
     Set tSC = $ClassMethod(..#READFIXTURE, "Execute", ..#SCREEN, 10, .tRead, .tHttp, .tFault, .tCriteria)
     Do $$$AssertStatusOK(tSC, "the read with no value reads")
     Set tSent = $ClassMethod(tPort, "SentKeys", "journal/record")
+    Set tSentRows = $ClassMethod(tPort, "SentValue", "journal/record", "maxRows")
     Do $ClassMethod(tPort, "Reset")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tSent, "file,maxRows,reverse", "the vendor is sent no match key")
+    Do $$$AssertEquals(tSentRows, 22, "and is asked twice the cap plus two rows, 22 for the cap of 10 (AD-26)")
     Do $$$AssertEquals(tRead.%Get("criteria").%Get("column") _ " " _ tRead.%Get("criteria").%Get("operator") _ " " _ tRead.%Get("criteria").%Get("value"), "GlobalNode [ ", "while the defaults are applied and echoed")
     Set tOther = 0
     Set tIterator = tRead.%Get("rows").%GetIterator()
@@ -324,15 +329,21 @@ Method TestInjectionAndShapeAreRefusedBeforeAnyVendorCall()
 }
 
 /// <p>AC4: a principal holding Journal records' pairs and no read on the probe database lists none of
-/// its rows, filtered to them or not; the vendor's list skips each one.</p>
+/// its rows, filtered to them or not; the vendor's list skips each one. It still lists a record on a
+/// database it can read (<method>OcuPilot.Test.JournalProbe.SetReadable</method>), so the empty probe
+/// list is a skip and not a refusal.</p>
 /// <p>Mutation (Rule 19): grant the principal <code>%DB_OCUPROBE185D:R</code> -&gt; the probe rows are
 /// listed and this goes red.</p>
 Method TestAPrincipalWhoCannotReadADatabaseListsNoneOfItsRows()
 {
     Set tDirectory = ##class(OcuPilot.Test.JournalProbe).DirectoryFor($Parameter(..#PROBE, "PROBESUFFIX"))
     Set tProbe = {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 22, "matchColumnName": "GlobalNode", "matchOperator": "[", "matchValue": ($Parameter(..#PROBE, "PROBEGLOBAL"))}
-    Set tPlan = [{"endpoint": "Journal.Record", "type": "LIST", "query": (tProbe)}, {"endpoint": "Journal.Record", "type": "LIST", "query": {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 200}}]
+    Set tSC = ##class(OcuPilot.Test.JournalProbe).SetReadable(.tNode)
+    Do $$$AssertStatusOK(tSC, "a record the principal can read is written")
+    Set tReadable = {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 22, "matchColumnName": "GlobalNode", "matchOperator": "=", "matchValue": (tNode)}
+    Set tPlan = [{"endpoint": "Journal.Record", "type": "LIST", "query": (tProbe)}, {"endpoint": "Journal.Record", "type": "LIST", "query": {"file": (..PreparedFile), "initialOffset": (..PreparedOffset), "maxRows": 200}}, {"endpoint": "Journal.Record", "type": "LIST", "query": (tReadable)}]
     Set tAnswer = $ClassMethod(..#PROBE, "RunAs", $Piece(..#PRINCIPAL, ":", 1), tPlan)
+    Do ##class(OcuPilot.Test.JournalProbe).KillReadable()
     Do $$$AssertEquals(tAnswer.%Get("error"), "", "the principal's plan ran")
     If tAnswer.%Get("error") '= "" Quit
     Set tFiltered = tAnswer.%Get("steps").%Get(0)
@@ -347,12 +358,16 @@ Method TestAPrincipalWhoCannotReadADatabaseListsNoneOfItsRows()
         }
     }
     Do $$$AssertEquals(tSeen, 0, "and lists no row of the probe database either")
+    Set tOwn = tAnswer.%Get("steps").%Get(2)
+    Set tFirst = $Select($IsObject(tOwn.%Get("result")) && (tOwn.%Get("result").%Size() > 0): tOwn.%Get("result").%Get(0), 1: "")
+    Do $$$AssertEquals(tOwn.%Get("http") _ " " _ $Select($IsObject(tFirst): tFirst.%Get("GlobalNode") _ " " _ tFirst.%Get("TypeName"), 1: "none"), "200 " _ tNode _ " SET", "while it lists the record on a database it can read: " _ tOwn.%ToJSON())
 }
 
 /// <p>AC6: no seeded value -- the marker every value starts with, or the markup value -- reaches the
 /// read tool's result or the screen's read answer, over every seeded row.</p>
-/// <p>Mutation (Rule 19): give the descriptor's read a <code>rowGet</code> merging
-/// <code>NewValue</code> -&gt; this goes red.</p>
+/// <p>Mutation (Rule 19): give the descriptor's read <code>SetKill.NewValue</code> and a
+/// <code>rowGet</code> merging it, with the detail <code>GET</code> reading the newest file -&gt; the
+/// marker assertions go red.</p>
 Method TestNoRecordValueReachesTheToolOrTheScreenRead()
 {
     Do ..Criteria(.tCriteria)
@@ -383,7 +398,74 @@ Method TestAToolCallWithNoArgumentReadsTheNewestFile()
     Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, {"file": (tNewest), "maxRows": 10}, 1000, .tNamed, .tHttp, .tFault))
     Do $$$AssertStatusOK(tSC, "and so does the newest file named")
     If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(tOmitted.%Get("rows").%Size() > 0, "the newest file answers records")
     Do $$$AssertEquals(..Addresses(tOmitted.%Get("rows")), ..Addresses(tNamed.%Get("rows")), "the same first records of the newest file")
+}
+
+/// <p>A record list still running at the port's async bound is refused whole, 503
+/// <code>PORT.TIMEOUT</code>, with no partial row (named limit 2). <class>OcuPilot.Test.PortFixture</class>
+/// answers every poll <code>Running</code> with the bound lowered to one second, so the vendor's own
+/// task is queued and runs; the row it leaves is removed once it has ended.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AdminPort.AwaitTask</method> answer 200 at the
+/// bound instead of refusing -&gt; this goes red.</p>
+Method TestAScanPastTheBoundIsRefusedTimeout()
+{
+    Set tFixture = "OcuPilot.Test.PortFixture"
+    Do $ClassMethod(tFixture, "Clear")
+    Set tBefore = $ClassMethod(tFixture, "TaskGuids")
+    Do $ClassMethod(tFixture, "SetCannedAnswer", {"State": "Running", "TaskName": "", "FailureReason": "", "Result": {}}.%ToJSON())
+    Do $ClassMethod(tFixture, "SetAsyncTimeout", 1)
+    Do ..Criteria(.tCriteria)
+    Set tRead = ""
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#SCREEN, 10, .tRead, .tHttp, .tFault, .tCriteria)
+    Do $ClassMethod(tFixture, "Clear")
+    Set tRemoved = ..RemoveOwnNewTaskRows(tBefore)
+    Do $$$AssertStatusNotOK(tSC, "the read past the bound is refused")
+    Do $$$AssertEquals($Get(tHttp) _ " " _ ..Code(.tFault), "503 PORT.TIMEOUT", "as 503 PORT.TIMEOUT")
+    Do $$$AssertEquals(tRead, "", "with no partial row")
+    Do $$$AssertEquals(tRemoved, 1, "and the one task row it queued is removed once it ends")
+}
+
+/// <p>Delete, as objects in <code>%SYS</code> (AD-37), each async task row the calling user queued
+/// since <var>pBefore</var> (a <method>OcuPilot.Test.PortFixture.TaskGuids</method> list) once it has
+/// ended, waiting at most <var>pWaitSeconds</var>; a row still running then is left to the retention
+/// sweep. Answers how many were deleted.</p>
+ClassMethod RemoveOwnNewTaskRows(pBefore As %List, pWaitSeconds As %Integer = 60) As %Integer
+{
+    Set tTaskClass = $Parameter("OcuPilot.Port.AdminPort", "ASYNCTASKCLASS")
+    Set tTerminal = $ListBuild($Parameter(tTaskClass, "STATEFINISHED"), $Parameter(tTaskClass, "STATEFAILED"), $Parameter(tTaskClass, "STATECANCELED"))
+    Set tUser = $Username
+    Set tRemoved = 0
+    Set tStart = $ZHorolog
+    Set tOrigNS = $NAMESPACE
+    Try {
+        For {
+            Set tPending = 0
+            Set tGuids = ##class(OcuPilot.Test.PortFixture).TaskGuids()
+            Set $NAMESPACE = "%SYS"
+            Set tPointer = 0
+            While $ListNext(tGuids, tPointer, tGuid) {
+                If $ListFind(pBefore, tGuid) Continue
+                Set tRow = $ClassMethod(tTaskClass, "%OpenId", tGuid)
+                If '$IsObject(tRow) Continue
+                Set tOwn = (tRow.Username = tUser)
+                Set tEnded = ''$ListFind(tTerminal, tRow.State)
+                Set tRow = ""
+                If 'tOwn Continue
+                If 'tEnded {
+                    Set tPending = 1
+                    Continue
+                }
+                If $$$ISOK($ClassMethod(tTaskClass, "%DeleteId", tGuid)) Set tRemoved = tRemoved + 1
+            }
+            Set $NAMESPACE = tOrigNS
+            If 'tPending || (($ZHorolog - tStart) >= pWaitSeconds) Quit
+            Hang 0.5
+        }
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tRemoved
 }
 
 }

@@ -1716,7 +1716,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 46, "the closed vocabulary holds forty-six values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, journal-settings in Story 18.18, and journal-record in Story 18.19; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 46, "the closed vocabulary holds forty-six values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

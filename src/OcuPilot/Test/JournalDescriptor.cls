@@ -339,6 +339,7 @@ Method TestJournalRecordsIsAnUnlistedServerCriteriaList()
 /// and the comparison's options are exactly the admin port's closed sets; the defaults; and every
 /// criterion's hint, which the read tool publishes as its description.</p>
 /// <p>Mutation (Rule 19): add <code>NewValue</code> to the column's options -&gt; the options leg goes
+/// red; drop the default sentence from a hinted choice's description -&gt; the description leg goes
 /// red.</p>
 Method TestJournalRecordsCriteriaAreThePortsClosedSets()
 {
@@ -361,6 +362,8 @@ Method TestJournalRecordsCriteriaAreThePortsClosedSets()
     Set tSchema = ##class(OcuPilot.Screen.Tool.Read).InputSchema(tClass)
     Do $$$AssertTrue($Extract(tSchema.properties.%Get("offset").description, 1, $Length(tFields.%Get(1).hint)) = tFields.%Get(1).hint, "the read tool publishes the hint as the description")
     Do $$$AssertEquals(tSchema.properties.%Get("operator").enum.%ToJSON(), tFields.%Get(4).options.%ToJSON(), "and a choice keeps its enum")
+    Do $$$AssertEquals(tSchema.properties.%Get("order").description, tFields.%Get(2).hint _ " One of the listed values, spelled exactly; any other value is refused before the search runs. Omit it to use the screen's default (0); an empty string leaves it unset.", "a hinted choice keeps its listed-values sentence and its default's")
+    Do $$$AssertEquals(tSchema.properties.%Get("file").description, tFields.%Get(0).hint, "and a hinted text criterion with no default reads its hint alone")
 }
 
 /// <p><var>pArray</var>'s members joined by commas.</p>

@@ -86,6 +86,8 @@ interface Options {
   readonly rows?: unknown[];
   readonly arrivals?: ScreenArrivals | null;
   readonly record?: JsonResult<unknown>;
+  readonly listFault?: JsonResult<unknown>;
+  readonly id?: string;
 }
 
 async function mount(options: Options = {}) {
@@ -98,11 +100,12 @@ async function mount(options: Options = {}) {
       if (path.startsWith('/api/ocupilot/journal/record?')) {
         return (options.record ?? { kind: 'ok', status: 200, body: { record: RECORD } }) as JsonResult<T>;
       }
+      if (options.listFault !== undefined && path.includes('/screens/osmgmt.journalrecords/read')) return options.listFault as JsonResult<T>;
       const list = path.includes('/screens/osmgmt.journals/read') ? [{ Name: NEWEST }] : answerRows;
       return { kind: 'ok', status: 200, body: { fields: [], rows: list, truncated: false, banner: '' } as T };
     },
   };
-  const params = new BehaviorSubject(convertToParamMap({}));
+  const params = new BehaviorSubject(convertToParamMap(options.id === undefined ? {} : { id: options.id }));
   const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
@@ -258,12 +261,30 @@ describe('Journal records', () => {
     expect(dialog.textContent).toContain(STRINGS.journalRecordPrevious);
   });
 
+  it('AC5: a reload on a record\u2019s route reads that record from the file the cold open names', async () => {
+    // Mutation (Rule 19): make `loadRecord` read without waiting for a file -> the dialog asks for a
+    // record of no file and this goes red.
+    const { host, paths } = await mount({ id: '300' });
+    const records = paths.filter((path) => path.startsWith('/api/ocupilot/journal/record?'));
+    expect(records).toEqual([`/api/ocupilot/journal/record?file=${encodeURIComponent(NEWEST)}&address=300`]);
+    expect(host.querySelector('pre[data-field="NewValue"]')?.textContent).toBe('<b>x</b>');
+  });
+
   it('AC4: a refused record shows the refusal\u2019s reason', async () => {
     const reason = 'That record is not in this file, or its database is one you cannot read.';
     const { host, openId } = await mount({ record: { kind: 'error', status: 404, code: 'JOURNAL.RECORD.UNREADABLE', reason, detail: null } });
     await openId('300');
     expect(host.querySelector('[data-journal-records="refusal"]')?.textContent?.trim()).toBe(reason);
     expect(host.querySelector('pre[data-field="NewValue"]')).toBeNull();
+  });
+
+  it('a read past the async bound is the screen\u2019s PORT.TIMEOUT fault, with no row and no Next records', async () => {
+    // Matrix row "Scan past the bound": the record list answers 503 PORT.TIMEOUT, a server fault the
+    // shell's fault banner draws from the refresh's fault (the table draws no strip for a banner fault).
+    const { host } = await mount({ listFault: { kind: 'error', status: 503, code: 'PORT.TIMEOUT', reason: null, detail: null } });
+    expect(TestBed.inject(RefreshService).fault()?.code).toBe('PORT.TIMEOUT');
+    expect(host.querySelectorAll('.ocu-data-table-body [role="row"]')).toHaveLength(0);
+    expect(host.querySelector('[data-journal-records="next"]')).toBeNull();
   });
 
   it('closing the dialog keeps the criteria and reads nothing', async () => {
@@ -280,7 +301,7 @@ describe('Journal records', () => {
     expect(host.querySelector('[data-journal-records="heading"]')?.textContent?.trim()).toBe(STRINGS.journalRecordsHeading.replace('<file>', FILE));
   });
 
-  it('AC6: with the dialog open, the screen-context payload carries none of the record\u2019s values', async () => {
+  it('AC6: with the dialog open, neither the screen store nor the screen-context payload carries the record\u2019s values', async () => {
     const { store, openId } = await mount();
     await openId('300');
     const payload = assembleScreenContext({
@@ -295,6 +316,8 @@ describe('Journal records', () => {
       share: true,
     });
     const text = JSON.stringify(payload);
+    expect(store.data()).toHaveLength(3);
+    expect(JSON.stringify(store.data())).not.toMatch(/NewValue|OldValue|GlobalReference|OcuProbe185Value-|<b>x<\/b>/);
     expect(text).toContain('^OcuProbe185(3)');
     expect(text).not.toContain('<b>x</b>');
     expect(text).not.toContain('OcuProbe185Value-');

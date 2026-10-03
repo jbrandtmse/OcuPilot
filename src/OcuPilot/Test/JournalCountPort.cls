@@ -79,6 +79,22 @@ ClassMethod SentKeys(pUrlEnd As %String) As %String
     Quit tKeys
 }
 
+/// <p>The value query parameter <var>pName</var> carried on the last vendor call whose stub URL ends
+/// with <var>pUrlEnd</var>, or <code>""</code> when no such call carried it since
+/// <method>Reset</method>.</p>
+ClassMethod SentValue(pUrlEnd As %String, pName As %String) As %String
+{
+    Set tCall = ""
+    For {
+        Set tCall = $Order(^||OcuPilotJournalCountPort("sent", tCall), -1)
+        If tCall = "" Quit
+        Set tUrl = ^||OcuPilotJournalCountPort("sent", tCall)
+        If $Extract(tUrl, * - $Length(pUrlEnd) + 1, *) = pUrlEnd Quit
+    }
+    If tCall = "" Quit ""
+    Quit $Get(^||OcuPilotJournalCountPort("sent", tCall, pName))
+}
+
 /// <p>The journal file guard for <var>pEndpoint</var>'s request type <var>pType</var> over the query
 /// <var>pQuery</var>, which it may complete, answering its status, HTTP status and fault.</p>
 ClassMethod Guard(pEndpoint As %String, pType As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status

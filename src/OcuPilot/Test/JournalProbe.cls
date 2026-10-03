@@ -58,6 +58,11 @@ Parameter PROBELONG As INTEGER = 1500;
 /// as text.</p>
 Parameter PROBEMARKUP = "<b>x</b>";
 
+/// <p>The global <method>SetReadable</method> sets in the install namespace's routines database, the
+/// database every probe principal reads (<method>SeedPrincipal</method>), so a principal that cannot
+/// read the probe database still has a record it can list and open.</p>
+Parameter READABLEGLOBAL = "OcuReadable185";
+
 /// <p>Whether <var>pName</var> is a probe name.</p>
 ClassMethod IsProbe(pName As %String) As %Boolean
 {
@@ -228,7 +233,8 @@ ClassMethod SeedPrincipal(pUser As %String, pRole As %String, pResources As %Str
 }
 
 /// <p>Remove every probe user and role by exact name, the probe database
-/// (<method>RemoveProbeDatabase</method>), and every probe directory that holds no file. A probe
+/// (<method>RemoveProbeDatabase</method>) and the readable record (<method>KillReadable</method>), and
+/// every probe directory that holds no file. A probe
 /// directory holding a file -- a journal file a switch wrote there -- is left in place.
 /// <var>pRemaining</var> is how many probe users and roles survived, and the status is an error when
 /// any did.</p>
@@ -249,13 +255,14 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
         }
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, ..RemoveProbeDatabase())
+        Set tSC = $$$ADDSC(tSC, ..KillReadable())
         Set $NAMESPACE = "%SYS"
         Set tDirectories = ..ProbeDirectories()
         For tI = 1:1:$ListLength(tDirectories) {
             Set tDirectory = $List(tDirectories, tI)
             If ..FileCount(tDirectory) = 0 Do ##class(%File).RemoveDirectory(tDirectory)
         }
-        Set pRemaining =$ListLength(..ProbeNames("Security.Users:List", "Name")) + $ListLength(..ProbeNames("Security.Roles:List", "Name"))
+        Set pRemaining = $ListLength(..ProbeNames("Security.Users:List", "Name")) + $ListLength(..ProbeNames("Security.Roles:List", "Name"))
         Set $NAMESPACE = tOrigNS
         If pRemaining > 0 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, pRemaining _ " probe principal(s) survived their removal"))
     } Catch ex {
@@ -315,6 +322,49 @@ ClassMethod SeedProbeDatabase(pArmed As %Boolean, Output pFile As %String, pCoun
             Quit
         }
         Set pOffset = tOffset
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Set <parameter>READABLEGLOBAL</parameter><code>(1)</code> in the install namespace's routines
+/// database as one journaled record and sync the journal; <var>pNode</var> is the node as a record's
+/// <code>GlobalNode</code> reads it. <method>KillReadable</method> removes it.</p>
+ClassMethod SetReadable(Output pNode As %String) As %Status
+{
+    Set pNode = ""
+    Set tSC = ..ReadableReference(.tGlobal)
+    If $$$ISERR(tSC) Quit tSC
+    Set @tGlobal@(1) = "OcuReadable"
+    Do ##class(%SYS.Journal.System).Sync()
+    Set pNode = "^" _ ..#READABLEGLOBAL _ "(1)"
+    Quit $$$OK
+}
+
+/// <p>Kill what <method>SetReadable</method> set.</p>
+ClassMethod KillReadable() As %Status
+{
+    Set tSC = ..ReadableReference(.tGlobal)
+    If $$$ISERR(tSC) Quit tSC
+    Kill @tGlobal
+    Quit $$$OK
+}
+
+/// <p><parameter>READABLEGLOBAL</parameter> as an extended reference into the install namespace's
+/// routines database, read in <code>%SYS</code>.</p>
+ClassMethod ReadableReference(Output pGlobal As %String) As %Status [ Private ]
+{
+    Set pGlobal = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set $NAMESPACE = "%SYS"
+        Set tDirectory = ##class(Config.Databases).Open(##class(Config.Namespaces).Open(tInstallNs).Routines).Directory
+        Set $NAMESPACE = tOrigNS
+        Set pGlobal = "^|""^^" _ tDirectory _ """|" _ ..#READABLEGLOBAL
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

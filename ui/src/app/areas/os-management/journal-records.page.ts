@@ -346,6 +346,9 @@ export class JournalRecordsPage {
   /** Bumped per dialog fetch, so a late answer for a dialog since closed or moved is dropped. */
   private recordRequest = 0;
 
+  /** Whether the open dialog waits for the page to name its file (a reload on a record's route). */
+  private recordAwaitsFile = false;
+
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
@@ -380,7 +383,10 @@ export class JournalRecordsPage {
       }) ?? null;
 
     const stopStore = store.subscribe(() => this.bump());
-    const stopSearch = this.search.subscribe(() => this.bump());
+    const stopSearch = this.search.subscribe(() => {
+      this.bump();
+      if (this.recordAwaitsFile && this.search.value('file') !== '') void this.loadRecord(this.entityId());
+    });
     const stopParams = this.route.paramMap.subscribe((params) => {
       const raw = params.get('id');
       const id = raw === null ? '' : decodeEntityId(raw);
@@ -425,8 +431,15 @@ export class JournalRecordsPage {
     const request = this.recordRequest;
     this.record.set(null);
     this.refusal.set('');
+    this.recordAwaitsFile = false;
     this.bump();
     if (id === '') return;
+    // A record is read from the file the page names; until a cold open's Journals read has named
+    // it, the dialog waits rather than asking for a record of no file.
+    if (this.search.value('file') === '') {
+      this.recordAwaitsFile = true;
+      return;
+    }
     const path =
       JOURNAL_RECORD_PATH +
       '?file=' +

@@ -153,9 +153,11 @@ Method TestTheAddressAndTheFileAreCheckedBeforeTheRecordIsRead()
 }
 
 /// <p>AC5: a seeded record answers its fields and values, flattened: a short value whole, the
-/// 1,500-character value cut to 1,000 ending in U+2026, and the markup value verbatim.</p>
+/// 1,500-character value cut to 1,000 ending in U+2026, and the markup value verbatim; and a cut never
+/// keeps half a surrogate pair.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Area.OsMgmt.JournalRecordDetail.Cut</method> answer its
-/// value whole -&gt; the long value's leg goes red.</p>
+/// value whole -&gt; the long value's leg goes red; drop its surrogate step -&gt; the pair's leg goes
+/// red.</p>
 Method TestARecordAnswersItsFieldsAndValuesCutAtOneThousand()
 {
     Set tDirectory = ##class(OcuPilot.Test.JournalProbe).DirectoryFor($Parameter(..#PROBE, "PROBESUFFIX"))
@@ -183,11 +185,15 @@ Method TestARecordAnswersItsFieldsAndValuesCutAtOneThousand()
     Set tAnswer = ..Route(..PreparedFile, ..PreparedAddress(16))
     Set tValue = $Select($IsObject(tAnswer.%Get("body")) && $IsObject(tAnswer.%Get("body").%Get("record")): tAnswer.%Get("body").%Get("record").%Get("NewValue"), 1: "")
     Do $$$AssertEquals(tValue, $Parameter(..#PROBE, "PROBEMARKUP"), "the markup value is answered as it is, text")
+    Set tPaired = $Translate($Justify("", 998), " ", "a") _ $Char(55357, 56832) _ "bbb"
+    Set tCut = ##class(OcuPilot.Area.OsMgmt.JournalRecordDetail).Cut(tPaired)
+    Do $$$AssertEquals($Length(tCut) _ " " _ $Ascii($Extract(tCut, *)) _ " " _ $Ascii($Extract(tCut, * - 1)), "999 8230 97", "a cut that would keep half a surrogate pair keeps one character fewer")
 }
 
 /// <p>AC4: a principal holding Journal records' pairs and no read on the probe database is answered
 /// 404 <code>JOURNAL.RECORD.UNREADABLE</code> for a seeded record, as for an address holding no
-/// record.</p>
+/// record, and 200 for a record on a database it can read
+/// (<method>OcuPilot.Test.JournalProbe.SetReadable</method>).</p>
 /// <p>Mutation (Rule 19): map the port's <code>PORT.NOTFOUND</code> to itself in
 /// <method>OcuPilot.Area.OsMgmt.JournalRecordDetail.RenderRefusal</method> -&gt; this goes red on its
 /// code.</p>
@@ -199,16 +205,43 @@ Method TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable()
     Do $$$AssertTrue('(tStep.%ToJSON() [ $Parameter(..#PROBE, "PROBEMARKER")), "and no value reaches it")
     Set tAnswer = ..Route(..PreparedFile, ..PreparedAddress(1) + 1)
     Do $$$AssertEquals(tAnswer.%Get("status") _ " " _ ..Code(tAnswer), "404 JOURNAL.RECORD.UNREADABLE", "as an address that holds no record is")
+    Set tSC = ##class(OcuPilot.Test.JournalProbe).SetReadable(.tNode)
+    Do $$$AssertStatusOK(tSC, "a record the principal can read is written")
+    Kill tQuery
+    Set tQuery("file") = ..PreparedFile
+    Set tQuery("initialOffset") = ..PreparedAddress(30)
+    Set tQuery("maxRows") = 10
+    Set tQuery("matchColumnName") = "GlobalNode"
+    Set tQuery("matchOperator") = "="
+    Set tQuery("matchValue") = tNode
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Journal.Record", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    Set tAddress = $Select($$$ISOK(tSC) && $IsObject($Get(tRows)) && (tRows.%Size() > 0): tRows.%Get(0).%Get("Address"), 1: "")
+    Do $$$AssertTrue(tAddress '= "", "the readable record is listed")
+    Set tStep = ..RouteAs(..User(1), tAddress)
+    Do ##class(OcuPilot.Test.JournalProbe).KillReadable()
+    Set tRecord = $Select($IsObject(tStep.%Get("body")) && $IsObject(tStep.%Get("body").%Get("record")): tStep.%Get("body").%Get("record"), 1: "")
+    Do $$$AssertEquals(tStep.%Get("status") _ " " _ $Select($IsObject(tRecord): tRecord.%Get("GlobalNode"), 1: "none"), "200 " _ tNode, "while a record on a database it can read opens: " _ $Extract(tStep.%ToJSON(), 1, 300))
 }
 
 /// <p>AC5, AC6: over the wire the route answers 200 JSON <code>{record}</code> to the test account;
-/// after the route has answered seeded records in process and over the wire, no
-/// <code>messages.log</code> line carries a seeded value; and no tool reaches the route: Journal
+/// after the list, the read tool and the route have read seeded records, in process and over the wire,
+/// no <code>messages.log</code> line carries a seeded value; and no tool reaches the route: Journal
 /// records' one tool is its read, and no tool class names <code>Journal.Record</code> as its
 /// endpoint.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.OsMgmt.JournalRecordDetail.HandleGet</method> log
+/// the record's new value -&gt; the log leg goes red.</p>
 Method TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt()
 {
     Set tFrom = $ClassMethod(..#PROBE, "LineCount", "messages.log")
+    Do $$$AssertTrue(tFrom > 0, "messages.log is read: " _ tFrom)
+    Kill tCriteria
+    Set tCriteria("file") = ..PreparedFile
+    Set tCriteria("offset") = ..PreparedAddress(1)
+    Set tCriteria("value") = $Parameter(..#PROBE, "PROBEGLOBAL")
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#SCREEN, 40, .tRead, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "the list reads the seeded records")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, {"file": (..PreparedFile), "offset": (..PreparedAddress(1) _ ""), "value": ($Parameter(..#PROBE, "PROBEGLOBAL")), "maxRows": 40}, 1000, .tView, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and so does the read tool")
     Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ ..#ROUTE _ "?file=" _ $ZConvert(..PreparedFile, "O", "URL") _ "&address=" _ ..PreparedAddress(15)
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request was sent")
