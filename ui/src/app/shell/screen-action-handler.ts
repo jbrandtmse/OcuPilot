@@ -95,7 +95,21 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.LockList',
   // Story 18.16: the Remote databases list, whose Delete types the name and states the removal's impact.
   'OcuPilot.Screen.Descriptor.RemoteDatabaseList',
+  // Story 18.5: Journals, whose two switches and Check integrity each warn first.
+  'OcuPilot.Screen.Descriptor.JournalList',
 ];
+
+/**
+ * Journals' descriptor (Story 18.5): its Switch file and Switch directory are registered by its own
+ * page (`areas/os-management/journal-list.page.ts`) at screen level, each sent with the one target the
+ * tools read, `JOURNAL_CURRENT_TARGET`; its Check integrity is a row action carrying the "Check every
+ * record" flag. Each warns before anything is sent.
+ */
+export const JOURNAL_LIST = 'OcuPilot.Screen.Descriptor.JournalList';
+export const JOURNAL_SWITCH_FILE = 'switchfile';
+export const JOURNAL_SWITCH_DIRECTORY = 'switchdirectory';
+export const JOURNAL_INTEGRITY = 'integrity';
+export const JOURNAL_CURRENT_TARGET = 'current';
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
 const USER_LIST = 'OcuPilot.Screen.Descriptor.UserList';
@@ -274,6 +288,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [TASK_SCHEDULE]: [TASK_EXPORT, TASK_IMPORT, TASK_MANAGER_SUSPEND, TASK_MANAGER_RESUME, TASK_MANAGER_START],
   // The Locks list's page registers Remove locks itself, whose dialog sends one of the three (Story 16.12).
   [LOCK_LIST]: [LOCK_REMOVE, LOCK_REMOVE_PROCESS, LOCK_REMOVE_CLIENT],
+  // Journals' page registers its two switches at screen level itself (Story 18.5).
+  [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
 };
 
 /**
@@ -449,6 +465,22 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   [LOCAL_DATABASE_LIST]: { [EXPAND_VOLUME]: STRINGS.databaseExpandConsequence },
   // Story 16.11: no scheduled task runs while the Task Manager is suspended.
   [TASK_SCHEDULE]: { [TASK_MANAGER_SUSPEND]: STRINGS.taskManagerSuspendConsequence },
+  // Story 18.5: a switch closes the journal file every process writes, and a check reads a whole file.
+  [JOURNAL_LIST]: {
+    [JOURNAL_SWITCH_FILE]: STRINGS.journalSwitchFileConsequence,
+    [JOURNAL_SWITCH_DIRECTORY]: STRINGS.journalSwitchDirectoryConsequence,
+    [JOURNAL_INTEGRITY]: STRINGS.journalIntegrityConsequence,
+  },
+};
+
+/**
+ * The row field a warning's `<file>` is filled from, keyed by descriptor and then by action id (Story
+ * 18.5): the fields `startFor` was given -- the selected row, or the row a screen-level action names.
+ * The value is inserted through a replacer, so a name holding a placeholder is shown as written; with
+ * no such field the sentence is left as published.
+ */
+const WARNING_FILLS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  [JOURNAL_LIST]: { [JOURNAL_SWITCH_FILE]: 'Name', [JOURNAL_INTEGRITY]: 'Name' },
 };
 
 /**
@@ -473,6 +505,8 @@ const WARNING_VALUES: Readonly<Record<string, Readonly<Record<string, WarningVal
   [LOCAL_DATABASE_LIST]: {
     [EXPAND_VOLUME]: { kind: 'field', value: 'InitialSize', labelKey: 'databaseInitialSize', hintKey: 'databaseInitialSizeHint' },
   },
+  // Story 18.5: a journal integrity check reads every record only when asked.
+  [JOURNAL_LIST]: { [JOURNAL_INTEGRITY]: { kind: 'flag', value: 'CheckDetails', labelKey: 'journalIntegrityEveryRecord' } },
 };
 
 /**
@@ -664,6 +698,9 @@ export class ScreenActionHandler {
   /** Which impact read is current; an answer carrying an older one is stale. */
   private impactAsk = 0;
 
+  /** The fields the last `startFor` was given, which a warning's `<file>` is filled from (`WARNING_FILLS`). */
+  private startedRow: RowFields = null;
+
   private readonly progressSignal = signal<ActionProgress | null>(null);
 
   constructor() {
@@ -824,6 +861,7 @@ export class ScreenActionHandler {
   ): void {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined || target === '') return;
+    this.startedRow = rowFields;
     // The surfaces already list a self-protected action as refused rather than selectable, so this
     // is the second half of the same explanation and not a second predicate: the instance refuses
     // it either way, with this same sentence (AD-10, AD-53).
@@ -931,6 +969,7 @@ export class ScreenActionHandler {
   ): void {
     this.waitingSink = sink;
     this.impactAsk++;
+    if (kind === 'warning') consequence = this.filled(descriptor, actionId, consequence);
     const asked = kind === 'warning' ? this.warningValue(descriptor, actionId) : null;
     let flagLabel = kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '';
     if (asked?.kind === 'flag') flagLabel = stringFor(asked.labelKey);
@@ -1221,6 +1260,14 @@ export class ScreenActionHandler {
     const own = WARNING_VALUES[descriptor];
     if (own === undefined || !Object.hasOwn(own, actionId)) return null;
     return own[actionId];
+  }
+
+  /** `consequence` with `<file>` filled from the started row's `WARNING_FILLS` field, where one is named and read. */
+  private filled(descriptor: string, actionId: string, consequence: string): string {
+    const own = WARNING_FILLS[descriptor];
+    if (own === undefined || !Object.hasOwn(own, actionId)) return consequence;
+    const value = this.startedRow?.[own[actionId]];
+    return typeof value === 'string' && value !== '' ? consequence.replace('<file>', () => value) : consequence;
   }
 
   /** The `WARNING_ROWS` consequence for the row `rowFields`, or `''` where it does not match. */

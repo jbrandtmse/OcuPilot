@@ -8186,6 +8186,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: JournalDirectories reads GetPrimaryDirectory, GetAlternateDirectory and GetCurrentFileName only; after a journal directory change the older files stay where they were and the journal history still lists them (inference; never changed on the throwaway). Config.config wijdir is empty on ocupilot-b-ci, so IRIS.WIJ is refused there only as a manager-directory file.
 - 2026-09-28T22:34:01Z status=routed owner=18-5-journals by=cr note=18.5 changes journal directories: add the history's directories and the WIJ directory to the refusal, read at call time
+- 2026-10-02T19:51:35Z status=resolved-by:18-5-journals owner=18-5-journals by=adjudication note=PathPort refuses the journal history's directories and the WIJ directory (081bbd5e; PathPortInstance 10/10 run 3154, AC6)
 
 ### DW-1798: PATH.INSTANCE does not cover OcuPilot's own static bundle (csp/ocupilot/): DW-1790's review note named it, and the decision widened only databases and journals
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
@@ -9052,6 +9053,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
 - 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
 
+### DW-1947: A least-privileged caller's finished journal integrity-check task row outlives the port's read until SweepOwnTasks removes it
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 step 9 (2026-10-02): the caller cannot delete its own finished INTEGRITYCHECK row; AwaitTask's ForgetTask leaves it for SweepOwnTasks (within 24 h)
+- 2026-10-02T15:01:52Z status=by-design owner=18-5-journals by=merge_gate note=named limit like the record list's task row; ruled by the orchestrator under the owner's standing grant 2026-10-02
+
+### DW-1950: A switch-directory proposal confirmed after the alternate stops being distinct answers 500 INTERNAL instead of a target-changed refusal
+- source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
+- 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal
 ### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
@@ -9063,6 +9073,35 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
 - 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)
 
+### DW-1953: JOURNAL.SWITCHDIR.UNMOVED's sentence shows a literal <directory> where only the code is rendered (the confirm route, a refused tool call)
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalError.ReasonFor(SWITCHDIRUNMOVED) answers the template; Api/Confirm.ReasonFor renders by code; only the screen route carries the port's filled Unmoved() reason
+- 2026-10-02T19:49:21Z status=wontfix-theoretical owner=18-5-journals by=cr note=real only if a confirm's SWITCHDIR stays put with %Admin_Manage:USE held (measured: it moves) or an out-of-band race
+
+### DW-1954: A vendor SWITCHDIR 409 is logged at error severity before JournalPort maps it to JOURNAL.SWITCHDIR.NOOTHER
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AdminPort.Fail logs every refusal but UNLOGGEDREFUSALS (Lock/DELETE/409, AD-2); reachable only past DIRSTATE's own refusal (a race) and in JournalWrite's direct port leg
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=alerts.log shows a SWITCHDIR 409 line from a product call, or a test asserts alert state after JournalWrite
+
+### DW-1955: AC6's former-journal and WIJ directory refusal is pinned at PathPort.Resolve, not through an overwriting file consumer
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PathPortInstance calls ResolveOf(..., overwrite 1), the same entry 16.4's task export and 19.13's XML export call unchanged; no consumer leg seeds a former journal directory
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a file consumer resolves a server path other than through PathPort.Resolve
+
+### DW-1956: Switch directory's fingerprint covers CurrentFile, so a journal file roll between mint and confirm refuses the confirm
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalSwitchDirectory.FINGERPRINTSUBJECT is CurrentFile,CurrentDirectory,OtherDirectory, as the spec's tools table declares STATE / CurrentFile,CurrentDirectory; fails closed, the agent re-proposes
+- 2026-10-02T19:49:21Z status=by-design owner=18-5-journals by=cr note=spec Boundaries tools table names the subject; reopen only through a spec amendment
+
+### DW-1959: JournalRead's and the journals browser spec's closed-file precondition calls take the no-switch path in every current run, so dropping either stays green
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: CI shard 1 runs AdminPortAsync (pos 3, its in-test EnsureClosedFile switches) before JournalRead (pos 40); the browser spec's AC3 switch leg runs before its AC5 and AC2 legs; the slot-B throwaway lists hundreds of files, so neither call has switched in any run
+- 2026-10-02T21:40:16Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a missing closed journal file or fewer than two listed files
+- 2026-10-02T21:40:29Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a closed-file need; the browser hook may switch on CI
+### DW-1951: The empty Remote databases screen offers 'Or ask the agent: create a remote database.' with a chip labelled by the raw lowercase action id 'create' instead of its display label
+- source: Planner observation on the 1.0.7 demo (517e6af4) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
+- 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
 ### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen

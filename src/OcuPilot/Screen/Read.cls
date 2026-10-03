@@ -65,7 +65,10 @@
 /// (<method>RowsMember</method>). Those objects are the rows, projected, filtered, sorted, capped and
 /// reported exactly as a <code>LIST</code>'s; any other answer fails the whole read. On a
 /// parent-scoped screen (Story 16.10's <code>ACTIVITY</code>) its one criterion is the route id and
-/// is required, refused 400 <code>READ.CRITERION</code> before the port is called when missing.</p>
+/// is required, refused 400 <code>READ.CRITERION</code> before the port is called when missing. A
+/// single-object <code>GET</code> may be read the same way (Story 18.5's journal file databases), and
+/// its 404 for an absent object reads as no rows, as the one-row <code>GET</code>'s does
+/// (<method>IsAbsence</method>).</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -441,7 +444,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
-        } ElseIf tSourceType = ..#OBJECTTYPE {
+        } ElseIf (tSourceType = ..#OBJECTTYPE) && (tRowsMember = "") {
             ; AD-36: one named object read as the one row. An object that does not exist is a read
             ; with no rows rather than a fault, because a singleton the instance has not configured
             ; is an empty screen, not a failed one.
@@ -480,7 +483,9 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             } Else {
                 Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
                 If $$$ISERR(tPortSC) {
-                    If tHttp '= 404 {
+                    ; A 404 the port answers on a code of its own is a refusal, not an absence (AD-21's
+                    ; eighth case, Story 18.5), and fails the read.
+                    If '..IsAbsence(tHttp, $Get(tFault)) {
                         Set pHttpStatus = tHttp
                         Set pFault = tFault
                         Set tSC = tPortSC
@@ -536,11 +541,19 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Quit
             }
             Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSourceType, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
-            If $$$ISERR(tPortSC) {
+            ; AD-36 as amended (Story 18.5): a single-object GET read over one member answers no rows
+            ; for an object that does not exist, as the one-row GET does.
+            Set tObjectGone = $$$ISERR(tPortSC) && (tSourceType = ..#OBJECTTYPE) && ..IsAbsence(pHttpStatus, $Get(pFault))
+            If tObjectGone {
+                Set tAnswer = []
+                Set pHttpStatus = 0
+                Set pFault = ""
+            }
+            If $$$ISERR(tPortSC) && 'tObjectGone {
                 Set tSC = tPortSC
                 Quit
             }
-            If tBareRows {
+            If tBareRows && 'tObjectGone {
                 Set tAnswer = ..RowsMember(tAnswer, tRowsMember)
                 If '$IsObject(tAnswer) {
                     Set tSC = ..Internal(pDescriptor _ "'s read answered no array of objects under '" _ tRowsMember _ "'", .pHttpStatus, .pFault)
@@ -1315,6 +1328,18 @@ ClassMethod CopyAs(pFrom As %DynamicObject, pFromKey As %String, pTo As %Dynamic
     } Else {
         Do pTo.%Set(pToKey, tSource.%Get(tKey))
     }
+}
+
+/// <p>Whether a read answered HTTP <var>pHttp</var> with fault <var>pFault</var> found an absence: a
+/// 404 on the port's own not-found code, <parameter>OcuPilot.Api.Error.PORTNOTFOUND</parameter>, or on
+/// no code at all. A 404 on any other code is the port's refusal (AD-21's eighth case's
+/// <code>JOURNAL.FILE.UNLISTED</code>), which fails the read.</p>
+ClassMethod IsAbsence(pHttp As %Integer, pFault As %DynamicObject = "") As %Boolean
+{
+    If +pHttp '= 404 Quit 0
+    If '$IsObject(pFault) Quit 1
+    Set tCode = pFault.%Get("code")
+    Quit (tCode = "") || (tCode = ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
 }
 
 /// <p>The view rule (AD-36): <var>pRows</var> filtered by <var>pFilter</var> and sorted by

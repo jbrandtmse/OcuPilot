@@ -11,6 +11,7 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { ScreenActions, actionLabel, bannerActionIds, REFRESH_ACTION_ID, TASK_IMPORT_ACTION_ID, TASK_MANAGER_SUSPEND_ACTION_ID } = await import(
   join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts')
 );
+const { JOURNAL_SWITCH_FILE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 
 const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.Probe';
@@ -149,6 +150,14 @@ test("a screen's row action draws its own published words", () => {
   // Mutation (Rule 19): drop the LockList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.LockList', 'remove'), STRINGS.lockRemoveAction);
   assert.equal(actionLabel(DEFINITIONS, 'remove'), 'remove');
+  // Story 18.5: Journals' two switches, under their declared ids and the screen-level ids its page
+  // registers, and its Check integrity, the Databases list's own words.
+  // Mutation (Rule 19): drop the JournalList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.JournalList', 'switchfile'), STRINGS.journalSwitchFileAction);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.JournalList', 'switchdirectory'), STRINGS.journalSwitchDirectoryAction);
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.JournalList', 'integrity'), STRINGS.databaseIntegrityLabel);
+  assert.equal(actionLabel('', JOURNAL_SWITCH_FILE_ACTION_ID), STRINGS.journalSwitchFileAction);
+  assert.equal(actionLabel('', JOURNAL_SWITCH_DIRECTORY_ACTION_ID), STRINGS.journalSwitchDirectoryAction);
 });
 
 test("Story 16.11: a banner's actions are the ids its cases name, once each and in case order", () => {

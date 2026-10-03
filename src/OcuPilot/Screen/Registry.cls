@@ -2035,6 +2035,11 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
 /// <p>The shape a <code>read.source.rows</code> member name takes (AD-36, Story 16.7).</p>
 Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
 
+/// <p>The bare type <method>RowsProblem</method> reads a <code>GET</code> as, so a single-object
+/// <code>GET</code> is admitted under <code>read.source.rows</code> by the bare type's own checks (AD-36
+/// as amended, Story 18.5).</p>
+Parameter OBJECTROWSTYPE = "OBJECTROWS";
+
 /// <p>What is wrong with <var>pSource</var>'s <code>rows</code>, or <code>""</code> (AD-36 as amended,
 /// Story 16.7). A declared <code>rows</code> is a member name (<parameter>ROWSMEMBERPATTERN</parameter>)
 /// on an <code>admin</code> source whose <code>type</code> is an upper-case bare type
@@ -2043,6 +2048,8 @@ Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
 /// once, with <code>maxRows</code> the cap plus one, and lists the answer's one member.
 /// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowsProblem</code> returns the same sentence for
 /// every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+/// <p>A single-object <code>GET</code> is admitted as such a type too (AD-36 as amended, Story 18.5),
+/// read as <parameter>OBJECTROWSTYPE</parameter>.</p>
 ClassMethod RowsProblem(pSource As %DynamicObject) As %String
 {
     Set tWhere = "read.source.rows"
@@ -2055,6 +2062,8 @@ ClassMethod RowsProblem(pSource As %DynamicObject) As %String
         Quit tWhere _ " is declared on a '" _ tPort _ "' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"
     }
     Set tType = pSource.%Get("type")
+    ; AD-36 as amended (Story 18.5): a single-object GET may also be read as a list over one member.
+    If (pSource.%GetTypeOf("type") = "string") && (tType = ##class(OcuPilot.Screen.Read).#OBJECTTYPE) Set tType = ..#OBJECTROWSTYPE
     If (pSource.%GetTypeOf("type") '= "string") || '$Match(tType, ..#PARTTYPEPATTERN) || $ListFind($ListFromString(..#READSOURCETYPES), tType) {
         Quit "read.source.type '" _ tType _ "' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)"
     }

@@ -410,6 +410,14 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 19.4 raised it to 2527kB, the measured 2,526,006-byte initial total rounded up to the next kB
 // (Search, Compare and Macros, the line diff and the three descriptors' mirror), under the 4000kB
 // hard stop.
+// Story 18.5 raised it to 2480kB, the measured 2,479,753-byte initial total rounded up to the next kB
+// (Journals' page, Journal file details' page and the three descriptors' mirror), under the 4000kB hard stop.
+// Story 18.5's forward merge of Story 19.13 raised it to 2495kB, the measured 2,494,043-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 18.5's forward merge of Story 19.3 raised it to 2509kB, the measured 2,508,816-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.4's forward merge of Story 18.5 raised it to 2548kB, the measured 2,547,991-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -422,7 +430,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2527kB', 'DW-1166, Story 19.4: the measured 2,526,006 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2548kB', 'DW-1166, Story 19.4 forward merge of Story 18.5: the measured 2,547,991 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

@@ -53,6 +53,9 @@ const {
   CONSEQUENCE_SERVICEUNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
+  CONSEQUENCE_JOURNALSWITCHFILE,
+  CONSEQUENCE_JOURNALSWITCHDIRECTORY,
+  CONSEQUENCE_JOURNALINTEGRITY,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -67,6 +70,7 @@ const {
   formatRemovalResidue,
   formatUserName,
   isTerminalPhase,
+  journalSentence,
   offersRepropose,
   phaseForState,
   statusLineFor,
@@ -776,4 +780,38 @@ test('the card view carries a row\'s emptyKey through on a changed and an unchan
   const view = toCardView(proposal, 'Service');
   assert.equal(view.changed[0].emptyKey, 'serviceAllowedUnrestricted');
   assert.equal(view.unchanged[0].emptyKey, 'serviceAllowedUnrestricted');
+});
+
+// Story 18.5: each journal write's card states its warning dialog's own sentence, naming the file a
+// switch closes (its CurrentFile row's before value) or a check reads (the proposal's target), and
+// each code is the one its tool declares.
+//
+// Mutation (Rule 19): have `journalSentence` fill the switch from the row's after value -> the
+// switch file assertion goes red on "A new journal file"'s empty value.
+test('Story 18.5: a journal proposal\'s card names the file its warning names, under the code its tool declares', () => {
+  const file = '/durable/iris/mgr/journal/20261002.090';
+  assert.equal(
+    journalSentence({ consequence: CONSEQUENCE_JOURNALSWITCHFILE, name: 'current', changed: [{ field: 'CurrentFile', before: file, after: '' }] }),
+    STRINGS.journalSwitchFileConsequence.replace('<file>', file)
+  );
+  assert.equal(
+    journalSentence({ consequence: CONSEQUENCE_JOURNALSWITCHDIRECTORY, name: 'current', changed: [{ field: 'CurrentDirectory', before: '/a/', after: '/b/' }] }),
+    STRINGS.journalSwitchDirectoryConsequence
+  );
+  assert.equal(
+    journalSentence({ consequence: CONSEQUENCE_JOURNALINTEGRITY, name: '/x/$&y', changed: [] }),
+    STRINGS.journalIntegrityConsequence.replace('<file>', () => '/x/$&y'),
+    'a name holding a replacement pattern is shown as written'
+  );
+  assert.equal(journalSentence({ consequence: CONSEQUENCE_PRIVILEGED, name: 'x', changed: [] }), '');
+  assert.equal(consequenceSentence(CONSEQUENCE_JOURNALINTEGRITY), '', 'the generic line states none of them, so the card states each once');
+  const tools = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool');
+  for (const [cls, code] of [
+    ['JournalSwitchFile.cls', CONSEQUENCE_JOURNALSWITCHFILE],
+    ['JournalSwitchDirectory.cls', CONSEQUENCE_JOURNALSWITCHDIRECTORY],
+    ['JournalIntegrityCheck.cls', CONSEQUENCE_JOURNALINTEGRITY],
+  ]) {
+    const declared = /Parameter CONSEQUENCECODE = "([^"]+)";/.exec(readFileSync(join(tools, cls), 'utf8'))?.[1];
+    assert.equal(declared, code, `${cls} declares the code the card reads`);
+  }
 });

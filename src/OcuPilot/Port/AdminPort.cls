@@ -405,7 +405,15 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// clears it) and answers 404 for an absent name; <code>DELETE</code> reads no body, calls
 /// <code>Security.LDAPConfigs.Delete</code> and answers 404 for an absent name. Both need
 /// <code>%Admin_Secure</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP";
+/// <p>The three <code>Journal.*</code> pairs are Story 18.5's journal writes, each issued through
+/// <class>OcuPilot.Port.JournalPort</class>. Read on this build: <code>Journal.Settings</code>'s
+/// <code>SWITCHFILE</code> (10) calls <code>RollToNextFile</code> and <code>SWITCHDIR</code> (11)
+/// swaps the primary and alternate directories, answering 409 when they are the same; neither reads a
+/// body, both answer <code>{CurrentFile}</code>, and <code>ResourcesOR()</code> is
+/// <code>%Admin_Operate</code>. <code>Journal.File</code>'s <code>INTEGRITYCHECK</code> (10) requires
+/// <code>{CheckDetails}</code>, is queued (<parameter>QUEUEDWRITES</parameter>), and changes nothing:
+/// it is admitted on the write path as <code>Database.Actions/INTEGRITYCHECK</code> is.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -421,7 +429,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -668,7 +676,11 @@ Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={"
 /// (<parameter>SELFQUEUEDTYPES</parameter>).</p>
 /// <p><code>Namespace.Namespace/INTEROP</code> is Story 18.15's enable interoperability: it takes no
 /// body, is queued through <code>ShouldRunAsync()</code>, and is read once by <method>AwaitTask</method>.</p>
-Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP";
+/// <p><code>Journal.File/INTEGRITYCHECK</code> is Story 18.5's journal integrity check: queued through
+/// <code>ShouldRunAsync()</code>, its body <code>{CheckDetails}</code> built by
+/// <class>OcuPilot.Port.JournalPort</class>, and its console lines read once with its end
+/// (<parameter>CONSOLEDTYPES</parameter>).</p>
+Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP,Journal.File/INTEGRITYCHECK";
 
 /// <p>The <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs whose own <code>Run()</code> queues a task
 /// while <code>ShouldRunAsync()</code> answers false (AD-26 as amended 2026-09-29), read on this
@@ -678,6 +690,44 @@ Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE
 /// <parameter>QUEUEDWRITES</parameter> entry before the endpoint's own semantics or
 /// <code>Run()</code> is reached, as it refuses one <code>ShouldRunAsync()</code> would queue.</p>
 Parameter SELFQUEUEDTYPES = "Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/INTEGRITYCHECK";
+
+/// <p>The <parameter>QUEUEDWRITES</parameter> pairs whose finished task's console lines are part of
+/// the answer, comma-separated (AD-26, AD-39's fifth exception): <method>AwaitTask</method> answers
+/// <code>{Result, console}</code> for a listed pair, <code>console</code> the poll answer's
+/// <code>Console</code> lines cut to <parameter>CONSOLEMAXLINES</parameter>. A listed task that fails
+/// with console lines has run and reported, so it is answered the same way with <code>failed</code>
+/// true and nothing logged; one that fails with none is an ordinary fault. The lines reach the caller
+/// alone.</p>
+/// <p><code>Journal.File/INTEGRITYCHECK</code> (Story 18.5): the vendor's check writes its findings
+/// to the console and answers <code>{}</code> (read on this build).</p>
+Parameter CONSOLEDTYPES = "Journal.File/INTEGRITYCHECK";
+
+/// <p>The most console lines <method>AwaitTask</method> keeps for a <parameter>CONSOLEDTYPES</parameter>
+/// pair; a longer console keeps one fewer and ends with U+2026.</p>
+Parameter CONSOLEMAXLINES As INTEGER = 200;
+
+/// <p>The <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs whose <parameter>JOURNALFILEPARAM</parameter>
+/// query parameter this port accepts only as a name the instance's own journal file list answers
+/// (AD-21's eighth case), comma-separated. <method>JournalGuard</method> reads that list whole at the
+/// call, before the target's call, and refuses any other name 404 <code>JOURNAL.FILE.UNLISTED</code>
+/// without naming it.</p>
+Parameter JOURNALFILETYPES = "Journal.File/GET,Journal.File/INTEGRITYCHECK,Journal.Record/LIST,Journal.Record/GET";
+
+/// <p>The <parameter>JOURNALFILETYPES</parameter> pairs for which an omitted or empty file reads the
+/// newest listed file, comma-separated.</p>
+Parameter JOURNALNEWESTTYPES = "Journal.Record/LIST";
+
+/// <p>The endpoint whose <code>LIST</code> answers the instance's journal files, newest first
+/// (<code>%SYS.Journal.File:ByTimeReverseOrder</code>).</p>
+Parameter JOURNALLISTENDPOINT = "Journal.File";
+
+/// <p>The query parameter a journal file travels under.</p>
+Parameter JOURNALFILEPARAM = "file";
+
+/// <p>The route of the journal file list, after <parameter>SNIPPETPREFIX</parameter>, which a script
+/// renders as the guard's read (AD-59). A <code>GET</code> route, so
+/// <class>OcuPilot.Port.AdminRoutes</class> does not hold it.</p>
+Parameter JOURNALLISTURL = "/journal/files";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> pairs whose vendor error answers the product's own code,
 /// as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;code&gt;</code> entries (AD-39). A listed
@@ -1003,6 +1053,12 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Set tSC = ..Fail(pEndpoint, 404, $$$OK, .pHttpStatus, .pFault)
             Quit
         }
+        ; AD-21's eighth case: a journal file is accepted only as the instance's own list spells it,
+        ; read whole at this call and before the target's call. The guard works on the copy.
+        If ..IsJournalFileType(pEndpoint, pType) {
+            Set tSC = ..JournalGuard(pEndpoint, pType, .tQuery, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        }
 
         ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
         ; above the port composes it. A caller body for such a pair is a caller bug, refused before
@@ -1061,7 +1117,7 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
-            Set tSC = ..AwaitTask(pEndpoint, tGuid, .pResult, .pHttpStatus, .pFault)
+            Set tSC = ..AwaitTask(pEndpoint, tGuid, .pResult, .pHttpStatus, .pFault, pType)
             Quit
         }
         If $$$ISOK(tSeqSC) && (tHttp >= 200) && (tHttp < 300) {
@@ -2395,6 +2451,98 @@ ClassMethod IsSelfQueued(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#SELFQUEUEDTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a
+/// <parameter>CONSOLEDTYPES</parameter> pair.</p>
+ClassMethod IsConsoled(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    If pSuffix = "" Quit 0
+    Quit ''$ListFind($ListFromString(..#CONSOLEDTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>A <parameter>CONSOLEDTYPES</parameter> task's answer from its terminal poll answer
+/// <var>pAnswer</var>: <code>{Result, console}</code>, and <code>failed</code> true when
+/// <var>pFailed</var>. <code>console</code> holds the poll answer's <code>Console</code> lines as
+/// strings, at most <parameter>CONSOLEMAXLINES</parameter>: a longer console keeps one fewer and ends
+/// with U+2026.</p>
+ClassMethod Consoled(pAnswer As %DynamicObject, pFailed As %Boolean = 0) As %DynamicObject
+{
+    Set tOut = {}
+    If $IsObject(pAnswer) && $IsObject(pAnswer.%Get("Result")) {
+        Do tOut.%Set("Result", pAnswer.%Get("Result"))
+    } Else {
+        Do tOut.%Set("Result", {})
+    }
+    Set tLines = []
+    Set tMax = ..#CONSOLEMAXLINES
+    If $IsObject(pAnswer) && (pAnswer.%GetTypeOf("Console") = "array") {
+        Set tConsole = pAnswer.%Get("Console")
+        Set tSize = tConsole.%Size()
+        Set tIterator = tConsole.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If (tSize > tMax) && (tLines.%Size() >= (tMax - 1)) {
+                Do tLines.%Push($Char(8230), "string")
+                Quit
+            }
+            Do tLines.%Push($Select($IsObject(tLine): "", 1: tLine _ ""), "string")
+        }
+    }
+    Do tOut.%Set("console", tLines)
+    If pFailed Do tOut.%Set("failed", 1, "boolean")
+    Quit tOut
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a
+/// <parameter>JOURNALFILETYPES</parameter> pair.</p>
+ClassMethod IsJournalFileType(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#JOURNALFILETYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>AD-21's eighth case for a <parameter>JOURNALFILETYPES</parameter> call (<var>pEndpoint</var>'s
+/// request type <var>pType</var>): one <parameter>JOURNALLISTENDPOINT</parameter> <code>LIST</code>
+/// with <code>maxRows</code> 0, read whole through this port at the call and never kept, and the
+/// query <var>pQuery</var>'s <parameter>JOURNALFILEPARAM</parameter> accepted only when it equals,
+/// character for character, a row's <code>Name</code>. A
+/// <parameter>JOURNALNEWESTTYPES</parameter> call with an omitted or empty file is given the first,
+/// newest, row's name. Any other name is refused 404 <code>JOURNAL.FILE.UNLISTED</code> without naming
+/// it; a failed list read is its own fault. Nothing is sent for the target here.</p>
+ClassMethod JournalGuard(pEndpoint As %String, pType As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFile = $Get(pQuery(..#JOURNALFILEPARAM))
+    Kill tList
+    Set tList("maxRows") = 0
+    Set tSC = ..InvokeLocated(..#JOURNALLISTENDPOINT, "LIST", .tList, "", .tRows, .tHttp, .tFault, .tLocation)
+    If $$$ISERR(tSC) {
+        Set pHttpStatus = tHttp
+        Set pFault = tFault
+        Quit tSC
+    }
+    If '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") {
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault(..#JOURNALLISTENDPOINT _ " LIST answered something other than a list", $$$ERROR($$$GeneralError, "the journal file list is not an array"), pFault.code)
+        Quit tSC
+    }
+    Set tNewest = ""
+    Set tListed = 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || (tRow.%GetTypeOf("Name") '= "string") Continue
+        If tNewest = "" Set tNewest = tRow.%Get("Name")
+        If (tFile '= "") && (tRow.%Get("Name") = tFile) {
+            Set tListed = 1
+            Quit
+        }
+    }
+    If (tFile = "") && (tNewest '= "") && $ListFind($ListFromString(..#JOURNALNEWESTTYPES), pEndpoint _ "/" _ pType) {
+        Set pQuery(..#JOURNALFILEPARAM) = tNewest
+        Quit $$$OK
+    }
+    If tListed Quit $$$OK
+    Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.JournalError).#FILEUNLISTED, ##class(OcuPilot.Api.JournalError).#REASONFILEUNLISTED, .pHttpStatus, .pFault)
+}
+
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type
 /// <var>pSuffix</var>: the suffix itself for a <parameter>MUTATINGTYPES</parameter> pair,
 /// <code>GET</code> for everything else.</p>
@@ -2638,7 +2786,9 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
 /// <method>SweepOwnTasks</method>. No terminal state
 /// within the bound is <code>PORT.TIMEOUT</code>, and the row is left to the worker that still
 /// owns it.</p>
-ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>For a <parameter>CONSOLEDTYPES</parameter> pair (<var>pEndpoint</var>'s request type
+/// <var>pType</var>) the answer is <method>Consoled</method>'s.</p>
+ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pType As %String = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -2657,6 +2807,14 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
         If tAnswer.State = tFinished {
             Do ..ForgetTask(pGuid)
             Set pResult = tAnswer.Result
+            If ..IsConsoled(pEndpoint, pType) Set pResult = ..Consoled(tAnswer, 0)
+            Set pHttpStatus = 200
+            Quit
+        }
+        ; CONSOLEDTYPES: a failed task that wrote console lines has run and reported its findings.
+        If (tAnswer.State = tFailed) && ..IsConsoled(pEndpoint, pType) && (tAnswer.%GetTypeOf("Console") = "array") && (tAnswer.%Get("Console").%Size() > 0) {
+            Do ..ForgetTask(pGuid)
+            Set pResult = ..Consoled(tAnswer, 1)
             Set pHttpStatus = 200
             Quit
         }
@@ -3012,6 +3170,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// handed, with every secret already a placeholder; <var>pContext</var> is
 /// <code>{origin, user, creates, payload, diff}</code>. A pair with no route, and a malformed
 /// composite key, answer no step. Nothing here reads the instance or writes anything.</p>
+/// <p>A <parameter>JOURNALFILETYPES</parameter> pair's script begins with the guard's read of the
+/// journal file list (<method>JournalListStep</method>).</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     Set tSteps = []
@@ -3029,6 +3189,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Do tSteps.%Push(..ImportStep($Get(tQuery("alias")), tBody))
         Quit tSteps
     }
+    ; AD-21's eighth case: the guard's read of the journal file list comes first, as it does in
+    ; Invoke.
+    If ..IsJournalFileType(pEndpoint, pType) Do tSteps.%Push(..JournalListStep(pContext))
     Set tKept = ..IsTypeKept(pEndpoint, pType)
     If $IsObject(pContext) && pContext.%Get("creates") Set tKept = 0
     If tKept Do tSteps.%Push(..KeptTypeStep($Get(tQuery("name"))))
@@ -3067,6 +3230,21 @@ ClassMethod RestStep(pEndpoint As %String, pType As %String, ByRef pQuery, pBody
         Set tText = tText _ tBreak _ "-H " _ ..ShellQuoted("Content-Type: application/json") _ tBreak _ "-d " _ ..ShellQuoted(pBody.%ToJSON())
     }
     Quit ..Step("rest", tText)
+}
+
+/// <p>The guard's read of the journal file list as one <code>rest</code> step (AD-21's eighth case,
+/// AD-59): a <code>GET</code> of <parameter>JOURNALLISTURL</parameter> with <code>maxRows</code> 0, as
+/// <method>JournalGuard</method> sends it, naming the caller and origin
+/// <var>pContext</var> carries.</p>
+ClassMethod JournalListStep(pContext As %DynamicObject = "") As %DynamicObject
+{
+    Set tOrigin = ""
+    Set tUser = ""
+    If $IsObject(pContext) {
+        Set tOrigin = pContext.%Get("origin")
+        Set tUser = pContext.%Get("user")
+    }
+    Quit ..Step("rest", "curl -u " _ ..ShellQuoted(tUser) _ " -X GET " _ ..ShellQuoted(tOrigin _ ..#SNIPPETPREFIX _ ..#JOURNALLISTURL _ "?maxRows=0"))
 }
 
 /// <p>One step of kind <var>pKind</var> carrying <var>pText</var>.</p>
