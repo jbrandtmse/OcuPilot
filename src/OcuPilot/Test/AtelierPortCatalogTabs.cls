@@ -15,6 +15,11 @@ Class OcuPilot.Test.AtelierPortCatalogTabs Extends %UnitTest.TestCase
 
 Parameter PORT = "OcuPilot.Port.AtelierPort";
 
+/// <p>The statement a SQL statements tab sends, written out here so that a column added to or
+/// renamed in the port's select list, and a grouping dropped from it, fails this class rather than
+/// passing through a body built from the port's own parameter.</p>
+Parameter STATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, CASE WHEN CHAR_LENGTH(s.Statement) > 1024 THEN SUBSTRING(s.Statement, 1, 1021) || '...' ELSE s.Statement END AS STATEMENT, LIST(l.Location) AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ? GROUP BY s.Hash";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ..ClearFixtures()
@@ -242,8 +247,8 @@ Method TestASqlErrorIsTheInternalFaultWithNothingSent()
 /// <p>AC1, AC2, AC3, AC5: rows carry exactly their declared fields -- a partition's and a partition
 /// mapping's counts as numbers, a cached query's source flag as a boolean, a view's information with
 /// its text merged in, a view field's stream flag, a procedure's HTML description as plain text beside
-/// the second of the vendor's two return-value columns -- and a statement row names no user name, client name, address,
-/// application, call stack or plan, whatever the vendor's row carries.</p>
+/// its return value -- and a statement row names no user name, client name, address, application,
+/// call stack or plan, whatever the vendor's row carries.</p>
 /// <p>Mutation (Rule 19): map <code>Description</code> without <code>plain</code> in
 /// <parameter>OcuPilot.Port.AtelierPort.CATALOGPROCEDURECOLUMNS</parameter> -&gt; the procedure row's
 /// assertion goes red.</p>
@@ -286,13 +291,15 @@ Method TestRowsCarryExactlyTheDeclaredFields()
     Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tRows): tRows.%ToJSON(), 1: "") _ " " _ ##class(OcuPilot.Test.AtelierPortFixture).CallCount(), "200 [] 2", "a view whose information answers no row reads no row, and its text is not asked")
 }
 
-/// <p>AC5, AD-61 rule 7: the statement each SQL statements tab sends selects no user name, client
-/// name, address, application, call stack or plan, and no fixed statement of the port names the
-/// vendor's statement index procedure.</p>
+/// <p>AC5, AD-61 rule 7: the statement each SQL statements tab sends is exactly
+/// <parameter>STATEMENTSQUERY</parameter>, which selects no user name, client name, address,
+/// application, call stack or plan; every column its row map reads is one that statement selects; and
+/// no parameter or method of the port names the vendor's statement index procedure.</p>
 /// <p>Mutation (Rule 19): add <code>s.UserName AS USER_NAME</code> to
 /// <parameter>OcuPilot.Port.AtelierPort.CATALOGSTATEMENTSQUERY</parameter> and
-/// <code>UserName:USER_NAME</code> to its column map -&gt; the sent statement's assertion goes
-/// red.</p>
+/// <code>UserName:USER_NAME</code> to its column map -&gt; the sent statement's assertions go
+/// red; rename <code>EXECUTIONS</code> in the statement alone -&gt; the exact statement and the row map's
+/// column assertions go red.</p>
 Method TestNoStatementReadSelectsAnIdentifyingColumn()
 {
     For tEndpoint = "Catalog.TableStatements", "Catalog.ViewStatements", "Catalog.ProcedureStatements" {
@@ -304,11 +311,18 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         Set tQuery(tKind) = "OcuProbe.Thing"
         Set tSC = ..Read(tEndpoint, .tQuery, .tRows, .tHttp, .tFault)
         Set tSent = ##class(OcuPilot.Test.AtelierPortFixture).CallAt(2)
-        Set tStatement = $Select($IsObject(tSent): $ZConvert(##class(%DynamicObject).%FromJSON(tSent.body).query, "U"), 1: "")
+        Set tSentQuery = $Select($IsObject(tSent): ##class(%DynamicObject).%FromJSON(tSent.body).query, 1: "")
+        Do $$$AssertEquals(tSentQuery, ..#STATEMENTSQUERY, tEndpoint _ ": it sends exactly the statements read")
+        Set tStatement = $ZConvert(tSentQuery, "U")
         Do $$$AssertTrue(tStatement [ "INFORMATION_SCHEMA.STATEMENTS", tEndpoint _ ": it reads the information schema's statements")
         For tColumn = "USERNAME", "USER_NAME", "CLIENTNAME", "CLIENTIP", "CLIENTAPP", "CALLSTACK", "S.PLAN", "JSONPLAN", "STATEMENTINDEX" {
             Do $$$AssertTrue(tStatement '[ tColumn, tEndpoint _ ": the statement it sends names no " _ tColumn)
         }
+    }
+    Set tColumns = $Parameter(..#PORT, "CATALOGSTATEMENTSCOLUMNS")
+    For tI = 1:1:$Length(tColumns, ",") {
+        Set tColumn = $Piece($Piece(tColumns, ",", tI), ":", 2)
+        Do $$$AssertTrue(..#STATEMENTSQUERY [ (" AS " _ tColumn _ $Select(tColumn = "LOCATION": " FROM", 1: ",")), "the statements row map's " _ tColumn _ " is a column the statement selects")
     }
     Set tNamed = ""
     Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(..#PORT)
@@ -318,7 +332,19 @@ Method TestNoStatementReadSelectsAnIdentifyingColumn()
         Set tParameter = tClass.Parameters.GetAt(tI)
         If $ZConvert(tParameter.Default, "U") [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tParameter.Name
     }
-    Do $$$AssertEquals(tNamed, "", "no parameter of the port names the statement index procedure")
+    Set tDefinition = ##class(%Dictionary.ClassDefinition).%OpenId(..#PORT)
+    Do $$$AssertTrue($IsObject(tDefinition), "the port's definition opens")
+    If '$IsObject(tDefinition) Quit
+    For tI = 1:1:tDefinition.Methods.Count() {
+        Set tMethod = tDefinition.Methods.GetAt(tI)
+        Do tMethod.Implementation.Rewind()
+        Set tCode = ""
+        While 'tMethod.Implementation.AtEnd {
+            Set tCode = tCode _ $ZConvert(tMethod.Implementation.ReadLine(), "U") _ " "
+        }
+        If tCode [ "STATEMENTINDEX" Set tNamed = tNamed _ " " _ tMethod.Name
+    }
+    Do $$$AssertEquals(tNamed, "", "no parameter or method of the port names the statement index procedure")
 }
 
 }

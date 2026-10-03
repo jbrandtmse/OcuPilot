@@ -1,5 +1,5 @@
 /// <p>A SQL table's SQL statements tab: each SQL statement that references the table, its plan
-/// state, statistics, first day seen, text and location, read from the information schema's
+/// state, statistics, first day seen, text and locations, read from the information schema's
 /// statement tables through the source code API (<class>OcuPilot.Port.AtelierPort</class>, endpoint
 /// <code>Catalog.TableStatements</code>) and rendered by the <code>detail</code> archetype's page under
 /// the group's tab strip (AD-5, AD-36, AD-61). It lists every account's statements on the table, as

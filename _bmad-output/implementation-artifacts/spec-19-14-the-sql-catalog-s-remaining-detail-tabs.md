@@ -31,7 +31,7 @@ deferred: []
 - A view's tabs resolve `view` (`Schema.View`, at most 257 characters, no control character) through `INFORMATION_SCHEMA.VIEWS` first, and a procedure's tabs resolve `procedure` through `INFORMATION_SCHEMA.ROUTINES`. Each then binds the exact schema and name its row answers. None is 404 `PORT.NOTFOUND` (unlogged); two is 400 `PORT.VALIDATION`.
 - `Catalog.Partitions` and `Catalog.PartitionMappings` send their statement only when the resolved table row's `IS_PARTITIONED` reads `YES`. Otherwise they answer zero rows with no `Query` call.
 - The three SQL statements tabs read `INFORMATION_SCHEMA`'s statement tables (Design Notes › Statements).
-- A view's text, a procedure's description (as plain text, `PlainText`), a statement's text and a cached query's text are row fields: untrusted (AD-11), cut by AD-24's per-field bound in a tool result and in screen context, passed through AD-60, and shown whole on the screen.
+- A view's text, a procedure's description (as plain text, `PlainText`), a statement's text and a cached query's text are row fields: untrusted (AD-11), cut by AD-24's per-field bound in a tool result and in screen context, passed through AD-60, and shown whole on the screen, except a statement's text, cut at 1,021 characters with `...` as the classic tab does [AMENDED 2026-10-03, lead, after code review].
 - Each screen declares `classicPage` `%CSP.UI.Portal.SQL.Home`, `%Development:USE`, scope `namespace`, entity type `class`, and three prompts in the `webAppPromptGroupCode` group. The table tabs follow the classic page's order.
 
 **Never:**
@@ -53,7 +53,7 @@ deferred: []
 | Absent or unprivileged | No such view or procedure, or one the caller holds no privilege on | 404 `PORT.NOTFOUND`, unlogged | Banner |
 | Ambiguous | Two rows answer one name | 400 `PORT.VALIDATION` with the port's reason | Banner |
 | Bad input | `view` or `procedure` with no `.`, over 257, or with a control character | 400 `PORT.VALIDATION` before any route | Banner |
-| Long text | A view text, a description or a statement over 1,000 characters | The screen shows it whole; the tool and screen context cut it and list it in `truncatedFields` | None |
+| Long text | A view text, a description or a statement over 1,000 characters | The screen shows a view's text and a description whole and a statement's text cut at 1,021 characters with `...`, as the classic tab does; the tool and screen context cut it and list it in `truncatedFields` | None |
 | Gate | No `%Development:USE`, or no READ on the namespace's code database | 403 `AUTH.NOPRIVILEGE` naming the pair, before any route | Banner |
 | Old instance | Highest version 5 | 501 `PORT.NOTIMPLEMENTED` | Banner |
 | SQL error | The route answers 200 with `status.errors` | 500 `INTERNAL`; vendor text logged, never sent | Banner |
@@ -149,7 +149,41 @@ deferred: []
 - AC10: Given a `%Developer` account, when it opens the nine screens in USER, then it reads them, and it is refused by name where it cannot read the code database (`DeveloperFloor`).
 - AC11 (Integration, Rule 1): Given a row in SQL views and one in SQL procedures on the real instance, when the person opens each from its list's name cell, then the new head opens, and switching to SQL statements reads the same object through that tab's own declared read.
 
+### Review Findings
+
+Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 32 rows, 11 entries (high 0, medium 5, low 6), 9 patched, 2 deferred, 17 rows rejected.
+
+- [x] [Review][Patch] A statement with several locations read one row per location, all keyed by the same `Statement`: both rows highlight, and ArrowDown stops at the pair (`activeIndex` is an `indexOf`) [src/OcuPilot/Port/AtelierPort.cls:208]. Fixed: one row per statement (`GROUP BY s.Hash`), its locations comma-separated. Measured on slot A: `SELECT ? AS PROBE` has two cached queries.
+- [x] [Review][Patch] A statement over 1,024 characters was cut with no marker [src/OcuPilot/Port/AtelierPort.cls:208]. Fixed: 1,021 characters and `...`, as the classic tab cuts it. For the lead: AD-36's 19.14 clause and the matrix's Long text row still say a statement's text is shown whole, and Design Notes › Statements says "no marker" (Rule 5, apply and report).
+- [x] [Review][Patch] No assertion read the statement's statistics columns, so an alias rename stayed green [src/OcuPilot/Test/AtelierPortCatalogTabs.cls]. Fixed: the sent statement must equal `STATEMENTSQUERY`, every row-map column must be one it selects, and the live leg checks the `%sqlcq.` location.
+- [x] [Review][Patch] The identifying-column guard missed `s.*`, a quoted column and a `StatementIndex` call in a method body [src/OcuPilot/Test/AtelierPortCatalogTabs.cls]. Fixed by the exact-statement assertion and a scan of the port's method code.
+- [x] [Review][Patch] "the vendor's view queries filter nothing by privilege" is wrong for `ViewFields`, which drops ungranted columns; now "view information queries" [src/OcuPilot/Screen/Descriptor/ExplorerSqlViewFields.cls:11].
+- [x] [Review][Patch] The 19.14 Fixed-strings row lacked "catalog tabs" after "a stored procedure's" [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:596].
+- [x] [Review][Patch] `AtelierPortCatalogTabsLive`'s header claimed a function's statements are read live [src/OcuPilot/Test/AtelierPortCatalogTabsLive.cls:5].
+- [x] [Review][Patch] `TestRowsCarryExactlyTheDeclaredFields`' doc claimed the vendor's two return-value columns reach it [src/OcuPilot/Test/AtelierPortCatalogTabs.cls].
+- [x] [Review][Patch] The port's class doc said each catalog read sends one statement; View info sends two [src/OcuPilot/Port/AtelierPort.cls:30].
+- [x] [Review][Defer] DW-1976 (`escalated`, burndown): a long view text or description is one clipped cell, and its tooltip cannot show a text taller than the window. The first review's "text cells are not clamped" was wrong: `.ocu-data-table-cell` is `nowrap` with an ellipsis.
+- [x] [Review][Defer] DW-1977 (`decision-pending`, burndown): statement statistics read blank until the instance aggregates them (measured: a fresh statement's are NULL, and no task aggregates).
+
+Rejected:
+
+- false: "as the classic tab does" against the information schema's privilege check. The plan measured a principal reading a hidden table's join and statements through `INFORMATION_SCHEMA.STATEMENTS`.
+- false: the procedure statements tab is always empty for a non-query procedure. Classic answers the same, measured object for object.
+- false: the strings bound moves before it is needed. Approved by=merge_gate.
+- spec-bound: no per-day or per-execution averages; `Interface` as a number.
+- low: no `ORDER BY` before the cap. Truncation is reported, and the statistics it would order by are blank until aggregated.
+- low (maybe-false): `FROZEN_DIFF` passed raw where classic blanks it unless frozen; no frozen plan exists on any instance measured.
+- low: "Inputs and outputs" reads as a total; the list column beside it names them.
+- low: no restricted principal reads the four new table tabs. They take 19.5's table resolve, pinned per endpoint by the fixture and by 19.5's principal leg.
+- low: a JSON-shaped resolved name binds an object (19.5's rejected item, same reason).
+- low: probe literals are constant and statement rows outlive `Remove`. CI throwaways are fresh, and the read path is still pinned.
+- low: a relation the statement index keys in its exact case is missed by the upper-case key. Classic uses the same key; on slot A that is only `%TSQL_sys.snf`, the no-table relation, and statements with no location.
+- closed by the first review: the procedure strip's id in the component spec; Partition mappings pinned by the fixture.
+- spec-only: the Residual risks line about Design Notes' wording.
+
 ## Spec Change Log
+
+- 2026-10-03, lead (code review close): the statement-text cut is 1,021 characters plus `...`, as the classic tab does (review patch); the intent's Always bullet, the Long text matrix row, Design Notes and AD-36 now say so.
 
 - 2026-10-03, lead (spec gate): the spine carries the drafts (AD-61 rules 3, 7, 8; AD-36). The three open questions are accepted as decided in Design Notes (statements without identifying columns from `INFORMATION_SCHEMA`, never `StatementIndex`; partition tabs short-circuit on an unpartitioned table; definitions and statement text as bounded row fields). The plan's `deferred:` DW-1001 occurrence is harvested to the ledger. The Fixed-strings bound raise (2300 to 2500) is approved by=merge_gate.
 
@@ -254,7 +288,7 @@ FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS
 LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ?
 ```
 
-The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,024 characters with no marker (the classic tab cuts at 1,021 and appends `...`). `plain` reads a value through `PlainText`.
+The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,021 characters and appends `...`, as the classic tab does. `plain` reads a value through `PlainText`.
 
 **Screens.** All nine are `detail`, side bar 0, `id` single, and declare the group's one criterion (`text` 257). Context fields equal the table's columns.
 
@@ -277,7 +311,7 @@ The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,024 
   - "A SQL statements tab reads `INFORMATION_SCHEMA`'s statement tables and never `%SQL_Manager.StatementIndex`. Its aggregation check starts a process that writes statement statistics into IRISSYS and every namespace's routines database, for a caller holding READ alone too (measured, Story 19.14). No statement read selects a user name, client or call stack."
   - "`ViewInfo`, `ViewInfo2`, `ProcedureInfo` and `Partitions` filter nothing by privilege (measured). `Partitions` and `PartitionMappings` are sent only for a table whose resolved row reads partitioned, because on any other table they fail the fetch."
 - **AD-61 rule 8:** the cost table above.
-- **AD-36:** "A view's text, a stored procedure's description as plain text, a SQL statement's text and a cached query's text are such row fields too (Story 19.14), shown whole on the screen."
+- **AD-36:** "A view's text, a stored procedure's description as plain text, a SQL statement's text and a cached query's text are such row fields too (Story 19.14); the screen shows a view's text and a description whole and a statement's text cut at 1,021 characters with `...`, as the classic tab does."
 
 **Strings.**
 
@@ -385,6 +419,9 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: AC9, `ExplorerSqlView` `classicPage` `""` → `ExplorerDescriptor.TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair` and `TestACustomResourceOnTheSqlPageGatesAllEighteen` (run 3346).
 - mutation: AC10, `ExplorerSqlProcedure` privileges `[]` → `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 3347).
 - mutation: AC11, `data-table.ts`'s link chain skipping `documentScreenFor` for the Views list, rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs` "Story 19.14 AC2, AC11" (its open path wait). Each reverted byte for byte; green again: `AtelierPortCatalogTabs` 3348, `AtelierPortCatalogTabsLive` 3349, `ExplorerCatalog` 3350, `ExplorerDescriptor` 3351, `DeveloperFloor` 3352, and the browser spec on the redeployed bundle.
+- (QA) No test added: every AC and matrix row has a real-runtime pin with a recorded mutation; AtelierPortCatalogTabs (run 3804) and AtelierPortCatalogTabsLive (run 3805) re-run green on a clean reload of the tree.
+- (CR) mutation: AC1, AC5, `CATALOGSTATEMENTSQUERY` put back to the build's (cut at 1,024 unmarked, a row per location, no `GROUP BY`) → `AtelierPortCatalogTabs.TestNoStatementReadSelectsAnIdentifyingColumn` (run 3810) and `AtelierPortCatalogTabsLive.TestLongTextIsWholeThroughTheRead` (run 3811).
+- (CR) mutation: AC5, `AS EXECUTIONS` renamed in the port's statement alone and `%SQL_Manager.StatementIndex` written into `CatalogRelation`'s body → the same test's exact-statement and method-scan assertions (run 3812). Reverted byte for byte; green again: `AtelierPortCatalogTabs` 3813, `AtelierPortCatalogTabsLive` 3814, `ExplorerCatalog` 3808, `InjectionChannels` 3809, `ExplorerDescriptor` 3815, `system-explorer-sql.browser-spec.mjs`, `npm run test:tools` (1,780).
 
 ## Auto Run Result
 
@@ -413,7 +450,7 @@ Load source into `ocupilot-a2-ci` and never restart it:
 
 **Residual risks.**
 
-- A statement over 1,024 characters is cut with no marker (classic appends `...`), as Design Notes fixes. Design Notes › Statements' "as the classic tab does" is inexact (classic: 1,021 plus `...`).
+- A statement over 1,021 characters is cut with `...` on the screen, as the classic tab does (code review).
 - Nine tabs page the strip behind its arrows at common widths.
 - Merge conflicts with Epic 18 are expected on the approved contended lines.
 

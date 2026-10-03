@@ -2,9 +2,10 @@
 /// port, and through the read executor for a long text, on <class>OcuPilot.Test.ExplorerSqlProbe</class>'s
 /// objects in <parameter>PROBENAMESPACE</parameter> -- a partitioned table's partitions and partition
 /// mappings, a plain table's none, a table's cached queries and SQL statements with the probe's kept
-/// literal, a view's information, fields and statements, a query procedure's and a function's
-/// information and statements, names resolved without regard to case, absent and ambiguous names
-/// refused, a long view text and description read whole -- and, as a purpose-built principal granted
+/// literal, a view's information, fields and statements, a query procedure's information and
+/// statements and a function's information, names resolved without regard to case, absent and
+/// ambiguous names refused, a long view text and description read whole and a long statement's text
+/// cut and marked -- and, as a purpose-built principal granted
 /// SELECT on one probe view and EXECUTE on one probe procedure, the ungranted view's and procedure's
 /// tabs not found.</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace, where each test
@@ -185,6 +186,7 @@ Method TestTheTableTabsReadTheProbeTables()
     Set tStatement = ..RowHolding(tStatements, "Statement", tLiteral)
     Do $$$AssertEquals(tHttp _ " " _ $IsObject(tStatement), "200 1", "SQL statements carries the probe statement, its literal kept")
     If $IsObject(tStatement) Do $$$AssertEquals(..Keys(tStatement) _ " " _ tStatement.PlanState, ..#STATEMENTFIELDS _ " Unfrozen", "with exactly its declared fields and no user name, client or call stack")
+    If $IsObject(tStatement) Do $$$AssertEquals($Extract(tStatement.Location, 1, 7), "%sqlcq.", "and the cached query it runs from as its location")
 }
 
 /// <p>Matrix (Not partitioned), AC4: the visible table, which is not partitioned, reads no partition
@@ -266,7 +268,7 @@ Method TestAbsentAmbiguousAndMalformedNamesAreRefused()
 
 /// <p>Matrix (Long text), AC2, AC3: through the read executor the long view's text and the function's
 /// description read whole on the screen's answer, each past the field bound, and the long statement's
-/// text reads to the read's own 1,024-character cut.</p>
+/// text is cut as the classic tab cuts it, to 1,021 characters and <code>...</code>.</p>
 Method TestLongTextIsWholeThroughTheRead()
 {
     Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
@@ -285,7 +287,7 @@ Method TestLongTextIsWholeThroughTheRead()
     Do $$$AssertStatusOK(tSC, "ExplorerSqlTableStatements reads")
     If $$$ISERR(tSC) Quit
     Set tRow = ..RowHolding(tResult.rows, "Statement", $Parameter(..#PROBE, "LONGLITERAL"))
-    Do $$$AssertEquals($Select($IsObject(tRow): $Length(tRow.Statement), 1: 0), 1024, "and the long statement's text reads to the read's own 1,024-character cut, past the field bound")
+    Do $$$AssertEquals($Select($IsObject(tRow): $Length(tRow.Statement) _ " " _ $Extract(tRow.Statement, *-2, *), 1: ""), "1024 ...", "and the long statement's text is cut to 1,021 characters and marked, past the field bound")
 }
 
 /// <p>AC6: a principal granted SELECT on the visible table and view and EXECUTE on the query

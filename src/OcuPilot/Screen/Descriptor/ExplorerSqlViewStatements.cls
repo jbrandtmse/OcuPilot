@@ -1,5 +1,5 @@
 /// <p>A SQL view's SQL statements tab: each SQL statement that references the view, its plan state,
-/// statistics, first day seen, text and location, read from the information schema's statement
+/// statistics, first day seen, text and locations, read from the information schema's statement
 /// tables through the source code API (<class>OcuPilot.Port.AtelierPort</class>, endpoint
 /// <code>Catalog.ViewStatements</code>) and rendered by the <code>detail</code> archetype's page under
 /// the group's tab strip (AD-5, AD-36, AD-61). It lists every account's statements on the view, as the
@@ -10,7 +10,7 @@
 /// one criterion <code>view</code>.</p>
 /// <p><b>The view is the one the caller's own privileges show it</b>: the port resolves the name
 /// through the information schema before it reads, and answers not found otherwise, since the vendor's
-/// view queries filter nothing by privilege (AD-61 rules 3 and 7). Its privilege set is
+/// view information queries filter nothing by privilege (AD-61 rules 3 and 7). Its privilege set is
 /// <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the namespace's code
 /// databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose custom resource also
 /// gates it (AD-44). No action and no refresh (AD-43).</p>

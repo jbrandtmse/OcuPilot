@@ -27,7 +27,7 @@
 /// (<method>MacroContext</method>), read first through the document route, never a caller's list.
 /// Each answers rows only; a match's line and a macro's definition are row fields, never a
 /// document's whole text (AD-36).</p>
-/// <p><b>Eighteen reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends one of
+/// <p><b>Eighteen reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends only
 /// this port's fixed statements to the <code>Query</code> route with every caller value bound in its
 /// <code>parameters</code>, so no caller text reaches a statement (AD-61 rules 3 and 7), and a tab's
 /// table, view or procedure is first resolved to the one the caller's own privileges show it.</p>
@@ -200,11 +200,12 @@ Parameter CATALOGPARTITIONMAPPINGSQUERY = "CALL %SQL_Manager.PartitionMappings(?
 Parameter CATALOGCACHEDQUERIESQUERY = "CALL %SQL_Manager.CachedQueryTable(?, ?)";
 
 /// <p>The SQL statements on one table, view or procedure, bound with its relation key
-/// (<method>CatalogRelation</method>): each statement's plan state, statistics, first day seen, text
-/// cut at 1,024 characters, and location, read from the information schema's statement tables. No
-/// user name, client or call stack is selected, and the read starts no statistics aggregation (AD-61
-/// rule 7).</p>
-Parameter CATALOGSTATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, SUBSTRING(s.Statement, 1, 1024) AS STATEMENT, l.Location AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ?";
+/// (<method>CatalogRelation</method>): one row per statement, with its plan state, statistics, first
+/// day seen, text and its locations comma-separated, read from the information schema's statement
+/// tables. A text over 1,024 characters is cut to 1,021 and ends in <code>...</code>, as the classic
+/// tab cuts it. No user name, client or call stack is selected, and the read starts no statistics
+/// aggregation (AD-61 rule 7).</p>
+Parameter CATALOGSTATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, CASE WHEN CHAR_LENGTH(s.Statement) > 1024 THEN SUBSTRING(s.Statement, 1, 1021) || '...' ELSE s.Statement END AS STATEMENT, LIST(l.Location) AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ? GROUP BY s.Hash";
 
 /// <p>A view's information, and its text, which <method>CatalogRows</method> merges into the
 /// information's one row.</p>

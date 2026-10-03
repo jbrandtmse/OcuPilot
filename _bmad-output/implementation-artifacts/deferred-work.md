@@ -9209,3 +9209,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ui/tools/strings.test.mjs:574-577: each prior bound move has a 'the bound moves to N under the same protocol' line; 19.5's move has none, and Epic 18's uncommitted 18.19 diff edits the same lines
 - 2026-10-03T07:09:04Z status=wontfix-accepted owner=19-5-the-sql-catalog-browser by=cr note=contended with Epic 18's same hunk; lead adds it at merge-forward; reopen_if=bound line has no comment naming its merged value after the merge
+
+### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
+- 2026-10-03T14:19:33Z status=escalated owner=burndown by=cr note=shared shell table; design call (wrapping info row, expandable cell or scrollable tooltip) for the decision sheet
+
+### DW-1977: The SQL statements tabs' statistics are the last aggregated ones: a statement run since the instance last aggregated reads blank Executions, times and First seen, and nothing but a StatementIndex-style aggregation call fills them, so 'which statements run most often' can answer blank or stale with no sign on screen
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on slot A (HSCUSTOM): freshly run statements read StatCount, StatTotal and StatFirst NULL through INFORMATION_SCHEMA.STATEMENTS; no %SYS.Task aggregates SQL statistics (only AutoStatsCollection). Design Notes accepted 'classic counts can be newer' as an inference
+- 2026-10-03T14:19:38Z status=decision-pending owner=burndown by=cr note=options: accept as is; add one sentence on the three tabs and in the tool's description that statistics are as of the last aggregation (recommended); aggregate (refused by AD-61 rule 7)
