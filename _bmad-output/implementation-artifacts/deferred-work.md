@@ -9268,6 +9268,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_USER:RW, no grants ran CREATE TABLE after _SYSTEM prepared the same text and got -99 under a never-prepared name; DROP, TRUNCATE, SELECT, UPDATE stayed -99
 - 2026-10-03T22:13:40Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with DW-1963 and DW-1982; the classic SQL page prepares the same way (inference)
+- 2026-10-03T22:14:54Z owner=burndown by=merge_gate note=vendor candidate stays decision-pending; 19.6 must not be exposed: SqlPort enforces privileges independently of the statement cache (rework 1 of 19.6)
 
 ### DW-1987: An INSERT through a view over OcuPilot's tables by a principal granted the view but not its base tables is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for an INSERT and VIEW_TABLE_USAGE hides the base table from that principal
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-story

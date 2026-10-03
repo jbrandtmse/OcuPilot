@@ -2,7 +2,7 @@
 title: 'Story 19.6: The query console and its DML and DDL guard'
 type: 'feature'
 created: '2026-10-03'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '3858df8f6c5587f22660dd42ba618b7f1dd7f2b2'
 baseline_commit: '3858df8f6c5587f22660dd42ba618b7f1dd7f2b2'
 review_loop_iteration: 0
@@ -191,6 +191,10 @@ deferred: []
 - [x] Client tests: `sql-query.page.spec.ts` (new), the tools tests the screen trips, and `ui/browser/system-explorer-sql-query.browser-spec.mjs` (new).
 - [x] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build. Stop and ask above 3,800 kB.
 
+- [ ] [Follow-up] DW-1986 (by=merge_gate): `SqlPort` enforces the caller's SQL privileges independently of the statement cache for DML, DDL and CALL (and SELECT if a cached SELECT leaks rows); a test reproduces the bypass shape (a privileged account prepares the text, an unprivileged principal sends it) and the console refuses; a mutation removing the check reddens it.
+- [ ] [Follow-up] DW-1987: measure whether an INSERT through a view whose base table the principal cannot see still passes the principal's own SQL privileges, with DW-1986's check in place; one sentence in Design Notes.
+- [ ] [Follow-up] DW-1988: settle from the IRIS SQL reference which statements accept a password and widen `PASSWORDPATTERN` if needed, with a test.
+
 **Acceptance Criteria:**
 
 - **AC1:** Given probe tables in USER, when a person runs a SELECT with `?` values and a Max rows, then the instance's columns and rows show, the values are bound as values, at most Max rows show with the cut announced, and a statement whose `?` count differs from the values given asks for exactly that many values.
@@ -208,6 +212,8 @@ deferred: []
 - **DW-1964:** Given a principal with `%Development:USE` and `%DB_USER:RW` granted SELECT on one probe table only, when it runs SELECT, UPDATE, TRUNCATE, CREATE TABLE and CALL against the other through the console's run route and its write path, then each answers SQLCODE -99 and the table is unchanged. No console path calls `action/query` (the `SqlPort` source pin).
 
 ## Spec Change Log
+
+- 2026-10-03, lead (rework 1, merge-gate rulings): re-opened for three `[Follow-up]` items (DW-1986 cache-independent privileges, DW-1987 view-only grant, DW-1988 password syntax) before dev_complete closes.
 
 - 2026-10-03, lead (dev_complete): the `deferred:` items are harvested: the cached CREATE TABLE privilege bypass as DW-1986 (vendor-defect candidate), the view-only INSERT gap as DW-1987 and the password-syntax question as DW-1988 (both routed to this story for the code review).
 
