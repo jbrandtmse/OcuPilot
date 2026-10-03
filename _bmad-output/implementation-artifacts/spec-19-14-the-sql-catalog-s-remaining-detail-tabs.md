@@ -140,7 +140,7 @@ deferred: []
 - AC2: Given a view in SQL views, when the person opens it, then View info shows its owner, last compile, read-only and updatable flags, class, check option, class type and text. Fields shows its columns and SQL statements shows its statements, and switching tabs keeps the view.
 - AC3: Given a procedure in SQL procedures, when the person opens it, then Stored procedure info shows its class, type, method, plain-text description, parameter counts and lists, interface, result columns and return value. SQL statements shows its statements.
 - AC4: Given a table that is not partitioned, when Partitions or Partition mappings opens, then it shows its empty state and the port sends no `Query` after the resolve.
-- AC5: Given statements another account ran, when any SQL statements tab is read by the screen or a tool, then each row carries statement text and statistics and never a user name, client name, address, application or call stack. The statement sent is the `INFORMATION_SCHEMA` one, never `StatementIndex`.
+- AC5: Given statements another account ran, when any SQL statements tab is read by the screen or a tool, then each row carries statement text and statistics and never a user name, client name, address, application or call stack. The statement sent is the `INFORMATION_SCHEMA` one, never `StatementIndex`. (Accepted by=merge_gate as classic parity; the reversal, if the owner asks, is one `WHERE` limiting the read to the caller's own statements.)
 - AC6: Given a principal granted SELECT on one probe view and EXECUTE on one probe procedure, when it reads the catalog, then those tabs read, and an ungranted view's or procedure's tabs answer not found.
 - AC7: Given the agent's tools, when they are listed, then the nine new read tools are advertised and answer bounded rows. A view's text, a description and a statement's text past 1,000 characters are cut and reported, and a seeded injection in each produces no proposal or navigation (AD-11 rule 5).
 - AC8: Given any new catalog read, when it executes, then `action/query` receives one of the port's fixed statements with every caller value only in `parameters`, and no `pFilter`.
@@ -150,7 +150,7 @@ deferred: []
 
 ## Spec Change Log
 
-- 2026-10-03, lead (spec gate): the spine carries the drafts (AD-61 rules 3, 7, 8; AD-36). The three open questions are accepted as decided in Design Notes (statements without identifying columns from `INFORMATION_SCHEMA`, never `StatementIndex`; partition tabs short-circuit on an unpartitioned table; definitions and statement text as bounded row fields). The plan's `deferred:` DW-1001 occurrence is harvested to the ledger. The Fixed-strings bound raise (2300 to 2500) is a contended edit pending the orchestrator's approval.
+- 2026-10-03, lead (spec gate): the spine carries the drafts (AD-61 rules 3, 7, 8; AD-36). The three open questions are accepted as decided in Design Notes (statements without identifying columns from `INFORMATION_SCHEMA`, never `StatementIndex`; partition tabs short-circuit on an unpartitioned table; definitions and statement text as bounded row fields). The plan's `deferred:` DW-1001 occurrence is harvested to the ledger. The Fixed-strings bound raise (2300 to 2500) is approved by=merge_gate.
 
 ## Review Triage Log
 
