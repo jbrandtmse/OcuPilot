@@ -3841,6 +3841,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T00:00:31Z status=routed owner=range-end-cleanup by=cr note=19.4 cr: first silent case, explorer.search.read searches *TODO* or a comma list literally and answers 0 rows unrefused; raise priority
 - 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
 - 2026-10-03T01:39:20Z occurrence=19-5-the-sql-catalog-browser note=the nine catalog read tools' schema and table criteria are described as comma lists where * matches; the port takes one exact name
+- 2026-10-03T10:32:35Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=the nine new catalog read tools' table, view and procedure criteria carry the generic text description
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
