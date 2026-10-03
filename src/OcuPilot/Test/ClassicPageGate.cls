@@ -348,6 +348,46 @@ Method TestAnAssignedPageGatesTheLdapRoutes()
     Do $$$AssertEquals(##class(OcuPilot.Test.ServiceLdapProbe).LdapExists("ocup99nosuchgate.invalid"), 0, "and nothing was created")
 }
 
+/// <p>Story 19.6 AC8: with the probe resource assigned to the classic SQL page, the principal lacking
+/// it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on SQL
+/// query's run route, its plan route and its confirmed run; the one holding it is answered a query's
+/// rows, its plan, and the confirmed run's SQL error for a table the namespace does not hold, so
+/// nothing changes.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.ExplorerSqlRun.PrivilegePairs</method> --
+/// the lacking principal's confirmed run is admitted and its leg goes red; drop the screen gate from
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Prepare</method> -- its run and plan legs go red.</p>
+Method TestAnAssignedPageGatesTheSqlConsole()
+{
+    Set tPage = "%CSP.UI.Portal.SQL.Home"
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tScope = "?ns=" _ $NAMESPACE
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tAction = {"action": "run", "id": "sql", "values": {"statement": "DELETE FROM OcuProbe1814NoSuch.Gate", "parameters": "[]", "maxRows": "10"}}.%ToJSON()
+    Set tLegs = $ListBuild($ListBuild(tBase _ "/explorer/sql/run" _ tScope, "{""statement"":""SELECT 1 AS One""}", "200 rows"), $ListBuild(tBase _ "/explorer/sql/plan" _ tScope, "{""statement"":""SELECT 1 AS One""}", "200 plan"), $ListBuild(tBase _ "/screens/explorer.sqlquery/action" _ tScope, tAction, "200 error"))
+    For tI = 1:1:$ListLength(tLegs) {
+        Set tLeg = $List(tLegs, tI)
+        For tCase = $ListBuild(..#LACKINGUSER, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"), $ListBuild(..#HOLDINGUSER, $List(tLeg, 3)) {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $List(tLeg, 1), $List(tCase, 1), ..PreparedPassword, .tStatus, .tText, .tHeaders, $List(tLeg, 2), "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            If '$IsObject(tAnswer) {
+                Set tSaid = $Get(tStatus) _ " " _ $Get(tText)
+            } ElseIf tAnswer.%GetTypeOf("code") = "string" {
+                Set tSaid = tStatus _ " " _ tAnswer.code _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: "")
+            } ElseIf tAnswer.%GetTypeOf("output") = "object" {
+                Set tSaid = tStatus _ " " _ tAnswer.output.%Get("outcome")
+            } Else {
+                Set tSaid = tStatus _ " " _ tAnswer.%Get("outcome")
+            }
+            Do $$$AssertEquals(tSaid, $List(tCase, 2), $List(tCase, 1) _ ": " _ $List(tLeg, 1) _ " with " _ tPage _ " assigned")
+        }
+    }
+}
+
 /// <p>Mint the namespace create of <var>pName</var> for <var>pUser</var> over a completed turn seeded
 /// for that user.</p>
 Method MintFor(pUser As %String, pName As %String, Output pProposal As %DynamicObject) As %Status

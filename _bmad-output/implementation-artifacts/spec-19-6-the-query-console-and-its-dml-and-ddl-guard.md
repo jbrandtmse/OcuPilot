@@ -2,14 +2,43 @@
 title: 'Story 19.6: The query console and its DML and DDL guard'
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3858df8f6c5587f22660dd42ba618b7f1dd7f2b2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Vendor candidate: a CREATE TABLE text a privileged account has already prepared in a namespace is
+      answered from its cached query without the next principal's privilege check, so a principal with no
+      DDL privilege creates the table through %Prepare(text, 1); DW-1964's CREATE TABLE leg uses a fresh name per run.
+    evidence: |-
+      ocupilot-a2-ci 2026-10-03: principal with %Development:USE, %DB_USER:RW, no grants; CREATE TABLE OcuProbe196.Made (X INTEGER)
+      ran after _SYSTEM had prepared the same text, and answered -99 under a never-prepared name; DROP TABLE,
+      TRUNCATE, SELECT and UPDATE stayed -99. The classic SQL page prepares the same way (inference).
+    location: 'src/OcuPilot/Port/SqlPort.cls (Prepared, Executed)'
+    severity: 'medium'
+  - summary: >-
+      An INSERT through a view over OcuPilot's tables, by a principal granted privileges on the view but not
+      on its base tables, is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for
+      an INSERT, and INFORMATION_SCHEMA.VIEW_TABLE_USAGE hides the base table from that principal.
+    evidence: |-
+      ocupilot-a2-ci 2026-10-03: principal with %Development:USE, %DB_HSCUSTOM:RW and SELECT, INSERT, DELETE on a view
+      over OcuPilot_Kernel_State.Proposal; Classify recorded only the view for INSERT, the base table for DELETE and
+      SELECT. As %All the view expansion finds it. Whether the vendor then runs that INSERT is unmeasured.
+    location: 'src/OcuPilot/Port/SqlPort.cls (Prepared)'
+    severity: 'medium'
+  - summary: >-
+      Whether an IRIS SQL form other than IDENTIFY BY or IDENTIFIED BY sets a password, which the pre-prepare text
+      refusal would let reach the statement index (DW-1982's root cause).
+    evidence: |-
+      Settle by listing the IRIS SQL statements that accept a password. A name probe of INFORMATION_SCHEMA.ROUTINES in
+      HSCUSTOM found no password-setting routine (inference: a name probe does not cover the population).
+    location: 'src/OcuPilot/Port/SqlPort.cls (PASSWORDPATTERN)'
+    severity: 'medium (unverified)'
 ---
 
 <intent-contract>
@@ -131,10 +160,10 @@ deferred: []
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe196`, a purpose-built principal, each removed after). Record the results in Design Notes.
+- [x] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe196`, a purpose-built principal, each removed after). Record the results in Design Notes.
   - (a) Enable `%System/%SQL/DynamicStatementDML` and `DynamicStatementDDL`. Run one DML and one DDL through a probe that calls `%Prepare(text,1)`/`%Execute`, read the audit rows, then restore both events' prior state.
   - (b) Measure what `TestCall.GatewaySeconds()` answers for a `%Developer` principal.
-- [ ] `src/OcuPilot/Port/SqlPort.cls` (new): the port.
+- [x] `src/OcuPilot/Port/SqlPort.cls` (new): the port.
   - **Gate:** as above.
   - **Classify**, in the switched region. It returns:
     - `{Namespace, Kind, StatementType, Tables, Parameters, Columns}`, or `{error: {sqlcode, message}}`;
@@ -147,47 +176,47 @@ deferred: []
   - **`Invoke`:** endpoint `Sql`, read type `GUARD` (Classify plus the declared values), write type `RUN` (refuses the `query` kind `EXPLORER.SQL.READS`).
   - **`SnippetForm`/`Snippet`:** an ObjectScript prepare-and-execute with literals.
   - **Test seams:** `GateClass()` and `BoundSeconds()`.
-- [ ] `src/OcuPilot/Area/Explorer/SqlConsole.cls` (new): `HandleRun` and `HandlePlan`. Each does the screen gate, reads the body, calls the port, calls `Prohibited.SqlStatement`, then answers. `confirm` comes before any execution for a mutating kind, and `parameters` when the count differs.
-- [ ] `src/OcuPilot/Api/Router.cls`: add-only. `POST /explorer/sql/run` and `POST /explorer/sql/plan` at the UrlMap tail, with two thin wrappers at the class end.
-- [ ] `src/OcuPilot/Screen/Descriptor/ExplorerSqlQuery.cls` (new).
+- [x] `src/OcuPilot/Area/Explorer/SqlConsole.cls` (new): `HandleRun` and `HandlePlan`. Each does the screen gate, reads the body, calls the port, calls `Prohibited.SqlStatement`, then answers. `confirm` comes before any execution for a mutating kind, and `parameters` when the count differs.
+- [x] `src/OcuPilot/Api/Router.cls`: add-only. `POST /explorer/sql/run` and `POST /explorer/sql/plan` at the UrlMap tail, with two thin wrappers at the class end.
+- [x] `src/OcuPilot/Screen/Descriptor/ExplorerSqlQuery.cls` (new).
   - Route `system-explorer/sql-query`, side bar 10, `form-page`, no read.
   - `rowActions [{id: run}]`, privileges `[%Development:USE]`, entity `class`, scope `namespace`, `id.kind none`.
   - Context fields `[]`, `classicPage` `%CSP.UI.Portal.SQL.Home`.
   - Three prompts in group Code, aliases, `toolIdentifier` `explorer.sqlquery`.
-- [ ] `src/OcuPilot/Screen/Tool/ExplorerSqlRun.cls` (new). Extends `Write`:
+- [x] `src/OcuPilot/Screen/Tool/ExplorerSqlRun.cls` (new). Extends `Write`:
   - `PORTCLASS` SqlPort, `ADVERTISED` 0, `SCREENACTIONS` run, `SCREENVALUES` `run=statement:parameters:maxRows`;
   - `READTYPE` GUARD, `WRITETYPE` RUN, `SENDSBODY` 0, `DESTRUCTIVE` 1, `CHANGEACTION` updated;
   - `PRECONDITIONFIELD` Kind, `FINGERPRINTSUBJECT` `Namespace,Kind,StatementType,Tables,statement,parameters`;
   - `InputSchema`: `statement`, `parameters`, `maxRows` plus the three rationale fields;
   - `ScreenActionDelta`: parses and bounds the three values, refusing other spellings (AD-56 ii);
   - `PortQuery`, `StateDiff` (rows Kind and Tables), and `WriteOutput` (the run answer, screen only).
-- [ ] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`:
+- [x] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`:
   - `OCUPILOTSQL` with its reason;
   - `SqlStatement(pText, pTables, pRecordsTables, Output pProhibits, Output pCode)` (Design Notes › Self-protection);
   - in `Prohibits`, the class branch reads the payload's guard fields when `WriteTypeOf` is `RUN`;
   - `Codes()` and `ReasonFor`.
-- [ ] `src/OcuPilot/Api/AtelierError.cls`: add-only. `EXPLORER.SQL.INPUT`, `.SESSION`, `.ADMINISTRATION`, `.SERVERFILES`, `.PASSWORD`, `.READS` and `.PARAMETERS`, with the reasons in Design Notes › Strings.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`: one line, `"explorer.sqlquery.run": false`.
-- [ ] `ui/src/app/areas/system-explorer/sql-query.page.ts` and `sql-query.store.ts` (new):
+- [x] `src/OcuPilot/Api/AtelierError.cls`: add-only. `EXPLORER.SQL.INPUT`, `.SESSION`, `.ADMINISTRATION`, `.SERVERFILES`, `.PASSWORD`, `.READS` and `.PARAMETERS`, with the reasons in Design Notes › Strings.
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls`: one line, `"explorer.sqlquery.run": false`.
+- [x] `ui/src/app/areas/system-explorer/sql-query.page.ts` and `sql-query.store.ts` (new):
   - a statement textarea on the code surface, Max rows, Run and Explain plan;
   - value fields after a `parameters` answer, cleared when the text changes;
   - `app-warning-dialog` on `confirm`, which on Proceed calls `sendFor(descriptor, 'run', 'sql', {statement, parameters, maxRows})`;
   - a `role="status"` line, a page-owned `role="table"` grid of text cells, the error as text, and the plan in a `<pre>`;
   - refusals as `role="alert"`, and state per `ScreenStore`.
-- [ ] `ui/src/app/shell/screen-outlet.ts`: add-only import and `DESCRIPTOR_PAGES` entry. Regenerate `ui/src/app/core/screens.generated.ts`.
-- [ ] `ui/src/app/core/strings.ts`: keys at the end, each annotated `/** EXPERIENCE.md:597 */`. `ui/src/styles/_components.scss`: add-only console rules on tokens.
-- [ ] EXPERIENCE.md:
+- [x] `ui/src/app/shell/screen-outlet.ts`: add-only import and `DESCRIPTOR_PAGES` entry. Regenerate `ui/src/app/core/screens.generated.ts`.
+- [x] `ui/src/app/core/strings.ts`: keys at the end, each annotated `/** EXPERIENCE.md:597 */`. `ui/src/styles/_components.scss`: add-only console rules on tokens.
+- [x] EXPERIENCE.md:
   - :159 in place: append `· SQL query`.
   - :173 in place: add "run a SQL statement that changes data, the schema or calls a procedure (SQL query, Story 19.6)" to the warnings list.
   - A Fixed-strings row after :596.
-- [ ] Tests (ObjectScript, new): `Test/SqlPort.cls`, `Test/SqlPortLive.cls` with `Test/SqlConsoleProbe.cls`, `Test/SqlConsoleRoutes.cls` (HTTP) and `Test/SqlConsoleWrite.cls` (the screen action). Together they cover:
+- [x] Tests (ObjectScript, new): `Test/SqlPort.cls`, `Test/SqlPortLive.cls` with `Test/SqlConsoleProbe.cls`, `Test/SqlConsoleRoutes.cls` (HTTP) and `Test/SqlConsoleWrite.cls` (the screen action). Together they cover:
   - every matrix row;
   - the kind table over the numbers 1–80, 99 and an unknown 81;
   - a probe procedure that leaves `$TLevel` raised, rolled back to its start;
   - a source pin that `SqlPort` names no `%Api.Atelier` class and calls no `AtelierPort.Invoke`.
-- [ ] Rosters: as listed in Design Notes › Rosters.
-- [ ] Client tests: `sql-query.page.spec.ts` (new), the tools tests the screen trips, and `ui/browser/system-explorer-sql-query.browser-spec.mjs` (new).
-- [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build. Stop and ask above 3,800 kB.
+- [x] Rosters: as listed in Design Notes › Rosters.
+- [x] Client tests: `sql-query.page.spec.ts` (new), the tools tests the screen trips, and `ui/browser/system-explorer-sql-query.browser-spec.mjs` (new).
+- [x] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build. Stop and ask above 3,800 kB.
 
 **Acceptance Criteria:**
 
@@ -210,6 +239,42 @@ deferred: []
 - 2026-10-03, lead (spec gate, by=merge_gate): the split is approved: Story 19.15 (`19-15-the-query-console-runs-a-query-in-the-background`, right after 19.6) takes the run-in-background option; this spec's scope stands. The design is approved as planned; the spine carries the drafts (AD-61's named case for `Port/SqlPort` with the alarm-rollback and `Explain` measurements, AD-10, AD-21, AD-36, AD-39, AD-53, AD-51, AD-44, AD-13, AD-8). The plan's `deferred:` vendor item is filed as DW-1982 (decision-pending). Contended edits approved: EXPERIENCE.md :159 in place; :173 hand-merged by whichever of 19.6 and Epic 18's story lands second, keeping both; `angular.json` under the re-measure rule.
 
 ## Review Triage Log
+
+### 2026-10-03 — Review pass
+
+- verdicts: 31 findings — high 2, medium 6, low 17, false 5, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` verification-gap: a custom resource on the classic SQL page is never shown to gate the run and plan routes (AC8) — `ClassicPageGate.TestAnAssignedPageGatesTheSqlConsole` added (both routes and the confirmed run, lacking and holding principals); mutations runs 3892, 3893.
+  - `[medium]` `[patch]` verification-gap: the value count before the confirmation is untested for a statement that changes something — `SqlConsoleRoutes` legs for an UPDATE with a `?`, without and with its value; mutation run 3898.
+  - `[high]` `[patch]` verification-gap: a DML statement through a view over OcuPilot's tables is never exercised — verified real: an INSERT through such a view recorded only the view (probe on `ocupilot-a2-ci`), so rule (b) missed it; `Prepared` now adds each view's base tables from `INFORMATION_SCHEMA.VIEW_TABLE_USAGE`, with INSERT and DELETE view legs in `SqlPortLive`, `SqlConsoleRoutes` and `SqlConsoleWrite`; mutation run 3894. A principal holding privileges on the view alone still sees no base table: deferred.
+  - `[low]` `[patch]` verification-gap: rule (c)'s default schema is never verified through the port — `SqlPortLive` asserts the guard's `DefaultSchema` equals the namespace's; mutation run 3895.
+  - `[low]` `[patch]` verification-gap: the fail-closed refusal of an unindexed statement has no test — `Test/SqlPortUnindexed` fixture and `SqlPortLive.TestAnUnindexedStatementFailsClosedAndLogsNoText`; mutation run 3896.
+  - `[medium]` `[patch]` verification-gap: AC7's no-log-line check never reaches the one path that logs (`Fail`) — the same test's log leg scans `messages.log` for the refusal's line and the statement's mark; mutation run 3897.
+  - `[low]` `[patch]` verification-gap: the rolled-back and stopped-query status lines are never rendered in a test — one `sql-query.page.spec.ts` case; mutation observed red under vitest.
+  - `[low]` `[reject]` verification-gap other: a re-prepare answering another type shows an empty status line — needs a schema or grant change between the two prepares of one request; the fix adds a branch and a string.
+  - `[low]` `[reject]` verification-gap other: the bound-not-spliced value catches only a quoted splice — its recorded mutation reddened it, and a raw splice breaks `SqlConsoleWrite`'s no-trace UPDATE and the browser spec's echo leg.
+  - `[low]` `[patch]` verification-gap other: the AC9 browser comment named a different first-failing assertion — corrected to "Proceed created the table"; browser runs carry no run id.
+  - `[low]` `[reject]` verification-gap other: `FINGERPRINTSUBJECT` includes `maxRows`, beyond the task line — the fix would edit this build's spec; `PortQuery` needs `maxRows` after projection (Auto Run Result).
+  - `[low]` `[reject]` verification-gap Rule 19: AC6's query half has no demonstrated mutation — Rule 19 asks one per AC (the DML half, run 3877); an unbounded five-way cross join would hold a throwaway process to the gateway bound.
+  - `[medium]` `[patch]` verification-gap Rule 19: AC7's log clause could not fail — grouped with the log-line row above.
+  - `[medium]` `[patch]` verification-gap Rule 19: AC8's route clause had no test, its `%Developer` clause no mutation line — the route clause is grouped with the first row; the `%Developer` clause is `DeveloperFloor`'s, and one mutation per AC is the bar.
+  - `[low]` `[patch]` verification-gap Rule 19: the AC9 line has no run id — grouped with the AC9 comment row.
+  - `[low]` `[reject]` verification-gap Rule 19: `Executed`'s privileged prepare is pinned only by source text — not reachable on its own: `Classify`'s privileged prepare refuses first, and the source pin catches the off spelling.
+  - `[high]` `[patch]` intent-alignment A: `ExplorerSqlRun` declared no pairs, so the classic SQL page's custom resource was never checked on the confirmed run — verified: with the resource assigned, a lacking principal's confirmed run was admitted (run 3892 with the old code); `PrivilegePairs` now answers `Screen.Gate.RequiredPairs` of its descriptor.
+  - `[false]` `[reject]` intent-alignment B: missing database READ answers `NS.DENIED` over HTTP — the caller is refused 403 naming the pair before any prepare; the router's namespace gate answers first for every namespace-scoped route, and the port's own refusal is pinned by `SqlPortLive`.
+  - `[medium]` `[defer]` intent-alignment C: a CREATE TABLE text another account prepared runs for an unprivileged principal — vendor behavior, already in `deferred:`.
+  - `[low]` `[reject]` intent-alignment D: the production bound is never exercised — a 50-second wait per run; the fixture overrides only `BoundSeconds`, and Task 0 (b) measured the production value.
+  - `[false]` `[reject]` intent-alignment D: the `other` kind runs unbounded — the intent bounds queries and DML; `other` is neither.
+  - `[false]` `[reject]` intent-alignment D: the screen says a stopped DML statement's changes were undone from its kind alone — the instance rolls a stopped DML statement back whole (measured; the stopped-UPDATE leg pins the table unchanged).
+  - `[low]` `[reject]` intent-alignment E: the routes prepare a statement naming OcuPilot before refusing it — the prepare executes nothing and leaves the statement-index row every console statement leaves; a pre-prepare check is a new guard.
+  - `[low]` `[reject]` intent-alignment E: the write path's DROP leg names a stand-in table — rule (a) refuses it either way, the real name is pinned on both routes where nothing executes, and a regressed refusal would drop OcuPilot's own table.
+  - `[low]` `[patch]` intent-alignment E: rule (c) is tested with made-up inputs only — grouped with the default-schema row.
+  - `[false]` `[reject]` intent-alignment F: vendor audit rows carry the text and values when the operator enables those events — the intent's line is anchored on AD-39, which governs what OcuPilot emits; the vendor row is AD-53's named gap, and `noAudit` would hide the run from the operator's chosen audit.
+  - `[low]` `[reject]` intent-alignment G: the 1,000,000-character cut is measured over the kept rows — the overshoot is the column header and envelope.
+  - `[maybe-false]` `[defer]` intent-alignment G: another SQL form may set a password — deferred (medium, unverified) with the check that settles it.
+  - `[false]` `[reject]` intent-alignment G: the index check uses a SELECT literal as a stand-in for CREATE USER — by design: no password statement is prepared even under a mutation.
+  - `[low]` `[reject]` intent-alignment G: THROUGH is pinned by its type number alone — it prepares only against a pass-through foreign server the throwaway cannot host; type 80's kind and the server-files refusal are each pinned.
+  - `[low]` `[reject]` intent-alignment G: a refused-kind statement whose prepare fails answers `error` — nothing runs, and the kind is unknown without a prepare.
 
 ## Design Notes
 
@@ -255,6 +320,11 @@ The guard stays in this story with the console.
   - It stopped an UPDATE (slow function, 40 rows) after 3.05 s, with SQLCODE -149, and the table read unchanged.
 - **Plan:** `Explain` answers `<plans><plan>…` text in about 0.003 s and executes nothing. It refuses CREATE TABLE and CALL with -481a.
 - **Audit:** every `%System/%SQL/*` event and `%System/%SMPExplorer/ExecuteQuery` read `Enabled` No.
+
+**Task 0, measured on `ocupilot-a2-ci`, 2026-10-03.** Probe objects and principals were removed and checked gone.
+
+- **(a) Audit:** with `%System/%SQL/DynamicStatementDML` and `DynamicStatementDDL` enabled, one `%Prepare(text,1)`/`%Execute` of each wrote one audit row. The DDL row (`SQL CREATE TABLE Statement`) holds the statement text; the DML row (`SQL INSERT Statement`) holds the text and the bound parameter values. Both events were restored to disabled.
+- **(b) Bound:** `TestCall.GatewaySeconds()` answered 60 for a `%Developer` principal, read from the configuration file (`CSP.ini`), and 60 for `_SYSTEM`, from the live Gateway registry; `BoundSeconds` is 50 for both.
 
 **Guard** (`%Metadata.statementType` → kind):
 
@@ -437,8 +507,32 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - AC8: the descriptor's `classicPage` `""` → `ExplorerDescriptor`.
 - AC9: `SqlPort.Run` answering `done` for a `ddl` kind without executing it → the browser AC9 leg (SQL tables does not list the table).
 - DW-1964: `%Prepare(text, 0)` → the principal's UPDATE leg (the table changes).
+- mutation: AC1, `Executed` splices the first value into the text as a literal → `SqlPortLive.TestAQueryAnswersItsRowsBoundAndCut`, the bound-not-spliced leg alone (run 3872).
+- mutation: AC2, `TYPESQUERY` maps type 4 to `query` → `SqlConsoleRoutes.TestAChangeWaitsOnAConfirmationAndRunsNothing`, both disguised-DELETE legs and "nothing ran" (the DELETE ran without a confirmation; run 3873).
+- mutation: AC3, the password check moved after the prepare in `Classify` → `SqlPortLive.TestRefusedStatementsAndThePasswordNeverReachTheIndex`, the statement-index leg alone (run 3874).
+- mutation: AC4, rule (b)'s loop in `Prohibited.SqlStatement` skipped → `SqlPortLive.TestOcuPilotsOwnTablesAreFoundAndRefused`, the view-over-`Proposal` leg alone (run 3875).
+- mutation: AC5, `Plan` runs the statement through `Executed` before `Explained` → `SqlPortLive.TestAPlanExecutesNothing`, the unchanged-table leg (run 3876).
+- mutation: AC6, the alarm not set for an UPDATE (type 3) in `Executed` → `SqlPortLive.TestAStatementPastTheBoundIsStopped`, the stopped-UPDATE and unchanged-table legs (run 3877). Narrowed to type 3 so the unbounded cross-join query leg does not run on the throwaway.
+- mutation: AC7, `ExplorerSqlRun.ADVERTISED` 1 → `SqlConsoleWrite.TestTheRunIsAbsentFromEveryRosterTheAgentSees`, six legs (run 3878).
+- mutation: AC8, `ExplorerSqlQuery` `classicPage` `""` → `ExplorerDescriptor.TestSqlQueryKeysTheClassicSqlPage` (run 3879).
+- mutation: AC9, `Run` answers `done` for a `ddl` kind without executing it → `system-explorer-sql-query.browser-spec.mjs`, the AC2/AC9 test at "Proceed created the table".
+- mutation: DW-1964, both `%Prepare(pText, 1)` calls (`Prepared` and `Executed`) given 0 → `SqlPortLive.TestTheInstanceRefusesAnUngrantedTableAtPrepare`, legs 1-5, the unchanged-table and nothing-created legs (run 3880). `Executed` alone stays green, since `Classify` refuses first.
+- mutation: AC8, `ExplorerSqlRun.PrivilegePairs` answering no pair → `ClassicPageGate.TestAnAssignedPageGatesTheSqlConsole`, the lacking principal's confirmed-run leg alone (run 3892); the screen gate dropped from `SqlConsole.Prepare` → its run and plan legs (run 3893).
+- mutation: AC4, the view expansion in `Prepared` skipped → `SqlPortLive.TestOcuPilotsOwnTablesAreFoundAndRefused`, the INSERT-through-the-view legs alone (run 3894).
+- mutation: AC4 rule (c), `Prepared` answering an empty `defaultSchema` → `SqlPortLive.TestTheKindIsThePreparedStatementType`, the default-schema leg alone (run 3895).
+- mutation: the unindexed refusal dropped from `Classify` → `SqlPortLive.TestAnUnindexedStatementFailsClosedAndLogsNoText`, its refusal and logged legs (run 3896); AC7, the statement put into that refusal's logged status → its log leg alone (run 3897).
+- mutation: AC1, the confirmation answered before the value count in `HandleRun` → `SqlConsoleRoutes.TestTheRunRouteAnswersAQueryAndAsksForValues`, the UPDATE-with-a-? leg alone (run 3898).
+- mutation: AC6 on the screen, `statusLineFor` dropping its rolled-back line → `sql-query.page.spec.ts`, "reads a run whose open transaction was undone" (vitest).
+- mutation: `PortGate`'s `SqlPort` row absent → `PortGate.TestEveryPortDeclaresANamedGate` (run 3925, before the row was added).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Summary:** SQL query (System Explorer, side bar 10) runs one statement through the new `Port/SqlPort`. The port gates first, refuses bad input and password text before any prepare, prepares with `%Prepare(text, 1)` as the signed-in user, classifies by `statementType`, and refuses session, administration and server-file kinds. A query runs under the alarm with Max rows and the cell and answer cuts; Explain executes nothing. DML, DDL, CALL and unclassified statements answer `confirm` and run only through the unadvertised `explorer.sqlquery.run` (key `false`), which classifies again and holds `PROHIBITED.OCUPILOTSQL` inside the target's hold. Rows, errors and plans reach the screen only.
+- **Files:** new `Port/SqlPort.cls`, `Area/Explorer/SqlConsole.cls`, `Screen/Descriptor/ExplorerSqlQuery.cls`, `Screen/Tool/ExplorerSqlRun.cls`; edited `Prohibited.cls` (code, `SqlStatement`, the RUN arm), `AtelierError.cls` (7 codes), `Router.cls` (2 routes), `Baseline.cls`; client `sql-query.page.ts`/`.store.ts` with `screen-outlet.ts`, `screens.generated.ts`, `strings.ts`, `_components.scss`; EXPERIENCE.md :159, :173, :597; `angular.json` budget 2655kB (measured 2,654,833 bytes, DW-1166); tests `SqlPort`, `SqlPortLive`, `SqlPortFixture`, `SqlPortUnindexed`, `SqlConsoleProbe`, `SqlConsoleRoutes`, `SqlConsoleWrite`, `sql-query.page.spec.ts`, `system-explorer-sql-query.browser-spec.mjs`; rosters `ReadTool`, `GovernanceBaseline`, `Governance`, `ExplorerDescriptor`, `DeveloperFloor`(`Routes`), `SurfaceCoverage`, `EndpointCoverage`, `ToolWrite`, `Test/Prohibited`, `RefusalCopy`, `PortGate`, `ToolEmit`, `AuditingUpdate`, `ToolRoundTrip`, `ClassicPageGate`, `navigation.test.mjs`, `self-protection.test.mjs`, `angular-json.test.mjs`, `ci-throwaway.sh`'s arming roster.
+- **Review:** 31 findings; patched 2 high (the run's missing pairs, so the classic page's custom resource now gates the confirmed run; INSERT through a view over OcuPilot's tables, now expanded through `VIEW_TABLE_USAGE`), 4 medium entries and 6 low rows; 2 deferred (view-only principal, password forms); the rest rejected with reasons in the triage log. Follow-up review: `false` — both patched highs are pinned by demonstrated mutations (runs 3892, 3894), and the one measured limit of the view fix is deferred, not unverified.
+- **Deviations from the plan:** `FINGERPRINTSUBJECT` carries `maxRows` so `PortQuery` keeps it after projection; the cut status reads "<n> rows are shown; the answer holds more." because the port never learns the total; the password reason names "the Users list in Permissions" instead of a `›` path; `explorerSqlRolledBack` added for a run that left a transaction open; `PortGate`'s roster row names the reused `OcuPilot.Port.AtelierPort.PAIRS`, and the test now reads a qualified row.
+- **Verification:** `check-objectscript` 0 problems, harness OK; `lint-docs` clean; `npm test` 1781 tools and 2247 component tests green; browser `system-explorer-sql-query` 2/2 after the review patches (`system-explorer-sql` 4/4 and `a11y-structural-invariants` 12/12 at the handoff); per-class runs after patches green (`SqlPortLive` 3888, `SqlConsoleRoutes` 3889, `SqlConsoleWrite` 3890, `ClassicPageGate` 3891, `PortGate` 3936, `ToolEmit` 4153, `AuditingUpdate` 4154, `ToolRoundTrip` 4336). Full ObjectScript sweep on `ocupilot-a2-ci` as 20 sequential `--shard k/20` legs, one class at a time: 434 classes, 3,540 tests. `PortGate`, `ToolEmit`, `AuditingUpdate` and `ToolRoundTrip` were this story's roster misses, fixed and re-run green. Residue: `MappingCodeGlobals` (an `^oddPKG("OCUPILOT")` schema entry written 16:38:44 by the plan stage's probe process, journal-verified), `WireSecurityRead` (DW-1554). Environment: `JournalSettingsWrite`, `JournalWrite`, `JournalSettingsRules`, `PathPortInstance` and `JournalWriteGate` refuse at setup because this throwaway predates `OCUPILOT_ALLOW_JOURNAL`.
+- **Residual risks:** the two deferred items; `ClassicPageGate.cls`, `PortGate.cls`, `ToolEmit.cls` and `AuditingUpdate.cls` are edits beyond the plan's footprint (add-only or union-at-merge roster lines, none on a line Epic 18 changes); probe runs leave `^oddPKG("OCUPROBE196")` schema entries in USER and HSCUSTOM, which no SQL statement removes.

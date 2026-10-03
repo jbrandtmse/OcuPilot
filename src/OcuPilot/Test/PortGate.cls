@@ -21,11 +21,12 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 
 /// <p>The roster: one <code>|</code>-separated row per port class, as
 /// <code>&lt;class&gt;=&lt;parameter&gt;[;&lt;parameter&gt;]</code>, naming the
-/// <code>Parameter</code>(s) that are that port's declared pair set. A port whose gate is the
-/// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
+/// <code>Parameter</code>(s) that are that port's declared pair set, or <code>&lt;class&gt;.&lt;parameter&gt;</code>
+/// for a port that evaluates another port's set. A port whose gate is the vendor's own resource
+/// check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -129,7 +130,8 @@ Method TestEveryPortDeclaresANamedGate()
         }
         For tJ = 1:1:$Length(tRow, ";") {
             Set tParameter = $Piece(tRow, ";", tJ)
-            Set tSpec = $Parameter(tClass, tParameter)
+            Set tOwner = $Select(tParameter [ ".": $Piece(tParameter, ".", 1, $Length(tParameter, ".") - 1), 1: tClass)
+            Set tSpec = $Parameter(tOwner, $Piece(tParameter, ".", $Length(tParameter, ".")))
             Do $$$AssertNotEquals(tSpec, "", tClass _ "." _ tParameter _ ": is declared and non-empty")
             Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
             Do $$$AssertTrue($ListLength(tPairs) > 0, tClass _ "." _ tParameter _ ": parses to at least one (resource, permission) pair: " _ tSpec)

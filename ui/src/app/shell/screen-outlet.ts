@@ -73,6 +73,7 @@ import { SourceEditorPage } from '../areas/system-explorer/source-editor.page';
 import { CodeSearchPage } from '../areas/system-explorer/code-search.page';
 import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
 import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
+import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -210,6 +211,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlTables': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerSqlViews': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures': CodeListPage,
+  // Story 19.6: SQL query, the console with its guard's confirmation.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlQuery': SqlQueryPage,
 };
 
 /**

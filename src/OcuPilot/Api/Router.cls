@@ -223,6 +223,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
   <Route Url="/journal/settings" Method="PUT" Call="JournalSettingsUpdate"/>
   <Route Url="/journal/record" Method="GET" Call="JournalRecord"/>
+  <Route Url="/explorer/sql/run" Method="POST" Call="ExplorerSqlRun"/>
+  <Route Url="/explorer/sql/plan" Method="POST" Call="ExplorerSqlPlan"/>
 </Routes>
 }
 
@@ -1649,6 +1651,20 @@ ClassMethod JournalSettingsUpdate() As %Status
 ClassMethod JournalRecord() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.JournalRecordDetail).HandleGet()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/run</code> (Story 19.6): SQL query's
+/// run route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlRun() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandleRun()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/plan</code> (Story 19.6): SQL query's
+/// plan route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlPlan() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandlePlan()
 }
 
 }

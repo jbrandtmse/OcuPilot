@@ -464,6 +464,20 @@ Parameter OCUPILOTCODE = "PROHIBITED.OCUPILOTCODE";
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTCODEREASON = "This is OcuPilot's own code. It cannot be compiled, deleted or replaced from OcuPilot.";
 
+/// <p>The write type of the SQL console's confirmed run (Story 19.6), which the class arm judges by
+/// <method>SqlStatement</method> rather than by document name.</p>
+Parameter SQLRUNWRITETYPE = "RUN";
+
+/// <p>A SQL console statement reads or changes OcuPilot's own tables or code
+/// (<method>SqlStatement</method>, AD-10 as amended 2026-10-03). Refused on the console's run route,
+/// its plan route and its write path, reads included.</p>
+Parameter OCUPILOTSQL = "PROHIBITED.OCUPILOTSQL";
+
+/// <p>The one sentence <parameter>OCUPILOTSQL</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>explorerSqlRefusalOcuPilot</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter OCUPILOTSQLREASON = "This statement reads or changes OcuPilot's own tables or code, which OcuPilot does not offer.";
+
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
 /// the session the serving request itself runs in (AD-10 as amended 2026-09-28). The web-session
@@ -690,10 +704,11 @@ Parameter READTYPE = "GET";
 /// <method>Ssl</method> adds, and the one <method>Service</method> adds, and the one
 /// <method>Namespace</method> adds, the two <method>WebSession</method> adds, the one
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
-/// <method>Lock</method> adds, and the one <method>Code</method> adds last -- twenty-five in all.</p>
+/// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
+/// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -730,6 +745,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTDATABASE Quit ..#OCUPILOTDATABASEREASON
     If pCode = ..#OCUPILOTLOCK Quit ..#OCUPILOTLOCKREASON
     If pCode = ..#OCUPILOTCODE Quit ..#OCUPILOTCODEREASON
+    If pCode = ..#OCUPILOTSQL Quit ..#OCUPILOTSQLREASON
     Quit ""
 }
 
@@ -1063,6 +1079,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; reviewed file holds.
         If (tType = ..#TYPECLASS) || (tType = ..#TYPEROUTINE) {
             If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#EXPORTWRITETYPE Quit
+            ; Story 19.6: the console's confirmed run is judged by its statement's guard, read again
+            ; here through the tool's port with the stored payload.
+            If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#SQLRUNWRITETYPE {
+                Set tSC = ..SqlRun(pToolName, tId, pPayload, .pProhibits, .pCode)
+                Quit
+            }
             Set tSC = ..Code($Select($ZConvert(tId, "L") = ..#IMPORTTARGET: ..ImportedNames(pPayload), 1: tId), .pProhibits, .pCode)
             Quit
         }
@@ -1971,6 +1993,94 @@ ClassMethod Code(pId As %String, Output pProhibits As %Boolean, Output pCode As 
         }
     }
     Quit $$$OK
+}
+
+/// <p>Whether SQL console statement <var>pText</var> reads or changes OcuPilot's own tables or code,
+/// in <var>pProhibits</var> with <parameter>OCUPILOTSQL</parameter> in <var>pCode</var> (AD-10 as
+/// amended 2026-10-03). Any one of three refuses it:</p>
+/// <ul>
+/// <li>(a) the text contains one of <method>OwnNameStems</method>, in any case -- the fail-closed
+/// backstop where the instance records no target, which also refuses such a word in a literal or a
+/// comment;</li>
+/// <li>(b) a table or view of <var>pTables</var>, the relations the instance's statement index
+/// records for the statement (a view's base tables included), lies in a schema beginning with one;</li>
+/// <li>(c) the statement records no table (<var>pRecordsTables</var> 0) and
+/// <var>pDefaultSchema</var>, the target namespace's default schema, begins with one.</li>
+/// </ul>
+/// <p>A value bound by <code>?</code> is never text, so it is not read. Named gap: a procedure's or
+/// function's own code reaching OcuPilot's tables, which the statement does not show. The console's
+/// run route, its plan route and the write path below call this one method.</p>
+ClassMethod SqlStatement(pText As %String, pTables As %List, pRecordsTables As %Boolean, Output pProhibits As %Boolean, Output pCode As %String, pDefaultSchema As %String = "") As %Status
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tStems = ..OwnNameStems()
+    Set tText = $ZConvert(pText, "L")
+    For tI = 1:1:$ListLength(tStems) {
+        Set tStem = $List(tStems, tI)
+        If (tStem '= "") && (tText [ tStem) {
+            Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    If pProhibits Quit $$$OK
+    For tI = 1:1:$ListLength(pTables) {
+        If ..IsOcuPilotCode($ListGet(pTables, tI)) {
+            Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
+            Quit
+        }
+    }
+    If pProhibits Quit $$$OK
+    If ('pRecordsTables || ($ListLength(pTables) = 0)) && ..IsOcuPilotCode(pDefaultSchema) Do ..Refuse(..#OCUPILOTSQL, .pProhibits, .pCode)
+    Quit $$$OK
+}
+
+/// <p>The SQL console's confirmed run (Story 19.6): its stored payload's <code>statement</code> is
+/// judged by <method>SqlStatement</method>, first by its text alone and then with the guard the
+/// tool's port answers for the payload now -- the statement classified again, in the namespace the
+/// payload names (AD-11). A guard the port refuses with a 4xx is not judged here: the write's own run
+/// answers that same refusal before anything runs. Any other failure to read it is an error
+/// status.</p>
+ClassMethod SqlRun(pToolName As %String, pId As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPayload = ..ParsedObject(pPayload)
+        Set tText = $Select(tPayload.%GetTypeOf("statement") = "string": tPayload.%Get("statement"), 1: "")
+        Set tSC = ..SqlStatement(tText, "", 1, .pProhibits, .pCode)
+        If $$$ISERR(tSC) || pProhibits Quit
+        Set tClass = ..ToolClassNamed(pToolName)
+        If tClass = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.Proposal.Operation).Query(tClass, $ClassMethod(tClass, "IdParam"), pId, pPayload, .tQuery)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), $ClassMethod(tClass, "Endpoint"), .tQuery, pId, .tGuard, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) {
+            If (+$Get(tHttp) >= 400) && (+$Get(tHttp) < 500) Quit
+            Set tSC = tReadSC
+            Quit
+        }
+        If '$IsObject($Get(tGuard)) || 'tGuard.%IsA("%Library.DynamicObject") {
+            Set tSC = $$$ERROR($$$GeneralError, "the prohibited set read the statement's guard and was answered no object")
+            Quit
+        }
+        Set tTables = ""
+        If tGuard.%GetTypeOf("Tables") = "array" {
+            Set tIterator = tGuard.%Get("Tables").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tTable) {
+                Set tTables = tTables _ $ListBuild(tTable)
+            }
+        }
+        Set tSC = ..SqlStatement(tText, tTables, ''tGuard.%Get("RecordsTables"), .pProhibits, .pCode, tGuard.%Get("DefaultSchema"))
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The documents an import's stored payload <var>pPayload</var> reviewed, comma-joined: the name

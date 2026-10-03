@@ -156,6 +156,7 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.import": false,
   "explorer.classes.save": false,
   "explorer.routines.save": false,
+  "explorer.sqlquery.run": false,
   "explorer.routines.import": false
 }
 }

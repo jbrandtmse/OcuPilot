@@ -229,6 +229,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
             ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
             If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))
+            ; Story 19.6: the SQL run declares its screen's set and no write pair of its own, its
+            ; statement's SQL privileges being checked at its prepare (AD-8).
+            If tTool.name = "explorer.sqlquery.run" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))

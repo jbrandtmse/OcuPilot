@@ -14,10 +14,10 @@
 Class OcuPilot.Test.ExplorerDescriptor Extends %UnitTest.TestCase
 {
 
-/// <p>The twenty-seven descriptors: the five code screens listed, in side-bar order, then viewers,
+/// <p>The twenty-eight descriptors: the five code screens listed, in side-bar order, then viewers,
 /// then editors; then the four SQL catalog lists, in side-bar order, a table's nine tabs, a view's
-/// three and a procedure's two.</p>
-Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument,OcuPilot.Screen.Descriptor.ExplorerClassEditor,OcuPilot.Screen.Descriptor.ExplorerRoutineEditor,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures,OcuPilot.Screen.Descriptor.ExplorerSqlTable,OcuPilot.Screen.Descriptor.ExplorerSqlFields,OcuPilot.Screen.Descriptor.ExplorerSqlIndices,OcuPilot.Screen.Descriptor.ExplorerSqlPartitions,OcuPilot.Screen.Descriptor.ExplorerSqlPartitionMappings,OcuPilot.Screen.Descriptor.ExplorerSqlTriggers,OcuPilot.Screen.Descriptor.ExplorerSqlConstraints,OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries,OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements,OcuPilot.Screen.Descriptor.ExplorerSqlView,OcuPilot.Screen.Descriptor.ExplorerSqlViewFields,OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements,OcuPilot.Screen.Descriptor.ExplorerSqlProcedure,OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements";
+/// three and a procedure's two; then SQL query.</p>
+Parameter DESCRIPTORS = "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerClassDocument,OcuPilot.Screen.Descriptor.ExplorerRoutineDocument,OcuPilot.Screen.Descriptor.ExplorerClassEditor,OcuPilot.Screen.Descriptor.ExplorerRoutineEditor,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures,OcuPilot.Screen.Descriptor.ExplorerSqlTable,OcuPilot.Screen.Descriptor.ExplorerSqlFields,OcuPilot.Screen.Descriptor.ExplorerSqlIndices,OcuPilot.Screen.Descriptor.ExplorerSqlPartitions,OcuPilot.Screen.Descriptor.ExplorerSqlPartitionMappings,OcuPilot.Screen.Descriptor.ExplorerSqlTriggers,OcuPilot.Screen.Descriptor.ExplorerSqlConstraints,OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries,OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements,OcuPilot.Screen.Descriptor.ExplorerSqlView,OcuPilot.Screen.Descriptor.ExplorerSqlViewFields,OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements,OcuPilot.Screen.Descriptor.ExplorerSqlProcedure,OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements,OcuPilot.Screen.Descriptor.ExplorerSqlQuery";
 
 /// <p>The SQL catalog's classic page, whose compiled <code>RESOURCE</code> is
 /// <code>%Development</code>.</p>
@@ -37,7 +37,7 @@ Method TestTheAreaIsTheEighthRailItem()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, 9, "Agent co-pilot moves to 9")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("system-explorer", .tListed)
     Do $$$AssertStatusOK(tSC, "the side bar reads")
-    Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures", "its side bar lists Classes, Routines, Search, Compare, Macros, SQL schemas, SQL tables, SQL views and SQL procedures")
+    Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures,OcuPilot.Screen.Descriptor.ExplorerSqlQuery", "its side bar lists Classes, Routines, Search, Compare, Macros, SQL schemas, SQL tables, SQL views, SQL procedures and SQL query")
 }
 
 /// <p>Each declaration that reads validates, is gated on the measured pair, reads through the
@@ -161,12 +161,12 @@ Method TestTheAreaHoldsTwentyFourReadsAndEightWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete, import and save keys disabled")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.sqlquery.run=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete, import, save and SQL run keys disabled")
     For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Set tMulti = $Select($$$ISOK(tSC) && (tDeclaration.%GetTypeOf("multiSelect") = "object"): tDeclaration.multiSelect.%ToJSON(), 1: "")
-        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local,save|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", 1: "||")
+        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local,save|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", tClass = "OcuPilot.Screen.Descriptor.ExplorerSqlQuery": "|run|", 1: "||")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tMulti, tWant, tClass _ ": its actions")
     }
 }
@@ -252,6 +252,40 @@ Method TestCompareKeysTheClassicCompareRoutinesPage()
     For tOther = "OcuPilot.Screen.Descriptor.ExplorerSearch", "OcuPilot.Screen.Descriptor.ExplorerMacro" {
         Do $$$AssertEquals($ClassMethod(tOther, "ClassicPage"), "", tOther _ " declares no classic page")
     }
+}
+
+/// <p>Story 19.6 AC8: SQL query is a listed form page at side-bar position 10 with no read, no table
+/// and no context field, its one row action <code>run</code>, keyed by nothing, gated on
+/// <code>%Development:USE</code> and keyed to the classic SQL page, which the portal's own resolver
+/// answers; a custom resource an operator assigns to that page gates it; its tool identifier resolves
+/// to it and its context names no tool, the run being unadvertised.</p>
+/// <p>Mutation (Rule 19): set <class>OcuPilot.Screen.Descriptor.ExplorerSqlQuery</class>'s
+/// <code>classicPage</code> to <code>""</code> -- this goes red.</p>
+Method TestSqlQueryKeysTheClassicSqlPage()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.ExplorerSqlQuery"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind, "system-explorer/sql-query|10|form-page|class|namespace|none", "a listed form page over classes, keyed by nothing")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("read") _ "|" _ tDeclaration.%GetTypeOf("table") _ "|" _ tDeclaration.rowActions.%ToJSON() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.context.%ToJSON(), "unassigned|unassigned|[{""id"":""run"",""selfProtection"":""""}]||{""fields"":[],""secretFields"":[]}", "no read, no table, its run and no context field")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#PAIRS, "gated on %Development:USE")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage") _ "|" _ tDeclaration.classicLinkExemption.exempt, ..#SQLPAGE _ "|0", "keyed to the classic SQL page, with no exemption")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("/csp/sys/exp/" _ $Replace(..#SQLPAGE, "%", "%25") _ ".zen"), ..#SQLPAGE, "which the portal's own resolver answers")
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Development", "USE")
+    Set tFailed = "unset"
+    Do $$$AssertTrue($ClassMethod(tGate, "Evaluate", tClass, .tFailed), "the measured pair alone opens it while the page carries no custom resource")
+    Do $ClassMethod(tGate, "AssignClassic", ..#SQLPAGE, "OcuPilotTestCustomResource")
+    Set tFailed = "unset"
+    Do $$$AssertTrue('$ClassMethod(tGate, "Evaluate", tClass, .tFailed) && (tFailed = "OcuPilotTestCustomResource:USE"), "and a custom resource on the page refuses it, named: " _ tFailed)
+    Do $ClassMethod(tGate, "Reset")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("explorer.sqlquery"), tClass, "its tool identifier resolves to it")
+    Kill tTools
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Context).ScreenTools(tClass, .tTools), "its context tools build")
+    Do $$$AssertEquals($Select($IsObject($Get(tTools)): tTools.%ToJSON(), 1: ""), "[]", "and name none")
 }
 
 /// <p>Stories 19.5 and 19.14 AC1, AD-5: a table's nine tabs form one parent-scoped group at the SQL
