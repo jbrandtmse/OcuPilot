@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:635 */
+  /** EXPERIENCE.md:636 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4588,6 +4588,174 @@ export const STRINGS = {
   journalSettingsPrompt3: 'Does a journal write error freeze the instance?',
   /** EXPERIENCE.md:378 */
   journalSettingsRefusedAction: 'change the journal settings',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasLabel: 'SQL schemas',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesLabel: 'SQL tables',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsLabel: 'SQL views',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresLabel: 'SQL procedures',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableLabel: 'SQL table',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabInfo: 'Table info',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabFields: 'Fields',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabIndices: 'Maps/Indices',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabTriggers: 'Triggers',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabConstraints: 'Constraints',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSchema: 'Schema',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTables: 'Tables',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnViews: 'Views',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnProcedures: 'Procedures',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTable: 'Table',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnOwner: 'Owner',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSharded: 'Sharded',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnPartitioned: 'Partitioned',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnUpdatable: 'Updatable',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnCheckOption: 'Check option',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnProcedure: 'Procedure',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMethod: 'Method',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnLastCompiled: 'Last compiled',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExternal: 'External',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExtentSize: 'Extent size',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExternalType: 'External type',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnField: 'Field',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnNumber: 'Column',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnUnique: 'Unique',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnHidden: 'Hidden',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMaxLength: 'Maximum length',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnReferenceTo: 'References',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSelectivity: 'Selectivity',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnIndex: 'Index',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMap: 'Map',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnColumns: 'Columns',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnInherited: 'Inherited',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnGlobal: 'Global',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTrigger: 'Trigger',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnEvent: 'Event',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnOrder: 'Order',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnConstraint: 'Constraint',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnConstraintData: 'Constraint data',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasEmpty: 'No SQL schemas in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesEmpty: 'No SQL tables in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsEmpty: 'No SQL views in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresEmpty: 'No SQL procedures in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableEmpty: 'This table no longer exists.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsEmpty: 'This table has no fields this account can see.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesEmpty: 'This table has no maps or indices.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersEmpty: 'This table has no triggers.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsEmpty: 'This table has no constraints.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaReason: 'schema must be 1 to 128 characters, with no control character.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSystemReason: 'system must be yes or no.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableReason: 'Name one table, as Schema.Table.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlAmbiguousReason: 'That name matches more than one table in this namespace.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlNotFoundReason: 'This namespace holds no table by that name that this account can see.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt1: 'Which schemas in this namespace hold tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt2: 'Which schemas hold stored procedures but no tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt3: 'Which schemas hold views?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt1: 'Which tables does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt2: 'Which classes project these tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt3: 'Which tables here are partitioned or sharded?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt1: 'Which views does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt2: 'Which of these views can be updated?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt3: 'Which classes define these views?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt1: 'Which stored procedures does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt2: 'Which of these are functions rather than procedures?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt3: 'Which class methods do these procedures call?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt1: 'When was this table last compiled?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt2: 'Which class projects this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt3: 'Is this table read-only or external?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt1: 'Which fields of this table are required?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt2: 'Which fields reference another table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt3: 'Which fields of this table are unique?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt1: 'Which indices does this table have?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt2: 'Which global holds this table\'s data?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt3: 'How large is each index of this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt1: 'Which triggers run on this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt2: 'What does each trigger of this table do?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt3: 'In what order do this table\'s triggers run?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt1: 'Which constraints does this table enforce?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt2: 'What is this table\'s primary key?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt3: 'Which foreign keys does this table declare?',
   // Story 18.19: Journal records -- its title and entity noun, Journal file details' View records,
   // the criteria form's heading, labels and option words, Next records, the empty state, the record
   // dialog's title and field labels, and the prompts. Time, Process, Type, In transaction, Database,
@@ -4607,13 +4775,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:378 */
   journalRecordOffset: 'Offset',
   /** EXPERIENCE.md:378 */
-  journalRecordOrder: 'Order',
-  /** EXPERIENCE.md:378 */
   journalRecordOldestFirst: 'Oldest first',
   /** EXPERIENCE.md:378 */
   journalRecordNewestFirst: 'Newest first',
-  /** EXPERIENCE.md:378 */
-  journalRecordColumn: 'Column',
   /** EXPERIENCE.md:378 */
   journalRecordComparison: 'Comparison',
   /** EXPERIENCE.md:378 */

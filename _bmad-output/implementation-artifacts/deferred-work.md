@@ -9203,3 +9203,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
 - 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
+### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
+- source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
+- 2026-10-03T06:37:36Z status=routed owner=19-5-the-sql-catalog-browser by=harvest note=lead ruling: fix at code review with a fixed bound for this one endpoint (5,000, still bounded per AD-36; the spec intent's max rule amended by the lead)
+- 2026-10-03T07:11:26Z status=resolved-by:19-5-the-sql-catalog-browser owner=19-5-the-sql-catalog-browser by=adjudication note=code review patched it: Catalog.Table sends CATALOGTABLESMAX-style fixed 5,000 (CATALOGTABLEMAX) and keeps the resolved row; fixture leg pins max 5,000 and a live leg reads Table info at cap 1
+
+### DW-1974: strings.test.mjs moves the Fixed-strings bound from 2100 to 2300 without the comment line every earlier move carries
+- source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/tools/strings.test.mjs:574-577: each prior bound move has a 'the bound moves to N under the same protocol' line; 19.5's move has none, and Epic 18's uncommitted 18.19 diff edits the same lines
+- 2026-10-03T07:09:04Z status=wontfix-accepted owner=19-5-the-sql-catalog-browser by=cr note=contended with Epic 18's same hunk; lead adds it at merge-forward; reopen_if=bound line has no comment naming its merged value after the merge

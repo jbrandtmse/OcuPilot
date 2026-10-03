@@ -534,15 +534,21 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
 /** Story 19.4's port, which declares the search's and the macro lookup's argument refusals. */
 const ATELIER_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AtelierPort.cls');
 
-/** Story 19.4's four published refusal sentences: `[parameter, strings.ts key]`. */
+/** Story 19.4's four published refusal sentences and Story 19.5's five: `[parameter, strings.ts key]`. */
 const FIND_REFUSALS = [
   ['REASONSEARCHTEXT', 'explorerSearchTextReason'],
   ['REASONSEARCHSCOPE', 'explorerSearchScopeReason'],
   ['REASONSEARCHCASE', 'explorerSearchCaseReason'],
   ['REASONMACRO', 'explorerMacroReason'],
+  // Story 19.5: the SQL catalog's argument and resolve refusals.
+  ['REASONCATALOGSCHEMA', 'explorerSqlSchemaReason'],
+  ['REASONCATALOGSYSTEM', 'explorerSqlSystemReason'],
+  ['REASONCATALOGTABLE', 'explorerSqlTableReason'],
+  ['REASONCATALOGAMBIGUOUS', 'explorerSqlAmbiguousReason'],
+  ['REASONCATALOGNOTFOUND', 'explorerSqlNotFoundReason'],
 ];
 
-test("Story 19.4: each of Search's and Macros' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
+test("Stories 19.4 and 19.5: each of Search's, Macros' and the SQL catalog's argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
   // Mutation (Rule 19): change one word of REASONSEARCHTEXT in AtelierPort.cls -> this goes red naming both.
   const source = readFileSync(ATELIER_PORT, 'utf8');
   for (const [parameter, key] of FIND_REFUSALS) {

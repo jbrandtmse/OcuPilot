@@ -2332,8 +2332,11 @@ export function suggestedPromptsProblem(declaration) {
  * `[{className, declaration}]` in roster order, and the answer names the offending class.
  *
  * Groups are checked in the order their first member appears. Each names a built member at its route
- * that declares the group; every member shares that member's `area` and `archetype`; and the members'
- * positions, sorted, run 1 to their count with no gap or repeat.
+ * that declares the group; every member shares that member's `area` and `archetype`; the members'
+ * positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
+ * `parentScope`, and in a parent-scoped group its one criterion's `param`, `kind` and `maxLength`,
+ * since the strip carries the one route id from tab to tab, and the group is its parent list's
+ * `<route>/document`, the route the list's name cell opens.
  * `OcuPilot.Screen.Registry.TabGroupProblem` returns the same sentence for every roster case in
  * `OcuPilot.Test.TabCorpus`.
  */
@@ -2368,8 +2371,49 @@ export function tabGroupProblem(screens) {
         `positions run 1 to ${members.length} with no gap or repeat (AD-5)`
       );
     }
+    const parent = tabParent(head.declaration);
+    const criterion = tabCriterion(head.declaration);
+    for (const member of members) {
+      const memberParent = tabParent(member.declaration);
+      if (memberParent !== parent) {
+        return (
+          `${member.className}: tab.group '${group}' is declared with parentScope '${memberParent}', and a tab group's ` +
+          `members share the parentScope '${parent}' of '${group}' (AD-5)`
+        );
+      }
+      if (parent === '') continue;
+      const memberCriterion = tabCriterion(member.declaration);
+      if (memberCriterion !== criterion) {
+        return (
+          `${member.className}: tab.group '${group}' is parent-scoped and reads criterion ${memberCriterion}, and its ` +
+          `members share the one criterion ${criterion} of '${group}' (AD-5)`
+        );
+      }
+    }
+    if (parent !== '' && group !== `${parent}/document`) {
+      return (
+        `${head.className}: tab.group '${group}' is parent-scoped under '${parent}', and a parent-scoped group is its ` +
+        `parent list's '${parent}/document' (AD-5)`
+      );
+    }
   }
   return null;
+}
+
+/** `declaration`'s `parentScope`, or `''` when it declares none as a string. */
+function tabParent(declaration) {
+  return typeof declaration.parentScope === 'string' ? declaration.parentScope : '';
+}
+
+/**
+ * `declaration`'s one read criterion as `'param' (kind, maxLength)`, or `none` when its read declares
+ * other than exactly one -- `OcuPilot.Screen.Registry.TabCriterion`'s spelling.
+ */
+function tabCriterion(declaration) {
+  const fields = declaration?.read?.criteria?.fields;
+  if (!Array.isArray(fields) || fields.length !== 1 || !isObject(fields[0])) return 'none';
+  const field = fields[0];
+  return `'${shown(field.param)}' (${shown(field.kind)}, ${shown(field.maxLength)})`;
 }
 
 /**

@@ -136,6 +136,15 @@ XData ReadShapes
 <screen name="ExplorerRoutineDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 <screen name="ExplorerSearch" filter="Document,Member,Text" sort="Order,Document" kinds="Document:name,Member:identifier,Line:number,Text:text"/>
 <screen name="ExplorerMacro" filter="Macro,Document,Definition" sort="Macro,Document" kinds="Macro:name,Document:identifier,Line:number,Definition:text"/>
+<screen name="ExplorerSqlSchemas" filter="Schema" sort="Schema" kinds="Schema:name,Tables:status,Views:status,Procedures:status"/>
+<screen name="ExplorerSqlTables" filter="Table,Schema,Class" sort="Table,Class,Owner" kinds="Table:name,Class:identifier,Owner:text,Sharded:status,Partitioned:status"/>
+<screen name="ExplorerSqlViews" filter="View,Schema,Class" sort="View,Class,Owner" kinds="View:name,Class:identifier,Owner:text,Updatable:status,CheckOption:text"/>
+<screen name="ExplorerSqlProcedures" filter="Procedure,Schema,Class" sort="Procedure,Type,Class" kinds="Procedure:name,Type:text,Class:identifier,Method:identifier"/>
+<screen name="ExplorerSqlTable" filter="Name,Class" sort="Name" kinds="Name:name,Owner:text,LastCompiled:text,External:status,ReadOnly:status,Partitioned:status,Class:identifier,ExtentSize:number,ExternalType:text"/>
+<screen name="ExplorerSqlFields" filter="Field,Type,ReferenceTo" sort="Column,Field,Type" kinds="Field:name,Type:identifier,Column:number,Required:status,Unique:status,Collation:text,Hidden:status,MaxLength:number,ReferenceTo:identifier,Selectivity:text"/>
+<screen name="ExplorerSqlIndices" filter="Index,Map,Fields,Global" sort="Index,Map,Type" kinds="Index:name,Map:identifier,Fields:text,Type:text,SizeMB:text,Inherited:status,Global:identifier,Status:text"/>
+<screen name="ExplorerSqlTriggers" filter="Trigger,Event,Code" sort="Trigger,Event,Order" kinds="Trigger:name,Event:text,Order:number,Code:text"/>
+<screen name="ExplorerSqlConstraints" filter="Constraint,Type,Data" sort="Constraint,Type" kinds="Constraint:name,Type:text,Data:text"/>
 <screen name="RemoteDatabaseList" filter="Name,Server,Directory,Status" sort="Name,Server,Directory,Status" kinds="Name:name,Server:identifier,Directory:identifier,Status:text"/>
 <screen name="JournalList" filter="Name,CreationTime,Reason" sort="Name,Size,CreationTime,Reason,DataSize" kinds="Name:name,CreationTime:text,Size:number,DataSize:number,Reason:text"/>
 <screen name="JournalFileDetails" filter="Name,CreationTime,FileGUID,EncryptionKeyID,PrevFile.File,NextFile.File" sort="Name,CreationTime" kinds="Name:name,CreationTime:text,FileGUID:identifier,FileCount:number,MaxSize:number,FirstRecordAddress:number,LastRecordAddress:number,End:number,EncryptionKeyID:identifier,MinTransFileCount:number,MinTransFileIndex:number,ClusterStartTime:text,PrevFile.File:identifier,NextFile.File:identifier"/>
