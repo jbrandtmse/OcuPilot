@@ -4466,6 +4466,54 @@ export const STRINGS = {
   journalFileDatabaseListPrompt2: 'How many databases does this journal file cover?',
   /** EXPERIENCE.md:378 */
   journalFileDatabaseListPrompt3: 'Does this journal file hold records for IRISSYS?',
+  // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
+  // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
+  // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse
+  // earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalSettingsLabel: 'Journal settings',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrimary: 'Primary journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsAlternate: 'Alternate journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFileSize: 'Start a new journal file every (MB)',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrefix: 'Journal file prefix',
+  /** EXPERIENCE.md:378 */
+  journalSettingsArchive: 'Archive target',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeArchived: 'Purge as soon as they are copied to the archive',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeDays: 'Purge after this many days',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeBackups: 'Purge after this many backups',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFreeze: 'Freeze on error',
+  /** EXPERIENCE.md:378 */
+  journalSettingsCspSession: 'Journal web sessions',
+  /** EXPERIENCE.md:378 */
+  journalSettingsCompress: 'Compress journal files',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijDirectory: 'Write image journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijSize: 'Write image journal target size (MB)',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijManager: 'The manager directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsShownOnly: 'Shown here only. Change it on the classic Journal Settings page.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFreezeConsequence: 'With Freeze on error on, a journal write error blocks every process that journals until it is fixed.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsDirectoryNewFile: 'Saving a changed journal directory starts a new journal file.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt1: 'Where does this instance write its journal files?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt2: 'When are old journal files purged?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt3: 'Does a journal write error freeze the instance?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsRefusedAction: 'change the journal settings',
 } as const;
 
 /**

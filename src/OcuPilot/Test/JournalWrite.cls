@@ -3,7 +3,8 @@
 /// proposal and confirmation: the file switch, a switch made since the mint refusing the confirm, the
 /// one-directory refusal of a directory switch, a directory switch to a seeded alternate and back, a
 /// switch the vendor answers without moving refused as unmoved, and a clean integrity check at both
-/// levels; and their read-backs. It also pins the journal suites' closed-file precondition
+/// levels; and their read-backs. And Story 18.18's DW-1950: a directory switch confirmed after the
+/// alternate stopped being distinct closes target-changed. It also pins the journal suites' closed-file precondition
 /// (<method>OcuPilot.Test.JournalProbe.EnsureClosedFile</method>), which its own
 /// <method>OnBeforeAllTests</method> runs first.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
@@ -223,6 +224,47 @@ Method TestTheDirectoryIsSwitchedThereAndBack()
     Do $$$AssertStatusOK(tSC, "the confirm switches back: " _ $Get(tCode))
     Do $$$AssertEquals($ZConvert($ClassMethod(..#PROBE, "CurrentDirectory"), "L"), $ZConvert(tPrimary, "L"), "journaling writes in the primary again")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("auditMarked") _ " " _ tResult.%Get("action") _ " " _ ..Verdict(tResult), 1: ""), "1 updated nothingSent", "the write is marked, publishes an update and reads back nothing sent")
+}
+
+/// <p>Story 18.18 AC7 (DW-1950): a directory switch minted while a distinct alternate is configured,
+/// whose alternate Journal settings' Save then makes the primary, is refused at its confirm 409
+/// <code>PROPOSAL.TARGETCHANGED</code>, the row closed <code>target-changed</code>, and nothing
+/// switches; the mint and the screen action then answer
+/// <code>JOURNAL.SWITCHDIR.NOOTHER</code>.</p>
+/// <p>Mutation (Rule 19): remove the precondition line from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Target</method> -&gt; the confirm answers 500
+/// <code>INTERNAL</code> and this goes red.</p>
+Method TestASwitchConfirmedAfterTheAlternateStopsBeingDistinctClosesTargetChanged()
+{
+    Set tPrimary = $ClassMethod(..#PROBE, "CurrentDirectory")
+    Set tManager = $ClassMethod(..#PROBE, "Manager")
+    Do $$$AssertEquals($ZConvert($Extract(tPrimary, 1, $Length(tManager)), "L"), $ZConvert(tManager, "L"), "the primary journal directory is under the manager directory (a stock configuration)")
+    Set tSC = $ClassMethod(..#PROBE, "SeedAlternate")
+    Do $$$AssertStatusOK(tSC, "a distinct alternate is configured")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Mint(..#SWITCHDIRECTORY, tTurn, "current", "", .tProposal)
+    Do $$$AssertStatusOK(tSC, "the switch is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("alternateRoot", tManager, "string")
+    Do tArgs.%Set("alternatePath", $Extract(tPrimary, $Length(tManager) + 1, *-1), "string")
+    Set tSC = ##class(OcuPilot.Area.OsMgmt.JournalSave).Update(tArgs, .tHttp, .tFault, .tViolations, .tReadBack)
+    Do $$$AssertTrue($$$ISOK(tSC) && '$Get(tViolations), "Journal settings' Save makes the alternate the primary: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: $System.Status.GetErrorText(tSC)))
+    Do $$$AssertEquals($ZConvert(##class(%File).NormalizeDirectory($ClassMethod(..#PROBE, "JournalSettings").%Get("AlternateDirectory")), "L"), $ZConvert(tPrimary, "L"), "the instance has one journal directory again")
+    Set tBefore = $ClassMethod(..#PROBE, "Newest")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ $Get(tHttp) _ " " _ $Get(tCode), "0 409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the confirm is refused because the target moved")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+    Do $$$AssertEquals($Get(tValues("state")) _ " " _ $Get(tValues("closedReason")), "canceled target-changed", "and the row is closed target-changed")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Newest"), tBefore, "nothing switched")
+    Do $$$AssertEquals($ZConvert($ClassMethod(..#PROBE, "CurrentDirectory"), "L"), $ZConvert(tPrimary, "L"), "journaling still writes in the primary")
+    Set tSC = ..Mint(..#SWITCHDIRECTORY, tTurn, "current", "", .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ $Get(tHttp) _ " " _ ..Code($Get(tFault)), "0 409 JOURNAL.SWITCHDIR.NOOTHER", "a new mint answers the precondition's own refusal")
+    Set tSC = ..Act("switchdirectory", "current", "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "409 JOURNAL.SWITCHDIR.NOOTHER", "and so does the screen's switch")
 }
 
 /// <p>AC4: a directory switch the vendor answers 200 while journaling stays in its directory -- the

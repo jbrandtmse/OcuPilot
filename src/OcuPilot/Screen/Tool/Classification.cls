@@ -50,6 +50,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// the schema subset a provider is sent describes no member below a property, so the tools that
 /// set application roles author that argument themselves
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.MATCHROLESARGUMENT</parameter>).</p>
+/// <p><b><code>osmgmt.journalsettings.update</code></b> (Story 18.18) classifies every
+/// <code>Journal.Settings</code> row <code>ordinary</code>. The tool admits eight of them; the two
+/// directories are set only through a root and a relative name (AD-21), and the archive target and
+/// the two write-image journal keys are shown and never sent (AD-4). The vendor stores a directory with
+/// its trailing separator whatever was sent, so both compare <code>unslashed</code> (measured at the
+/// story's Task 0).</p>
 /// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
@@ -597,6 +603,25 @@ XData Entries
       "NewGlobalCollation": "ordinary",
       "ClusterMountMode": "ordinary",
       "ReadOnly": "ordinary"
+    }
+  },
+  "osmgmt.journalsettings.update": {
+    "fieldList": "Journal.Settings",
+    "compare": {"CurrentDirectory": "unslashed", "AlternateDirectory": "unslashed"},
+    "classification": {
+      "AlternateDirectory": "ordinary",
+      "ArchiveName": "ordinary",
+      "BackupsBeforePurge": "ordinary",
+      "CurrentDirectory": "ordinary",
+      "DaysBeforePurge": "ordinary",
+      "FileSizeLimit": "ordinary",
+      "FreezeOnError": "ordinary",
+      "JournalFilePrefix": "ordinary",
+      "JournalcspSession": "ordinary",
+      "PurgeArchived": "ordinary",
+      "CompressFiles": "ordinary",
+      "wijdir": "ordinary",
+      "targwijsz": "ordinary"
     }
   },
   "security.oauthserverdescriptions.create": {

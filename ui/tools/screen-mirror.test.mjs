@@ -222,6 +222,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 19.2: a class or routine id may name a set of documents.
     ['class', 'documentset'],
     ['routine', 'documentset'],
+    // Story 18.18: the instance's journal settings are one object.
+    ['journal-settings', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -2247,12 +2249,14 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
   // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
   // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
-  // Story 16.25's editor owns it the same way.
+  // Story 16.25's editor owns it the same way; Story 18.18's Journal settings owns %Admin_Journal
+  // beside OS management's set.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
       'OcuPilot.Screen.Descriptor.LanguageServerList',

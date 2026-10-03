@@ -121,6 +121,16 @@ ClassMethod SeedAlternate() As %Status
     Quit tSC
 }
 
+/// <p>Create the probe directory <method>DirectoryFor</method>(<var>pSuffix</var>) when it is absent,
+/// and answer it in <var>pDirectory</var>. No journal setting changes.</p>
+ClassMethod SeedDirectory(pSuffix As %String, Output pDirectory As %String) As %Status
+{
+    Set pDirectory = ..DirectoryFor(pSuffix)
+    If ##class(%File).DirectoryExists(pDirectory) Quit $$$OK
+    If '##class(%File).CreateDirectoryChain(pDirectory) Quit $$$ERROR($$$GeneralError, "the probe directory could not be created")
+    Quit $$$OK
+}
+
 /// <p>Put the journal state <var>pBefore</var> (<method>JournalSettings</method>'s answer) back: first,
 /// when journaling writes outside <var>pBefore</var>'s <code>CurrentDirectory</code>, switch it back to
 /// that directory -- through the vendor's own directory switch while the configured alternate is the

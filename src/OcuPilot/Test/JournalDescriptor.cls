@@ -2,7 +2,8 @@
 /// reads and replaced classic pages; the three journal tools' kinds, ports, request types, pairs and
 /// replaced pages; their baseline lines; the read grammar's single-object <code>GET</code> read
 /// over one member; and how the journal port compares directories (AD-5, AD-8, AD-22, AD-36, AD-44,
-/// AD-51).</p>
+/// AD-51). And Story 18.18's: Journal settings, its tool's kind, port, fields and pairs, its baseline
+/// line and its script, and the directory switch's precondition code.</p>
 /// <p>It reads declarations only and needs OcuPilot installed with no custom resource assigned to the
 /// replaced classic pages.</p>
 Class OcuPilot.Test.JournalDescriptor Extends %UnitTest.TestCase
@@ -13,6 +14,8 @@ Parameter LIST = "OcuPilot.Screen.Descriptor.JournalList";
 Parameter DETAILS = "OcuPilot.Screen.Descriptor.JournalFileDetails";
 
 Parameter DATABASES = "OcuPilot.Screen.Descriptor.JournalFileDatabaseList";
+
+Parameter SETTINGS = "OcuPilot.Screen.Descriptor.JournalSettings";
 
 Parameter SCREENPAIRS = "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]";
 
@@ -173,7 +176,7 @@ Method TestTheIntegrityScriptReadsTheListFirstAndSendsTheBuiltBody()
 Method TestEveryJournalCodeReadsItsOwnSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.JournalError).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 3, "Part A declares three codes")
+    Do $$$AssertEquals($ListLength(tCodes), 9, "Stories 18.5 and 18.18 declare nine codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.JournalError).ReasonFor(tCode)
@@ -181,6 +184,108 @@ Method TestEveryJournalCodeReadsItsOwnSentence()
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ " reads it on a refused tool call")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ " and on a violation")
     }
+}
+
+/// <p>Story 18.18 AC1, AC9: Journal settings is OS management's fourteenth entry, a form page over the
+/// vendor's settings <code>GET</code> and its thirteen fields, gated on the classic page's own two
+/// resources -- <code>%Admin_Journal:USE</code> its own pair -- and the system database's read, with
+/// three Capacity prompts, no row action, no refresh and the classic Journal Settings page.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Journal:USE</code> from the descriptor's pairs -&gt; the
+/// pair leg goes red, and the registry refuses its own pair.</p>
+Method TestJournalSettingsIsOsManagementsFourteenthEntry()
+{
+    Set tClass = ..#SETTINGS
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals($ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.labelKey _ ":" _ tDeclaration.archetype, "os-management:14:journalSettingsLabel:form-page", "OS management's fourteenth side-bar entry, a form page")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Journal.Settings"",""type"":""GET""}", "read through the vendor's settings GET")
+    Do $$$AssertEquals(tDeclaration.read.fields.%Size() _ " " _ tDeclaration.context.fields.%Size() _ " " _ tDeclaration.context.secretFields.%Size(), "13 13 0", "its thirteen fields, each in context, none secret")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%Admin_Journal"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the classic page's two resources and the system database's read")
+    Do $$$AssertEquals($Select($IsObject(tDeclaration.ownPrivileges): tDeclaration.ownPrivileges.%ToJSON(), 1: ""), "[{""resource"":""%Admin_Journal"",""permission"":""USE""}]", "%Admin_Journal:USE its own pair (AD-8)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ tDeclaration.id.%ToJSON(), "journal-settings|instance|{""kind"":""single"",""parts"":[]}", "the instance's one set of settings")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("journal-settings", "anything"), "SYSTEM", "every id reads as the singleton (AD-13)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%CSP.UI.Portal.Journal", "the classic Journal Settings page (AD-44)")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("%CSP.UI.Portal.Journal"), $ClassMethod(tClass, "ClassicPage"), "which NormalizePage answers unchanged")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes") _ " " _ tDeclaration.classicLinkExemption.exempt, "0 0", "it does not refresh (AD-43) and links out nowhere")
+    Do $$$AssertEquals(..PromptGroups(tDeclaration), "promptGroupCapacity,promptGroupCapacity,promptGroupCapacity", "three Capacity prompts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("os-management/journal-settings") _ "|" _ ##class(OcuPilot.Screen.Registry).DescriptorForTool("osmgmt.journalsettings"), tClass _ "|" _ tClass, "its route and tool identifier resolve to it")
+}
+
+/// <p>Story 18.18 AC2, AC5, AC8, AD-4, AD-8, AD-44: the settings update is a merge write on Journal
+/// settings through <class>OcuPilot.Port.JournalPort</class>, admitting the eight settable fields and
+/// the four directory arguments and never a directory, the archive target or the write image
+/// journal; it requires the screen's pairs, the system database's write and
+/// <code>%Admin_Operate:USE</code>, and the path port's pair when a root is sent; it names no classic
+/// page; its key is in the baseline, enabled; and the directory switch names its precondition
+/// code.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from
+/// <parameter>OcuPilot.Screen.Tool.JournalSettingsUpdate.EXTRAPAIRS</parameter> -&gt; the pair leg goes
+/// red; drop the directory arguments from its <code>InputSchema</code>, or make its
+/// <code>PortQuery</code> set nothing -&gt; the schema or the port-query leg goes red.</p>
+Method TestTheSettingsToolDeclaresItsFieldsKindAndPairs()
+{
+    Set tName = "osmgmt.journalsettings.update"
+    Kill tTool
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(tName, .tTool, 1)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tTool)), tName _ " is registered")
+    If '$IsObject($Get(tTool)) Quit
+    Set tClass = tTool.class
+    Do $$$AssertEquals(tTool.kind _ "|" _ $Parameter(tClass, "DESCRIPTORCLASS") _ "|" _ $ClassMethod(tClass, "PortClass"), "write|" _ ..#SETTINGS _ "|OcuPilot.Port.JournalPort", "a write on Journal settings through the journal port")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint") _ "|" _ $ClassMethod(tClass, "ReadType") _ "|" _ $ClassMethod(tClass, "WriteType"), "Journal.Settings|GET|PUT", "a merge over the settings GET, sent as a PUT")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody") _ "|" _ $ClassMethod(tClass, "Destructive") _ "|" _ $ClassMethod(tClass, "Creates") _ "|" _ $ClassMethod(tClass, "ChangeAction"), "1|0|0|updated", "it sends a body, removes nothing and updates")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")), "BackupsBeforePurge,DaysBeforePurge,FileSizeLimit,FreezeOnError,JournalFilePrefix,JournalcspSession,PurgeArchived,CompressFiles,primaryRoot,primaryPath,alternateRoot,alternatePath", "the eight settable fields and the four directory arguments")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ExcludedFields")), "CurrentDirectory,AlternateDirectory,ArchiveName,wijdir,targwijsz", "never a directory, the archive target or the write image journal")
+    Set tSchema = $ClassMethod(tClass, "InputSchema")
+    Do $$$AssertTrue((tSchema.properties.%GetTypeOf("CurrentDirectory") = "unassigned") && (tSchema.properties.%GetTypeOf("wijdir") = "unassigned") && (tSchema.properties.%GetTypeOf("ArchiveName") = "unassigned"), "the agent's schema carries none of them")
+    Do $$$AssertTrue(tSchema.properties.Name.description [ "'SYSTEM'", "and names the singleton by its literal id")
+    Set tArgTypes = ""
+    For tArg = "primaryRoot", "primaryPath", "alternateRoot", "alternatePath" {
+        Set tArgTypes = tArgTypes _ $Select(tArgTypes = "": "", 1: ",") _ tArg _ ":" _ $Select(tSchema.properties.%GetTypeOf(tArg) = "object": tSchema.properties.%Get(tArg).%Get("type"), 1: "")
+    }
+    Do $$$AssertEquals(tArgTypes, "primaryRoot:string,primaryPath:string,alternateRoot:string,alternatePath:string", "the agent's closed schema admits each directory's root and relative name")
+    Kill tQuery
+    Do $ClassMethod(tClass, "PortQuery", {"Name": "SYSTEM", "FileSizeLimit": 1000, "alternateRoot": "/r/", "alternatePath": "k", "primaryRoot": ""}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("alternateRoot")) _ "|" _ $Get(tQuery("alternatePath")) _ "|" _ $Data(tQuery("primaryRoot")) _ "|" _ $Data(tQuery("FileSizeLimit")), "/r/|k|0|0", "the port query carries a sent directory's two arguments and nothing else, so the port resolves it again at the write")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved _ " " _ ..PairsText(tPairs), "1 %Admin_Manage:USE,%Admin_Journal:USE,%DB_IRISSYS:READ,%DB_IRISSYS:WRITE,%Admin_Operate:USE", "the screen's pairs, the system database's write and %Admin_Operate:USE (AD-8)")
+    Do $$$AssertEquals(..PairsText($ClassMethod(tClass, "ArgumentPairs", "", {"alternateRoot": "/durable/iris/mgr/", "alternatePath": "x"}, .tResolved)), "%Admin_FileSystemAccess:USE", "the path port's pair when a root is sent")
+    Do $$$AssertEquals(..PairsText($ClassMethod(tClass, "ArgumentPairs", "", {"FileSizeLimit": 1000}, .tResolved)), "", "and none otherwise")
+    Do $$$AssertEquals($Parameter(tClass, "CLASSICPAGES"), "", "the descriptor's own classic page performs it (AD-44)")
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Kernel.Governance.Baseline", "Keys")
+    Set tKeys = ##class(%DynamicObject).%FromJSON(tXData.Data)
+    Do $$$AssertEquals(tKeys.%GetTypeOf(tName) _ " " _ tKeys.%Get(tName), "boolean 1", tName _ " is enabled in the baseline (AD-22)")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Screen.Tool.JournalSwitchDirectory).PreconditionCodes()), "JOURNAL.SWITCHDIR.NOOTHER", "the directory switch names its precondition code (DW-1950)")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Screen.Tool.JournalSwitchFile).PreconditionCodes()), "", "and a tool that names none has none")
+}
+
+/// <p>AD-59: the settings write's script sends the body the port composes -- the resolved
+/// directories under their vendor keys, neither the shown-only keys nor the directory arguments, and
+/// the purge rule's counts -- to the vendor's settings route.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Port.JournalPort.Snippet</method> pass the payload
+/// through -&gt; the body leg goes red.</p>
+Method TestTheSettingsScriptSendsTheComposedBody()
+{
+    Kill tQuery
+    Set tBody = {"CurrentDirectory": "/j/", "AlternateDirectory": "/k/", "FileSizeLimit": 1000, "PurgeArchived": true, "DaysBeforePurge": 2, "BackupsBeforePurge": 2, "ArchiveName": "", "wijdir": "", "targwijsz": 0, "alternateRoot": "/r/", "alternatePath": "k"}
+    Set tSteps = ##class(OcuPilot.Port.JournalPort).Snippet("Journal.Settings", "PUT", .tQuery, tBody, {"origin": "http://host:1", "user": "u"})
+    Do $$$AssertEquals(tSteps.%Size(), 1, "one call: " _ tSteps.%ToJSON())
+    If tSteps.%Size() '= 1 Quit
+    Do $$$AssertTrue(tSteps.%Get(0).%Get("text") [ "-X PUT 'http://host:1/api/admin/v2/journal/settings'", "to the vendor's settings route")
+    Do $$$AssertTrue(tSteps.%Get(0).%Get("text") [ "-d '{""CurrentDirectory"":""/j/"",""AlternateDirectory"":""/k/"",""FileSizeLimit"":1000,""PurgeArchived"":true,""DaysBeforePurge"":0,""BackupsBeforePurge"":0}'", "with the composed body: " _ tSteps.%Get(0).%Get("text"))
+}
+
+/// <p>A pair list as <code>resource:permission</code> entries joined by commas.</p>
+ClassMethod PairsText(pPairs As %List) As %String
+{
+    Set tText = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tText = tText _ $Select(tText = "": "", 1: ",") _ $ListToString($List(pPairs, tI), ":")
+    }
+    Quit tText
 }
 
 /// <p>AD-51 as amended by Story 18.5: <class>OcuPilot.Port.JournalPort</class> compares two

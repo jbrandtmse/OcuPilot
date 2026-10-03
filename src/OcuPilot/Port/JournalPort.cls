@@ -24,6 +24,14 @@
 /// exception). A file's <code>GET</code> through this port also answers
 /// <parameter>CHECKDETAILSQUERY</parameter> as <code>null</code>, so the tool's one argument merges
 /// into a diff row.</p>
+/// <p><b>The settings read and write are composed here</b> (Story 18.18). A
+/// <parameter>SETTINGSENDPOINT</parameter> <code>GET</code> answers the vendor's object with the four
+/// directory arguments (<parameter>DIRECTORYARGUMENTS</parameter>) added as <code>null</code>, so a
+/// merge of those arguments has a property to set. A <code>PUT</code> sends the body without them and
+/// without <parameter>SHOWNONLYKEYS</parameter> (AD-4's named exception); a root in the query is
+/// resolved through <method>ResolveDirectory</method>, refused on its own field when it is not an
+/// existing vendor-writes directory, and sent under the vendor's directory key (AD-21's sixth case);
+/// and the classic page's purge rule shapes the body (<method>PurgeRule</method>).</p>
 /// <p><b>It names no administration API class.</b> Every vendor call goes through
 /// <method>Call</method>, which is <method>OcuPilot.Port.AdminPort.Invoke</method>, so the gate, the
 /// stubs, the journal file guard and the fault mapping are the admin port's (AD-27).</p>
@@ -63,6 +71,21 @@ Parameter PRIMARYKEY = "CurrentDirectory";
 
 Parameter ALTERNATEKEY = "AlternateDirectory";
 
+/// <p>The settings write's directory arguments, a root and a relative name for each directory,
+/// comma-separated: carried in the query, never in the body (AD-21's sixth case).</p>
+Parameter DIRECTORYARGUMENTS = "primaryRoot,primaryPath,alternateRoot,alternatePath";
+
+/// <p>The settings keys a write never sends, comma-separated: shown, never set (AD-4's named
+/// exception).</p>
+Parameter SHOWNONLYKEYS = "ArchiveName,wijdir,targwijsz";
+
+/// <p>The classic page's purge rule's keys.</p>
+Parameter ARCHIVEKEY = "ArchiveName";
+
+Parameter PURGEARCHIVEDKEY = "PurgeArchived";
+
+Parameter PURGECOUNTKEYS = "DaysBeforePurge,BackupsBeforePurge";
+
 /// <p>The pairs whose answer or body this port composes rather than takes from its caller (AD-51 as
 /// amended by Story 18.5).</p>
 Parameter COMPOSEDTYPES = "Journal.Settings/STATE,Journal.Settings/DIRSTATE,Journal.File/INTEGRITYCHECK";
@@ -90,6 +113,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If pType = ..#STATETYPE Quit ..State(0, .pResult, .pHttpStatus, .pFault)
         If pType = ..#DIRSTATETYPE Quit ..State(1, .pResult, .pHttpStatus, .pFault)
         If pType = ..#SWITCHDIRTYPE Quit ..SwitchDirectory(pBody, .pResult, .pHttpStatus, .pFault)
+        If pType = "GET" Quit ..Settings(.pResult, .pHttpStatus, .pFault)
+        If pType = "PUT" Quit ..SettingsWrite(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     }
     If (pEndpoint = ..#FILEENDPOINT) && (pType = ..#INTEGRITYTYPE) Quit ..Integrity(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     If (pEndpoint = ..#FILEENDPOINT) && (pType = "GET") {
@@ -242,6 +267,128 @@ ClassMethod IntegrityBody(ByRef pQuery) As %DynamicObject
     Quit tBody
 }
 
+/// <p>The settings read: the vendor's object with each <parameter>DIRECTORYARGUMENTS</parameter> member
+/// added as <code>null</code>. The vendor's read takes no query, so a caller's identifying parameter is
+/// not sent.</p>
+ClassMethod Settings(Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill tQuery
+    Set tSC = ..Call(..#SETTINGSENDPOINT, "GET", .tQuery, "", .pResult, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(pResult)) || 'pResult.%IsA("%Library.DynamicObject") Quit tSC
+    For tI = 1:1:$Length(..#DIRECTORYARGUMENTS, ",") {
+        Do pResult.%Set($Piece(..#DIRECTORYARGUMENTS, ",", tI), "", "null")
+    }
+    Quit tSC
+}
+
+/// <p>The settings write: <var>pBody</var> without <parameter>SHOWNONLYKEYS</parameter> and
+/// <parameter>DIRECTORYARGUMENTS</parameter>; each directory whose root <var>pQuery</var> carries
+/// resolved by <method>ResolveDirectory</method> and sent under its vendor key; the purge rule
+/// (<method>PurgeRule</method>); then the vendor's <code>PUT</code>. A refused directory answers its
+/// refusal and nothing is sent.</p>
+ClassMethod SettingsWrite(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $$$OK
+    Set tBody = ..Without(pBody, $ListFromString(..#SHOWNONLYKEYS _ "," _ ..#DIRECTORYARGUMENTS))
+    If $IsObject(tBody) {
+        For tWhich = "primary", "alternate" {
+            Set tRootField = tWhich _ "Root"
+            Set tPathField = tWhich _ "Path"
+            If $Get(pQuery(tRootField)) = "" Continue
+            Set tSC = ..ResolveDirectory(pQuery(tRootField), $Get(pQuery(tPathField)), tRootField, tPathField, .tDirectory, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Do tBody.%Set($Select(tWhich = "primary": ..#PRIMARYKEY, 1: ..#ALTERNATEKEY), tDirectory, "string")
+        }
+        If $$$ISERR(tSC) Quit tSC
+        Set tSC = ..PurgeRule(tBody, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Kill tQuery
+    Quit ..Call(..#SETTINGSENDPOINT, "PUT", .tQuery, tBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>A journal directory named by root <var>pRoot</var> and relative name <var>pPath</var>, in
+/// <var>pDirectory</var>: resolved through <class>OcuPilot.Port.PathPort</class> as a vendor-writes
+/// directory, whose refusals name <var>pRootField</var> or <var>pPathField</var>, and refused 422
+/// <parameter>OcuPilot.Api.JournalError.VALIDATION</parameter> with
+/// <parameter>OcuPilot.Api.JournalError.DIRECTORYABSENT</parameter> on <var>pPathField</var> when the
+/// instance holds no such directory. The settings write, its tool and its Save each call this.</p>
+ClassMethod ResolveDirectory(pRoot As %String, pPath As %String, pRootField As %String, pPathField As %String, Output pDirectory As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pDirectory = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ##class(OcuPilot.Port.PathPort).Resolve(pRoot, pPath, ##class(OcuPilot.Port.PathPort).#KINDDIRECTORY, pRootField, pPathField, .tDirectory, .pHttpStatus, .pFault, 0, 1)
+    If $$$ISERR(tSC) Quit tSC
+    If (tDirectory = "") || '##class(%File).DirectoryExists(tDirectory) Quit ..Refused(pPathField, ##class(OcuPilot.Api.JournalError).#DIRECTORYABSENT, .pHttpStatus, .pFault)
+    Set pDirectory = tDirectory
+    Quit $$$OK
+}
+
+/// <p>The classic Journal Settings page's purge rule over <var>pBody</var>, which carries
+/// <parameter>PURGEARCHIVEDKEY</parameter>: sent true only while the instance's
+/// <parameter>ARCHIVEKEY</parameter>, read through the settings <code>GET</code>, names an archive
+/// target, and while it is sent true both <parameter>PURGECOUNTKEYS</parameter> are sent 0. A body
+/// that does not send it true is left as it is.</p>
+ClassMethod PurgeRule(pBody As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If pBody.%GetTypeOf(..#PURGEARCHIVEDKEY) '= "boolean" Quit $$$OK
+    If 'pBody.%Get(..#PURGEARCHIVEDKEY) Quit $$$OK
+    Kill tQuery
+    Set tSC = ..Call(..#SETTINGSENDPOINT, "GET", .tQuery, "", .tSettings, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pHttpStatus = 0
+    If ..Text($Get(tSettings), ..#ARCHIVEKEY) = "" {
+        Do pBody.%Set(..#PURGEARCHIVEDKEY, 0, "boolean")
+        Quit $$$OK
+    }
+    Do ..PurgeCounts(pBody)
+    Quit $$$OK
+}
+
+/// <p>Both <parameter>PURGECOUNTKEYS</parameter> set 0 in <var>pBody</var> when it sends
+/// <parameter>PURGEARCHIVEDKEY</parameter> true: the purge rule's half a pure body carries.</p>
+ClassMethod PurgeCounts(pBody As %DynamicObject)
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit
+    If pBody.%GetTypeOf(..#PURGEARCHIVEDKEY) '= "boolean" Quit
+    If 'pBody.%Get(..#PURGEARCHIVEDKEY) Quit
+    For tI = 1:1:$Length(..#PURGECOUNTKEYS, ",") {
+        Do pBody.%Set($Piece(..#PURGECOUNTKEYS, ",", tI), 0, "number")
+    }
+}
+
+/// <p>A copy of <var>pBody</var> without the members <var>pNames</var> lists; a value that is not an
+/// object is answered as it is.</p>
+ClassMethod Without(pBody As %DynamicAbstractObject, pNames As %List) As %DynamicAbstractObject
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Set tCopy = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+    For tI = 1:1:$ListLength(pNames) {
+        If tCopy.%GetTypeOf($List(pNames, tI)) '= "unassigned" Do tCopy.%Remove($List(pNames, tI))
+    }
+    Quit tCopy
+}
+
+/// <p>A 422 <parameter>OcuPilot.Api.JournalError.VALIDATION</parameter> refusal whose one violation
+/// names <var>pField</var> with <var>pCode</var> and its sentence.</p>
+ClassMethod Refused(pField As %String, pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 422
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.JournalError).#VALIDATION, ##class(OcuPilot.Api.JournalError).#REASONVALIDATION)
+    Set tViolation = {}
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", ##class(OcuPilot.Api.Error).ReasonForViolation(pCode), "string")
+    Do pFault.%Set("detail", {"violations": [(tViolation)]})
+    Quit $$$ERROR($$$GeneralError, pCode)
+}
+
 /// <p>The directory a journal file <var>pFile</var> sits in, normalized with its trailing separator,
 /// or <code>""</code>.</p>
 ClassMethod DirectoryOf(pFile As %String) As %String
@@ -286,14 +433,23 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 
 /// <p><method>Invoke</method>'s branches as a script (AD-59): the integrity check is the admin port's
 /// script with <method>IntegrityBody</method>'s body, the journal file guard's read first; the
-/// switches and every other call are the admin port's script. The composed reads and the directory
-/// switch's checks of the vendor's answer are guards a script cannot carry.</p>
+/// settings write is the admin port's script with the composed body, the payload's resolved
+/// directories under their vendor keys and neither <parameter>SHOWNONLYKEYS</parameter> nor
+/// <parameter>DIRECTORYARGUMENTS</parameter>; the switches and every other call are the admin port's
+/// script. The composed reads, the directory checks and the directory switch's checks of the vendor's
+/// answer are guards a script cannot carry.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If (pEndpoint = ..#FILEENDPOINT) && (pType = ..#INTEGRITYTYPE) {
         Kill tQuery
         Set tQuery(..#JOURNALFILEPARAM) = $Get(pQuery(..#JOURNALFILEPARAM))
         Quit ##super(pEndpoint, pType, .tQuery, ..IntegrityBody(.pQuery), pContext)
+    }
+    If (pEndpoint = ..#SETTINGSENDPOINT) && (pType = "PUT") {
+        Kill tQuery
+        Set tBody = ..Without(pBody, $ListFromString(..#SHOWNONLYKEYS _ "," _ ..#DIRECTORYARGUMENTS))
+        Do ..PurgeCounts(tBody)
+        Quit ##super(pEndpoint, pType, .tQuery, tBody, pContext)
     }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
 }

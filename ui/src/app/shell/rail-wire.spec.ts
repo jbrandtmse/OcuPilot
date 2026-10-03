@@ -344,6 +344,13 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
         },
+        {
+          route: 'os-management/journal-settings',
+          labelKey: 'journalSettingsLabel',
+          sideBarPosition: 14,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
       ],
     },
     {
@@ -740,6 +747,12 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const route of ['os-management/journals', 'os-management/journals/details', 'os-management/journals/databases']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
     }
+  });
+
+  it('Story 18.18: reads the Journal settings verdict the live payload carries', () => {
+    // It declares `%Admin_Manage:USE` first, which this principal does not hold.
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('os-management/journal-settings')).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
   });
 
   it('Story 18.4: reads the Check integrity and Integrity log verdicts the live payload carries', () => {

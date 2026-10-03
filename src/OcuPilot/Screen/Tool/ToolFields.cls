@@ -40,6 +40,21 @@ XData Tools
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Collation","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.journalsettings.update": {"fieldList":"Journal.Settings","fields":[
+  {"path":"AlternateDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"ArchiveName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"BackupsBeforePurge","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"CurrentDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},
+  {"path":"DaysBeforePurge","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"FileSizeLimit","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"FreezeOnError","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"JournalFilePrefix","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"JournalcspSession","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"PurgeArchived","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"CompressFiles","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"wijdir","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"targwijsz","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
 "osmgmt.languageservers.create": {"fieldList":"LanguageServer","fields":[
   {"path":"BindToIPAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"ConnectionTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

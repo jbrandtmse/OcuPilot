@@ -143,6 +143,8 @@ test('AC1: OS management lists thirteen entries, License usage eighth; its strip
         STRINGS.remoteDatabaseListLabel,
         // Story 18.5: Journals, the thirteenth.
         STRINGS.journalListLabel,
+        // Story 18.18: Journal settings, the fourteenth.
+        STRINGS.journalSettingsLabel,
       ],
       'the side bar lists the Integrity log fifth, License usage eighth, the Dashboard ninth, External language servers tenth, Local databases eleventh, Remote databases twelfth and Journals thirteenth'
     );

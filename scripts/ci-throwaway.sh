@@ -295,6 +295,9 @@ services:
       # The journal classes sign in as probe principals holding Journals' pairs, with and without
       # the system database's write, and switch the journal as them (Story 18.5).
       # classes: JournalWrite, JournalWriteGate
+      # The journal settings rules class also restricts the file selector's allow-list to reach
+      # OcuPilot's served directory, as PathPortServed does, and restores it (Story 18.18).
+      # classes: JournalSettingsRules
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -468,6 +471,9 @@ services:
       # AdminPortAsync in its journal check, also switch the journal file where the list names no
       # closed file, to close one (OcuPilot.Test.JournalProbe.EnsureClosedFile).
       # classes: AdminPortAsync, JournalIntegrity, JournalRead
+      # Journal settings' classes also change this instance's journal settings through the shipped
+      # Save and confirm paths, and restore every setting they found (Story 18.18).
+      # classes: JournalSettingsRules, JournalSettingsWrite
       OCUPILOT_ALLOW_JOURNAL: "1"
     volumes:
       - $DIR/data:/durable

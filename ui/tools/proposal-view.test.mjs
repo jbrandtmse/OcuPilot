@@ -56,6 +56,7 @@ const {
   CONSEQUENCE_JOURNALSWITCHFILE,
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
+  CONSEQUENCE_JOURNALSETTINGSFREEZE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -814,4 +815,16 @@ test('Story 18.5: a journal proposal\'s card names the file its warning names, u
     const declared = /Parameter CONSEQUENCECODE = "([^"]+)";/.exec(readFileSync(join(tools, cls), 'utf8'))?.[1];
     assert.equal(declared, code, `${cls} declares the code the card reads`);
   }
+});
+
+// Story 18.18 AC6: a journal settings proposal that leaves Freeze on error on states, on the card, the
+// sentence the form shows under its checkbox, under the code the settings tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_JOURNALSETTINGSFREEZE` line from `consequenceSentence`
+// -> the card-sentence assertion goes red on ''.
+test('Story 18.18: a journal settings proposal that leaves Freeze on error on states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_JOURNALSETTINGSFREEZE), STRINGS.journalSettingsFreezeConsequence);
+  const tool = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'JournalSettingsUpdate.cls');
+  const declared = /Parameter FREEZECONSEQUENCE = "([^"]+)";/.exec(readFileSync(tool, 'utf8'))?.[1];
+  assert.equal(declared, CONSEQUENCE_JOURNALSETTINGSFREEZE, 'JournalSettingsUpdate.cls declares the code the card reads');
 });

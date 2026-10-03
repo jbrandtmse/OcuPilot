@@ -274,8 +274,10 @@ test('AC1, AC11: Journals is the thirteenth OS management entry, Logs lists no j
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 13, `thirteen entries: ${JSON.stringify(bar.entries)}`);
+    assert.equal(bar.entries.length, 14, `fourteen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
+    // Story 18.18: Journal settings follows it.
+    assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 5), [STRINGS.tableColumnName, STRINGS.journalColumnCreated, STRINGS.databaseColumnSize, STRINGS.journalColumnDataSize, STRINGS.agentSwitchesFieldReason]);
     assert.equal(await firstName(page), journalState().newest, 'the first row is the newest listed file');

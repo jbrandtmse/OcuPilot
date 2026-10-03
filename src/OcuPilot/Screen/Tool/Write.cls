@@ -473,6 +473,26 @@ ClassMethod PreconditionField() As %String
     Quit ..#PRECONDITIONFIELD
 }
 
+/// <p>The fault codes this tool's fresh read refuses with when the action's precondition no longer
+/// holds, comma-separated, or <code>""</code> (AD-51 as amended by Story 18.18, DW-1950).
+/// <code>""</code> here, so every tool that names none behaves as before.</p>
+/// <p>The mint and a screen action answer such a refusal as it is. Inside a confirm,
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> reads it as it reads a 404 -- the
+/// target is not in the reviewed state -- so the fingerprint re-read closes the proposal
+/// target-changed.</p>
+Parameter PRECONDITIONCODES = "";
+
+/// <p><parameter>PRECONDITIONCODES</parameter> as a <class>%List</class>.</p>
+ClassMethod PreconditionCodes() As %List
+{
+    Set tCodes = ""
+    For tI = 1:1:$Length(..#PRECONDITIONCODES, ",") {
+        Set tCode = $ZStrip($Piece(..#PRECONDITIONCODES, ",", tI), "<>W")
+        If (tCode '= "") && '$ListFind(tCodes, tCode) Set tCodes = tCodes _ $ListBuild(tCode)
+    }
+    Quit tCodes
+}
+
 /// <p>The <b>state</b> rows this tool's proposal shows, given the fresh read <var>pFresh</var>:
 /// one <code>{field, before, after}</code> per state the action moves, in <var>pRows</var>, with
 /// <var>pProblem</var> naming why the target is not in the state the action moves it out of.</p>

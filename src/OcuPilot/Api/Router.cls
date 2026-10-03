@@ -221,6 +221,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/language-server/name" Method="GET" Call="LanguageServerNameCheck"/>
   <Route Url="/language-server/:id" Method="PUT" Call="LanguageServerUpdate"/>
   <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
+  <Route Url="/journal/settings" Method="PUT" Call="JournalSettingsUpdate"/>
 </Routes>
 }
 
@@ -1632,6 +1633,13 @@ ClassMethod LanguageServerCreate() As %Status
 ClassMethod LanguageServerUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.LanguageServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /journal/settings</code> (Story 18.18): Journal
+/// settings' Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod JournalSettingsUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.JournalSave).HandleUpdate()
 }
 
 }
