@@ -2,7 +2,7 @@
 title: 'Story 18.6: Licensing and ECP'
 type: 'feature'
 created: '2026-10-03'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -24,21 +24,9 @@ deferred: []
 - `ECP.AppServerSSLConnection`: `AUTHORIZE`, `REJECT` and `DELETE`;
 - `ECP.DataServer`, including the async `SERVERACTION`.
 
-**Approach:** Build it in three parts, one per surface group. Each part has its own Task 0 on `ocupilot-b-ci`, its own screens appended to OS management after Journal settings, and its own tools.
+**Approach:** This story is Part A, Licensing: License key (view, validate, activate and print) and License servers (list, create, edit and delete), with its own Task 0 on `ocupilot-b-ci`, its screens appended to OS management after Journal settings, and its own tools. The orchestrator's merge gate split the plan on 2026-10-03: ECP data servers are Story 18.20 and ECP settings and application servers Story 18.21, both outlined in this spec at commit `fe080653`. It also confirmed Decisions 1 to 6.
 
-- **Part A, Licensing:** License key (view, validate, activate and print) and License servers (list, create, edit and delete). It is planned in full below.
-- **Part B, ECP data servers:** the list, create, edit and delete, and the status action.
-- **Part C, ECP settings and ECP application servers.**
-
-Every instance here runs a Community license. So no test activates a key or opens an ECP connection, and every success path that would need either runs through a test seam.
-
-**This plan halts for a split, under the dispatch's size rule.** The five surfaces come to eight descriptors, twelve write tools, two new ports and three Task 0s. That is about three times Story 18.16, which alone filled one implement pass. The recommendation:
-
-- Part A stays Story 18.6.
-- Part B becomes Story 18.20, and Part C Story 18.21 (Rule 17's `N.<M+1>`).
-- They run in the order A, B, C.
-
-Each part's ACs, routes, size and dependencies are under Tasks & Acceptance. The orchestrator decides at the merge gate; this plan splits nothing on its own authority.
+Every instance here runs a Community license. So no test activates a key, and every success path that would need one runs through a test seam.
 
 ## Boundaries & Constraints
 
@@ -49,9 +37,9 @@ Each part's ACs, routes, size and dependencies are under Tasks & Acceptance. The
 - **No ECP connection is opened.** That means no `ECP.DataServer` `DBLIST`, no `SERVERACTION` with `Action` 3 against the vendor, and no change to `%Service_ECP`. A probe data server is configuration only, at `127.0.0.1:1972`, as Story 18.16's was.
 - **No test needs a restart.** A test restores every setting it changes, and a snapshot compares the before and after.
 - **Each test class stands alone.** It arranges and removes its own preconditions on a fresh stock instance, in any order, including any daemon it starts.
-- **Placement.** New screens are appended to OS management's side bar after Journal settings (position 14). Part A takes 15 and 16. Parts B and C take the next positions in landing order.
+- **Placement.** New screens are appended to OS management's side bar after Journal settings (position 14). This story takes 15 and 16; Stories 18.20 and 18.21 take the next positions in landing order.
 - **Every screen** carries three prompts, and the DW-1337 structural gate holds in both themes.
-- **Error codes** go in area error classes: `Api/LicenseError.cls` for Part A, and `Api/EcpError.cls` for Parts B and C. `Api/Error.cls` dispatches each by prefix, edited add-only.
+- **Error codes** go in an area error class: `Api/LicenseError.cls`. `Api/Error.cls` dispatches each by prefix, edited add-only.
 - **Contended files are add-only.** Epic 19 is concurrent on slot A. These files only gain lines or list members, and one-line list members and roster counts are unioned by whichever story reaches the feature branch second:
   - `Api/Router.cls`, `Kernel/Governance/Baseline.cls`, `Kernel/Proposal/Prohibited.cls`, `Screen/Gate.cls`, `Screen/Tool/Classification.cls`;
   - `scripts/ci-throwaway.sh`, `ui/angular.json`;
@@ -109,7 +97,7 @@ Each part's ACs, routes, size and dependencies are under Tasks & Acceptance. The
 - No agent path to validate or activate. The activate tool exists, but it is unadvertised.
 - No `%Api.Admin.*` name outside `AdminPort` and its subclasses. No direct `Config.*`, `SYS.*` or `%SYSTEM.License` write in product code; test-only `%SYS` seeding is allowed.
 - No edit to the spine or to epics.md in the implement stage.
-- Parts B and C are built by this story only if the orchestrator rules against the split.
+- ECP data servers, ECP settings and ECP application servers are Stories 18.20 and 18.21, not this story.
 
 ## I/O & Edge-Case Matrix
 
@@ -186,7 +174,7 @@ These rows are Part A's.
   - `Sequence` :2813 (queued-write refusals :2848 and :2872); `AwaitTask` :2913;
   - `LoggedStatus` :3004 and `SecretValues` :3023, which mask `key`; `Refuse` :3041; `Snippet` :3297; `RestStep` :3331.
 - `AdminRoutes.cls` holds every Part's non-GET routes: `License.Key` `PUT` `/license/key` :125 and `VALIDATE` `POST /license/key/validate` :126; `License.Server` :127-128; `ECP.*` :105-111.
-- `RemoteDatabasePort.cls`: `NetworkEnabled()` :244 is a public seam, reused by Parts B and C; `Unreachable` :352.
+- `RemoteDatabasePort.cls`: `NetworkEnabled()` :244 is a public seam, which Stories 18.20 and 18.21 reuse; `Unreachable` :352.
 - `Test/PortFixture.cls:21` holds a copy of `MUTATINGTYPES` that `ToolWrite` checks.
 
 **Tool models** (`src/OcuPilot/Screen/Tool/`):
@@ -284,7 +272,6 @@ These rows are Part A's.
 
 - `Test/RemoteDatabaseProbe.cls`: `SeedServer` :79, `SeedPrincipal` :247, `RemoveAll` :275, `Run` :428, `RunAs` :461, `Snapshot` :602, `Diff` :730.
 - `Test/RemoteDatabaseListingPort.cls`: the seam (`NetworkEnabled` :100, armed by `^||OcuPilotRemoteLicensed`).
-- `Test/JournalProbe.cls`: `RemoveProbeTaskRows` :672, for Part B's queued action.
 - `ui/browser/remote-databases.browser-spec.mjs` and `journals.browser-spec.mjs`: `iris()`, the throwaway guard and `assertStructure`.
 
 ## Tasks & Acceptance
@@ -299,7 +286,7 @@ These rows are Part A's.
      - `License.Key/PUT,License.Server/PUT,License.Server/DELETE` join `MUTATINGTYPES`, with one doc paragraph, and `Test/PortFixture.cls:21`'s copy.
    - Write `src/OcuPilot/Test/LicenseProbe.cls`, on the `RemoteDatabaseProbe` model: `SeedServer`, `SeedPrincipal`, `Run`, `RunAs`, `Snapshot`, `Diff` and `RemoveAll`, over `OCUPROBE186*` license servers and the principal `OcuProbe186T0User`.
 2. **Take S0.** It holds:
-   - the license facts: `KeyCustomerName`, `KeyOrderNumber`, `KeyLicenseCapacity`, `KeyExpirationDate`, `KeyServer`, `KeyLicenseUnits` and `IsPendingActivation`;
+   - the license facts: `KeyCustomerName`, `KeyOrderNumber`, `KeyLicenseCapacity`, `KeyExpirationDate`, `KeyServer`, `KeyLicenseUnits`, `IsPendingActivation`, `MaxECPServers()` and `NetworkEnabled()`;
    - `<mgr>iris.key` and `iris_saved.key`: whether each exists, its size and its modification time;
    - the count of `*.key` files in the directory `%File.TempFilename` uses;
    - the `Config.LicenseServers` rows;
@@ -312,7 +299,7 @@ These rows are Part A's.
 4. **The license, read-only paths.**
    - c. `VALIDATE` with `{Key:"OCUPROBE186 is not a license key"}`. Record the answer, `InvalidReason` (locally only, never into the spec if it holds a path), the duration, the temporary key-file count, and a `Diff`.
    - d. `VALIDATE` with `{Key:""}` and with `{}`.
-   - e. **Only if c answered `IsValid` false:** `PUT` with the identical text. Expect 400, no `iris.key`, every license fact unchanged and `IsPendingActivation` 0.
+   - e. **Only if c answered `IsValid` false:** `PUT` with the identical text. Expect 400, every license fact unchanged and `IsPendingActivation` 0. The vendor writes `iris.key` before `Upgrade()` runs, so this probe can change a file even with a malformed key: right after it, delete any `iris.key` or `iris_saved.key` the probe wrote (S0 says which existed), re-read every S0 license fact and the two files, and confirm all equal S0. Run this step, and any activation, malformed or not, on `ocupilot-b-ci` only, never on a development instance, and never restart the container to undo it (orchestrator condition, 2026-10-03).
    - f. With auditing on, record the events c and e wrote.
 5. **License servers:**
    - g. `PUT name=ocuprobe186a {Address:"127.0.0.1", Port:4999}`, expecting 201. Then the stored name, `GET` in both cases, and `LIST`.
@@ -329,7 +316,7 @@ These rows are Part A's.
 8. **HALT** `blocked`, with blocking condition `intent gap: observation contradicts the plan: <what>` and nothing built, if any of these hold:
    - a route cannot be reached through `AdminPort`, or answers 202;
    - c answers `IsValid` true;
-   - any step changes a license fact, creates `iris.key` or `iris_saved.key`, or sets `IsPendingActivation`;
+   - any step changes a license fact (in memory: any S0 license field, `MaxECPServers()` or `NetworkEnabled()`) or sets `IsPendingActivation`, or an `iris.key` or `iris_saved.key` a probe wrote cannot be removed. Stop at once and tell the runner, who tells the orchestrator; never restart `ocupilot-b-ci` to fix it;
    - a temporary key file outlives a call;
    - a license server entry starts a process, or writes a `messages.log` line above severity 0;
    - a read takes more than 2 s;
@@ -459,128 +446,9 @@ These rows are Part A's.
 - **A6:** Given a bad name, address or port, an absent target, or a caller lacking a declared pair, when either caller writes, then it is refused on the field, as not found, or 403 naming the pair, and nothing is sent.
 - **A7:** Given the rosters, when the story lands, then License key and License servers are OS management's fifteenth and sixteenth entries with three prompts each, the four keys are in the baseline (activate and delete disabled), every roster and pinned side-bar list includes them, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1005 lines.
 
-### Part B: ECP data servers (recommended Story 18.20)
-
-**Scope.** These are classic `%CSP.UI.Portal.ECPDataServers` and `%CSP.UI.Portal.Dialog.ECPDataServer`.
-
-- `EcpDataServerList` is a list at `os-management/ecp-data-servers`, position 17 (the next free one). It has entity `ecp-data-server` with id `[Name]` and rule `foldcase` (`CAPITALNAME` 1). Its read is `ECP.DataServer` `LIST` over `Name, RemoteAddress, RemotePort, Status, MirrorConnection, SSLConfig, BatchMode`. Its primary action is `create`, and its row actions are `changestatus` and `delete`.
-- `EcpDataServerForm` is at `os-management/ecp-data-servers/edit`, position 0.
-- Both declare `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, and each screen carries the caveat that the harvested ECP status implementation was never identified, so these screens rely on the routes alone.
-
-**Tools and port:**
-
-- `osmgmt.ecpdataservers.create` (AD-54) sends `{Address, Port, MirrorConnection, SSLConfig, BatchMode}`.
-- `.update` (AD-4) sends the complete set read fresh. It keeps a stored non-zero `MirrorConnection`, as the classic dialog does.
-- `.delete` (AD-51, `DESTRUCTIVE`) has an impact that names the remote databases using the server, through Remote databases' declared read. The vendor's 409 #423 reads `ECP.DATASERVER.INUSE`.
-- `.changestatus` is an AD-51 action:
-  - Its argument `Status` is one of `notconnected`, `disabled` or `normal`, from which `Port/EcpPort` (new, extends `AdminPort`) builds `{Action}`.
-  - `SERVERACTION` joins `QUEUEDWRITES`, and the tool declares `%Admin_Operate:USE` for the poll.
-  - Its fresh read is the `LIST` row by name, with `Status` as its subject.
-  - Choosing the current status is refused `ECP.STATUS.SAME`.
-  - `normal` is refused `ECP.LICENSE` at once, before anything is queued, when `RemoteDatabasePort.NetworkEnabled()` is 0.
-  - It is `DESTRUCTIVE`, and its consequence is the classic warning.
-  - Past the bound, it answers "started".
-- `CLASSICPAGES`: create, update and change status declare `%CSP.UI.Portal.Dialog.ECPDataServer`; the delete declares none.
-- Keys: create and update `true`; delete and changestatus `false`.
-
-**Routes:** `GET /ecp-data-server/form`, `GET /ecp-data-server/name`, `POST /ecp-data-server` and `PUT /ecp-data-server/:id`. The status action goes through `POST /screens/:screen/action`.
-
-**Task 0:**
-
-- Measure with probe server `OCUPROBE186SRV` at `127.0.0.1:1972`, configuration only.
-- Measure the create, a partial `PUT` (are omitted keys kept?), the name case, and `DELETE`, also while a seeded remote database uses the server (#423).
-- Measure `SERVERACTION` 2 and then 1 on the probe server, while it reads Not Connected. Record each answer (expecting 202), the poll, the duration against `ASYNCTIMEOUT`, the status after, the processes and the `messages.log` lines, and the answer to `Action` 4.
-- Measure the audit events, and the pairs with the screen's set and each candidate (`%DB_IRISSYS:WRITE`, `%Admin_Operate:USE`, `%Admin_Secure:USE` for `SSLConfig`).
-- `SERVERACTION` 3 never reaches the vendor.
-- **Halt** if:
-  - an ECP client or server job (`ECPCliR`, `ECPCliW`, `ECPSvrR`) starts;
-  - a status changes beyond the one requested;
-  - a license fact changes;
-  - a pair outside the candidates is needed;
-  - S2 differs from S0.
-
-**ACs:**
-
-- **B1:** Given probe data servers, when the list opens and its read tool runs, then both answer the same rows.
-- **B2:** Given the form, when a person or a confirmed proposal creates or edits a data server, then `ECP.DataServer` `PUT` round-trips with the read-back.
-- **B3:** Given a data server a remote database uses, when it is deleted, then the advisory names that remote database first and the delete is refused `ECP.DATASERVER.INUSE`. An unused one is deleted.
-- **B4:** Given a data server, when its status is changed to Disabled or Not Connected, then the queued action is polled once and the list shows the new status. Past the bound it answers "started".
-- **B5:** Given an unlicensed instance, when Normal is chosen, then it is refused `ECP.LICENSE` at once and nothing is queued. A seam stands in for a licensed instance.
-- **B6:** Given pairs, governance, rosters and the side bar, when the story lands, then each holds as in A6 and A7, and the DW-1337 gate holds in both themes.
-
-**Size:** about Story 18.16 plus an async action. That is two descriptors, four tools, one port, about ten test classes, a form page and store, and one browser spec.
-
-**Consumes:** 18.16's `NetworkEnabled` seam and Remote databases' read. **Amendments:**
-
-- AD-8: the pairs;
-- AD-13: `ecp-data-server` `foldcase`;
-- AD-26: `SERVERACTION` in `QUEUEDWRITES`, the last Stage 2 async path;
-- AD-44: `CLASSICPAGES`;
-- AD-51: `EcpPort`'s `{Action}`, and `ECP.STATUS.SAME` in `PRECONDITIONCODES` if it applies;
-- AD-8: the delete's impact;
-- AD-15 and AD-53: a named case if `SERVERACTION` records no event.
-
-### Part C: ECP settings and ECP application servers (recommended Story 18.21)
-
-**Scope:**
-
-- **`EcpSettings`** is a form-page at `os-management/ecp-settings`, position 18. Its entity is `ecp-settings` (singleton), and its classic page is `%CSP.UI.Portal.ECP`.
-  - Its read is `ECP.Settings` `GET`, over member fields `AppServerSettings.MaxServers` through `DataServerSettings.SSLECPServer`.
-  - When the license enables no ECP, the page shows the classic page's sentence.
-- **`EcpAppServerList`** is a tab group at `os-management/ecp-application-servers`, position 19, with classic page `%CSP.UI.Portal.ECPAppServers`:
-  - Connections reads `ECP.AppServerList` `LIST`, with entity `ecp-application-server` and id `[ClientName]`. It is read-only.
-  - SSL/TLS authorizations is an unlisted tab. It reads `ECP.AppServerSSLConnection` `LIST`, with entity `ecp-ssl-connection` and id `[SSLComputerName]`.
-- Every screen declares `%Admin_Manage:USE` and `%DB_IRISSYS:READ`.
-
-**Tools:**
-
-- **`osmgmt.ecpsettings.update`** (AD-4) is the first merge over a nested body. Part C's plan decides between the kernel's merge over dotted fields and a port that flattens them, from Task 0's evidence.
-  - It declares the argument pair `%Admin_Secure:USE` when `SSLECPServer` changes, as the classic page requires.
-  - It refuses `SSLECPServer` 1 or 2 while the `%ECPServer` SSL/TLS configuration is absent or disabled (`ECP.SSL.NOSERVERCONFIG`).
-  - Its consequence says a changed `MaxServerConn` takes effect after a restart.
-- **`osmgmt.ecpsslconnections.authorize`** and **`.reject`** are AD-51 actions. Their fresh read must find a `Pending` row, because the vendor answers OK for any name.
-- **`.delete`** removes an `Authorized` row, `DESTRUCTIVE`.
-- Keys: update, authorize and reject `true`; delete `false`.
-
-**Routes:** `PUT /ecp/settings`, through the tool, and the screen actions.
-
-**Task 0:**
-
-- Settings: `PUT` each field to a probe value and back, restoring the exact values. Check that a partial `PUT` keeps the rest, and whether a restored `MaxServerConn` leaves a pending-restart state; that is a halt. Record `SSLECPServer` 1 with no `%ECPServer` (restored to 0).
-- `LIST` on Community, where it is empty.
-- SSL/TLS authorizations:
-  - seed `CN=OCUPROBE186` with test-only `SYS.ECP.AddAuthorizedCN`;
-  - read it through `LIST`, then `DELETE` it;
-  - send `AUTHORIZE` and `REJECT` for a name that is not pending, and record whether either changes a list.
-- The audit events, and the pairs with each candidate.
-
-**ACs:**
-
-- **C1:** Given ECP settings, when a person or a confirmed proposal changes a setting, then the complete nested set round-trips and the restart consequence is stated for `MaxServerConn`.
-- **C2:** Given `SSLECPServer` 1 or 2 without an enabled `%ECPServer`, or a caller without `%Admin_Secure:USE`, when the change is saved, then it is refused and nothing is sent.
-- **C3:** Given the application servers, when the tabs open and their read tools run, then each answers its rows.
-- **C4:** Given a seeded authorized name, when it is deleted, then it leaves the list. Given a name not pending, when it is authorized or rejected, then it is refused as absent with nothing sent; the success path runs through a seam.
-- **C5:** Given the rosters, governance and the side bar, when the story lands, then each holds as in A7, and the DW-1337 gate holds in both themes.
-
-**Size:** about Story 18.18's singleton editor, made larger by the nested body, plus a two-tab list with three action tools.
-
-**Consumes:** Part B's `EcpError` and the license sentence. **Amendments:**
-
-- AD-4: the nested merge;
-- AD-8: the pairs and `SSLECPServer`'s argument pair;
-- AD-13: two new entity types;
-- AD-44: `CLASSICPAGES`;
-- AD-15 and AD-53: named cases if `RemoveFromPendingList` or `RemoveAuthorizedCN` records no event.
-
-**Order and dependencies.**
-
-- A first: it depends on nothing outside 18.1-18.19, and it adds the License key and License servers screens that Part B's license sentences do not need.
-- B next: it consumes 18.16 directly, and introduces `EcpError`, `EcpPort` and the ECP license refusal.
-- C last: it reuses B's license sentence on its own screens.
-
-Each part re-bases the bundle once, and each adds its own entries to the same pinned side-bar lists.
-
 ## Spec Change Log
+
+- 2026-10-03, runner (orchestrator merge gate): split approved; this spec keeps Part A, and Parts B and C (Stories 18.20 and 18.21) were removed from it (their outlines stay at commit `fe080653`). Decisions 1 to 6 confirmed. Task 0 step e and its halt condition gained the orchestrator's activation-probe condition. The runner wrote AD-13, AD-21, AD-36, AD-44, AD-51, AD-52 and AD-53 at the spec gate; AD-8's pairs and any AD-15/AD-53 vendor-event case wait for Task 0.
 
 ## Review Triage Log
 
@@ -637,7 +505,7 @@ Each part re-bases the bundle once, and each adds its own entries to the same pi
 **Named limits:**
 
 1. **The activation's success path is never run on any instance.** Its pairs beyond the vendor's gate and `IsValidKey` are unmeasured (inference: `Upgrade()` checks no resource), and so is whether IRIS records an event for it. The vendor writes `iris.key` before `Upgrade()`, so a failed upgrade can leave a key pending until a restart (inference from the vendor source). The screen states the restart and the reductions that `VALIDATE` reports.
-2. **On Community, every ECP list is empty** and no ECP status can reach Normal. Parts B and C pin their success paths through seams.
+2. **On Community, every ECP list is empty** and no ECP status can reach Normal. Stories 18.20 and 18.21 pin their success paths through seams.
 
 **Proposed spine amendments (Rule 20; the runner writes them at the spec gate for Part A).** Task 0 confirms each `<measured>`.
 
@@ -656,7 +524,7 @@ Each part re-bases the bundle once, and each adds its own entries to the same pi
 - The activation consumes the validate-then-`PUT` sequence: A3, in `LicenseKey`, real on the malformed key and through the seam when valid.
 - The license server tools reach `AdminPort` directly (A5, `LicenseServerWrite`, with real vendor writes).
 
-**Consumes:** 18.1-18.19's patterns (the Device trio, the `UserPassword` secret action, `ExplorerSave`'s unadvertised flag, the `RemoteDatabaseRules` check route), 14.1's `Snippet`, 14.2's baseline, and 16.17's read-back. **Consumed-by:** Parts B and C reuse the license facts' snapshot, and 18.12 grows the agent's tool set.
+**Consumes:** 18.1-18.19's patterns (the Device trio, the `UserPassword` secret action, `ExplorerSave`'s unadvertised flag, the `RemoteDatabaseRules` check route), 14.1's `Snippet`, 14.2's baseline, and 16.17's read-back. **Consumed-by:** Stories 18.20 and 18.21 reuse the license facts' snapshot, and 18.12 grows the agent's tool set.
 
 **Ledger inbox (Rule 17):** empty. `ledger.sh slice 18-6-licensing-and-ecp` answered nothing (dispatch). DW-1774's side-bar rule is met by the roster tasks.
 
@@ -697,19 +565,8 @@ Each part re-bases the bundle once, and each adds its own entries to the same pi
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Story 18.6 is too large for one implement pass (five surfaces: eight descriptors, twelve write tools, two new ports, three Task 0s, about three times Story 18.16); recommend splitting by surface group into Part A Licensing (keeps 18-6-licensing-and-ecp), Part B ECP data servers (Story 18.20) and Part C ECP settings and application servers (Story 18.21), in the order A, B, C, with each part's ACs, routes, size and dependencies under Tasks & Acceptance; the orchestrator also rules on Design Notes > Decisions 1-6.
+Status: ready-for-dev
+Blocking condition: none
 
-- **Planned:**
-  - Part A in full: the Task 0 with its halt conditions, server and client execution, rosters, tests, ACs A0-A7, Verification and eight proposed spine amendments. If the split is approved, the runner removes the Part B and Part C sections and sets `ready-for-dev`.
-  - Parts B and C as scope, Task 0 outline, ACs and amendments, for their own plan stages.
-- **Measured at plan:** read-only, on `ocupilot-b-ci`, with no write to any instance. Seven `GET` and `LIST` calls through `AdminPort`, the license and ECP facts, the vendor and classic sources, and `NormalizePage` spellings.
-- **Decisions for the orchestrator** (Design Notes > Decisions), each already applied in this plan:
-  - the activation is unadvertised and its key disabled (AD-53);
-  - `AuthorizationKey` is never returned;
-  - `KeyDirectory` is shown, never set;
-  - no new AD-10 arm, only consequence lines;
-  - the new screens are appended to OS management at positions 15-19;
-  - the Print page's custom resource is covered by the screen's gate.
-- **Working tree:** only this spec is new. `cycle-log-epic-18.md` already held the lead's own uncommitted `stage_spawned` line for this dispatch when the stage started, and it was not touched. Nothing was committed.
-
+- **Plan:** halted for a split (Part A Licensing, Part B ECP data servers, Part C ECP settings and application servers); the orchestrator approved it and confirmed Decisions 1 to 6 on 2026-10-03. The runner trimmed this spec to Part A and set it ready for development.
+- **Measured at plan:** read-only, on `ocupilot-b-ci`, with no write to any instance (Design Notes › Measured at plan).

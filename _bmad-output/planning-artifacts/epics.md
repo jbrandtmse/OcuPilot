@@ -7188,7 +7188,7 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 
 As an operator,
 I want the license key, license servers and the ECP configuration,
-So that a clustered or licensed instance is manageable here.
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split for size, Rule 5 -- 18.6 keeps the license key and the license servers; ECP data servers moved to Story 18.20 and ECP settings and application servers to Story 18.21]
 
 **Acceptance Criteria:**
 
@@ -7196,7 +7196,7 @@ So that a clustered or licensed instance is manageable here.
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
-- **Given** ECP settings, application servers and data servers
+- **Given** ECP settings, application servers and data servers [SPLIT to 18.20 / 18.21 2026-10-03: data servers to 18.20, ECP settings and application servers to 18.21; 18.6 keeps the license key and the license servers]
 - **When** each runs
 - **Then** it round-trips through the admin API
 - **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
@@ -7467,6 +7467,32 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 **Admin API behavior to design for.** (moved from Story 18.5, 2026-10-02)
 
 - `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
+
+### Story 18.20: ECP data servers
+
+As an operator,
+I want the ECP data servers,
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split from 18.6 for size, Rule 5; planned as Part B of `spec-18-6-licensing-and-ecp.md` (commit fe080653); consumes Story 18.16's license pre-check and Remote databases' declared read]
+
+**Acceptance Criteria:**
+
+- **Given** data servers
+- **When** each runs
+- **Then** it round-trips through the admin API
+- **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
+
+### Story 18.21: ECP settings and application servers
+
+As an operator,
+I want the ECP configuration and its application servers,
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split from 18.6 for size, Rule 5; planned as Part C of `spec-18-6-licensing-and-ecp.md` (commit fe080653); reuses Story 18.20's ECP license sentence]
+
+**Acceptance Criteria:**
+
+- **Given** ECP settings and application servers
+- **When** each runs
+- **Then** it round-trips through the admin API
+- **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
