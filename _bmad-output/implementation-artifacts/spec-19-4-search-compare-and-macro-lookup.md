@@ -2,7 +2,7 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 baseline_commit: '69afc567d8be7c7220b13919e3d28fcddc40661f'
 review_loop_iteration: 0
@@ -197,6 +197,8 @@ deferred:
 
 - [x] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
 
+- [ ] [Follow-up] DW-1962 (by=merge_gate): `Definition` + Enter in the command box opens Macros (alias `macro definition`) instead of Definitions. Rank `command-box.ts` screen rows: exact label, label prefix, other label match, then alias-only; favorites first among equal ranks; declaration order last. Keep the alias. Tests: the command box's component spec (with a ranking mutation), definitions spec asserts Definitions first; every command-box spec reading the first row re-run on a rebuilt bundle.
+
 **Acceptance Criteria:**
 
 - AC1: Given probe documents in USER holding a needle, when a person searches it across classes and routines, then each match lists with its document, member and line as the instance answers them, and its document link opens that document's viewer.
@@ -241,6 +243,8 @@ Code review 2026-10-02 (CI rework re-review, four layers, full-opus, diff from `
 Rejected: Enter on `Definition` now opens Macros (low, real; rows keep declaration order, favorites first, Story 15.2; outside the rework range and not high) · header "Eight claims" against ten tests (pre-existing, outside the range) · the new comment narrates the change (false: it states why membership) · triage-log labels, the acted-on `[reject]` row, the log's `baseline_revision`, two dates for one rework, "alone" in Rework 1, rework narrative in an oversized spec (each fix edits the spec or the lead's log) · the sweep omits Enter's first-row dependency (false: no new label, route or alias contains `web apps` or `sign out`) · `a11y-structural-invariants` unreported locally (outside the range; CI's browser shards run it, Rule 29).
 
 ## Spec Change Log
+
+- 2026-10-03, lead (rework 2, orchestrator follow-up): re-opened for the `[Follow-up]` item under Tasks & Acceptance (DW-1962, command-box ranking).
 
 - 2026-10-03, lead (CI rework 1): re-opened for the `[CI]` item under Tasks & Acceptance (run 37080963199, `definitions.browser-spec.mjs` test 5).
 
