@@ -1,7 +1,8 @@
 /// <p>Pins the SQL catalog live (AD-36, AD-61 rule 7): through the production port, and through the
 /// read executor for the cap, on <class>OcuPilot.Test.ExplorerSqlProbe</class>'s objects in
 /// <parameter>PROBENAMESPACE</parameter> -- the four lists with and without system items and one
-/// schema's, a table's five tabs, its name resolved without regard to case, an absent and an
+/// schema's, a table's five tabs, a global temporary table listed and opened, its name resolved
+/// without regard to case, an absent and an
 /// ambiguous name refused, the cap reported -- and, as a purpose-built principal granted SELECT on
 /// one probe table alone, the other absent from the tables and not found on every tab.</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace, where each test
@@ -184,12 +185,14 @@ Method TestTheListsReadTheProbeObjectsWithoutSystemItems()
     }
     Set tSchema = "schema=" _ $Parameter(..#PROBE, "SCHEMA")
     Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", tSchema, 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Visible", "the probe schema's tables, and no other's")
-    Do $$$AssertEquals(..Column(..Rows("Catalog.Views", tSchema, 100, .tHttp), "View"), "OcuProbe195.VisibleNames", "its view")
+    Set tViews = ..Rows("Catalog.Views", tSchema, 100, .tHttp)
+    Do $$$AssertEquals($Select(tViews.%Size() = 1: tViews.%Get(0).%ToJSON(), 1: tViews.%Size()), "{""View"":""OcuProbe195.VisibleNames"",""Schema"":""OcuProbe195"",""Name"":""VisibleNames"",""Class"":""OcuProbe195.VisibleNames"",""Owner"":""" _ $Username _ """,""Updatable"":true,""CheckOption"":""NONE""}", "its view, every declared field")
     Set tProcedures = ..Rows("Catalog.Procedures", tSchema, 100, .tHttp)
     Do $$$AssertEquals(..Column(tProcedures, "Procedure"), "OcuProbe195.Dotted_Extent,OcuProbe195.Echo,OcuProbe195.Hidden_Extent,OcuProbe195.Visible_Extent", "its procedure, beside the extent procedures its persistent classes project")
     Do $$$AssertEquals(..Column(tProcedures, "Type"), "PROCEDURE,FUNCTION,PROCEDURE,PROCEDURE", "the procedure created as a function reads as one")
+    Do $$$AssertEquals(..Column(tProcedures, "Class") _ " " _ ..Column(tProcedures, "Method"), "OcuProbe195.Dotted,OcuProbe195.procEcho,OcuProbe195.Hidden,OcuProbe195.Visible Extent,Echo,Extent,Extent", "each naming the class and method that project it")
     Set tTables = ..Rows("Catalog.Tables", tSchema, 100, .tHttp)
-    Do $$$AssertEquals(tTables.%Get(2).%ToJSON(), "{""Table"":""OcuProbe195.Visible"",""Schema"":""OcuProbe195"",""Name"":""Visible"",""Class"":""OcuProbe195.Visible"",""Owner"":""" _ tTables.%Get(2).Owner _ """,""Sharded"":false,""Partitioned"":false}", "a table row's declared fields")
+    Do $$$AssertEquals($Select(tTables.%Size() = 3: tTables.%Get(2).%ToJSON(), 1: tTables.%Size()), "{""Table"":""OcuProbe195.Visible"",""Schema"":""OcuProbe195"",""Name"":""Visible"",""Class"":""OcuProbe195.Visible"",""Owner"":""" _ $Username _ """,""Sharded"":false,""Partitioned"":false}", "a table row's declared fields, its owner the account that created it")
 }
 
 /// <p>Matrix (System), AC1: with system items chosen, each list carries them as well.</p>
@@ -220,19 +223,36 @@ Method TestTheCapIsReportedThroughTheRead()
     Do $$$AssertEquals(tResult.rows.%Size() _ " " _ tResult.truncated, "3 0", "and at a cap of three, all three uncut")
 }
 
-/// <p>Matrix (Table tabs), AC2: the visible probe table's information is one row naming its class;
-/// its fields carry its four columns, its maps and indices its index, its triggers its trigger with
-/// the code, and its constraints its primary key, unique key and foreign key.</p>
+/// <p>Matrix (Table tabs), AC2: the visible probe table's information is one row naming its class,
+/// read at a cap of one although its schema lists it last; its fields carry its four columns, its
+/// maps and indices its index, its triggers its trigger with the code, and its constraints its
+/// primary key, unique key and foreign key, each row's declared fields read from the vendor's
+/// columns.</p>
 /// <p>Mutation (Rule 19): bind the schema and table swapped for <code>Catalog.Fields</code> in
 /// <method>OcuPilot.Port.AtelierPort.CatalogRows</method> -&gt; the fields assertion goes red.</p>
 Method TestATableReadsItsFiveTabs()
 {
     Set tTable = "table=" _ $Parameter(..#PROBE, "VISIBLE")
-    Set tInfo = ..Rows("Catalog.Table", tTable, 100, .tHttp)
-    Do $$$AssertEquals(tHttp _ " " _ tInfo.%Size() _ " " _ $Select(tInfo.%Size() = 1: tInfo.%Get(0).Name _ " " _ tInfo.%Get(0).Class, 1: ""), "200 1 Visible OcuProbe195.Visible", "Table info is the one row")
-    Set tFields = ..Column(..Rows("Catalog.Fields", tTable, 100, .tHttp), "Field")
+    Set tInfo = ..Rows("Catalog.Table", tTable, 1, .tHttp)
+    Set tRow = $Select(tInfo.%Size() = 1: tInfo.%Get(0), 1: {})
+    Do $$$AssertEquals(tHttp _ " " _ tInfo.%Size() _ " " _ (tRow.LastCompiled '= ""), "200 1 1", "Table info is the one row at a cap of one, with its compile time")
+    Do tRow.%Remove("LastCompiled")
+    Do $$$AssertEquals(tRow.%ToJSON(), "{""Name"":""Visible"",""Owner"":""" _ $Username _ """,""External"":false,""ReadOnly"":false,""Partitioned"":false,""Class"":""OcuProbe195.Visible"",""ExtentSize"":100000,""ExternalType"":""""}", "naming its class, owner and extent")
+    Set tFieldRows = ..Rows("Catalog.Fields", tTable, 100, .tHttp)
+    Set tFields = ..Column(tFieldRows, "Field")
     Do $$$AssertTrue(("," _ tFields _ ",") [ ",Id,Name,Code,Parent,", "Fields carries the table's columns in order: " _ tFields)
-    Do $$$AssertTrue(("," _ ..Column(..Rows("Catalog.Indices", tTable, 100, .tHttp), "Index") _ ",") [ ",VisibleCode,", "Maps/Indices carries its index")
+    Set tName = ""
+    Set tIterator = tFieldRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.Field = "Name" Set tName = tRow.%ToJSON()
+    }
+    Do $$$AssertEquals(tName, "{""Field"":""Name"",""Type"":""%Library.String"",""Column"":3,""Required"":false,""Unique"":true,""Collation"":""SQLUPPER"",""Hidden"":false,""MaxLength"":50,""MinValue"":"""",""MaxValue"":"""",""Stream"":false,""XdbcType"":""VARCHAR"",""ReferenceTo"":"""",""VersionColumn"":false,""Selectivity"":""1""}", "the Name column's declared fields")
+    Set tIndex = ""
+    Set tIterator = ..Rows("Catalog.Indices", tTable, 100, .tHttp).%GetIterator()
+    While tIterator.%GetNext(.tIndex2, .tRow) {
+        If tRow.Index = "VisibleCode" Set tIndex = tRow.Map _ "|" _ (tRow.Fields [ "Code") _ "|" _ tRow.Type _ "|" _ tRow.Inherited _ "|" _ ($Extract(tRow.Global) = "^") _ "|" _ tRow.Status
+    }
+    Do $$$AssertEquals(tIndex, "VisibleCode|1|Index|0|1|Selectable", "Maps/Indices carries its index's map, fields, type, global and status")
     Set tTriggers = ..Rows("Catalog.Triggers", tTable, 100, .tHttp)
     Do $$$AssertEquals(..Column(tTriggers, "Trigger") _ " " _ ..Column(tTriggers, "Event"), "VisibleStamp before insert", "Triggers carries its trigger")
     Do $$$AssertTrue((tTriggers.%Size() = 1) && (tTriggers.%Get(0).Code [ $Parameter(..#PROBE, "CODEMARK")) && ($Length(tTriggers.%Get(0).Code) > $Parameter(..#PROBE, "LONGLENGTH")), "with its whole code as a row field")
@@ -245,6 +265,33 @@ Method TestATableReadsItsFiveTabs()
         If (tRow.Type = "UNIQUE") && (tRow.Data = "(Name)") Set tTypes = tTypes _ " unique"
     }
     Do $$$AssertEquals(tTypes, " unique pk fk:FOREIGN KEY", "Constraints carries its unique key, primary key and foreign key")
+}
+
+/// <p>Matrix (Lists, Table tabs), AC1, AC2: a global temporary table in the probe schema lists among
+/// its tables and opens to its information, as the classic page's table list shows it.</p>
+/// <p>Mutation (Rule 19): drop <code>'GLOBAL TEMPORARY'</code> from
+/// <parameter>OcuPilot.Port.AtelierPort.CATALOGTABLESQUERY</parameter>'s types and put
+/// <code>TABLE_TYPE IN ('BASE TABLE', 'SYSTEM TABLE')</code> back in
+/// <parameter>OcuPilot.Port.AtelierPort.CATALOGRESOLVEQUERY</parameter> -&gt; both assertions go
+/// red.</p>
+Method TestATemporaryTableListsAndOpens()
+{
+    Set tTemporary = $Parameter(..#PROBE, "SCHEMA") _ ".Scratch"
+    Set tCode = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#PROBENAMESPACE
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "CREATE GLOBAL TEMPORARY TABLE " _ tTemporary _ " (Id INT PRIMARY KEY)")
+        Set tCode = tResult.%SQLCODE
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCode = ex.DisplayString()
+    }
+    Do $$$AssertEquals(tCode, 0, "a global temporary table is created in the probe schema")
+    Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", "schema=" _ $Parameter(..#PROBE, "SCHEMA"), 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Scratch,OcuProbe195.Visible", "it lists among the schema's tables")
+    Set tInfo = ..Rows("Catalog.Table", "table=" _ tTemporary, 100, .tHttp)
+    Do $$$AssertEquals(tHttp _ " " _ tInfo.%Size() _ " " _ $Select(tInfo.%Size() = 1: tInfo.%Get(0).Name, 1: ""), "200 1 Scratch", "and opens to its information")
 }
 
 /// <p>Matrix (Case): the name typed in another case resolves to the same table.</p>

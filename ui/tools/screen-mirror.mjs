@@ -2317,7 +2317,8 @@ export function suggestedPromptsProblem(declaration) {
  * that declares the group; every member shares that member's `area` and `archetype`; the members'
  * positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
  * `parentScope`, and in a parent-scoped group its one criterion's `param`, `kind` and `maxLength`,
- * since the strip carries the one route id from tab to tab.
+ * since the strip carries the one route id from tab to tab, and the group is its parent list's
+ * `<route>/document`, the route the list's name cell opens.
  * `OcuPilot.Screen.Registry.TabGroupProblem` returns the same sentence for every roster case in
  * `OcuPilot.Test.TabCorpus`.
  */
@@ -2370,6 +2371,12 @@ export function tabGroupProblem(screens) {
           `members share the one criterion ${criterion} of '${group}' (AD-5)`
         );
       }
+    }
+    if (parent !== '' && group !== `${parent}/document`) {
+      return (
+        `${head.className}: tab.group '${group}' is parent-scoped under '${parent}', and a parent-scoped group is its ` +
+        `parent list's '${parent}/document' (AD-5)`
+      );
     }
   }
   return null;

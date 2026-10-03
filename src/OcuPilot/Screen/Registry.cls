@@ -664,7 +664,8 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 /// positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
 /// <code>parentScope</code>, and in a parent-scoped group its one criterion's <code>param</code>,
 /// <code>kind</code> and <code>maxLength</code>, since the strip carries the one route id from tab to
-/// tab. A shape one member cannot hold on its own is <method>TabProblem</method>'s.</p>
+/// tab, and the group is its parent list's <code>&lt;route&gt;/document</code>, the route the list's
+/// name cell opens. A shape one member cannot hold on its own is <method>TabProblem</method>'s.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>tabGroupProblem</code> returns the same sentence
 /// for every roster case in <class>OcuPilot.Test.TabCorpus</class>.</p>
 ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
@@ -744,6 +745,10 @@ ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
                 }
             }
             If tProblem '= "" Quit
+            If (tParent '= "") && (tGroup '= (tParent _ "/document")) {
+                Set tProblem = tHead.%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is parent-scoped under '" _ tParent _ "', and a parent-scoped group is its parent list's '" _ tParent _ "/document' (AD-5)"
+                Quit
+            }
         }
     } Catch ex {
         Set tProblem = "the tab groups could not be read: " _ ex.DisplayString()

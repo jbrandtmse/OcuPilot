@@ -119,6 +119,34 @@ deferred:
 - AC7: Given a `%Developer` account, when it opens the nine screens in USER, then it reads them, and is refused by name where it cannot read the code database (`DeveloperFloor`).
 - AC8 (Integration, Rule 1): Given a row in SQL tables on the real instance, when the person opens it and switches to Triggers, then that tab reads the same table through its own declared read.
 
+### Review Findings
+
+Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 32 rows, 9 entries (high 0, medium 3, low 6), 8 patched, 1 deferred, 11 rejected.
+
+- [x] [Review][Patch] DW-1973: `Catalog.Table` sent the read's cap to `TablesOnly`, so a table listed past the cap in its schema read no row (measured: Visible at cap 1 read `[]`) [src/OcuPilot/Port/AtelierPort.cls:1177]. Fixed: `CATALOGTABLEMAX` 5,000, keeping the resolved row alone. DW-1973 is closed by this patch; the lead adjudicates the ledger.
+- [x] [Review][Patch] SQL tables and the tab resolve left out `GLOBAL TEMPORARY` tables (HSCUSTOM holds one), and their tabs answered 404 [src/OcuPilot/Port/AtelierPort.cls:136]. Fixed: the list now takes base, temporary and foreign types, and the resolve every type that is not a view. Measured: all five vendor queries answer a temporary table and a foreign table, and a foreign table already reads `BASE TABLE`. Design Notes › Statements' Tables and resolve cells are now out of date.
+- [x] [Review][Patch] Neither engine validated AD-5's "the head is the parent list's `<route>/document`" [src/OcuPilot/Screen/Registry.cls:748]. Fixed in `Registry.cls` and `screen-mirror.mjs`, with a `TabCorpus` case.
+- [x] [Review][Patch] Most column-map fields were unpinned live, and the Tables row's Owner was compared with itself [src/OcuPilot/Test/AtelierPortCatalogLive.cls]. Fixed: Table info, Fields' Name, the index, the view and the procedures now read known values, and Owner is checked against `$Username`.
+- [x] [Review][Patch] `ExplorerSqlProbe` and the browser spec said `Remove` names only its own objects, but it deletes the whole `OcuProbe195` package [src/OcuPilot/Test/ExplorerSqlProbe.cls:2].
+- [x] [Review][Patch] The column-map doc left `true` out of what a flag reads [src/OcuPilot/Port/AtelierPort.cls:158].
+- [x] [Review][Patch] `DeveloperFloor`'s header claimed rows from all nine catalog reads, but four are checked for 200 only [src/OcuPilot/Test/DeveloperFloor.cls:227].
+- [x] [Review][Patch] `self-protection.test.mjs`'s title named Story 19.4 alone [ui/tools/self-protection.test.mjs:551].
+- [x] [Review][Defer] The Fixed-strings bound moves to 2300 with no comment line [ui/tools/strings.test.mjs:576]. Deferred: Epic 18 edits the same hunk. DW-1974 is `wontfix-accepted`, and the lead adds the line at merge-forward.
+
+Rejected:
+
+- false: "the group rule passes a group whose members all declare zero or two criteria." `CriteriaProblem` refuses a parent-scoped read that does not declare exactly one, and a member with no read takes nothing from the route id.
+- false: "`SizeMB` should be a number." The vendor answers text such as `.012 (Estimated)`.
+- false: "`TABS_ROUTE` duplicates `TABLES_ROUTE`." The tabs are routes under the list's route (AD-5), and each name states its use.
+- false: "AC7's refusal by name is not pinned in `DeveloperFloor`." `AtelierPortDenial.TestTheCatalogIsRefusedNamingThePair` pins it, and AC7's mutation line names it.
+- false: "Rule 3 needs a real-runtime body check for every screen." Rule 3 asks for one; the browser spec and `ExplorerCatalog`'s HTTP legs supply it.
+- false: "AC5's injection clause and AC1's cap clause lack `mutation:` lines." Rule 19 asks one per AC, and every AC has one.
+- low: the list statements carry no `ORDER BY`. Rows arrive in collated order (observed in HSCUSTOM and USER); this stays theoretical until a query plan changes it.
+- low: `CatalogText` re-serializes a cell the vendor parsed as JSON, and a JSON-shaped delimited name binds an object. Both need a value or name that is valid JSON, and the full fix rewrites every statement.
+- low: `.Name` and `Sample.` pass the dot check and answer 404. The 404 is true, and a guard would add a branch for input no screen sends.
+- low: `ExplorerCatalog` aborts on `<INVALID OREF>` when Triggers answers no row. That happens only on a path that is already red.
+- spec-only: the `deferred:` block, the triage label, the dates and the Auto Run Result. Those fixes edit this spec; DW-1973's closure is recorded above.
+
 ## Spec Change Log
 
 - 2026-10-03, lead (dev_complete): the `deferred:` Table info item is harvested as DW-1973 and ruled: `Catalog.Table` sends a fixed 5,000 to `TablesOnly` (bounded, AD-36) and keeps only the resolved row; the intent's `max` rule is amended to say so; the code review applies it.
@@ -223,10 +251,10 @@ deferred:
 | Endpoint | `query` | Fields |
 |---|---|---|
 | `Catalog.Schemas` | `CALL %SQL_Manager.Schemas(?)` (system 0/1) | `Schema`, `Tables`, `Views`, `Procedures` |
-| `Catalog.Tables` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)` | `Table`, `Schema`, `Name`, `Class`, `Owner`, `Sharded`, `Partitioned` |
+| `Catalog.Tables` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'GLOBAL TEMPORARY', 'LOCAL TEMPORARY', 'FOREIGN TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)` | `Table`, `Schema`, `Name`, `Class`, `Owner`, `Sharded`, `Partitioned` |
 | `Catalog.Views` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_UPDATABLE, CHECK_OPTION FROM INFORMATION_SCHEMA.VIEWS WHERE (? = 1 OR (NOT (TABLE_SCHEMA %STARTSWITH '%') AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR TABLE_SCHEMA = ?)` | `View`, `Schema`, `Name`, `Class`, `Owner`, `Updatable`, `CheckOption` |
 | `Catalog.Procedures` | the same over `INFORMATION_SCHEMA.ROUTINES` (`ROUTINE_SCHEMA`, `ROUTINE_NAME`, `ROUTINE_TYPE`, `CLASSNAME`, `METHOD_OR_QUERY_NAME`), never `ROUTINE_DEFINITION` | `Procedure`, `Schema`, `Name`, `Type`, `Class`, `Method` |
-| resolve (`max` 2) | `SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'SYSTEM TABLE') AND TABLE_SCHEMA \|\| '.' \|\| TABLE_NAME = ?` | — |
+| resolve (`max` 2) | `SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE NOT IN ('VIEW', 'SYSTEM VIEW') AND TABLE_SCHEMA \|\| '.' \|\| TABLE_NAME = ?` | — |
 | `Catalog.Table` | `CALL %SQL_Manager.TablesOnly(?, 0)`, kept to the resolved row | `Name`, `Owner`, `LastCompiled`, `External`, `ReadOnly`, `Partitioned`, `Class`, `ExtentSize`, `ExternalType` |
 | `Catalog.Fields` | `CALL %SQL_Manager.Fields(?, ?)` | `Field`, `Type`, `Column`, `Required`, `Unique`, `Collation`, `Hidden`, `MaxLength`, `MinValue`, `MaxValue`, `Stream`, `XdbcType`, `ReferenceTo`, `VersionColumn`, `Selectivity` |
 | `Catalog.Indices` | `CALL %SQL_Manager.Indices(?, ?)` | `Index`, `Map`, `Fields`, `Type`, `BitmapArgument`, `SizeMB`, `Inherited`, `Global`, `Status` |
@@ -335,6 +363,11 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: AC7, `ExplorerSqlTables` privileges `[]` → `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 2850) and `AtelierPortDenial.TestTheCatalogIsRefusedNamingThePair` (run 2851).
 - mutation: AC8, `data-table.ts`'s link chain skipping `documentScreenFor` for the Tables list, rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs` AC2/AC8 (its open path wait).
 - mutation: AC1, `ExplorerSqlViews` dropped from `screen-outlet.ts`' `DESCRIPTOR_PAGES` → `screen-outlet.spec.ts` "the four SQL catalog lists resolve to the criteria-form list page"; AD-5's group rule compared on `param` alone in `screen-mirror.mjs` → `screen-mirror.test.mjs`'s TabCorpus leg (the new length case).
+
+- (QA) mutation: AC6, `ExplorerSqlTriggers` `classicPage` `""`, reloaded on `ocupilot-a2-ci` -> `ExplorerDescriptor.TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair` and `TestACustomResourceOnTheSqlPageGatesAllNine` red (run 3294), reverted, tree clean, green again (run 3295). QA added no test: every AC and matrix row has a real-runtime pin; `AtelierPortCatalog` (3289), `AtelierPortCatalogLive` (3290), `ExplorerCatalog` (3291) and the SQL browser spec green.
+- (CR) mutation: DW-1973, `CatalogRows` sending the read's `max` to `Catalog.Table` again → `AtelierPortCatalog.TestEachTabResolvesItsTableAndBindsTheResolvedNames` (run 3300) and `AtelierPortCatalogLive.TestATableReadsItsFiveTabs`, Table info at a cap of one (run 3299).
+- (CR) mutation: AC1, AC2, `'GLOBAL TEMPORARY'` dropped from `CATALOGTABLESQUERY` and `CATALOGRESOLVEQUERY` put back to base and system tables → `AtelierPortCatalogLive.TestATemporaryTableListsAndOpens` (run 3299).
+- (CR) mutation: AD-5, the parent-scoped head check skipped in `Registry.TabGroupProblem` → `Descriptor.TestEveryTabCorpusCaseGetsItsSentence` (run 3301); skipped in `screen-mirror.mjs` → `screen-mirror.test.mjs`'s TabCorpus leg. Each reverted to the patched file byte for byte; green again: `Descriptor` 3302, `AtelierPortCatalog` 3303, `AtelierPortCatalogLive` 3304, `ExplorerCatalog` 3305.
 
 ## Auto Run Result
 

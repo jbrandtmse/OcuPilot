@@ -548,7 +548,7 @@ const FIND_REFUSALS = [
   ['REASONCATALOGNOTFOUND', 'explorerSqlNotFoundReason'],
 ];
 
-test("Story 19.4: each of Search's and Macros' argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
+test("Stories 19.4 and 19.5: each of Search's, Macros' and the SQL catalog's argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
   // Mutation (Rule 19): change one word of REASONSEARCHTEXT in AtelierPort.cls -> this goes red naming both.
   const source = readFileSync(ATELIER_PORT, 'utf8');
   for (const [parameter, key] of FIND_REFUSALS) {

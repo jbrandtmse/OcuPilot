@@ -106,13 +106,14 @@ Method TestEachListSendsItsFixedStatementAndBoundValues()
 
 /// <p>AC2, AC3: each tab first sends the resolve with the caller's name bound and <code>max</code> 2,
 /// then its own statement bound with the exact schema and name the resolve answered -- here a name
-/// holding a dot and a case the caller did not type -- each with the read's own cap.</p>
+/// holding a dot and a case the caller did not type -- each with the read's own cap, except the table
+/// information, which lists the whole schema and sends 5,000.</p>
 /// <p>Mutation (Rule 19): skip the resolve for <code>Catalog.Triggers</code>, binding the caller's
 /// own spelling split at its first dot, in <method>OcuPilot.Port.AtelierPort.CatalogRows</method>
 /// -&gt; the Triggers leg's assertions go red.</p>
 Method TestEachTabResolvesItsTableAndBindsTheResolvedNames()
 {
-    For tCase = $ListBuild("Catalog.Table", "CATALOGTABLEQUERY", "[""OcuProbe""]", 7), $ListBuild("Catalog.Fields", "CATALOGFIELDSQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Indices", "CATALOGINDICESQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Triggers", "CATALOGTRIGGERSQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Constraints", "CATALOGCONSTRAINTSQUERY", "[""OcuProbe"",""Thing.One""]", 7) {
+    For tCase = $ListBuild("Catalog.Table", "CATALOGTABLEQUERY", "[""OcuProbe""]", 5000), $ListBuild("Catalog.Fields", "CATALOGFIELDSQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Indices", "CATALOGINDICESQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Triggers", "CATALOGTRIGGERSQUERY", "[""OcuProbe"",""Thing.One""]", 7), $ListBuild("Catalog.Constraints", "CATALOGCONSTRAINTSQUERY", "[""OcuProbe"",""Thing.One""]", 7) {
         Do ..ClearFixtures()
         Do ..ArmCatalog()
         Do ##class(OcuPilot.Test.AtelierPortFixture).Queue("Query", "200 OK", ..Resolved("OcuProbe", "Thing.One"))

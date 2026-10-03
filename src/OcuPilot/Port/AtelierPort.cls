@@ -131,7 +131,9 @@ Parameter CATALOGTABS = "Catalog.Table,Catalog.Fields,Catalog.Indices,Catalog.Tr
 /// <code>IS NULL</code>.</p>
 Parameter CATALOGSCHEMASQUERY = "CALL %SQL_Manager.Schemas(?)";
 
-Parameter CATALOGTABLESQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)";
+/// <p>A table is every information-schema row that is not a view: a base, temporary or foreign
+/// table, and with system items a system table, as the classic page's table list shows them.</p>
+Parameter CATALOGTABLESQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'GLOBAL TEMPORARY', 'LOCAL TEMPORARY', 'FOREIGN TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)";
 
 Parameter CATALOGVIEWSQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_UPDATABLE, CHECK_OPTION FROM INFORMATION_SCHEMA.VIEWS WHERE (? = 1 OR (NOT (TABLE_SCHEMA %STARTSWITH '%') AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR TABLE_SCHEMA = ?)";
 
@@ -140,7 +142,7 @@ Parameter CATALOGPROCEDURESQUERY = "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE
 /// <p>The one table a tab's <parameter>TABLEKEY</parameter> names, among those the caller's own
 /// privileges show it: the information schema answers only those, and the match is
 /// case-insensitive, as the instance's table names are.</p>
-Parameter CATALOGRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'SYSTEM TABLE') AND TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+Parameter CATALOGRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE NOT IN ('VIEW', 'SYSTEM VIEW') AND TABLE_SCHEMA || '.' || TABLE_NAME = ?";
 
 Parameter CATALOGTABLEQUERY = "CALL %SQL_Manager.TablesOnly(?, 0)";
 
@@ -153,7 +155,7 @@ Parameter CATALOGTRIGGERSQUERY = "CALL %SQL_Manager.Triggers(?, ?)";
 Parameter CATALOGCONSTRAINTSQUERY = "CALL %SQL_Manager.""Constraints""(?, ?)";
 
 /// <p>Each catalog endpoint's row, as <code>Field:COLUMN[:kind]</code> comma-separated in field
-/// order: <code>flag</code> reads <code>1</code> or <code>yes</code> in any case as
+/// order: <code>flag</code> reads <code>1</code>, <code>yes</code> or <code>true</code> in any case as
 /// <code>true</code> and anything else as <code>false</code>, <code>number</code> reads a canonical
 /// number as one, and <code>qualified</code> joins two columns, named <code>SCHEMA.NAME</code>, with
 /// a dot. A column outside the map, such as <code>Fields</code>' data values, never reaches a
@@ -191,6 +193,10 @@ Parameter MAXTABLE As INTEGER = 257;
 
 /// <p>The most rows a catalog read asks the instance for when its caller names no row cap.</p>
 Parameter CATALOGMAX As INTEGER = 1001;
+
+/// <p>The most rows the table information asks the instance for, whatever the read's cap: its
+/// statement lists the table's whole schema, of which only the resolved table's row is kept.</p>
+Parameter CATALOGTABLEMAX As INTEGER = 5000;
 
 /// <p>The query keys carrying a search's text, the documents it looks in (<code>all</code>,
 /// <code>classes</code> or <code>routines</code>) and whether it matches case (<code>yes</code> or
@@ -1110,10 +1116,10 @@ ClassMethod CatalogColumns(pEndpoint As %String) As %String
 /// case-exact. A malformed value is refused 400 <code>PORT.VALIDATION</code> with its own reason
 /// before any route.</p>
 /// <p>The statement is sent as <code>{query, parameters}</code> to the <code>Query</code> route with
-/// <code>max</code> <var>pMax</var>, else <parameter>CATALOGMAX</parameter>; the table information
-/// keeps the row naming the resolved table, so a table the vendor lists after the first
-/// <var>pMax</var> rows of its schema reads no row. A SQL error the route answers under 200 is the
-/// internal fault, its text logged and never sent.</p>
+/// <code>max</code> <var>pMax</var>, else <parameter>CATALOGMAX</parameter>. The table information
+/// sends <parameter>CATALOGTABLEMAX</parameter> instead, since its statement lists the table's whole
+/// schema, and keeps only the row naming the resolved table. A SQL error the route answers under 200
+/// is the internal fault, its text logged and never sent.</p>
 ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -1168,7 +1174,7 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
         Do tBody.%Set("query", ..CatalogStatement(pEndpoint), "string")
         Do tBody.%Set("parameters", tParameters)
         Kill tParams
-        Set tParams("max") = $Select(pMax > 0: pMax, 1: ..#CATALOGMAX)
+        Set tParams("max") = $Select(pEndpoint = ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEMAX, pMax > 0: pMax, 1: ..#CATALOGMAX)
         Set tSC = ..Route(pVersion, pNamespace, "Query", "", .tParams, tBody, .tAnswer, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")

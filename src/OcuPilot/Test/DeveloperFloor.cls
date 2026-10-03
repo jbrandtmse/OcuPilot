@@ -224,9 +224,10 @@ Method TestTheDeveloperSignsInAndOpensExactlyTheDeclaredScreens()
 /// <p><b>System Explorer.</b> Both lists, both viewers, a search and a macro lookup answer the
 /// developer principal 200 with rows in the install namespace and in
 /// <parameter>OTHERNAMESPACE</parameter>, where the Routines list carries rows from that namespace's
-/// own database, which <code>%Developer</code>'s <code>%DB_USER</code> grants; and so do the nine SQL
-/// catalog reads (Story 19.5), the lists over the system items its SQL privileges show it and the
-/// tabs over the first of those tables.</p>
+/// own database, which <code>%Developer</code>'s <code>%DB_USER</code> grants. The nine SQL catalog
+/// reads (Story 19.5) answer it 200, the lists over the system items its SQL privileges show it and
+/// the tabs over the first of those tables, with rows from the tables, the schemas, and that table's
+/// information, fields and indices.</p>
 /// <p>Mutation: as <method>TestTheDeveloperSignsInAndOpensExactlyTheDeclaredScreens</method>'s ->
 /// every read answers 403 and this goes red.</p>
 Method TestSystemExplorerReadsInBothNamespaces()

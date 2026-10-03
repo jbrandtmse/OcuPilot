@@ -7,7 +7,7 @@
  * beyond the baseline.
  *
  * The probe objects are `OcuPilot.Test.ExplorerSqlProbe`'s, created in `before` and removed in
- * `after` by that class, which names only its own. It refuses the live container.
+ * `after` by that class. It refuses the live container.
  *
  * Run: `node --test --test-concurrency=1 browser/system-explorer-sql.browser-spec.mjs` (after
  * `npm run build`, the bundle copied into the throwaway).

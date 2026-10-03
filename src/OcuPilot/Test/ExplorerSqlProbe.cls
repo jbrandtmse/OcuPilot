@@ -1,7 +1,8 @@
 /// <p>Story 19.5's probe SQL objects, created in a namespace by the tests that read the SQL catalog
-/// and removed by <method>Remove</method>, which names only these: schema
-/// <parameter>SCHEMA</parameter>'s tables, view and procedure, and the two classes and one package
-/// definition that project <parameter>DOTTEDNAME</parameter> twice.</p>
+/// and removed by <method>Remove</method>: schema <parameter>SCHEMA</parameter>'s tables, view and
+/// procedure, the two classes and one package definition that project <parameter>DOTTEDNAME</parameter>
+/// twice, and every other class of package <parameter>SCHEMA</parameter>, a table another probe or a
+/// test made there among them.</p>
 /// <ul>
 /// <li><parameter>VISIBLE</parameter> has a primary key, a unique field, an index, a foreign key to
 /// <parameter>HIDDEN</parameter> and a trigger whose code holds <parameter>CODEMARK</parameter> on a
