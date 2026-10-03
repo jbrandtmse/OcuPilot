@@ -229,3 +229,5 @@
 2026-10-03T17:01:44Z	Epic 19	ledger_filed	DW-1982(prepare_CREATE_USER_stores_plaintext_password,vendor-defect_candidate,decision-pending_burndown) by=spec_gate
 2026-10-03T17:01:44Z	Story 19.6	story_created	spawn_at=2026-10-03T16:21:13Z model=opus agent=ae6ed3efcca9f578d path=_bmad-output/implementation-artifacts/spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md build_status=ready-for-dev(after_split) spec_bytes=40255
 2026-10-03T17:01:44Z	Story 19.6	spec_validated	service_introducing=true(Port/SqlPort) integration_ac=present owned_ledger=DW-1964(acceptance_bullet) decision_dependency=resolved(split,design_by=merge_gate) footprint_approved=EXPERIENCE.md_159+173(hand-merge_second),angular_budget by=merge_gate
+2026-10-03T17:43:18Z	Story 19.14	ci_rerun	run=37138831685 attempt=2 scope=failed_jobs(gate.browser-spec_AC1b+AC2_shard_3) approved_by=merge_gate
+2026-10-03T17:43:18Z	Epic 19	stage_spawned	stage=flake-fix spawn_at=2026-10-03T17:43:18Z model=opus agent_name=19-gate-spec-settle-fix-1 target=ui/browser/gate.browser-spec.mjs entry=DW-1975(Epic_18_ledger) sightings=37127162301,37129484494,37138831685 approved_by=merge_gate(before_the_cut)
