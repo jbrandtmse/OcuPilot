@@ -173,3 +173,5 @@
 2026-10-03T02:40:39Z	Story 19.4	ledger_adjudicated	owned=2 resolved=1(DW-1962_resolved-by_742a39f0) reowned=0 terminal=1(DW-1965_by-design) slice_after=empty
 2026-10-03T02:40:39Z	Story 19.4	smoke_complete	method=browser result=pass iterations=3 defects_caught=0 evidence=definitions_10/10(re-review,bundle_main-SN6EFID5=this_tree),command-box.spec_44/44,rework_2_browser_7_specs_green model=claude-opus-5-5
 2026-10-03T02:41:57Z	Story 19.4	committed	sha=6281d781 story_commits=742a39f0(rework_2_DW-1962),a35a5664(re-review_patch) merge=feature_9a22140e(19.4_merged_at_8c085caf) submodules= ci=pending run=37090687982 release=1.0.8_candidate(DW-1962_follow-up)
+2026-10-03T03:26:22Z	Story 19.4	ci_resolved	story=19.4 run=37090687982 head=6281d781 result=success resolved_at=next_implement boundary_reported=main note=DW-1962_follow-up;DW-1965_kept_by-design_by=merge_gate
+2026-10-03T03:26:22Z	Story 19.5	stage_spawned	stage=implement spawn_at=2026-10-03T03:26:22Z model=opus agent_name=19-5-sql-catalog-implement-1 cycle_iteration=1 head=5f3f25ed throwaway=ocupilot-a2-ci ci_prev_story=19.4_run37090687982_success(rule28)
