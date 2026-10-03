@@ -5,6 +5,7 @@ created: '2026-10-03'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '8c24bca121f307d187915edd05ed7ec288004da9'
+baseline_commit: '8c24bca121f307d187915edd05ed7ec288004da9'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -253,7 +254,7 @@ FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS
 LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ?
 ```
 
-The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,024 characters, as the classic tab does. `plain` reads a value through `PlainText`.
+The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,024 characters with no marker (the classic tab cuts at 1,021 and appends `...`). `plain` reads a value through `PlainText`.
 
 **Screens.** All nine are `detail`, side bar 0, `id` single, and declare the group's one criterion (`text` 257). Context fields equal the table's columns.
 
