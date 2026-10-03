@@ -218,3 +218,6 @@
 2026-10-03T16:14:03Z	Story 19.14	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty
 2026-10-03T16:14:03Z	Story 19.14	smoke_complete	method=browser+cli result=pass iterations=2 defects_caught=0 evidence=rework:system-explorer-sql_4/4,a11y_12/12(rebuilt_bundle),ExplorerDescriptor_3831,test:tools_1781;iteration_1_smoke_stands(api,smoke.sh) model=claude-opus-5-5
 2026-10-03T16:15:08Z	Story 19.14	committed	sha=16f56680 story_commits=f1d89c56(DW-1977_follow-up),16f56680(re-review_patch) merge=feature_1bee3976(log_only,67a445a1) submodules= ci=pending run=37136142080 superseded=37135083850(67a445a1) release=1.0.8_candidate(target_merged_by_19:00Z)
+2026-10-03T16:15:29Z	Epic 19	stage_spawned	stage=epic-context spawn_at=2026-10-03T16:15:29Z model=opus agent_name=19-6-epic-context-1 reason=planning_artifacts_newer(spine_19.14_gate+AD-36_read.note,EXPERIENCE.md)
+2026-10-03T16:21:13Z	Epic 19	epic_context_compiled	spawn_at=2026-10-03T16:15:29Z model=opus agent=a4ad725b2b03e92c9 path=_bmad-output/implementation-artifacts/epic-19-context.md lines=147 header_ok=true
+2026-10-03T16:21:13Z	Story 19.6	stage_spawned	stage=plan spawn_at=2026-10-03T16:21:13Z model=opus agent_name=19-6-query-console-plan-1 cycle_iteration=1 inbox=DW-1964 ci_prev=19.14_followup_run_37136142080_pending(rule28_plan_does_not_wait)
