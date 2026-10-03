@@ -472,7 +472,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.5's queued write** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: `QUEUEDWRITES` also names `Journal.File` `INTEGRITYCHECK`, which queues through `ShouldRunAsync()` (read in the vendor source at Story 18.5's plan; Task 0 measures it), carries a port-built `{CheckDetails}` and changes nothing; its console lines are read once with its end.
 
-  **Story 18.19's self-queued read** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `Journal.Record` `LIST` queues itself and is polled like the audit list. Because the vendor's list counts each kept row twice, the port sends twice the rows the read asks (checked on slot A on 2026-09-28: 10 gave 5 and 40 gave 20; Story 18.19's Task 0 confirms it), which is exact only when no row is skipped. Its rows and filter sit in the vendor's task row until the port deletes it or AD-37's sweep does.
+  **Story 18.19's self-queued read** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `Journal.Record` `LIST` queues itself and is polled like the audit list. Because the vendor's list counts each kept row twice, the port sends twice the rows the read asks (checked on slot A on 2026-09-28: 10 gave 5 and 40 gave 20; measured again at Story 18.19's Task 0 on `ocupilot-b-ci`, 2026-10-03: 4, 10, 40 and 2002 gave 2, 5, 20 and 1001), which is exact only when no row is skipped. Its rows and filter sit in the vendor's task row until the port deletes it or AD-37's sweep does.
 
 ### AD-27 — The dependency on the experimental admin API is confined to the port and always has a fallback
 
