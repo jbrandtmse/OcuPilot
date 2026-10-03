@@ -9163,6 +9163,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: JournalPort.ResolveDirectory calls PathPort.Resolve(...,0,1), which refuses only the manager directory itself and the served directory (PathPort.cls:317-323); every database directory under the manager root exists and holds IRIS.DAT and iris.lck (/durable/iris/mgr/user/); Task 0 c measured the vendor writing iris.lck into a newly set alternate
 - 2026-10-03T03:45:21Z status=decision-pending owner=burndown by=cr note=unverified med (inference: lock-file collision); refusing database directories amends AD-21's sixth case
+- 2026-10-03T09:57:28Z status=routed owner=burndown by=merge_gate note=decided 2026-10-03: refuse an existing database's directory as a journal directory (amends AD-21 sixth case); Epic 18 close burn-down
 
 ### DW-1967: The purge rule's archive-target branch runs only against a seam settings read, never against an instance with an archive target
 - source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
@@ -9197,3 +9198,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.
 - 2026-10-03T02:38:34Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=ranking keys are the DW-1962 ruling (name, favorite, order); gated rows stay listed, reason inline (EXPERIENCE.md)
+
+### DW-1975: CI flake (first sighting): gate.browser-spec.mjs AC1b and AC2/AC3 time out after 30 s waiting for Permissions > Users to navigate after sign-in
+- source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
+- 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
