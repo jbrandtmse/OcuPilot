@@ -2,7 +2,7 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 baseline_commit: '69afc567d8be7c7220b13919e3d28fcddc40661f'
 review_loop_iteration: 0
@@ -197,7 +197,7 @@ deferred:
 
 - [x] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
 
-- [ ] [Follow-up] DW-1962 (by=merge_gate): `Definition` + Enter in the command box opens Macros (alias `macro definition`) instead of Definitions. Rank `command-box.ts` screen rows: exact label, label prefix, other label match, then alias-only; favorites first among equal ranks; declaration order last. Keep the alias. Tests: the command box's component spec (with a ranking mutation), definitions spec asserts Definitions first; every command-box spec reading the first row re-run on a rebuilt bundle.
+- [x] [Follow-up] DW-1962 (by=merge_gate): `Definition` + Enter in the command box opens Macros (alias `macro definition`) instead of Definitions. Rank `command-box.ts` screen rows: exact label, label prefix, other label match, then alias-only; favorites first among equal ranks; declaration order last. Keep the alias. Tests: the command box's component spec (with a ranking mutation), definitions spec asserts Definitions first; every command-box spec reading the first row re-run on a rebuilt bundle.
 
 **Acceptance Criteria:**
 
@@ -279,6 +279,21 @@ Rejected: Enter on `Definition` now opens Macros (low, real; rows keep declarati
   - `[false]` `[reject]` The alias `macro definition` could have been narrowed instead of the assertion — the lead's ruling on the `[CI]` item keeps the alias (a person looks up a macro's definition on Macros); Macros being offered for `Definition` is intended.
   - `[false]` `[reject]` Membership no longer catches any other screen offered for `Definition` — the test's claim is only that the list is offered and the form is not; both recorded mutations redden it, and other areas' screens are not its subject.
   - `[false]` `[reject]` `macro-lookup.page.ts:101` labels the definition block with the Agent area's `agentDefinitionFormLabel` — `strings.ts` keeps one key per value, so an identical literal renders its existing key; the block reads "Definition" as intended, and the line predates this pass.
+
+### 2026-10-02 — Review pass (rework 2)
+
+- verdicts: 10 findings — high 0, medium 0, low 5, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Nothing pins that Macros' shipped alias still reaches it for `Definition`: the component cases use a stub roster and test 5 asserted only Definitions — test 5 now also asserts Macros is offered after Definitions; removing `macro definition` from the mirror reddens it alone.
+  - `[low]` `[reject]` The follow-up's mutations have no `mutation:` line in `## Verification` — the fix edits this spec; finalize records them (Rule 19), the favorite-key ones marked as the handoff's.
+  - `[low]` `[reject]` Test 5's `aria-activedescendant` assertion was never red alone — the pinning assertion is `offered[0]`, which reddened; the active row is the first row by the box's existing contract, and isolating it needs a contrived mutation of unchanged code.
+  - `[false]` `[reject]` The re-run of the command-box specs that read the first row has no evidence — the stage ran seven files on the clean bundle, recorded under Rework 2.
+  - `[false]` `[reject]` `labelRank` ranks a route-only match with alias-only ones, where the item names alias-only — a route-only match is not a label match, so it ranks after every label match as the item requires; no row is dropped.
+  - `[false]` `[reject]` With text typed, a favorite no longer leads the whole Screens group (Story 15.2) — the item keeps favorites first among equal ranks, by the orchestrator's ruling.
+  - `[false]` `[reject]` Story 15.2's older cases pass under both orders, so nothing separates rank from favorites — "Story 15.2 within a rank" does: favorites sorted ahead of rank, and the favorite key dropped, each redden it.
+  - `[low]` `[reject]` The ranking rule is stated in no planning document — the class comment states it and three component cases pin it; EXPERIENCE.md states no order for the box at all, and adding one edits a planning document Epic 18 has uncommitted edits in, for no defect a user meets.
+  - `[low]` `[reject]` The component cases use a stub roster, with no route-only match beside an alias-only one — the two share a rank by design, so their order is the favorites-then-declaration tie-break "Story 15.2 within a rank" already pins; the shipped roster is covered by test 5 and the seven-file sweep.
+  - `[false]` `[reject]` Whether the first-row specs were re-run on a rebuilt bundle is unknown — same as the re-run row above.
 
 ## Design Notes
 
@@ -431,6 +446,7 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - (Review) mutation: `readSide` reads an unavailable side's empty text → `code-compare.page.spec.ts` "names a side the instance keeps no source for"; the generation check dropped, and a re-compare blanking the diff → "Compare state"; a routine side matched to `class` events → "compares a routine again"; `hunks` without its spare line → `line-diff.spec.ts` "never collapses a single unchanged line"; `hitLocation` without the member-attribute case, `useArrival` keeping the sent search, the status line without its fault check → three `code-search.page.spec.ts` cases; Macros keeping an omitted document, and skipping `forget` → two `macro-lookup.page.spec.ts` cases; one word of `REASONSEARCHTEXT` → `self-protection.test.mjs` Story 19.4; text bound `>=`, cap 60, whole tree recompiled → `AtelierPortSearch` (run 2809) and `AtelierPortMacro` (run 2810). Each reverted byte for byte; green after (runs 2811, 2812).
 - (CI) mutation: `screenCandidates` also offers `agent/definitions/edit`, rebuilt and redeployed → `definitions` "AC5: the form is routable and listed nowhere" on the form assertion (offered `["Macros","Definition","Definitions"]`); `screenCandidates` drops `agent/definitions` → the same test on the list assertion (offered `["Macros"]`). Reverted byte for byte, clean bundle redeployed, 10/10 green.
 - (Re-review) mutation: `screenCandidates` also offers `agent/definitions/edit` labeled `actionCreate`, rebuilt and redeployed → whole `definitions` file 9/10, test 5 alone red on "and no row opens the form's route" (the label assertion passed). Reverted byte for byte, `main-CW3DWYXW.js` redeployed, 10/10 green.
+- (Rework 2) mutation: the Screens sort drops its rank key → `command-box.spec.ts` "ranks screens by how the text meets each name", "offers Definitions before Macros" and "Story 15.2 within a rank" (3 red, 41 green); `labelRank`'s alias-only 3 made 2 → the first and third of those (2 red); the rank key dropped, rebuilt and redeployed → `definitions` test 5 alone (9/10), "Definitions is offered first: ["Macros","Definitions"]"; `macro definition` removed from the mirror, built and redeployed → test 5 alone (9/10), "Macros … still follows it: ["Definitions"]"; the favorite key dropped, and favorites sorted ahead of rank → the favorites cases red (reported by the handoff). Each reverted byte for byte; clean `main-SN6EFID5.js` redeployed.
 
 ## Auto Run Result
 
@@ -462,3 +478,14 @@ Blocking condition: none
 - **Sweep:** no other command-box spec holds an exact offered-screen list the new screens widen. `system-explorer` already asserts membership; `account-and-filter`, `security` and `web-applications` read one row by id or selector for needles no new screen matches; `tasks` and `command-bar.spec.ts` read the Actions group; `theme`, `panel` and `audit` type nothing; `command-box.spec.ts` uses a stub roster.
 - **Review:** follow-up pass, two layers (verification-gap, intent-alignment) over the diff from `69afc567`: 4 findings, low 1 and false 3, all rejected with their reasons in the triage log; nothing patched or deferred. Follow-up review recommended: false (no `high` patched).
 - **Verification:** bundle rebuilt and deployed to `ocupilot-a2-ci` (`main-CW3DWYXW.js`, the clean tree's); `definitions` 10/10, `system-explorer-find` 6/6, `system-explorer` 4/4, one file per run; `npm run test:tools` 1,779/1,779; `lint-docs` clean. The `(CI) mutation:` line in `## Verification` records both mutations reddening test 5 alone. No ObjectScript changed, so no class run or sweep (Rule 29). `baseline_revision` kept at the story baseline.
+
+### Rework 2 (DW-1962, command-box ranking)
+
+Status: done
+Blocking condition: none
+
+- **Change:** `command-box.ts` `screenCandidates` sorts the Screens group by `labelRank` (whole label, label prefix, elsewhere in the label, then alias or route alone), then favorites (Story 15.2), then declaration order; at an empty query every screen shares one rank. Macros keeps `macro definition`.
+- **Files:** `ui/src/app/shell/command-box.ts` (rank and sort, class comment); `command-box.spec.ts` (three cases: four ranks and Enter, `Definition` and `macro` on the shipped pair, favorites within a rank); `ui/browser/definitions.browser-spec.mjs` (test 5: Definitions first, the row Enter opens, Macros still offered after it); `ui/angular.json` and `ui/tools/angular-json.test.mjs` (budget 2548kB to 2549kB, measured 2,548,187 bytes; DW-1166).
+- **Footprint:** Epic 18 does not touch the command box. Its uncommitted 18.18 edits the same budget lines (2532kB); this branch already changes them, so the merge re-measures as at every forward merge.
+- **Review:** follow-up pass, two layers over the diff from `8c085caf`: 10 findings (low 5, false 5). Patched 1 low (Macros' alias pinned in test 5); rejected the rest, each with its reason in the triage log; nothing deferred. Follow-up review recommended: false (no high patched).
+- **Verification:** `command-box`, `command-bar` and `header` component specs 115/115; `npm run test:tools` 1,779/1,779; browser on the clean `main-SN6EFID5.js`, one file per run: `definitions` 10/10 (after the patch), `web-applications` 4/4, `account-and-filter` 4/4, `system-explorer` 4/4, `system-explorer-find` 6/6, `security` 5/5, `theme` 5/5. Mutations in `## Verification`. No ObjectScript changed (Rule 29). `baseline_revision` kept at the story baseline.

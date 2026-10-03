@@ -10,8 +10,8 @@
  * 2. **A declined leave-confirmation leaves the route unchanged** (AC2). The guard is a route
  *    guard, so the observable is the browser's own address bar after the navigation was refused.
  * 3. **The Definition form is routable and never advertised** (AC5): the Agent co-pilot side bar
- *    lists its screens without the form, and the command box offers no Definition screen, while
- *    the form's own URL renders the form.
+ *    lists its screens without the form, and the command box offers no Definition screen and
+ *    ranks the Definitions list first for that word, while the form's own URL renders the form.
  * 4. **A keyless local model is configurable through the form** (Story 10.3's AC1 and AC3): choosing the
  *    OpenAI-compatible provider offers the local-model declaration and the no-API-key choice, and
  *    a plain-`http://` loopback endpoint saved with neither a key nor a credential name is
@@ -452,6 +452,14 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     assert.ok(
       !offered.includes(STRINGS.agentDefinitionFormLabel),
       `and no offered screen is the Definition form: ${JSON.stringify(offered)}`
+    );
+    // The closest name ranks first, so Enter opens Definitions rather than a screen an alias reaches.
+    assert.equal(offered[0], STRINGS.agentDefinitionListLabel, `Definitions is offered first: ${JSON.stringify(offered)}`);
+    assert.ok(offered.indexOf(STRINGS.explorerMacroLabel) > 0, `and Macros, which its alias reaches, still follows it: ${JSON.stringify(offered)}`);
+    assert.equal(
+      await page.$eval('#ocu-command-box-field', (field) => field.getAttribute('aria-activedescendant')),
+      'ocu-command-box-screen-agent-definitions',
+      'and is the row Enter opens'
     );
     // By route-derived row id as well: the form's label key is shared (Macros renders it), so a
     // relabeled form would pass the label check. The list's row anchors the id scheme.
