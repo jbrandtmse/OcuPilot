@@ -10,8 +10,8 @@
  * 2. **A declined leave-confirmation leaves the route unchanged** (AC2). The guard is a route
  *    guard, so the observable is the browser's own address bar after the navigation was refused.
  * 3. **The Definition form is routable and never advertised** (AC5): the Agent co-pilot side bar
- *    lists Definitions alone, and the command box offers no Definition screen, while the form's
- *    own URL renders the form.
+ *    lists its screens without the form, and the command box offers no Definition screen, while
+ *    the form's own URL renders the form.
  * 4. **A keyless local model is configurable through the form** (Story 10.3's AC1 and AC3): choosing the
  *    OpenAI-compatible provider offers the local-model declaration and the no-API-key choice, and
  *    a plain-`http://` loopback endpoint saved with neither a key nor a credential name is
@@ -453,6 +453,10 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
       !offered.includes(STRINGS.agentDefinitionFormLabel),
       `and no offered screen is the Definition form: ${JSON.stringify(offered)}`
     );
+    // By route-derived row id as well: the form's label key is shared (Macros renders it), so a
+    // relabeled form would pass the label check. The list's row anchors the id scheme.
+    assert.notEqual(await page.$('#ocu-command-box-screen-agent-definitions'), null, 'the Definitions row, by its route id');
+    assert.equal(await page.$('#ocu-command-box-screen-agent-definitions-edit'), null, 'and no row opens the form\'s route');
 
     await page.keyboard.press('Escape');
     // ...and it is still reachable by its own URL, which is the other half of the sentinel.

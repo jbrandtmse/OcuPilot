@@ -9140,3 +9140,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: AtelierPort.MacroContext treats /* only at a line's start and closes on any */; routines get no comment or conditional tracking. Names stay inside the gated namespace and CONTEXTNAMEPATTERN keeps , and : out of the vendor's argument string, so a hostile text can only change its own lookup.
 - 2026-10-03T00:00:23Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=cr note=reopen_if=a Macros lookup on a real document reports a macro defined or undefined contrary to the compiler
+
+### DW-1962: Typing Definition and pressing Enter in the command box now opens Macros, not Definitions: Macros' alias macro definition matches and the box lists in declaration order without ranking by match
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
+- 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
