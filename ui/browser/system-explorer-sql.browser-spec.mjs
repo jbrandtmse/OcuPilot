@@ -1,10 +1,14 @@
 /**
- * Story 19.5 in a real browser, against the throwaway: SQL tables lists the probe schema's tables,
- * the probe table's name opens its catalog tabs, and Fields then Triggers keep the table, each tab
- * reading it through its own declared read and the trigger's code shown as text (AC2, AC8); the
- * side bar marks SQL tables for every tab; and the System box adds system tables (AC1). The list and
- * the Triggers tab pass the structural walk at 1280 light, 720 light and 1280 dark, with no entry
- * beyond the baseline.
+ * Stories 19.5 and 19.14 in a real browser, against the throwaway: SQL tables lists the probe
+ * schema's tables, the probe table's name opens its nine catalog tabs in the classic order, and Fields
+ * then Triggers keep the table, each tab reading it through its own declared read and the trigger's
+ * code shown as text (19.5 AC2, AC8); Partitions shows its empty state for the plain table and SQL
+ * statements the probe's statement (19.14 AC1, AC4); the side bar marks SQL tables for every tab; the
+ * System box adds system tables (19.5 AC1); a view's name opens View info with its text, then Fields
+ * and SQL statements, and a procedure's name opens Stored procedure info, then SQL statements, each
+ * tab reading the object through its own declared read (19.14 AC2, AC3, AC11). The list, the Triggers
+ * tab and a view's three tabs, which the structural walk skips, pass its checks at 1280 light, 720
+ * light and 1280 dark, with no entry beyond the baseline.
  *
  * The probe objects are `OcuPilot.Test.ExplorerSqlProbe`'s, created in `before` and removed in
  * `after` by that class. It refuses the live container.
@@ -34,7 +38,13 @@ const STRINGS = loadStrings();
 const PROBE = 'OcuPilot.Test.ExplorerSqlProbe';
 const SCHEMA = 'OcuProbe195';
 const TABLE = 'OcuProbe195.Visible';
+const VIEW = 'OcuProbe195.VisibleNames';
+const QUERY = 'OcuProbe195.Names';
 const CODE_MARK = 'OcuProbe195Code';
+const LITERAL = 'OcuProbe195Literal';
+const VIEW_LITERAL = 'OcuProbe195ViewLiteral';
+const VIEWS_ROUTE = 'system-explorer/sql-views';
+const PROCEDURES_ROUTE = 'system-explorer/sql-procedures';
 const TABLES_ROUTE = 'system-explorer/sql-tables';
 const TABS_ROUTE = 'system-explorer/sql-tables';
 const READ_PREFIX = '/api/ocupilot/screens/';
@@ -121,6 +131,15 @@ async function rowShowing(page, text) {
   );
 }
 
+/**
+ * Open the tab at `route` from the strip as a keyboard user does: focus it and press Enter. A strip
+ * wider than the content column pages its tabs, so a tab paged out of view is reached this way.
+ */
+async function openTab(page, route) {
+  await page.focus(`.ocu-detail-tab[data-route="${route}"]`);
+  await page.keyboard.press('Enter');
+}
+
 /** The side bar's current entry's label, or `''`, opening the bar first where the width has yielded it. */
 async function currentEntry(page) {
   if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -139,7 +158,7 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     await searchList(page, { schema: SCHEMA, system: false });
     await rowShowing(page, TABLE);
     const names = await page.$$eval(ROW_SELECTOR, (rows) => rows.map((row) => row.querySelector('[role="gridcell"]')?.textContent.trim()));
-    assert.deepEqual(names, ['OcuProbe195.A.B', 'OcuProbe195.Hidden', TABLE], 'the probe schema\'s tables');
+    assert.deepEqual(names, ['OcuProbe195.A.B', 'OcuProbe195.Hidden', 'OcuProbe195.Parted', TABLE], 'the probe schema\'s tables');
     assert.deepEqual(await structural(page, TABLES_ROUTE), [], 'SQL tables with its rows adds no structural entry');
 
     // Mutation (Rule 19): skip `documentScreenFor` for the Tables list in `data-table.ts`'s link chain,
@@ -149,18 +168,32 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/document/${id}`);
     await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
     const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
-    assert.deepEqual(labels, [STRINGS.explorerSqlTabInfo, STRINGS.explorerSqlTabFields, STRINGS.explorerSqlTabIndices, STRINGS.explorerSqlTabTriggers, STRINGS.explorerSqlTabConstraints], 'the five tabs, in the classic order');
+    assert.deepEqual(
+      labels,
+      [
+        STRINGS.explorerSqlTabInfo,
+        STRINGS.explorerSqlTabFields,
+        STRINGS.explorerSqlTabIndices,
+        STRINGS.explorerSqlTabPartitions,
+        STRINGS.explorerSqlTabPartitionMappings,
+        STRINGS.explorerSqlTabTriggers,
+        STRINGS.explorerSqlTabConstraints,
+        STRINGS.explorerSqlTabCachedQueries,
+        STRINGS.explorerSqlTabStatements,
+      ],
+      'the nine tabs, in the classic order'
+    );
     await rowShowing(page, 'OcuProbe195.Visible');
     assert.equal(await currentEntry(page), STRINGS.explorerSqlTablesLabel, 'the side bar marks SQL tables');
 
-    await page.click(`.ocu-detail-tab[data-route="${TABS_ROUTE}/fields"]`);
+    await openTab(page, `${TABS_ROUTE}/fields`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/fields/${id}`);
     await rowShowing(page, 'Parent');
     assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqlfields/read?`) && read.includes(`table=${encodeURIComponent(TABLE)}`)), `Fields reads the table: ${JSON.stringify(reads)}`);
 
     // Mutation (Rule 19): open the bare tab route in `DetailPage.open` -> each tab opens with no table
     // and the path waits time out.
-    await page.click(`.ocu-detail-tab[data-route="${TABS_ROUTE}/triggers"]`);
+    await openTab(page, `${TABS_ROUTE}/triggers`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/triggers/${id}`);
     await rowShowing(page, 'VisibleStamp');
     assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqltriggers/read?`) && read.includes(`table=${encodeURIComponent(TABLE)}`)), `Triggers reads the table through its own read: ${JSON.stringify(reads)}`);
@@ -172,6 +205,77 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     assert.ok(code.elements <= 1, 'as text, not markup');
     assert.equal(await currentEntry(page), STRINGS.explorerSqlTablesLabel, 'and the side bar still marks SQL tables');
     assert.deepEqual(await structural(page, `${TABS_ROUTE}/triggers/:id`), [], 'the Triggers tab adds no structural entry');
+
+    // Story 19.14 AC4: the plain table reads no partition, and shows the empty state.
+    await openTab(page, `${TABS_ROUTE}/partitions`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/partitions/${id}`);
+    await page.waitForSelector('.ocu-data-table-empty', { timeout: config.navigationTimeoutMs });
+    // Story 19.14 AC1: SQL statements shows the probe statement, its kept literal as text.
+    await openTab(page, `${TABS_ROUTE}/statements`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/statements/${id}`);
+    await rowShowing(page, LITERAL);
+    assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqltablestatements/read?`) && read.includes(`table=${encodeURIComponent(TABLE)}`)), `SQL statements reads the table through its own read: ${JSON.stringify(reads)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 19.14 AC2, AC11: a view opens to View info with its text, then Fields and SQL statements keep it, each reading it', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${VIEWS_ROUTE}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  const reads = recordReads(page);
+  try {
+    await searchList(page, { schema: SCHEMA, system: false });
+    await rowShowing(page, VIEW);
+    // Mutation (Rule 19): skip `documentScreenFor` for the Views list in `data-table.ts`'s link chain,
+    // so its name cell links to the list itself -> the click selects the row and the path wait times out.
+    await clickRowCentre(page, { text: VIEW, link: true });
+    const id = encodeEntityId(VIEW);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${VIEWS_ROUTE}/document/${id}`);
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(labels, [STRINGS.explorerSqlTabViewInfo, STRINGS.explorerSqlTabFields, STRINGS.explorerSqlTabStatements], 'the view\'s three tabs');
+    await rowShowing(page, `SELECT Id, Name FROM ${TABLE}`);
+    assert.equal(await currentEntry(page), STRINGS.explorerSqlViewsLabel, 'the side bar marks SQL views');
+    assert.deepEqual(await structural(page, `${VIEWS_ROUTE}/document/:id`), [], 'View info adds no structural entry');
+
+    await openTab(page, `${VIEWS_ROUTE}/fields`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${VIEWS_ROUTE}/fields/${id}`);
+    await rowShowing(page, '%Library.String');
+    assert.deepEqual(await structural(page, `${VIEWS_ROUTE}/fields/:id`), [], 'Fields adds no structural entry');
+
+    await openTab(page, `${VIEWS_ROUTE}/statements`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${VIEWS_ROUTE}/statements/${id}`);
+    await rowShowing(page, VIEW_LITERAL);
+    assert.deepEqual(await structural(page, `${VIEWS_ROUTE}/statements/:id`), [], 'SQL statements adds no structural entry');
+    for (const tool of ['explorer.sqlview', 'explorer.sqlviewfields', 'explorer.sqlviewstatements']) {
+      assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`view=${encodeURIComponent(VIEW)}`)), `${tool} reads the view through its own read: ${JSON.stringify(reads)}`);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 19.14 AC3, AC11: a procedure opens to Stored procedure info, then SQL statements keeps it, each reading it', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${PROCEDURES_ROUTE}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  const reads = recordReads(page);
+  try {
+    await searchList(page, { schema: SCHEMA, system: false });
+    await rowShowing(page, QUERY);
+    await clickRowCentre(page, { text: QUERY, link: true });
+    const id = encodeEntityId(QUERY);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${PROCEDURES_ROUTE}/document/${id}`);
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(labels, [STRINGS.explorerSqlTabProcedureInfo, STRINGS.explorerSqlTabStatements], 'the procedure\'s two tabs');
+    await rowShowing(page, 'OcuProbe195.queryNames');
+    assert.equal(await currentEntry(page), STRINGS.explorerSqlProceduresLabel, 'the side bar marks SQL procedures');
+
+    await openTab(page, `${PROCEDURES_ROUTE}/statements`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${PROCEDURES_ROUTE}/statements/${id}`);
+    await rowShowing(page, '"NAMES"');
+    for (const tool of ['explorer.sqlprocedure', 'explorer.sqlprocedurestatements']) {
+      assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`procedure=${encodeURIComponent(QUERY)}`)), `${tool} reads the procedure through its own read: ${JSON.stringify(reads)}`);
+    }
   } finally {
     await context.close();
   }

@@ -2,9 +2,9 @@
 title: "Story 19.14: The SQL catalog's remaining detail tabs"
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'a56f52d52919ba783ae1c8a47be6e2964fd2c9aa'
+baseline_revision: '8c24bca121f307d187915edd05ed7ec288004da9'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -153,6 +153,26 @@ deferred: []
 - 2026-10-03, lead (spec gate): the spine carries the drafts (AD-61 rules 3, 7, 8; AD-36). The three open questions are accepted as decided in Design Notes (statements without identifying columns from `INFORMATION_SCHEMA`, never `StatementIndex`; partition tabs short-circuit on an unpartitioned table; definitions and statement text as bounded row fields). The plan's `deferred:` DW-1001 occurrence is harvested to the ledger. The Fixed-strings bound raise (2300 to 2500) is approved by=merge_gate.
 
 ## Review Triage Log
+
+### 2026-10-03 — Review pass
+
+- verdicts: 15 findings — high 0, medium 2, low 10, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Partition mappings' column map is never run against a row (verification-gap) — a `Catalog.PartitionMappings` case added to `AtelierPortCatalogTabs.TestRowsCarryExactlyTheDeclaredFields`; `Rule:RULES` reddens it (run 3370).
+  - `[low]` `[patch]` `TestRowsCarryExactlyTheDeclaredFields`' `'[ "OcuProbe1914"` line cannot fail on four legs and is implied by the exact equality on the fifth — deleted.
+  - `[low]` `[patch]` `CATALOGSTATEMENTSQUERY`'s doc says the cut matches the classic tab, which cuts at 1,021 and appends `...` (`Catalog.cls:2282`) — doc and the live test's message now say only "1,024 characters"; Design Notes › Statements carries the same inexact sentence.
+  - `[low]` `[reject]` Source `m`'s statement rows accumulate on a reused instance until a seed falls past the tool's cap (inference) — needs about 200 runs on one instance; CI's throwaways are fresh, and the fix is ordering or purge logic, not a correction.
+  - `[low]` `[patch]` A view's Fields and SQL statements tabs get no structural check (the walk's `SKIP`) — the browser spec now runs `structural` on both; the implement stage's `deferred:` item for it is resolved and removed.
+  - `[low]` `[reject]` A statement over 1,024 characters is cut on the screen with no marker — the cut and its statement are fixed by Design Notes › Statements; changing them is a spec change.
+  - `[medium]` `[patch]` Partition mappings never shows a row on any surface (intent-alignment) — same root cause as the first row; the live probe has no mapping configured (measured), so the fixture leg pins the map.
+  - `[low]` `[patch]` The screen-context cut of the four new long-text fields, a cached query's text among them, is untested — `ExplorerCatalog.TestTheScreenContextCutsTheLongTexts` added through `Api/Turn.BoundedContext`; the bound mutation reddens it (run 3373).
+  - `[low]` `[reject]` No long text is rendered in a browser — the screen's answer carries it whole (HTTP and `Screen.Read` legs); text cells are not clamped, and the render path is 19.5's.
+  - `[low]` `[reject]` No error banner is rendered in a browser — every status is pinned at the port or the route; the banner is the shared detail page's.
+  - `[low]` `[reject]` Partitions with rows, Partition mappings and Cached queries are never opened in a browser — the same `detail` render path as the opened tabs; their rows are pinned at the port and the tool.
+  - `[low]` `[patch]` A view's Fields and SQL statements tabs get no structural check (intent-alignment) — same root cause and fix as the fifth row.
+  - `[false]` `[reject]` The 403 legs cover 2 of the 9 endpoints — `Invoke` evaluates both pair sets (`AtelierPort.cls:839`, `:857`) before any endpoint dispatch, for every endpoint.
+  - `[false]` `[reject]` The order gate, version, arguments is untested for the new kinds — the version check (`:871-878`) precedes `CatalogRows` (`:943`) in `Invoke` for every endpoint.
+  - `[false]` `[reject]` The procedure group's id carry is exercised only in the browser — that leg asserts the id on the statements path and is green; the mechanism is 19.5's.
 
 ## Design Notes
 
@@ -352,8 +372,49 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - AC9: `ExplorerSqlView` `classicPage` `""` → `ExplorerDescriptor`.
 - AC10: `ExplorerSqlProcedure` privileges `[]` → `DeveloperFloor`.
 - AC11: the Views name cell linking to the list itself, rebuilt and redeployed → the browser view leg.
+- mutation: AC1, `CatalogRows` binds `Catalog.CachedQueries`' name and schema swapped → `AtelierPortCatalogTabsLive.TestTheTableTabsReadTheProbeTables` (run 3337).
+- mutation: AC1, `CATALOGPARTITIONMAPPINGSCOLUMNS` maps `Rule:RULES` → `AtelierPortCatalogTabs.TestRowsCarryExactlyTheDeclaredFields`, the partition mappings leg (run 3370; green again 3371).
+- mutation: AC2, `CatalogRows`' `ViewInfo` text merge skipped → `AtelierPortCatalogTabsLive.TestAViewReadsItsThreeTabs` and `TestLongTextIsWholeThroughTheRead` (run 3338).
+- mutation: AC3, `CATALOGPROCEDURECOLUMNS` maps `Description` without `plain` → `AtelierPortCatalogTabsLive.TestAProcedureReadsItsTwoTabs` (run 3339).
+- mutation: AC4, `CatalogRows`' partitioned check skipped → `AtelierPortCatalogTabs.TestPartitionsAreNotReadForATableThatIsNotPartitioned` (run 3340).
+- mutation: AC5, `s.UserName AS USER_NAME` added to `CATALOGSTATEMENTSQUERY` and `UserName:USER_NAME` to its column map → `AtelierPortCatalogTabs.TestNoStatementReadSelectsAnIdentifyingColumn` and `TestRowsCarryExactlyTheDeclaredFields` (run 3341), `AtelierPortCatalogTabsLive.TestTheTableTabsReadTheProbeTables` (run 3342).
+- mutation: AC6, `CatalogResolve` skipped for `Catalog.View`, the caller's name split at its first dot → `AtelierPortCatalogTabsLive.TestAPrincipalReadsOnlyTheViewAndProcedureItWasGranted` and `TestAbsentAmbiguousAndMalformedNamesAreRefused` (run 3343).
+- mutation: AC7, `Kernel/Agent/Bound.Apply`'s per-field cut skipped → `ExplorerCatalog.TestTheReadToolsAnswerBoundedRowsAlone`, the view's `Text`, the description's and the long statement's legs, and `ExplorerCatalog.TestTheScreenContextCutsTheLongTexts`' four screen-context legs (runs 3344, 3357, 3373; green again 3358, 3374).
+- mutation: AC8, the relation key spliced into the statements read's text in `CatalogRows` → `AtelierPortCatalogTabs.TestEachTabResolvesAndBindsTheResolvedNames` (run 3345).
+- mutation: AC9, `ExplorerSqlView` `classicPage` `""` → `ExplorerDescriptor.TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair` and `TestACustomResourceOnTheSqlPageGatesAllEighteen` (run 3346).
+- mutation: AC10, `ExplorerSqlProcedure` privileges `[]` → `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 3347).
+- mutation: AC11, `data-table.ts`'s link chain skipping `documentScreenFor` for the Views list, rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs` "Story 19.14 AC2, AC11" (its open path wait). Each reverted byte for byte; green again: `AtelierPortCatalogTabs` 3348, `AtelierPortCatalogTabsLive` 3349, `ExplorerCatalog` 3350, `ExplorerDescriptor` 3351, `DeveloperFloor` 3352, and the browser spec on the redeployed bundle.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Change.** `AtelierPort` gains the nine `Catalog.*` endpoints. The view and procedure resolves go through `INFORMATION_SCHEMA.VIEWS` and `ROUTINES`, and the table resolve now also reads `IS_PARTITIONED`, so the partition tabs short-circuit on a plain table. The three statements tabs read the information schema by relation key (`CatalogRelation`), `Catalog.View` merges `ViewInfo`'s text into `ViewInfo2`'s row, and the `plain` column kind is added. The change also adds nine descriptors (Triggers and Constraints move to positions 6 and 7), 82 strings with one Fixed-strings row, and the rosters. The bundle warning is re-based to 2621kB (measured 2,620,708 bytes).
+
+**Files.**
+
+- `src/OcuPilot/Port/AtelierPort.cls`: the endpoints, resolves, statements, column maps, six reasons.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSql{Partitions,PartitionMappings,CachedQueries,TableStatements,View,ViewFields,ViewStatements,Procedure,ProcedureStatements}.cls`: new. `ExplorerSql{Triggers,Constraints,Views,Procedures}.cls`: position or doc.
+- `src/OcuPilot/Test/AtelierPortCatalogTabs.cls`, `AtelierPortCatalogTabsLive.cls`: new, fixture and live. `ExplorerSqlProbe.cls`: Story 19.14's probe objects and statements.
+- `src/OcuPilot/Test/{ExplorerCatalog,AtelierPortCatalogLive,AtelierDenialProbe,AtelierPortDenial,InjectionSeed,InjectionChannels}.cls`: the story's legs. `{ExplorerDescriptor,ReadTool,ToolRoundTrip,SurfaceCoverage,Descriptor,DeveloperFloor}.cls`: rosters.
+- `ui/src/app/core/strings.ts`, `screens.generated.ts`, EXPERIENCE.md (:159 and one row): strings. `ui/angular.json` and `angular-json.test.mjs`: the budget.
+- `ui/tools/{screen-mirror,navigation,self-protection,strings}.test.mjs`, `detail-page.spec.ts`, `system-explorer-sql.browser-spec.mjs`: client legs. `structural-walk.mjs`: `SKIP` for the view tabs. `scripts/ci-throwaway.sh`: arming roster line.
+
+**Review.** 15 findings: 2 medium, 10 low, 3 false. Patched: 1 medium entry (Partition mappings' map, now pinned by a fixture row) and 4 low entries (a vacuous assertion deleted, the 1,024 doc claim, structural checks on the view's Fields and SQL statements tabs, screen-context cut legs). Rejected: 5 low and 3 false, reasons in the triage log. Nothing deferred: the implement stage's one `deferred:` item closed with the structural patch. Follow-up review: `false` (patched: high 0, medium 1, low 4).
+
+**Verification (on `ocupilot-a2-ci`).**
+
+- Story classes, each green by itself: `AtelierPortCatalogTabs` 3371, `AtelierPortCatalogTabsLive` 3375, `AtelierPortCatalog` 3359, `AtelierPortCatalogLive` 3360, `ExplorerCatalog` 3374, `AtelierPortDenial` 3361, `ExplorerDescriptor` 3362, `ReadTool` 3363, `ToolRoundTrip` 3364, `SurfaceCoverage` 3365, `Descriptor` 3366, `DeveloperFloor` 3367, `InjectionChannels` 3368.
+- Checks: `check-objectscript` 0 problems; its harness OK; `lint-docs` 0 issues. `npm test`: 1,780 tool tests and 2,220 component tests pass.
+- Browser: `system-explorer-sql` and `a11y-structural-invariants` pass on the rebuilt bundle.
+- Mutations: every AC's planned mutation reddened its test. Added ones: `Rule:RULES` (3370) and the bound cut (3357, 3373).
+- Full sweep: 428 classes, 3,486 tests, 2 failed. Those are the known `Retention` (DW-1929) and `WireSecurityRead` (DW-1554) residue.
+  - `JournalSettingsRules`, `JournalSettingsWrite`, `JournalWrite`, `JournalWriteGate` and `PathPortInstance` refused at their arming guard. `ocupilot-a2-ci`'s compose file (2026-10-01 14:41) predates Story 18.5's `OCUPILOT_ALLOW_JOURNAL`, so it is unset there; this is environment, not a regression.
+  - 0 probe leftovers, 0 overlaps.
+
+**Residual risks.**
+
+- A statement over 1,024 characters is cut with no marker (classic appends `...`), as Design Notes fixes. Design Notes › Statements' "as the classic tab does" is inexact (classic: 1,021 plus `...`).
+- Nine tabs page the strip behind its arrows at common widths.
+- Merge conflicts with Epic 18 are expected on the approved contended lines.
+
+Status: done
 Blocking condition: none

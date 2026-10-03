@@ -65,7 +65,7 @@ XData Declaration
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""
   },
-  "tab": {"group": "system-explorer/sql-tables/document", "position": 4, "labelKey": "explorerSqlTabTriggers"},
+  "tab": {"group": "system-explorer/sql-tables/document", "position": 6, "labelKey": "explorerSqlTabTriggers"},
   "toolIdentifier": "explorer.sqltriggers"
 }
 }

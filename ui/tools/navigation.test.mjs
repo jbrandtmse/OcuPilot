@@ -260,12 +260,22 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/classes/editor',
       'system-explorer/routines/document',
       'system-explorer/routines/editor',
-      // Story 19.5: a SQL table's five unlisted tabs, by descriptor class name.
+      // Stories 19.5 and 19.14: a SQL table's nine unlisted tabs, a view's three and a procedure's
+      // two, by descriptor class name.
+      'system-explorer/sql-tables/cached-queries',
       'system-explorer/sql-tables/constraints',
       'system-explorer/sql-tables/fields',
       'system-explorer/sql-tables/indices',
+      'system-explorer/sql-tables/partition-mappings',
+      'system-explorer/sql-tables/partitions',
+      'system-explorer/sql-procedures/document',
+      'system-explorer/sql-procedures/statements',
       'system-explorer/sql-tables/document',
+      'system-explorer/sql-tables/statements',
       'system-explorer/sql-tables/triggers',
+      'system-explorer/sql-views/document',
+      'system-explorer/sql-views/fields',
+      'system-explorer/sql-views/statements',
       'system-explorer/classes',
       'system-explorer/routines',
       // Story 19.4: Search, Compare and Macros, after Routines.

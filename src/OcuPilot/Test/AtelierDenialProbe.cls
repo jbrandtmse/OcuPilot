@@ -1,8 +1,9 @@
 /// <p>The child process <class>OcuPilot.Test.AtelierPortDenial</class> starts to call
 /// <class>OcuPilot.Port.AtelierPort</class> directly as a real principal. It logs in as that
 /// principal, then, for each namespace it is given, invokes the <code>Classes</code>,
-/// <code>Class</code>, <code>Search</code>, <code>Macro</code>, <code>Catalog.Tables</code> and
-/// <code>Catalog.Triggers</code> endpoints through
+/// <code>Class</code>, <code>Search</code>, <code>Macro</code>, <code>Catalog.Tables</code>,
+/// <code>Catalog.Triggers</code>, <code>Catalog.View</code> and <code>Catalog.Procedure</code>
+/// endpoints through
 /// <class>OcuPilot.Test.AtelierPortFixture</class> -- whose gate
 /// and database resources are the real ones and whose routes are canned and counted -- and the
 /// production port itself, and signals the outcome to its parent as JSON.</p>
@@ -13,7 +14,8 @@ Class OcuPilot.Test.AtelierDenialProbe Extends %RegisteredObject
 
 /// <p>Log in as <var>pUsername</var> and signal
 /// <code>{loggedIn, username, &lt;namespace&gt;: {Classes: {http, calls, code, failedPair},
-/// Class: {...}, Search: {...}, Macro: {...}, Catalog.Tables: {...}, Catalog.Triggers: {...}, Port:
+/// Class: {...}, Search: {...}, Macro: {...}, Catalog.Tables: {...}, Catalog.Triggers: {...},
+/// Catalog.View: {...}, Catalog.Procedure: {...}, Port:
 /// {http, code, failedPair, rows}}}</code> to process
 /// <var>pParent</var> for each
 /// of the comma-separated <var>pNamespaces</var>, or <code>{error}</code> when something raised.</p>
@@ -26,7 +28,7 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pNamespaces As %Strin
         For tI = 1:1:$Length(pNamespaces, ",") {
             Set tNamespace = $Piece(pNamespaces, ",", tI)
             Set tLegs = {}
-            For tEndpoint = "Classes", "Class", "Search", "Macro", "Catalog.Tables", "Catalog.Triggers" {
+            For tEndpoint = "Classes", "Class", "Search", "Macro", "Catalog.Tables", "Catalog.Triggers", "Catalog.View", "Catalog.Procedure" {
                 Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
                 Do ##class(OcuPilot.Test.AtelierPortFixture).UseFakeRoutes()
                 Kill tQuery
@@ -36,6 +38,8 @@ ClassMethod Run(pParent As %Integer, pUsername As %String, pNamespaces As %Strin
                 Set tQuery("document") = "Probe.Denial.cls"
                 Set tQuery("macro") = "Probe"
                 Set tQuery("table") = "Probe.Denial"
+                Set tQuery("view") = "Probe.Denial"
+                Set tQuery("procedure") = "Probe.Denial"
                 Set tSC = ##class(OcuPilot.Test.AtelierPortFixture).Invoke(tEndpoint, "LIST", .tQuery, "", .tRows, .tHttp, .tFault, .tDocument)
                 Set tLeg = ..Leg(tHttp, tFault)
                 Do tLeg.%Set("calls", ##class(OcuPilot.Test.AtelierPortFixture).CallCount(), "number")

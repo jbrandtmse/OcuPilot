@@ -4,7 +4,9 @@
 /// by the <code>list (server criteria)</code> archetype's page (AD-5, AD-36, AD-61).</p>
 /// <p><b>Its criteria are the classic SQL page's System box and a schema</b>: <code>system</code>
 /// <code>no</code>, its default, keeps no <code>%</code> or <code>INFORMATION_SCHEMA</code>
-/// procedure, and <code>schema</code> keeps one schema's. A procedure's definition is never read.</p>
+/// procedure, and <code>schema</code> keeps one schema's. A procedure's description is read by its
+/// Stored procedure info tab (<class>OcuPilot.Screen.Descriptor.ExplorerSqlProcedure</class>), which a
+/// row's name opens.</p>
 /// <p><b>Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter></b>; the port
 /// also requires READ on the namespace's code databases, resolved at call time (AD-29, AD-61). It
 /// replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose custom resource also gates it (AD-44). No

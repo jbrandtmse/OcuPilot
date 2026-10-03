@@ -422,15 +422,18 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // rounded up to the next kB (the Screens group's rank and sort), under the 4000kB hard stop.
 // Story 19.5 raised it to 2572kB, the measured 2,571,381-byte initial total rounded up to the next kB
 // (the SQL catalog's nine descriptors' mirror, its strings and the parent-scoped tab strip), under the
+// 4000kB hard stop.
 // Story 18.18 raised it to 2532kB, the measured 2,531,807-byte initial total rounded up to the next kB
 // (Journal settings' form, its store and the descriptor's mirror), under the 4000kB hard stop.
 // Story 18.18's forward merge of Story 19.4 raised it to 2571kB, the measured 2,570,979-byte initial
 // total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 18.18's forward merge of Story 19.4's command-box ranking raised it to 2572kB, the measured
 // 2,571,157-byte initial total rounded up to the next kB (both branches' additions together), under the
+// 4000kB hard stop.
 // Story 19.5's forward merge of Story 18.18 raised it to 2595kB, the measured 2,594,351-byte initial
 // total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
-// 4000kB hard stop.
+// Story 19.14 raised it to 2621kB, the measured 2,620,708-byte initial total rounded up to the next kB
+// (the nine further SQL catalog descriptors' mirror and their strings), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -443,7 +446,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2595kB', 'DW-1166, Story 19.5 forward merge of Story 18.18: the measured 2,594,351 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2621kB', 'DW-1166, Story 19.14: the measured 2,620,708 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

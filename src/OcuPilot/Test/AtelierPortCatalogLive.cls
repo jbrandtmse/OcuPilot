@@ -184,15 +184,21 @@ Method TestTheListsReadTheProbeObjectsWithoutSystemItems()
         Do $$$AssertEquals(..SystemCount(tRows, $List(tCase, 2)), 0, $List(tCase, 1) _ " carries no system item")
     }
     Set tSchema = "schema=" _ $Parameter(..#PROBE, "SCHEMA")
-    Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", tSchema, 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Visible", "the probe schema's tables, and no other's")
+    Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", tSchema, 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Parted,OcuProbe195.Visible", "the probe schema's tables, and no other's")
     Set tViews = ..Rows("Catalog.Views", tSchema, 100, .tHttp)
-    Do $$$AssertEquals($Select(tViews.%Size() = 1: tViews.%Get(0).%ToJSON(), 1: tViews.%Size()), "{""View"":""OcuProbe195.VisibleNames"",""Schema"":""OcuProbe195"",""Name"":""VisibleNames"",""Class"":""OcuProbe195.VisibleNames"",""Owner"":""" _ $Username _ """,""Updatable"":true,""CheckOption"":""NONE""}", "its view, every declared field")
+    Do $$$AssertEquals(..Column(tViews, "View"), "OcuProbe195.A.V,OcuProbe195.HiddenNames,OcuProbe195.LongView,OcuProbe195.VisibleNames", "the probe schema's views")
+    Set tView = ""
+    Set tIterator = tViews.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.View = $Parameter(..#PROBE, "VIEW") Set tView = tRow.%ToJSON()
+    }
+    Do $$$AssertEquals(tView, "{""View"":""OcuProbe195.VisibleNames"",""Schema"":""OcuProbe195"",""Name"":""VisibleNames"",""Class"":""OcuProbe195.VisibleNames"",""Owner"":""" _ $Username _ """,""Updatable"":true,""CheckOption"":""NONE""}", "its view over the visible table, every declared field")
     Set tProcedures = ..Rows("Catalog.Procedures", tSchema, 100, .tHttp)
-    Do $$$AssertEquals(..Column(tProcedures, "Procedure"), "OcuProbe195.Dotted_Extent,OcuProbe195.Echo,OcuProbe195.Hidden_Extent,OcuProbe195.Visible_Extent", "its procedure, beside the extent procedures its persistent classes project")
-    Do $$$AssertEquals(..Column(tProcedures, "Type"), "PROCEDURE,FUNCTION,PROCEDURE,PROCEDURE", "the procedure created as a function reads as one")
-    Do $$$AssertEquals(..Column(tProcedures, "Class") _ " " _ ..Column(tProcedures, "Method"), "OcuProbe195.Dotted,OcuProbe195.procEcho,OcuProbe195.Hidden,OcuProbe195.Visible Extent,Echo,Extent,Extent", "each naming the class and method that project it")
+    Do $$$AssertEquals(..Column(tProcedures, "Procedure"), "OcuProbe195.A.Q,OcuProbe195.Described_Stamp,OcuProbe195.Dotted_Extent,OcuProbe195.Echo,OcuProbe195.Hidden_Extent,OcuProbe195.Names,OcuProbe195.Parted_Extent,OcuProbe195.Visible_Extent", "its procedures, beside the extent procedures its persistent classes project")
+    Do $$$AssertEquals(..Column(tProcedures, "Type"), "FUNCTION,FUNCTION,PROCEDURE,FUNCTION,PROCEDURE,PROCEDURE,PROCEDURE,PROCEDURE", "the procedure created as a function and the two class methods read as functions")
+    Do $$$AssertEquals(..Column(tProcedures, "Class") _ " " _ ..Column(tProcedures, "Method"), "OcuProbe195.DottedRoutine,OcuProbe195.Described,OcuProbe195.Dotted,OcuProbe195.procEcho,OcuProbe195.Hidden,OcuProbe195.queryNames,OcuProbe195.Parted,OcuProbe195.Visible Q,Stamp,Extent,Echo,Extent,Names,Extent,Extent", "each naming the class and method that project it")
     Set tTables = ..Rows("Catalog.Tables", tSchema, 100, .tHttp)
-    Do $$$AssertEquals($Select(tTables.%Size() = 3: tTables.%Get(2).%ToJSON(), 1: tTables.%Size()), "{""Table"":""OcuProbe195.Visible"",""Schema"":""OcuProbe195"",""Name"":""Visible"",""Class"":""OcuProbe195.Visible"",""Owner"":""" _ $Username _ """,""Sharded"":false,""Partitioned"":false}", "a table row's declared fields, its owner the account that created it")
+    Do $$$AssertEquals($Select(tTables.%Size() = 4: tTables.%Get(3).%ToJSON(), 1: tTables.%Size()), "{""Table"":""OcuProbe195.Visible"",""Schema"":""OcuProbe195"",""Name"":""Visible"",""Class"":""OcuProbe195.Visible"",""Owner"":""" _ $Username _ """,""Sharded"":false,""Partitioned"":false}", "a table row's declared fields, its owner the account that created it")
 }
 
 /// <p>Matrix (System), AC1: with system items chosen, each list carries them as well.</p>
@@ -207,20 +213,20 @@ Method TestSystemItemsListWhenChosen()
     Do $$$AssertEquals(tHttp _ " " _ tNone.%Size(), "200 0", "and none when they are not, in an answer")
 }
 
-/// <p>Matrix (Over the cap), AC1: through the read executor at a cap of two, the probe schema's three
-/// tables read as two with the cut reported, and at three uncut.</p>
+/// <p>Matrix (Over the cap), AC1: through the read executor at a cap of three, the probe schema's four
+/// tables read as three with the cut reported, and at four uncut.</p>
 Method TestTheCapIsReportedThroughTheRead()
 {
     Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
     Kill tCriteria
     Set tCriteria("schema") = $Parameter(..#PROBE, "SCHEMA")
-    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerSqlTables", 2, .tResult, .tHttp, .tFault, .tCriteria)
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerSqlTables", 3, .tResult, .tHttp, .tFault, .tCriteria)
     Do $$$AssertStatusOK(tSC, "the tables read")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tResult.rows.%Size() _ " " _ tResult.truncated, "2 1", "exactly the cap in rows, and the cut reported")
+    Do $$$AssertEquals(tResult.rows.%Size() _ " " _ tResult.truncated, "3 1", "exactly the cap in rows, and the cut reported")
     Do $$$AssertEquals(tResult.criteria.%ToJSON(), "{""system"":""no"",""schema"":""OcuProbe195""}", "with the criteria it applied")
-    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerSqlTables", 3, .tResult, .tHttp, .tFault, .tCriteria)
-    Do $$$AssertEquals(tResult.rows.%Size() _ " " _ tResult.truncated, "3 0", "and at a cap of three, all three uncut")
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerSqlTables", 4, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertEquals(tResult.rows.%Size() _ " " _ tResult.truncated, "4 0", "and at a cap of four, all four uncut")
 }
 
 /// <p>Matrix (Table tabs), AC2: the visible probe table's information is one row naming its class,
@@ -289,7 +295,7 @@ Method TestATemporaryTableListsAndOpens()
         Set tCode = ex.DisplayString()
     }
     Do $$$AssertEquals(tCode, 0, "a global temporary table is created in the probe schema")
-    Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", "schema=" _ $Parameter(..#PROBE, "SCHEMA"), 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Scratch,OcuProbe195.Visible", "it lists among the schema's tables")
+    Do $$$AssertEquals(..Column(..Rows("Catalog.Tables", "schema=" _ $Parameter(..#PROBE, "SCHEMA"), 100, .tHttp), "Table"), "OcuProbe195.A.B,OcuProbe195.Hidden,OcuProbe195.Parted,OcuProbe195.Scratch,OcuProbe195.Visible", "it lists among the schema's tables")
     Set tInfo = ..Rows("Catalog.Table", "table=" _ tTemporary, 100, .tHttp)
     Do $$$AssertEquals(tHttp _ " " _ tInfo.%Size() _ " " _ $Select(tInfo.%Size() = 1: tInfo.%Get(0).Name, 1: ""), "200 1 Scratch", "and opens to its information")
 }

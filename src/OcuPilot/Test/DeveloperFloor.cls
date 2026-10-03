@@ -6,7 +6,7 @@
 /// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared twenty-three,
+/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-two,
 /// whose writes are the two exports.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
@@ -28,12 +28,12 @@ Parameter AREAS = "home,logs,system-explorer,agent";
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four, its
-/// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its nine SQL catalog
-/// screens (Story 19.5), and the analytics log (Story 19.12's audit).</p>
-Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlConstraints,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlProcedures,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlViews,Home,LogAnalyticsViewer";
+/// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its eighteen SQL catalog
+/// screens (Stories 19.5 and 19.14), and the analytics log (Story 19.12's audit).</p>
+Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlconstraints.read,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlprocedures.read,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltriggers.read,explorer.sqlviews.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
 /// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
 /// every other System Explorer write also WRITE on the namespace's routines database, which the
@@ -224,10 +224,11 @@ Method TestTheDeveloperSignsInAndOpensExactlyTheDeclaredScreens()
 /// <p><b>System Explorer.</b> Both lists, both viewers, a search and a macro lookup answer the
 /// developer principal 200 with rows in the install namespace and in
 /// <parameter>OTHERNAMESPACE</parameter>, where the Routines list carries rows from that namespace's
-/// own database, which <code>%Developer</code>'s <code>%DB_USER</code> grants. The nine SQL catalog
-/// reads (Story 19.5) answer it 200, the lists over the system items its SQL privileges show it and
-/// the tabs over the first of those tables, with rows from the tables, the schemas, and that table's
-/// information, fields and indices.</p>
+/// own database, which <code>%Developer</code>'s <code>%DB_USER</code> grants. The eighteen SQL
+/// catalog reads (Stories 19.5 and 19.14) answer it 200, the lists over the system items its SQL
+/// privileges show it and the tabs over the first table, view and procedure those lists answer, with
+/// rows from the lists, that table's information, fields and indices, that view's information and that
+/// procedure's information.</p>
 /// <p>Mutation: as <method>TestTheDeveloperSignsInAndOpensExactlyTheDeclaredScreens</method>'s ->
 /// every read answers 403 and this goes red.</p>
 Method TestSystemExplorerReadsInBothNamespaces()
@@ -251,18 +252,24 @@ Method TestSystemExplorerReadsInBothNamespaces()
                 Do $$$AssertTrue(tOwn, tNs _ "'s Routines list carries rows from its own database")
             }
         }
-        ; Story 19.5 AC7: the SQL catalog, whose rows the developer's own SQL privileges filter -- it
-        ; holds none on a user table, so its lists read system items, and its tabs read a table its
-        ; own tables list shows.
-        Do ..Request("GET", "/screens/explorer.sqltables/read?maxRows=1&system=yes" _ tQuery, tUser, .tStatus, .tObject, .tText)
+        ; Stories 19.5 and 19.14 AC10: the SQL catalog, whose rows the developer's own SQL privileges
+        ; filter -- it holds none on a user object, so its lists read system items, and each object's
+        ; tabs read the first one its own list shows.
+        Do ..Request("GET", "/screens/explorer.sqlschemas/read?system=yes" _ tQuery, tUser, .tStatus, .tObject, .tText)
         Set tRows = $Select($IsObject(tObject) && $IsObject(tObject.%Get("rows")): tObject.rows, 1: [])
-        Do $$$AssertTrue((tStatus = 200) && (tRows.%Size() = 1), tWhere _ " SQL tables: answered with a table (" _ $Extract(tText, 1, 200) _ ")")
-        Set tTable = $Select(tRows.%Size() = 1: tRows.%Get(0).Table, 1: "")
-        For tRead = "explorer.sqlschemas/read?system=yes", "explorer.sqlviews/read?system=yes", "explorer.sqlprocedures/read?system=yes", "explorer.sqltable/read?table=" _ $ZConvert(tTable, "O", "URL"), "explorer.sqlfields/read?table=" _ $ZConvert(tTable, "O", "URL"), "explorer.sqlindices/read?table=" _ $ZConvert(tTable, "O", "URL"), "explorer.sqltriggers/read?table=" _ $ZConvert(tTable, "O", "URL"), "explorer.sqlconstraints/read?table=" _ $ZConvert(tTable, "O", "URL") {
-            Do ..Request("GET", "/screens/" _ tRead _ tQuery, tUser, .tStatus, .tObject, .tText)
-            Do $$$AssertEquals(tStatus, 200, tWhere _ " " _ tRead _ ": answered (" _ $Extract(tText, 1, 200) _ ")")
+        Do $$$AssertTrue((tStatus = 200) && (tRows.%Size() > 0), tWhere _ " SQL schemas: answered with rows (" _ $Extract(tText, 1, 200) _ ")")
+        For tGroup = $ListBuild("sqltables", "Table", "table", "sqltable,sqlfields,sqlindices,sqlpartitions,sqlpartitionmappings,sqltriggers,sqlconstraints,sqlcachedqueries,sqltablestatements", "sqltable,sqlfields,sqlindices"), $ListBuild("sqlviews", "View", "view", "sqlview,sqlviewfields,sqlviewstatements", "sqlview"), $ListBuild("sqlprocedures", "Procedure", "procedure", "sqlprocedure,sqlprocedurestatements", "sqlprocedure") {
+            Do ..Request("GET", "/screens/explorer." _ $List(tGroup, 1) _ "/read?maxRows=1&system=yes" _ tQuery, tUser, .tStatus, .tObject, .tText)
             Set tRows = $Select($IsObject(tObject) && $IsObject(tObject.%Get("rows")): tObject.rows, 1: [])
-            If (tRead [ "sqlschemas") || (tRead [ "sqltable/") || (tRead [ "sqlfields") || (tRead [ "sqlindices") Do $$$AssertTrue(tRows.%Size() > 0, tWhere _ " " _ tRead _ ": with rows")
+            Do $$$AssertTrue((tStatus = 200) && (tRows.%Size() = 1), tWhere _ " " _ $List(tGroup, 1) _ ": answered with one (" _ $Extract(tText, 1, 200) _ ")")
+            Set tName = $ZConvert($Select(tRows.%Size() = 1: tRows.%Get(0).%Get($List(tGroup, 2)), 1: ""), "O", "URL")
+            For tI = 1:1:$Length($List(tGroup, 4), ",") {
+                Set tTab = $Piece($List(tGroup, 4), ",", tI)
+                Do ..Request("GET", "/screens/explorer." _ tTab _ "/read?" _ $List(tGroup, 3) _ "=" _ tName _ tQuery, tUser, .tStatus, .tObject, .tText)
+                Do $$$AssertEquals(tStatus, 200, tWhere _ " " _ tTab _ " of " _ tName _ ": answered (" _ $Extract(tText, 1, 200) _ ")")
+                Set tRows = $Select($IsObject(tObject) && $IsObject(tObject.%Get("rows")): tObject.rows, 1: [])
+                If ("," _ $List(tGroup, 5) _ ",") [ ("," _ tTab _ ",") Do $$$AssertTrue(tRows.%Size() > 0, tWhere _ " " _ tTab _ ": with rows")
+            }
         }
     }
 }
@@ -429,7 +436,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 /// <parameter>HELDWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins the held set and this goes red.</p>
-Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTwentyThree()
+Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyTwo()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
@@ -452,7 +459,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredTwentyThree()
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared twenty-three")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-two")
     Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports")
 }
 

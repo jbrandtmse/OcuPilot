@@ -27,10 +27,10 @@
 /// (<method>MacroContext</method>), read first through the document route, never a caller's list.
 /// Each answers rows only; a match's line and a macro's definition are row fields, never a
 /// document's whole text (AD-36).</p>
-/// <p><b>Nine reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends one of
+/// <p><b>Eighteen reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends one of
 /// this port's fixed statements to the <code>Query</code> route with every caller value bound in its
 /// <code>parameters</code>, so no caller text reaches a statement (AD-61 rules 3 and 7), and a tab's
-/// table is first resolved to the one the caller's own privileges show it.</p>
+/// table, view or procedure is first resolved to the one the caller's own privileges show it.</p>
 /// <p><b>A server file is never a caller's path</b> (AD-21's sixth case): an export or an import
 /// names it by <code>root</code> and <code>path</code>, resolved through
 /// <method>PathPortClass</method> at each call, the export as an overwriting <code>file</code>
@@ -100,8 +100,9 @@ Parameter ENDPOINTSEARCH = "Search";
 Parameter ENDPOINTMACRO = "Macro";
 
 /// <p>The SQL catalog's endpoints (<method>CatalogRows</method>): a namespace's schemas, tables,
-/// views and procedures, and one table's information, fields, maps and indices, triggers and
-/// constraints.</p>
+/// views and procedures; one table's information, fields, maps and indices, partitions, partition
+/// mappings, triggers, constraints, cached queries and SQL statements; one view's information, fields
+/// and SQL statements; and one procedure's information and SQL statements.</p>
 Parameter ENDPOINTCATALOGSCHEMAS = "Catalog.Schemas";
 
 Parameter ENDPOINTCATALOGTABLES = "Catalog.Tables";
@@ -120,9 +121,42 @@ Parameter ENDPOINTCATALOGTRIGGERS = "Catalog.Triggers";
 
 Parameter ENDPOINTCATALOGCONSTRAINTS = "Catalog.Constraints";
 
+Parameter ENDPOINTCATALOGPARTITIONS = "Catalog.Partitions";
+
+Parameter ENDPOINTCATALOGPARTITIONMAPPINGS = "Catalog.PartitionMappings";
+
+Parameter ENDPOINTCATALOGCACHEDQUERIES = "Catalog.CachedQueries";
+
+Parameter ENDPOINTCATALOGTABLESTATEMENTS = "Catalog.TableStatements";
+
+Parameter ENDPOINTCATALOGVIEW = "Catalog.View";
+
+Parameter ENDPOINTCATALOGVIEWFIELDS = "Catalog.ViewFields";
+
+Parameter ENDPOINTCATALOGVIEWSTATEMENTS = "Catalog.ViewStatements";
+
+Parameter ENDPOINTCATALOGPROCEDURE = "Catalog.Procedure";
+
+Parameter ENDPOINTCATALOGPROCEDURESTATEMENTS = "Catalog.ProcedureStatements";
+
 /// <p>The catalog endpoints that read one table, named by <parameter>TABLEKEY</parameter> and
 /// resolved first through <parameter>CATALOGRESOLVEQUERY</parameter>.</p>
-Parameter CATALOGTABS = "Catalog.Table,Catalog.Fields,Catalog.Indices,Catalog.Triggers,Catalog.Constraints";
+Parameter CATALOGTABS = "Catalog.Table,Catalog.Fields,Catalog.Indices,Catalog.Triggers,Catalog.Constraints,Catalog.Partitions,Catalog.PartitionMappings,Catalog.CachedQueries,Catalog.TableStatements";
+
+/// <p>The catalog endpoints that read one view, named by <parameter>VIEWKEY</parameter> and
+/// resolved first through <parameter>CATALOGVIEWRESOLVEQUERY</parameter>, and one procedure, named
+/// by <parameter>PROCEDUREKEY</parameter> and resolved first through
+/// <parameter>CATALOGPROCEDURERESOLVEQUERY</parameter>.</p>
+Parameter CATALOGVIEWTABS = "Catalog.View,Catalog.ViewFields,Catalog.ViewStatements";
+
+Parameter CATALOGPROCEDURETABS = "Catalog.Procedure,Catalog.ProcedureStatements";
+
+/// <p>The catalog endpoints that read the SQL statements on one table, view or procedure through
+/// <parameter>CATALOGSTATEMENTSQUERY</parameter>, and the two that read one table's partitions, sent
+/// only for a table its resolve reads as partitioned.</p>
+Parameter CATALOGSTATEMENTTABS = "Catalog.TableStatements,Catalog.ViewStatements,Catalog.ProcedureStatements";
+
+Parameter CATALOGPARTITIONTABS = "Catalog.Partitions,Catalog.PartitionMappings";
 
 /// <p>Each catalog endpoint's one fixed statement, sent as the <code>Query</code> route's
 /// <code>query</code> with every caller value bound in its <code>parameters</code> (AD-21, AD-61 rule
@@ -140,9 +174,14 @@ Parameter CATALOGVIEWSQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER
 Parameter CATALOGPROCEDURESQUERY = "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE, CLASSNAME, METHOD_OR_QUERY_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE (? = 1 OR (NOT (ROUTINE_SCHEMA %STARTSWITH '%') AND ROUTINE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR ROUTINE_SCHEMA = ?)";
 
 /// <p>The one table a tab's <parameter>TABLEKEY</parameter> names, among those the caller's own
-/// privileges show it: the information schema answers only those, and the match is
-/// case-insensitive, as the instance's table names are.</p>
-Parameter CATALOGRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE NOT IN ('VIEW', 'SYSTEM VIEW') AND TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+/// privileges show it, with whether it is partitioned: the information schema answers only those,
+/// and the match is case-insensitive, as the instance's table names are. A view's and a procedure's
+/// tabs resolve their names the same way, through the view and routine rows.</p>
+Parameter CATALOGRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE NOT IN ('VIEW', 'SYSTEM VIEW') AND TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+
+Parameter CATALOGVIEWRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+
+Parameter CATALOGPROCEDURERESOLVEQUERY = "SELECT ROUTINE_SCHEMA, ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA || '.' || ROUTINE_NAME = ?";
 
 Parameter CATALOGTABLEQUERY = "CALL %SQL_Manager.TablesOnly(?, 0)";
 
@@ -154,12 +193,36 @@ Parameter CATALOGTRIGGERSQUERY = "CALL %SQL_Manager.Triggers(?, ?)";
 
 Parameter CATALOGCONSTRAINTSQUERY = "CALL %SQL_Manager.""Constraints""(?, ?)";
 
+Parameter CATALOGPARTITIONSQUERY = "CALL %SQL_Manager.Partitions(?, ?)";
+
+Parameter CATALOGPARTITIONMAPPINGSQUERY = "CALL %SQL_Manager.PartitionMappings(?, ?)";
+
+Parameter CATALOGCACHEDQUERIESQUERY = "CALL %SQL_Manager.CachedQueryTable(?, ?)";
+
+/// <p>The SQL statements on one table, view or procedure, bound with its relation key
+/// (<method>CatalogRelation</method>): each statement's plan state, statistics, first day seen, text
+/// cut at 1,024 characters, and location, read from the information schema's statement tables. No
+/// user name, client or call stack is selected, and the read starts no statistics aggregation (AD-61
+/// rule 7).</p>
+Parameter CATALOGSTATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, SUBSTRING(s.Statement, 1, 1024) AS STATEMENT, l.Location AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ?";
+
+/// <p>A view's information, and its text, which <method>CatalogRows</method> merges into the
+/// information's one row.</p>
+Parameter CATALOGVIEWQUERY = "CALL %SQL_Manager.ViewInfo2(?, ?)";
+
+Parameter CATALOGVIEWTEXTQUERY = "CALL %SQL_Manager.ViewInfo(?, ?)";
+
+Parameter CATALOGVIEWFIELDSQUERY = "CALL %SQL_Manager.ViewFields(?, ?)";
+
+Parameter CATALOGPROCEDUREQUERY = "CALL %SQL_Manager.ProcedureInfo(?, ?)";
+
 /// <p>Each catalog endpoint's row, as <code>Field:COLUMN[:kind]</code> comma-separated in field
 /// order: <code>flag</code> reads <code>1</code>, <code>yes</code> or <code>true</code> in any case as
 /// <code>true</code> and anything else as <code>false</code>, <code>number</code> reads a canonical
-/// number as one, and <code>qualified</code> joins two columns, named <code>SCHEMA.NAME</code>, with
-/// a dot. A column outside the map, such as <code>Fields</code>' data values, never reaches a
-/// row.</p>
+/// number as one, <code>plain</code> reads documentation as plain text
+/// (<method>PlainText</method>), and <code>qualified</code> joins two columns, named
+/// <code>SCHEMA.NAME</code>, with a dot. A column outside the map, such as <code>Fields</code>' data
+/// values, never reaches a row.</p>
 Parameter CATALOGSCHEMASCOLUMNS = "Schema:SCHEMA_NAME,Tables:TABLE_EXISTS:flag,Views:VIEW_EXISTS:flag,Procedures:PROCEDURE_EXISTS:flag";
 
 Parameter CATALOGTABLESCOLUMNS = "Table:TABLE_SCHEMA.TABLE_NAME:qualified,Schema:TABLE_SCHEMA,Name:TABLE_NAME,Class:CLASSNAME,Owner:OWNER,Sharded:IS_SHARDED:flag,Partitioned:IS_PARTITIONED:flag";
@@ -178,15 +241,33 @@ Parameter CATALOGTRIGGERSCOLUMNS = "Trigger:TRIGGER_NAME,Event:TIME_EVENT,Order:
 
 Parameter CATALOGCONSTRAINTSCOLUMNS = "Constraint:CONSTRAINT_NAME,Type:CONSTRAINT_TYPE,Data:CONSTRAINT_DATA";
 
-/// <p>The query keys carrying a catalog list's schema and a catalog tab's table, as
-/// <code>Schema.Table</code>; <parameter>SYSTEMKEY</parameter> chooses whether a list keeps system
+Parameter CATALOGPARTITIONSCOLUMNS = "Partition:PARTITION_ID,Buckets:BUCKETS:number,Rows:ROWS:number,EstimatedSize:ESTIMATED_SIZE:number,Location:LOCATION";
+
+Parameter CATALOGPARTITIONMAPPINGSCOLUMNS = "Rule:RULE,Buckets:BUCKETS:number,Rows:ROWS:number,EstimatedSize:ESTIMATED_SIZE:number,Location:LOCATION";
+
+Parameter CATALOGCACHEDQUERIESCOLUMNS = "CachedQuery:Routine,Query:Query,Created:CreateTime,Source:Source:flag,QueryType:QueryTypeExt,Features:STATEMENT_OPTIONS";
+
+Parameter CATALOGSTATEMENTSCOLUMNS = "Statement:STATEMENT,PlanState:PLAN_STATE,NewPlan:FROZEN_DIFF:flag,Executions:EXECUTIONS:number,TotalTime:TOTAL_TIME:number,AverageTime:AVERAGE_TIME:number,StdDevTime:STDDEV_TIME:number,RowCount:ROW_COUNT:number,Commands:COMMANDS:number,FirstSeen:FIRST_SEEN,Location:LOCATION";
+
+Parameter CATALOGVIEWCOLUMNS = "Owner:OWNER,LastCompiled:LAST_COMPILED,ReadOnly:DEFINED_AS_READ_ONLY:flag,Updatable:UPDATABLE:flag,Class:CLASSNAME,CheckOption:CHECK_OPTION,ClassType:CLASSTYPE,Text:VIEW_QUERY";
+
+Parameter CATALOGVIEWFIELDSCOLUMNS = "Field:FIELD_NAME,Type:DATATYPE,Collation:COLLATION,MaxLength:MAXLEN:number,MaxValue:MAXVAL,MinValue:MINVAL,Stream:BLOB:flag,Length:LENGTH:number,Precision:PRECISION:number,Scale:SCALE:number";
+
+Parameter CATALOGPROCEDURECOLUMNS = "Class:CLASS_NAME,Type:PROCEDURE_TYPE,Method:METHOD_OR_QUERY_NAME,Description:DESCRIPTION:plain,Inputs:NUMBER_INPUT_PARAMS:number,InOuts:NUMBER_INPUT_OUTPUT_PARAMS:number,Outputs:NUMBER_OUTPUT_PARAMS:number,Interface:PROCEDURE_INTERFACE:number,Columns:NUMBER_OF_COLUMNS:number,InputParameters:INPUT_PARAMETERS,InOutParameters:INPUT_OUTPUT_PARAMETERS,OutputParameters:OUTPUT_PARAMETERS,ResultColumns:RESULTSET_COLUMNS,ReturnValue:RETURN_VALUE";
+
+/// <p>The query keys carrying a catalog list's schema and a catalog tab's table, view or procedure,
+/// as <code>Schema.Name</code>; <parameter>SYSTEMKEY</parameter> chooses whether a list keeps system
 /// items.</p>
 Parameter SCHEMAKEY = "schema";
 
 Parameter TABLEKEY = "table";
 
-/// <p>The longest schema a catalog list takes, and the longest table a tab takes: two names of
-/// that length and the dot.</p>
+Parameter VIEWKEY = "view";
+
+Parameter PROCEDUREKEY = "procedure";
+
+/// <p>The longest schema a catalog list takes, and the longest table, view or procedure a tab takes:
+/// two names of that length and the dot.</p>
 Parameter MAXSCHEMA As INTEGER = 128;
 
 Parameter MAXTABLE As INTEGER = 257;
@@ -532,6 +613,20 @@ Parameter REASONCATALOGAMBIGUOUS = "That name matches more than one table in thi
 
 Parameter REASONCATALOGNOTFOUND = "This namespace holds no table by that name that this account can see.";
 
+/// <p>The reasons a view's and a procedure's tab refuses a malformed name, a name the resolve answers
+/// twice, and one it answers not at all.</p>
+Parameter REASONCATALOGVIEW = "Name one view, as Schema.View.";
+
+Parameter REASONCATALOGPROCEDURE = "Name one procedure, as Schema.Procedure.";
+
+Parameter REASONCATALOGVIEWAMBIGUOUS = "That name matches more than one view in this namespace.";
+
+Parameter REASONCATALOGPROCEDUREAMBIGUOUS = "That name matches more than one procedure in this namespace.";
+
+Parameter REASONCATALOGVIEWNOTFOUND = "This namespace holds no view by that name that this account can see.";
+
+Parameter REASONCATALOGPROCEDURENOTFOUND = "This namespace holds no procedure by that name that this account can see.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -689,8 +784,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <parameter>ENDPOINTSEARCH</parameter> reads <code>text</code>, <code>scope</code> and
 /// <code>case</code> (<method>SearchRows</method>), and <parameter>ENDPOINTMACRO</parameter>
 /// <code>document</code> and <code>macro</code> (<method>MacroRows</method>). A catalog endpoint
-/// reads <code>system</code> and <code>schema</code>, or <code>table</code>
-/// (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
+/// reads <code>system</code> and <code>schema</code>, or <code>table</code>, <code>view</code> or
+/// <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
 /// <p>On success <var>pResult</var> is a <class>%DynamicArray</class> of rows and
 /// <var>pHttpStatus</var> is 200. A list row is <code>{Name, Modified, Database, Generated}</code>;
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>
@@ -1085,21 +1180,21 @@ ClassMethod SearchDocuments(pScope As %String) As %String
 /// <p>Whether <var>pEndpoint</var> is one of the SQL catalog's endpoints.</p>
 ClassMethod IsCatalog(pEndpoint As %String) As %Boolean
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: 1, ..#ENDPOINTCATALOGTABLES: 1, ..#ENDPOINTCATALOGVIEWS: 1, ..#ENDPOINTCATALOGPROCEDURES: 1, ..#ENDPOINTCATALOGTABLE: 1, ..#ENDPOINTCATALOGFIELDS: 1, ..#ENDPOINTCATALOGINDICES: 1, ..#ENDPOINTCATALOGTRIGGERS: 1, ..#ENDPOINTCATALOGCONSTRAINTS: 1, : 0)
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: 1, ..#ENDPOINTCATALOGTABLES: 1, ..#ENDPOINTCATALOGVIEWS: 1, ..#ENDPOINTCATALOGPROCEDURES: 1, ..#ENDPOINTCATALOGTABLE: 1, ..#ENDPOINTCATALOGFIELDS: 1, ..#ENDPOINTCATALOGINDICES: 1, ..#ENDPOINTCATALOGTRIGGERS: 1, ..#ENDPOINTCATALOGCONSTRAINTS: 1, ..#ENDPOINTCATALOGPARTITIONS: 1, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: 1, ..#ENDPOINTCATALOGCACHEDQUERIES: 1, ..#ENDPOINTCATALOGTABLESTATEMENTS: 1, ..#ENDPOINTCATALOGVIEW: 1, ..#ENDPOINTCATALOGVIEWFIELDS: 1, ..#ENDPOINTCATALOGVIEWSTATEMENTS: 1, ..#ENDPOINTCATALOGPROCEDURE: 1, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: 1, : 0)
 }
 
 /// <p><var>pEndpoint</var>'s fixed statement, or <code>""</code> for an endpoint that is not the
 /// catalog's.</p>
 ClassMethod CatalogStatement(pEndpoint As %String) As %String
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASQUERY, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESQUERY, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSQUERY, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESQUERY, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEQUERY, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSQUERY, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESQUERY, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSQUERY, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSQUERY, : "")
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASQUERY, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESQUERY, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSQUERY, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESQUERY, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEQUERY, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSQUERY, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESQUERY, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSQUERY, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSQUERY, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSQUERY, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSQUERY, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESQUERY, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWQUERY, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSQUERY, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDUREQUERY, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, : "")
 }
 
 /// <p><var>pEndpoint</var>'s column map (<parameter>CATALOGSCHEMASCOLUMNS</parameter>), or
 /// <code>""</code>.</p>
 ClassMethod CatalogColumns(pEndpoint As %String) As %String
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASCOLUMNS, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESCOLUMNS, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESCOLUMNS, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLECOLUMNS, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSCOLUMNS, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESCOLUMNS, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSCOLUMNS, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSCOLUMNS, : "")
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASCOLUMNS, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESCOLUMNS, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESCOLUMNS, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLECOLUMNS, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSCOLUMNS, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESCOLUMNS, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSCOLUMNS, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSCOLUMNS, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESCOLUMNS, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWCOLUMNS, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSCOLUMNS, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDURECOLUMNS, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, : "")
 }
 
 /// <p>The rows of SQL catalog endpoint <var>pEndpoint</var>, at most <var>pMax</var> of them when it
@@ -1108,35 +1203,48 @@ ClassMethod CatalogColumns(pEndpoint As %String) As %String
 /// <p>The four lists read <code>system</code> (<code>yes</code> or <code>no</code>, <code>no</code>
 /// when absent: <code>no</code> keeps no <code>%</code> or <code>INFORMATION_SCHEMA</code> item), and
 /// all but the schemas <code>schema</code>, at most <parameter>MAXSCHEMA</parameter> characters with
-/// no control character, an absent or empty one keeping every schema. The five tabs read
-/// <code>table</code>, <code>Schema.Table</code>, at most <parameter>MAXTABLE</parameter> characters
-/// with no control character, which <method>CatalogResolve</method> turns into the one table the
-/// caller's own privileges show before the endpoint's statement is bound with that row's exact schema
-/// and name: the vendor's detail queries filter nothing by privilege, and its subscripts are
-/// case-exact. A malformed value is refused 400 <code>PORT.VALIDATION</code> with its own reason
-/// before any route.</p>
+/// no control character, an absent or empty one keeping every schema. A tab reads
+/// <code>table</code> (<parameter>CATALOGTABS</parameter>), <code>view</code>
+/// (<parameter>CATALOGVIEWTABS</parameter>) or <code>procedure</code>
+/// (<parameter>CATALOGPROCEDURETABS</parameter>), <code>Schema.Name</code>, at most
+/// <parameter>MAXTABLE</parameter> characters with no control character, which
+/// <method>CatalogResolve</method> turns into the one object of that kind the caller's own privileges
+/// show before the endpoint's statement is bound with that row's exact schema and name: the vendor's
+/// detail queries filter nothing by privilege, and its subscripts are case-exact. A malformed value is
+/// refused 400 <code>PORT.VALIDATION</code> with its own reason before any route.</p>
 /// <p>The statement is sent as <code>{query, parameters}</code> to the <code>Query</code> route with
 /// <code>max</code> <var>pMax</var>, else <parameter>CATALOGMAX</parameter>. The table information
 /// sends <parameter>CATALOGTABLEMAX</parameter> instead, since its statement lists the table's whole
-/// schema, and keeps only the row naming the resolved table. A SQL error the route answers under 200
-/// is the internal fault, its text logged and never sent.</p>
+/// schema, and keeps only the row naming the resolved table. A table's partitions and partition
+/// mappings are read only for a table its resolve reads as partitioned and otherwise answer no rows
+/// with no further route, since the vendor's queries fail on any other table. A SQL statements tab
+/// binds the object's relation key (<method>CatalogRelation</method>). A view's information is
+/// <parameter>CATALOGVIEWQUERY</parameter>'s one row with <parameter>CATALOGVIEWTEXTQUERY</parameter>'s
+/// text merged into it. A SQL error the route answers under 200 is the internal fault, its text logged
+/// and never sent.</p>
 ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pRows = ""
     Try {
-        Set tTab = ''$ListFind($ListFromString(..#CATALOGTABS), pEndpoint)
+        Set tKind = $Select($ListFind($ListFromString(..#CATALOGTABS), pEndpoint): "table", $ListFind($ListFromString(..#CATALOGVIEWTABS), pEndpoint): "view", $ListFind($ListFromString(..#CATALOGPROCEDURETABS), pEndpoint): "procedure", 1: "")
         Set tSystem = ""
         Set tSchema = ""
         Set tName = ""
-        If tTab {
-            Set tTable = $Get(pQuery(..#TABLEKEY))
-            If (tTable '[ ".") || ($Length(tTable) > ..#MAXTABLE) || ($ZStrip(tTable, "*C") '= tTable) {
-                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGTABLE, .pHttpStatus, .pFault)
+        Set tPartitioned = 0
+        If tKind '= "" {
+            Set tObject = $Get(pQuery($Case(tKind, "view": ..#VIEWKEY, "procedure": ..#PROCEDUREKEY, : ..#TABLEKEY)))
+            If (tObject '[ ".") || ($Length(tObject) > ..#MAXTABLE) || ($ZStrip(tObject, "*C") '= tObject) {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Case(tKind, "view": ..#REASONCATALOGVIEW, "procedure": ..#REASONCATALOGPROCEDURE, : ..#REASONCATALOGTABLE), .pHttpStatus, .pFault)
                 Quit
             }
-            Set tSC = ..CatalogResolve(pVersion, pNamespace, tTable, .tSchema, .tName, .pHttpStatus, .pFault)
+            Set tSC = ..CatalogResolve(pVersion, pNamespace, tKind, tObject, .tSchema, .tName, .tPartitioned, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
+            If $ListFind($ListFromString(..#CATALOGPARTITIONTABS), pEndpoint) && 'tPartitioned {
+                Set pRows = []
+                Set pHttpStatus = 200
+                Quit
+            }
         } Else {
             Set tSystem = $Get(pQuery(..#SYSTEMKEY))
             If tSystem = "" Set tSystem = "no"
@@ -1160,27 +1268,31 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
             Do tParameters.%Push($Select(tFlag: "SYSTEM TABLE", 1: "BASE TABLE"), "string")
             Do tParameters.%Push(tSchema, "string")
             Do tParameters.%Push(tSchema, "string")
-        } ElseIf 'tTab {
+        } ElseIf tKind = "" {
             Do tParameters.%Push(tFlag, "number")
             Do tParameters.%Push(tSchema, "string")
             Do tParameters.%Push(tSchema, "string")
         } ElseIf pEndpoint = ..#ENDPOINTCATALOGTABLE {
             Do tParameters.%Push(tSchema, "string")
+        } ElseIf $ListFind($ListFromString(..#CATALOGSTATEMENTTABS), pEndpoint) {
+            Do tParameters.%Push(..CatalogRelation(tSchema, tName), "string")
         } Else {
             Do tParameters.%Push(tSchema, "string")
             Do tParameters.%Push(tName, "string")
         }
-        Set tBody = {}
-        Do tBody.%Set("query", ..CatalogStatement(pEndpoint), "string")
-        Do tBody.%Set("parameters", tParameters)
         Kill tParams
         Set tParams("max") = $Select(pEndpoint = ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEMAX, pMax > 0: pMax, 1: ..#CATALOGMAX)
-        Set tSC = ..Route(pVersion, pNamespace, "Query", "", .tParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+        Set tSC = ..CatalogQuery(pVersion, pNamespace, ..CatalogStatement(pEndpoint), tParameters, .tParams, "query", .tContent, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
-        If '$IsObject(tContent) || 'tContent.%IsA("%Library.DynamicArray") {
-            Set tSC = ..Fail("Query answered no content array", $$$ERROR($$$GeneralError, "the catalog query answered no content array"), .pHttpStatus, .pFault)
-            Quit
+        If (pEndpoint = ..#ENDPOINTCATALOGVIEW) && $IsObject(tContent.%Get(0)) {
+            Set tSC = ..CatalogQuery(pVersion, pNamespace, ..#CATALOGVIEWTEXTQUERY, tParameters, .tParams, "view text", .tTexts, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tText = $Select($IsObject(tTexts.%Get(0)): tTexts.%Get(0).%Get("VIEW_QUERY"), 1: "")
+            If $IsObject(tText) {
+                Do tContent.%Get(0).%Set("VIEW_QUERY", tText)
+            } Else {
+                Do tContent.%Get(0).%Set("VIEW_QUERY", tText, "string")
+            }
         }
         Set tColumns = ..CatalogColumns(pEndpoint)
         Set tRows = []
@@ -1200,41 +1312,68 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
     Quit tSC
 }
 
-/// <p>The one table <var>pTable</var> (<code>Schema.Table</code>, matched without regard to case)
-/// names among those the caller's privileges show it (<parameter>CATALOGRESOLVEQUERY</parameter>,
-/// <code>max</code> 2): its exact <var>pSchema</var> and <var>pName</var>. None is 404
-/// <code>PORT.NOTFOUND</code>, not logged, and two are 400 <code>PORT.VALIDATION</code>, a name whose
-/// dots split two ways.</p>
-ClassMethod CatalogResolve(pVersion As %Integer, pNamespace As %String, pTable As %String, Output pSchema As %String, Output pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>Send fixed statement <var>pStatement</var> with <var>pParameters</var> to the
+/// <code>Query</code> route, its query parameters <var>pParams</var>, and answer the result's
+/// <code>content</code> array as <var>pContent</var>. An answer carrying none is the internal fault,
+/// logged naming <var>pWhat</var>.</p>
+ClassMethod CatalogQuery(pVersion As %Integer, pNamespace As %String, pStatement As %String, pParameters As %DynamicArray, ByRef pParams, pWhat As %String, Output pContent As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set pSchema = ""
-    Set pName = ""
+    Set pContent = ""
     Set tBody = {}
-    Do tBody.%Set("query", ..#CATALOGRESOLVEQUERY, "string")
-    Set tParameters = []
-    Do tParameters.%Push(pTable, "string")
-    Do tBody.%Set("parameters", tParameters)
-    Kill tParams
-    Set tParams("max") = 2
-    Set tSC = ..Route(pVersion, pNamespace, "Query", "", .tParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+    Do tBody.%Set("query", pStatement, "string")
+    Do tBody.%Set("parameters", pParameters)
+    Set tSC = ..Route(pVersion, pNamespace, "Query", "", .pParams, tBody, .tAnswer, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
     If '$IsObject(tContent) || 'tContent.%IsA("%Library.DynamicArray") {
-        Quit ..Fail("Query answered no content array", $$$ERROR($$$GeneralError, "the catalog resolve answered no content array"), .pHttpStatus, .pFault)
+        Quit ..Fail("Query answered no content array", $$$ERROR($$$GeneralError, "the catalog " _ pWhat _ " answered no content array"), .pHttpStatus, .pFault)
     }
+    Set pContent = tContent
+    Quit $$$OK
+}
+
+/// <p>The one <var>pKind</var> -- <code>table</code>, <code>view</code> or <code>procedure</code> --
+/// that <var>pObject</var> (<code>Schema.Name</code>, matched without regard to case) names among
+/// those the caller's privileges show it (<parameter>CATALOGRESOLVEQUERY</parameter>,
+/// <parameter>CATALOGVIEWRESOLVEQUERY</parameter> or <parameter>CATALOGPROCEDURERESOLVEQUERY</parameter>,
+/// <code>max</code> 2): its exact <var>pSchema</var> and <var>pName</var>, and, for a table, whether
+/// it is partitioned as <var>pPartitioned</var>. None is 404 <code>PORT.NOTFOUND</code>, not logged,
+/// and two are 400 <code>PORT.VALIDATION</code>, a name whose dots split two ways, each with the
+/// kind's reason.</p>
+ClassMethod CatalogResolve(pVersion As %Integer, pNamespace As %String, pKind As %String, pObject As %String, Output pSchema As %String, Output pName As %String, Output pPartitioned As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pSchema = ""
+    Set pName = ""
+    Set pPartitioned = 0
+    Set tParameters = []
+    Do tParameters.%Push(pObject, "string")
+    Kill tParams
+    Set tParams("max") = 2
+    Set tSC = ..CatalogQuery(pVersion, pNamespace, $Case(pKind, "view": ..#CATALOGVIEWRESOLVEQUERY, "procedure": ..#CATALOGPROCEDURERESOLVEQUERY, : ..#CATALOGRESOLVEQUERY), tParameters, .tParams, "resolve", .tContent, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
     If tContent.%Size() = 0 {
-        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONCATALOGNOTFOUND, .pHttpStatus, .pFault)
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, $Case(pKind, "view": ..#REASONCATALOGVIEWNOTFOUND, "procedure": ..#REASONCATALOGPROCEDURENOTFOUND, : ..#REASONCATALOGNOTFOUND), .pHttpStatus, .pFault)
     }
     If tContent.%Size() > 1 {
-        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGAMBIGUOUS, .pHttpStatus, .pFault)
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Case(pKind, "view": ..#REASONCATALOGVIEWAMBIGUOUS, "procedure": ..#REASONCATALOGPROCEDUREAMBIGUOUS, : ..#REASONCATALOGAMBIGUOUS), .pHttpStatus, .pFault)
     }
     Set tRow = tContent.%Get(0)
     If '$IsObject(tRow) {
         Quit ..Fail("Query answered a row that is no object", $$$ERROR($$$GeneralError, "the catalog resolve answered a row that is no object"), .pHttpStatus, .pFault)
     }
-    Set pSchema = tRow.%Get("TABLE_SCHEMA")
-    Set pName = tRow.%Get("TABLE_NAME")
+    Set tPrefix = $Select(pKind = "procedure": "ROUTINE_", 1: "TABLE_")
+    Set pSchema = tRow.%Get(tPrefix _ "SCHEMA")
+    Set pName = tRow.%Get(tPrefix _ "NAME")
+    Set pPartitioned = ($ZConvert(tRow.%Get("IS_PARTITIONED"), "U") = "YES")
     Quit $$$OK
+}
+
+/// <p>The relation key the information schema's statement tables name schema <var>pSchema</var>'s
+/// object <var>pName</var> by: the two in upper case joined by a dot, a dot inside the name read as
+/// <code>$Char(1)</code>, the rule the vendor's own statement listing applies.</p>
+ClassMethod CatalogRelation(pSchema As %String, pName As %String) As %String
+{
+    Quit $ZConvert(pSchema, "U") _ "." _ $ZConvert($Translate(pName, ".", $Char(1)), "U")
 }
 
 /// <p>One vendor row <var>pRow</var> as the row column map <var>pColumns</var> declares
@@ -1256,6 +1395,8 @@ ClassMethod CatalogRow(pRow As %DynamicObject, pColumns As %String) As %DynamicO
         If tKind = "flag" {
             Set tUpper = $ZConvert(tValue, "U")
             Do tOut.%Set(tField, (tUpper = "1") || (tUpper = "YES") || (tUpper = "TRUE"), "boolean")
+        } ElseIf tKind = "plain" {
+            Do tOut.%Set(tField, ..PlainText($Translate(tValue, $Char(9, 10, 13), "   ")), "string")
         } ElseIf (tKind = "number") && (tValue '= "") && $IsValidNum(tValue) && (tValue = +tValue) {
             Do tOut.%Set(tField, +tValue, "number")
         } Else {
