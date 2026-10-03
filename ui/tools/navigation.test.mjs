@@ -201,6 +201,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/remote-databases',
       // Story 18.5: Journals, the thirteenth.
       'os-management/journals',
+      // Story 18.18: Journal settings, the fourteenth.
+      'os-management/journal-settings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -320,8 +322,13 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/remote-databases',
       // Story 18.5: the thirteenth.
       'os-management/journals',
+      // Story 18.18: the fourteenth.
+      'os-management/journal-settings',
     ]
   );
+  // Story 18.18: Journal settings follows Journals, a listed form page of its own.
+  assert.equal(stringFor(screenForRoute('os-management/journal-settings').labelKey), STRINGS.journalSettingsLabel);
+  assert.equal(isListedScreen(screenForRoute('os-management/journal-settings')), true);
   // Story 18.5: Journals is not a Logs entry, and a file's name opens Journal file details.
   assert.equal(listedScreensForArea('logs').some((screen) => screen.route === 'os-management/journals'), false);
   assert.equal(detailScreenFor(screenForRoute('os-management/journals'))?.route, 'os-management/journals/details');

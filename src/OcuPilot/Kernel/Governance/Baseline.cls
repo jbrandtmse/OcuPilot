@@ -33,6 +33,7 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.journals.integrity": true,
   "osmgmt.journals.switchdirectory": true,
   "osmgmt.journals.switchfile": true,
+  "osmgmt.journalsettings.update": true,
   "osmgmt.localdatabases.create": true,
   "osmgmt.localdatabases.delete": false,
   "osmgmt.localdatabases.expand": false,

@@ -257,6 +257,9 @@ export const CONSEQUENCE_JOURNALSWITCHFILE = 'JOURNAL.SWITCHFILE';
 export const CONSEQUENCE_JOURNALSWITCHDIRECTORY = 'JOURNAL.SWITCHDIRECTORY';
 export const CONSEQUENCE_JOURNALINTEGRITY = 'JOURNAL.INTEGRITY';
 
+/** Story 18.18: a journal settings write that leaves Freeze on error on, stated as the form states it. */
+export const CONSEQUENCE_JOURNALSETTINGSFREEZE = 'JOURNAL.SETTINGS.FREEZE';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -319,6 +322,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_LOCKINTRANSACTION) return STRINGS.lockRemoveInTransaction;
   // The enable dialog's own consequence sentence, published once.
   if (code === CONSEQUENCE_NAMESPACEINTEROP) return STRINGS.namespaceEnableInteropConsequence;
+  // The form's own Freeze on error line, published once.
+  if (code === CONSEQUENCE_JOURNALSETTINGSFREEZE) return STRINGS.journalSettingsFreezeConsequence;
   return '';
 }
 

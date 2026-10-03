@@ -524,5 +524,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     // Story 18.16: a remote directory is compared as a local one's is.
     'osmgmt.remotedatabases.create': { Directory: 'unslashed' },
     'osmgmt.remotedatabases.update': { Directory: 'unslashed' },
+    // Story 18.18: the vendor stores a journal directory with its trailing slash (measured at Task 0).
+    'osmgmt.journalsettings.update': { CurrentDirectory: 'unslashed', AlternateDirectory: 'unslashed' },
   });
 });

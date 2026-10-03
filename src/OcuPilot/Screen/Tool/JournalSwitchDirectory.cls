@@ -43,6 +43,10 @@ Parameter CLASSICPAGES = "%cspapp.op.utilsysjournalswitchdirectory";
 /// <p>The client maps it to <code>journalSwitchDirectoryConsequence</code>.</p>
 Parameter CONSEQUENCECODE = "JOURNAL.SWITCHDIRECTORY";
 
+/// <p>The fresh read's refusal when the alternate is no longer a second directory (DW-1950): a confirm
+/// reads it as the target having moved.</p>
+Parameter PRECONDITIONCODES = "JOURNAL.SWITCHDIR.NOOTHER";
+
 /// <p>The one row this proposal's card shows, from the fresh read <var>pFresh</var>:
 /// <code>CurrentDirectory</code> moving to <code>OtherDirectory</code>. A read naming neither is
 /// refused.</p>

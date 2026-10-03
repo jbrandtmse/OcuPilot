@@ -9064,6 +9064,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
 - 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal
+- 2026-10-03T04:30:11Z status=resolved-by:18-18-journal-settings owner=18-18-journal-settings by=adjudication note=PRECONDITIONCODES: a stale switch-directory confirm closes 409 target-changed (e16c410a; DW-1950 mutation run 3237)
 ### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
@@ -9158,6 +9159,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
 - 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
 
+### DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck
+- source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: JournalPort.ResolveDirectory calls PathPort.Resolve(...,0,1), which refuses only the manager directory itself and the served directory (PathPort.cls:317-323); every database directory under the manager root exists and holds IRIS.DAT and iris.lck (/durable/iris/mgr/user/); Task 0 c measured the vendor writing iris.lck into a newly set alternate
+- 2026-10-03T03:45:21Z status=decision-pending owner=burndown by=cr note=unverified med (inference: lock-file collision); refusing database directories amends AD-21's sixth case
+
+### DW-1967: The purge rule's archive-target branch runs only against a seam settings read, never against an instance with an archive target
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalSettingsWrite pins both halves through JournalSettingsPort.Archive; the vendor GET copies Config.Journal's ArchiveName string as stored (Journal.Settings GetSettings), the shape the seam sets; the spec's Never list forbids a test creating an archive target
+- 2026-10-03T03:45:21Z status=by-design owner=18-18-journal-settings by=cr note=spec Never list: no test creates an archive target; reopen only through a spec amendment
+
+### DW-1968: An agent proposal that changes a journal directory lists that directory's old value among the card's unchanged fields
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: JournalSettingsUpdate.MergeUpdate keeps the fresh read's CurrentDirectory/AlternateDirectory while the change rides the Root/Path rows, and Disclosure.Rows shows payload keys outside the diff; dropping the key would stop the read-back comparing the directory (the DerivedFields pin, run 3284); LocalDatabaseUpdate's NewVolumeDirectory is the same
+- 2026-10-03T03:45:21Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a person misreads a directory proposal's unchanged row, or the volume-directory model drops its key
+
+### DW-1969: A copy-out draft taken after a proposed journal directory stops resolving renders a script that sends the old directory, omitting the change
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Draft.ToolDerivedFields leaves the payload as it is when JournalSettingsUpdate.DerivedFields cannot resolve the root, and JournalPort.Snippet is pure, so the script carries the fresh read's directory; the live write is refused by the port's own re-resolution
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a draft script run after its directory was removed is reported as not making the reviewed change
+
+### DW-1970: EXPERIENCE.md :378 lists "Not set" among Journal settings' new literals, though the code reuses the OAuth client row's published string
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The page's wijSizeValue renders STRINGS.oauthClientNotSet; "Not set" is already published at EXPERIENCE.md :518-519; the only fix rewrites an existing line of a file Epic 19 edits concurrently (add-only rule)
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a strings test or reader flags the literal as published twice; fix once EXPERIENCE.md is uncontended
+
+### DW-1971: With an archive target set, checking Purge archived leaves the disabled purge counts showing values the Save sends as 0
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: journal-settings.store.ts keeps the counts' text when PurgeArchived is checked, while JournalRules.PurgeRule and the port send both 0; reachable only on an instance with an archive target, which no test may create; the form re-reads after the Save
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a person on an instance with an archive target reports the counts not reading 0 after Purge archived
+
+### DW-1972: The settings script mirrors only the purge rule's count half, so a target removed between mint and draft yields PurgeArchived true in the script
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalPort.Snippet applies PurgeCounts only, since a pure Snippet cannot read ArchiveName; the stored payload already carries the merge's purge rule, so script and write differ only if the archive target disappears between mint and draft
+- 2026-10-03T03:45:32Z status=wontfix-theoretical owner=18-18-journal-settings by=cr note=real only if an archive target is removed between a proposal's mint and its copy-out draft
 ### DW-1965: The command box ranks a gated screen by its name like any other, so a closest-named screen the caller cannot open takes the active row and Enter does nothing
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.

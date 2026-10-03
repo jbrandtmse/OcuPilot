@@ -2,7 +2,10 @@
 /// principal lacking one of Journals' two pairs, or one of the directory switch's two further pairs,
 /// is refused 403 <code>AUTH.NOPRIVILEGE</code> naming the first pair it lacks, on the screen's action
 /// and at the agent's confirm of each tool, with zero port calls; and a principal holding exactly the
-/// declared pairs reaches the port on both callers.</p>
+/// declared pairs reaches the port on both callers. And Story 18.18's settings update the same way, at
+/// the mint's gate, on the Save (<class>OcuPilot.Test.JournalSettingsSaveFixture</class>) and at the
+/// confirm; and a principal holding exactly its declared pairs completes a settings write on the
+/// instance, which changes the journal settings and starts a journal file until they are restored.</p>
 /// <p>The legs run in a child process logged in as the principal
 /// (<class>OcuPilot.Test.JournalWriteGateProbe</class>), which reports what
 /// <class>OcuPilot.Test.JournalIntegrityPort</class> was asked; the integrity check is answered by that
@@ -33,6 +36,14 @@ Parameter SCREEN = "OcuPilot.Screen.Descriptor.JournalList";
 /// write, lacking <code>%Admin_Manage:USE</code>; and with exactly every declared pair.</p>
 Parameter PRINCIPALS = "OCUPROBE185GOP:OCUPROBE185GOPR:%DB_IRISSYS:R,OCUPROBE185GDB:OCUPROBE185GDBR:%Admin_Operate:U,OCUPROBE185GWR:OCUPROBE185GWRR:%Admin_Operate:U;%DB_IRISSYS:R;%Admin_Manage:U,OCUPROBE185GMG:OCUPROBE185GMGR:%Admin_Operate:U;%DB_IRISSYS:RW,OCUPROBE185GFL:OCUPROBE185GFLR:%Admin_Operate:U;%DB_IRISSYS:RW;%Admin_Manage:U";
 
+/// <p>Journal settings' principals (Story 18.18), each <code>user:role:resources</code> beyond the
+/// install namespace's code read: without <code>%Admin_Journal</code>; without the system database's
+/// write; without <code>%Admin_Operate</code>; with every declared pair but the path port's; and with
+/// every declared pair and the path port's.</p>
+Parameter SETTINGSPRINCIPALS = "OCUPROBE185SJ:OCUPROBE185SJR:%Admin_Manage:U;%DB_IRISSYS:RW;%Admin_Operate:U,OCUPROBE185SW:OCUPROBE185SWR:%Admin_Manage:U;%Admin_Journal:U;%DB_IRISSYS:R;%Admin_Operate:U,OCUPROBE185SO:OCUPROBE185SOR:%Admin_Manage:U;%Admin_Journal:U;%DB_IRISSYS:RW,OCUPROBE185SF:OCUPROBE185SFR:%Admin_Manage:U;%Admin_Journal:U;%DB_IRISSYS:RW;%Admin_Operate:U,OCUPROBE185SA:OCUPROBE185SAR:%Admin_Manage:U;%Admin_Journal:U;%DB_IRISSYS:RW;%Admin_Operate:U;%Admin_FileSystemAccess:U";
+
+Parameter SETTINGSTOOL = "OcuPilot.Screen.Tool.JournalSettingsUpdate";
+
 /// <p>The three tools, each <code>action:class</code>.</p>
 Parameter TOOLS = "switchfile:OcuPilot.Screen.Tool.JournalSwitchFile,switchdirectory:OcuPilot.Screen.Tool.JournalSwitchDirectory,integrity:OcuPilot.Screen.Tool.JournalIntegrityCheck";
 
@@ -59,6 +70,12 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Length(..#PRINCIPALS, ",") {
         Set tEntry = $Piece(..#PRINCIPALS, ",", tI)
+        Set tSC = $ClassMethod(..#PROBE, "SeedPrincipal", $Piece(tEntry, ":", 1), $Piece(tEntry, ":", 2), $Translate($Piece(tEntry, ":", 3, *), ";", ","))
+        If $$$ISERR(tSC) Quit
+    }
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:$Length(..#SETTINGSPRINCIPALS, ",") {
+        Set tEntry = $Piece(..#SETTINGSPRINCIPALS, ",", tI)
         Set tSC = $ClassMethod(..#PROBE, "SeedPrincipal", $Piece(tEntry, ":", 1), $Piece(tEntry, ":", 2), $Translate($Piece(tEntry, ":", 3, *), ";", ","))
         If $$$ISERR(tSC) Quit
     }
@@ -148,6 +165,94 @@ Method TestExactlyTheDeclaredPairsReachThePort()
     Do $$$AssertTrue($IsObject(tLeg) && '(tLeg.%Get("types") [ "Journal.Settings/SWITCHDIR"), "and is refused at that read, before any switch is sent: " _ $Select($IsObject(tLeg): tLeg.%Get("types"), 1: ""))
     Set tLeg = ..Leg(tRun, 4)
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 200) && (tLeg.%Get("types") [ "Journal.File/INTEGRITYCHECK"), "the screen's check reaches the port: " _ ..LegText(tRun, 4))
+}
+
+/// <p>Story 18.18 AC5: each principal short of one of Journal settings' declared pairs -- its own
+/// <code>%Admin_Journal:USE</code>, the system database's write, <code>%Admin_Operate:USE</code>, and
+/// the path port's <code>%Admin_FileSystemAccess:USE</code> when a root is sent -- is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair at the mint's gate, on the Save and at the confirm,
+/// with zero port calls; a principal holding every declared pair passes the mint's gate and reaches
+/// the port on the Save.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Journal:USE</code> from Journal settings' descriptor pairs
+/// -&gt; that principal's legs reach the port and this goes red.</p>
+Method TestEachMissingSettingsPairIsRefusedByNameBeforeAnyPortCall()
+{
+    Set tSC = $ClassMethod(..#PROBE, "SeedDirectory", "gate", .tDirectory)
+    Do $$$AssertStatusOK(tSC, "a probe directory exists for the root legs")
+    If $$$ISERR(tSC) Quit
+    Set tRootArgs = {"alternateRoot": ($ClassMethod(..#PROBE, "Manager")), "alternatePath": ($Piece(tDirectory, "/", *-1))}
+    Set tSize = $ClassMethod(..#PROBE, "JournalSettings").%Get("FileSizeLimit")
+    Set tOther = $Select(tSize = 1000: 1001, 1: 1000)
+    Kill tTool
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve($Parameter(..#SETTINGSTOOL, "TOOLNAME"), .tTool, 1)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tTool)), "the settings tool is registered")
+    If '$IsObject($Get(tTool)) Quit
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("journal-settings", "instance", "SYSTEM", .tTargetRef)
+    For tCase = $ListBuild(1, "%Admin_Journal:USE", 0), $ListBuild(2, "%DB_IRISSYS:WRITE", 0), $ListBuild(3, "%Admin_Operate:USE", 0), $ListBuild(4, "%Admin_FileSystemAccess:USE", 1) {
+        Set tUser = $Piece($Piece(..#SETTINGSPRINCIPALS, ",", $List(tCase, 1)), ":", 1)
+        Set tPair = $List(tCase, 2)
+        If $List(tCase, 3) {
+            Set tArgs = ##class(%DynamicObject).%FromJSON(tRootArgs.%ToJSON())
+        } Else {
+            Set tArgs = {}
+            Do tArgs.%Set("FileSizeLimit", tOther, "number")
+        }
+        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, tTargetRef, "", "", tArgs.%ToJSON(), tUser, "", "", .tPairs, .tRefused, .tHttp, .tCode, .tDetail)
+        Do $$$AssertEquals($$$ISOK(tGateSC) _ " " _ tRefused _ " " _ tHttp _ " " _ tCode _ " " _ $Select($IsObject($Get(tDetail)): tDetail.%Get("failedPair"), 1: ""), "1 1 403 AUTH.NOPRIVILEGE " _ tPair, tUser _ "'s mint is refused at the gate naming " _ tPair)
+        Set tMintArgs = ##class(%DynamicObject).%FromJSON(tArgs.%ToJSON())
+        Do tMintArgs.%Set("Name", "SYSTEM", "string")
+        Set tSC = ..MintSettings(tUser, tMintArgs, .tProposal)
+        Do $$$AssertStatusOK(tSC, "the change is minted for " _ tUser _ ", read as the caller")
+        Set tPlan = []
+        Set tStep = {"kind": "save"}
+        Do tStep.%Set("body", tArgs)
+        Do tPlan.%Push(tStep)
+        Do tPlan.%Push({"kind": "confirmsettings", "proposalId": ($Select($IsObject($Get(tProposal)): tProposal.%Get("proposalId"), 1: ""))})
+        Set tRun = ..RunChild(tUser, tPlan)
+        Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
+        For tI = 1:1:tPlan.%Size() {
+            Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE " _ tPair _ " calls=0", tUser _ " leg " _ tI _ " (" _ tPlan.%Get(tI - 1).%Get("kind") _ ") is refused naming " _ tPair _ " before any port call")
+        }
+    }
+    Set tUser = $Piece($Piece(..#SETTINGSPRINCIPALS, ",", 5), ":", 1)
+    Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, tTargetRef, "", "", tRootArgs.%ToJSON(), tUser, "", "", .tPairs, .tRefused, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals($$$ISOK(tGateSC) _ " " _ tRefused, "1 0", "a principal holding every declared pair passes the mint's gate, a root sent")
+    Set tStep = {"kind": "save"}
+    Do tStep.%Set("body", {"FileSizeLimit": (+tSize)})
+    Set tRun = ..RunChild(tUser, [(tStep)])
+    Set tLeg = ..Leg(tRun, 1)
+    Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 200) && (tLeg.%Get("calls") > 0) && (tLeg.%Get("types") [ "Journal.Settings/GET"), "and its Save reaches the port's read: " _ ..LegText(tRun, 1))
+}
+
+/// <p>Story 18.18, AD-8: a principal holding exactly Journal settings' declared pairs, the path port's
+/// beside them, completes a changed-size Save on the instance: 200, read back <code>matches</code>,
+/// and the size stored, never the measured half-applied write (stored, then 500).</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from
+/// <parameter>OcuPilot.Screen.Tool.JournalSettingsUpdate.EXTRAPAIRS</parameter> and from this
+/// principal -&gt; the gate admits it, the vendor stores the size and answers 500, and this goes
+/// red.</p>
+Method TestExactlyTheDeclaredSettingsPairsCompleteAWrite()
+{
+    Set tUser = $Piece($Piece(..#SETTINGSPRINCIPALS, ",", 5), ":", 1)
+    Set tOther = $Select($ClassMethod(..#PROBE, "JournalSettings").%Get("FileSizeLimit") = 1000: 1001, 1: 1000)
+    Set tStep = {"kind": "savesent"}
+    Do tStep.%Set("body", {"FileSizeLimit": (tOther)})
+    Set tRun = ..RunChild(tUser, [(tStep)])
+    Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
+    Set tLeg = ..Leg(tRun, 1)
+    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("verdict"), 1: "absent"), "200 matches", "the Save completes and reads back matches: " _ ..LegText(tRun, 1))
+    Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("types") [ "Journal.Settings/PUT"), "sending the settings PUT to the instance")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "JournalSettings").%Get("FileSizeLimit"), tOther, "and the instance holds the size")
+}
+
+/// <p>Mint Journal settings' proposal for <var>pUser</var> carrying <var>pArgs</var>, read as the
+/// caller: the mint itself holds no pair check, which the dispatch gate and the confirm make.</p>
+ClassMethod MintSettings(pUser As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject) As %Status
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(pUser, "completed", .tTurn)
+    If $$$ISERR(tSC) Quit tSC
+    Set tClass = ..#SETTINGSTOOL
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tClass, "DESCRIPTORCLASS"), $Parameter(tClass, "TOOLNAME"), pUser, "", tTurn, pArgs, "OcuPilot.Kernel.Agent.Limits", .pProposal, .tHttp, .tFault, $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "IdParam"), "SYSTEM", $ClassMethod(tClass, "IdArgument"), $ClassMethod(tClass, "SettableFields"), tClass)
 }
 
 /// <p>A closed journal file the instance lists, or <code>""</code>.</p>

@@ -244,7 +244,8 @@ Method TestARefusedStartAnswersItsPublishedCode()
 
 /// <p>AC5, AD-8 as amended: a holder of OS management's three pairs without the own pair keeps the
 /// area and every other listed OS management screen, while External language servers alone reads
-/// refused on <code>%Admin_ExternalLanguageServerEdit:USE</code>; both screens' reads and both
+/// refused on <code>%Admin_ExternalLanguageServerEdit:USE</code>, beside Journal settings on its own
+/// <code>%Admin_Journal:USE</code> (Story 18.18); both screens' reads and both
 /// actions answer 403 naming that pair, and the probe is not started.</p>
 /// <p>Mutation (Rule 19): drop the own pair from the list's <code>ownPrivileges</code> -- the area
 /// reads refused and the navigation leg goes red.</p>
@@ -274,6 +275,10 @@ Method TestAnAreaHolderKeepsOsManagementAndIsRefusedTheServers()
             Set tRefused = tRefused _ $ListBuild(tScreen.%Get("route") _ "=" _ tScreen.%Get("failedPair"))
         }
     }
+    ; Story 18.18's Journal settings declares its own pair too, which this principal does not hold.
+    Set tJournal = $ListFind(tRefused, "os-management/journal-settings=%Admin_Journal:USE")
+    Do $$$AssertTrue(tJournal > 0, "Journal settings is refused on its own pair, %Admin_Journal:USE: " _ $ListToString(tRefused, " "))
+    If tJournal Set tRefused = $List(tRefused, 1, tJournal - 1) _ $List(tRefused, tJournal + 1, *)
     Do $$$AssertEquals($ListToString(tRefused, " "), "os-management/language-servers=" _ ..#OWNPAIR, "only External language servers is refused, on its own pair")
     Do $$$AssertTrue(tOpen > 0, "and every other listed OS management screen is open")
     For tRead = "osmgmt.languageservers/read?maxRows=5", "osmgmt.languageserveractivity/read?maxRows=5&name=" _ ##class(%CSP.Page).EscapeURL(..#PROBE) {

@@ -139,6 +139,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`LanguageServer` is a named exception to the complete body** [AMENDED 2026-09-29, Story 16.25 spec gate, Rule 20]. It keeps an omitted key and merges `Custom` member by member, and a PUT carrying `Custom` blanks the stored fields the type's `Custom` does not use: a Python server's virtual-environment flag and PYTHONPATH, which its `GET` never answers (measured on `ocupilot-ci` 2026-09-29). So its update omits an unchanged `Custom`, and a changed Python `Custom` states that consequence to the person and the agent.
 
+  **`Journal.Settings` is a named exception to the complete body** [AMENDED 2026-10-02, Story 18.18 Task 0, Rule 20]: it omits `ArchiveName`, `wijdir` and `targwijsz`, which its tool shows and never sets, because the vendor writes every key it carries and a write-image journal key activates at once; the vendor keeps an omitted key (measured at Story 18.18's Task 0).
+
 ### AD-5 — One screen descriptor is the source of everything about a screen
 
 - **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
@@ -223,7 +225,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Tasks' Background tasks is a further own-pair case** [AMENDED 2026-09-28, Story 16.5 spec gate, Rule 20]: the screen declares `%Admin_Operate:USE` as its own pair beside the area's `%Admin_Task:USE` and `%DB_IRISSYS:READ`, because controlling a portal job needs it and the vendor's own check throws `<UNDEFINED>` without it (measured on `ocupilot-ci`).
 
-  **OS management's External language servers is a further own-pair case** [AMENDED 2026-09-29, Story 16.10 spec gate, Rule 20]: its list and its Activity log declare `%Admin_ExternalLanguageServerEdit:USE` as their own pair beside the area's `%DB_IRISSYS:READ`, because `LanguageServer`'s `ResourcesOR()` names only that resource and a principal holding exactly those two pairs listed, read, started and stopped servers (measured on `ocupilot-ci`), so a holder of OS management's set keeps every other OS management screen.
+  **OS management's External language servers is a further own-pair case** [AMENDED 2026-09-29, Story 16.10 spec gate, Rule 20]: its list and its Activity log declare `%Admin_ExternalLanguageServerEdit:USE` as their own pair beside the area's `%DB_IRISSYS:READ`, because `LanguageServer`'s `ResourcesOR()` names only that resource and a principal holding exactly those two pairs listed, read, started and stopped servers (measured on `ocupilot-ci`), so a holder of OS management's set keeps every other OS management screen but one that declares its own pair (Journal settings' `%Admin_Journal:USE`, Story 18.18) [AMENDED 2026-10-03, Story 18.18 code review, Rule 20].
 
   **Story 16.25's language server tools declare pairs beyond their screen's set** [AMENDED 2026-09-29, Story 16.25 spec gate, Rule 20]: create, update and delete declare `%Admin_Manage:USE` and `%DB_IRISSYS:WRITE`, since a principal holding the screen's two pairs was answered #921 without the first and `<PROTECT>` in `Config.Gateways` without the second (measured on `ocupilot-ci` 2026-09-29). A Python server's delete also requires `%System_CallOut:USE`, which `Port/LanguageServerPort` checks by name before the vendor call, because the vendor removes the server's virtual environment before refusing. Each is refused by name before any port call.
 
@@ -236,6 +238,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.16's remote database tools declare a pair beyond their screen's set** [AMENDED 2026-10-02, Story 18.16 implement, Rule 20]: `osmgmt.remotedatabases.create`, `.update` and `.delete` declare `%DB_IRISSYS:WRITE`, because a principal holding only the Remote databases screens' `%Admin_Manage:USE` and `%DB_IRISSYS:READ` was refused `PUT` and `DELETE` of `Database.ConfigCRUD` on protected `^SYS` nodes (measured at Story 18.16's Task 0), and the update also declares `%Admin_Operate:USE` whenever its complete set sends `MountRequired` true; each is refused by name before any port call. A remote database's delete impact names the namespaces and applications a local database's does, and no shared file.
 
   **Story 18.5's journal switch directory declares two pairs beyond its screen's set** [AMENDED 2026-10-02, orchestrator merge gate after Story 18.5's Task 0, Rule 20]: Journals' screen set is `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, which suffice for `osmgmt.journals.switchfile` and `osmgmt.journals.integrity`; `osmgmt.journals.switchdirectory` also declares `%DB_IRISSYS:WRITE` and `%Admin_Manage:USE`, each refused by name before any port call. Without the first the vendor's switch fails `<PROTECT>` writing `^%SYS("JOURNAL","PROCESS","JRNSWTCH")` in IRISSYS; with only the first it answers 200 having started a new file in the same directory; with `%Admin_Manage:USE` alone it fails `<PROTECT>`; with both it moves to the other directory and a second switch moves back (measured on `ocupilot-b-ci`, 2026-10-02, the runner re-measuring every row). That is a narrower audience than the classic page's `%Admin_Operate`, as Stories 18.15 and 18.16 already accept; `JournalPort` treats a directory switch that lands in the directory journaling was already writing in as a fault, so the vendor's silent 200 never reads as a switch.
+
+  **Story 18.18's Journal settings declares `%Admin_Journal:USE` as its own pair, and its write two pairs beyond the screen's set** [AMENDED 2026-10-02, orchestrator merge gate after Story 18.18's Task 0, Rule 20]: the classic Journal Settings page requires `%Admin_Manage` and `%Admin_Journal` together while the admin API takes either, so the screen declares `%Admin_Journal:USE` beside OS management's set; `osmgmt.journalsettings.update` and its Save also declare `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, and PathPort's `%Admin_FileSystemAccess:USE` when a root is sent, each refused by name before any port call. Every changing settings `PUT` starts a new journal file: with the screen's three pairs it fails `<PROTECT>` in `Config.Journal` `%SaveData` and stores nothing; with `%DB_IRISSYS:WRITE` added the vendor stores the change and then answers 500 `#1142` because the file switch needs `%Admin_Operate`, a half-applied write the declared pairs never allow; with `%Admin_Operate:USE` alone it fails `<PROTECT>`; with both it answers 200, stored, with a new file (measured on `ocupilot-b-ci`, 2026-10-02, the runner re-measuring every row).
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -329,6 +333,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **`journal-settings` is a singleton** (Story 18.18) [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
 
+  **A `journal-record` id is the record's `Address` within the file its list read, kept exactly**; it names no write target (Story 18.19) [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20].
+
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
 - **Binds:** FR-14; every list and detail screen
@@ -392,6 +398,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The eighth is a journal file** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]. Every journal route takes a full path, so `AdminPort` accepts a `file` on `Journal.File` (and on `Journal.Record`, which Story 18.19 consumes) only when it equals, character for character, a `Name` the instance's journal file list answers at that call (`Journal.File` `LIST`, `%SYS.Journal.File:ByTimeReverseOrder`), read whole and never cached, and refuses any other `JOURNAL.FILE.UNLISTED` before that call: a file copied elsewhere, or a non-journal file, is never opened. The sixth case's overwrite refusal also covers every directory a file the journal list names sits in, and the write-image journal's directory (`Config.config` `wijdir`, the manager directory when empty), read at call time (DW-1797). The list stops at the first missing file, so a former directory older than a gap is not refused (named limit, Story 18.5).
 
   Journal settings' two directories are sixth-case vendor-writes directories, named by a root and a relative name, which must already exist and are never cleared (Story 18.18) [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
+
+  **The record list's filter is never code a caller writes** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]. On `Journal.Record` `LIST`, `AdminPort` takes `matchColumnName` only from the classic page's eight columns and `matchOperator` only from its six operators, because the vendor splices the operator into code it executes (`%SYS.Journal.Record` `ZUFetch`); it refuses anything else `JOURNAL.FILTER.SHAPE` before any vendor call, sends the three filter keys together or not at all, and takes `initialOffset`, and the record `GET`'s `address`, only as digits. `NewValue`, `OldValue` and `GlobalReference` are never matchable.
 
   Where a log source is a **global** rather than a file, the same discipline governs the namespace: it is chosen from the set the user can read, never taken as a caller string (AD-48).
 
@@ -463,6 +471,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.15's queued write** [AMENDED 2026-10-01, Story 18.15 spec gate, Rule 20]: `QUEUEDWRITES` also names `Namespace.Namespace` `INTEROP` (enable interoperability), which takes no body and queues through `ShouldRunAsync()` (read on this build); its finished result is read once, by the port's one poller, and past the bound it has started.
 
   **Story 18.5's queued write** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: `QUEUEDWRITES` also names `Journal.File` `INTEGRITYCHECK`, which queues through `ShouldRunAsync()` (read in the vendor source at Story 18.5's plan; Task 0 measures it), carries a port-built `{CheckDetails}` and changes nothing; its console lines are read once with its end.
+
+  **Story 18.19's self-queued read** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `Journal.Record` `LIST` queues itself and is polled like the audit list. Because the vendor's list counts each kept row twice, the port sends twice the rows the read asks (checked on slot A on 2026-09-28: 10 gave 5 and 40 gave 20; Story 18.19's Task 0 confirms it), which is exact only when no row is skipped. Its rows and filter sit in the vendor's task row until the port deletes it or AD-37's sweep does.
 
 ### AD-27 — The dependency on the experimental admin API is confined to the port and always has a fallback
 
@@ -585,6 +595,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Only the vendor's own 404 reads as no rows** [AMENDED 2026-10-02, Story 18.5 code review, Rule 20]: a single-object `GET` read answers no rows for a 404 the port maps to `PORT.NOTFOUND`, or one carrying no code; a 404 on any other code is a refusal and fails the read, so a journal file AD-21's eighth case refuses `JOURNAL.FILE.UNLISTED` is never shown as a file holding no databases (`Screen/Read.cls` `IsAbsence`).
 
+  **A journal record's values are screen-only** (Story 18.19) [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `NewValue`, `OldValue` and `GlobalReference` reach the journal record detail dialog through `GET /journal/record`, under the record browser's pairs and AD-21's eighth case, and never reach a read tool, screen context, the model, the ledger or a log line, because the payload has no schema and can hold patient data or a secret a vendor body journaled (AD-48's reasoning). The record list's eight fields, `GlobalNode` among them, are ordinary row fields, and its paging is the offset criterion. **A criterion may declare `hint`**: one sentence the read tool publishes as that criterion's description in place of its kind's generic one; the screen never shows it.
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -699,6 +711,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 18.5's `CLASSICPAGES`** [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20]: switch file `%cspapp.op.utilsysjournalproperties`, switch directory `%cspapp.op.utilsysjournalswitchdirectory`, and the integrity check `%cspapp.op.utilsysjournalintegrity`, each Hidden and spelled as `NormalizePage` answers (read at Story 18.5's plan; Task 0 confirms).
 
   **Story 18.18's settings update declares no `CLASSICPAGES`**: the descriptor's own page, `%CSP.UI.Portal.Journal`, performs it [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
+
+  **Story 18.19's Journal records** declares the classic record browser `%cspapp.op.utilsysjournal` (Hidden, spelled as `NormalizePage` answers, measured at Story 18.5's Task 0); it has no write tool, so it declares no `CLASSICPAGES` [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20].
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
@@ -1162,6 +1176,7 @@ Decisions intentionally pushed down, each with the reason it can wait. Nothing h
 | Whether OcuPilot admits an LDAP configuration the instance already stores under a non-canonical name, or keeps refusing it `LDAP.NAME.FORM` (DW-1888, **decided** 2026-10-01 at the merge gate: admitted as stored; AD-13 amended) | AD-13's 2026-10-01 amendment assumes the instance stores only the `FormatName` spelling; measured on `ocupilot-ci`, `Security.LDAPConfigs.Create` keeps a dotless name for a Kerberos-only configuration (the classic page canonicalizes only with LDAP configuration ticked), and OcuPilot could then neither open, edit, test nor delete it | Done in Epic 16 (DW-1888's commit) |
 | Admitting a user whose role only grants `%All` to the enable-interop tool (DW-1897, **decided** 2026-10-01 at the merge gate: keep the stricter rule; AD-8 amended) | Story 18.15 declares `%All` as the pair `%All:USE`, which `CheckUserPermission` passes only for a user assigned `%All` directly (measured on `ocupilot-b-ci`); the stricter rule is safe and the classic portal still serves such a user, and admitting granted-role holders needs a role check in contended kernel files | A user reports needing the enable through an indirect `%All` |
 | Whether System Explorer admits an account holding only `%Developer`, below OcuPilot's `%Admin_*` floor (DW-1903, **decided** 2026-10-01, owner: it does, as the classic portal does; AD-8 amended) | The API's administrative floor guards every route, so widening it is a product-wide security change; Story 19.1 ships on the `%Admin_*` floor, and Story 19.12 widens it to `%Development:USE` with an own pair on every screen, route and tool that relied on the floor alone | Story 19.12 |
+| Whether Journal settings refuses an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its `iris.lck` beside the database's (DW-1966, decision-pending, Story 18.18) | AD-21's sixth case refuses only the manager directory and the served directory; a collision between the two lock files is an inference no test has run, and refusing database directories would amend the sixth case | The epic-close decision sheet, or a reported collision |
 
 ### Superseded by decisions in this spine
 

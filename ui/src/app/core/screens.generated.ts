@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -498,7 +498,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "class",
   "routine",
   "journal-file",
-  "journal-file-database"
+  "journal-file-database",
+  "journal-settings"
 ];
 
 /**
@@ -537,7 +538,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "database-configuration": "foldcase",
   "database": "directoryset",
   "class": "documentset",
-  "routine": "documentset"
+  "routine": "documentset",
+  "journal-settings": "singleton"
 };
 
 /**
@@ -7443,6 +7445,136 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "osmgmt.journals",
     "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.JournalSettings",
+    "route": "os-management/journal-settings",
+    "area": "os-management",
+    "labelKey": "journalSettingsLabel",
+    "sideBarPosition": 14,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Journal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Journal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "journal-settings",
+    "entityLabelKey": "journalSettingsLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "CurrentDirectory",
+        "AlternateDirectory",
+        "FileSizeLimit",
+        "JournalFilePrefix",
+        "ArchiveName",
+        "PurgeArchived",
+        "DaysBeforePurge",
+        "BackupsBeforePurge",
+        "FreezeOnError",
+        "JournalcspSession",
+        "CompressFiles",
+        "wijdir",
+        "targwijsz"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "journal settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "journalSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Journal",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Journal.Settings",
+        "type": "GET"
+      },
+      "fields": [
+        "CurrentDirectory",
+        "AlternateDirectory",
+        "FileSizeLimit",
+        "JournalFilePrefix",
+        "ArchiveName",
+        "PurgeArchived",
+        "DaysBeforePurge",
+        "BackupsBeforePurge",
+        "FreezeOnError",
+        "JournalcspSession",
+        "CompressFiles",
+        "wijdir",
+        "targwijsz"
+      ],
+      "filter": [
+        "CurrentDirectory"
+      ],
+      "sort": {
+        "fields": [
+          "CurrentDirectory"
+        ],
+        "default": "CurrentDirectory",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "osmgmt.journalsettings",
+    "refreshDefault": 0,
+    "table": null,
     "banner": null,
     "tab": null,
     "rowTarget": null,

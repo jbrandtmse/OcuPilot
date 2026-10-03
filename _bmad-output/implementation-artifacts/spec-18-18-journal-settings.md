@@ -2,13 +2,15 @@
 title: 'Story 18.18: Journal settings'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
 deferred: []
+baseline_revision: 'a1c7fd5846b9ef72c97bfe7d1b8b3df0aa7cc733'
+baseline_commit: 'a1c7fd5846b9ef72c97bfe7d1b8b3df0aa7cc733'
 ---
 
 <intent-contract>
@@ -37,7 +39,7 @@ deferred: []
 - **The tool.** `Screen/Tool/JournalSettingsUpdate.cls`, `osmgmt.journalsettings.update`:
   - A merge write (AD-4) through `JournalPort` (AD-52): `READTYPE` `GET`, `WRITETYPE` `PUT`, `SENDSBODY` 1. The target is the singleton: `IDRULES` `journal-settings:singleton` reads every id as `SYSTEM` (`EntityRef.cls:147`), and the agent's `Name` is described as that literal (`OAuthAuthorizationServerUpdate` keeps the same inherited `Name`).
   - `PERMITTEDFIELDS` `BackupsBeforePurge,DaysBeforePurge,FileSizeLimit,FreezeOnError,JournalFilePrefix,JournalcspSession,PurgeArchived,CompressFiles`. `EXCLUDEDFIELDS` `CurrentDirectory,AlternateDirectory,ArchiveName,wijdir,targwijsz`. `SettableFields` is those eight plus the arguments `primaryRoot`, `primaryPath`, `alternateRoot`, `alternatePath`. A directory is set only through its arguments, so the vendor receives a composed path under its own field and no caller names a path (AD-21's sixth case).
-  - Pairs: `JournalSettings`' three; `%Admin_FileSystemAccess:USE` when a root is sent (`ArgumentPairs`, the `LocalDatabaseUpdate` model); `%DB_IRISSYS:WRITE` only when Task 0 measures a refusal without it. Each is refused by name before any port call. `CLASSICPAGES` is empty: the descriptor's own page performs the save (AD-44).
+  - Pairs: `JournalSettings`' three; `%Admin_FileSystemAccess:USE` when a root is sent (`ArgumentPairs`, the `LocalDatabaseUpdate` model); `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE` (measured; orchestrator merge gate 2026-10-02; AD-8). Each is refused by name before any port call. `CLASSICPAGES` is empty: the descriptor's own page performs the save (AD-44).
   - Governance: `osmgmt.journalsettings.update` joins `Baseline.cls` `true`, because it is an ordinary merge that erases nothing. If the story commits after 2026-10-04, the runner asks the owner first (AD-22).
 - **The body.** The fresh `GET`'s ten settable keys (`CurrentDirectory`, `AlternateDirectory` and the eight above), with the change applied and `ArchiveName`, `wijdir` and `targwijsz` omitted (proposed AD-4 named exception). The merge copies the whole fresh read (`Mint.Merge`), so the tool's `MergeUpdate` drops the three before it merges, and the port drops them again before the `PUT`.
   - An unchanged directory is sent as read, unless Task 0 measures that a `PUT` carrying an unchanged directory starts a journal file. Then an unchanged directory is omitted too, under the same exception.
@@ -49,7 +51,7 @@ deferred: []
 - **Rules.** `Area/OsMgmt/JournalRules.cls` holds them once. Both callers refuse each on its field before any vendor call:
   - `FileSizeLimit`: a whole number from 1 to 4079 (`JOURNAL.FILESIZE.SHAPE`). The lower bound becomes 0 only if Task 0 measures that the vendor stores 0 (`irissys/Config/Journal.cls:80`, `MINVAL = 0`).
   - `DaysBeforePurge` from 0 to 100, `BackupsBeforePurge` from 0 to 10 (`JOURNAL.PURGE.SHAPE`; `Journal.cls:64-77`).
-  - `JournalFilePrefix` matches `^[A-Za-z0-9._-]{0,64}$` (`JOURNAL.PREFIX.SHAPE`).
+  - `JournalFilePrefix` matches `^[A-Za-z0-9_-]{0,64}$` (`JOURNAL.PREFIX.SHAPE`); the vendor refuses a dot (Task 0).
   - The four booleans are JSON booleans (`JOURNAL.BOOLEAN.SHAPE`).
   - A key outside `SettableFields` is refused 400 `PORT.FIELD.UNEXPECTED` on the Save; the agent's closed schema refuses it as `TOOL.ARGUMENTS`.
 - **Consequence.** A write whose payload sends `FreezeOnError` true carries `JOURNAL.SETTINGS.FREEZE`: "With Freeze on error on, a journal write error blocks every process that journals until it is fixed." The form shows that sentence under the checkbox while it is checked.
@@ -190,7 +192,7 @@ deferred: []
 
 ## Tasks & Acceptance
 
-**Task 0: the implement stage's first task, before any tool, descriptor or form.** Run it on `ocupilot-b-ci` only; load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
+**Task 0: the implement stage's first task, before any tool, descriptor or form.** **Resumed 2026-10-02 after its step-5 halt, which the orchestrator ruled (Spec Change Log): steps 1-4 are measured (Design Notes › Measured at implement), and step 1's plumbing is parked in `_bmad-output/implementation-artifacts/spec-18-18-task0-plumbing.patch`; `git apply` it first, do not re-run the measurements, and continue at step 6, then the Execution tasks.** Run it on `ocupilot-b-ci` only; load with `/tmp/epic-18-d6/load-throwaway.sh`. Record every result under Design Notes › Measured at implement, and every AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing.** `Port/AdminPort.cls` `MUTATINGTYPES` gains `Journal.Settings/PUT` with its sentence (add-only; never in `BODYLESSTYPES`), and `Test/PortFixture.cls:21` follows. `JournalPort` gets its `GET` and `PUT` branches (Execution). `Test/JournalProbe.cls` gains `SeedDirectory(suffix)`, which creates `DirectoryFor(suffix)`; every `PUT` below goes through its timed `Run("Journal.Settings", "PUT", , body)`.
 2. **Snapshot S0** with `Snapshot`, and keep `JournalSettings()` for every restore.
@@ -247,7 +249,7 @@ deferred: []
   - `JOURNAL.DIRECTORY.ABSENT` (422): "That directory does not exist on the instance. Create it, then choose it."
   - `JOURNAL.FILESIZE.SHAPE` (422): "Enter a whole number of megabytes from 1 to 4079."
   - `JOURNAL.PURGE.SHAPE` (422): "Enter a whole number: up to 100 days, or up to 10 backups."
-  - `JOURNAL.PREFIX.SHAPE` (422): "Use up to 64 letters, digits, dots, hyphens or underscores."
+  - `JOURNAL.PREFIX.SHAPE` (422): "Use up to 64 letters, digits, hyphens or underscores."
   - `JOURNAL.BOOLEAN.SHAPE` (422): "Choose on or off."
 - `src/OcuPilot/Screen/Descriptor/JournalSettings.cls` (new), per Boundaries.
 - `src/OcuPilot/Kernel/EntityType.cls` gains `journal-settings`. `src/OcuPilot/Kernel/EntityRef.cls` `IDRULES` gains `journal-settings:singleton`.
@@ -325,9 +327,135 @@ deferred: []
   - the DW-1337 gate holds in both themes;
   - EXPERIENCE.md reads 1001 lines.
 
+### Review Findings
+
+Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; diff `71e24556..e16c410a` plus QA's spec lines): 43 raw, 40 entries; 10 patch, 7 defer, 23 rejected; high 0. Points (a) to (g) verified; Rule 3 met by `journal-settings.browser-spec.mjs`.
+
+- [x] [Review][Patch] (med) No principal holding exactly the declared pairs completed a real settings write, so a vendor needing one more pair would bring back the half-applied write with CI green [src/OcuPilot/Test/JournalWriteGate.cls]
+- [x] [Review][Patch] (low) Freeze on error's consequence was drawn after all three flags, under Compress journal files [ui/src/app/areas/os-management/journal-settings.page.ts:253]
+- [x] [Review][Patch] (low) The purge Save leg's body check was masked by the port applying the rule again; its read-back now pins the Save's own merge [src/OcuPilot/Test/JournalSettingsWrite.cls]
+- [x] [Review][Patch] (low) No test stored a primary directory; a primary leg pins its vendor key, its read-back and journaling moving at once [src/OcuPilot/Test/JournalSettingsWrite.cls]
+- [x] [Review][Patch] (low) A name typed before any root was chosen was dropped and the form read Saved; it is sent and refused on the root [ui/src/app/areas/os-management/journal-settings.store.ts]
+- [x] [Review][Patch] (low) A Save that sent nothing showed the previous write's read-back [ui/src/app/areas/os-management/journal-settings.store.ts]
+- [x] [Review][Patch] (low) `JournalRules.Problem` answered an internal fault as a 400 argument problem; it is an error status, as in `DatabaseRules` [src/OcuPilot/Area/OsMgmt/JournalRules.cls:94]
+- [x] [Review][Patch] (low) `JournalRules`' class doc read as if the class checked nothing [src/OcuPilot/Area/OsMgmt/JournalRules.cls:8]
+- [x] [Review][Patch] (low) The wire test's mutation note said a shown-only key reaches the vendor; the kernel merge refuses it [src/OcuPilot/Test/JournalSettingsWrite.cls]
+- [x] [Review][Patch] (low) Two neighbouring browser specs still said thirteen entries and Journals last [ui/browser/license-usage.browser-spec.mjs:4]
+- [x] [Review][Defer] An existing database's directory, OcuPilot's own included, is accepted as a journal directory [src/OcuPilot/Port/JournalPort.cls:324] — deferred: DW-1966 decision-pending
+- [x] [Review][Defer] The purge rule's archive-target branch runs only against a seam settings read (judged point f: the seam's string shape is the vendor GET's) [src/OcuPilot/Test/JournalSettingsWrite.cls] — deferred: DW-1967 by-design
+- [x] [Review][Defer] A directory proposal lists the old directory among the card's unchanged fields [src/OcuPilot/Screen/Tool/JournalSettingsUpdate.cls:130] — deferred: DW-1968 wontfix-accepted
+- [x] [Review][Defer] A draft taken after a proposed directory stops resolving sends the old directory [src/OcuPilot/Port/JournalPort.cls:448] — deferred: DW-1969 wontfix-accepted
+- [x] [Review][Defer] EXPERIENCE.md :378 lists "Not set" as new, though it reuses the OAuth client row's string [EXPERIENCE.md:378] — deferred: DW-1970 wontfix-accepted
+- [x] [Review][Defer] With an archive target, the disabled purge counts keep values the Save sends as 0 [ui/src/app/areas/os-management/journal-settings.store.ts:299] — deferred: DW-1971 wontfix-accepted
+- [x] [Review][Defer] The settings script mirrors only the purge rule's count half [src/OcuPilot/Port/JournalPort.cls:451] — deferred: DW-1972 wontfix-theoretical
+- Runs (`ocupilot-b-ci`, one class per call, totals from `%UnitTest_Result`): patched 3723-3725 green; mutated 3726 (JournalSettingsWrite 5/7) and 3727 (JournalWriteGate 2/4) red as recorded under Verification; reverted byte-identical, then JournalSettingsWrite 7/7 (3728), JournalWriteGate 4/4 (3729), JournalSettingsRules 4/4 (3730), JournalDescriptor 11/11 (3731), JournalWrite 9/9 (3732). Vitest page and store 17/17, each new assertion red under its mutation; `npm run test:tools` 1,780/1,780; build within the 2571kB warning; three browser specs 12/12 on the redeployed bundle; check-objectscript 0. Throwaway as found; the monitor read 2 and was cleared to 0.
+- Rejected (false): `PRECONDITIONCODES`' narrowing unpinned (`Test/Prohibited.cls:312` reddens under `Quit (tCode '= "")`).
+- Rejected (false): the freeze leg's "nothing is sent" cannot fail (it fails if a mint issues a PUT).
+- Rejected (false): the Save's `PortViolations` path unpinned (a port refusal carries `detail.violations` either way).
+- Rejected (false): two doc comments misstate the vendor's pairs (they describe `ResourcesOR` and the GET, as AD-8 does).
+- Rejected (false): `PermittedChangeFields` lists 12, not 14 (the diff rows are the arguments).
+- Rejected (false): the purge rule sits outside `Validate` (AC4 is met by the reshape, pinned).
+- Rejected (low): the gate test's mint leg uses `Operation.Gate` (dispatch reads the same pairs through `Registry.RequiredPairs`).
+- Rejected (low): no `%Admin_Manage` or `%DB_IRISSYS:READ` settings leg (`JournalDescriptor` pins the pairs, the `%Admin_Journal` leg their evaluation).
+- Rejected (low): disabled purge controls name no reason (the gated-control rule covers privilege gates; the LDAP and SSL editors match).
+- Rejected (low): the DW-1337 walk covers the clean form only (the spec's gate in both themes is met).
+- Rejected (low): edits during an in-flight Save are re-read away (the model editors match; a guard for a 150 ms window).
+- Rejected (low): Cancel during an in-flight Save skips the change event (as above).
+- Rejected (low): a preselected single root is sent (adjudicated in the implement review; no new evidence).
+- Rejected (spec-bound): the directory line names only a directory change (the spec's literal).
+- Rejected (spec-bound): no consequence for turning Freeze on error off (the spec names one consequence).
+- Rejected (spec-bound): `FileSizeLimit` admits 0 (the orchestrator's ruling, the vendor's `MINVAL`).
+- Rejected (spec-bound): the purge rule adds a row over a stored `PurgeArchived` true with no target (the classic page's rule).
+- Rejected (spec-bound): the purge rule rewrites a sent `PurgeArchived` true (the matrix row).
+- Rejected (spec-bound): a failed write gets no read-back (AD-58 reads back an OK write only).
+- Rejected (spec edit): `## Auto Run Result`'s counts.
+- Rejected (spec edit): the QA mutation lines' shape.
+- Rejected (spec edit): AC9's 1001 lines and the codes list's size range.
+- Rejected (merged): `ReadTool:93` and `Test/Prohibited.cls:232` reworded beside their counts (resolved at `8fe230e5`).
+
+### Rework 1 (CI)
+
+- [x] [CI] browser shard 2/3 of run 37091469927 (`8fe230e5`): `ui/browser/language-servers.browser-spec.mjs` AC5 ("a holder of OS management's pairs without the own pair sees External language servers alone unavailable", `:339-356`) now also finds "Journal settings: Requires %Admin_Journal:USE" unavailable, because Journal settings' own pair is new in this story (the browser twin of the `LanguageServerWire` roster the implement pass already fixed; reproduced locally) -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37091469927 -- the fix keeps the leg's intent (External language servers alone unavailable for lack of its own pair), the same way `LanguageServerWire` was fixed, and checks every other browser spec that pins OS management's side bar or its unavailable entries for the same omission. (The same run's two `gate.browser-spec.mjs` failures, 30 s navigation timeouts on Permissions › Users, pass 6/6 locally and are re-checked on this rework's CI, not worked here.)
+
+### Review Findings (rework 1)
+
+Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; diff `a1c7fd58..584838aa`): 18 raw, 15 entries; 5 patch, 0 defer, 10 rejected; high 0, med 0. `[CI]` confirmed fixed, the leg pins its title; no other browser spec pins OS management's unavailable entries; Rule 3 met.
+
+- [x] [Review][Patch] (low) The leg dropped every Journal settings line where `LanguageServerWire` drops one; it now removes exactly one [ui/browser/language-servers.browser-spec.mjs:363]
+- [x] [Review][Patch] (low) "the other OS management entries stay open" counted every entry, Journal settings' refused one included; it counts open entries [ui/browser/language-servers.browser-spec.mjs:369]
+- [x] [Review][Patch] (low) The leg's in-file mutation note named only the External language servers half [ui/browser/language-servers.browser-spec.mjs:339]
+- [x] [Review][Patch] (low) The title's "on it ... on its own" read as "alone"; it names both pairs [ui/browser/language-servers.browser-spec.mjs:343]
+- [x] [Review][Patch] (low) Rule 19: the first rework mutation edited the assertion, not its subject; replaced in `## Verification` by a role-grant mutation, both observed red [spec]
+- Rejected (outside the rework, not HIGH): AC1's only DOM pin of the refused entry is Story 16.10's spec; `WireSecurityRead.cls:571` pins the `failedPair`.
+- Rejected (false, by design): the next OS management own-pair screen reddens this leg again; the exact roster is the intended tripwire, as in `LanguageServerWire`.
+- Rejected (false): `gate.browser-spec.mjs`'s timeouts have no ledger entry; this head's CI re-runs them, and a red takes the red path.
+- Rejected (false): `createPrincipal`'s doc comment still reads true.
+- Rejected (spec edit): Code Map's browser roster and the `(loop)` command omit `language-servers` and `LanguageServerWire`.
+- Rejected (spec edit): the rewritten `## Auto Run Result` drops the first pass's `footprint_extensions` and Epic 19 collision note (relayed to the lead).
+- Rejected (spec edit): the throwaway line omits the handoff's own-session `Terminate()`.
+- Rejected (spec edit): the rework is dated 2026-10-03 and 2026-10-02 (UTC against local).
+- Rejected (spec edit): two triage rows repeat, and one cites `journals:276` for the count at `:277`.
+- Rejected (low): "Both" ends a short line in the file header.
+
 ## Spec Change Log
 
+- 2026-10-03, runner (rework 1, trigger=ci): re-opened for the `[CI]` item under Tasks & Acceptance; nothing else changes.
+
+- 2026-10-02, orchestrator merge gate on the Task 0 step-5 halt (by=merge_gate, under the owner's standing grant), applied by the runner: the tool and the Save declare `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, each refused by name before any port call (Boundaries pairs; AD-8 written), so OcuPilot never causes the measured half-applied write (stored, no new file); the narrower-than-classic audience follows the 18.15, 18.16 and 18.5 precedent. AD-4's `Journal.Settings` exception is written (omitted keys kept, measured). No AD-15/AD-53 case: every vendor `PUT` is audited. The prefix rule without a dot and `FileSizeLimit` from 0 stand. Evidence: the runner's four-row re-measure, `/tmp/epic-18-d6/1818-remeasure-out.txt`. Status reset to `in-progress`; Task 0 resumes at step 6.
+
+- 2026-10-02, runner at the Task 0 halt (Rule 5 tier 1, and evidence for the orchestrator): the prefix rule drops the dot (`^[A-Za-z0-9_-]{0,64}$`, "Use up to 64 letters, digits, hyphens or underscores."), because the vendor refuses one (#7209 on `Config.Journal:JournalFilePrefix`, confirmed by the stage). `FileSizeLimit`'s lower bound becomes 0 by the spec's own step-10 rule (the vendor stored 0; `Config.Journal` declares `MINVAL = 0, MAXVAL = 4079`). The runner re-measured the changing settings `PUT` (`{FileSizeLimit: 1025}`, through `AdminPort`, `RunAs`, the plumbing patch applied and reverted) on `ocupilot-b-ci`: Journal settings' three pairs, 500 `<PROTECT>%SaveData+26^Config.Journal.1 ^SYS`, nothing stored; plus `%DB_IRISSYS:WRITE`, 500 `#1142 Error switching journal file: Operation requires %Admin_Operate:Use privilege` with the change STORED and no new file (a half-applied write); plus `%Admin_Operate:USE` alone, the same `<PROTECT>`, nothing stored; plus both, 200, stored, new journal file. Every row matches the handoff's; journal settings restored byte-equal after each row, probes removed, monitor 0 (evidence `/tmp/epic-18-d6/1818-remeasure-out.txt`). The extra `%Admin_Operate:USE` pair (HALT 2) waits for the orchestrator's ruling.
+
+- 2026-10-02, implement Task 0 (HALT, step 5; Design Notes › Measured at implement). For the runner, pending the decision on the halt:
+  - **Recommended intent amendments:** `JournalFilePrefix` matches `^[A-Za-z0-9_-]{0,64}$`, reason "Use up to 64 letters, digits, hyphens or underscores."; the tool and the Save also declare `%Admin_Operate:USE`, refused by name before any port call; `FileSizeLimit` from 0 to 4079.
+  - **AD-4:** "the vendor keeps an omitted key (measured at Story 18.18's Task 0)", with no unchanged-directory clause.
+  - **AD-8:** "`osmgmt.journalsettings.update` declares `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, and PathPort's `%Admin_FileSystemAccess:USE` when it sends a root: with the screen's three pairs the vendor's save is refused `<PROTECT>`, and with `%DB_IRISSYS:WRITE` added it stores the change and then answers 500, its journal switch refused `#1142` (measured on `ocupilot-b-ci`, 2026-10-02)."
+  - **AD-15, AD-53:** no case; the `PUT` records `%System/%System/ConfigurationChange`.
+
 ## Review Triage Log
+
+### 2026-10-02 — Review pass
+
+- verdicts: 22 findings — high 0, medium 5, low 11, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The agent's schema could lose the four directory arguments with every test green (verification-gap) — `JournalDescriptor` asserts each is a string property; mutation run 3282.
+  - `[medium]` `[patch]` `TestAnAlternatePicked...`'s `PortQuery` mutation note was wrong, and the tool's port query (the port's write-time resolution) was unpinned (verification-gap, AC3 row) — `JournalDescriptor` asserts the port query carries a sent directory's two arguments only (run 3283); the test's note now names `DerivedFields`, which reddens its read-back (run 3284).
+  - `[medium]` `[patch]` "A diff with no row sends nothing" was pinned nowhere (verification-gap) — `JournalSettingsWrite`'s size test opens with a no-change Save asserting 200, zero `PUT`s and no read-back; mutation run 3285.
+  - `[medium]` `[patch]` `JournalPort.PurgeRule`'s read-and-reshape never ran (verification-gap) — the purge test sends two held port `PUT`s, on the stock read and on a seam read naming an archive target (`JournalSettingsPort.Archive`, no target created); mutation run 3286.
+  - `[low]` `[patch]` `JournalWriteGate`'s "the journal settings are unchanged" could not fail: its leg saves the size it found (verification-gap) — assertion and its header clause deleted.
+  - `[false]` `[reject]` `JournalSettingsRules`' "the absent directory was not created" cannot fail (verification-gap) — it reddens if OcuPilot's resolution created the directory before its existence check, which zero `PUT`s does not pin.
+  - `[false]` `[reject]` `JournalSettingsWrite`'s wire "nothing is written" cannot fail (verification-gap) — it is the matrix's end-to-end outcome and fails when the settable check, the kernel merge's refusal and the port's `Without` are dropped together; the code assertion beside it is the pin.
+  - `[false]` `[reject]` ACs without a `mutation:` line (verification-gap table) — Rule 19 asks one demonstrated mutation per AC and AC1, AC2, AC4-AC9 each record one; AC0 is Task 0's measurement record with no code under test; AC3's row is the `PortQuery` entry above.
+  - `[low]` `[reject]` AC9 and the loop check say EXPERIENCE.md reads 1001 lines (verification-gap) — the file read 1002 before the story and still does; the fix edits the intent block.
+  - `[low]` `[reject]` `## Auto Run Result` is stale (verification-gap) — the finalize step rewrites it.
+  - `[low]` `[reject]` A picker's preselected root is sent on Save while the form reads clean (verification-gap) — the `database-editor` model the spec names sends a changing picker's root the same way (`database-editor.store.ts` `saveBody`), and the refusal lands on the picker's field; a fix adds a branch.
+  - `[low]` `[reject]` The agent's refusals come after a settings `GET` (intent-alignment 1) — the kernel's AD-55 order runs every tool's `ArgumentProblem` after the fresh read (`Mint.cls:167` before `:217`); the read has no effect, no refused value reaches the vendor (zero `PUT`s pinned) and the Save refuses before any call; moving it is a kernel change.
+  - `[low]` `[reject]` The agent never sees the matrix's codes (intent-alignment 2) — every tool's rule refusal is 400 `TOOL.ARGUMENTS` with a problem sentence; it names the field and the code's published sentence, pinned.
+  - `[low]` `[reject]` "Again at the confirm" is exercised for the missing directory only (intent-alignment 3) — `ConfirmProblem` runs the same `JournalRules.Problem` the mint runs, pinned there on all three refusals.
+  - `[low]` `[patch]` The missing-directory case ran on the alternate, the matrix says primary (intent-alignment 4) — moved to the primary, `JournalSettingsRules` run 3280; the served case's input follows Design Notes' measured note.
+  - `[medium]` `[patch]` The purge rule's archive branch never reaches an instance (intent-alignment 5) — grouped with the `JournalPort.PurgeRule` entry; the script test pins the pure transformation only, as written.
+  - `[false]` `[reject]` Payload and body disagree on a directory (intent-alignment 6) — the spec's Tasks name this design (arguments in the payload and diff, `DerivedFields` setting the resolved directory at the write, the `LocalDatabaseUpdate` model); the intent's agreement clause covers the purge rule, and the read-back matches (run 3279).
+  - `[low]` `[reject]` The card is never rendered (intent-alignment 7) — the card renders `consequenceSentence` for every code (`proposal-card.spec.ts`), and the new code's mapping is pinned in `tools/proposal-view.test.mjs` (this stage's matrix audit, mutation recorded).
+  - `[low]` `[reject]` The Save's one diff row is not asserted (intent-alignment 8) — the Save answers `{readBack}` (the `OAuthAuthorizationServerSave` model); its diff's one observable effect, send or not, is pinned by the no-change leg (run 3285).
+  - `[false]` `[reject]` `ui/angular.json` changes a value in an add-only file (intent-alignment 9) — the spec's Client task directs the DW-1166 re-base, the one sanctioned value edit.
+  - `[false]` `[reject]` `JOURNAL.SETTINGS.FREEZE` lives on the tool, not `JournalError` (intent-alignment 10) — "Codes" governs envelope codes; consequence codes live on the tool (18.5's `CONSEQUENCECODE`).
+  - `[low]` `[reject]` The spec contradicts itself (intent-alignment 11) — the stale `## Auto Run Result` is rewritten at finalize; `## Verification` lists its commands and mutation lines.
+
+### 2026-10-02 — Review pass (rework 1, CI)
+
+- verdicts: 12 findings — high 0, medium 0, low 6, false 6, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The `[CI]` item is unticked while the status reads in-review (verification-gap) — the fix edits this build's spec; finalize ticks it.
+  - `[false]` `[reject]` No green run of the fixed AC5 is recorded (verification-gap) — the stage ran `language-servers.browser-spec.mjs` 2/2 on `ocupilot-b-ci` before and after the review patch (`## Auto Run Result`).
+  - `[false]` `[reject]` The leg ties Story 16.10's spec to Journal settings' pair instead of granting its principal `%Admin_Journal:USE` (intent-alignment) — the CI item asks for the `LanguageServerWire` fix, which takes Journal settings out by its own pair (`LanguageServerWire.cls:278-281`); the leg does the same.
+  - `[false]` `[reject]` AC1's "listed unavailable, naming that pair" has its only DOM pin in 16.10's AC5 (intent-alignment) — no bad outcome: `WireSecurityRead.cls:571` pins Journal settings' `failedPair` `%Admin_Journal:USE`, and this diff adds a DOM pin rather than removing one.
+  - `[false]` `[reject]` The filter drops every Journal settings line, so a duplicated entry would pass (intent-alignment) — `journals.browser-spec.mjs:276` holds the side bar at exactly 14 entries, so a duplicate goes red there.
+  - `[low]` `[patch]` The `deepEqual` message still read "only External language servers is unavailable" (intent-alignment) — reworded to "apart from Journal settings, only External language servers is unavailable"; spec re-run 2/2.
+  - `[false]` `[reject]` The leg covers only the side-bar half of the "Missing pair" row (intent-alignment) — the 403 with zero port calls and the measured pairs are pinned by `JournalWriteGate` (mutations recorded), outside this rework.
+  - `[low]` `[reject]` The check of the other browser specs is not recorded (intent-alignment) — the fix edits this build's spec; `## Auto Run Result` records it, and the auditor's own scan found no remaining case.
+  - `[low]` `[reject]` The `[CI]` item is unticked (intent-alignment) — as the first row.
+  - `[false]` `[reject]` No green run of the patched AC5 is recorded (intent-alignment) — as the second row.
+  - `[low]` `[reject]` `## Auto Run Result` still reads the earlier pass (intent-alignment) — the fix edits this build's spec; finalize rewrites it.
+  - `[low]` `[reject]` `footprint_extensions` omits `language-servers.browser-spec.mjs` (intent-alignment) — the fix edits this build's spec; this pass's result lists it.
 
 ## Design Notes
 
@@ -394,7 +522,26 @@ deferred: []
 
 **Footprint (Rule 11).** Every contended file is edited add-only (Boundaries). Report these under `footprint_extensions`, since neither epic's `paths_hint` names them: `src/OcuPilot/Area/OsMgmt/JournalRules.cls` and `JournalSave.cls` (new), `ui/src/app/app.ts`, `ui/src/app/app.spec.ts`, and `scripts/ci-throwaway.sh`, `ui/angular.json` and EXPERIENCE.md (also add-only).
 
-**Measured at implement:** (Task 0 writes here.)
+**Measured at implement (Task 0, `ocupilot-b-ci`, 2026-10-02; HALTED at step 5 on two conditions).** Every `PUT` went through `JournalProbe.Run` and `AdminPort` (wall clock, guard included) and was followed by `RestoreJournal`.
+
+- **HALT 1 (the vendor refuses a value `JournalRules` admits):** a `JournalFilePrefix` holding `.` is refused 500 (`#7209`, `#5802` on `Config.Journal:JournalFilePrefix`) and nothing is stored: `.x`, `a.b-c_D9`, `.`. Stored: `-x`, `_x`, `Ab9-_` and 64 × `a`; refused: 65 × `a` and `a/b`. A stored prefix names the next file (`journal/-x20261002.435`).
+- **HALT 2 (a step needs a pair outside the three, `%DB_IRISSYS:WRITE` and `%Admin_FileSystemAccess:USE`):** the `PUT` also needs `%Admin_Operate:USE`. Principals with the install namespace's code read plus:
+  - the three pairs: `GET` 200; `PUT {FileSizeLimit:1000}` 500, `<PROTECT>%SaveData+26^Config.Journal.1`, nothing stored;
+  - the three and `%DB_IRISSYS:WRITE`: **500 with the change stored** (`FileSizeLimit` 1000), `#1142` "Error switching journal file: Operation requires %Admin_Operate:Use privilege";
+  - the three, `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`: 200, stored, a file started; the same set without `%Admin_Journal:USE`: 200;
+  - `%Admin_Journal:USE` and `%DB_IRISSYS:READ`: `GET` 200, `PUT` 500 `#921` (`%Admin_Manage:USE`); `%Admin_Manage:USE` and `%DB_IRISSYS:READ`: `PUT` 500 `<PROTECT>`; `%Admin_Journal:USE` alone: `GET` 500 (`<PROTECT>` entering `%SYS`).
+- **a.** A `PUT` of the ten settable keys as read: 200 in 0.002 s; nothing stored changed, no file started, no `messages.log` line, no audit row.
+- **b.** `PUT {FileSizeLimit:1000}`: only that key changed, so the vendor keeps an omitted key; a file started; 0.15 s.
+- **c.** `AlternateDirectory` sent without its trailing slash is stored with it. A file started in the primary, and the vendor wrote `iris.lck` into the alternate.
+- **d.** `CurrentDirectory` set to that directory is stored with the slash, and journaling moved there at once (`ocuprobe185set/20261002.422`).
+- **e.** A missing `AlternateDirectory` (`ocuprobe185none/`) is created by the vendor (with `iris.lck`), stored, 200. Restored, and the directory removed (its `iris.lck` first).
+- **f.** `FreezeOnError:"true"`, `FileSizeLimit` 5000 and -1, `DaysBeforePurge` 101 and `BackupsBeforePurge` 11: 500, nothing stored, each logged at error severity by `AdminPort`. `FileSizeLimit` 0 is stored 0, `1.5` stored 1, and `"1000"` stored 1000.
+- **g.** `PurgeArchived:true` with `ArchiveName` "": stored true, purge counts unchanged.
+- **Audit:** every `PUT` that reaches `Config.Journal.Modify` records `%System/%System/ConfigurationChange` "Modify section Journal" under the caller, a refused one too (beside a `%System/%Security/Protect` row). No AD-15/AD-53 case is needed.
+- **Step 4 (S2 against S0):** `Config.Journal` and `Config.config` byte-equal; journaling in `/durable/iris/mgr/journal/` (`20261002.446`); no probe principal; async task rows 348 as at S0. Differences: 30 new journal files; `ocuprobe185set/` keeps `20261002.422z` and the vendor's `iris.lck`; `messages.log` +139 lines; monitor state 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Step 6, from the record, for the re-plan:** extra pairs `%DB_IRISSYS:WRITE` and (HALT 2) `%Admin_Operate:USE`; an unchanged directory is sent as read (step a started no file); `FileSizeLimit`'s lower bound is 0 ("from 0 to 4079"); `compare` `unslashed` for both directories; the directory line is shown (c and d each started a file, as did b); no unaudited case.
+- **Plumbing (step 1)** is parked in `_bmad-output/implementation-artifacts/spec-18-18-task0-plumbing.patch`; `git apply` it first. It holds `AdminPort` and `PortFixture` `MUTATINGTYPES`, `JournalPort`'s settings `GET` and `PUT` branches (`ResolveDirectory`, `PurgeRule`, `Snippet`), `JournalError`'s `VALIDATION` and `DIRECTORY.ABSENT`, and `JournalProbe.SeedDirectory`. Checked before parking: the `GET` answers the four arguments `null`, and a missing directory is 422 `JOURNAL.DIRECTORY.ABSENT` and the manager root `PATH.MANAGERDIR` on the path field, with no vendor call.
+- **For the matrix:** the stock allowed root is the manager directory, and OcuPilot's served directory is `/durable/iris/csp/ocupilot/`, outside it, so a `csp/ocupilot` name under that root resolves to a missing directory, not `PATH.SERVED`. The served leg needs a root over the data directory, as `PathPortServed` seeds (inference, not run).
 
 ## Verification
 
@@ -432,7 +579,49 @@ deferred: []
 - AC8: the baseline key is dropped → `GovernanceBaseline` goes red.
 - AC9: one of the descriptor's three prompts is removed → the registry refuses the descriptor and `JournalDescriptor` goes red.
 
+Mutations run on `ocupilot-b-ci`, each loaded, then reverted byte-identical and reloaded:
+
+- mutation: `Prohibited.Target`'s precondition line removed → `JournalWrite` DW-1950 leg red on the target-changed answer and the row's close (run 3237)
+- mutation: `MergeUpdate` keeps the shown-only keys of the fresh read → `JournalSettingsWrite` body legs red, the size change's and the purge rule's (run 3238)
+- mutation: `JournalRules.PREFIXPATTERN` admits a dot -> `JournalSettingsRules` shapes leg red (run 3717) (QA)
+- mutation: `JournalRules.FILESIZEMIN` 1 (refusing 0) -> `JournalSettingsRules` shapes leg red (run 3718) (QA)
+- mutation: `%Admin_Operate:USE` dropped from `JournalSettingsUpdate.EXTRAPAIRS` -> `JournalWriteGate` missing-pair leg red (run 3719) (QA)
+- mutation: `%DB_IRISSYS:WRITE` dropped from `JournalSettingsUpdate.EXTRAPAIRS` -> `JournalWriteGate` missing-pair leg red (run 3720) (QA)
+- mutation: `JournalSave.Update`'s unexpected-key check made `If 0` -> `JournalSettingsRules` shown-only/undeclared leg red (run 3722) (QA)
+- mutation: the port's `DirectoryExists` check dropped → `JournalSettingsRules` absent-directory leg and confirm-time leg red (run 3239)
+- mutation: `pVendorWrites` passed 0 → `JournalSettingsRules` manager-directory leg red (run 3240)
+- mutation: `JournalRules.PurgeRule` answers its arguments unchanged → `JournalSettingsWrite` purge-rule leg red (run 3241)
+- mutation: the boolean shape dropped → `JournalSettingsRules` shapes leg red (run 3242)
+- mutation: `%Admin_Journal:USE` dropped from the descriptor's `privileges` and `ownPrivileges` → `JournalWriteGate` red on the mint, the Save and the confirm (run 3246) and `JournalDescriptor` red (run 3244)
+- mutation: `Consequence` answers "" → `JournalSettingsWrite` consequence leg red (run 3247)
+- mutation: the `CONSEQUENCE_JOURNALSETTINGSFREEZE` line deleted from `proposal-view.ts` `consequenceSentence` → `tools/proposal-view.test.mjs` "Story 18.18 ... states its consequence on the card" red on '' (AC6's card half; node run, 45/46)
+- mutation: the baseline key dropped → `GovernanceBaseline` red naming `osmgmt.journalsettings.update` (run 3248)
+- mutation: the third prompt removed → `JournalDescriptor` red on "three Capacity prompts" (run 3249); the registry did not refuse the descriptor
+- mutation: the descriptor's read declares `Journal.File` → `JournalRead` settings leg red (run 3250)
+- mutation: `sideBarPosition` 0 with the mirror regenerated → `Navigation` red (run 3251) and `navigation.test.mjs` red, 2 of 40
+- mutation: the directory root argument dropped from `JournalSettingsUpdate.InputSchema` → `JournalDescriptor` schema leg red (run 3282)
+- mutation: `JournalSettingsUpdate.PortQuery` sets no argument → `JournalDescriptor` port-query leg red (run 3283)
+- mutation: `JournalSettingsUpdate.DerivedFields` leaves the payload as it is → `JournalSettingsWrite` alternate leg red on the Save's read-back (run 3284)
+- mutation: `JournalSave.Update`'s empty-diff return deleted → `JournalSettingsWrite` no-change Save leg red (run 3285)
+- mutation: `JournalPort.PurgeRule` leaves the body as it is → `JournalSettingsWrite` port purge legs red, both branches (run 3286)
+- mutation: `JournalRules.PurgeRule` answers its arguments unchanged → `JournalSettingsWrite` purge leg red, the Save's read-back among the reds (run 3726) (CR)
+- mutation: `JournalSettingsUpdate.DerivedFields` sets the primary under the alternate's key → `JournalSettingsWrite` primary leg red on its read-back (run 3726) (CR)
+- mutation: `%Admin_Operate:USE` dropped from `JournalSettingsUpdate.EXTRAPAIRS` and from the all-pairs principal → `JournalWriteGate` declared-pairs write leg red, 500 with the size stored (run 3727) (CR)
+- mutation: Freeze on error's consequence carried on Compress files' view → `journal-settings.page.spec.ts` AC6 red; the store's root-less name skipped, and the no-op Save keeping the read-back → their two store legs red (vitest) (CR)
+- mutation: the AC5 principal's role also holds `%Admin_ExternalLanguageServerEdit:U` → `language-servers.browser-spec.mjs` AC5 red on its exact list alone, External language servers open (1/2, `ocupilot-b-ci`) (CR, rework 1)
+- mutation: the AC5 principal's role also holds `%Admin_Journal:U` → AC5 red on "Journal settings is unavailable on its own pair" (1/2, `ocupilot-b-ci`; re-run on the CR-patched leg) (rework 1)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Rework 1 (CI), 2026-10-02.** Browser shard 2/3 of run 37091469927 (`8fe230e5`) was red: `language-servers.browser-spec.mjs` AC5 also found Journal settings unavailable, because its own pair `%Admin_Journal:USE` is new in this story. The leg now does what `LanguageServerWire` does: it requires Journal settings unavailable on `%Admin_Journal:USE`, takes that line out, and holds the rest at exactly External language servers on its own pair.
+- **Files changed:**
+  - `ui/browser/language-servers.browser-spec.mjs`: the AC5 leg, its title and the file header.
+  - This spec: the `[CI]` tick, two `mutation:` lines, the triage rows and this result.
+- **Other browser specs checked:** none pins OS management's unavailable entries. `journals`, `journal-settings`, `remote-databases` and `license-usage` already list 14 entries; `local-databases` and `namespaces` compare a leading slice; the other side-bar reason checks are in other areas.
+- **Review (2 layers):** 12 findings (low 6, false 6). One low patched: the `deepEqual` message names the Journal settings exception. 11 rejected; rows in `## Review Triage Log`. None deferred. Follow-up review: false (follow-up pass, no high patched; patched by verdict: low 1).
+- **Verification (`ocupilot-b-ci`):** `npm run build` green, bundle redeployed and matched against `dist`; `language-servers.browser-spec.mjs` 2/2 before and after the review patch, red under both mutations (1/2 each) and restored byte-identical; `npm run test:tools` 1,780/1,780; `lint-docs` 0. The `gate.browser-spec.mjs` timeouts were not worked; this rework's CI re-checks them.
+- **Throwaway:** no ObjectScript loaded and no journal setting changed; the leg's principal and role are gone after its cleanup.
+- **footprint_extensions:** `ui/browser/language-servers.browser-spec.mjs`.

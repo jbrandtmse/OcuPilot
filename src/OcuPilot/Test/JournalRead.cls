@@ -86,6 +86,30 @@ Method TestJournalsAndItsToolAnswerOneRead()
     Do $$$AssertEquals(tScreen.%Get("rows").%Get(0).%Get("Name"), tCurrent, "the first row is the file journaling writes now")
 }
 
+/// <p>Story 18.18 AC1, AD-36: Journal settings and <code>osmgmt.journalsettings.read</code> answer one
+/// read -- the vendor's settings <code>GET</code> as one row of its thirteen fields, the screen's and
+/// the tool's alike -- and the directories it names are the ones the instance's configuration
+/// holds.</p>
+/// <p>Mutation (Rule 19): declare the settings read as <code>Journal.File</code> <code>GET</code> -&gt;
+/// the read is refused for its missing criterion and this goes red.</p>
+Method TestJournalSettingsAndItsToolAnswerOneRead()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.JournalSettings"
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute(tClass, 1000, .tScreen, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "Journal settings reads: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(tClass, {}, 1000, .tView, .tViewHttp, .tViewFault)
+    Do $$$AssertStatusOK(tSC, "and so does its read tool")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tScreen.%Get("rows").%Size() _ " " _ tView.%Get("rows").%Size(), "1 1", "one row each")
+    Do $$$AssertEquals(tScreen.%Get("fields").%ToJSON(), "[""CurrentDirectory"",""AlternateDirectory"",""FileSizeLimit"",""JournalFilePrefix"",""ArchiveName"",""PurgeArchived"",""DaysBeforePurge"",""BackupsBeforePurge"",""FreezeOnError"",""JournalcspSession"",""CompressFiles"",""wijdir"",""targwijsz""]", "the thirteen declared fields")
+    Do $$$AssertEquals(tView.%Get("rows").%Get(0).%ToJSON(), tScreen.%Get("rows").%Get(0).%ToJSON(), "and the tool's row is the screen's")
+    Set tRow = tScreen.%Get("rows").%Get(0)
+    Set tSettings = ##class(OcuPilot.Test.JournalProbe).JournalSettings()
+    Do $$$AssertEquals(tRow.%Get("CurrentDirectory") _ " " _ tRow.%Get("AlternateDirectory") _ " " _ tRow.%Get("FileSizeLimit"), tSettings.%Get("CurrentDirectory") _ " " _ tSettings.%Get("AlternateDirectory") _ " " _ tSettings.%Get("FileSizeLimit"), "naming the configuration the instance holds")
+    Do $$$AssertEquals(tRow.%GetTypeOf("FreezeOnError") _ " " _ tRow.%GetTypeOf("wijdir") _ " " _ tRow.%GetTypeOf("targwijsz"), "boolean string number", "each in the vendor's own type")
+}
+
 /// <p>AC2: a listed file's details read its <code>GET</code>, the route criterion seeded as
 /// <code>Name</code> and the previous file projected from its object; the databases list is that
 /// <code>GET</code>'s <code>Databases</code>, cut to the cap and reported truncated; a file the
