@@ -931,8 +931,8 @@ describe('the list page', () => {
   // Story 19.14 (DW-1977): a read's declared note is drawn above the table whatever the rows hold,
   // through the string its key names, and a read that declares none draws nothing there.
   //
-  // Mutation (Rule 19): drop the note paragraph from `ListPage`'s template -> the first two
-  // assertions go red.
+  // Mutation (Rule 19): drop the note paragraph from `ListPage`'s template -> the three statements
+  // legs go red.
   describe('Story 19.14: the SQL statements tabs\u2019 note', () => {
     const screenOf = (descriptor: string) => SCREENS.find((screen) => screen.descriptor === descriptor)!;
     const statement = { Statement: 'SELECT 1', PlanState: 'Unfrozen', NewPlan: false, Executions: '', TotalTime: '', AverageTime: '', StdDevTime: '', RowCount: '', Commands: '', FirstSeen: '', Location: '' };

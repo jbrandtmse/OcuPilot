@@ -323,14 +323,16 @@ Method TestTheStatementsToolsEndWithTheStatisticsNote()
         Set tRead = $ClassMethod(tClass, "Read")
         Do $$$AssertEquals($Select($IsObject(tRead) && (tRead.%GetTypeOf("note") = "object"): tRead.note.%ToJSON(), 1: ""), tWant, tClass _ ": its read declares the note")
         Kill tEntry
-        Do ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " resolves")
         Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
         Do $$$AssertEquals(tDescription, "Read the rows the " _ $Piece($List(tCase, 2), ".", 1, 2) _ " screen lists, bounded and with secret fields removed. " _ tText, $List(tCase, 2) _ ": its description is the read sentence, then the note")
     }
     Set tRead = ##class(OcuPilot.Screen.Descriptor.ExplorerSqlTable).Read()
     Do $$$AssertEquals(tRead.%GetTypeOf("note"), "unassigned", "Table info's read declares no note")
     Kill tEntry
-    Do ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.sqltable.read", .tEntry, 1)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.sqltable.read", .tEntry, 1)
+    Do $$$AssertStatusOK(tSC, "explorer.sqltable.read resolves")
     Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
     Do $$$AssertEquals(tDescription, "Read the rows the explorer.sqltable screen lists, bounded and with secret fields removed.", "explorer.sqltable.read's description is the read sentence alone")
 }

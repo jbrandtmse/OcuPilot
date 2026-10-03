@@ -154,7 +154,7 @@ export class ListPage {
   /**
    * The read's declared note (AD-36), or `''` when it declares none: one sentence about the rows,
    * shown above the table whatever they hold, through the string its `key` names. The read tool's
-   * description ends with the same sentence, and the mirror holds the two equal.
+   * description ends with the same sentence, and `screen-mirror.test.mjs` holds the two equal.
    */
   protected readonly noteText: string;
 

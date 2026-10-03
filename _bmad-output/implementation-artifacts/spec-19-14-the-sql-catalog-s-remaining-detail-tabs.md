@@ -183,6 +183,30 @@ Rejected:
 - closed by the first review: the procedure strip's id in the component spec; Partition mappings pinned by the fixture.
 - spec-only: the Residual risks line about Design Notes' wording.
 
+Code review 2026-10-03, rework 1 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 20 rows, 5 entries (high 0, medium 0, low 5), 5 patched, 0 deferred, the rest rejected. The note is fixed text on exactly the three statements tabs and is appended to exactly their tools' descriptions. Both engines give the same sentences for the eight corpus cases. No port, read or row file changed, and a list without a note renders as before. Runs 3821-3830 read as recorded.
+
+- [x] [Review][Patch] `ListPage`'s doc said "the mirror" holds the note's two copies equal. `screen-mirror.test.mjs` does, not the generator's `--check` [ui/src/app/shell/list-page.ts:157]. For the lead (Rule 20): AD-36's `read.note` paragraph says the same; it should name `screen-mirror.test.mjs`.
+- [x] [Review][Patch] The mirror's note-equality leg had no recorded mutation [ui/tools/screen-mirror.test.mjs:206]. Closed in pass (`## Verification`).
+- [x] [Review][Patch] `TestTheStatementsToolsEndWithTheStatisticsNote` dropped `Resolve`'s status [src/OcuPilot/Test/ExplorerDescriptor.cls:326]. It is now asserted (run 3831).
+- [x] [Review][Patch] The list-page note legs' mutation comment said "the first two assertions"; the three statements legs go red [ui/src/app/shell/list-page.spec.ts:934].
+- [x] [Review][Patch] The 19.14 Fixed-strings row described the note before the prompts, while its literal comes after them [EXPERIENCE.md:596].
+
+Rejected (rework 1):
+
+- low: a note on a screen `ListPage` does not draw passes both engines. Only the three statements reads declare one, and the mirror test pins that roster.
+- low: `note.text` has no length or whitespace bound. Declarations are authored source, and the text is held equal to a reviewed string.
+- spec-bound: the sentence is held in several copies (Design Notes' `{key, text}`). Each copy is test-linked.
+- by-design: the sentence's wording is the merge-gate item's.
+- spec-only: the Auto Run Result's "Deferred 1 medium" and the re-open's length. The Spec Change Log records the closure.
+- false: the 19.14 row needs an `[AMENDED]` tag. It is 19.14's own row, edited within 19.14, as the first review's patch was.
+- false: the Table info leg errors on a non-object read. An error in a test method fails it.
+- low: the with-rows leg asserts no drawn row. The browser legs assert the note after a row shows.
+- low: corpus gaps (`{}`, whitespace, a boolean that `DeclarationFor` drops). A boolean case would go red on the server, not pass.
+- low: the corpus doc enumerations omit the note. The corpus header documents it, and the test docs already omitted parts, rows and timeline cases.
+- low: `Read.Description` copies the read on each call. `Read.cls` already does so at :54, :116 and :204.
+- low: no `aria-describedby` from the grid to the note. The note precedes the table in reading order, and a link would add a data-table input.
+- false: CI had not finished at review. That is the lead's Rule 28 gate; the gates jobs were green.
+
 ## Spec Change Log
 
 - 2026-10-03, lead (rework 1 dev_complete): the `deferred:` spine write is done (AD-36 now records `read.note`); `baseline_commit` is the rework's baseline `8dc08065`.
@@ -454,6 +478,7 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - (rework 1) mutation: DW-1977, the note key dropped from `declaredStringKeys` → `screen-mirror.test.mjs` "every read note's text is the string its key names".
 - (rework 1) mutation: DW-1977, the note paragraph dropped from `ListPage`'s template → `list-page.spec.ts`' three Story 19.14 note legs; rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs`' three statements legs. Each reverted byte for byte, `git status --short` and `git diff --stat` as before; green again: `ExplorerDescriptor` 3824, `ReadTool` 3825, `Descriptor` 3826, `ToolRoundTrip` 3827, the browser spec on the redeployed bundle, `npm run test:tools` (1,781).
 - (rework 1, review) mutation: DW-1977, `Screen.Tool.Read.Description` replaces its sentence with the note's text instead of appending it → `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote`, its three exact-description legs (run 3829); reverted byte for byte, green again 3830.
+- (rework 1, CR) mutation: DW-1977, `ExplorerSqlViewStatements`' note `text` ending `blank!` → `screen-mirror.test.mjs` "every read note's text is the string its key names", naming the file; reverted byte for byte, green again. After the review patches: `ExplorerDescriptor` 3831, `npm run test:tools` 1,781, `check-objectscript` 0, `lint-docs` 0.
 
 ## Auto Run Result
 
