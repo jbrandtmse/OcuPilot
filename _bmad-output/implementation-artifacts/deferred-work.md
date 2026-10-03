@@ -9248,3 +9248,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
 - evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
+
+### DW-1982: IRIS defect candidate: merely preparing CREATE USER ... IDENTIFY BY '<password>' stores the password in plain text in the namespace's SQL statement index (INFORMATION_SCHEMA.STATEMENTS)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.6 plan on ocupilot-a2-ci: %Prepare("CREATE USER ... IDENTIFY BY '<fake>'",1) alone, no execute, left the literal in INFORMATION_SCHEMA.STATEMENTS.Statement; a DML literal is stored as ?; the console refuses password text before any prepare (AD-61)
+- 2026-10-03T17:00:28Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957, DW-1958 and DW-1963; the strongest of the vendor items (orchestrator)

@@ -7576,7 +7576,7 @@ So that the Explorer answers questions the catalog alone cannot.
 
 - **Given** the console
 - **When** a statement is submitted
-- **Then** it runs with parameters, a max-rows cap and a run-in-background option, and its plan can be explained.
+- **Then** it runs with parameters and a max-rows cap, and its plan can be explained. [SPLIT to 19.15 2026-10-03: the run-in-background option moved; parameters, the max-rows cap and the plan stay in 19.6]
 
 - **Given** `action/query` will execute **any** statement type unguarded
 - **When** a statement is submitted
@@ -7736,6 +7736,21 @@ So that the catalog browser reaches the classic SQL page's detail tabs.
 - **Given** the reads
 - **When** they execute
 - **Then** they use the information schema and the catalog queries, binding every caller value.
+
+
+### Story 19.15: The query console runs a query in the background
+
+As a developer,
+I want to run a long query in the background,
+So that the console stays usable while it runs.
+
+[ADDED 2026-10-03, Rule 5 split of Story 19.6 by=merge_gate: 19.6's run-in-background option moved here; run right after 19.6. It runs queries only, never a mutating kind, in a job as the signed-in user under 19.6's alarm bound; it is a fourth AD-42 process spawn site, needs an AD-7 decision limiting it to queries, an owner-only result store in protected state with its sweep, and poll and cancel routes; a run is cancellable through `$SYSTEM.SQL.CancelQuery` on its own job (measured feasible at 19.6's plan).]
+
+**Acceptance Criteria:**
+
+- **Given** the console
+- **When** a query is submitted
+- **Then** it runs with a run-in-background option (moved verbatim from 19.6's first criterion).
 
 ---
 
