@@ -72,10 +72,35 @@ Parameter BOOLEANSHAPE = "JOURNAL.BOOLEAN.SHAPE";
 
 Parameter REASONBOOLEANSHAPE = "Choose on or off.";
 
+/// <p>Envelope code: a journal record list's filter outside the classic record browser's closed sets
+/// -- a column other than its eight, a comparison other than its six -- or a value with no column or
+/// comparison (Story 18.19, AD-21). Rendered on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter>
+/// slug with 400, by <class>OcuPilot.Port.AdminPort</class>, before any vendor call; no refusal echoes
+/// the value.</p>
+Parameter FILTERSHAPE = "JOURNAL.FILTER.SHAPE";
+
+Parameter REASONFILTERSHAPE = "Choose a column and a comparison from the lists, and a value to compare.";
+
+/// <p>Envelope code: a journal record list's offset, or a record's address, that is not a whole number
+/// of at most 20 digits (Story 18.19). Rendered on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter>
+/// slug with 400, by <class>OcuPilot.Port.AdminPort</class>, before any vendor call.</p>
+Parameter OFFSETSHAPE = "JOURNAL.OFFSET.SHAPE";
+
+Parameter REASONOFFSETSHAPE = "Enter a record offset as a whole number.";
+
+/// <p>Envelope code: the journal record detail route found no record at that address, or one on a
+/// database the caller cannot read (Story 18.19, AD-36). Rendered on the
+/// <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, by
+/// <class>OcuPilot.Area.OsMgmt.JournalRecordDetail</class>, from the port's
+/// <code>PORT.NOTFOUND</code>.</p>
+Parameter RECORDUNREADABLE = "JOURNAL.RECORD.UNREADABLE";
+
+Parameter REASONRECORDUNREADABLE = "That record is not in this file, or its database is one you cannot read.";
+
 /// <p>Every <code>JOURNAL.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#FILEUNLISTED, ..#SWITCHDIRNOOTHER, ..#SWITCHDIRUNMOVED, ..#VALIDATION, ..#DIRECTORYABSENT, ..#FILESIZESHAPE, ..#PURGESHAPE, ..#PREFIXSHAPE, ..#BOOLEANSHAPE)
+    Quit $ListBuild(..#FILEUNLISTED, ..#SWITCHDIRNOOTHER, ..#SWITCHDIRUNMOVED, ..#VALIDATION, ..#DIRECTORYABSENT, ..#FILESIZESHAPE, ..#PURGESHAPE, ..#PREFIXSHAPE, ..#BOOLEANSHAPE, ..#FILTERSHAPE, ..#OFFSETSHAPE, ..#RECORDUNREADABLE)
 }
 
 /// <p><parameter>REASONSWITCHDIRUNMOVED</parameter> naming <var>pDirectory</var>, inserted as it is.</p>
@@ -97,6 +122,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PURGESHAPE Quit ..#REASONPURGESHAPE
     If pCode = ..#PREFIXSHAPE Quit ..#REASONPREFIXSHAPE
     If pCode = ..#BOOLEANSHAPE Quit ..#REASONBOOLEANSHAPE
+    If pCode = ..#FILTERSHAPE Quit ..#REASONFILTERSHAPE
+    If pCode = ..#OFFSETSHAPE Quit ..#REASONOFFSETSHAPE
+    If pCode = ..#RECORDUNREADABLE Quit ..#REASONRECORDUNREADABLE
     Quit ""
 }
 

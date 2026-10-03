@@ -4920,6 +4920,66 @@ export const STRINGS = {
   explorerSqlProcedureStatementsPrompt2: 'How often is this procedure called?',
   /** EXPERIENCE.md:596 */
   explorerSqlProcedureStatementsPrompt3: 'Where is this procedure called from?',
+  // Story 18.19: Journal records -- its title and entity noun, Journal file details' View records,
+  // the criteria form's heading, labels and option words, Next records, the empty state, the record
+  // dialog's title and field labels, and the prompts. Time, Process, Type, In transaction, Database,
+  // Value, Search and Close reuse earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalRecordListLabel: 'Journal records',
+  /** EXPERIENCE.md:378 */
+  aboutJournalRecord: 'Journal record',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsViewRecords: 'View records',
+  /** EXPERIENCE.md:378 */
+  journalRecordsHeading: 'Records of <file>',
+  /** EXPERIENCE.md:378 */
+  journalRecordsNext: 'Next records',
+  /** EXPERIENCE.md:378 */
+  journalRecordListEmpty: 'No records match.',
+  /** EXPERIENCE.md:378 */
+  journalRecordOffset: 'Offset',
+  /** EXPERIENCE.md:378 */
+  journalRecordOldestFirst: 'Oldest first',
+  /** EXPERIENCE.md:378 */
+  journalRecordNewestFirst: 'Newest first',
+  /** EXPERIENCE.md:378 */
+  journalRecordComparison: 'Comparison',
+  /** EXPERIENCE.md:378 */
+  journalRecordExtendedType: 'Extended type',
+  /** EXPERIENCE.md:378 */
+  journalRecordGlobalNode: 'Global node',
+  /** EXPERIENCE.md:378 */
+  journalRecordMirrorDatabase: 'Mirror database',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpEquals: 'equals',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotEquals: 'does not equal',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpSortsAfter: 'sorts after',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotSortsAfter: 'does not sort after',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpContains: 'contains',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotContains: 'does not contain',
+  /** EXPERIENCE.md:378 */
+  journalRecordDialogTitle: 'Journal record <offset>',
+  /** EXPERIENCE.md:378 */
+  journalRecordGlobalReference: 'Global reference',
+  /** EXPERIENCE.md:378 */
+  journalRecordNewValue: 'New value',
+  /** EXPERIENCE.md:378 */
+  journalRecordOldValue: 'Old value',
+  /** EXPERIENCE.md:378 */
+  journalRecordPrevious: 'Previous record',
+  /** EXPERIENCE.md:378 */
+  journalRecordNext: 'Next record',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt1: 'Which processes wrote these journal records?',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt2: 'Which globals changed in these records?',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt3: 'Are any of these records inside a transaction?',
   /** EXPERIENCE.md:596 */
   explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
 } as const;

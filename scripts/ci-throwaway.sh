@@ -302,6 +302,9 @@ services:
       # The journal settings rules class also restricts the file selector's allow-list to reach
       # OcuPilot's served directory, as PathPortServed does, and restores it (Story 18.18).
       # classes: JournalSettingsRules
+      # The journal record classes sign in as probe principals holding Journal records' pairs, with
+      # and without read on their probe database, and list and open records as them (Story 18.19).
+      # classes: JournalRecordDetail, JournalRecords
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -464,6 +467,9 @@ services:
       # creates, re-points and deletes OCUPROBE1816* remote database configurations, with a local
       # probe database, a namespace and a mapping over them (Story 18.16).
       # classes: RemoteDatabaseDescriptor, RemoteDatabaseListing, RemoteDatabaseWrite, RemoteDatabaseWriteGate
+      # It also creates and removes the OCUPROBE185D database, with its %DB_OCUPROBE185D resource and
+      # <mgr>ocuprobe185d directory, and writes journaled records into it (Story 18.19).
+      # classes: JournalRecordDetail, JournalRecords
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
       # Switches this instance's journal file and journal directory through the shipped screen and
       # confirm paths, and seeds an alternate journal directory to switch into. Its own variable

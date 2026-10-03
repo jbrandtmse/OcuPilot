@@ -222,6 +222,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/language-server/:id" Method="PUT" Call="LanguageServerUpdate"/>
   <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
   <Route Url="/journal/settings" Method="PUT" Call="JournalSettingsUpdate"/>
+  <Route Url="/journal/record" Method="GET" Call="JournalRecord"/>
 </Routes>
 }
 
@@ -1640,6 +1641,14 @@ ClassMethod LanguageServerUpdate(pId As %String) As %Status
 ClassMethod JournalSettingsUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.JournalSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /journal/record</code> (Story 18.19): the journal
+/// record detail dialog's screen-only read, delegating to
+/// <class>OcuPilot.Area.OsMgmt.JournalRecordDetail</class>.</p>
+ClassMethod JournalRecord() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.JournalRecordDetail).HandleGet()
 }
 
 }

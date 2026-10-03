@@ -180,6 +180,7 @@ XData Coverage
 <screen name="JournalFileDetails" class="OcuPilot.Test.JournalDescriptor" method="TestDetailsAndDatabasesAreUnlistedChildrenOfJournals" corpus="the two unlisted journal screens are asserted together in one loop"/>
 <screen name="JournalFileDatabaseList" class="OcuPilot.Test.JournalDescriptor" method="TestDetailsAndDatabasesAreUnlistedChildrenOfJournals" corpus="the two unlisted journal screens are asserted together in one loop"/>
 <screen name="JournalSettings" class="OcuPilot.Test.JournalDescriptor" method="TestJournalSettingsIsOsManagementsFourteenthEntry"/>
+<screen name="JournalRecordList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalRecordsIsAnUnlistedServerCriteriaList"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>

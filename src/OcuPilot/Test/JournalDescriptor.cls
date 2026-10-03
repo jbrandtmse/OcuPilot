@@ -3,7 +3,8 @@
 /// replaced pages; their baseline lines; the read grammar's single-object <code>GET</code> read
 /// over one member; and how the journal port compares directories (AD-5, AD-8, AD-22, AD-36, AD-44,
 /// AD-51). And Story 18.18's: Journal settings, its tool's kind, port, fields and pairs, its baseline
-/// line and its script, and the directory switch's precondition code.</p>
+/// line and its script, and the directory switch's precondition code. And Story 18.19's: Journal
+/// records, its criteria against the admin port's closed filter sets, and its three codes.</p>
 /// <p>It reads declarations only and needs OcuPilot installed with no custom resource assigned to the
 /// replaced classic pages.</p>
 Class OcuPilot.Test.JournalDescriptor Extends %UnitTest.TestCase
@@ -176,7 +177,10 @@ Method TestTheIntegrityScriptReadsTheListFirstAndSendsTheBuiltBody()
 Method TestEveryJournalCodeReadsItsOwnSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.JournalError).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 9, "Stories 18.5 and 18.18 declare nine codes")
+    Do $$$AssertEquals($ListLength(tCodes), 12, "Stories 18.5, 18.18 and 18.19 declare twelve codes")
+    Do $$$AssertEquals(##class(OcuPilot.Api.JournalError).ReasonFor("JOURNAL.FILTER.SHAPE"), "Choose a column and a comparison from the lists, and a value to compare.", "Story 18.19's filter refusal")
+    Do $$$AssertEquals(##class(OcuPilot.Api.JournalError).ReasonFor("JOURNAL.OFFSET.SHAPE"), "Enter a record offset as a whole number.", "its offset refusal")
+    Do $$$AssertEquals(##class(OcuPilot.Api.JournalError).ReasonFor("JOURNAL.RECORD.UNREADABLE"), "That record is not in this file, or its database is one you cannot read.", "and its unreadable record")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.JournalError).ReasonFor(tCode)
@@ -300,6 +304,77 @@ Method TestDirectoriesCompareAsTheVendorComparesThem()
     Do $$$AssertTrue($ClassMethod(tPort, "SameDirectory", "/durable/iris/mgr/journal/", "/durable/iris/mgr/journal"), "a trailing separator changes nothing")
     Do $$$AssertTrue('$ClassMethod(tPort, "SameDirectory", "/durable/iris/mgr/Journal/", "/durable/iris/mgr/journal/"), "directories differing in case are two directories")
     Do $$$AssertTrue('$ClassMethod(tPort, "SameDirectory", "", ""), "an empty directory names none")
+}
+
+/// <p>Story 18.19 AC1, AC7: Journal records is a built, unlisted server-criteria list at
+/// <code>os-management/journal-records</code>, not under Journals, with Journals' pairs, no parent
+/// scope, no action and no refresh, one <code>journal-record</code> per row keyed by its address, its
+/// eight fields, three Troubleshooting prompts and the classic record browser.</p>
+/// <p>Mutation (Rule 19): drop one prompt -&gt; the prompt leg goes red.</p>
+Method TestJournalRecordsIsAnUnlistedServerCriteriaList()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.JournalRecordList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and its criteria")
+    Do $$$AssertEquals(tDeclaration.route _ ":" _ $ClassMethod(tClass, "AreaKey") _ ":" _ $ClassMethod(tClass, "SideBarPosition") _ ":" _ tDeclaration.archetype, "os-management/journal-records:os-management:0:list (server criteria)", "an unlisted server-criteria list in OS management, not under journals/")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#SCREENPAIRS, "Journals' pairs")
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tDeclaration.primaryAction.id _ "|" _ ''$ClassMethod(tClass, "Refreshes"), "|||0", "no parent scope, no action and no refresh")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType") _ "|" _ $ClassMethod(tClass, "Scope") _ "|" _ tDeclaration.id.%ToJSON(), "journal-record|instance|{""kind"":""composite"",""parts"":[""Address""]}", "one journal record per row, keyed by its address")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("journal-record"), "an entity type the kernel knows")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Journal.Record"",""type"":""LIST""}", "read through the vendor's record list")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Address"",""TimeStamp"",""ProcessID"",""TypeName"",""ExtTypeName"",""InTransaction"",""GlobalNode"",""DatabaseName""]", "its eight fields")
+    Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), "and context carries the same eight")
+    Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "none of them secret")
+    Do $$$AssertEquals(..PromptGroups(tDeclaration), "promptGroupTroubleshooting,promptGroupTroubleshooting,promptGroupTroubleshooting", "three Troubleshooting prompts")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%cspapp.op.utilsysjournal", "the classic record browser, spelled as NormalizePage answers it (AD-44)")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("%cspapp.op.utilsysjournal"), $ClassMethod(tClass, "ClassicPage"), "which NormalizePage answers unchanged")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("os-management/journal-records") _ "|" _ ##class(OcuPilot.Screen.Registry).DescriptorForTool("osmgmt.journalrecords"), tClass _ "|" _ tClass, "its route and tool identifier resolve to it")
+}
+
+/// <p>Story 18.19 AC3: the six criteria in order, each sent under the vendor's own name; the column's
+/// and the comparison's options are exactly the admin port's closed sets; the defaults; and every
+/// criterion's hint, which the read tool publishes as its description.</p>
+/// <p>Mutation (Rule 19): add <code>NewValue</code> to the column's options -&gt; the options leg goes
+/// red; drop the default sentence from a hinted choice's description -&gt; the description leg goes
+/// red.</p>
+Method TestJournalRecordsCriteriaAreThePortsClosedSets()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.JournalRecordList"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+    Set tFields = tDeclaration.read.criteria.fields
+    Set tShape = ""
+    Set tIterator = tFields.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tShape = tShape _ $Select(tShape = "": "", 1: ",") _ tField.param _ ">" _ $Select(tField.%IsDefined("vendorParam"): tField.vendorParam, 1: tField.param) _ ":" _ tField.kind _ ":" _ $Select(tField.%IsDefined("default"): tField.default, 1: "")
+        Do $$$AssertTrue(($Length(tField.%Get("hint")) > 0) && ($Length(tField.%Get("hint")) <= 300), tField.param _ " declares a hint")
+    }
+    Do $$$AssertEquals(tShape, "file>file:text:,offset>initialOffset:text:,order>reverse:choice:0,column>matchColumnName:choice:GlobalNode,operator>matchOperator:choice:[,value>matchValue:text:", "the six criteria, their vendor names, kinds and defaults")
+    Set tAdmin = "OcuPilot.Port.AdminPort"
+    Do $$$AssertEquals(..Joined(tFields.%Get(3).options), $Parameter(tAdmin, "JOURNALMATCHCOLUMNS"), "the column's options are the port's eight columns")
+    Do $$$AssertEquals(..Joined(tFields.%Get(4).options), $Parameter(tAdmin, "JOURNALMATCHOPERATORS"), "and the comparison's its six operators")
+    Do $$$AssertEquals($Parameter(tAdmin, "JOURNALMATCHPARAMS"), tFields.%Get(3).vendorParam _ "," _ tFields.%Get(4).vendorParam _ "," _ tFields.%Get(5).vendorParam, "sent under the port's three filter keys")
+    Set tSchema = ##class(OcuPilot.Screen.Tool.Read).InputSchema(tClass)
+    Do $$$AssertTrue($Extract(tSchema.properties.%Get("offset").description, 1, $Length(tFields.%Get(1).hint)) = tFields.%Get(1).hint, "the read tool publishes the hint as the description")
+    Do $$$AssertEquals(tSchema.properties.%Get("operator").enum.%ToJSON(), tFields.%Get(4).options.%ToJSON(), "and a choice keeps its enum")
+    Do $$$AssertEquals(tSchema.properties.%Get("order").description, tFields.%Get(2).hint _ " One of the listed values, spelled exactly; any other value is refused before the search runs. Omit it to use the screen's default (0); an empty string leaves it unset.", "a hinted choice keeps its listed-values sentence and its default's")
+    Do $$$AssertEquals(tSchema.properties.%Get("file").description, tFields.%Get(0).hint, "and a hinted text criterion with no default reads its hint alone")
+}
+
+/// <p><var>pArray</var>'s members joined by commas.</p>
+ClassMethod Joined(pArray As %DynamicArray) As %String
+{
+    Set tOut = ""
+    Set tIterator = pArray.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tValue
+    }
+    Quit tOut
 }
 
 }

@@ -62,6 +62,7 @@ import { RemoteDatabaseFormPage } from '../areas/os-management/remote-database-f
 import { JournalListPage } from '../areas/os-management/journal-list.page';
 import { JournalFileDetailsPage } from '../areas/os-management/journal-file-details.page';
 import { JournalSettingsPage } from '../areas/os-management/journal-settings.page';
+import { JournalRecordsPage } from '../areas/os-management/journal-records.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -192,6 +193,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.JournalFileDetails': JournalFileDetailsPage,
   // Story 18.18: Journal settings, a form over the screen's own declared read.
   'OcuPilot.Screen.Descriptor.JournalSettings': JournalSettingsPage,
+  // Story 18.19: Journal records, the record list a journal file opens, with its record dialog.
+  'OcuPilot.Screen.Descriptor.JournalRecordList': JournalRecordsPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

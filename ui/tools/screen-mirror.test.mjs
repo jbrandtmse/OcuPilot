@@ -1293,6 +1293,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // journal file the route id names. Story 19.5's four SQL catalog lists, whose criteria are the
   // classic System box and a schema, and a table's five tabs, whose one criterion is its route id.
   // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
+  // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1327,6 +1328,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
+      'OcuPilot.Screen.Descriptor.JournalRecordList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',

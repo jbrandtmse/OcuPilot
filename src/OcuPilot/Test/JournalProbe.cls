@@ -33,6 +33,36 @@ Parameter PORT = "OcuPilot.Port.AdminPort";
 /// <p>The <code>Config.Journal</code> properties <method>RestoreJournal</method> puts back.</p>
 Parameter JOURNALPROPERTIES = "AlternateDirectory,ArchiveName,BackupsBeforePurge,CompressFiles,CurrentDirectory,DaysBeforePurge,FileSizeLimit,FreezeOnError,JournalFilePrefix,JournalcspSession,PurgeArchived";
 
+/// <p>The probe database <method>SeedProbeDatabase</method> creates (Story 18.19), its directory
+/// suffix under <parameter>DIRPREFIX</parameter>, and the resource guarding it.</p>
+Parameter PROBEDATABASE = "OCUPROBE185D";
+
+Parameter PROBESUFFIX = "d";
+
+Parameter PROBERESOURCE = "%DB_OCUPROBE185D";
+
+/// <p>The global the probe database's journaled sets write, and the text every value it sets starts
+/// with, the marker a test looks for where no value may reach.</p>
+Parameter PROBEGLOBAL = "OcuProbe185";
+
+Parameter PROBEMARKER = "OcuProbe185Value-";
+
+/// <p>The probe database's global journal state: 3, journaled, the value HSCUSTOM's database
+/// carries.</p>
+Parameter PROBEJOURNALSTATE As INTEGER = 3;
+
+/// <p>The length of the one long value <method>SeedProbeDatabase</method> sets.</p>
+Parameter PROBELONG As INTEGER = 1500;
+
+/// <p>The one value <method>SeedProbeDatabase</method> sets that is markup, which a page must render
+/// as text.</p>
+Parameter PROBEMARKUP = "<b>x</b>";
+
+/// <p>The global <method>SetReadable</method> sets in the install namespace's routines database, the
+/// database every probe principal reads (<method>SeedPrincipal</method>), so a principal that cannot
+/// read the probe database still has a record it can list and open.</p>
+Parameter READABLEGLOBAL = "OcuReadable185";
+
 /// <p>Whether <var>pName</var> is a probe name.</p>
 ClassMethod IsProbe(pName As %String) As %Boolean
 {
@@ -202,8 +232,10 @@ ClassMethod SeedPrincipal(pUser As %String, pRole As %String, pResources As %Str
     Quit tSC
 }
 
-/// <p>Remove every probe user and role by exact name, and every probe directory that holds no file.
-/// A probe directory holding a file -- a journal file a switch wrote there -- is left in place.
+/// <p>Remove every probe user and role by exact name, the probe database
+/// (<method>RemoveProbeDatabase</method>) and the readable record (<method>KillReadable</method>), and
+/// every probe directory that holds no file. A probe
+/// directory holding a file -- a journal file a switch wrote there -- is left in place.
 /// <var>pRemaining</var> is how many probe users and roles survived, and the status is an error when
 /// any did.</p>
 ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
@@ -221,6 +253,10 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
         For tI = 1:1:$ListLength(tRoles) {
             Set tSC = $$$ADDSC(tSC, ##class(Security.Roles).Delete($List(tRoles, tI)))
         }
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ADDSC(tSC, ..RemoveProbeDatabase())
+        Set tSC = $$$ADDSC(tSC, ..KillReadable())
+        Set $NAMESPACE = "%SYS"
         Set tDirectories = ..ProbeDirectories()
         For tI = 1:1:$ListLength(tDirectories) {
             Set tDirectory = $List(tDirectories, tI)
@@ -229,6 +265,153 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
         Set pRemaining = $ListLength(..ProbeNames("Security.Users:List", "Name")) + $ListLength(..ProbeNames("Security.Roles:List", "Name"))
         Set $NAMESPACE = tOrigNS
         If pRemaining > 0 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, pRemaining _ " probe principal(s) survived their removal"))
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+    }
+    Quit tSC
+}
+
+/// <p>Create the probe database <parameter>PROBEDATABASE</parameter> -- its resource first, then its
+/// directory <method>DirectoryFor</method>(<parameter>PROBESUFFIX</parameter>), the journaled database
+/// and its configuration -- in <code>%SYS</code> (test-only seeding), and set
+/// <parameter>PROBEGLOBAL</parameter><code>(i)</code> in it to <parameter>PROBEMARKER</parameter><code>_i</code>
+/// for each <code>i</code> from 1 to <var>pCount</var>, one at a time so each is its own journal
+/// record: the value at <code>pCount\2</code> is <parameter>PROBELONG</parameter> characters long and
+/// the one after it is <parameter>PROBEMARKUP</parameter>. <var>pFile</var> is the journal file
+/// journaling writes after the sets, which are synced to it, and <var>pOffset</var> that file's
+/// offset just before the first set, so a list from it reads this seed's records and no earlier
+/// seed's. Refused, with nothing made, unless <var>pArmed</var> is true. An existing probe database is
+/// removed first; a journal switch during the sets is an error.</p>
+ClassMethod SeedProbeDatabase(pArmed As %Boolean, Output pFile As %String, pCount As %Integer = 30, Output pOffset As %Integer) As %Status
+{
+    Set pFile = ""
+    Set pOffset = ""
+    If 'pArmed Quit $$$ERROR($$$GeneralError, "the journal probe database is created on a throwaway container only, and the calling class's arming variable does not read 1 here, so nothing was made")
+    Set tSC = ..RemoveProbeDatabase()
+    If $$$ISERR(tSC) Quit tSC
+    Set tDirectory = ..DirectoryFor(..#PROBESUFFIX)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.Resources).Create(..#PROBERESOURCE, "OcuPilot journal probe database (throwaway)", "", "")
+        If $$$ISOK(tSC) && '##class(%File).CreateDirectoryChain(tDirectory) Set tSC = $$$ERROR($$$GeneralError, "the probe database directory could not be created")
+        If $$$ISOK(tSC) Set tSC = ##class(SYS.Database).CreateDatabase(tDirectory, 1, 8192, 0, ..#PROBERESOURCE, ..#PROBEJOURNALSTATE)
+        If $$$ISOK(tSC) {
+            Kill tProperties
+            Set tProperties("Directory") = tDirectory
+            Set tSC = ##class(Config.Databases).Create(..#PROBEDATABASE, .tProperties)
+        }
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tGlobal = "^|""^^" _ tDirectory _ """|" _ ..#PROBEGLOBAL
+        Do ##class(%SYS.Journal.System).Sync()
+        Set tBefore = ##class(%SYS.Journal.System).GetCurrentFileName()
+        Set tOffset = ##class(%SYS.Journal.System).GetCurrentFileOffset()
+        For tI = 1:1:pCount {
+            Set tValue = ..#PROBEMARKER _ tI
+            If tI = (pCount \ 2) Set tValue = $Extract(tValue _ $Translate($Justify("", ..#PROBELONG), " ", "x"), 1, ..#PROBELONG)
+            If tI = ((pCount \ 2) + 1) Set tValue = ..#PROBEMARKUP
+            Set @tGlobal@(tI) = tValue
+        }
+        Do ##class(%SYS.Journal.System).Sync()
+        Set pFile = ##class(%SYS.Journal.System).GetCurrentFileName()
+        If pFile '= tBefore {
+            Set tSC = $$$ERROR($$$GeneralError, "the journal file switched while the probe records were written")
+            Set pFile = ""
+            Quit
+        }
+        Set pOffset = tOffset
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Set <parameter>READABLEGLOBAL</parameter><code>(1)</code> in the install namespace's routines
+/// database as one journaled record and sync the journal; <var>pNode</var> is the node as a record's
+/// <code>GlobalNode</code> reads it. <method>KillReadable</method> removes it.</p>
+ClassMethod SetReadable(Output pNode As %String) As %Status
+{
+    Set pNode = ""
+    Set tSC = ..ReadableReference(.tGlobal)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..RequireJournaled($Piece($Piece(tGlobal, "^^", 2), """|", 1))
+    If $$$ISERR(tSC) Quit tSC
+    Set @tGlobal@(1) = "OcuReadable"
+    Do ##class(%SYS.Journal.System).Sync()
+    Set pNode = "^" _ ..#READABLEGLOBAL _ "(1)"
+    Quit $$$OK
+}
+
+/// <p>An error unless journaling is on for the instance and the database in <var>pDirectory</var>
+/// journals its globals, so a test that needs a record of a write there fails on its own
+/// precondition, named, and not on a record that is missing.</p>
+ClassMethod RequireJournaled(pDirectory As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDatabase = ##class(SYS.Database).%OpenId(pDirectory)
+        Set tState = $Select($IsObject(tDatabase): tDatabase.GlobalJournalState, 1: "")
+        Set tSystem = ##class(%SYS.Journal.System).GetState()
+        Set $NAMESPACE = tOrigNS
+        If tState '= 3 Set tSC = $$$ERROR($$$GeneralError, "the database " _ pDirectory _ " does not journal its globals (state " _ tState _ "), so a write to it leaves no journal record")
+        If $$$ISOK(tSC) && (tSystem '= 0) Set tSC = $$$ERROR($$$GeneralError, "journaling is not enabled on this instance (state " _ tSystem _ ")")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Kill what <method>SetReadable</method> set.</p>
+ClassMethod KillReadable() As %Status
+{
+    Set tSC = ..ReadableReference(.tGlobal)
+    If $$$ISERR(tSC) Quit tSC
+    Kill @tGlobal
+    Quit $$$OK
+}
+
+/// <p><parameter>READABLEGLOBAL</parameter> as an extended reference into the install namespace's
+/// routines database, read in <code>%SYS</code>.</p>
+ClassMethod ReadableReference(Output pGlobal As %String) As %Status [ Private ]
+{
+    Set pGlobal = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set $NAMESPACE = "%SYS"
+        Set tDirectory = ##class(Config.Databases).Open(##class(Config.Namespaces).Open(tInstallNs).Routines).Directory
+        Set $NAMESPACE = tOrigNS
+        Set pGlobal = "^|""^^" _ tDirectory _ """|" _ ..#READABLEGLOBAL
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove the probe database <method>SeedProbeDatabase</method> creates, each part by its exact
+/// name where it exists -- dismounted, its configuration, its file and directory, and its resource --
+/// in <code>%SYS</code>. Its records stay in the journal file.</p>
+ClassMethod RemoveProbeDatabase() As %Status
+{
+    Set tSC = $$$OK
+    Set tDirectory = ..DirectoryFor(..#PROBESUFFIX)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(SYS.Database).%ExistsId(tDirectory) Do ##class(SYS.Database).DismountDatabase(tDirectory)
+        If ##class(Config.Databases).Exists(..#PROBEDATABASE) Set tSC = $$$ADDSC(tSC, ##class(Config.Databases).Delete(..#PROBEDATABASE))
+        If ##class(SYS.Database).%ExistsId(tDirectory) Set tSC = $$$ADDSC(tSC, ##class(SYS.Database).DeleteDatabase(tDirectory))
+        If ##class(%File).DirectoryExists(tDirectory) && '##class(%File).RemoveDirectoryTree(tDirectory) Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the probe database directory could not be removed"))
+        If ##class(Security.Resources).Exists(..#PROBERESOURCE) Set tSC = $$$ADDSC(tSC, ##class(Security.Resources).Delete(..#PROBERESOURCE))
+        Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, ex.AsStatus())
@@ -407,9 +590,10 @@ ClassMethod Run(pEndpoint As %String, pType As %String, pQuery As %DynamicObject
 
 /// <p>Run the JSON array <var>pPlan</var> as the probe account <var>pUser</var> in a child process,
 /// and answer <code>{username, loggedIn, steps}</code>, or an object carrying <code>error</code>. A
-/// step is a <method>Run</method> step, <code>{endpoint, type, query, body, port}</code>, or a vendor
+/// step is a <method>Run</method> step, <code>{endpoint, type, query, body, port}</code>, a vendor
 /// read the path port's journal seams make, <code>{read: "history"}</code> or
-/// <code>{read: "wij"}</code>.</p>
+/// <code>{read: "wij"}</code>, or the journal record detail route, <code>{route: "record", file,
+/// address}</code> (<method>RouteRead</method>).</p>
 ClassMethod RunAs(pUser As %String, pPlan As %DynamicArray, pWaitSeconds As %Integer = 180) As %DynamicObject
 {
     Set tOut = {}
@@ -447,6 +631,8 @@ ClassMethod Child(pParent As %Integer, pUser As %String, pPlan As %String)
         While tIterator.%GetNext(.tIndex, .tStep) {
             If tStep.%Get("read") '= "" {
                 Do tSteps.%Push(..VendorRead(tStep.%Get("read")))
+            } ElseIf tStep.%Get("route") '= "" {
+                Do tSteps.%Push(..RouteRead(tStep.%Get("file"), tStep.%Get("address")))
             } Else {
                 Do tSteps.%Push(..Run(tStep.%Get("endpoint"), tStep.%Get("type"), tStep.%Get("query"), tStep.%Get("body"), tStep.%Get("port")))
             }
@@ -456,6 +642,60 @@ ClassMethod Child(pParent As %Integer, pUser As %String, pPlan As %String)
         Do tOut.%Set("error", ex.DisplayString())
     }
     Do $System.Event.Signal(pParent, tOut.%ToJSON())
+}
+
+/// <p>The journal record detail route for <var>pFile</var> and <var>pAddress</var>, run in this process
+/// through <class>OcuPilot.Test.JournalRecordDetailFixture</class>, which reads through
+/// <class>OcuPilot.Test.JournalCountPort</class>: <code>{route, status, body, calls}</code>,
+/// <code>body</code> the parsed envelope and <code>calls</code> the vendor calls it made.</p>
+ClassMethod RouteRead(pFile As %String, pAddress As %String) As %DynamicObject
+{
+    Set tOut = {"route": "record"}
+    Try {
+        Do ##class(OcuPilot.Test.JournalCountPort).Reset()
+        Set tSC = ##class(OcuPilot.Test.JournalRecordDetailFixture).Route(pFile, pAddress, .tBody, .tStatus)
+        Do tOut.%Set("ok", $$$ISOK(tSC), "boolean")
+        Do tOut.%Set("status", +$Get(tStatus), "number")
+        Do tOut.%Set("calls", ##class(OcuPilot.Test.JournalCountPort).Calls(), "number")
+        If $Get(tBody) '= "" Do tOut.%Set("body", ##class(%DynamicAbstractObject).%FromJSON(tBody))
+        Do ##class(OcuPilot.Test.JournalCountPort).Reset()
+    } Catch ex {
+        Do tOut.%Set("ok", 0, "boolean")
+        Do tOut.%Set("error", ex.DisplayString(), "string")
+    }
+    Quit tOut
+}
+
+/// <p>Delete, as objects in <code>%SYS</code>, the admin API's async task rows a probe account queued
+/// (its <code>Username</code> a probe name, <method>IsProbe</method>), which that account could not
+/// delete itself; any other row is left. <var>pRemoved</var> is how many were deleted.</p>
+ClassMethod RemoveProbeTaskRows(Output pRemoved As %Integer) As %Status
+{
+    Set pRemoved = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tTaskClass = $Parameter(..#PORT, "ASYNCTASKCLASS")
+        Set tTable = ##class(%Dictionary.CompiledClass).%OpenId(tTaskClass).SqlQualifiedNameQ
+        Set $NAMESPACE = "%SYS"
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT %EXACT(GUID) AS GUID, %EXACT(Username) AS Username FROM " _ tTable)
+        Set tGuids = ""
+        While tResult.%Next() {
+            If ..IsProbe(tResult.%Get("Username")) Set tGuids = tGuids _ $ListBuild(tResult.%Get("GUID"))
+        }
+        Set tResult = ""
+        Set tPointer = 0
+        While $ListNext(tGuids, tPointer, tGuid) {
+            Set tDeleteSC = $ClassMethod(tTaskClass, "%DeleteId", tGuid)
+            If $$$ISOK(tDeleteSC) Set pRemoved = pRemoved + 1
+            Set tSC = $$$ADDSC(tSC, tDeleteSC)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>One of the two vendor reads the path port's journal seams make, as the calling process's user,

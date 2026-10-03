@@ -575,6 +575,7 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // protocol.
   // Story 19.5's SQL catalog literals take the table past 2100; the bound moves to 2300 under the same
   // protocol.
+  // Story 18.19's Journal records literals, merged after Story 19.5's, stay under 2300.
   // Story 19.14's eighty-two literals, merged with Story 18.19's row, take the table toward 2300; the
   // bound moves to 2500 under the same protocol.
   assert.ok(

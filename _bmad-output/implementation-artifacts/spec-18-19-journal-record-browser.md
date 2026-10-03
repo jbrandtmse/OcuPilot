@@ -2,7 +2,9 @@
 title: 'Story 18.19: Journal record browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'fc3c5de0860dfba192e4877e6155e7f4faab6bf0'
+baseline_commit: 'fc3c5de0860dfba192e4877e6155e7f4faab6bf0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -453,9 +455,105 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
   - the DW-1337 gate holds in both themes;
   - EXPERIENCE.md reads 1003 lines.
 
+### Review Findings
+
+Code review, 2026-10-03 (`full-opus`; four layers; 38 rows, 13 entries after grouping, 15 rejected).
+
+- [x] [Review][Patch] (med) An offset or address above 4294967295 passed the digit rule and the vendor's list failed `<VALUE OUT OF RANGE>`: 500 `INTERNAL` with a logged error, measured. `JOURNALMAXADDRESS` now refuses it `JOURNAL.OFFSET.SHAPE` before any vendor call [src/OcuPilot/Port/AdminPort.cls:2659]
+- [x] [Review][Patch] (med) In order 1 the read tool sorted the newest rows ascending before the context cap cut them, so the offset hint's next page skipped every row the cut dropped. The `order` hint now tells the caller to send `direction` `desc` with 1; `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` pins it at a context cap of 10 [src/OcuPilot/Screen/Descriptor/JournalRecordList.cls:60]
+- [x] [Review][Patch] (low) An `InTransaction` filter compares the journal's 0 or 1, while rows read `true` or `false`, so a filter on `true` matched nothing (measured). The `value` hint says so [src/OcuPilot/Screen/Descriptor/JournalRecordList.cls:63]
+- [x] [Review][Patch] (low) A cold open's Journals answer overwrote a file an arrival had named while it was in flight. It now sets the file only while none is named, pinned by a page-spec leg [ui/src/app/areas/os-management/journal-records.page.ts:219]
+- [x] [Review][Patch] (low) QA's browser refusal leg was titled AC4, passed `?file=` the page never reads, asserted only a non-empty reason, and asserted a value-freedom that could not fail at address 1. It is now an AC5 leg asserting the route's own `JOURNAL.RECORD.UNREADABLE` sentence after a cold reload [ui/browser/journal-records.browser-spec.mjs:313]
+- [x] [Review][Patch] (low) A failed `SetReadable` precondition let the next assertion pass on an unfiltered list. Both callers now stop after it [src/OcuPilot/Test/JournalRecordDetail.cls:209]
+- [x] [Review][Patch] (low) The Verification evidence predated QA's changes: both journal classes, both journal browser specs and the client tiers were re-run on the final tree (Verification › Code review)
+- [x] [Review][Patch] (low) Reverse-order Next records on the instance had no recorded mutation. Recorded: run 4451 [src/OcuPilot/Test/JournalRecords.cls:179]
+- [x] [Review][Patch] (low) The record route's answer, which carries record values, could be stored by the browser's HTTP cache. It now sends `Cache-Control: no-store`, pinned over the wire [src/OcuPilot/Area/OsMgmt/JournalRecordDetail.cls:63]
+- [x] [Review][Patch] (low) The tool's offset refusal had no test of its own. The tool now meets `JOURNAL.OFFSET.SHAPE` with zero vendor calls [src/OcuPilot/Test/JournalRecords.cls:362]
+- [x] [Review][Defer] (low) Newest first draws its newest records oldest first, the descriptor's default sort [ui/src/app/shell/data-table.ts:924] — deferred: DW-1979, routed to `burndown` at adjudication
+- [x] [Review][Defer] (low) The record dialog's body is empty for about 1.7 s while the record loads [ui/src/app/areas/os-management/journal-records.page.ts:430] — deferred: DW-1980 `wontfix-accepted`
+- [x] [Review][Defer] (low) The text criteria carry no `maxlength`; the patch was measured but does not fit the merged 2611kB bundle budget, a contended line [ui/src/app/areas/os-management/journal-records.page.ts:278] — deferred: DW-1981, routed to `burndown` at adjudication
+
+Rejected:
+
+- `low` A dialog reloaded while Journals' read faults stays open with no refusal, and the heading names no file: a fault on a cold reload of a record route, rare, and the shell's fault banner already shows it.
+- `low` No URL carries the file, so a reloaded or shared record route reads the newest file: the cold open reads the newest file by design (matrix row "Cold open"; AD-11 keeps criteria out of the URL).
+- `low` `SeedProbeDatabase` does not check that journaling is on: a stock instance journals, and every leg fails loudly on its row counts if it does not.
+- `false` A sparse filter over a full-size file is likely to time out: a non-matching scan of the 591 MB current file took 6.9 s on `ocupilot-b-ci`; canceling at the bound is AD-26's existing port behavior.
+- `low` Named limit 1 still reads "(inference until Task 0)": the fix is a spec edit.
+- `low` A failed seed leaves the probe database behind: the next seed removes it first, and CI runs on fresh instances.
+- `low` Next records after a faulted search takes the earlier rows: Next sends the form as shown, as the first review adjudicated.
+- `low` A journal switch between the seed and `SetReadable` would flake the readable legs: only a midnight or size switch inside a few seconds reaches it.
+- `false` Order 1 from a block's first record minus 1 may land on a block start: measured at four block boundaries, the list answered the previous record each time.
+- `low` Task 0's cleanup showed `alerts.log` +1, undeclared: its cause, h(ii)'s 500, is recorded; the fix is a spec edit.
+- `low` The matrix row names a refusal strip where the shell's banner draws the timeout: the fix is a spec edit, as the first review found.
+- `low` With the file omitted, the tool cannot keep paging one file across a journal switch: named limit 4, and the switch inside one turn is rare.
+- `false` The dialog shows 13 fields, not every field: the matrix row's fields and the literal list's labels are all shown.
+- `false` "Journal record" is capitalized against the spec's literal: it matches EXPERIENCE.md and the `aboutJournalFile` precedent.
+- `false` `AdminPort` names the vendor's `Fetch`, not `ZUFetch`: `Fetch` (`Record.cls:381`) also executes the operator.
+
+### Rework 1 (CI)
+
+- [x] [CI] browser shard 1/3 of run 37127676205 (`6344e34f`): `ui/browser/journal-records.browser-spec.mjs` "AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape" failed at `:304` (numbered as at `9becc6df`) with `failed to find element matching selector "#ocu-journal-records-value"`, read at once after the dialog is gone. Closing moves from `journal-records/:id` to `journal-records`, two route entries, so `ScreenOutlet` and the page are created afresh and the form renders on a later change-detection pass (inference). The leg passes on `ocupilot-b-ci`. Make the leg wait for the form before reading it, and check every other leg that reads the page right after a route change.
+
+### Review Findings (rework 1)
+
+Code review of rework 1, 2026-10-03 (`full-opus`; four layers; `fc3c5de0..dad5b103` only; 18 rows, 15 entries, all rejected). The `[CI]` item holds in the code: `buildRoutes` gives `:id` its own route config, `ui/src` has no `RouteReuseStrategy`, the dialog leaves only with the old page, and the form waits on no read (`list` is set in the constructor), so the wait's last clause is the failed read's own precondition. No other leg here or in `journals.browser-spec.mjs` reads after a route change without a wait. CI run 37133418355 was pending.
+
+Rejected:
+
+- `low` The combined wait times out without naming which clause failed: met only if this leg times out again, and splitting a correct wait adds calls.
+- `false` The path clause is redundant: it is the only check that close returns to the list route, since a dialog hidden without navigating stays on `/:id`.
+- `false` Nothing shows the fix works: the wait cannot end before `#ocu-journal-records-value` exists, and nothing navigates between the wait and the read.
+- `low` Close checks only the `value` criterion: an unchanged line, not HIGH; every criterion lives in the one `HELD_SEARCHES` object.
+- `low` The close mutation's comment sits under `// AC5.`: cosmetic; the leg's AC labels were adjudicated in rework triage row 7.
+- `false` The committed `baseline_commit` disagrees with `baseline_revision`: the working tree carries the lead's correction.
+- `low` The cycle log's `dev_complete` line omits the loc fields: lead bookkeeping, not code.
+- `low` Spec text, eight rows (one CI run named as proof; rework triage rows marked false; Verification's "Final tree" 3/3 for four legs; `:304` is `:302` at `9becc6df`; mixed inference labels; the mechanism told five times; the round-1 journaled-database risk not marked closed by run 37127676205's green `instance`; two unclear Verification lines): each fix edits the spec under review.
+
 ## Spec Change Log
 
+- For the runner (AD-26, no factor correction): in the Story 18.19 paragraph, replace "Story 18.19's Task 0 confirms it" with "measured again at Story 18.19's Task 0 on `ocupilot-b-ci`, 2026-10-03: 4, 10, 40 and 2002 gave 2, 5, 20 and 1001".
+- 2026-10-03, runner (rework 1, trigger=ci): re-opened for the `[CI]` item under Tasks & Acceptance; nothing else changes.
+
 ## Review Triage Log
+
+### 2026-10-03 — Review pass
+
+- verdicts: 21 findings — high 0, medium 7, low 2, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The read tool's hinted descriptions are unpinned (the choice sentence and the default sentence) — `JournalDescriptor` now asserts `order`'s whole description and `file`'s hint alone; mutation run 3995.
+  - `[medium]` `[patch]` AC4's principal legs pass on an empty list or a blanket refusal — `JournalProbe.SetReadable` writes a record on the database every probe principal reads; the principal lists it (`JournalRecords`) and opens it 200 (`JournalRecordDetail`); mutation run 3997.
+  - `[medium]` `[patch]` AC6's log leg passes when `messages.log` cannot be read — asserts the line count is read; mutation run 3996 (grouped with the window finding below).
+  - `[low]` `[patch]` The no-argument tool test compares two answers that can both be empty — asserts the newest file answers rows.
+  - `[medium]` `[patch]` "The record is never in the screen store" is unpinned — the page spec asserts the store keeps the three list rows and no value; vitest mutation recorded.
+  - `[medium]` `[patch]` The Final tree evidence predated the final tree — re-run after the patches: the full ObjectScript sweep, a rebuilt and redeployed bundle (2,587,710 bytes, 2588kB unchanged) with both journal browser specs, `npm test`; the Final tree line rewritten.
+  - `[low]` `[reject]` The hint branch's datetime description says "1 hours" and drops the time-part sentence — no hinted datetime criterion exists, so no caller meets it, and a correct fix means deciding what a hint replaces for a datetime, more than a direct correction.
+  - `[false]` `[reject]` No test reads the ledger — a ledger row keeps only a tool's call and result (`Kernel/Agent/Loop.cls:604-609`), and the tool result is asserted value-free.
+  - `[medium]` `[patch]` The `messages.log` window covered the route only, not the list and tool reads — the window now also runs the screen read and the read tool over the seeded records.
+  - `[false]` `[reject]` Screen context is checked over stubbed rows — the payload is the real `assembleScreenContext` over the store's rows after the page's read, and those rows' value-freedom is pinned on the instance.
+  - `[medium]` `[patch]` The record is never in the screen store, untested at that surface — grouped with the store finding above.
+  - `[false]` `[reject]` The scan past the bound uses a canned poll and checks the fault, not a rendered banner — the throwaway's longest scan is 13.9 s (Task 0 e), and a 503 is a server fault the shell's fault banner draws from the refresh's fault (`core/fault.ts`, `fault-banner.wire.spec.ts`).
+  - `[false]` `[reject]` The unreadable list is tested at `AdminPort`, not the screen or the tool — both call `AdminPort.Invoke` in the caller's own process with no escalation, so they meet the same vendor skip.
+  - `[false]` `[reject]` Next records takes the form's current order — the offset follows the spec's rule for the order the next search sends, and the page spec pins it.
+  - `[false]` `[reject]` 22 sent is asserted on an unfiltered read and 11 kept is never observed — the doubling is per request type whatever the filter, truncation with 10 shown needs an 11th kept row, and the low-privilege shortfall is named limit 1.
+  - `[false]` `[reject]` Two values in contended files change — the bundle re-base and the strings bound are the spec's own tasks and the lead's sanctioned exceptions.
+  - `[false]` `[reject]` A modified View records click opens the newest file — the spec leaves a modified click to the browser.
+  - `[false]` `[reject]` The tool's echo reads an omitted file as empty — named limit 4.
+  - `[false]` `[reject]` A two-pair principal leaves finished task rows and one Protect audit event — recorded at Task 0 h(i) and named limit 3; the tests remove those rows.
+  - `[false]` `[reject]` A direct port caller without `%DB_IRISSYS:READ` gets 500 — every caller (screen, tool, route) gates on that pair first; only test code calls the port directly.
+  - `[false]` `[reject]` The diff cannot show that Task 0 ran first — not a defect of the change; the order is recorded under Measured at implement.
+
+### 2026-10-03 — Review pass (rework 1, CI)
+
+- verdicts: 7 findings — high 0, medium 0, low 0, false 7, maybe-false 0
+- findings:
+  - `[false]` `[reject]` The pass records no verification of its own in the spec — written under `## Auto Run Result` at finalize, after review.
+  - `[false]` `[reject]` Nothing records that the other legs were checked — recorded under `## Auto Run Result` at finalize.
+  - `[false]` `[reject]` Only CI can show the race is gone — the new predicate holds only once the new page's form exists, because the dialog leaves only with the old page (`dialogOpen` keys on the route id); kept as a residual risk.
+  - `[false]` `[reject]` `## Auto Run Result` and the Verification lines predate this edit — as the first row.
+  - `[false]` `[reject]` The new test comment states an inference as fact — the mechanism was read this pass: no `RouteReuseStrategy` in `ui/src`, the default reuses only on the same `routeConfig`, `RouterOutlet.activateWith` only marks for check, and the app is zoneless.
+  - `[false]` `[reject]` Closing rebuilds the list page — the spec's design (the dialog's own `:id` route); the criteria live in `HELD_SEARCHES`, which outlives the page.
+  - `[false]` `[reject]` The leg's AC5, AC7 title covers a Task-sourced assertion — the title is unchanged; "Close returns to the list route with the criteria kept" is a Task line, and the leg is the Tasks' "closes on Escape" leg.
 
 ## Design Notes
 
@@ -498,6 +596,21 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 4. **AD-13, after the `journal-settings` sentence:** "A `journal-record` id is the record's `Address` within the file its list read, kept exactly. It names no write target (Story 18.19) [AMENDED <date>, Story 18.19 spec gate, Rule 20]."
 5. **AD-44, after Story 18.18's sentence:** "Story 18.19's Journal records declares the classic record browser `%cspapp.op.utilsysjournal` (Hidden, spelled as `NormalizePage` answers, measured at Story 18.5's Task 0). It has no write tool, so it declares no `CLASSICPAGES` [AMENDED <date>, Story 18.19 spec gate, Rule 20]."
 6. **AD-8:** written only if Task 0 halts on a pair beyond the screen's two and the orchestrator rules it.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-03; current file `20261003.318`, 848 listed files; no halt):
+
+- **S0:** 362 snapshot lines, 445 async task rows, monitor state 0. The seed wrote 30 SET records from address 112952296; a row's `GlobalNode` reads `^OcuProbe185(i)` and its `DatabaseName` `/durable/iris/mgr/ocuprobe185d/`.
+- **a.** `maxRows` 4, 10, 40 and 2002 kept 2, 5, 20 and 1001 rows: the list halves, factor 2. Every row's keys are exactly the eight columns.
+- **b.** The offset is inclusive in both orders. `Address`+1 in order 0 and `Address`−1 in order 1 snap to the next and previous record, so the next-page rule is the highest `Address`+1, or the lowest −1.
+- **c.** Each of the six operators (on `GlobalNode`) and each of the eight columns answered 200 and finished: `=` `^OcuProbe185(1)` matched 1 row, `[` `OcuProbe185` the probe rows, `MirrorDatabaseName` `=` `none` none, the rest capped pages.
+- **d.** The partial triple sent as is answered 200 with rows of every global: the vendor's 400 is overwritten when it queues, and `[` with an empty value matches every record. No task row was left.
+- **e.** Each read's wall clock includes the guard's list read, 1.67 s alone over 848 files: a filtered page 1.7 to 3.0 s; `maxRows` 2002 unfiltered 1.73 s; a filter matching nothing over `pFile` (113 MB) 2.1 to 2.9 s, and over the largest listed file (236 MB) 13.9 s, under `ASYNCTIMEOUT`.
+- **f.** The async task rows read 445 before and after every read by the `%All` session: the port deleted each row.
+- **g.** A probe record's `GET` answered 200 in 1.66 s with the Code Map's keys: `InTransaction` boolean, `ProcessID` a string, `NewValue` the whole 1,500 characters. A BeginTrans record answered `SetKill` `{}` and `VectorSetKill` `{}`. A non-record address answered 404 `PORT.NOTFOUND`: the `GET` does not snap.
+- **h.** (i) With exactly the screen's two pairs, the probe-filtered list answered 0 rows and the unfiltered one 19, all on IRISSYS, one unreadable row spending one count (named limit 1, measured). A probe record's `GET` answered 404 `PORT.NOTFOUND` and an IRISSYS record's 200. The principal left two finished task rows, removed as objects. Its process's halt logged one `%System/%Security/Protect` event: the vendor's work-queue cleanup could not write IRISLOCALDATA, and the queue node was gone afterwards. (ii) Without `%Admin_Operate:USE`: 403 `PORT.ACCESSDENIED` with no vendor work. Without `%DB_IRISSYS:READ`: 500 `INTERNAL` (`<PROTECT>` switching to `%SYS`). (iii) was not run.
+- **i.** With auditing on, neither `LIST` nor `GET` recorded a vendor event.
+- **Cleanup:** S2 equals S0 but for `messages.log` +4 and `alerts.log` +1 lines (h(ii)'s logged refusal) and the monitor state 0 to 1, cleared to 0 with `$SYSTEM.Monitor.Clear()`. No `OCUPROBE185*` database, resource or principal remains.
+- **Set from the record:** `HALVEDROWTYPES` factor 2; the next-page rule above; the dialog's fields are the `GET`'s top-level scalars and `SetKill`'s and `VectorSetKill`'s members.
 
 **Integration ACs:**
 
@@ -554,9 +667,96 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 - AC6: the descriptor's read adds a `rowGet` merging `NewValue` → the no-marker leg goes red.
 - AC7: `sideBarPosition` 1 with the mirror regenerated → `Navigation` and `navigation.test.mjs` go red. One prompt is removed → `JournalDescriptor` goes red.
 
+Recorded (each reverted byte-identical, the throwaway reloaded from the reverted tree). Each run id was read back from `%UnitTest_Result` on `ocupilot-b-ci`, and each vitest, node and browser leg was re-applied and observed red on the final tree, with the bundle rebuilt and redeployed for each browser leg:
+
+- mutation: the descriptor's read declares `Journal.File` `LIST` → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, with five other legs (run 3760)
+- mutation: `recordsRead` skips Journals' read when no file is named → page spec "a cold open first issues Journals' read" red, with the dialog leg, whose request names the newest file (vitest)
+- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, "ten rows of the cap, truncated", with three other legs (run 3759)
+- mutation: `nextOffset` answers the highest or lowest address unchanged → page spec "Next records" red alone (vitest), and the browser AC2 leg red after rebuild and redeploy, the eleventh record never shown
+- mutation: `JournalRecordRules` drops the comparison check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the port's injection case (run 3761)
+- mutation: `JournalRecordRules` drops the empty-value removal → `JournalRecords.TestAnEmptyValueSendsNoMatchKey` red alone (run 3762)
+- mutation: `JournalRecordRules` drops the digit check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the offset and address cases (run 3763)
+- mutation: `JournalRecordDetail.RenderRefusal` renders `PORT.NOTFOUND` as it is → `JournalRecordDetail.TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable` red alone (run 3764)
+- mutation: `JournalRecordDetail.Cut` answers its value whole → `JournalRecordDetail.TestARecordAnswersItsFieldsAndValuesCutAtOneThousand` red alone (run 3765)
+- mutation: the route's gate call removed → `JournalRecordDetail.TestTheRouteRefusesACallerWithoutThePairsWithZeroPortCalls` red alone, on its refusal and its zero port calls (run 3766)
+- mutation: the descriptor's read gains `SetKill.NewValue` and a `rowGet` merging it, and `JOURNALNEWESTTYPES` gains `Journal.Record/GET` so the detail `GET` reads the newest file → `JournalRecords.TestNoRecordValueReachesTheToolOrTheScreenRead` red on its four marker assertions (the screen read and the tool view each carry the value and the markup), with two other legs (run 3989)
+- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestAnEmptyValueSendsNoMatchKey` red on "asked ... 22 for the cap of 10", with four other legs (run 3987)
+- mutation: `AdminPort.AwaitTask` answers 200 at the bound instead of refusing → `JournalRecords.TestAScanPastTheBoundIsRefusedTimeout` red alone (run 3988)
+- mutation: `recordsRead` answers an empty ok for a faulted read → page spec "a read past the async bound is the screen's PORT.TIMEOUT fault" red alone (vitest)
+- mutation: `loadRecord` reads without waiting for the page to name its file → page spec "a reload on a record's route" red alone (vitest)
+- mutation: `JournalRecordDetail.Cut` drops its surrogate step → `JournalRecordDetail.TestARecordAnswersItsFieldsAndValuesCutAtOneThousand` red alone, on the pair's leg (run 3991)
+- mutation: the read tool's hinted choice description drops its default sentence → `JournalDescriptor.TestJournalRecordsCriteriaAreThePortsClosedSets` red alone, on the described choice (run 3995)
+- mutation: `JournalRecordDetail.HandleGet` logs the record's new value → `JournalRecordDetail.TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt` red alone, on its log leg (run 3996)
+- mutation: the AC4 principal also holds `%DB_OCUPROBE185D:R` (the read AD-9 never escalates to; the skip itself is the vendor's `HasDBPermission`, so no OcuPilot line can be mutated for it) → `JournalRecords.TestAPrincipalWhoCannotReadADatabaseListsNoneOfItsRows` red alone (run 3997)
+- mutation: the page appends the open record to the store's rows → page spec "neither the screen store nor the screen-context payload carries the record's values" red alone (vitest)
+- mutation: the page writes the open record's `NewValue` into a row's `GlobalNode` in the store → page spec "the screen-context payload carries none of the record's values" red alone (vitest); appending the whole record to the store's rows leaves it green, because context keeps only the eight declared fields
+- mutation: `sideBarPosition` 1, mirror regenerated → `navigation.test.mjs` "a side bar lists only built screens" and "OS management lists ..." red, and `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 3769)
+- mutation: the third prompt removed → `JournalDescriptor.TestJournalRecordsIsAnUnlistedServerCriteriaList` red alone (run 3768)
+- mutation: Journal file details' `onViewRecords` sets no arrival → details spec "View records" red alone (vitest), and the browser AC1 leg red after rebuild and redeploy, on "no cold-open read of Journals was needed"
+- mutation: `useArrival` keeps the form's values for criteria an arrival omits → page spec "an arrival for another file" red alone (vitest)
+- mutation: the dialog renders values through `[innerHTML]` → browser AC5 leg red after rebuild and redeploy, on "the markup value is shown as text"
+- mutation: `JournalProbe.RequireJournaled` demands journal state 4 instead of 3 → `JournalRecordDetail.TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable` red alone (run 4443)
+- mutation: `loadRecord` sets no refusal for a faulted read → browser `AC5: a reloaded record route on an address that holds no record shows the route's refusal in the dialog` red alone, after rebuild and redeploy
+- mutation: `JournalRecordDetail.RenderRefusal` renders `PORT.NOTFOUND` as it is → that browser leg red alone, on the reason's equality (code review)
+- mutation: `JournalRecordRules` removes `initialOffset` whatever it holds → `JournalRecords.TestNextRecordsContinuesInBothOrders` red in both orders, with three other legs (run 4451)
+- mutation: the `JOURNALMAXADDRESS` bound removed → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red on its two cases above the bound (run 4450)
+- mutation: the `order` hint's direction clause removed → `JournalRecords.TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` red alone (run 4457)
+- mutation: `JournalRecordDetail.HandleGet` sends no `Cache-Control` → `JournalRecordDetail.TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt` red alone (run 4452)
+- mutation: the cold open sets the newest file whatever the search names by then → page spec "an arrival while a cold open waits for Journals' read" red alone (vitest)
+- (QA) `ui/browser/journal-records.browser-spec.mjs` gained the refusal leg; `src/OcuPilot/Test/JournalProbe.cls` gained `RequireJournaled`, called by `SetReadable`
+- mutation: `onCloseDetail` clears the `value` criterion before navigating → browser `AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape` red alone, on "closing keeps the criteria" (actual `''`), not on its wait (rebuild and redeploy)
+
+Final tree, `ocupilot-b-ci` (loaded with `load-throwaway.sh`, 0 compile errors), after the review patches: the full ObjectScript sweep (runs 3998-4422, read back from `%UnitTest_Result`) ran 425 classes and 3,490 tests, 3,488 passed. The story's classes: `JournalRecords` 9/9 (run 4149), `JournalRecordDetail` 5/5 (4148), `JournalDescriptor` 13/13 (4145), `JournalRead` 6/6 (4147), `ReadTool` 28/28 (4287), `Descriptor` 60/60 (4080), `SurfaceCoverage` 4/4 (4334), `EndpointCoverage` 2/2 (4099), `ScreenRead` 30/30 (4313), `Navigation` 14/14 (4208), `Wire` 20/20 (4414), `ToolRoundTrip` 2/2 (4361), `ToolDispatch` 18/18 (4357), `ToolEmit` 11/11 (4359), `AdminPortAsync` 6/6 (4002). Two failures, both in methods this story does not touch, from the throwaway's age (inference; both pass in CI): `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (Task history past 1,000 rows, run 4417, red since run 3130) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` ("this instance holds no expired row another suite created", run 4299). `npm test`: tools 1780/1780, components 2226/2226; `npm run build` passes; initial bundle 2,587,710 bytes (`maximumWarning` 2588kB); rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 3/3 and `journals.browser-spec.mjs` 5/5; `smoke.sh` 50/50; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; EXPERIENCE.md 1003 lines. End state: no `OCUPROBE185*` database, resource, directory, namespace or principal, and no readable probe global; journal settings as found, journaling in `/durable/iris/mgr/journal/`; 0 agent definitions, 0 policy rows; 442 async task rows (445 at S0; none left by this story's classes); monitor 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+
+Code review, 2026-10-03, `ocupilot-b-ci` loaded with `load-throwaway.sh` (0 compile errors), each mutation reverted byte-identical and reloaded: `JournalRecords` 10/10 (run 4458), `JournalRecordDetail` 5/5 (4454), `JournalDescriptor` 13/13 (4456), `JournalRead` 6/6 (4449), `Descriptor` 60/60 (4448); `npm run test:tools` 1780/1780, `npm run test:components` 2232/2232; `npm run build` passes under `maximumWarning` 2611kB; rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 4/4 and `journals.browser-spec.mjs` 5/5; `check-objectscript.py` 0 problems. End state: no `OCUPROBE185*` database, resource or principal; journaling in `/durable/iris/mgr/journal/`, settings as found; 442 async task rows; monitor cleared to 0.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Plan stage only (Halt after planning): the spec is written and checked against the ready-for-development standard; nothing is implemented, nothing is committed, and no instance was written.
+**Inherited and re-verified.** The previous implement pass died at the account limit; its tree was committed as `b174ebc5`. This pass read that diff against every Task, Boundary, matrix row and AC and found the implementation complete. It confirmed every recorded mutation run (3759-3769) in `%UnitTest_Result`, corrected three of those lines to what failed, and re-demonstrated the vitest, node and browser mutation legs on the final tree. Task 0 was not re-run.
+
+**Added or corrected in this pass:**
+
+- `Test/ReadTool.cls`, `Test/Descriptor.cls`, `Test/JournalProbe.cls`: restored a word and a space the WIP had deleted, so the contended edits are add-only.
+- `Area/OsMgmt/JournalRecordDetail.cls`: `Cut` keeps one character fewer where it would keep half a surrogate pair (was the one deferred item).
+- `journal-records.page.ts`: a dialog opened before the page names its file (a reload on a record's route) waits for the cold open's file, instead of asking for a record of no file.
+- Matrix coverage: `JournalRecords.TestAScanPastTheBoundIsRefusedTimeout` with a page-spec leg for the scan-past-the-bound row; the vendor is asked 22 rows for cap 10 (`JournalCountPort.SentValue`).
+- Review patches: the hinted descriptions pinned; AC4 positives through a readable record (`JournalProbe.SetReadable`); the `messages.log` window covers the list and tool reads and proves the file is read; the newest-file read is non-empty; the store is pinned value-free.
+- AC6's mutation re-demonstrated so the marker assertions themselves go red (run 3989).
+- Bundle re-measured at 2,587,710 bytes; the history row updated, `maximumWarning` unchanged at 2588kB.
+
+**Review:** 21 findings (medium 7, low 2, false 12). 5 entries patched (7 medium findings grouped into them, plus 1 low), 0 deferred. Rejected: 1 low (the hint branch's datetime wording, which no criterion uses) and 12 false, each with its reason in the Review Triage Log.
+
+**Verification:** the Final tree line above. Full sweep 3,488 of 3,490 passed; both failures are in untouched methods and come from the throwaway's age (inference). Browser specs ran on the rebuilt, redeployed bundle. Smoke passed 50/50.
+
+**Follow-up review: recommended.** Five medium entries were patched. Unverified risk: the AC4 readable-record legs write a journaled global into the install namespace's routines database. They assume that database is journaled on a fresh CI instance, which was measured only on this throwaway.
+
+**Residual risks:** named limits 1-5 stand. The 30 s scan bound is shown only through a lowered bound, because the longest measured scan is 13.9 s.
+
+### Rework 1 (CI run 37127676205)
+
+Status: done
+Blocking condition: none
+
+**Diff base** `fc3c5de0860dfba192e4877e6155e7f4faab6bf0` (frontmatter `baseline_revision`).
+
+**Root cause, read from the code.** Close navigates from `journal-records/:id` to `journal-records`, two route configs (`buildRoutes`). `ui/src` has no `RouteReuseStrategy`, and the default reuses a component only on the same `routeConfig`, so the router destroys the old `ScreenOutlet` with its page, dialog and form. `RouterOutlet.activateWith` creates the new one and only marks it for check, and the app is zoneless, so the new form renders on the next change-detection pass. The leg's wait for "no dialog" could end inside that gap. That a slow CI browser is what hit the gap is an inference. The criteria live in `HELD_SEARCHES`, which outlives the page, so the product keeps them.
+
+**Change.**
+
+- `ui/browser/journal-records.browser-spec.mjs`: after Escape, the AC5/AC7 close leg waits for three things: no dialog, the bare records path, and `#ocu-journal-records-value`. Only then does it read the value. The assertion "closing keeps the criteria" is unchanged and stays outside the wait. The leg's mutation comment names the close mutation.
+- The other legs here and in `journals.browser-spec.mjs` already wait before each read that follows a route change: `openRecords` waits for the heading and rows, the dialog waits for its value, and the refusal leg waits for the refusal. None changed.
+
+**Review.** 7 findings, all false, each with its reason in the triage log. Nothing patched, nothing deferred. Follow-up review is not recommended: this was a follow-up pass and patched no high.
+
+**Verification** (`ocupilot-b-ci`).
+
+- `npm run build` passes, and the bundle is redeployed. `main-WLQGBLMY.js` is served, the reverted tree's bundle.
+- `journal-records.browser-spec.mjs`: 4/4 in four separate runs, one call each. Three ran in the implement pass and one on the final tree.
+- The mutation above: red alone on its assertion. It was reverted byte-identical, then rebuilt and redeployed.
+- `client-lint` and `browser-reset` are clean, and so is `lint-docs.sh`.
+- No ObjectScript or product code changed, so no sweep ran.
+
+**Residual risk.** No local run reproduces the CI timing. The next CI browser shard is the check that the race is gone.

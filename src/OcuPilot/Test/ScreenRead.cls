@@ -205,7 +205,9 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
         ; Story 18.16: a fresh instance holds no remote database; RemoteDatabaseDescriptor holds the
         ; Remote databases list's fields to two seeded probe rows instead.
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList"), tClass) Continue
+        ; Story 18.19: a fresh instance promises no journal activity; JournalRecords holds the record
+        ; list's fields to records it seeds.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

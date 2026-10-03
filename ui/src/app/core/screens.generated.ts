@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -255,6 +255,11 @@ export interface ReadCriterion {
    */
   readonly default?: string;
   readonly options?: readonly string[];
+  /**
+   * The one sentence the read tool publishes as this criterion's description in place of its kind's
+   * generic one (AD-36 as amended, Story 18.19). The screen never shows it.
+   */
+  readonly hint?: string;
 }
 
 /**
@@ -501,7 +506,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "routine",
   "journal-file",
   "journal-file-database",
-  "journal-settings"
+  "journal-settings",
+  "journal-record"
 ];
 
 /**
@@ -9007,6 +9013,246 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "journalListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.journals",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.JournalRecordList",
+    "route": "os-management/journal-records",
+    "area": "os-management",
+    "labelKey": "journalRecordListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "journal-record",
+    "entityLabelKey": "aboutJournalRecord",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Address"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Address",
+        "TimeStamp",
+        "ProcessID",
+        "TypeName",
+        "ExtTypeName",
+        "InTransaction",
+        "GlobalNode",
+        "DatabaseName"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "journalRecordListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalRecordListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalRecordListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "journalRecordListPrompt3"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsysjournal",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Journal.Record",
+        "type": "LIST"
+      },
+      "fields": [
+        "Address",
+        "TimeStamp",
+        "ProcessID",
+        "TypeName",
+        "ExtTypeName",
+        "InTransaction",
+        "GlobalNode",
+        "DatabaseName"
+      ],
+      "filter": [
+        "GlobalNode",
+        "DatabaseName",
+        "TypeName"
+      ],
+      "sort": {
+        "fields": [
+          "Address",
+          "TimeStamp",
+          "ProcessID",
+          "TypeName",
+          "ExtTypeName",
+          "InTransaction",
+          "GlobalNode",
+          "DatabaseName"
+        ],
+        "default": "Address",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "file",
+            "labelKey": "aboutJournalFile",
+            "kind": "text",
+            "maxLength": 1024,
+            "hint": "The journal file to read, spelled as osmgmt.journals.read answers its Name; omit it to read the current file."
+          },
+          {
+            "param": "offset",
+            "labelKey": "journalRecordOffset",
+            "kind": "text",
+            "maxLength": 20,
+            "vendorParam": "initialOffset",
+            "hint": "A whole-number record address to start from, that record included; to continue after a page, send the page's highest Address plus 1, or in order 1 its lowest Address minus 1."
+          },
+          {
+            "param": "order",
+            "labelKey": "explorerSqlColumnOrder",
+            "kind": "choice",
+            "maxLength": 1,
+            "options": [
+              "0",
+              "1"
+            ],
+            "default": "0",
+            "vendorParam": "reverse",
+            "hint": "0 lists records in file order from the offset or the file's start, and 1 in reverse from the offset or the file's end; with 1, also send direction desc."
+          },
+          {
+            "param": "column",
+            "labelKey": "explorerSqlColumnNumber",
+            "kind": "choice",
+            "maxLength": 18,
+            "options": [
+              "TimeStamp",
+              "ProcessID",
+              "TypeName",
+              "ExtTypeName",
+              "InTransaction",
+              "GlobalNode",
+              "DatabaseName",
+              "MirrorDatabaseName"
+            ],
+            "default": "GlobalNode",
+            "vendorParam": "matchColumnName",
+            "hint": "The record column the value is compared with, compared only when a value is given."
+          },
+          {
+            "param": "operator",
+            "labelKey": "journalRecordComparison",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "=",
+              "'=",
+              "]]",
+              "']]",
+              "[",
+              "'["
+            ],
+            "default": "[",
+            "vendorParam": "matchOperator",
+            "hint": "How the column is compared with the value: = equals, '= does not equal, ]] sorts after, ']] does not sort after, [ contains, '[ does not contain."
+          },
+          {
+            "param": "value",
+            "labelKey": "errorLogColumnValue",
+            "kind": "text",
+            "maxLength": 200,
+            "vendorParam": "matchValue",
+            "hint": "The text the column is compared with; omit it to list every record unfiltered. InTransaction reads 0 outside a transaction, not false."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Address",
+          "labelKey": "journalRecordOffset",
+          "kind": "name"
+        },
+        {
+          "field": "TimeStamp",
+          "labelKey": "auditColumnTime",
+          "kind": "text"
+        },
+        {
+          "field": "ProcessID",
+          "labelKey": "proposalEntityProcess",
+          "kind": "identifier"
+        },
+        {
+          "field": "TypeName",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "ExtTypeName",
+          "labelKey": "journalRecordExtendedType",
+          "kind": "text"
+        },
+        {
+          "field": "InTransaction",
+          "labelKey": "processDetailsInTransaction",
+          "kind": "status"
+        },
+        {
+          "field": "GlobalNode",
+          "labelKey": "journalRecordGlobalNode",
+          "kind": "text"
+        },
+        {
+          "field": "DatabaseName",
+          "labelKey": "systemInfoDatabase",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.journalrecords",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
