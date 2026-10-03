@@ -443,7 +443,7 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     // offered.
     // Membership rather than exact equality: another area's listed screen may legitimately match
     // the needle through its own aliases (System Explorer's Macros declares `macro definition`),
-    // and the claim here is only that the list is offered and the form is not.
+    // so the list is offered and the form is not, and the closest name is the first row.
     const offered = await screensOffered(page, 'Definition');
     assert.ok(
       offered.includes(STRINGS.agentDefinitionListLabel),

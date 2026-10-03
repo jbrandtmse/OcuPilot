@@ -9146,6 +9146,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
 - 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
+- 2026-10-03T02:40:39Z status=resolved-by:19-4-search-compare-and-macro-lookup owner=19-4-search-compare-and-macro-lookup by=merge_gate note=fixed at the orchestrator's request (rework 2, 742a39f0 + re-review patch): command-box Screens rows rank exact label, label prefix, other label match, then alias or route only; favorites first within a rank; Definition + Enter opens Definitions; Macros keeps its alias
 
 ### DW-1963: IRIS defect candidate: the Atelier action/query route prepares every statement with SQL privilege checks off
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: high | footprint: out-of-footprint
@@ -9156,3 +9157,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
 - 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
+
+### DW-1965: The command box ranks a gated screen by its name like any other, so a closest-named screen the caller cannot open takes the active row and Enter does nothing
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.
+- 2026-10-03T02:38:34Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=ranking keys are the DW-1962 ruling (name, favorite, order); gated rows stay listed, reason inline (EXPERIENCE.md)

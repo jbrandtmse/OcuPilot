@@ -62,12 +62,10 @@ const NAME_ELSEWHERE = screen('system-explorer/editor', 'explorerClassEditorLabe
 const NAME_PREFIX = screen('system-explorer/classes', 'explorerClassListLabel', 'system-explorer');
 const NAME_EXACT = screen('system-explorer/class', 'explorerClassDocumentLabel', 'system-explorer');
 
-// The shipped pair, Macros declared first: Macros meets `definition` through an alias alone, and
-// Definitions through the start of its name.
-const MACROS = screen('system-explorer/macros', 'explorerMacroLabel', 'system-explorer', {
-  commandAliases: ['macro', 'macro definition'],
-});
-const DEFINITIONS = screen('agent/definitions', 'agentDefinitionListLabel', 'agent');
+// The shipped pair, read from the mirror, Macros declared first: Macros meets `definition` through
+// its `macro definition` alias alone, and Definitions through the start of its name.
+const MACROS = screenForRoute('system-explorer/macros') as ScreenDeclaration;
+const DEFINITIONS = screenForRoute('agent/definitions') as ScreenDeclaration;
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
@@ -894,7 +892,7 @@ describe('the command box', () => {
 
   it('Story 15.2 (AD-37): a favorite naming no built screen adds no row here, and the count is unchanged', async () => {
     // The stored row survives on the instance; what it cannot do is put an option in this box.
-    // Rows come from the navigation roster alone -- a favorite only partitions them -- so a route
+    // Rows come from the navigation roster alone -- a favorite only reorders them -- so a route
     // the roster does not hold has nothing to rank.
     await accountPreferences.add('favorite', 'no-such-area/no-such-screen');
     fixture.detectChanges();
