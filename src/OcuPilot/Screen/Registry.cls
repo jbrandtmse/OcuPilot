@@ -1430,6 +1430,9 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// it by name, and it re-reads only on open, Search and Refresh.</p>
 /// <p><b>A <code>text</code> or <code>choice</code> criterion may declare <code>default</code></b>,
 /// the value a caller that omits it is read with (<method>CriteriaValueDefaultProblem</method>).</p>
+/// <p><b>Any criterion may declare <code>hint</code></b>, the one sentence the read tool publishes as
+/// its description (AD-36, Story 18.19; <method>CriteriaHintProblem</method>). The screen never
+/// shows it.</p>
 /// <p><b>A <code>datetime</code> criterion may declare <code>defaultHoursAgo</code></b> (a whole
 /// number from 1 to <parameter>CRITERIONMAXHOURS</parameter>), the default a caller that omits it
 /// takes, <b>or <code>atOrAfterField</code></b>, a <code>read.fields</code> member it is compared
@@ -1530,7 +1533,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField", "default")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField", "default", "hint")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -1588,6 +1591,8 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             If tProblem '= "" Quit
         }
         Set tProblem = ..CriteriaValueDefaultProblem(tField, tWhere)
+        If tProblem '= "" Quit
+        Set tProblem = ..CriteriaHintProblem(tField, tWhere)
         If tProblem '= "" Quit
     }
     If tProblem '= "" Set pParams = ""
@@ -1699,6 +1704,21 @@ ClassMethod CriteriaValueDefaultProblem(pField As %DynamicObject, pWhere As %Str
         If tOption = tDefault Set tFound = 1
     }
     If 'tFound Quit pWhere _ " default '" _ tDefault _ "' is not one of its options"
+    Quit ""
+}
+
+/// <p>The longest <code>hint</code> a criterion may declare, in characters (AD-36).</p>
+Parameter CRITERIONHINTMAX As INTEGER = 300;
+
+/// <p>What is wrong with a criterion's <code>hint</code>, or <code>""</code> (AD-36 as amended, Story
+/// 18.19): when declared, a non-empty string of at most <parameter>CRITERIONHINTMAX</parameter>
+/// characters, on any kind.</p>
+ClassMethod CriteriaHintProblem(pField As %DynamicObject, pWhere As %String) As %String [ Private ]
+{
+    Set tType = pField.%GetTypeOf("hint")
+    If tType = "unassigned" Quit ""
+    If (tType '= "string") || (pField.%Get("hint") = "") Quit pWhere _ " hint is not a non-empty string"
+    If $Length(pField.%Get("hint")) > ..#CRITERIONHINTMAX Quit pWhere _ " hint is longer than " _ ..#CRITERIONHINTMAX _ " characters"
     Quit ""
 }
 

@@ -1729,8 +1729,8 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'options', 'hint']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'hint'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -1775,7 +1775,25 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     }
     const valueDefaultFault = criteriaValueDefaultProblem(field, where);
     if (valueDefaultFault !== null) return valueDefaultFault;
+    const hintFault = criteriaHintProblem(field, where);
+    if (hintFault !== null) return hintFault;
   }
+  return null;
+}
+
+/** The longest `hint` a criterion may declare, in characters (AD-36). */
+const CRITERION_HINT_MAX = 300;
+
+/**
+ * What is wrong with a criterion's `hint`, or `null` (AD-36 as amended, Story 18.19): when declared,
+ * a non-empty string of at most `CRITERION_HINT_MAX` characters, on any kind. The read tool publishes
+ * it as the criterion's description; the screen never shows it.
+ * `OcuPilot.Screen.Registry.CriteriaHintProblem` returns the same sentences.
+ */
+function criteriaHintProblem(field, where) {
+  if (field.hint === undefined) return null;
+  if (typeof field.hint !== 'string' || field.hint === '') return `${where} hint is not a non-empty string`;
+  if (field.hint.length > CRITERION_HINT_MAX) return `${where} hint is longer than ${CRITERION_HINT_MAX} characters`;
   return null;
 }
 
@@ -3340,6 +3358,11 @@ export interface ReadCriterion {
    */
   readonly default?: string;
   readonly options?: readonly string[];
+  /**
+   * The one sentence the read tool publishes as this criterion's description in place of its kind's
+   * generic one (AD-36 as amended, Story 18.19). The screen never shows it.
+   */
+  readonly hint?: string;
 }
 
 /**

@@ -2,7 +2,8 @@
 title: 'Story 18.19: Journal record browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -455,6 +456,8 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 
 ## Spec Change Log
 
+- For the runner (AD-26, no factor correction): in the Story 18.19 paragraph, replace "Story 18.19's Task 0 confirms it" with "measured again at Story 18.19's Task 0 on `ocupilot-b-ci`, 2026-10-03: 4, 10, 40 and 2002 gave 2, 5, 20 and 1001".
+
 ## Review Triage Log
 
 ## Design Notes
@@ -498,6 +501,21 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 4. **AD-13, after the `journal-settings` sentence:** "A `journal-record` id is the record's `Address` within the file its list read, kept exactly. It names no write target (Story 18.19) [AMENDED <date>, Story 18.19 spec gate, Rule 20]."
 5. **AD-44, after Story 18.18's sentence:** "Story 18.19's Journal records declares the classic record browser `%cspapp.op.utilsysjournal` (Hidden, spelled as `NormalizePage` answers, measured at Story 18.5's Task 0). It has no write tool, so it declares no `CLASSICPAGES` [AMENDED <date>, Story 18.19 spec gate, Rule 20]."
 6. **AD-8:** written only if Task 0 halts on a pair beyond the screen's two and the orchestrator rules it.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-03; current file `20261003.318`, 848 listed files; no halt):
+
+- **S0:** 362 snapshot lines, 445 async task rows, monitor state 0. The seed wrote 30 SET records from address 112952296; a row's `GlobalNode` reads `^OcuProbe185(i)` and its `DatabaseName` `/durable/iris/mgr/ocuprobe185d/`.
+- **a.** `maxRows` 4, 10, 40 and 2002 kept 2, 5, 20 and 1001 rows: the list halves, factor 2. Every row's keys are exactly the eight columns.
+- **b.** The offset is inclusive in both orders. `Address`+1 in order 0 and `Address`−1 in order 1 snap to the next and previous record, so the next-page rule is the highest `Address`+1, or the lowest −1.
+- **c.** Each of the six operators (on `GlobalNode`) and each of the eight columns answered 200 and finished: `=` `^OcuProbe185(1)` matched 1 row, `[` `OcuProbe185` the probe rows, `MirrorDatabaseName` `=` `none` none, the rest capped pages.
+- **d.** The partial triple sent as is answered 200 with rows of every global: the vendor's 400 is overwritten when it queues, and `[` with an empty value matches every record. No task row was left.
+- **e.** Each read's wall clock includes the guard's list read, 1.67 s alone over 848 files: a filtered page 1.7 to 3.0 s; `maxRows` 2002 unfiltered 1.73 s; a filter matching nothing over `pFile` (113 MB) 2.1 to 2.9 s, and over the largest listed file (236 MB) 13.9 s, under `ASYNCTIMEOUT`.
+- **f.** The async task rows read 445 before and after every read by the `%All` session: the port deleted each row.
+- **g.** A probe record's `GET` answered 200 in 1.66 s with the Code Map's keys: `InTransaction` boolean, `ProcessID` a string, `NewValue` the whole 1,500 characters. A BeginTrans record answered `SetKill` `{}` and `VectorSetKill` `{}`. A non-record address answered 404 `PORT.NOTFOUND`: the `GET` does not snap.
+- **h.** (i) With exactly the screen's two pairs, the probe-filtered list answered 0 rows and the unfiltered one 19, all on IRISSYS, one unreadable row spending one count (named limit 1, measured). A probe record's `GET` answered 404 `PORT.NOTFOUND` and an IRISSYS record's 200. The principal left two finished task rows, removed as objects. Its process's halt logged one `%System/%Security/Protect` event: the vendor's work-queue cleanup could not write IRISLOCALDATA, and the queue node was gone afterwards. (ii) Without `%Admin_Operate:USE`: 403 `PORT.ACCESSDENIED` with no vendor work. Without `%DB_IRISSYS:READ`: 500 `INTERNAL` (`<PROTECT>` switching to `%SYS`). (iii) was not run.
+- **i.** With auditing on, neither `LIST` nor `GET` recorded a vendor event.
+- **Cleanup:** S2 equals S0 but for `messages.log` +4 and `alerts.log` +1 lines (h(ii)'s logged refusal) and the monitor state 0 to 1, cleared to 0 with `$SYSTEM.Monitor.Clear()`. No `OCUPROBE185*` database, resource or principal remains.
+- **Set from the record:** `HALVEDROWTYPES` factor 2; the next-page rule above; the dialog's fields are the `GET`'s top-level scalars and `SetKill`'s and `VectorSetKill`'s members.
 
 **Integration ACs:**
 
@@ -553,6 +571,26 @@ Story 18.5's Task 0 already measured these, so they are not re-run: the classic 
 - AC5: the route skips the cut → the 1,500-character leg goes red. The gate call is removed → the gate leg goes red on its zero port calls.
 - AC6: the descriptor's read adds a `rowGet` merging `NewValue` → the no-marker leg goes red.
 - AC7: `sideBarPosition` 1 with the mirror regenerated → `Navigation` and `navigation.test.mjs` go red. One prompt is removed → `JournalDescriptor` goes red.
+
+Recorded (each reverted byte-identical, the throwaway reloaded from the reverted tree):
+
+- mutation: the descriptor's read declares `Journal.File` `LIST` → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, with five other legs (run 3760)
+- mutation: `recordsRead` skips Journals' read when no file is named → page spec "a cold open first issues Journals' read" red (vitest)
+- mutation: `HALVEDROWTYPES` emptied → `JournalRecords.TestTheScreenAndItsToolReadTheCapThroughOneRead` red, "ten rows of the cap, truncated" (run 3759)
+- mutation: `nextOffset` answers the highest or lowest address unchanged → page spec "Next records" red (vitest), and the browser AC2 leg red after rebuild and redeploy
+- mutation: `JournalRecordRules` drops the comparison check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the port's injection case (run 3761)
+- mutation: `JournalRecordRules` drops the empty-value removal → `JournalRecords.TestAnEmptyValueSendsNoMatchKey` red alone (run 3762)
+- mutation: `JournalRecordRules` drops the digit check → `JournalRecords.TestInjectionAndShapeAreRefusedBeforeAnyVendorCall` red alone, on the offset and address cases (run 3763)
+- mutation: `JournalRecordDetail.RenderRefusal` renders `PORT.NOTFOUND` as it is → `JournalRecordDetail.TestARecordOnAnUnreadableDatabaseIsRefusedUnreadable` red alone (run 3764)
+- mutation: `JournalRecordDetail.Cut` answers its value whole → `JournalRecordDetail.TestARecordAnswersItsFieldsAndValuesCutAtOneThousand` red alone (run 3765)
+- mutation: the route's gate call removed → `JournalRecordDetail.TestTheRouteRefusesACallerWithoutThePairsWithZeroPortCalls` red alone, on its zero port calls (run 3766)
+- mutation: the descriptor's read gains a `rowGet` merging `SetKill.NewValue` → `JournalRecords.TestNoRecordValueReachesTheToolOrTheScreenRead` red, on "all thirty": the detail `GET` names no file, so every row is dropped before a value can arrive (run 3767)
+- mutation: the page writes the open record's `NewValue` into a row's `GlobalNode` in the store → page spec "the screen-context payload carries none of the record's values" red (vitest); keeping the record in the store's rows alone does not redden it, because context keeps only the eight declared fields
+- mutation: `sideBarPosition` 1, mirror regenerated → `navigation.test.mjs` "a side bar lists only built screens" red, and `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 3769)
+- mutation: the third prompt removed → `JournalDescriptor.TestJournalRecordsIsAnUnlistedServerCriteriaList` red alone (run 3768)
+- mutation: Journal file details' `onViewRecords` sets no arrival → details spec "View records" red (vitest), and the browser AC1 leg red after rebuild and redeploy
+- mutation: `useArrival` keeps the form's values for criteria an arrival omits → page spec "an arrival for another file" red (vitest)
+- mutation: the dialog renders values through `[innerHTML]` → browser AC5 leg red after rebuild and redeploy
 
 ## Auto Run Result
 

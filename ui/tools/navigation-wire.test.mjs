@@ -166,6 +166,13 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'os-management/journal-records',
+          labelKey: 'journalRecordListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/language-servers/activity',
           labelKey: 'languageServerActivityLabel',
           sideBarPosition: 0,

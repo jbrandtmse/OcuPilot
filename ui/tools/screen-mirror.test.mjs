@@ -1248,6 +1248,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // 19.1's four System Explorer screens, whose criteria carry the classic page's defaults.
   // Story 18.5's Journal file details and Journal file databases, whose one criterion each is the
   // journal file the route id names.
+  // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1264,6 +1265,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
+      'OcuPilot.Screen.Descriptor.JournalRecordList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',

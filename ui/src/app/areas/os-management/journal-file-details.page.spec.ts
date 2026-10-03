@@ -10,6 +10,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals } from '../../core/screen-arrival';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
@@ -72,7 +73,7 @@ function rows(list: unknown[]): JsonResult<unknown> {
   return { kind: 'ok', status: 200, body: { fields: [], rows: list, truncated: false, banner: '' } };
 }
 
-async function mount(answers: Answers) {
+async function mount(answers: Answers, arrivals: ScreenArrivals | null = null) {
   TestBed.resetTestingModule();
   const paths: string[] = [];
   const api = {
@@ -101,6 +102,7 @@ async function mount(answers: Answers) {
       { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
+      ...(arrivals === null ? [] : [{ provide: ScreenArrivals, useValue: arrivals }]),
     ],
   });
   await TestBed.inject(Router).navigateByUrl(URL);
@@ -113,7 +115,7 @@ async function mount(answers: Answers) {
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
   await settle(fixture);
-  return { host: fixture.nativeElement as HTMLElement, paths };
+  return { host: fixture.nativeElement as HTMLElement, paths, fixture };
 }
 
 function fieldValue(host: HTMLElement, field: string): string | undefined {
@@ -167,6 +169,19 @@ describe('Journal file details', () => {
     const { host } = await mount({ details: refused, databases: refused });
     expect(host.querySelector('.ocu-data-table-refusal')?.textContent).toContain(STRINGS.connectivityRequestRefused);
     expect(host.querySelector('[data-journal="gone"]')).toBeNull();
+  });
+
+  it('Story 18.19 AC1: View records hands Journal records this file and opens it', async () => {
+    // Mutation (Rule 19): drop the arrival from `onViewRecords` -> no arrival is held and this goes red.
+    const arrivals = new ScreenArrivals();
+    const { host, fixture } = await mount({ details: rows([summary()]), databases: rows([]) }, arrivals);
+    const link = host.querySelector('[data-journal="view-records"]') as HTMLAnchorElement;
+    expect(link.textContent?.trim()).toBe(STRINGS.journalFileDetailsViewRecords);
+    expect(link.getAttribute('href')).toContain('/os-management/journal-records?ns=HSCUSTOM');
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    await settle(fixture);
+    expect(TestBed.inject(Router).url).toBe('/os-management/journal-records?ns=HSCUSTOM');
+    expect(arrivals.take('os-management/journal-records')).toEqual({ route: 'os-management/journal-records', criterion: '', criteria: { file: FILE } });
   });
 
   it('isUnlisted answers only the journal guard\u2019s code', () => {

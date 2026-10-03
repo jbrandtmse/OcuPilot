@@ -721,6 +721,40 @@ Parameter JOURNALFILETYPES = "Journal.File/GET,Journal.File/INTEGRITYCHECK,Journ
 /// newest listed file, comma-separated.</p>
 Parameter JOURNALNEWESTTYPES = "Journal.Record/LIST";
 
+/// <p>The classic record browser's eight match columns (<code>%CSP.UI.System.OpenJournalPane</code>),
+/// the only <code>matchColumnName</code> values <method>JournalRecordRules</method> sends (Story 18.19,
+/// AD-21), comma-separated. <code>NewValue</code>, <code>OldValue</code> and
+/// <code>GlobalReference</code> are never among them.</p>
+Parameter JOURNALMATCHCOLUMNS = "TimeStamp,ProcessID,TypeName,ExtTypeName,InTransaction,GlobalNode,DatabaseName,MirrorDatabaseName";
+
+/// <p>The classic record browser's six comparisons, the only <code>matchOperator</code> values
+/// <method>JournalRecordRules</method> sends, comma-separated: the vendor splices the operator into
+/// code it executes (<code>%SYS.Journal.Record</code> <code>Fetch</code>), so nothing else is ever
+/// sent.</p>
+Parameter JOURNALMATCHOPERATORS = "=,'=,]],']],[,'[";
+
+/// <p>The three query parameters a record list's filter travels under: column, comparison and value,
+/// sent together or not at all.</p>
+Parameter JOURNALMATCHPARAMS = "matchColumnName,matchOperator,matchValue";
+
+/// <p>The <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs whose <parameter>JOURNALMATCHPARAMS</parameter>
+/// <method>JournalRecordRules</method> checks, comma-separated.</p>
+Parameter JOURNALMATCHTYPES = "Journal.Record/LIST";
+
+/// <p>The query parameter each journal record pair takes as a record address, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;param&gt;</code> entries: digits only, at most 20
+/// (<method>JournalRecordRules</method>). The list's empty offset is not sent; the record's empty
+/// address is refused.</p>
+Parameter JOURNALOFFSETPARAMS = "Journal.Record/LIST=initialOffset,Journal.Record/GET=address";
+
+/// <p>The pairs whose vendor list keeps fewer rows than its <code>maxRows</code>, with the factor this
+/// port multiplies <code>maxRows</code> by, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;factor&gt;</code> entries (AD-26). <code>Journal.Record/LIST</code>:
+/// the vendor counts each kept row twice and each row on a database the caller cannot read once
+/// (measured at Story 18.19's Task 0: 10 kept 5, 40 kept 20), so the doubling is exact only when no
+/// row is skipped.</p>
+Parameter HALVEDROWTYPES = "Journal.Record/LIST=2";
+
 /// <p>The endpoint whose <code>LIST</code> answers the instance's journal files, newest first
 /// (<code>%SYS.Journal.File:ByTimeReverseOrder</code>).</p>
 Parameter JOURNALLISTENDPOINT = "Journal.File";
@@ -1056,6 +1090,13 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If '..SplitQuery(pEndpoint, .pQuery, .tQuery) {
             Set tSC = ..Fail(pEndpoint, 404, $$$OK, .pHttpStatus, .pFault)
             Quit
+        }
+        ; Story 18.19 (AD-21, AD-26): a journal record call's filter, offset and address are checked,
+        ; and the list's maxRows multiplied, on the copy, before the guard's list read, so a refused
+        ; filter costs no vendor call at all.
+        If ..IsJournalRecordType(pEndpoint, pType) {
+            Set tSC = ..JournalRecordRules(pEndpoint, pType, .tQuery, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
         }
         ; AD-21's eighth case: a journal file is accepted only as the instance's own list spells it,
         ; read whole at this call and before the target's call. The guard works on the copy.
@@ -2545,6 +2586,76 @@ ClassMethod JournalGuard(pEndpoint As %String, pType As %String, ByRef pQuery, O
     }
     If tListed Quit $$$OK
     Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.JournalError).#FILEUNLISTED, ##class(OcuPilot.Api.JournalError).#REASONFILEUNLISTED, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a pair
+/// <parameter>JOURNALMATCHTYPES</parameter>, <parameter>JOURNALOFFSETPARAMS</parameter> or
+/// <parameter>HALVEDROWTYPES</parameter> names.</p>
+ClassMethod IsJournalRecordType(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Set tPair = pEndpoint _ "/" _ pSuffix
+    If $ListFind($ListFromString(..#JOURNALMATCHTYPES), tPair) Quit 1
+    Quit (..PairValue(..#JOURNALOFFSETPARAMS, tPair) '= "") || (..PairValue(..#HALVEDROWTYPES, tPair) '= "")
+}
+
+/// <p>The value after <code>=</code> of the entry for <var>pPair</var> in the comma-separated
+/// <code>&lt;pair&gt;=&lt;value&gt;</code> list <var>pList</var>, or <code>""</code>.</p>
+ClassMethod PairValue(pList As %String, pPair As %String) As %String [ Private ]
+{
+    Set tValue = ""
+    For tI = 1:1:$Length(pList, ",") {
+        Set tEntry = $Piece(pList, ",", tI)
+        If $Piece(tEntry, "=", 1) = pPair Set tValue = $Piece(tEntry, "=", 2, *)
+    }
+    Quit tValue
+}
+
+/// <p>Story 18.19's record rules for <var>pEndpoint</var>'s request type <var>pType</var>, applied to
+/// the query copy <var>pQuery</var> (AD-21, AD-26). Each refusal is made before any vendor call, the
+/// journal file guard's list read included, and none echoes the value:</p>
+/// <ul>
+/// <li>On a <parameter>JOURNALMATCHTYPES</parameter> pair, a non-empty <code>matchColumnName</code>
+/// outside <parameter>JOURNALMATCHCOLUMNS</parameter>, a non-empty <code>matchOperator</code> outside
+/// <parameter>JOURNALMATCHOPERATORS</parameter>, or a non-empty <code>matchValue</code> with an empty
+/// column or comparison, is refused 400 <code>JOURNAL.FILTER.SHAPE</code>. An empty
+/// <code>matchValue</code> removes all three keys, so the list is sent unfiltered.</li>
+/// <li>The <parameter>JOURNALOFFSETPARAMS</parameter> parameter must match
+/// <code>^[0-9]{1,20}$</code>, else 400 <code>JOURNAL.OFFSET.SHAPE</code>; the list's empty offset is
+/// removed, the record's empty or absent address is refused.</li>
+/// <li>On a <parameter>HALVEDROWTYPES</parameter> pair, a <code>maxRows</code> of digits is multiplied
+/// by its factor; an absent one keeps the vendor's own default.</li>
+/// </ul>
+ClassMethod JournalRecordRules(pEndpoint As %String, pType As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tPair = pEndpoint _ "/" _ pType
+    If $ListFind($ListFromString(..#JOURNALMATCHTYPES), tPair) {
+        Set tColumnParam = $Piece(..#JOURNALMATCHPARAMS, ",", 1)
+        Set tOperatorParam = $Piece(..#JOURNALMATCHPARAMS, ",", 2)
+        Set tValueParam = $Piece(..#JOURNALMATCHPARAMS, ",", 3)
+        Set tColumn = $Get(pQuery(tColumnParam))
+        Set tOperator = $Get(pQuery(tOperatorParam))
+        Set tValue = $Get(pQuery(tValueParam))
+        Set tShape = 1
+        If (tColumn '= "") && '$ListFind($ListFromString(..#JOURNALMATCHCOLUMNS), tColumn) Set tShape = 0
+        If (tOperator '= "") && '$ListFind($ListFromString(..#JOURNALMATCHOPERATORS), tOperator) Set tShape = 0
+        If (tValue '= "") && ((tColumn = "") || (tOperator = "")) Set tShape = 0
+        If 'tShape Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.JournalError).#FILTERSHAPE, ##class(OcuPilot.Api.JournalError).#REASONFILTERSHAPE, .pHttpStatus, .pFault)
+        If tValue = "" Kill pQuery(tColumnParam), pQuery(tOperatorParam), pQuery(tValueParam)
+    }
+    Set tOffsetParam = ..PairValue(..#JOURNALOFFSETPARAMS, tPair)
+    If tOffsetParam '= "" {
+        Set tOffset = $Get(pQuery(tOffsetParam))
+        If (tOffset = "") && (pType = "LIST") {
+            Kill pQuery(tOffsetParam)
+        } ElseIf '$Match(tOffset, "^[0-9]{1,20}$") {
+            Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.JournalError).#OFFSETSHAPE, ##class(OcuPilot.Api.JournalError).#REASONOFFSETSHAPE, .pHttpStatus, .pFault)
+        }
+    }
+    Set tFactor = ..PairValue(..#HALVEDROWTYPES, tPair)
+    If (tFactor > 1) && $Match($Get(pQuery("maxRows")), "^[0-9]{1,9}$") Set pQuery("maxRows") = pQuery("maxRows") * tFactor
+    Quit $$$OK
 }
 
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type

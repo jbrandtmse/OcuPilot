@@ -739,6 +739,7 @@ app-task-history-page,
 app-databases-page,
 app-database-details-page,
 app-code-list-page,
+app-journal-records-page,
 app-source-viewer-page {
   display: flex;
   flex: 1 1 auto;
@@ -2825,6 +2826,13 @@ app-data-table {
   display: flex;
   align-items: center;
   gap: var(--ocu-space-3);
+}
+
+// A secondary action beside the Search (Journal records' Next records, Story 18.19) keeps its own
+// width and one line, rather than sharing the full-width primary's row.
+.ocu-criteria-controls .ocu-button-secondary {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .ocu-criteria-marker {

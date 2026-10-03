@@ -4,7 +4,7 @@
 /// (<method>Guard</method>), so a test can show a refusal made before the vendor was called for the
 /// target, and can answer a file's <code>GET</code> absent (<method>AnswerAbsent</method>). State lives
 /// in <code>^||OcuPilotJournalCountPort</code>; <method>Reset</method> forgets it. Nothing about the
-/// instance is changed.</p>
+/// instance is changed. It also records what each vendor call was sent (<method>SentKeys</method>).</p>
 Class OcuPilot.Test.JournalCountPort Extends OcuPilot.Port.AdminPort
 {
 
@@ -38,11 +38,45 @@ ClassMethod Calls() As %Integer
 }
 
 /// <p>The admin port's own gate, counted: it is asked once per vendor call, before the endpoint's
-/// semantics or <code>Run()</code>.</p>
+/// semantics or <code>Run()</code>. Each call's stub request URL and query parameters are recorded
+/// for <method>SentKeys</method> (Story 18.19).</p>
 ClassMethod HoldsResource(pResource As %String) As %Boolean
 {
-    Set ^||OcuPilotJournalCountPort("calls") = ..Calls() + 1
+    Set tCall = ..Calls() + 1
+    Set ^||OcuPilotJournalCountPort("calls") = tCall
+    If $IsObject($Get(%request)) {
+        Set ^||OcuPilotJournalCountPort("sent", tCall) = %request.URL
+        Set tName = ""
+        For {
+            Set tName = $Order(%request.Data(tName))
+            If tName = "" Quit
+            Set ^||OcuPilotJournalCountPort("sent", tCall, tName) = $Get(%request.Data(tName, 1))
+        }
+    }
     Quit ##super(pResource)
+}
+
+/// <p>The query parameter names the last vendor call whose stub URL ends with <var>pUrlEnd</var> was
+/// sent with, comma-separated in collation order, or <code>"none"</code> when no such call was made
+/// since <method>Reset</method>.</p>
+ClassMethod SentKeys(pUrlEnd As %String) As %String
+{
+    Set tCall = ""
+    For {
+        Set tCall = $Order(^||OcuPilotJournalCountPort("sent", tCall), -1)
+        If tCall = "" Quit
+        Set tUrl = ^||OcuPilotJournalCountPort("sent", tCall)
+        If $Extract(tUrl, * - $Length(pUrlEnd) + 1, *) = pUrlEnd Quit
+    }
+    If tCall = "" Quit "none"
+    Set tKeys = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(^||OcuPilotJournalCountPort("sent", tCall, tName))
+        If tName = "" Quit
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tName
+    }
+    Quit tKeys
 }
 
 /// <p>The journal file guard for <var>pEndpoint</var>'s request type <var>pType</var> over the query

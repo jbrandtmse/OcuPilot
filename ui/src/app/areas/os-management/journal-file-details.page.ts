@@ -1,16 +1,22 @@
+import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
-import { NavigationService, parentCriteria, screenForRoute } from '../../core/navigation';
+import { NavigationService, parentCriteria, screenForRoute, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
-import { createScreenRead } from '../../core/screen-read';
+import { ScreenArrivals } from '../../core/screen-arrival';
+import { createScreenRead, textOf } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
+import { fieldOf } from '../../core/table-model';
 import { STRINGS, stringFor } from '../../core/strings';
 import { JOURNAL_DATABASES_MAX_ROWS, JOURNAL_DATABASES_ROUTE, isUnlisted, rowCells, type CellText } from './journal-file-details.store';
+
+/** Journal records' route, which View records opens (Story 18.19). */
+export const JOURNAL_RECORDS_ROUTE = 'os-management/journal-records';
 
 /** A screen this page renders, and the store its rows land in. */
 interface DetailsView {
@@ -43,7 +49,11 @@ interface DatabaseRowView {
  *
  * **States.** Skeleton fields on first load; a refused read shows the refusal with Retry; a file the
  * instance no longer lists -- refused `JOURNAL.FILE.UNLISTED`, or answering no row -- shows "This
- * journal file is no longer listed." in place of the fields. The page carries no action.
+ * journal file is no longer listed." in place of the fields.
+ *
+ * **View records** (Story 18.19) opens Journal records on this file: a page-local link that hands
+ * the file over as a screen arrival (`ScreenArrivals`) and navigates; a modified click is left to the
+ * browser, whose new page reads the newest file. The page carries no other action.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -84,6 +94,11 @@ interface DatabaseRowView {
             </div>
           }
         </div>
+        <nav class="ocu-details-links">
+          <a class="ocu-details-link" data-journal="view-records" [href]="recordsHref" (click)="onViewRecords($event)">{{
+            STRINGS.journalFileDetailsViewRecords
+          }}</a>
+        </nav>
       </section>
       <section class="ocu-details-group" data-journal="databases">
         <h2 class="ocu-details-heading">{{ STRINGS.databaseListLabel }}</h2>
@@ -128,6 +143,10 @@ export class JournalFileDetailsPage {
   private readonly api = inject(ApiService);
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
+  private readonly locationStrategy = inject(LocationStrategy);
+
+  /** Journal records' hand-off (Story 18.19). Optional, so a spec that needs none provides none. */
+  private readonly arrivals = inject(ScreenArrivals, { optional: true });
 
   protected readonly STRINGS = STRINGS;
 
@@ -307,6 +326,23 @@ export class JournalFileDetailsPage {
   protected get showDatabasesEmpty(): boolean {
     this.generation();
     return this.databasesLoaded() && !this.databasesFaultSignal() && !this.hasDatabaseRows;
+  }
+
+  /** Journal records' address in this namespace. */
+  protected get recordsHref(): string {
+    return this.locationStrategy.prepareExternalUrl(withQuery(JOURNAL_RECORDS_ROUTE, this.router.url));
+  }
+
+  /**
+   * View records: hand Journal records this file as an arrival and open it. A modified click is left
+   * to the browser.
+   */
+  protected onViewRecords(event: MouseEvent): void {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    const file = textOf(fieldOf(this.row, 'Name'));
+    this.arrivals?.set({ route: JOURNAL_RECORDS_ROUTE, criterion: '', criteria: { file } });
+    void this.router.navigateByUrl(withQuery(JOURNAL_RECORDS_ROUTE, this.router.url));
   }
 
   protected onRetryDatabases(): void {
