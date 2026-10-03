@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:636 */
+  /** EXPERIENCE.md:637 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4756,6 +4756,170 @@ export const STRINGS = {
   explorerSqlConstraintsPrompt2: 'What is this table\'s primary key?',
   /** EXPERIENCE.md:595 */
   explorerSqlConstraintsPrompt3: 'Which foreign keys does this table declare?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabPartitions: 'Partitions',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabPartitionMappings: 'Partition mappings',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabCachedQueries: 'Cached queries',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabStatements: 'SQL statements',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewLabel: 'SQL view',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabViewInfo: 'View info',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureLabel: 'SQL procedure',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabProcedureInfo: 'Stored procedure info',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPartition: 'Partition',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnBuckets: 'Buckets',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRows: 'Rows',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnEstimatedSize: 'Estimated size',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRule: 'Rule',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnCachedQuery: 'Cached query',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnQueryType: 'Query type',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnFeatures: 'Statement features',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStatement: 'Statement',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPlanState: 'Plan state',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnNewPlan: 'New plan',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnExecutions: 'Executions',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnTotalTime: 'Total time',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnAverageTime: 'Average time',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStdDevTime: 'Standard deviation',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRowCount: 'Row count',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnFirstSeen: 'First seen',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnClassType: 'Class type',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnLength: 'Length',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPrecision: 'Precision',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnScale: 'Scale',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStream: 'Stream',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInputs: 'Inputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInOuts: 'Inputs and outputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnOutputs: 'Outputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInterface: 'Interface',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnColumnCount: 'Column count',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInputParameters: 'Input parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInOutParameters: 'Input and output parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnOutputParameters: 'Output parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnResultColumns: 'Result columns',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnReturnValue: 'Return value',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsEmpty: 'This table has no partitions.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsEmpty: 'This table has no partition mappings.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesEmpty: 'This table has no cached queries this account can run.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsEmpty: 'No SQL statements reference this table.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewEmpty: 'This view no longer exists.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsEmpty: 'This view has no fields this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsEmpty: 'No SQL statements reference this view.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureEmpty: 'This procedure no longer exists.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsEmpty: 'No SQL statements reference this procedure.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewReason: 'Name one view, as Schema.View.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureReason: 'Name one procedure, as Schema.Procedure.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewAmbiguousReason: 'That name matches more than one view in this namespace.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureAmbiguousReason: 'That name matches more than one procedure in this namespace.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewNotFoundReason: 'This namespace holds no view by that name that this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureNotFoundReason: 'This namespace holds no procedure by that name that this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt1: 'Is this table partitioned, and into how many partitions?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt2: 'How many rows does each partition of this table hold?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt3: 'Which database does each partition of this table map to?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt1: 'Which partition mappings does this table have?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt2: 'Where do this table\'s partition ranges map to?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt3: 'How large is each partition range of this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt1: 'Which cached queries use this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt2: 'When was each cached query on this table created?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt3: 'Which of these cached queries are dynamic SQL?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt1: 'Which SQL statements use this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt2: 'Which statements on this table run most often?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt3: 'Which statements on this table have a frozen plan?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt1: 'What does this view select?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt2: 'Can this view be updated?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt3: 'Which class projects this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt1: 'Which columns does this view have?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt2: 'What type is each column of this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt3: 'Which columns of this view are streams?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt1: 'Which SQL statements use this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt2: 'Which statements on this view run most often?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt3: 'Where is this view queried from?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt1: 'What does this procedure do?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt2: 'Which parameters does this procedure take?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt3: 'What does this procedure return?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt1: 'Which SQL statements call this procedure?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt2: 'How often is this procedure called?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt3: 'Where is this procedure called from?',
   // Story 18.19: Journal records -- its title and entity noun, Journal file details' View records,
   // the criteria form's heading, labels and option words, Next records, the empty state, the record
   // dialog's title and field labels, and the prompts. Time, Process, Type, In transaction, Database,

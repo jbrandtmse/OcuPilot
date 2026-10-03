@@ -93,7 +93,13 @@ const SOURCE_VIEWER_IDS = {
  * Id-requiring screens the walk does not open, each with its reason. A screen named here is
  * reported as skipped; an id-requiring screen that is neither here nor resolved fails the gate.
  */
-export const SKIP = {};
+export const SKIP = {
+  // Story 19.14: HSCUSTOM holds no view outside the system schemas, so the SQL views list opens empty
+  // and gives a view's tabs no id; system-explorer-sql.browser-spec.mjs checks all three on a probe view.
+  'system-explorer/sql-views/document': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
+  'system-explorer/sql-views/fields': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
+  'system-explorer/sql-views/statements': 'HSCUSTOM holds no view outside the system schemas, so the SQL views list opens with no row to open',
+};
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */
 const SEED_LIMITS = 'OcuPilot.Kernel.Agent.Limits';

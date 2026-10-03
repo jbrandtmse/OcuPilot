@@ -292,6 +292,7 @@ services:
       # The SQL catalog's live class signs in as a principal granted SELECT on one probe table
       # alone and reads the catalog as it (Story 19.5).
       # classes: AtelierPortCatalogLive
+      # classes: AtelierPortCatalogTabsLive
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate

@@ -386,7 +386,8 @@ Method TestSearchAndMacrosAreRefusedNamingThePair()
 /// refused 403 naming it by the route and by the port before any route, and the navigation map draws
 /// the four catalog lists unavailable naming it; without READ on <code>USER</code>'s database the port
 /// refuses both there naming that pair before any route; and the full principal is answered the schemas
-/// in <code>USER</code>.</p>
+/// in <code>USER</code>. Story 19.14 AC10: a view's and a procedure's information are refused the same
+/// way, by the route and by the port, without either pair.</p>
 /// <p>Mutation (Rule 19): give <class>OcuPilot.Screen.Descriptor.ExplorerSqlTables</class> an empty
 /// pair set -&gt; the navigation map opens SQL tables and the verdict assertion goes red.</p>
 Method TestTheCatalogIsRefusedNamingThePair()
@@ -400,12 +401,15 @@ Method TestTheCatalogIsRefusedNamingThePair()
     Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
     Do $$$AssertEquals(..LegText(tProbe, tHere, "Catalog.Tables"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "the port refuses a list before any route")
     Do $$$AssertEquals(..LegText(tProbe, tHere, "Catalog.Triggers"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "and a tab")
+    Do $$$AssertEquals(..LegText(tProbe, tHere, "Catalog.View") _ "|" _ ..LegText(tProbe, tHere, "Catalog.Procedure"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE|403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "and a view's and a procedure's information")
+    Do $$$AssertEquals(..Read(..#NODEVUSER, "explorer.sqlview", "view=INFORMATION_SCHEMA.Tables&ns=" _ tHere) _ "|" _ ..Read(..#NODEVUSER, "explorer.sqlprocedure", "procedure=%Library.RoutineMgr_StudioOpenDialog&ns=" _ tHere), "403 AUTH.NOPRIVILEGE %Development:USE|403 AUTH.NOPRIVILEGE %Development:USE", "the route refuses them too, naming the pair")
 
     Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#OTHERNAMESPACE, .tOther, .tGlobals, .tMapped, .tResolved)
     Set tProbe = ..ProbeAs(..#NOUSERUSER, ..#OTHERNAMESPACE)
     Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
     Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.Tables"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "a USER list is refused naming the database's pair")
     Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.Triggers"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "and so is a USER tab")
+    Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.View") _ "|" _ ..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.Procedure"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ|403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "and a USER view's and procedure's information")
 
     Set tRead = ..Read(..#FULLUSER, "explorer.sqlschemas", "maxRows=1&system=yes&ns=" _ ..#OTHERNAMESPACE)
     Do $$$AssertTrue($Extract(tRead, 1, 9) = "200 rows=", "the full principal reads the schemas in USER, which its SQL privileges filter: " _ tRead)
