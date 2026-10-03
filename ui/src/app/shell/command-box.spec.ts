@@ -50,6 +50,23 @@ const USERS = screen('permissions/users', 'navAreaPermissions', 'permissions', {
 const LOGS = screen('logs/messages', 'navAreaLogs', 'logs', { commandAliases: ['tail'] });
 const HOME = screen('', 'navAreaHome', 'home', { commandAliases: ['start'] });
 
+// Four ways the needle `class` meets a screen, declared in the reverse of the order they rank in:
+// through an alias alone, elsewhere in the name, the start of the name, the whole name.
+const ALIAS_ONLY = screen('system-explorer/routines', 'explorerRoutineListLabel', 'system-explorer', {
+  commandAliases: ['classes and routines'],
+});
+const ALIAS_ONLY_FAVORITE = screen('system-explorer/macros', 'explorerMacroLabel', 'system-explorer', {
+  commandAliases: ['class macros'],
+});
+const NAME_ELSEWHERE = screen('system-explorer/editor', 'explorerClassEditorLabel', 'system-explorer');
+const NAME_PREFIX = screen('system-explorer/classes', 'explorerClassListLabel', 'system-explorer');
+const NAME_EXACT = screen('system-explorer/class', 'explorerClassDocumentLabel', 'system-explorer');
+
+// The shipped pair, read from the mirror, Macros declared first: Macros meets `definition` through
+// its `macro definition` alias alone, and Definitions through the start of its name.
+const MACROS = screenForRoute('system-explorer/macros') as ScreenDeclaration;
+const DEFINITIONS = screenForRoute('agent/definitions') as ScreenDeclaration;
+
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
   current: ScreenDeclaration | null = USERS;
@@ -109,6 +126,10 @@ describe('the command box', () => {
     Array.from(fixture.nativeElement.querySelectorAll('[role="option"]'));
   const count = (): string =>
     fixture.nativeElement.querySelector('[role="status"]')?.textContent?.trim() ?? '';
+  const screenLabels = (): string[] =>
+    Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-screens [role="option"] .ocu-command-box-option-label')
+    ).map((label) => (label as HTMLElement).textContent?.trim() ?? '');
 
   const type = (value: string) => {
     field().value = value;
@@ -147,6 +168,9 @@ describe('the command box', () => {
           { path: 'logs/messages', children: [] },
           // DW-1852: where the OAuth 2.0 row lands for a holder of only the authorization server tab.
           { path: 'security/oauth/server', children: [] },
+          // Where Enter lands when the ranking puts the whole-name match first.
+          { path: 'system-explorer/class', children: [] },
+          { path: 'agent/definitions', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: OverlayStack, useValue: overlays },
@@ -868,7 +892,7 @@ describe('the command box', () => {
 
   it('Story 15.2 (AD-37): a favorite naming no built screen adds no row here, and the count is unchanged', async () => {
     // The stored row survives on the instance; what it cannot do is put an option in this box.
-    // Rows come from the navigation roster alone -- a favorite only partitions them -- so a route
+    // Rows come from the navigation roster alone -- a favorite only reorders them -- so a route
     // the roster does not hold has nothing to rank.
     await accountPreferences.add('favorite', 'no-such-area/no-such-screen');
     fixture.detectChanges();
@@ -947,6 +971,69 @@ describe('the command box', () => {
     expect(signOuts).toBe(1);
     expect(field().getAttribute('aria-expanded')).toBe('false');
     expect(listbox()).toBeNull();
+  });
+
+  it('ranks screens by how the text meets each name: whole, start, elsewhere, then an alias alone; Enter opens the first', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    navigation.roster = [ALIAS_ONLY, NAME_ELSEWHERE, NAME_PREFIX, NAME_EXACT];
+    navigation.notify();
+    chord();
+    type('Class');
+
+    expect(screenLabels()).toEqual([
+      STRINGS.explorerClassDocumentLabel,
+      STRINGS.explorerClassListLabel,
+      STRINGS.explorerClassEditorLabel,
+      STRINGS.explorerRoutineListLabel,
+    ]);
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    expect(router.url).toBe('/system-explorer/class');
+  });
+
+  it('offers Definitions before Macros for "Definition" and opens it on Enter, while "macro" still finds Macros', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/');
+    navigation.roster = [MACROS, DEFINITIONS];
+    navigation.notify();
+    chord();
+
+    type('macro');
+    expect(screenLabels()).toEqual([STRINGS.explorerMacroLabel]);
+
+    type('Definition');
+    expect(screenLabels()).toEqual([STRINGS.agentDefinitionListLabel, STRINGS.explorerMacroLabel]);
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await fixture.whenStable();
+    expect(router.url).toBe('/agent/definitions');
+  });
+
+  it('Story 15.2 within a rank: a favorite leads its own rank and never passes a closer name', async () => {
+    navigation.roster = [ALIAS_ONLY, ALIAS_ONLY_FAVORITE, NAME_ELSEWHERE, NAME_PREFIX, NAME_EXACT];
+    navigation.notify();
+    await accountPreferences.add('favorite', ALIAS_ONLY_FAVORITE.route);
+    await accountPreferences.add('favorite', NAME_ELSEWHERE.route);
+    fixture.detectChanges();
+    chord();
+
+    // At rest every screen shares one rank: favorites first, then declaration order.
+    expect(screenLabels()).toEqual([
+      STRINGS.explorerMacroLabel,
+      STRINGS.explorerClassEditorLabel,
+      STRINGS.explorerRoutineListLabel,
+      STRINGS.explorerClassListLabel,
+      STRINGS.explorerClassDocumentLabel,
+    ]);
+
+    type('class');
+    expect(screenLabels()).toEqual([
+      STRINGS.explorerClassDocumentLabel,
+      STRINGS.explorerClassListLabel,
+      STRINGS.explorerClassEditorLabel,
+      STRINGS.explorerMacroLabel,
+      STRINGS.explorerRoutineListLabel,
+    ]);
   });
 
   it('Story 15.2: the ranking survives a filter, and the count still reports what is listed', async () => {

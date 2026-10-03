@@ -825,3 +825,7 @@
 2026-10-03T02:25:27Z	orchestrator	ci_green_verified	run=37086849522 head=4e63f968 (19.4 re-review, contains feature 96565f10): success
 2026-10-03T02:25:27Z	orchestrator	merge_enqueued	epic=19 story=19.4 head=8c085caf (bookkeeping over 4e63f968) route=fast-forward
 2026-10-03T02:25:30Z	orchestrator	merged	epic=19 story=19.4 search/compare/macro head=8c085caf by fast-forward; verified on origin; DW-1962 ranking fix follows on its own head
+2026-10-03T02:42:35Z	Epic 19	rework	DW-1962 command-box ranking fix head=6281d781 (merges feature 9a22140e) run=37090687982 pending: rank whole label > prefix > in-label > alias/route-only, favorites first per rank, declaration order ties; definitions test 5 asserts Definitions first + Enter opens it + Macros offered; mutations redden; re-review high=0 med=0, 4 lows patched a35a5664; bundle 2549kB; DW-1965 (gated Definitions row ranks first for a %Development-only user) by-design accepted by=merge_gate
+2026-10-03T03:26:56Z	orchestrator	ci_green_verified	run=37090687982 head=6281d781 (DW-1962 ranking fix over feature 9a22140e): success
+2026-10-03T03:26:56Z	orchestrator	merge_enqueued	epic=19 DW-1962 follow-up head=7460978a (bookkeeping over 6281d781) route=fast-forward
+2026-10-03T03:27:12Z	orchestrator	merged	epic=19 DW-1962 command-box ranking fix head=7460978a by fast-forward; verified on origin (first push attempt failed on a zsh $H:r modifier, nothing moved)

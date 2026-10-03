@@ -9147,6 +9147,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
 - 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
+- 2026-10-03T02:40:39Z status=resolved-by:19-4-search-compare-and-macro-lookup owner=19-4-search-compare-and-macro-lookup by=merge_gate note=fixed at the orchestrator's request (rework 2, 742a39f0 + re-review patch): command-box Screens rows rank exact label, label prefix, other label match, then alias or route only; favorites first within a rank; Definition + Enter opens Definitions; Macros keeps its alias
 
 ### DW-1963: IRIS defect candidate: the Atelier action/query route prepares every statement with SQL privilege checks off
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: high | footprint: out-of-footprint
@@ -9192,3 +9193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: JournalPort.Snippet applies PurgeCounts only, since a pure Snippet cannot read ArchiveName; the stored payload already carries the merge's purge rule, so script and write differ only if the archive target disappears between mint and draft
 - 2026-10-03T03:45:32Z status=wontfix-theoretical owner=18-18-journal-settings by=cr note=real only if an archive target is removed between a proposal's mint and its copy-out draft
+### DW-1965: The command box ranks a gated screen by its name like any other, so a closest-named screen the caller cannot open takes the active row and Enter does nothing
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.
+- 2026-10-03T02:38:34Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=ranking keys are the DW-1962 ruling (name, favorite, order); gated rows stay listed, reason inline (EXPERIENCE.md)
