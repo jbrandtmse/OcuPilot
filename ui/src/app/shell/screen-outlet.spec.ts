@@ -21,6 +21,7 @@ import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { LdapEditorPage } from '../areas/security/ldap-editor.page';
+import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { ListPage } from './list-page';
 import {
   ARCHETYPE_PAGES,
@@ -456,6 +457,16 @@ describe('the descriptor map (DW-369)', () => {
       expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.${kind}MappingList`, 'list')).toBe(ListPage);
     }
     expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.NamespaceList', 'list')).toBe(NamespaceListPage);
+  });
+
+  it('Story 19.5: the four SQL catalog lists resolve to the criteria-form list page', () => {
+    // Mutation (Rule 19): drop ExplorerSqlViews from `DESCRIPTOR_PAGES` -> it falls to the audit page
+    // and this goes red.
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    for (const list of ['Schemas', 'Tables', 'Views', 'Procedures']) {
+      expect(resolveScreenPage(descriptorPages, archetypePages, `OcuPilot.Screen.Descriptor.ExplorerSql${list}`, 'list (server criteria)')).toBe(CodeListPage);
+    }
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {

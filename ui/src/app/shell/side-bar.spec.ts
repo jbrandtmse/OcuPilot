@@ -122,6 +122,8 @@ describe('the primary side bar', () => {
           { path: 'permissions/roles', children: [] },
           { path: 'security/oauth', children: [] },
           { path: 'security/oauth/server', children: [] },
+          { path: 'system-explorer/sql-tables/document/:id', children: [] },
+          { path: 'system-explorer/sql-tables/triggers/:id', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
@@ -277,6 +279,25 @@ describe('the primary side bar', () => {
       fixture.detectChanges();
       const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
       expect(current.map((entry) => entry.textContent?.trim())).toEqual([STRINGS.oauthLabel]);
+    }
+  });
+
+  it('Story 19.5: every tab of a parent-scoped group marks the list it is reached from current', async () => {
+    // Mutation (Rule 19): drop the parent-scoped branch from `side-bar.ts` -> the group's head is
+    // unlisted, so no entry is current and this goes red.
+    const router = TestBed.inject(Router);
+    const schemas = screenForRoute('system-explorer/sql-schemas') as ScreenDeclaration;
+    const tables = screenForRoute('system-explorer/sql-tables') as ScreenDeclaration;
+    navigation.screens = [schemas, tables];
+    navigation.notify();
+    // The stub lists its screens under 'permissions' whatever they declare, as the Story 6.4 case reads.
+    shell.activateArea('permissions', false);
+    shell.setActiveArea('permissions');
+    for (const url of ['/system-explorer/sql-tables/document/OcuProbe195.Visible?ns=USER', '/system-explorer/sql-tables/triggers/OcuProbe195.Visible?ns=USER']) {
+      await router.navigateByUrl(url);
+      fixture.detectChanges();
+      const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
+      expect(current.map((entry) => entry.textContent?.trim())).toEqual([STRINGS.explorerSqlTablesLabel]);
     }
   });
 

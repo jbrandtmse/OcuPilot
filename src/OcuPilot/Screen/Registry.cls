@@ -660,9 +660,12 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 /// <p>A member is any declaration whose <code>tab</code> is an object with a string
 /// <code>group</code>. Groups are checked in the order their first member appears. For each: the
 /// group names a built member (the declaration at the group's route, built, declaring that group);
-/// every member shares that member's <code>area</code> and <code>archetype</code>; and the members'
-/// positions, sorted, run 1 to their count with no gap or repeat. A shape one member cannot hold on
-/// its own is <method>TabProblem</method>'s.</p>
+/// every member shares that member's <code>area</code> and <code>archetype</code>; the members'
+/// positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
+/// <code>parentScope</code>, and in a parent-scoped group its one criterion's <code>param</code>,
+/// <code>kind</code> and <code>maxLength</code>, since the strip carries the one route id from tab to
+/// tab, and the group is its parent list's <code>&lt;route&gt;/document</code>, the route the list's
+/// name cell opens. A shape one member cannot hold on its own is <method>TabProblem</method>'s.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>tabGroupProblem</code> returns the same sentence
 /// for every roster case in <class>OcuPilot.Test.TabCorpus</class>.</p>
 ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
@@ -725,11 +728,54 @@ ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
                 Set tProblem = tHead.%Get("descriptor") _ ": tab.group '" _ tGroup _ "' declares positions " _ tText _ ", and a tab group's positions run 1 to " _ tMembers(tGroup) _ " with no gap or repeat (AD-5)"
                 Quit
             }
+            Set tParent = ..TabParent(tHead.%Get("declaration"))
+            Set tCriterion = ..TabCriterion(tHead.%Get("declaration"))
+            For tM = 1:1:tMembers(tGroup) {
+                Set tDeclaration = tMembers(tGroup, tM).%Get("declaration")
+                Set tMemberParent = ..TabParent(tDeclaration)
+                If tMemberParent '= tParent {
+                    Set tProblem = tMembers(tGroup, tM).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is declared with parentScope '" _ tMemberParent _ "', and a tab group's members share the parentScope '" _ tParent _ "' of '" _ tGroup _ "' (AD-5)"
+                    Quit
+                }
+                If tParent = "" Continue
+                Set tMemberCriterion = ..TabCriterion(tDeclaration)
+                If tMemberCriterion '= tCriterion {
+                    Set tProblem = tMembers(tGroup, tM).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is parent-scoped and reads criterion " _ tMemberCriterion _ ", and its members share the one criterion " _ tCriterion _ " of '" _ tGroup _ "' (AD-5)"
+                    Quit
+                }
+            }
+            If tProblem '= "" Quit
+            If (tParent '= "") && (tGroup '= (tParent _ "/document")) {
+                Set tProblem = tHead.%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is parent-scoped under '" _ tParent _ "', and a parent-scoped group is its parent list's '" _ tParent _ "/document' (AD-5)"
+                Quit
+            }
         }
     } Catch ex {
         Set tProblem = "the tab groups could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p><var>pDeclaration</var>'s <code>parentScope</code>, or <code>""</code> when it declares none
+/// as a string.</p>
+ClassMethod TabParent(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    If pDeclaration.%GetTypeOf("parentScope") '= "string" Quit ""
+    Quit pDeclaration.%Get("parentScope")
+}
+
+/// <p><var>pDeclaration</var>'s one read criterion as <code>'param' (kind, maxLength)</code>, or
+/// <code>none</code> when its read declares other than exactly one.</p>
+ClassMethod TabCriterion(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    If pDeclaration.%GetTypeOf("read") '= "object" Quit "none"
+    Set tCriteria = pDeclaration.%Get("read").%Get("criteria")
+    If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit "none"
+    Set tFields = tCriteria.%Get("fields")
+    If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") || (tFields.%Size() '= 1) Quit "none"
+    Set tField = tFields.%Get(0)
+    If '$IsObject(tField) Quit "none"
+    Quit "'" _ tField.%Get("param") _ "' (" _ tField.%Get("kind") _ ", " _ tField.%Get("maxLength") _ ")"
 }
 
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>ownPrivileges</code>, or <code>""</code>
@@ -1430,6 +1476,9 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// it by name, and it re-reads only on open, Search and Refresh.</p>
 /// <p><b>A <code>text</code> or <code>choice</code> criterion may declare <code>default</code></b>,
 /// the value a caller that omits it is read with (<method>CriteriaValueDefaultProblem</method>).</p>
+/// <p><b>Any criterion may declare <code>hint</code></b>, the one sentence the read tool publishes as
+/// its description (AD-36, Story 18.19; <method>CriteriaHintProblem</method>). The screen never
+/// shows it.</p>
 /// <p><b>A <code>datetime</code> criterion may declare <code>defaultHoursAgo</code></b> (a whole
 /// number from 1 to <parameter>CRITERIONMAXHOURS</parameter>), the default a caller that omits it
 /// takes, <b>or <code>atOrAfterField</code></b>, a <code>read.fields</code> member it is compared
@@ -1530,7 +1579,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField", "default")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam", "defaultHoursAgo", "atOrAfterField", "default", "hint")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -1588,6 +1637,8 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             If tProblem '= "" Quit
         }
         Set tProblem = ..CriteriaValueDefaultProblem(tField, tWhere)
+        If tProblem '= "" Quit
+        Set tProblem = ..CriteriaHintProblem(tField, tWhere)
         If tProblem '= "" Quit
     }
     If tProblem '= "" Set pParams = ""
@@ -1699,6 +1750,21 @@ ClassMethod CriteriaValueDefaultProblem(pField As %DynamicObject, pWhere As %Str
         If tOption = tDefault Set tFound = 1
     }
     If 'tFound Quit pWhere _ " default '" _ tDefault _ "' is not one of its options"
+    Quit ""
+}
+
+/// <p>The longest <code>hint</code> a criterion may declare, in characters (AD-36).</p>
+Parameter CRITERIONHINTMAX As INTEGER = 300;
+
+/// <p>What is wrong with a criterion's <code>hint</code>, or <code>""</code> (AD-36 as amended, Story
+/// 18.19): when declared, a non-empty string of at most <parameter>CRITERIONHINTMAX</parameter>
+/// characters, on any kind.</p>
+ClassMethod CriteriaHintProblem(pField As %DynamicObject, pWhere As %String) As %String [ Private ]
+{
+    Set tType = pField.%GetTypeOf("hint")
+    If tType = "unassigned" Quit ""
+    If (tType '= "string") || (pField.%Get("hint") = "") Quit pWhere _ " hint is not a non-empty string"
+    If $Length(pField.%Get("hint")) > ..#CRITERIONHINTMAX Quit pWhere _ " hint is longer than " _ ..#CRITERIONHINTMAX _ " characters"
     Quit ""
 }
 
@@ -2035,6 +2101,11 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
 /// <p>The shape a <code>read.source.rows</code> member name takes (AD-36, Story 16.7).</p>
 Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
 
+/// <p>The bare type <method>RowsProblem</method> reads a <code>GET</code> as, so a single-object
+/// <code>GET</code> is admitted under <code>read.source.rows</code> by the bare type's own checks (AD-36
+/// as amended, Story 18.5).</p>
+Parameter OBJECTROWSTYPE = "OBJECTROWS";
+
 /// <p>What is wrong with <var>pSource</var>'s <code>rows</code>, or <code>""</code> (AD-36 as amended,
 /// Story 16.7). A declared <code>rows</code> is a member name (<parameter>ROWSMEMBERPATTERN</parameter>)
 /// on an <code>admin</code> source whose <code>type</code> is an upper-case bare type
@@ -2043,6 +2114,8 @@ Parameter ROWSMEMBERPATTERN = "^[A-Za-z][A-Za-z0-9]*$";
 /// once, with <code>maxRows</code> the cap plus one, and lists the answer's one member.
 /// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowsProblem</code> returns the same sentence for
 /// every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+/// <p>A single-object <code>GET</code> is admitted as such a type too (AD-36 as amended, Story 18.5),
+/// read as <parameter>OBJECTROWSTYPE</parameter>.</p>
 ClassMethod RowsProblem(pSource As %DynamicObject) As %String
 {
     Set tWhere = "read.source.rows"
@@ -2055,6 +2128,8 @@ ClassMethod RowsProblem(pSource As %DynamicObject) As %String
         Quit tWhere _ " is declared on a '" _ tPort _ "' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"
     }
     Set tType = pSource.%Get("type")
+    ; AD-36 as amended (Story 18.5): a single-object GET may also be read as a list over one member.
+    If (pSource.%GetTypeOf("type") = "string") && (tType = ##class(OcuPilot.Screen.Read).#OBJECTTYPE) Set tType = ..#OBJECTROWSTYPE
     If (pSource.%GetTypeOf("type") '= "string") || '$Match(tType, ..#PARTTYPEPATTERN) || $ListFind($ListFromString(..#READSOURCETYPES), tType) {
         Quit "read.source.type '" _ tType _ "' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)"
     }

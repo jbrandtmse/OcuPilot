@@ -48,13 +48,21 @@
 /// <p><code>language-server</code> is one of the instance's external language servers, keyed by its
 /// name, which the instance compares with its case (Story 16.10), so it needs no spelling rule of its
 /// own.</p>
+/// <p><code>journal-file</code> is one of the instance's journal files, keyed by its full name as the
+/// instance's own journal file list spells it, kept exactly (AD-13, AD-21's eighth case);
+/// <code>journal-file-database</code> is one database a journal file holds records for, keyed by its
+/// system file number within that file (Story 18.5).</p>
+/// <p><code>journal-settings</code> is the instance's journal configuration, one object whose every id
+/// reads as the singleton (AD-13, Story 18.18).</p>
+/// <p><code>journal-record</code> is one record of a journal file, keyed by its <code>Address</code>
+/// within the file its list read, kept exactly; it names no write target (AD-13, Story 18.19).</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

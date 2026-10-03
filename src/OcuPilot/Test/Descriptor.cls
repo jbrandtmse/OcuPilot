@@ -134,7 +134,32 @@ XData ReadShapes
 <screen name="ExplorerRoutineList" filter="Name,Database" sort="Name,Modified,Database" kinds="Name:name,Modified:text,Database:identifier,Generated:status"/>
 <screen name="ExplorerClassDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
 <screen name="ExplorerRoutineDocument" filter="Name,Kind" sort="Order,Kind,Name" kinds="Kind:text,Name:name,Type:identifier,Flags:text"/>
+<screen name="ExplorerSearch" filter="Document,Member,Text" sort="Order,Document" kinds="Document:name,Member:identifier,Line:number,Text:text"/>
+<screen name="ExplorerMacro" filter="Macro,Document,Definition" sort="Macro,Document" kinds="Macro:name,Document:identifier,Line:number,Definition:text"/>
+<screen name="ExplorerSqlSchemas" filter="Schema" sort="Schema" kinds="Schema:name,Tables:status,Views:status,Procedures:status"/>
+<screen name="ExplorerSqlTables" filter="Table,Schema,Class" sort="Table,Class,Owner" kinds="Table:name,Class:identifier,Owner:text,Sharded:status,Partitioned:status"/>
+<screen name="ExplorerSqlViews" filter="View,Schema,Class" sort="View,Class,Owner" kinds="View:name,Class:identifier,Owner:text,Updatable:status,CheckOption:text"/>
+<screen name="ExplorerSqlProcedures" filter="Procedure,Schema,Class" sort="Procedure,Type,Class" kinds="Procedure:name,Type:text,Class:identifier,Method:identifier"/>
+<screen name="ExplorerSqlTable" filter="Name,Class" sort="Name" kinds="Name:name,Owner:text,LastCompiled:text,External:status,ReadOnly:status,Partitioned:status,Class:identifier,ExtentSize:number,ExternalType:text"/>
+<screen name="ExplorerSqlFields" filter="Field,Type,ReferenceTo" sort="Column,Field,Type" kinds="Field:name,Type:identifier,Column:number,Required:status,Unique:status,Collation:text,Hidden:status,MaxLength:number,ReferenceTo:identifier,Selectivity:text"/>
+<screen name="ExplorerSqlIndices" filter="Index,Map,Fields,Global" sort="Index,Map,Type" kinds="Index:name,Map:identifier,Fields:text,Type:text,SizeMB:text,Inherited:status,Global:identifier,Status:text"/>
+<screen name="ExplorerSqlTriggers" filter="Trigger,Event,Code" sort="Trigger,Event,Order" kinds="Trigger:name,Event:text,Order:number,Code:text"/>
+<screen name="ExplorerSqlConstraints" filter="Constraint,Type,Data" sort="Constraint,Type" kinds="Constraint:name,Type:text,Data:text"/>
+<screen name="ExplorerSqlPartitions" filter="Partition,Location" sort="Partition,Rows,EstimatedSize" kinds="Partition:name,Buckets:number,Rows:number,EstimatedSize:number,Location:identifier"/>
+<screen name="ExplorerSqlPartitionMappings" filter="Rule,Location" sort="Rule,Rows,EstimatedSize" kinds="Rule:name,Buckets:number,Rows:number,EstimatedSize:number,Location:identifier"/>
+<screen name="ExplorerSqlCachedQueries" filter="CachedQuery,Query,QueryType" sort="CachedQuery,Created,QueryType" kinds="CachedQuery:name,Query:text,Created:text,Source:status,QueryType:text,Features:text"/>
+<screen name="ExplorerSqlTableStatements" filter="Statement,PlanState,Location" sort="Statement,Executions,TotalTime,FirstSeen" kinds="Statement:name,PlanState:text,NewPlan:status,Executions:number,TotalTime:number,AverageTime:number,StdDevTime:number,RowCount:number,Commands:number,FirstSeen:text,Location:identifier"/>
+<screen name="ExplorerSqlView" filter="Class,Owner,Text" sort="Class" kinds="Class:name,Owner:text,LastCompiled:text,ReadOnly:status,Updatable:status,CheckOption:text,ClassType:text,Text:text"/>
+<screen name="ExplorerSqlViewFields" filter="Field,Type" sort="Field,Type" kinds="Field:name,Type:identifier,Collation:text,MaxLength:number,Length:number,Precision:number,Scale:number,Stream:status"/>
+<screen name="ExplorerSqlViewStatements" filter="Statement,PlanState,Location" sort="Statement,Executions,TotalTime,FirstSeen" kinds="Statement:name,PlanState:text,NewPlan:status,Executions:number,TotalTime:number,AverageTime:number,StdDevTime:number,RowCount:number,Commands:number,FirstSeen:text,Location:identifier"/>
+<screen name="ExplorerSqlProcedure" filter="Class,Method,Description" sort="Class" kinds="Class:name,Type:text,Method:identifier,Description:text,Inputs:number,InOuts:number,Outputs:number,Interface:number,Columns:number,InputParameters:text,InOutParameters:text,OutputParameters:text,ResultColumns:text,ReturnValue:text"/>
+<screen name="ExplorerSqlProcedureStatements" filter="Statement,PlanState,Location" sort="Statement,Executions,TotalTime,FirstSeen" kinds="Statement:name,PlanState:text,NewPlan:status,Executions:number,TotalTime:number,AverageTime:number,StdDevTime:number,RowCount:number,Commands:number,FirstSeen:text,Location:identifier"/>
 <screen name="RemoteDatabaseList" filter="Name,Server,Directory,Status" sort="Name,Server,Directory,Status" kinds="Name:name,Server:identifier,Directory:identifier,Status:text"/>
+<screen name="JournalList" filter="Name,CreationTime,Reason" sort="Name,Size,CreationTime,Reason,DataSize" kinds="Name:name,CreationTime:text,Size:number,DataSize:number,Reason:text"/>
+<screen name="JournalFileDetails" filter="Name,CreationTime,FileGUID,EncryptionKeyID,PrevFile.File,NextFile.File" sort="Name,CreationTime" kinds="Name:name,CreationTime:text,FileGUID:identifier,FileCount:number,MaxSize:number,FirstRecordAddress:number,LastRecordAddress:number,End:number,EncryptionKeyID:identifier,MinTransFileCount:number,MinTransFileIndex:number,ClusterStartTime:text,PrevFile.File:identifier,NextFile.File:identifier"/>
+<screen name="JournalFileDatabaseList" filter="DatabasePathOrAlias" sort="SFN,DatabasePathOrAlias" kinds="DatabasePathOrAlias:name,SFN:number"/>
+<screen name="JournalSettings" filter="CurrentDirectory" sort="CurrentDirectory" kinds=""/>
+<screen name="JournalRecordList" filter="GlobalNode,DatabaseName,TypeName" sort="Address,TimeStamp,ProcessID,TypeName,ExtTypeName,InTransaction,GlobalNode,DatabaseName" kinds="Address:name,TimeStamp:text,ProcessID:identifier,TypeName:text,ExtTypeName:text,InTransaction:status,GlobalNode:text,DatabaseName:identifier"/>
 </shapes>
 }
 
@@ -1709,7 +1734,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 42, "the closed vocabulary holds forty-two values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, and class and routine in Story 19.1; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 46, "the closed vocabulary holds forty-six values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

@@ -24,7 +24,8 @@
 /// <class>OcuPilot.Screen.Tool.ExplorerClassImport</class>; the page sends one compile per checked
 /// document, one delete or export for the whole set, and one import per file. The page draws
 /// <code>export</code> and the screen-level Import, never <code>export-browser</code> or
-/// <code>import-local</code>, which its dialogs send.</p>
+/// <code>import-local</code>, which its dialogs send. <code>save</code> (Story 19.3) is the class
+/// editor's Save, which no list surface draws.</p>
 Class OcuPilot.Screen.Descriptor.ExplorerClassList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -46,7 +47,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "compile", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}],
+  "rowActions": [{"id": "compile", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}, {"id": "export", "selfProtection": ""}, {"id": "export-browser", "selfProtection": ""}, {"id": "import", "selfProtection": ""}, {"id": "import-local", "selfProtection": ""}, {"id": "save", "selfProtection": ""}],
   "context": {"fields": ["Name", "Modified", "Database", "Generated"], "secretFields": []},
   "emptyStateKey": "explorerClassListEmpty",
   "commandAliases": ["classes", "class list", "source code"],

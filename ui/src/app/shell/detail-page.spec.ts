@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForUrl, type Verdict } from '../core/navigation';
+import { encodeEntityId } from '../core/entity-id';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
@@ -47,6 +48,15 @@ class StubNavigation {
 
 const ROUTES = ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server', 'security/oauth/server-clients', 'security/untabbed'];
 
+/**
+ * Stories 19.5 and 19.14: a SQL table's catalog tabs and a view's, parent-scoped groups whose every
+ * route carries the table or the view.
+ */
+const SQL_TAB_ROUTES = [
+  ...['document', 'fields', 'indices', 'partitions', 'partition-mappings', 'triggers', 'constraints', 'cached-queries', 'statements'].map((tab) => `system-explorer/sql-tables/${tab}`),
+  ...['document', 'fields', 'statements'].map((tab) => `system-explorer/sql-views/${tab}`),
+];
+
 const planted: HTMLElement[] = [];
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -61,7 +71,7 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
-      provideRouter(ROUTES.map((path) => ({ path, children: [] }))),
+      provideRouter([...ROUTES, ...SQL_TAB_ROUTES, ...SQL_TAB_ROUTES.map((route) => `${route}/:id`)].map((path) => ({ path, children: [] }))),
       { provide: NavigationService, useValue: navigation as unknown as NavigationService },
     ],
   });
@@ -166,6 +176,64 @@ describe('the detail page', () => {
     gated.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
     await settle(fixture);
     expect(router.url).toBe('/security/oauth/resource-servers?ns=HSCUSTOM');
+  });
+
+  it('Stories 19.5 AC2 and 19.14 AC1: in a parent-scoped group a tab opens with the route id the current tab carries, as the address bar holds it', async () => {
+    // Mutation (Rule 19): navigate to the bare `tab.route` again in `DetailPage.open` -> the id is
+    // dropped and both url assertions go red.
+    const id = encodeEntityId('OcuProbe195.Visible Name');
+    const fixture = await build(`/system-explorer/sql-tables/document/${id}?ns=USER`);
+    const router = TestBed.inject(Router);
+    expect((fixture.nativeElement as HTMLElement).querySelector('nav.ocu-detail-tabs')?.getAttribute('aria-label')).toBe(STRINGS.explorerSqlTableLabel);
+    expect(tabs(fixture).map((tab) => tab.querySelector('.ocu-detail-tab-label')?.textContent?.trim())).toEqual([
+      STRINGS.explorerSqlTabInfo,
+      STRINGS.explorerSqlTabFields,
+      STRINGS.explorerSqlTabIndices,
+      STRINGS.explorerSqlTabPartitions,
+      STRINGS.explorerSqlTabPartitionMappings,
+      STRINGS.explorerSqlTabTriggers,
+      STRINGS.explorerSqlTabConstraints,
+      STRINGS.explorerSqlTabCachedQueries,
+      STRINGS.explorerSqlTabStatements,
+    ]);
+    tabs(fixture)[5].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-tables/triggers/${id}?ns=USER`);
+    expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'false', 'false', 'true', 'false', 'false', 'false']);
+    tabs(fixture)[8].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-tables/statements/${id}?ns=USER`);
+    tabs(fixture)[1].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-tables/fields/${id}?ns=USER`);
+  });
+
+  it('Story 19.14 AC2: a view\'s tabs, View info, Fields and SQL statements, carry the view from tab to tab', async () => {
+    // Mutation (Rule 19): navigate to the bare `tab.route` again in `DetailPage.open` -> the id is
+    // dropped and both url assertions go red.
+    const id = encodeEntityId('OcuProbe195.VisibleNames');
+    const fixture = await build(`/system-explorer/sql-views/document/${id}?ns=USER`);
+    const router = TestBed.inject(Router);
+    expect((fixture.nativeElement as HTMLElement).querySelector('nav.ocu-detail-tabs')?.getAttribute('aria-label')).toBe(STRINGS.explorerSqlViewLabel);
+    expect(tabs(fixture).map((tab) => tab.querySelector('.ocu-detail-tab-label')?.textContent?.trim())).toEqual([
+      STRINGS.explorerSqlTabViewInfo,
+      STRINGS.explorerSqlTabFields,
+      STRINGS.explorerSqlTabStatements,
+    ]);
+    tabs(fixture)[1].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-views/fields/${id}?ns=USER`);
+    tabs(fixture)[2].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-views/statements/${id}?ns=USER`);
+  });
+
+  it('Story 19.5: a parent-scoped tab rendered with no route id opens the bare route', async () => {
+    const fixture = await build('/system-explorer/sql-tables/fields?ns=USER');
+    const router = TestBed.inject(Router);
+    tabs(fixture)[0].click();
+    await settle(fixture);
+    expect(router.url).toBe('/system-explorer/sql-tables/document?ns=USER');
   });
 
   it('a detail screen that is no tab draws its list page with no strip', async () => {

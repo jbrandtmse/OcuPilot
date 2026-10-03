@@ -1729,8 +1729,8 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'options', 'hint']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'defaultHoursAgo', 'atOrAfterField', 'default', 'hint'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -1775,7 +1775,25 @@ function criteriaFieldsProblem(criteria, params, readFields) {
     }
     const valueDefaultFault = criteriaValueDefaultProblem(field, where);
     if (valueDefaultFault !== null) return valueDefaultFault;
+    const hintFault = criteriaHintProblem(field, where);
+    if (hintFault !== null) return hintFault;
   }
+  return null;
+}
+
+/** The longest `hint` a criterion may declare, in characters (AD-36). */
+const CRITERION_HINT_MAX = 300;
+
+/**
+ * What is wrong with a criterion's `hint`, or `null` (AD-36 as amended, Story 18.19): when declared,
+ * a non-empty string of at most `CRITERION_HINT_MAX` characters, on any kind. The read tool publishes
+ * it as the criterion's description; the screen never shows it.
+ * `OcuPilot.Screen.Registry.CriteriaHintProblem` returns the same sentences.
+ */
+function criteriaHintProblem(field, where) {
+  if (field.hint === undefined) return null;
+  if (typeof field.hint !== 'string' || field.hint === '') return `${where} hint is not a non-empty string`;
+  if (field.hint.length > CRITERION_HINT_MAX) return `${where} hint is longer than ${CRITERION_HINT_MAX} characters`;
   return null;
 }
 
@@ -2075,11 +2093,15 @@ export const MONITOR_SENSORS_TYPE = 'SENSORS';
 /** The shape a `read.source.rows` member name takes, byte for byte `OcuPilot.Screen.Registry`'s `ROWSMEMBERPATTERN`. */
 export const ROWS_MEMBER_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
+/** The single-object type a `rows` read may also name (AD-36 as amended, Story 18.5). */
+export const OBJECT_ROWS_GET = 'GET';
+
 /**
  * What is wrong with `source.rows`, or `null` (AD-36 as amended, Story 16.7). A declared `rows` is a
  * member name (`ROWS_MEMBER_RE`) on an `admin` source whose `type` is an upper-case bare type
- * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, with no `parts`, `forEach` or `rowGet`:
- * the read issues that type once, with `maxRows` the cap plus one, and lists the answer's one member.
+ * (`PART_TYPE_RE`) other than the five `READ_SOURCE_TYPES`, or a single-object `GET` (Story 18.5),
+ * with no `parts`, `forEach` or `rowGet`: the read issues that type once, with `maxRows` the cap plus
+ * one, and lists the answer's one member.
  * `OcuPilot.Screen.Registry.RowsProblem` returns the same sentence for every case in
  * `OcuPilot.Test.ReadSourceCorpus`.
  */
@@ -2091,7 +2113,9 @@ export function rowsProblem(source) {
   if (source.port !== SOURCE_ADMIN) {
     return `${where} is declared on a '${shown(source.port)}' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)`;
   }
-  if (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type)) {
+  // AD-36 as amended (Story 18.5): a single-object GET may also be read as a list over one member.
+  const objectRows = source.type === OBJECT_ROWS_GET;
+  if (!objectRows && (typeof source.type !== 'string' || !PART_TYPE_RE.test(source.type) || READ_SOURCE_TYPES.includes(source.type))) {
     return `read.source.type '${shown(source.type)}' is not an upper-case bare admin type, and read.source.rows reads one member of a bare type's one-object answer (AD-36)`;
   }
   const declared = ['parts', 'forEach', 'rowGet'].find((key) => source[key] !== undefined && source[key] !== null);
@@ -2308,8 +2332,11 @@ export function suggestedPromptsProblem(declaration) {
  * `[{className, declaration}]` in roster order, and the answer names the offending class.
  *
  * Groups are checked in the order their first member appears. Each names a built member at its route
- * that declares the group; every member shares that member's `area` and `archetype`; and the members'
- * positions, sorted, run 1 to their count with no gap or repeat.
+ * that declares the group; every member shares that member's `area` and `archetype`; the members'
+ * positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
+ * `parentScope`, and in a parent-scoped group its one criterion's `param`, `kind` and `maxLength`,
+ * since the strip carries the one route id from tab to tab, and the group is its parent list's
+ * `<route>/document`, the route the list's name cell opens.
  * `OcuPilot.Screen.Registry.TabGroupProblem` returns the same sentence for every roster case in
  * `OcuPilot.Test.TabCorpus`.
  */
@@ -2344,8 +2371,49 @@ export function tabGroupProblem(screens) {
         `positions run 1 to ${members.length} with no gap or repeat (AD-5)`
       );
     }
+    const parent = tabParent(head.declaration);
+    const criterion = tabCriterion(head.declaration);
+    for (const member of members) {
+      const memberParent = tabParent(member.declaration);
+      if (memberParent !== parent) {
+        return (
+          `${member.className}: tab.group '${group}' is declared with parentScope '${memberParent}', and a tab group's ` +
+          `members share the parentScope '${parent}' of '${group}' (AD-5)`
+        );
+      }
+      if (parent === '') continue;
+      const memberCriterion = tabCriterion(member.declaration);
+      if (memberCriterion !== criterion) {
+        return (
+          `${member.className}: tab.group '${group}' is parent-scoped and reads criterion ${memberCriterion}, and its ` +
+          `members share the one criterion ${criterion} of '${group}' (AD-5)`
+        );
+      }
+    }
+    if (parent !== '' && group !== `${parent}/document`) {
+      return (
+        `${head.className}: tab.group '${group}' is parent-scoped under '${parent}', and a parent-scoped group is its ` +
+        `parent list's '${parent}/document' (AD-5)`
+      );
+    }
   }
   return null;
+}
+
+/** `declaration`'s `parentScope`, or `''` when it declares none as a string. */
+function tabParent(declaration) {
+  return typeof declaration.parentScope === 'string' ? declaration.parentScope : '';
+}
+
+/**
+ * `declaration`'s one read criterion as `'param' (kind, maxLength)`, or `none` when its read declares
+ * other than exactly one -- `OcuPilot.Screen.Registry.TabCriterion`'s spelling.
+ */
+function tabCriterion(declaration) {
+  const fields = declaration?.read?.criteria?.fields;
+  if (!Array.isArray(fields) || fields.length !== 1 || !isObject(fields[0])) return 'none';
+  const field = fields[0];
+  return `'${shown(field.param)}' (${shown(field.kind)}, ${shown(field.maxLength)})`;
 }
 
 /**
@@ -3334,6 +3402,11 @@ export interface ReadCriterion {
    */
   readonly default?: string;
   readonly options?: readonly string[];
+  /**
+   * The one sentence the read tool publishes as this criterion's description in place of its kind's
+   * generic one (AD-36 as amended, Story 18.19). The screen never shows it.
+   */
+  readonly hint?: string;
 }
 
 /**

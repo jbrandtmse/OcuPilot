@@ -147,12 +147,40 @@ XData Coverage
 <screen name="LanguageServerList" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerActivity" class="OcuPilot.Test.LanguageServer" method="TestTheDescriptorsRegister" corpus="both External language servers screens are asserted in one test method"/>
 <screen name="LanguageServerForm" class="OcuPilot.Test.LanguageServerEditor" method="TestTheFormAndToolsRegister"/>
-<screen name="ExplorerClassList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
-<screen name="ExplorerRoutineList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
-<screen name="ExplorerClassDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
-<screen name="ExplorerRoutineDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the four System Explorer screens are asserted together in one loop"/>
+<screen name="ExplorerClassList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerRoutineList" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerClassDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerRoutineDocument" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerClassEditor" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheEditorsAreFormPagesWithNoClassicPage" corpus="the two System Explorer editors are asserted together in one loop"/>
+<screen name="ExplorerRoutineEditor" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheEditorsAreFormPagesWithNoClassicPage" corpus="the two System Explorer editors are asserted together in one loop"/>
+<screen name="ExplorerSearch" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerCompare" class="OcuPilot.Test.ExplorerDescriptor" method="TestCompareKeysTheClassicCompareRoutinesPage"/>
+<screen name="ExplorerMacro" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerSqlSchemas" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerSqlTables" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerSqlViews" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerSqlProcedures" class="OcuPilot.Test.ExplorerDescriptor" method="TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair" corpus="the System Explorer screens that read are asserted together in one loop"/>
+<screen name="ExplorerSqlTable" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlIndices" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlTriggers" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlConstraints" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlPartitions" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlPartitionMappings" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlCachedQueries" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlTableStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlProcedure" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlProcedureStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
+<screen name="JournalList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalsIsOsManagementsThirteenthEntry"/>
+<screen name="JournalFileDetails" class="OcuPilot.Test.JournalDescriptor" method="TestDetailsAndDatabasesAreUnlistedChildrenOfJournals" corpus="the two unlisted journal screens are asserted together in one loop"/>
+<screen name="JournalFileDatabaseList" class="OcuPilot.Test.JournalDescriptor" method="TestDetailsAndDatabasesAreUnlistedChildrenOfJournals" corpus="the two unlisted journal screens are asserted together in one loop"/>
+<screen name="JournalSettings" class="OcuPilot.Test.JournalDescriptor" method="TestJournalSettingsIsOsManagementsFourteenthEntry"/>
+<screen name="JournalRecordList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalRecordsIsAnUnlistedServerCriteriaList"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -276,17 +304,23 @@ XData Coverage
 <tool name="osmgmt.locks.remove" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeprocess" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
 <tool name="osmgmt.locks.removeclient" class="OcuPilot.Test.LockRemoveTools" method="TestEachToolIsAnActionWriteOverTheLockPort" corpus="the three lock removals are asserted together in one loop"/>
-<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
-<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.compile" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.delete" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.export" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.routines.import" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheAreaHoldsTwentyFourReadsAndEightWrites" corpus="the eight System Explorer writes are asserted together in one loop"/>
+<tool name="explorer.classes.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
+<tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
+<tool name="osmgmt.journals.switchfile" class="OcuPilot.Test.JournalDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three journal tools are asserted together in one loop"/>
+<tool name="osmgmt.journals.switchdirectory" class="OcuPilot.Test.JournalDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three journal tools are asserted together in one loop"/>
+<tool name="osmgmt.journals.integrity" class="OcuPilot.Test.JournalDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three journal tools are asserted together in one loop"/>
+<tool name="osmgmt.journalsettings.update" class="OcuPilot.Test.JournalDescriptor" method="TestTheSettingsToolDeclaresItsFieldsKindAndPairs"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

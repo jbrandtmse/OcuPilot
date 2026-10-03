@@ -59,12 +59,20 @@ import { DatabaseWizardPage } from '../areas/os-management/database-wizard.page'
 import { DatabaseEditorPage } from '../areas/os-management/database-editor.page';
 import { DatabaseIntegrityPage } from '../areas/os-management/database-integrity.page';
 import { RemoteDatabaseFormPage } from '../areas/os-management/remote-database-form.page';
+import { JournalListPage } from '../areas/os-management/journal-list.page';
+import { JournalFileDetailsPage } from '../areas/os-management/journal-file-details.page';
+import { JournalSettingsPage } from '../areas/os-management/journal-settings.page';
+import { JournalRecordsPage } from '../areas/os-management/journal-records.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { GovernancePage } from '../areas/agent/governance.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { SourceViewerPage } from '../areas/system-explorer/document-viewer.page';
+import { SourceEditorPage } from '../areas/system-explorer/source-editor.page';
+import { CodeSearchPage } from '../areas/system-explorer/code-search.page';
+import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
+import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -179,9 +187,29 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.LockList': LockListPage,
   // Story 18.16: the remote database form, create and re-point alike.
   'OcuPilot.Screen.Descriptor.RemoteDatabaseForm': RemoteDatabaseFormPage,
+  // Story 18.5: Journals with its two switches and the integrity check's line, and Journal file
+  // details with the file's databases.
+  'OcuPilot.Screen.Descriptor.JournalList': JournalListPage,
+  'OcuPilot.Screen.Descriptor.JournalFileDetails': JournalFileDetailsPage,
+  // Story 18.18: Journal settings, a form over the screen's own declared read.
+  'OcuPilot.Screen.Descriptor.JournalSettings': JournalSettingsPage,
+  // Story 18.19: Journal records, the record list a journal file opens, with its record dialog.
+  'OcuPilot.Screen.Descriptor.JournalRecordList': JournalRecordsPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,
+  // Story 19.3: the class and routine editors, one page serving both.
+  'OcuPilot.Screen.Descriptor.ExplorerClassEditor': SourceEditorPage,
+  'OcuPilot.Screen.Descriptor.ExplorerRoutineEditor': SourceEditorPage,
+  // Story 19.4: Search, Compare and Macros, each a page of its own.
+  'OcuPilot.Screen.Descriptor.ExplorerSearch': CodeSearchPage,
+  'OcuPilot.Screen.Descriptor.ExplorerCompare': CodeComparePage,
+  'OcuPilot.Screen.Descriptor.ExplorerMacro': MacroLookupPage,
+  // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTables': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlViews': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures': CodeListPage,
 };
 
 /**

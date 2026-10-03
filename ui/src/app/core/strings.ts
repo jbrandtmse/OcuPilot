@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:633 */
+  /** EXPERIENCE.md:637 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4362,6 +4362,624 @@ export const STRINGS = {
   explorerRoutineDeleteConsequence: 'The routine\'s source and compiled code are removed and cannot be restored from OcuPilot.',
   /** EXPERIENCE.md:592 */
   explorerRoutineDeleteSetConsequence: 'Deletes <n> documents. Each one\'s source and compiled code are removed and cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:593 */
+  explorerEditSource: 'Edit source',
+  /** EXPERIENCE.md:593 */
+  explorerClassEditorLabel: 'Edit class',
+  /** EXPERIENCE.md:593 */
+  explorerRoutineEditorLabel: 'Edit routine',
+  /** EXPERIENCE.md:593 */
+  explorerCompileAfterSaving: 'Compile after saving',
+  /** EXPERIENCE.md:593 */
+  explorerEditorTextLabel: 'Text of <name>',
+  /** EXPERIENCE.md:593 */
+  explorerDocumentConflict: 'Someone else changed this document after you opened it, so it was not saved. Copy your changes, then reopen the document to see the current text.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveHeader: 'The first line no longer names this document, so the text was not saved.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveTooLarge: 'The text is longer than 3,000,000 characters, the most one save sends.',
+  /** EXPERIENCE.md:593 */
+  explorerSaveRefused: 'The instance refused this text, so nothing was saved.',
+  /** EXPERIENCE.md:593 */
+  explorerEditorRefusedAction: 'save this document',
+  // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
+  // empty states and prompts; the two screen-level switches and the integrity check, their warnings
+  // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,
+  // Database, Check integrity and its running and finished lines reuse 18.4's and earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalListLabel: 'Journals',
+  /** EXPERIENCE.md:378 */
+  journalColumnCreated: 'Created',
+  /** EXPERIENCE.md:378 */
+  journalColumnDataSize: 'Data size',
+  /** EXPERIENCE.md:378 */
+  journalListEmpty: 'No journal files on this instance.',
+  /** EXPERIENCE.md:378 */
+  journalListEmptyAgent: 'switch the journal file or check a journal file\'s integrity',
+  /** EXPERIENCE.md:378 */
+  journalSwitchFileAction: 'Switch file',
+  /** EXPERIENCE.md:378 */
+  journalSwitchDirectoryAction: 'Switch directory',
+  /** EXPERIENCE.md:378 */
+  journalSwitchFileConsequence: 'The instance closes <file> and starts a new journal file.',
+  /** EXPERIENCE.md:378 */
+  journalSwitchDirectoryConsequence: 'The instance starts writing its journal in the other configured journal directory.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityConsequence: 'The instance reads <file>. Checking every record takes longer.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityEveryRecord: 'Check every record',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityClean: 'No errors were found in <file>.',
+  /** EXPERIENCE.md:378 */
+  journalIntegrityErrors: 'Errors were found in <file>.',
+  /** EXPERIENCE.md:378 */
+  journalSwitchNewFile: 'A new journal file',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsLabel: 'Journal file details',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsGone: 'This journal file is no longer listed.',
+  /** EXPERIENCE.md:378 */
+  journalDetailsGuid: 'File GUID',
+  /** EXPERIENCE.md:378 */
+  journalDetailsFileCount: 'File count',
+  /** EXPERIENCE.md:378 */
+  journalDetailsFirstRecord: 'First record',
+  /** EXPERIENCE.md:378 */
+  journalDetailsLastRecord: 'Last record',
+  /** EXPERIENCE.md:378 */
+  journalDetailsEnd: 'End offset',
+  /** EXPERIENCE.md:378 */
+  journalDetailsEncryption: 'Encryption key',
+  /** EXPERIENCE.md:378 */
+  journalDetailsNotEncrypted: 'Not encrypted',
+  /** EXPERIENCE.md:378 */
+  journalDetailsMinTransCount: 'Minimum transaction file count',
+  /** EXPERIENCE.md:378 */
+  journalDetailsMinTransIndex: 'Minimum transaction file index',
+  /** EXPERIENCE.md:378 */
+  journalDetailsClusterStart: 'Cluster start time',
+  /** EXPERIENCE.md:378 */
+  journalDetailsPrevious: 'Previous file',
+  /** EXPERIENCE.md:378 */
+  journalDetailsNext: 'Next file',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListLabel: 'Journal file databases',
+  /** EXPERIENCE.md:378 */
+  journalColumnSfn: 'System file number',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListEmpty: 'This journal file holds no database records.',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt1: 'Which journal file is the instance writing now?',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt2: 'How much space do the journal files use?',
+  /** EXPERIENCE.md:378 */
+  journalListPrompt3: 'Why was the journal last switched?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt1: 'When was this journal file created?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt2: 'Which journal files come before and after this one?',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsPrompt3: 'Is this journal file encrypted?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt1: 'Which databases have records in this journal file?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt2: 'How many databases does this journal file cover?',
+  /** EXPERIENCE.md:378 */
+  journalFileDatabaseListPrompt3: 'Does this journal file hold records for IRISSYS?',
+  /** EXPERIENCE.md:594 */
+  explorerCompareLabel: 'Compare',
+  /** EXPERIENCE.md:594 */
+  explorerMacroLabel: 'Macros',
+  /** EXPERIENCE.md:594 */
+  explorerSearchTextLabel: 'Text',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeLabel: 'Look in',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeAll: 'Classes and routines',
+  /** EXPERIENCE.md:594 */
+  explorerSearchCaseLabel: 'Match case',
+  /** EXPERIENCE.md:594 */
+  explorerColumnDocument: 'Document',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMember: 'Member',
+  /** EXPERIENCE.md:594 */
+  explorerColumnLine: 'Line',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMatch: 'Match',
+  /** EXPERIENCE.md:594 */
+  explorerColumnMacro: 'Macro',
+  /** EXPERIENCE.md:594 */
+  explorerCompareFirst: 'First document',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSecond: 'Second document',
+  /** EXPERIENCE.md:594 */
+  explorerCompareWith: 'Compare with\u2026',
+  /** EXPERIENCE.md:594 */
+  explorerLookUpMacro: 'Look up a macro',
+  /** EXPERIENCE.md:594 */
+  explorerMacroDefinedIn: 'Defined in <document>, line <n>',
+  /** EXPERIENCE.md:594 */
+  explorerCompareIdentical: 'The two documents are identical.',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummary: '<n> lines removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareUnchanged: '<n> unchanged lines',
+  /** EXPERIENCE.md:594 */
+  explorerDiffAdded: 'added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareTooLarge: 'These documents differ in more than 1,000 lines, so they are not compared line by line.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchEmpty: 'Nothing in this namespace matches that text.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchInvite: 'Enter text to find in this namespace\'s classes and routines.',
+  /** EXPERIENCE.md:594 */
+  explorerMacroUndefined: '<macro> is not defined where <document> can see it.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchTextReason: 'Name the text to search for: 1 to 256 characters, with no control character.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchScopeReason: 'scope must be all, classes or routines.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchCaseReason: 'case must be yes or no.',
+  /** EXPERIENCE.md:594 */
+  explorerMacroReason: 'Name a class or routine as the macro\'s context, and a macro, as Name or $$$Name.',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt1: 'Which classes in this namespace call ##class(%File)?',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt2: 'Where does this namespace\'s code mention TODO?',
+  /** EXPERIENCE.md:594 */
+  explorerSearchPrompt3: 'Which routines mention ^ERRORS?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt1: 'Which classes changed in the last day?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt2: 'Which routines changed in the last day?',
+  /** EXPERIENCE.md:594 */
+  explorerComparePrompt3: 'Which documents in this namespace mention TODO?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt1: 'What does $$$ISERR expand to?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt2: 'Where is $$$OK defined?',
+  /** EXPERIENCE.md:594 */
+  explorerMacroPrompt3: 'What does $$$ThrowOnError do?',
+  // Story 18.18: Journal settings -- its title, the form's labels, the shown-only hint and its two
+  // read-only values, the directory line, the Freeze on error consequence (also the agent's card line)
+  // and the prompts. Change, Cancel, Saved, "(none)", "Not set", the leave guard and the picker reuse
+  // earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalSettingsLabel: 'Journal settings',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrimary: 'Primary journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsAlternate: 'Alternate journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFileSize: 'Start a new journal file every (MB)',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrefix: 'Journal file prefix',
+  /** EXPERIENCE.md:378 */
+  journalSettingsArchive: 'Archive target',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeArchived: 'Purge as soon as they are copied to the archive',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeDays: 'Purge after this many days',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPurgeBackups: 'Purge after this many backups',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFreeze: 'Freeze on error',
+  /** EXPERIENCE.md:378 */
+  journalSettingsCspSession: 'Journal web sessions',
+  /** EXPERIENCE.md:378 */
+  journalSettingsCompress: 'Compress journal files',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijDirectory: 'Write image journal directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijSize: 'Write image journal target size (MB)',
+  /** EXPERIENCE.md:378 */
+  journalSettingsWijManager: 'The manager directory',
+  /** EXPERIENCE.md:378 */
+  journalSettingsShownOnly: 'Shown here only. Change it on the classic Journal Settings page.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsFreezeConsequence: 'With Freeze on error on, a journal write error blocks every process that journals until it is fixed.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsDirectoryNewFile: 'Saving a changed journal directory starts a new journal file.',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt1: 'Where does this instance write its journal files?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt2: 'When are old journal files purged?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsPrompt3: 'Does a journal write error freeze the instance?',
+  /** EXPERIENCE.md:378 */
+  journalSettingsRefusedAction: 'change the journal settings',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasLabel: 'SQL schemas',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesLabel: 'SQL tables',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsLabel: 'SQL views',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresLabel: 'SQL procedures',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableLabel: 'SQL table',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabInfo: 'Table info',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabFields: 'Fields',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabIndices: 'Maps/Indices',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabTriggers: 'Triggers',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTabConstraints: 'Constraints',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSchema: 'Schema',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTables: 'Tables',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnViews: 'Views',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnProcedures: 'Procedures',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTable: 'Table',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnOwner: 'Owner',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSharded: 'Sharded',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnPartitioned: 'Partitioned',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnUpdatable: 'Updatable',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnCheckOption: 'Check option',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnProcedure: 'Procedure',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMethod: 'Method',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnLastCompiled: 'Last compiled',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExternal: 'External',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExtentSize: 'Extent size',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnExternalType: 'External type',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnField: 'Field',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnNumber: 'Column',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnUnique: 'Unique',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnHidden: 'Hidden',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMaxLength: 'Maximum length',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnReferenceTo: 'References',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnSelectivity: 'Selectivity',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnIndex: 'Index',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnMap: 'Map',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnColumns: 'Columns',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnInherited: 'Inherited',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnGlobal: 'Global',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnTrigger: 'Trigger',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnEvent: 'Event',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnOrder: 'Order',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnConstraint: 'Constraint',
+  /** EXPERIENCE.md:595 */
+  explorerSqlColumnConstraintData: 'Constraint data',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasEmpty: 'No SQL schemas in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesEmpty: 'No SQL tables in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsEmpty: 'No SQL views in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresEmpty: 'No SQL procedures in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableEmpty: 'This table no longer exists.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsEmpty: 'This table has no fields this account can see.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesEmpty: 'This table has no maps or indices.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersEmpty: 'This table has no triggers.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsEmpty: 'This table has no constraints.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaReason: 'schema must be 1 to 128 characters, with no control character.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSystemReason: 'system must be yes or no.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTableReason: 'Name one table, as Schema.Table.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlAmbiguousReason: 'That name matches more than one table in this namespace.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlNotFoundReason: 'This namespace holds no table by that name that this account can see.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt1: 'Which schemas in this namespace hold tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt2: 'Which schemas hold stored procedures but no tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemasPrompt3: 'Which schemas hold views?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt1: 'Which tables does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt2: 'Which classes project these tables?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablesPrompt3: 'Which tables here are partitioned or sharded?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt1: 'Which views does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt2: 'Which of these views can be updated?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlViewsPrompt3: 'Which classes define these views?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt1: 'Which stored procedures does this namespace hold?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt2: 'Which of these are functions rather than procedures?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlProceduresPrompt3: 'Which class methods do these procedures call?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt1: 'When was this table last compiled?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt2: 'Which class projects this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTablePrompt3: 'Is this table read-only or external?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt1: 'Which fields of this table are required?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt2: 'Which fields reference another table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlFieldsPrompt3: 'Which fields of this table are unique?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt1: 'Which indices does this table have?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt2: 'Which global holds this table\'s data?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlIndicesPrompt3: 'How large is each index of this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt1: 'Which triggers run on this table?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt2: 'What does each trigger of this table do?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlTriggersPrompt3: 'In what order do this table\'s triggers run?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt1: 'Which constraints does this table enforce?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt2: 'What is this table\'s primary key?',
+  /** EXPERIENCE.md:595 */
+  explorerSqlConstraintsPrompt3: 'Which foreign keys does this table declare?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabPartitions: 'Partitions',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabPartitionMappings: 'Partition mappings',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabCachedQueries: 'Cached queries',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabStatements: 'SQL statements',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewLabel: 'SQL view',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabViewInfo: 'View info',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureLabel: 'SQL procedure',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTabProcedureInfo: 'Stored procedure info',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPartition: 'Partition',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnBuckets: 'Buckets',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRows: 'Rows',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnEstimatedSize: 'Estimated size',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRule: 'Rule',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnCachedQuery: 'Cached query',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnQueryType: 'Query type',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnFeatures: 'Statement features',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStatement: 'Statement',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPlanState: 'Plan state',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnNewPlan: 'New plan',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnExecutions: 'Executions',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnTotalTime: 'Total time',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnAverageTime: 'Average time',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStdDevTime: 'Standard deviation',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnRowCount: 'Row count',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnFirstSeen: 'First seen',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnClassType: 'Class type',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnLength: 'Length',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnPrecision: 'Precision',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnScale: 'Scale',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnStream: 'Stream',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInputs: 'Inputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInOuts: 'Inputs and outputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnOutputs: 'Outputs',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInterface: 'Interface',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnColumnCount: 'Column count',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInputParameters: 'Input parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnInOutParameters: 'Input and output parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnOutputParameters: 'Output parameters',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnResultColumns: 'Result columns',
+  /** EXPERIENCE.md:596 */
+  explorerSqlColumnReturnValue: 'Return value',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsEmpty: 'This table has no partitions.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsEmpty: 'This table has no partition mappings.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesEmpty: 'This table has no cached queries this account can run.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsEmpty: 'No SQL statements reference this table.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewEmpty: 'This view no longer exists.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsEmpty: 'This view has no fields this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsEmpty: 'No SQL statements reference this view.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureEmpty: 'This procedure no longer exists.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsEmpty: 'No SQL statements reference this procedure.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewReason: 'Name one view, as Schema.View.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureReason: 'Name one procedure, as Schema.Procedure.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewAmbiguousReason: 'That name matches more than one view in this namespace.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureAmbiguousReason: 'That name matches more than one procedure in this namespace.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewNotFoundReason: 'This namespace holds no view by that name that this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureNotFoundReason: 'This namespace holds no procedure by that name that this account can see.',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt1: 'Is this table partitioned, and into how many partitions?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt2: 'How many rows does each partition of this table hold?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionsPrompt3: 'Which database does each partition of this table map to?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt1: 'Which partition mappings does this table have?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt2: 'Where do this table\'s partition ranges map to?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlPartitionMappingsPrompt3: 'How large is each partition range of this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt1: 'Which cached queries use this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt2: 'When was each cached query on this table created?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlCachedQueriesPrompt3: 'Which of these cached queries are dynamic SQL?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt1: 'Which SQL statements use this table?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt2: 'Which statements on this table run most often?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlTableStatementsPrompt3: 'Which statements on this table have a frozen plan?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt1: 'What does this view select?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt2: 'Can this view be updated?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewPrompt3: 'Which class projects this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt1: 'Which columns does this view have?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt2: 'What type is each column of this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewFieldsPrompt3: 'Which columns of this view are streams?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt1: 'Which SQL statements use this view?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt2: 'Which statements on this view run most often?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlViewStatementsPrompt3: 'Where is this view queried from?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt1: 'What does this procedure do?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt2: 'Which parameters does this procedure take?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedurePrompt3: 'What does this procedure return?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt1: 'Which SQL statements call this procedure?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt2: 'How often is this procedure called?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlProcedureStatementsPrompt3: 'Where is this procedure called from?',
+  // Story 18.19: Journal records -- its title and entity noun, Journal file details' View records,
+  // the criteria form's heading, labels and option words, Next records, the empty state, the record
+  // dialog's title and field labels, and the prompts. Time, Process, Type, In transaction, Database,
+  // Value, Search and Close reuse earlier keys.
+  /** EXPERIENCE.md:378 */
+  journalRecordListLabel: 'Journal records',
+  /** EXPERIENCE.md:378 */
+  aboutJournalRecord: 'Journal record',
+  /** EXPERIENCE.md:378 */
+  journalFileDetailsViewRecords: 'View records',
+  /** EXPERIENCE.md:378 */
+  journalRecordsHeading: 'Records of <file>',
+  /** EXPERIENCE.md:378 */
+  journalRecordsNext: 'Next records',
+  /** EXPERIENCE.md:378 */
+  journalRecordListEmpty: 'No records match.',
+  /** EXPERIENCE.md:378 */
+  journalRecordOffset: 'Offset',
+  /** EXPERIENCE.md:378 */
+  journalRecordOldestFirst: 'Oldest first',
+  /** EXPERIENCE.md:378 */
+  journalRecordNewestFirst: 'Newest first',
+  /** EXPERIENCE.md:378 */
+  journalRecordComparison: 'Comparison',
+  /** EXPERIENCE.md:378 */
+  journalRecordExtendedType: 'Extended type',
+  /** EXPERIENCE.md:378 */
+  journalRecordGlobalNode: 'Global node',
+  /** EXPERIENCE.md:378 */
+  journalRecordMirrorDatabase: 'Mirror database',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpEquals: 'equals',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotEquals: 'does not equal',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpSortsAfter: 'sorts after',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotSortsAfter: 'does not sort after',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpContains: 'contains',
+  /** EXPERIENCE.md:378 */
+  journalRecordOpNotContains: 'does not contain',
+  /** EXPERIENCE.md:378 */
+  journalRecordDialogTitle: 'Journal record <offset>',
+  /** EXPERIENCE.md:378 */
+  journalRecordGlobalReference: 'Global reference',
+  /** EXPERIENCE.md:378 */
+  journalRecordNewValue: 'New value',
+  /** EXPERIENCE.md:378 */
+  journalRecordOldValue: 'Old value',
+  /** EXPERIENCE.md:378 */
+  journalRecordPrevious: 'Previous record',
+  /** EXPERIENCE.md:378 */
+  journalRecordNext: 'Next record',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt1: 'Which processes wrote these journal records?',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt2: 'Which globals changed in these records?',
+  /** EXPERIENCE.md:378 */
+  journalRecordListPrompt3: 'Are any of these records inside a transaction?',
 } as const;
 
 /**

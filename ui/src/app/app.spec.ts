@@ -31,6 +31,7 @@ import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.store';
+import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -528,7 +529,9 @@ describe('the shell frame', () => {
           provide: ApiService,
           useValue: {
             requestJson: async (path: string) =>
-              path.startsWith('/api/ocupilot/database/form?name=')
+              path.startsWith('/api/ocupilot/screens/osmgmt.journalsettings/read')
+                ? { kind: 'ok', status: 200, body: { rows: [{ CurrentDirectory: '/durable/iris/mgr/journal/', FileSizeLimit: 1024 }], truncated: false } }
+                : path.startsWith('/api/ocupilot/database/form?name=')
                 ? {
                     kind: 'ok',
                     status: 200,
@@ -1268,6 +1271,11 @@ describe('the shell frame', () => {
     const remoteDatabaseForm = TestBed.inject(RemoteDatabaseForm);
     remoteDatabaseForm.setValue('Name', 'AREMOTEDATABASETHISPRINCIPALTYPED');
     expect(remoteDatabaseForm.value('Name')).not.toBe('');
+    // And Journal settings (Story 18.18): the settings THIS principal read and a size they typed.
+    const journalSettingsForm = TestBed.inject(JournalSettingsForm);
+    await journalSettingsForm.open();
+    journalSettingsForm.setText('FileSizeLimit', '1000');
+    expect(journalSettingsForm.text('FileSizeLimit')).toBe('1000');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1409,6 +1417,10 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.remoteDatabaseForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's remote database form holds the previous one's typed name.
     expect(remoteDatabaseForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.journalSettingsForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's Journal settings hold the previous one's read and typed size.
+    expect(journalSettingsForm.directory('primary')).toBe('');
+    expect(journalSettingsForm.text('FileSizeLimit')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

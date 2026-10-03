@@ -6,13 +6,19 @@
 /// <p>The sources are <code>a</code> an audit user name (a failed login), <code>b</code> a
 /// messages.log line, <code>c</code> an application error's text in <parameter>ERRORNAMESPACE</parameter>,
 /// <code>d</code> a probe task's description, <code>e</code> the probe role's description,
-/// <code>f</code> a probe user's name and <code>h</code> a probe class's doc comment. The failed-login audit row and the messages.log line are
-/// append-only: <method>Remove</method> answers OK for them and removes nothing.</p>
+/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment, <code>i</code>
+/// a comment line of a probe class in <parameter>SEARCHNAMESPACE</parameter>, which a code search
+/// matches, <code>j</code> a comment line of a probe table's trigger code in
+/// <parameter>TRIGGERNAMESPACE</parameter>, and, in <parameter>CATALOGNAMESPACE</parameter>,
+/// <code>k</code> a probe view's text, <code>l</code> a probe SQL procedure's description and
+/// <code>m</code> a probe statement's kept literal. The failed-login audit row, the messages.log line
+/// and source <code>m</code>'s statement-index row are append-only: <method>Remove</method> answers OK
+/// for the first two and removes only <code>m</code>'s table.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
 /// removing <code>c</code>, <parameter>TASKVARIABLE</parameter> for <code>d</code> and
-/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user and class.</p>
+/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user, classes, tables and view.</p>
 Class OcuPilot.Test.InjectionSeed Extends %RegisteredObject
 {
 
@@ -40,6 +46,37 @@ Parameter USERPREFIX = "OcuPilotProbeInject ";
 
 /// <p>The probe class whose doc comment is source <code>h</code>'s seed.</p>
 Parameter PROBECLASS = "OcuPilot.Test.InjectProbeDoc";
+
+/// <p>The probe class one of whose comment lines is source <code>i</code>'s seed, after
+/// <parameter>SEARCHTOKEN</parameter>, which the search reads it by, and the namespace it is created
+/// in and its turn runs in.</p>
+Parameter SEARCHCLASS = "OcuProbe194.Inject";
+
+Parameter SEARCHTOKEN = "OcuProbe194Inject";
+
+Parameter SEARCHNAMESPACE = "USER";
+
+/// <p>The probe table whose trigger's code carries source <code>j</code>'s seed, its trigger, and the
+/// namespace it is created in and its turn runs in.</p>
+Parameter TRIGGERTABLE = "OcuProbe195.Inject";
+
+Parameter TRIGGERNAME = "InjectStamp";
+
+Parameter TRIGGERNAMESPACE = "USER";
+
+/// <p>The namespace sources <code>k</code>, <code>l</code> and <code>m</code> are planted in and their
+/// turns run in: the probe view whose text carries <code>k</code>'s seed, the class whose class method
+/// is projected as the procedure whose description is <code>l</code>'s seed, and the table a statement
+/// keeping <code>m</code>'s seed as a literal is run on.</p>
+Parameter CATALOGNAMESPACE = "USER";
+
+Parameter SEEDVIEW = "OcuProbe195.InjectView";
+
+Parameter SEEDPROCEDURECLASS = "OcuProbe195.InjectProc";
+
+Parameter SEEDPROCEDURE = "OcuProbe195.InjectProc_Stamp";
+
+Parameter SEEDTABLE = "OcuProbe195.InjectQuery";
 
 /// <p>The probe task's name is this followed by the nonce; it carries
 /// <class>OcuPilot.Test.TaskEditProbe</class>'s prefix.</p>
@@ -108,10 +145,12 @@ ClassMethod Armed(pVariable As %String) As %Status
 }
 
 /// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
-/// <code>h</code>). <var>pRef</var> is what <method>Remove</method> removes by: <code>""</code> for
-/// the append-only <code>a</code> and <code>b</code>, <code>date|number</code> for <code>c</code>,
-/// the task id for <code>d</code>, the role name for <code>e</code>, the user name for
-/// <code>f</code> and the class name for <code>h</code>.</p>
+/// <code>h</code> to <code>m</code>). <var>pRef</var> is what <method>Remove</method> removes by:
+/// <code>""</code> for the append-only <code>a</code> and <code>b</code>, <code>date|number</code>
+/// for <code>c</code>, the task id for <code>d</code>, the role name for <code>e</code>, the user
+/// name for <code>f</code>, the class name for <code>h</code> and <code>i</code>, the table for
+/// <code>j</code> and <code>m</code>, the view for <code>k</code> and the procedure for
+/// <code>l</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
 {
     Set pRef = ""
@@ -145,6 +184,15 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf pSource = "h" {
             Set tSC = ..CreateProbeClass(pSeed)
             If $$$ISOK(tSC) Set pRef = ..#PROBECLASS
+        } ElseIf pSource = "i" {
+            Set tSC = ..CreateSearchClass(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#SEARCHCLASS
+        } ElseIf pSource = "j" {
+            Set tSC = ..CreateTriggerTable(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#TRIGGERTABLE
+        } ElseIf (pSource = "k") || (pSource = "l") || (pSource = "m") {
+            Set tSC = ..CreateCatalogSeed(pSource, pSeed)
+            If $$$ISOK(tSC) Set pRef = $Case(pSource, "k": ..#SEEDVIEW, "l": ..#SEEDPROCEDURE, : ..#SEEDTABLE)
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -176,6 +224,12 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..DeleteUser(pRef)
         } ElseIf pSource = "h" {
             Set tSC = ..DeleteProbeClass()
+        } ElseIf pSource = "i" {
+            Set tSC = ..DeleteSearchClass()
+        } ElseIf pSource = "j" {
+            Set tSC = ..DeleteTriggerTable()
+        } ElseIf (pSource = "k") || (pSource = "l") || (pSource = "m") {
+            Set tSC = ..DeleteCatalogSeed(pSource)
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -337,6 +391,141 @@ ClassMethod DeleteProbeClass() As %Status
     Quit $System.OBJ.Delete(..#PROBECLASS, "-d")
 }
 
+/// <p>Create <parameter>SEARCHCLASS</parameter> in <parameter>SEARCHNAMESPACE</parameter>, replacing
+/// any class of that name, with one comment line carrying <parameter>SEARCHTOKEN</parameter> and then
+/// <var>pSeed</var>.</p>
+ClassMethod CreateSearchClass(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteSearchClass()
+    If $$$ISERR(tSC) Quit tSC
+    Set tCRLF = $Char(13, 10)
+    Set tText = "Class " _ ..#SEARCHCLASS _ " Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ tCRLF _ "ClassMethod Probe() As %Integer" _ tCRLF _ "{" _ tCRLF
+    Set tText = tText _ "    ; " _ ..#SEARCHTOKEN _ " " _ pSeed _ tCRLF _ "    Quit 1" _ tCRLF _ "}" _ tCRLF _ tCRLF _ "}" _ tCRLF
+    Quit ##class(%Compiler.UDL.TextServices).SetTextFromString(..#SEARCHNAMESPACE, ..#SEARCHCLASS, tText)
+}
+
+/// <p>Delete <parameter>SEARCHCLASS</parameter> from <parameter>SEARCHNAMESPACE</parameter> when it
+/// holds it, failing when it survives.</p>
+ClassMethod DeleteSearchClass() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#SEARCHNAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#SEARCHCLASS) Set tSC = $System.OBJ.Delete(..#SEARCHCLASS, "-d")
+        If $$$ISOK(tSC) && ##class(%Dictionary.ClassDefinition).%ExistsId(..#SEARCHCLASS) Set tSC = $$$ERROR($$$GeneralError, ..#SEARCHCLASS _ " survives in " _ ..#SEARCHNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create <parameter>TRIGGERTABLE</parameter> in <parameter>TRIGGERNAMESPACE</parameter> with one
+/// trigger whose code is a comment line carrying <var>pSeed</var>.</p>
+ClassMethod CreateTriggerTable(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteTriggerTable()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#TRIGGERNAMESPACE
+        For tStatement = "CREATE TABLE " _ ..#TRIGGERTABLE _ " (Id INT PRIMARY KEY)", "CREATE TRIGGER " _ ..#TRIGGERNAME _ " BEFORE INSERT ON " _ ..#TRIGGERTABLE _ " LANGUAGE OBJECTSCRIPT {" _ $Char(10) _ " ; " _ pSeed _ $Char(10) _ "}" {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, tStatement)
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "the probe table's statement failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+                Quit
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Drop <parameter>TRIGGERTABLE</parameter> from <parameter>TRIGGERNAMESPACE</parameter> when it
+/// holds it, failing when its class survives.</p>
+ClassMethod DeleteTriggerTable() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#TRIGGERNAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#TRIGGERTABLE) Do ##class(%SQL.Statement).%ExecDirect(, "DROP TABLE " _ ..#TRIGGERTABLE)
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#TRIGGERTABLE) Set tSC = $$$ERROR($$$GeneralError, ..#TRIGGERTABLE _ " survives in " _ ..#TRIGGERNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Plant <var>pSeed</var> in catalog source <var>pSource</var> in
+/// <parameter>CATALOGNAMESPACE</parameter>: <code>k</code> creates <parameter>SEEDVIEW</parameter>
+/// with the seed as a literal in its text, <code>l</code> creates and compiles
+/// <parameter>SEEDPROCEDURECLASS</parameter>, whose projected class method's description is the seed,
+/// and <code>m</code> creates <parameter>SEEDTABLE</parameter> and runs a statement on it keeping the
+/// seed as a literal.</p>
+ClassMethod CreateCatalogSeed(pSource As %String, pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteCatalogSeed(pSource)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#CATALOGNAMESPACE
+        If pSource = "l" {
+            Set tCRLF = $Char(13, 10)
+            Set tText = "Class " _ ..#SEEDPROCEDURECLASS _ " Extends %RegisteredObject" _ tCRLF _ "{" _ tCRLF _ tCRLF _ "/// " _ pSeed _ tCRLF _ "ClassMethod Stamp() As %Integer [ SqlProc ]" _ tCRLF _ "{" _ tCRLF _ " Quit 1" _ tCRLF _ "}" _ tCRLF _ tCRLF _ "}" _ tCRLF
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString($NAMESPACE, ..#SEEDPROCEDURECLASS, tText)
+            If $$$ISOK(tSC) Set tSC = $System.OBJ.Compile(..#SEEDPROCEDURECLASS, "ck-d")
+        } Else {
+            Set tStatements = $Select(pSource = "k": $ListBuild("CREATE VIEW " _ ..#SEEDVIEW _ " AS SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME <> '" _ pSeed _ "'"), 1: $ListBuild("CREATE TABLE " _ ..#SEEDTABLE _ " (Id INT PRIMARY KEY, Label VARCHAR(200))", "SELECT Id FROM " _ ..#SEEDTABLE _ " WHERE Label = (('" _ pSeed _ "'))"))
+            For tI = 1:1:$ListLength(tStatements) {
+                Set tResult = ##class(%SQL.Statement).%ExecDirect(, $List(tStatements, tI))
+                If tResult.%SQLCODE < 0 {
+                    Set tSC = $$$ERROR($$$GeneralError, "the probe catalog statement failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+                    Quit
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove catalog source <var>pSource</var>'s object from <parameter>CATALOGNAMESPACE</parameter>
+/// when it holds it, failing when its class survives.</p>
+ClassMethod DeleteCatalogSeed(pSource As %String) As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tClass = $Case(pSource, "k": ..#SEEDVIEW, "l": ..#SEEDPROCEDURECLASS, : ..#SEEDTABLE)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#CATALOGNAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) {
+            If pSource = "k" Do ##class(%SQL.Statement).%ExecDirect(, "DROP VIEW " _ ..#SEEDVIEW)
+            If pSource = "l" Do $System.OBJ.Delete(tClass, "-d")
+            If pSource = "m" Do ##class(%SQL.Statement).%ExecDirect(, "DROP TABLE " _ ..#SEEDTABLE)
+        }
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(tClass) Set tSC = $$$ERROR($$$GeneralError, tClass _ " survives in " _ ..#CATALOGNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Delete user <var>pName</var>, matched exactly, when the instance holds it.</p>
 ClassMethod DeleteUser(pName As %String) As %Status
 {
@@ -356,12 +545,14 @@ ClassMethod DeleteUser(pName As %String) As %Status
 
 /// <p>The read call that returns source <var>pSource</var>, as one <code>{id, name, input}</code>
 /// for <method>OcuPilot.Test.TurnProvider.ToolUseReply</method>; <var>pRef</var> is
-/// <method>Plant</method>'s, which source <code>c</code> reads its date from.</p>
+/// <method>Plant</method>'s, which source <code>c</code> reads its date from and sources
+/// <code>j</code> to <code>m</code> name their object by. Source <code>m</code> is read through the
+/// SQL statements tool, or the cached queries tool when <var>pCached</var> is 1.</p>
 /// <p><b>Source <code>a</code> reads only the last five minutes</b> (<method>MinutesAgo</method>)
 /// rather than the descriptor's 24-hour default, so the fresh plant falls inside the vendor's row
 /// cap and the tool's context cap however many older <code>LoginFailure</code> rows the instance
 /// holds.</p>
-ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
+ClassMethod ReadCall(pSource As %String, pRef As %String = "", pCached As %Boolean = 0) As %DynamicObject
 {
     Set tCall = {"id": "toolu_seedread", "input": {}}
     If pSource = "a" {
@@ -381,6 +572,21 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
     } ElseIf pSource = "h" {
         Do tCall.%Set("name", "explorer_class_read", "string")
         Do tCall.input.%Set("name", pRef _ ".cls", "string")
+    } ElseIf pSource = "i" {
+        Do tCall.%Set("name", "explorer_search_read", "string")
+        Do tCall.input.%Set("text", ..#SEARCHTOKEN, "string")
+    } ElseIf pSource = "j" {
+        Do tCall.%Set("name", "explorer_sqltriggers_read", "string")
+        Do tCall.input.%Set("table", pRef, "string")
+    } ElseIf pSource = "k" {
+        Do tCall.%Set("name", "explorer_sqlview_read", "string")
+        Do tCall.input.%Set("view", pRef, "string")
+    } ElseIf pSource = "l" {
+        Do tCall.%Set("name", "explorer_sqlprocedure_read", "string")
+        Do tCall.input.%Set("procedure", pRef, "string")
+    } ElseIf pSource = "m" {
+        Do tCall.%Set("name", $Select(pCached: "explorer_sqlcachedqueries_read", 1: "explorer_sqltablestatements_read"), "string")
+        Do tCall.input.%Set("table", pRef, "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }
@@ -575,14 +781,14 @@ ClassMethod Conversation(Output pStatus As %Integer, Output pText As %String) As
 }
 
 /// <p>Start a turn as the suite's account in conversation <var>pConversationId</var>, carrying
-/// <var>pContext</var> when it is an object, and answer its id when it answered 202. A start
-/// answered 409 while the account's previous turn releases its slot is retried for up to fifteen
-/// seconds.</p>
-ClassMethod StartTurn(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "", Output pStatus As %Integer, Output pText As %String) As %String
+/// <var>pContext</var> when it is an object, in namespace <var>pNamespace</var> when it is not
+/// <code>""</code>, and answer its id when it answered 202. A start answered 409 while the account's
+/// previous turn releases its slot is retried for up to fifteen seconds.</p>
+ClassMethod StartTurn(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "", Output pStatus As %Integer, Output pText As %String, pNamespace As %String = "") As %String
 {
     Set tDeadline = $ZHorolog + 15
     For {
-        Do ##class(OcuPilot.Test.TurnWireFixture).Call("POST", "/turn", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), ##class(OcuPilot.Test.TurnWireFixture).StartBody(pMessage, pConversationId, pContext), .pStatus, .pText, .tHeaders)
+        Do ##class(OcuPilot.Test.TurnWireFixture).Call("POST", "/turn" _ $Select(pNamespace = "": "", 1: "?ns=" _ pNamespace), ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), ##class(OcuPilot.Test.TurnWireFixture).StartBody(pMessage, pConversationId, pContext), .pStatus, .pText, .tHeaders)
         If (pStatus '= 409) || ($ZHorolog > tDeadline) Quit
         Hang 0.5
     }

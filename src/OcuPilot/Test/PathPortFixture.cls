@@ -3,7 +3,9 @@
 /// after <method>AdmitAnyName</method>, answers the configuration file
 /// <method>UseConfigurationFile</method> names, the database and journal directories
 /// <method>UseDatabaseDirectories</method> and <method>UseJournalDirectories</method> name, the
-/// three journal sources <method>UseJournalSources</method> names and the served directory
+/// three journal sources <method>UseJournalSources</method> names, the journal history and
+/// write-image journal directories <method>UseJournalHistory</method> and
+/// <method>UseWijDirectory</method> name, and the served directory
 /// <method>UseServedDirectory</method> names, and
 /// counts every admin port call it forwards, so a test can show the gate refusing with none made
 /// (AD-29). The
@@ -137,6 +139,41 @@ ClassMethod JournalSources(Output pPrimary As %String, Output pAlternate As %Str
     Set pAlternate = $List(tSeam, 2)
     Set pCurrentFile = $List(tSeam, 3)
     If $List(tSeam, 4) Quit $$$ERROR($$$GeneralError, "the journal source read failed, as the fixture was told")
+    Quit $$$OK
+}
+
+/// <p>Answer <var>pDirectories</var>, a <code>$List</code> of directories, as the journal history's
+/// directories until <method>Reset</method>, so the port's own union with the other journal sources
+/// is what runs; with <var>pFail</var>, fail that read instead (DW-1797).</p>
+ClassMethod UseJournalHistory(pDirectories As %List = "", pFail As %Boolean = 0)
+{
+    Set ^||OcuPilotPathPortFixture("journalhistory") = $ListBuild(pDirectories, ''pFail)
+}
+
+ClassMethod JournalHistoryDirectories(Output pDirectories As %List) As %Status
+{
+    If '$Data(^||OcuPilotPathPortFixture("journalhistory")) Quit ##super(.pDirectories)
+    Set tSeam = ^||OcuPilotPathPortFixture("journalhistory")
+    Set pDirectories = ""
+    If $List(tSeam, 2) Quit $$$ERROR($$$GeneralError, "the journal history read failed, as the fixture was told")
+    Set pDirectories = $List(tSeam, 1)
+    Quit $$$OK
+}
+
+/// <p>Answer <var>pDirectory</var> as the write-image journal's directory until
+/// <method>Reset</method>; with <var>pFail</var>, fail that read instead (DW-1797).</p>
+ClassMethod UseWijDirectory(pDirectory As %String = "", pFail As %Boolean = 0)
+{
+    Set ^||OcuPilotPathPortFixture("wij") = $ListBuild(pDirectory, ''pFail)
+}
+
+ClassMethod WijDirectory(Output pDirectory As %String) As %Status
+{
+    If '$Data(^||OcuPilotPathPortFixture("wij")) Quit ##super(.pDirectory)
+    Set tSeam = ^||OcuPilotPathPortFixture("wij")
+    Set pDirectory = ""
+    If $List(tSeam, 2) Quit $$$ERROR($$$GeneralError, "the write-image journal read failed, as the fixture was told")
+    Set pDirectory = $List(tSeam, 1)
     Quit $$$OK
 }
 

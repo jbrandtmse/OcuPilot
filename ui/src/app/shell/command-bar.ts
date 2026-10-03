@@ -21,6 +21,8 @@ import {
   ScreenActions,
   TASK_IMPORT_ACTION_ID,
   TASK_MANAGER_SUSPEND_ACTION_ID,
+  JOURNAL_SWITCH_FILE_ACTION_ID,
+  JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -350,6 +352,24 @@ interface SortOption {
         {{ taskManagerSuspendLabel }}
       </button>
     }
+    @if (hasJournalSwitchFileAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-journal-switch-file"
+        (click)="onJournalSwitch(journalSwitchFileId)"
+      >
+        {{ journalSwitchFileLabel }}
+      </button>
+    }
+    @if (hasJournalSwitchDirectoryAction) {
+      <button
+        type="button"
+        class="ocu-button-text ocu-command-bar-action ocu-command-bar-journal-switch-directory"
+        (click)="onJournalSwitch(journalSwitchDirectoryId)"
+      >
+        {{ journalSwitchDirectoryLabel }}
+      </button>
+    }
     @if (hasDownloadAction) {
       <span class="ocu-command-bar-action-slot">
         <button
@@ -660,6 +680,8 @@ export class CommandBar {
       this.hasPermissionCheckAction ||
       this.hasTaskImportAction ||
       this.hasTaskManagerSuspendAction ||
+      this.hasJournalSwitchFileAction ||
+      this.hasJournalSwitchDirectoryAction ||
       this.hasDownloadAction ||
       this.hasRefreshChip
     );
@@ -790,6 +812,40 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return;
     this.actions.run(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID);
+  }
+
+  /**
+   * Switch file and Switch directory on Journals (Story 18.5), drawn after Suspend Task Manager on
+   * exactly the screen that registered them. Screen-level: each names the journal the instance
+   * writes now, not a row, so neither is `aria-disabled` for want of a selection; each opens its
+   * warning dialog, and a switch the instance cannot make is refused after it.
+   */
+  protected get hasJournalSwitchFileAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, JOURNAL_SWITCH_FILE_ACTION_ID);
+  }
+
+  protected get hasJournalSwitchDirectoryAction(): boolean {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null) return false;
+    return this.actions.has(screen.descriptor, JOURNAL_SWITCH_DIRECTORY_ACTION_ID);
+  }
+
+  protected readonly journalSwitchFileId = JOURNAL_SWITCH_FILE_ACTION_ID;
+
+  protected readonly journalSwitchDirectoryId = JOURNAL_SWITCH_DIRECTORY_ACTION_ID;
+
+  protected readonly journalSwitchFileLabel = actionLabel('', JOURNAL_SWITCH_FILE_ACTION_ID);
+
+  protected readonly journalSwitchDirectoryLabel = actionLabel('', JOURNAL_SWITCH_DIRECTORY_ACTION_ID);
+
+  protected onJournalSwitch(actionId: string): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    this.actions.run(screen.descriptor, actionId);
   }
 
   /**

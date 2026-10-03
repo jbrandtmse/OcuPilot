@@ -42,6 +42,48 @@ Parameter IMPORTTOOLARGE = "EXPLORER.IMPORT.TOOLARGE";
 /// <p>The sentence <parameter>IMPORTTOOLARGE</parameter> carries.</p>
 Parameter REASONIMPORTTOOLARGE = "The file is longer than 3,000,000 characters, the most one import reads.";
 
+/// <p>Envelope code: the document a save names changed on the instance after the editor read it, so
+/// the text was not saved (Story 19.3). Rendered on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter>
+/// slug with 409, and never logged: it is an answer, not a fault.</p>
+Parameter DOCUMENTCONFLICT = "EXPLORER.DOCUMENT.CONFLICT";
+
+/// <p>The sentence <parameter>DOCUMENTCONFLICT</parameter> carries.</p>
+Parameter REASONDOCUMENTCONFLICT = "Someone else changed this document after you opened it, so it was not saved. Copy your changes, then reopen the document to see the current text.";
+
+/// <p>Envelope code: another process holds the document a save or an import names (#5864), so
+/// nothing was written (Story 19.3). Rendered on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter>
+/// slug with 409, and never logged as a fault; the vendor's message, which names a user and a process,
+/// is logged at information severity and never sent (AD-61 rule 6).</p>
+Parameter DOCUMENTLOCKED = "EXPLORER.DOCUMENT.LOCKED";
+
+/// <p>The sentence <parameter>DOCUMENTLOCKED</parameter> carries, the one
+/// <parameter>DELETELOCKED</parameter> carries.</p>
+Parameter REASONDOCUMENTLOCKED = "Another process is editing this document.";
+
+/// <p>Envelope code: the first line of a save's text does not name the document saved, by name and
+/// kind, so nothing was sent (Story 19.3). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SAVEHEADER = "EXPLORER.SAVE.HEADER";
+
+/// <p>The sentence <parameter>SAVEHEADER</parameter> carries.</p>
+Parameter REASONSAVEHEADER = "The first line no longer names this document, so the text was not saved.";
+
+/// <p>Envelope code: a save's text is longer than one save sends, so nothing was sent (Story 19.3).
+/// Rendered on the <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter SAVETOOLARGE = "EXPLORER.SAVE.TOOLARGE";
+
+/// <p>The sentence <parameter>SAVETOOLARGE</parameter> carries.</p>
+Parameter REASONSAVETOOLARGE = "The text is longer than 3,000,000 characters, the most one save sends.";
+
+/// <p>Envelope code: the instance refused a save's text with an error of its own, a source-control
+/// refusal or text it cannot store among them, and kept the document as it was (Story 19.3). Rendered
+/// on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422; the vendor's text
+/// is logged and never sent.</p>
+Parameter SAVEREFUSED = "EXPLORER.SAVE.REFUSED";
+
+/// <p>The sentence <parameter>SAVEREFUSED</parameter> carries.</p>
+Parameter REASONSAVEREFUSED = "The instance refused this text, so nothing was saved.";
+
 /// <p>A deleted document's per-document reason when the vendor refused it for want of a privilege
 /// (#5838, #5883, #302) or a <code>&lt;PROTECT&gt;</code>.</p>
 Parameter DELETEACCESS = "This account cannot change the database that holds this document.";

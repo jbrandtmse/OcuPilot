@@ -57,6 +57,15 @@ export const TASK_IMPORT_ACTION_ID = 'task-import';
 export const TASK_MANAGER_SUSPEND_ACTION_ID = 'task-manager-suspend';
 
 /**
+ * Switch file and Switch directory on Journals (Story 18.5): screen-level like Suspend Task Manager.
+ * Each names the journal the instance writes now, not a row, so neither is held back for want of a
+ * selection. The descriptor declares `switchfile` and `switchdirectory` so the action route admits
+ * them; these ids are what the Journals page registers and the two surfaces draw.
+ */
+export const JOURNAL_SWITCH_FILE_ACTION_ID = 'journal-switch-file';
+export const JOURNAL_SWITCH_DIRECTORY_ACTION_ID = 'journal-switch-directory';
+
+/**
  * The declared actions `screen`'s banner cases offer (Story 16.11, AD-5), in case order. Each is
  * screen-level: it names no row, so the command bar draws none of them as a row action -- the strip
  * does -- and the command box lists them beside the screen's other screen-level actions.
@@ -105,6 +114,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   [PERMISSION_CHECK_ACTION_ID]: STRINGS.permissionCheckAction,
   [TASK_IMPORT_ACTION_ID]: STRINGS.actionImport,
   [TASK_MANAGER_SUSPEND_ACTION_ID]: STRINGS.taskManagerSuspendAction,
+  [JOURNAL_SWITCH_FILE_ACTION_ID]: STRINGS.journalSwitchFileAction,
+  [JOURNAL_SWITCH_DIRECTORY_ACTION_ID]: STRINGS.journalSwitchDirectoryAction,
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
@@ -202,6 +213,12 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   // Export, which opens the export dialog over them.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': { compile: STRINGS.explorerCompileAction, export: STRINGS.taskExportAction },
+  // Story 18.5: Journals' two switches, each also titling its warning dialog, and its Check integrity.
+  'OcuPilot.Screen.Descriptor.JournalList': {
+    switchfile: STRINGS.journalSwitchFileAction,
+    switchdirectory: STRINGS.journalSwitchDirectoryAction,
+    integrity: STRINGS.databaseIntegrityLabel,
+  },
 };
 
 export class ScreenActions {

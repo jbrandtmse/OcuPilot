@@ -222,6 +222,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 19.2: a class or routine id may name a set of documents.
     ['class', 'documentset'],
     ['routine', 'documentset'],
+    // Story 18.18: the instance's journal settings are one object.
+    ['journal-settings', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -795,17 +797,33 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     .filter((screen) => screen.tab !== null)
     .sort((a, b) => a.tab.position - b.tab.position)
     .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
-  // Story 16.7's License usage group sorts beside the OAuth 2.0 group, position by position.
+  // Story 16.7's License usage group sorts beside the OAuth 2.0 group, position by position, and
+  // Story 19.5's SQL table tabs, a parent-scoped group whose head is unlisted, beside both.
+  // Story 19.14's nine table tabs in the classic page's order, and its view and procedure groups too.
   assert.deepEqual(members, [
+    ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
+    ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
+    ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
+    ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
+    ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
+    ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
     ['os-management/license-usage/distributed', 'os-management/license-usage', 4, 0],
     ['security/oauth/server', 'security/oauth', 4, 0],
+    ['system-explorer/sql-tables/partition-mappings', 'system-explorer/sql-tables/document', 5, 0],
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
+    ['system-explorer/sql-tables/triggers', 'system-explorer/sql-tables/document', 6, 0],
+    ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
+    ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
+    ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
 });
@@ -1244,6 +1262,11 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // each is the parent namespace, filled from the route id and seeded onto every row; and Story
   // 16.10's Activity log, whose one criterion is the language server its route id names; and Story
   // 19.1's four System Explorer screens, whose criteria carry the classic page's defaults.
+  // Story 18.5's Journal file details and Journal file databases, whose one criterion each is the
+  // journal file the route id names. Story 19.5's four SQL catalog lists, whose criteria are the
+  // classic System box and a schema, and a table's five tabs, whose one criterion is its route id.
+  // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
+  // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1253,9 +1276,32 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
       'OcuPilot.Screen.Descriptor.ExplorerClassDocument',
       'OcuPilot.Screen.Descriptor.ExplorerClassList',
+      'OcuPilot.Screen.Descriptor.ExplorerMacro',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineDocument',
       'OcuPilot.Screen.Descriptor.ExplorerRoutineList',
+      'OcuPilot.Screen.Descriptor.ExplorerSearch',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlCachedQueries',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlConstraints',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlFields',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlIndices',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlPartitionMappings',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlPartitions',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlProcedure',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTables',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTriggers',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlView',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlViewFields',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
+      'OcuPilot.Screen.Descriptor.JournalFileDetails',
+      'OcuPilot.Screen.Descriptor.JournalRecordList',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LogHub',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
@@ -2243,12 +2289,14 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Web sessions owns %Admin_Operate beside the Web applications area's two pairs, as Story 16.5's
   // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
   // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
-  // Story 16.25's editor owns it the same way.
+  // Story 16.25's editor owns it the same way; Story 18.18's Journal settings owns %Admin_Journal
+  // beside OS management's set.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
       'OcuPilot.Screen.Descriptor.LanguageServerList',
@@ -2619,6 +2667,26 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
     ExplorerRoutineList: ['Routines', 'pattern=*.mac,system=no,generated=yes,mapped=yes,from=,to='],
     ExplorerClassDocument: ['Class', 'name=,form=udl'],
     ExplorerRoutineDocument: ['Routine', 'name=,form=udl'],
+    // Story 19.5: the SQL catalog's four lists and a table's five tabs.
+    ExplorerSqlSchemas: ['Catalog.Schemas', 'system=no'],
+    ExplorerSqlTables: ['Catalog.Tables', 'system=no,schema='],
+    ExplorerSqlViews: ['Catalog.Views', 'system=no,schema='],
+    ExplorerSqlProcedures: ['Catalog.Procedures', 'system=no,schema='],
+    ExplorerSqlTable: ['Catalog.Table', 'table='],
+    ExplorerSqlFields: ['Catalog.Fields', 'table='],
+    ExplorerSqlIndices: ['Catalog.Indices', 'table='],
+    ExplorerSqlTriggers: ['Catalog.Triggers', 'table='],
+    ExplorerSqlConstraints: ['Catalog.Constraints', 'table='],
+    // Story 19.14: a table's four further tabs, a view's three and a procedure's two.
+    ExplorerSqlPartitions: ['Catalog.Partitions', 'table='],
+    ExplorerSqlPartitionMappings: ['Catalog.PartitionMappings', 'table='],
+    ExplorerSqlCachedQueries: ['Catalog.CachedQueries', 'table='],
+    ExplorerSqlTableStatements: ['Catalog.TableStatements', 'table='],
+    ExplorerSqlView: ['Catalog.View', 'view='],
+    ExplorerSqlViewFields: ['Catalog.ViewFields', 'view='],
+    ExplorerSqlViewStatements: ['Catalog.ViewStatements', 'view='],
+    ExplorerSqlProcedure: ['Catalog.Procedure', 'procedure='],
+    ExplorerSqlProcedureStatements: ['Catalog.ProcedureStatements', 'procedure='],
   };
   for (const [name, [endpoint, defaults]] of Object.entries(expected)) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

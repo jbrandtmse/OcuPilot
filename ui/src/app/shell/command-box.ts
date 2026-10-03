@@ -26,6 +26,8 @@ import {
   ScreenActions,
   TASK_IMPORT_ACTION_ID,
   TASK_MANAGER_SUSPEND_ACTION_ID,
+  JOURNAL_SWITCH_FILE_ACTION_ID,
+  JOURNAL_SWITCH_DIRECTORY_ACTION_ID,
   actionLabel,
   bannerActionIds,
 } from '../core/screen-actions';
@@ -118,11 +120,14 @@ interface CommandRow {
  * shut, so a box left open covered the screen with `aria-expanded="true"` while the user
  * worked elsewhere. Like the menu's, that dismissal does not move focus.
  *
- * **Favorited screens are listed first within Screens** (Story 15.2): "menu search" is this box
- * and nothing else -- EXPERIENCE.md's Rejected list already records "menu-only search with a
- * 220 ms typeahead" as rejected in favour of the command box -- so this story adds no input, no
- * group and no change to the count sentence. Only the order inside the Screens group moves, and it is a stable partition: among
- * favorites, and among the rest, the declaration order the mirror already fixes is unchanged.
+ * **Screens are ranked by how the typed text meets each screen's own name**: the whole name, then
+ * the start of a name, then elsewhere in one, then a match through an alias or the route alone, so
+ * Enter opens the screen a person named rather than one an alias also reaches. Within a rank,
+ * favorited screens come first (Story 15.2), and the declaration order the mirror fixes breaks the
+ * remaining ties; at an empty query every screen shares one rank, so the list is favorites first,
+ * then declaration order. "Menu search" is this box and nothing else -- EXPERIENCE.md's Rejected
+ * list already records "menu-only search with a 220 ms typeahead" as rejected in favour of the
+ * command box -- so the ranking adds no input, no group and no change to the count sentence.
  *
  * **Sign out is the one account row** (EXPERIENCE.md "the last Actions row once typed"): the last row of the
  * Actions group on every screen, listed only while a typed needle matches its label, so the list
@@ -477,16 +482,17 @@ export class CommandBox {
         ariaDisabled: opens !== null ? null : 'true',
       });
     }
-    // Story 15.2: favorited screens first, everything else after, each half in the order it was
-    // already in. A stable partition rather than a sort, so the declaration order the mirror
-    // fixes is the tie-break -- a comparator returning 0 leaves that to the engine.
-    const favorite: CommandRow[] = [];
-    const rest: CommandRow[] = [];
-    for (const row of rows) {
-      if (this.preferences.isFavorite(row.route)) favorite.push(row);
-      else rest.push(row);
-    }
-    return [...favorite, ...rest];
+    // Closest name first, then favorites within a rank (Story 15.2), then the declaration order the
+    // mirror fixes. The last key is explicit, so no tie is left to the engine's sort.
+    return rows
+      .map((row, order) => ({
+        row,
+        order,
+        rank: labelRank(row.label, needle),
+        favorite: this.preferences.isFavorite(row.route) ? 0 : 1,
+      }))
+      .sort((a, b) => a.rank - b.rank || a.favorite - b.favorite || a.order - b.order)
+      .map((entry) => entry.row);
   }
 
   /**
@@ -520,6 +526,10 @@ export class CommandBox {
     // Suspend Task Manager on Task schedule (Story 16.11), by the same test: screen-level too.
     if (this.actions.has(screen.descriptor, TASK_MANAGER_SUSPEND_ACTION_ID)) {
       declared.push({ id: TASK_MANAGER_SUSPEND_ACTION_ID, rowScoped: false });
+    }
+    // Switch file and Switch directory on Journals (Story 18.5), by the same test: screen-level too.
+    for (const id of [JOURNAL_SWITCH_FILE_ACTION_ID, JOURNAL_SWITCH_DIRECTORY_ACTION_ID]) {
+      if (this.actions.has(screen.descriptor, id)) declared.push({ id, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
@@ -637,6 +647,20 @@ function matchesScreen(screen: ScreenDeclaration, label: string, needle: string)
   if (label.toLowerCase().includes(needle)) return true;
   if (screen.route.toLowerCase().includes(needle)) return true;
   return screen.commandAliases.some((alias) => alias.toLowerCase().includes(needle));
+}
+
+/**
+ * How closely `needle` meets a screen's own name, lowest first: 0 the whole name (and every screen
+ * at an empty query), 1 the start of it, 2 elsewhere in it, 3 a match through an alias or the route
+ * alone.
+ */
+function labelRank(label: string, needle: string): number {
+  if (needle === '') return 0;
+  const name = label.toLowerCase();
+  if (name === needle) return 0;
+  if (name.startsWith(needle)) return 1;
+  if (name.includes(needle)) return 2;
+  return 3;
 }
 
 /**

@@ -289,9 +289,22 @@ services:
       # The System Explorer write gate class signs in as principals holding READ, READ and WRITE,
       # and the %Developer role on a namespace's code database, and compiles and deletes probes.
       # classes: AtelierPortWriteDenial
+      # The SQL catalog's live class signs in as a principal granted SELECT on one probe table
+      # alone and reads the catalog as it (Story 19.5).
+      # classes: AtelierPortCatalogLive
+      # classes: AtelierPortCatalogTabsLive
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate
+      # The journal classes sign in as probe principals holding Journals' pairs, with and without
+      # the system database's write, and switch the journal as them (Story 18.5).
+      # classes: JournalWrite, JournalWriteGate
+      # The journal settings rules class also restricts the file selector's allow-list to reach
+      # OcuPilot's served directory, as PathPortServed does, and restores it (Story 18.18).
+      # classes: JournalSettingsRules
+      # The journal record classes sign in as probe principals holding Journal records' pairs, with
+      # and without read on their probe database, and list and open records as them (Story 18.19).
+      # classes: JournalRecordDetail, JournalRecords
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -454,7 +467,24 @@ services:
       # creates, re-points and deletes OCUPROBE1816* remote database configurations, with a local
       # probe database, a namespace and a mapping over them (Story 18.16).
       # classes: RemoteDatabaseDescriptor, RemoteDatabaseListing, RemoteDatabaseWrite, RemoteDatabaseWriteGate
+      # It also creates and removes the OCUPROBE185D database, with its %DB_OCUPROBE185D resource and
+      # <mgr>ocuprobe185d directory, and writes journaled records into it (Story 18.19).
+      # classes: JournalRecordDetail, JournalRecords
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
+      # Switches this instance's journal file and journal directory through the shipped screen and
+      # confirm paths, and seeds an alternate journal directory to switch into. Its own variable
+      # because no narrower one names that effect: a switch closes the file every process is
+      # writing. Each class restores the current directory, the primary and the alternate it
+      # found and asserts the restore; the journal files a switch creates stay (Story 18.5).
+      # classes: JournalWrite, JournalWriteGate, PathPortInstance
+      # JournalRead, JournalIntegrity, JournalWrite and JournalWriteGate before their tests, and
+      # AdminPortAsync in its journal check, also switch the journal file where the list names no
+      # closed file, to close one (OcuPilot.Test.JournalProbe.EnsureClosedFile).
+      # classes: AdminPortAsync, JournalIntegrity, JournalRead
+      # Journal settings' classes also change this instance's journal settings through the shipped
+      # Save and confirm paths, and restore every setting they found (Story 18.18).
+      # classes: JournalSettingsRules, JournalSettingsWrite
+      OCUPILOT_ALLOW_JOURNAL: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

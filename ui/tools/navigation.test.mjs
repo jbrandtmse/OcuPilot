@@ -158,6 +158,12 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 18.5: the unlisted Journal file databases and Journal file details, reached from
+      // Journals, by descriptor class name.
+      'os-management/journals/databases',
+      'os-management/journals/details',
+      // Story 18.19: the unlisted Journal records, reached from a journal file's View records.
+      'os-management/journal-records',
       // Story 16.10: the unlisted Activity log of External language servers, by descriptor class name.
       'os-management/language-servers/activity',
       'os-management/language-servers/edit',
@@ -195,6 +201,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/local-databases',
       // Story 18.16: Remote databases, the twelfth.
       'os-management/remote-databases',
+      // Story 18.5: Journals, the thirteenth.
+      'os-management/journals',
+      // Story 18.18: Journal settings, the fourteenth.
+      'os-management/journal-settings',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -248,9 +258,37 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/allowed-directories',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
+      // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
+      'system-explorer/classes/editor',
       'system-explorer/routines/document',
+      'system-explorer/routines/editor',
+      // Stories 19.5 and 19.14: a SQL table's nine unlisted tabs, a view's three and a procedure's
+      // two, by descriptor class name.
+      'system-explorer/sql-tables/cached-queries',
+      'system-explorer/sql-tables/constraints',
+      'system-explorer/sql-tables/fields',
+      'system-explorer/sql-tables/indices',
+      'system-explorer/sql-tables/partition-mappings',
+      'system-explorer/sql-tables/partitions',
+      'system-explorer/sql-procedures/document',
+      'system-explorer/sql-procedures/statements',
+      'system-explorer/sql-tables/document',
+      'system-explorer/sql-tables/statements',
+      'system-explorer/sql-tables/triggers',
+      'system-explorer/sql-views/document',
+      'system-explorer/sql-views/fields',
+      'system-explorer/sql-views/statements',
       'system-explorer/classes',
       'system-explorer/routines',
+      // Story 19.4: Search, Compare and Macros, after Routines.
+      'system-explorer/search',
+      'system-explorer/compare',
+      'system-explorer/macros',
+      // Story 19.5: the SQL catalog's four lists, after Macros.
+      'system-explorer/sql-schemas',
+      'system-explorer/sql-tables',
+      'system-explorer/sql-views',
+      'system-explorer/sql-procedures',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -260,7 +298,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
@@ -268,11 +306,12 @@ test('a side bar lists only built screens, in side-bar order', () => {
 // editor takes no position. Story 18.3 (AC1): Local databases is the eleventh, after Story 16.10's
 // External language servers, and its form takes none. Story 18.17 (AC5): the Integrity log is the
 // fifth, right after Databases. Story 18.16 (AC8): Remote databases is the twelfth, and its form takes
-// none.
+// none. Story 18.5 (AC1): Journals is the thirteenth, under OS management rather than Logs, and its
+// details and databases screens take none.
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
 // the built-screens roster above go red; so does DatabaseIntegrityLog back at 0.
-test('OS management lists Processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, then License usage, Dashboard, External language servers, Local databases and Remote databases', () => {
+test('OS management lists Processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, then License usage, Dashboard, External language servers, Local databases, Remote databases and Journals', () => {
   assert.deepEqual(
     listedScreensForArea('os-management').map((screen) => screen.route),
     [
@@ -293,8 +332,19 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/local-databases',
       // Story 18.16: the twelfth.
       'os-management/remote-databases',
+      // Story 18.5: the thirteenth.
+      'os-management/journals',
+      // Story 18.18: the fourteenth.
+      'os-management/journal-settings',
     ]
   );
+  // Story 18.18: Journal settings follows Journals, a listed form page of its own.
+  assert.equal(stringFor(screenForRoute('os-management/journal-settings').labelKey), STRINGS.journalSettingsLabel);
+  assert.equal(isListedScreen(screenForRoute('os-management/journal-settings')), true);
+  // Story 18.5: Journals is not a Logs entry, and a file's name opens Journal file details.
+  assert.equal(listedScreensForArea('logs').some((screen) => screen.route === 'os-management/journals'), false);
+  assert.equal(detailScreenFor(screenForRoute('os-management/journals'))?.route, 'os-management/journals/details');
+  assert.equal(stringFor(screenForRoute('os-management/journals').labelKey), STRINGS.journalListLabel);
   // Story 16.10: the list's name cell opens its one parent-scoped child, the Activity log.
   assert.equal(childListFor(screenForRoute('os-management/language-servers'))?.route, 'os-management/language-servers/activity');
   assert.equal(stringFor(screenForRoute('os-management/namespaces').labelKey), STRINGS.namespaceListLabel);

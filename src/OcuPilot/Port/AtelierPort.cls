@@ -15,9 +15,22 @@
 /// <parameter>TYPEEXPORT</parameter>; and an import of one file (<parameter>IDKEY</parameter>
 /// <parameter>IMPORTID</parameter>): <parameter>TYPEIMPORTTARGET</parameter>, its target,
 /// <parameter>TYPEPREVIEW</parameter>, what the file would do, and the write
-/// <parameter>TYPEIMPORT</parameter>. Each write is composed here from the caller's declared values
-/// (AD-51); a compile, a delete and an import are gated on WRITE on the namespace's routines database
-/// as well (AD-61).</p>
+/// <parameter>TYPEIMPORT</parameter>; and a save of one document's text, its fresh read
+/// <parameter>TYPESAVEDOCS</parameter> and the write <parameter>TYPESAVE</parameter>. Each write is
+/// composed here from the caller's declared values (AD-51); a compile, a delete, an import and a save
+/// are gated on WRITE on the namespace's routines database as well (AD-61).</p>
+/// <p><b>Two reads find code</b> (<parameter>ENDPOINTSEARCH</parameter> and
+/// <parameter>ENDPOINTMACRO</parameter>). A search is always plain text: it sends
+/// <code>regex=0</code>, never <code>word</code> or <code>wild</code>, and its
+/// <code>documents</code> comes from <parameter>SEARCHDOCUMENTS</parameter> alone (AD-61 rule 7). A
+/// macro lookup's body names the include, import and superclass names the document's own text gives
+/// (<method>MacroContext</method>), read first through the document route, never a caller's list.
+/// Each answers rows only; a match's line and a macro's definition are row fields, never a
+/// document's whole text (AD-36).</p>
+/// <p><b>Eighteen reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends only
+/// this port's fixed statements to the <code>Query</code> route with every caller value bound in its
+/// <code>parameters</code>, so no caller text reaches a statement (AD-61 rules 3 and 7), and a tab's
+/// table, view or procedure is first resolved to the one the caller's own privileges show it.</p>
 /// <p><b>A server file is never a caller's path</b> (AD-21's sixth case): an export or an import
 /// names it by <code>root</code> and <code>path</code>, resolved through
 /// <method>PathPortClass</method> at each call, the export as an overwriting <code>file</code>
@@ -53,7 +66,7 @@ Parameter VERSIONCLASSPREFIX = "%Api.Atelier.v";
 Parameter PINNEDVERSION As INTEGER = 8;
 
 /// <p>The lowest version each route this port calls needs, as <code>method:version</code>.</p>
-Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1,ExportToXMLFile:7,ListDocumentsInXMLFiles:7,LoadXMLFiles:7,PutDoc:1";
+Parameter MINVERSIONS = "GetNamespace:1,GetDocNames:1,Index:1,GetDoc:2,Compile:1,DeleteDocs:1,ExportToXMLFile:7,ListDocumentsInXMLFiles:7,LoadXMLFiles:7,PutDoc:1,Search:2,GetMacroDefinition:2,GetMacroLocation:2,Query:6";
 
 /// <p>The pair set every call requires whatever its namespace, comma-separated as
 /// <code>resource:permission</code>, in the order the gate reports in (AD-8, AD-29). READ on the
@@ -78,6 +91,229 @@ Parameter ENDPOINTCLASS = "Class";
 
 /// <p>The endpoint answering one routine's structure and text.</p>
 Parameter ENDPOINTROUTINE = "Routine";
+
+/// <p>The endpoint answering a plain-text search of a namespace's code (<method>SearchRows</method>).</p>
+Parameter ENDPOINTSEARCH = "Search";
+
+/// <p>The endpoint answering one macro's definition and location in one document's context
+/// (<method>MacroRows</method>).</p>
+Parameter ENDPOINTMACRO = "Macro";
+
+/// <p>The SQL catalog's endpoints (<method>CatalogRows</method>): a namespace's schemas, tables,
+/// views and procedures; one table's information, fields, maps and indices, partitions, partition
+/// mappings, triggers, constraints, cached queries and SQL statements; one view's information, fields
+/// and SQL statements; and one procedure's information and SQL statements.</p>
+Parameter ENDPOINTCATALOGSCHEMAS = "Catalog.Schemas";
+
+Parameter ENDPOINTCATALOGTABLES = "Catalog.Tables";
+
+Parameter ENDPOINTCATALOGVIEWS = "Catalog.Views";
+
+Parameter ENDPOINTCATALOGPROCEDURES = "Catalog.Procedures";
+
+Parameter ENDPOINTCATALOGTABLE = "Catalog.Table";
+
+Parameter ENDPOINTCATALOGFIELDS = "Catalog.Fields";
+
+Parameter ENDPOINTCATALOGINDICES = "Catalog.Indices";
+
+Parameter ENDPOINTCATALOGTRIGGERS = "Catalog.Triggers";
+
+Parameter ENDPOINTCATALOGCONSTRAINTS = "Catalog.Constraints";
+
+Parameter ENDPOINTCATALOGPARTITIONS = "Catalog.Partitions";
+
+Parameter ENDPOINTCATALOGPARTITIONMAPPINGS = "Catalog.PartitionMappings";
+
+Parameter ENDPOINTCATALOGCACHEDQUERIES = "Catalog.CachedQueries";
+
+Parameter ENDPOINTCATALOGTABLESTATEMENTS = "Catalog.TableStatements";
+
+Parameter ENDPOINTCATALOGVIEW = "Catalog.View";
+
+Parameter ENDPOINTCATALOGVIEWFIELDS = "Catalog.ViewFields";
+
+Parameter ENDPOINTCATALOGVIEWSTATEMENTS = "Catalog.ViewStatements";
+
+Parameter ENDPOINTCATALOGPROCEDURE = "Catalog.Procedure";
+
+Parameter ENDPOINTCATALOGPROCEDURESTATEMENTS = "Catalog.ProcedureStatements";
+
+/// <p>The catalog endpoints that read one table, named by <parameter>TABLEKEY</parameter> and
+/// resolved first through <parameter>CATALOGRESOLVEQUERY</parameter>.</p>
+Parameter CATALOGTABS = "Catalog.Table,Catalog.Fields,Catalog.Indices,Catalog.Triggers,Catalog.Constraints,Catalog.Partitions,Catalog.PartitionMappings,Catalog.CachedQueries,Catalog.TableStatements";
+
+/// <p>The catalog endpoints that read one view, named by <parameter>VIEWKEY</parameter> and
+/// resolved first through <parameter>CATALOGVIEWRESOLVEQUERY</parameter>, and one procedure, named
+/// by <parameter>PROCEDUREKEY</parameter> and resolved first through
+/// <parameter>CATALOGPROCEDURERESOLVEQUERY</parameter>.</p>
+Parameter CATALOGVIEWTABS = "Catalog.View,Catalog.ViewFields,Catalog.ViewStatements";
+
+Parameter CATALOGPROCEDURETABS = "Catalog.Procedure,Catalog.ProcedureStatements";
+
+/// <p>The catalog endpoints that read the SQL statements on one table, view or procedure through
+/// <parameter>CATALOGSTATEMENTSQUERY</parameter>, and the two that read one table's partitions, sent
+/// only for a table its resolve reads as partitioned.</p>
+Parameter CATALOGSTATEMENTTABS = "Catalog.TableStatements,Catalog.ViewStatements,Catalog.ProcedureStatements";
+
+Parameter CATALOGPARTITIONTABS = "Catalog.Partitions,Catalog.PartitionMappings";
+
+/// <p>Each catalog endpoint's one fixed statement, sent as the <code>Query</code> route's
+/// <code>query</code> with every caller value bound in its <code>parameters</code> (AD-21, AD-61 rule
+/// 7). No caller text is ever part of a statement, and no catalog query's pattern argument is ever
+/// sent. An empty bound value is SQL <code>NULL</code>, which is why an omitted schema is tested with
+/// <code>IS NULL</code>.</p>
+Parameter CATALOGSCHEMASQUERY = "CALL %SQL_Manager.Schemas(?)";
+
+/// <p>A table is every information-schema row that is not a view: a base, temporary or foreign
+/// table, and with system items a system table, as the classic page's table list shows them.</p>
+Parameter CATALOGTABLESQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'GLOBAL TEMPORARY', 'LOCAL TEMPORARY', 'FOREIGN TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)";
+
+Parameter CATALOGVIEWSQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_UPDATABLE, CHECK_OPTION FROM INFORMATION_SCHEMA.VIEWS WHERE (? = 1 OR (NOT (TABLE_SCHEMA %STARTSWITH '%') AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR TABLE_SCHEMA = ?)";
+
+Parameter CATALOGPROCEDURESQUERY = "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE, CLASSNAME, METHOD_OR_QUERY_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE (? = 1 OR (NOT (ROUTINE_SCHEMA %STARTSWITH '%') AND ROUTINE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR ROUTINE_SCHEMA = ?)";
+
+/// <p>The one table a tab's <parameter>TABLEKEY</parameter> names, among those the caller's own
+/// privileges show it, with whether it is partitioned: the information schema answers only those,
+/// and the match is case-insensitive, as the instance's table names are. A view's and a procedure's
+/// tabs resolve their names the same way, through the view and routine rows.</p>
+Parameter CATALOGRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE NOT IN ('VIEW', 'SYSTEM VIEW') AND TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+
+Parameter CATALOGVIEWRESOLVEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA || '.' || TABLE_NAME = ?";
+
+Parameter CATALOGPROCEDURERESOLVEQUERY = "SELECT ROUTINE_SCHEMA, ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA || '.' || ROUTINE_NAME = ?";
+
+Parameter CATALOGTABLEQUERY = "CALL %SQL_Manager.TablesOnly(?, 0)";
+
+Parameter CATALOGFIELDSQUERY = "CALL %SQL_Manager.Fields(?, ?)";
+
+Parameter CATALOGINDICESQUERY = "CALL %SQL_Manager.Indices(?, ?)";
+
+Parameter CATALOGTRIGGERSQUERY = "CALL %SQL_Manager.Triggers(?, ?)";
+
+Parameter CATALOGCONSTRAINTSQUERY = "CALL %SQL_Manager.""Constraints""(?, ?)";
+
+Parameter CATALOGPARTITIONSQUERY = "CALL %SQL_Manager.Partitions(?, ?)";
+
+Parameter CATALOGPARTITIONMAPPINGSQUERY = "CALL %SQL_Manager.PartitionMappings(?, ?)";
+
+Parameter CATALOGCACHEDQUERIESQUERY = "CALL %SQL_Manager.CachedQueryTable(?, ?)";
+
+/// <p>The SQL statements on one table, view or procedure, bound with its relation key
+/// (<method>CatalogRelation</method>): one row per statement, with its plan state, statistics, first
+/// day seen, text and its locations comma-separated, read from the information schema's statement
+/// tables. A text over 1,024 characters is cut to 1,021 and ends in <code>...</code>, as the classic
+/// tab cuts it. No user name, client or call stack is selected, and the read starts no statistics
+/// aggregation (AD-61 rule 7).</p>
+Parameter CATALOGSTATEMENTSQUERY = "SELECT CASE s.Frozen WHEN 1 THEN 'Frozen/Explicit' WHEN 2 THEN 'Frozen/Upgrade' WHEN 3 THEN 'Unfrozen/Parallel' ELSE 'Unfrozen' END AS PLAN_STATE, s.FrozenDifferent AS FROZEN_DIFF, s.StatCount AS EXECUTIONS, s.StatTotal AS TOTAL_TIME, s.StatAverage AS AVERAGE_TIME, s.StatStdDev AS STDDEV_TIME, s.StatRowCount AS ROW_COUNT, s.StatCommands AS COMMANDS, %ODBCOUT(s.StatFirst) AS FIRST_SEEN, CASE WHEN CHAR_LENGTH(s.Statement) > 1024 THEN SUBSTRING(s.Statement, 1, 1021) || '...' ELSE s.Statement END AS STATEMENT, LIST(l.Location) AS LOCATION FROM INFORMATION_SCHEMA.STATEMENT_RELATIONS r JOIN INFORMATION_SCHEMA.STATEMENTS s ON s.Hash = r.Statement LEFT OUTER JOIN INFORMATION_SCHEMA.STATEMENT_LOCATIONS l ON l.Statement = s.Hash WHERE r.Relation = ? GROUP BY s.Hash";
+
+/// <p>A view's information, and its text, which <method>CatalogRows</method> merges into the
+/// information's one row.</p>
+Parameter CATALOGVIEWQUERY = "CALL %SQL_Manager.ViewInfo2(?, ?)";
+
+Parameter CATALOGVIEWTEXTQUERY = "CALL %SQL_Manager.ViewInfo(?, ?)";
+
+Parameter CATALOGVIEWFIELDSQUERY = "CALL %SQL_Manager.ViewFields(?, ?)";
+
+Parameter CATALOGPROCEDUREQUERY = "CALL %SQL_Manager.ProcedureInfo(?, ?)";
+
+/// <p>Each catalog endpoint's row, as <code>Field:COLUMN[:kind]</code> comma-separated in field
+/// order: <code>flag</code> reads <code>1</code>, <code>yes</code> or <code>true</code> in any case as
+/// <code>true</code> and anything else as <code>false</code>, <code>number</code> reads a canonical
+/// number as one, <code>plain</code> reads documentation as plain text
+/// (<method>PlainText</method>), and <code>qualified</code> joins two columns, named
+/// <code>SCHEMA.NAME</code>, with a dot. A column outside the map, such as <code>Fields</code>' data
+/// values, never reaches a row.</p>
+Parameter CATALOGSCHEMASCOLUMNS = "Schema:SCHEMA_NAME,Tables:TABLE_EXISTS:flag,Views:VIEW_EXISTS:flag,Procedures:PROCEDURE_EXISTS:flag";
+
+Parameter CATALOGTABLESCOLUMNS = "Table:TABLE_SCHEMA.TABLE_NAME:qualified,Schema:TABLE_SCHEMA,Name:TABLE_NAME,Class:CLASSNAME,Owner:OWNER,Sharded:IS_SHARDED:flag,Partitioned:IS_PARTITIONED:flag";
+
+Parameter CATALOGVIEWSCOLUMNS = "View:TABLE_SCHEMA.TABLE_NAME:qualified,Schema:TABLE_SCHEMA,Name:TABLE_NAME,Class:CLASSNAME,Owner:OWNER,Updatable:IS_UPDATABLE:flag,CheckOption:CHECK_OPTION";
+
+Parameter CATALOGPROCEDURESCOLUMNS = "Procedure:ROUTINE_SCHEMA.ROUTINE_NAME:qualified,Schema:ROUTINE_SCHEMA,Name:ROUTINE_NAME,Type:ROUTINE_TYPE,Class:CLASSNAME,Method:METHOD_OR_QUERY_NAME";
+
+Parameter CATALOGTABLECOLUMNS = "Name:NAME,Owner:OWNER,LastCompiled:LAST_COMPILED,External:EXTERNAL:flag,ReadOnly:READ_ONLY:flag,Partitioned:PARTITIONED:flag,Class:CLASSNAME,ExtentSize:EXTENTSIZE:number,ExternalType:EXTERNAL_TYPE";
+
+Parameter CATALOGFIELDSCOLUMNS = "Field:FIELD_NAME,Type:DATATYPE,Column:COLUMN_NUMBER:number,Required:REQUIRED:flag,Unique:UNIQUE:flag,Collation:COLLATION_FUNCTION,Hidden:HIDDEN:flag,MaxLength:MAXLEN:number,MinValue:MINVAL,MaxValue:MAXVAL,Stream:BLOB:flag,XdbcType:XDBC_TYPENAME,ReferenceTo:REFERENCE_TO,VersionColumn:VERSION_COLUMN:flag,Selectivity:SELECTIVITY";
+
+Parameter CATALOGINDICESCOLUMNS = "Index:INDEX_NAME,Map:SQL_MAP_NAME,Fields:FIELDS,Type:TYPE,BitmapArgument:BI_ARGUMENT,SizeMB:SIZE_MB,Inherited:MAP_INHERITED:flag,Global:GLOBAL,Status:MAP_STATUS";
+
+Parameter CATALOGTRIGGERSCOLUMNS = "Trigger:TRIGGER_NAME,Event:TIME_EVENT,Order:ORDER:number,Code:CODE";
+
+Parameter CATALOGCONSTRAINTSCOLUMNS = "Constraint:CONSTRAINT_NAME,Type:CONSTRAINT_TYPE,Data:CONSTRAINT_DATA";
+
+Parameter CATALOGPARTITIONSCOLUMNS = "Partition:PARTITION_ID,Buckets:BUCKETS:number,Rows:ROWS:number,EstimatedSize:ESTIMATED_SIZE:number,Location:LOCATION";
+
+Parameter CATALOGPARTITIONMAPPINGSCOLUMNS = "Rule:RULE,Buckets:BUCKETS:number,Rows:ROWS:number,EstimatedSize:ESTIMATED_SIZE:number,Location:LOCATION";
+
+Parameter CATALOGCACHEDQUERIESCOLUMNS = "CachedQuery:Routine,Query:Query,Created:CreateTime,Source:Source:flag,QueryType:QueryTypeExt,Features:STATEMENT_OPTIONS";
+
+Parameter CATALOGSTATEMENTSCOLUMNS = "Statement:STATEMENT,PlanState:PLAN_STATE,NewPlan:FROZEN_DIFF:flag,Executions:EXECUTIONS:number,TotalTime:TOTAL_TIME:number,AverageTime:AVERAGE_TIME:number,StdDevTime:STDDEV_TIME:number,RowCount:ROW_COUNT:number,Commands:COMMANDS:number,FirstSeen:FIRST_SEEN,Location:LOCATION";
+
+Parameter CATALOGVIEWCOLUMNS = "Owner:OWNER,LastCompiled:LAST_COMPILED,ReadOnly:DEFINED_AS_READ_ONLY:flag,Updatable:UPDATABLE:flag,Class:CLASSNAME,CheckOption:CHECK_OPTION,ClassType:CLASSTYPE,Text:VIEW_QUERY";
+
+Parameter CATALOGVIEWFIELDSCOLUMNS = "Field:FIELD_NAME,Type:DATATYPE,Collation:COLLATION,MaxLength:MAXLEN:number,MaxValue:MAXVAL,MinValue:MINVAL,Stream:BLOB:flag,Length:LENGTH:number,Precision:PRECISION:number,Scale:SCALE:number";
+
+Parameter CATALOGPROCEDURECOLUMNS = "Class:CLASS_NAME,Type:PROCEDURE_TYPE,Method:METHOD_OR_QUERY_NAME,Description:DESCRIPTION:plain,Inputs:NUMBER_INPUT_PARAMS:number,InOuts:NUMBER_INPUT_OUTPUT_PARAMS:number,Outputs:NUMBER_OUTPUT_PARAMS:number,Interface:PROCEDURE_INTERFACE:number,Columns:NUMBER_OF_COLUMNS:number,InputParameters:INPUT_PARAMETERS,InOutParameters:INPUT_OUTPUT_PARAMETERS,OutputParameters:OUTPUT_PARAMETERS,ResultColumns:RESULTSET_COLUMNS,ReturnValue:RETURN_VALUE";
+
+/// <p>The query keys carrying a catalog list's schema and a catalog tab's table, view or procedure,
+/// as <code>Schema.Name</code>; <parameter>SYSTEMKEY</parameter> chooses whether a list keeps system
+/// items.</p>
+Parameter SCHEMAKEY = "schema";
+
+Parameter TABLEKEY = "table";
+
+Parameter VIEWKEY = "view";
+
+Parameter PROCEDUREKEY = "procedure";
+
+/// <p>The longest schema a catalog list takes, and the longest table, view or procedure a tab takes:
+/// two names of that length and the dot.</p>
+Parameter MAXSCHEMA As INTEGER = 128;
+
+Parameter MAXTABLE As INTEGER = 257;
+
+/// <p>The most rows a catalog read asks the instance for when its caller names no row cap.</p>
+Parameter CATALOGMAX As INTEGER = 1001;
+
+/// <p>The most rows the table information asks the instance for, whatever the read's cap: its
+/// statement lists the table's whole schema, of which only the resolved table's row is kept.</p>
+Parameter CATALOGTABLEMAX As INTEGER = 5000;
+
+/// <p>The query keys carrying a search's text, the documents it looks in (<code>all</code>,
+/// <code>classes</code> or <code>routines</code>) and whether it matches case (<code>yes</code> or
+/// <code>no</code>).</p>
+Parameter TEXTKEY = "text";
+
+Parameter SCOPEKEY = "scope";
+
+Parameter CASEKEY = "case";
+
+/// <p>The longest text a search takes.</p>
+Parameter MAXSEARCHTEXT As INTEGER = 256;
+
+/// <p>The vendor's <code>documents</code> for each search scope, as <code>scope=masks</code>
+/// separated by <code>;</code>. A search's <code>documents</code> is taken from here alone, never
+/// from a caller's text, because the vendor splices a bracketed part of it into SQL (AD-61 rule
+/// 7).</p>
+Parameter SEARCHDOCUMENTS = "all=*.cls,*.mac,*.int,*.inc,*.bas,*.mvi,*.mvb;classes=*.cls;routines=*.mac,*.int,*.inc,*.bas,*.mvi,*.mvb";
+
+/// <p>The most matches a search asks the vendor for when its caller names no row cap.</p>
+Parameter SEARCHMAX As INTEGER = 200;
+
+/// <p>The query keys carrying a macro lookup's document, whose text gives the macro's context, and
+/// the macro, as <code>Name</code> or <code>$$$Name</code>.</p>
+Parameter MACRODOCUMENTKEY = "document";
+
+Parameter MACROKEY = "macro";
+
+/// <p>The shape a macro's name must take, its leading <code>$$$</code> optional.</p>
+Parameter MACRONAMEPATTERN = "^(\$\$\$)?%?[A-Za-z][A-Za-z0-9]*$";
+
+/// <p>The shape a name <method>MacroContext</method> keeps, and the most it keeps per list.</p>
+Parameter CONTEXTNAMEPATTERN = "^%?[A-Za-z][A-Za-z0-9.]*$";
+
+Parameter MAXCONTEXTNAMES As INTEGER = 50;
 
 /// <p>The one request type every endpoint serves.</p>
 Parameter REQUESTTYPE = "LIST";
@@ -109,10 +345,19 @@ Parameter TYPEPREVIEW = "PREVIEW";
 /// <p>The list endpoints' import of one file (<method>ImportSet</method>).</p>
 Parameter TYPEIMPORT = "IMPORT";
 
+/// <p>The list endpoints' read of the one document a save names: <method>Docs</method>, with
+/// <code>content</code>, <code>version</code> and <code>Compile</code> answered <code>null</code>
+/// beside it.</p>
+Parameter TYPESAVEDOCS = "SAVEDOCS";
+
+/// <p>The list endpoints' save of one document's text (<method>SaveSet</method>).</p>
+Parameter TYPESAVE = "SAVE";
+
 /// <p>The writes whose vendor call this port composes from the caller's declared values, as
 /// <code>endpoint/type</code> (AD-51): a compile from its three booleans, a delete from the set
-/// alone, an export from the set and its file, and an import from its file.</p>
-Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT";
+/// alone, an export from the set and its file, an import from its file, and a save from its text,
+/// its version and its compile choice.</p>
+Parameter COMPOSEDTYPES = "Classes/COMPILE,Routines/COMPILE,Classes/DELETE,Routines/DELETE,Classes/EXPORT,Routines/EXPORT,Classes/IMPORT,Routines/IMPORT,Classes/SAVE,Routines/SAVE";
 
 /// <p>The query key carrying an import's target, and the one target it takes, compared without
 /// regard to case.</p>
@@ -127,10 +372,18 @@ Parameter ROOTKEY = "root";
 Parameter PATHKEY = "path";
 
 /// <p>The query keys carrying a local file the screen sends: its name, which names no directory, and
-/// its text.</p>
+/// its text. A save's text travels under <parameter>CONTENTKEY</parameter> too.</p>
 Parameter FILENAMEKEY = "fileName";
 
 Parameter CONTENTKEY = "content";
+
+/// <p>The query key carrying the version of the document a save's text was read from: the
+/// <code>ts</code> the document read answers as <code>modified</code>, sent to the vendor as its
+/// <code>If-None-Match</code> (AD-61 rule 3).</p>
+Parameter VERSIONKEY = "version";
+
+/// <p>The request variable the vendor's save reads the client's version from.</p>
+Parameter IFNONEMATCHVARIABLE = "HTTP_IF_NONE_MATCH";
 
 /// <p>The query key carrying the reviewed summary an import's write compares
 /// (<method>Examine</method>).</p>
@@ -144,7 +397,7 @@ Parameter COMPILEKEY = "Compile";
 /// caller value (AD-21).</p>
 Parameter EXPORTOVERWRITES As BOOLEAN = 1;
 
-/// <p>The most characters an import reads from one file.</p>
+/// <p>The most characters an import reads from one file, and the most one save sends.</p>
 Parameter MAXIMPORTCHARACTERS As INTEGER = 3000000;
 
 /// <p>The longest local file name an import takes.</p>
@@ -153,8 +406,8 @@ Parameter MAXFILENAME As INTEGER = 255;
 /// <p>The extensions an import reads, lower case: an XML export, or one UDL document.</p>
 Parameter IMPORTEXTENSIONS = "xml,cls,mac,inc,int";
 
-/// <p>The compiler flags an import that compiles sends: <method>CompileFlags</method> with source
-/// kept and documents already up to date skipped.</p>
+/// <p>The compiler flags an import or a save that compiles sends: <method>CompileFlags</method> with
+/// source kept and documents already up to date skipped.</p>
 Parameter IMPORTCOMPILEFLAGS = "cuk";
 
 /// <p>The separator between two entries of an import's summary.</p>
@@ -330,6 +583,51 @@ Parameter REASONIMPORTCOMPILE = "Compile must be true or false.";
 /// <p>The reason an import target other than <parameter>IMPORTID</parameter> is refused with.</p>
 Parameter REASONIMPORTID = "An import's target is import.";
 
+/// <p>The reason a save naming more than one document is refused with.</p>
+Parameter REASONSAVENAMES = "A save names exactly one document.";
+
+/// <p>The reason a save carrying no version is refused with.</p>
+Parameter REASONSAVEVERSION = "version must be the document's version as it was read.";
+
+/// <p>The reason a missing or malformed search text is refused with.</p>
+Parameter REASONSEARCHTEXT = "Name the text to search for: 1 to 256 characters, with no control character.";
+
+/// <p>The reason a search scope outside its options is refused with.</p>
+Parameter REASONSEARCHSCOPE = "scope must be all, classes or routines.";
+
+/// <p>The reason a search case choice outside its options is refused with.</p>
+Parameter REASONSEARCHCASE = "case must be yes or no.";
+
+/// <p>The reason a malformed macro lookup is refused with.</p>
+Parameter REASONMACRO = "Name a class or routine as the macro's context, and a macro, as Name or $$$Name.";
+
+/// <p>The reasons a catalog read's malformed schema, system choice and table are refused with.</p>
+Parameter REASONCATALOGSCHEMA = "schema must be 1 to 128 characters, with no control character.";
+
+Parameter REASONCATALOGSYSTEM = "system must be yes or no.";
+
+Parameter REASONCATALOGTABLE = "Name one table, as Schema.Table.";
+
+/// <p>The reasons a catalog tab's table is refused with when the resolve answers two tables, and
+/// none.</p>
+Parameter REASONCATALOGAMBIGUOUS = "That name matches more than one table in this namespace.";
+
+Parameter REASONCATALOGNOTFOUND = "This namespace holds no table by that name that this account can see.";
+
+/// <p>The reasons a view's and a procedure's tab refuses a malformed name, a name the resolve answers
+/// twice, and one it answers not at all.</p>
+Parameter REASONCATALOGVIEW = "Name one view, as Schema.View.";
+
+Parameter REASONCATALOGPROCEDURE = "Name one procedure, as Schema.Procedure.";
+
+Parameter REASONCATALOGVIEWAMBIGUOUS = "That name matches more than one view in this namespace.";
+
+Parameter REASONCATALOGPROCEDUREAMBIGUOUS = "That name matches more than one procedure in this namespace.";
+
+Parameter REASONCATALOGVIEWNOTFOUND = "This namespace holds no view by that name that this account can see.";
+
+Parameter REASONCATALOGPROCEDURENOTFOUND = "This namespace holds no procedure by that name that this account can see.";
+
 /// <p>The class the pair set is evaluated through. Overridable so a fixture can drive a denial in
 /// process; production never overrides it.</p>
 ClassMethod GateClass() As %String
@@ -442,9 +740,9 @@ ClassMethod NamespacePairs(pNamespace As %String) As %List
 }
 
 /// <p><method>NamespacePairs</method> plus WRITE on the resource guarding <var>pNamespace</var>'s
-/// routines database, which a compile or a delete writes and the source code API itself does not
-/// check (AD-61 rule 1, measured); <code>""</code> when the namespace's pairs cannot be resolved,
-/// which the caller refuses rather than admits.</p>
+/// routines database, which a compile, a delete, an import or a save writes and the source code API
+/// itself does not check (AD-61 rule 1, measured); <code>""</code> when the namespace's pairs cannot
+/// be resolved, which the caller refuses rather than admits.</p>
 ClassMethod WritePairs(pNamespace As %String) As %List
 {
     Set tPairs = ..NamespacePairs(pNamespace)
@@ -457,12 +755,15 @@ ClassMethod WritePairs(pNamespace As %String) As %List
 /// <p>The lowest version <var>pEndpoint</var>'s routes need for request type <var>pType</var>: the
 /// highest of its routes' <parameter>MINVERSIONS</parameter>. An export's read and write take the
 /// export route's, and an import's target, preview and write each take every route an import may
-/// call, so an instance too old for the write refuses its fresh read too.</p>
+/// call, so an instance too old for the write refuses its fresh read too; a save's read and write
+/// take every route a save may call, the same way. A search takes the search route's, and a macro
+/// lookup the document read's and both macro routes'. A catalog endpoint takes the query route's.</p>
 ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}) As %Integer
 {
     Set tImport = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
     Set tExport = (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
-    Set tRoutes = $Select((pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
+    Set tSave = (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
+    Set tRoutes = $Select(..IsCatalog(pEndpoint): $ListBuild("Query"), pEndpoint = ..#ENDPOINTSEARCH: $ListBuild("Search"), pEndpoint = ..#ENDPOINTMACRO: $ListBuild("GetDoc", "GetMacroDefinition", "GetMacroLocation"), (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE): $ListBuild("Index", "GetDoc"), pType = ..#TYPEDOCS: $ListBuild("GetDocNames"), pType = ..#TYPECOMPILE: $ListBuild("GetDocNames", "Compile"), pType = ..#TYPEDELETE: $ListBuild("GetDocNames", "DeleteDocs"), tExport: $ListBuild("GetDocNames", "ExportToXMLFile"), tImport: $ListBuild("GetDocNames", "ListDocumentsInXMLFiles", "LoadXMLFiles", "PutDoc", "Compile"), tSave: $ListBuild("GetDocNames", "PutDoc", "Compile"), 1: $ListBuild("GetNamespace", "GetDocNames"))
     Set tNeeded = 1
     For tI = 1:1:$ListLength(tRoutes) {
         Set tRoute = $List(tRoutes, tI)
@@ -481,12 +782,18 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <code>pattern</code>, <code>system</code>, <code>generated</code>, <code>mapped</code>,
 /// <code>from</code> and <code>to</code>, each optional (<method>ListRows</method>); a document
 /// endpoint reads <code>name</code> (required) and <code>form</code> (<code>udl</code> when absent).
-/// <var>pBody</var> is not read.</p>
+/// <parameter>ENDPOINTSEARCH</parameter> reads <code>text</code>, <code>scope</code> and
+/// <code>case</code> (<method>SearchRows</method>), and <parameter>ENDPOINTMACRO</parameter>
+/// <code>document</code> and <code>macro</code> (<method>MacroRows</method>). A catalog endpoint
+/// reads <code>system</code> and <code>schema</code>, or <code>table</code>, <code>view</code> or
+/// <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
 /// <p>On success <var>pResult</var> is a <class>%DynamicArray</class> of rows and
 /// <var>pHttpStatus</var> is 200. A list row is <code>{Name, Modified, Database, Generated}</code>;
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>
 /// <code>{name, form, available, content, modified, database, generates}</code>, which the row cap
-/// never cuts.</p>
+/// never cuts; a search row is <code>{Order, Document, Member, Line, Attribute, Text}</code> and a
+/// macro row <code>{Macro, Document, Line, Definition}</code>, and a catalog row its endpoint's column
+/// map's fields, with no document beside them.</p>
 /// <p>The list endpoints also serve a set of documents, named in <code>names</code>
 /// (<method>SetNames</method>), in <code>namespace</code> or, where it is absent, the request's
 /// resolved scope (<method>OcuPilot.Kernel.Scope.Current</method>): <parameter>TYPEDOCS</parameter>
@@ -502,6 +809,9 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// being 404 <code>PORT.NOTFOUND</code>; <parameter>TYPEPREVIEW</parameter> answers
 /// <method>Preview</method>'s <code>{documents, count}</code>; and <parameter>TYPEIMPORT</parameter>
 /// answers <method>ImportSet</method>'s, requiring <method>WritePairs</method>.</p>
+/// <p>And a save of one document, named in <code>names</code>: <parameter>TYPESAVEDOCS</parameter>
+/// answers <method>Docs</method>'s object, and <parameter>TYPESAVE</parameter> answers
+/// <method>SaveSet</method>'s, requiring <method>WritePairs</method>.</p>
 /// <p>Otherwise an error status is returned with <var>pResult</var> and <var>pDocument</var> empty,
 /// <var>pHttpStatus</var> the status to answer with and <var>pFault</var> the wire fault: 403
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, before any vendor call; 501
@@ -509,7 +819,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// old; 400 <code>PORT.VALIDATION</code> for a malformed argument or a value the vendor refused;
 /// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
 /// document the namespace does not hold, with nothing sent; a file's own refusals
-/// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); 403
+/// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); a save's
+/// own (<method>SaveSet</method>); 403
 /// <code>PORT.ACCESSDENIED</code> for
 /// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
@@ -530,9 +841,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Deny(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT)
+        Set tSetType = (pType = ..#TYPEDOCS) || (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORTDOCS) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPESAVEDOCS) || (pType = ..#TYPESAVE)
         Set tImportType = (pType = ..#TYPEIMPORTTARGET) || (pType = ..#TYPEPREVIEW) || (pType = ..#TYPEIMPORT)
-        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT)
+        Set tWrite = (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE)
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If (tNamespace = "") && (tSetType || tImportType) Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         If '$Match(tNamespace, ..#NAMESPACEPATTERN) {
@@ -551,7 +862,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         Set tList = (pEndpoint = ..#ENDPOINTCLASSES) || (pEndpoint = ..#ENDPOINTROUTINES)
         Set tOne = (pEndpoint = ..#ENDPOINTCLASS) || (pEndpoint = ..#ENDPOINTROUTINE)
-        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne)) || ((tSetType || tImportType) && tList)
+        Set tFind = (pEndpoint = ..#ENDPOINTSEARCH) || (pEndpoint = ..#ENDPOINTMACRO)
+        Set tCatalog = ..IsCatalog(pEndpoint)
+        Set tServed = ((pType = ..#REQUESTTYPE) && (tList || tOne || tFind || tCatalog)) || ((tSetType || tImportType) && tList)
         If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
@@ -606,6 +919,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..ExportSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
+            If pType = ..#TYPESAVEDOCS {
+                Set tSC = ..Docs(tVersion, tNamespace, pEndpoint, tNames, .pResult, .pHttpStatus, .pFault, $ListBuild(..#CONTENTKEY, ..#VERSIONKEY, ..#COMPILEKEY))
+                Quit
+            }
+            If pType = ..#TYPESAVE {
+                Set tSC = ..SaveSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
+                Quit
+            }
             If pType = ..#TYPECOMPILE {
                 Set tSC = ..CompileSet(tVersion, tNamespace, pEndpoint, tNames, .pQuery, .pResult, .pHttpStatus, .pFault)
                 Quit
@@ -617,6 +938,18 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set tMax = $Get(pQuery(..#MAXROWSKEY))
         If (tMax '= "") && '$Match(tMax, "^[1-9][0-9]*$") {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tCatalog {
+            Set tSC = ..CatalogRows(tVersion, tNamespace, pEndpoint, .pQuery, +tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTSEARCH {
+            Set tSC = ..SearchRows(tVersion, tNamespace, .pQuery, +tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTMACRO {
+            Set tSC = ..MacroRows(tVersion, tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         If tList {
@@ -745,6 +1078,516 @@ ClassMethod DefaultDatabase(pAnswer) As %String [ Private ]
         }
     }
     Quit tName
+}
+
+/// <p>The rows of a plain-text search of the namespace's code, at most <var>pMax</var> of them when it
+/// is above zero, in the vendor's order. <code>text</code> is required, 1 to
+/// <parameter>MAXSEARCHTEXT</parameter> characters with no control character; <code>scope</code> is
+/// <code>all</code> when absent and <code>case</code> <code>no</code>. Each is checked before the
+/// route is called, and a bad one is refused 400 <code>PORT.VALIDATION</code> with its own
+/// reason.</p>
+/// <p>The route is sent exactly <code>query</code>, <code>documents</code> (the scope's
+/// <parameter>SEARCHDOCUMENTS</parameter> entry), <code>regex=0</code>, <code>case</code>,
+/// <code>sys=0</code>, <code>gen=0</code> and <code>max</code> (<var>pMax</var>, else
+/// <parameter>SEARCHMAX</parameter>), and nothing else (AD-61 rule 7).</p>
+/// <p>A row is <code>{Order, Document, Member, Line, Attribute, Text}</code>: <code>Order</code>
+/// counts from 1, <code>Line</code> is the match's line, else its attribute's line, else
+/// <code>null</code>, and an absent member or attribute is <code>""</code>.</p>
+ClassMethod SearchRows(pVersion As %Integer, pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Set tText = $Get(pQuery(..#TEXTKEY))
+        If (tText = "") || ($Length(tText) > ..#MAXSEARCHTEXT) || ($ZStrip(tText, "*C") '= tText) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHTEXT, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tScope = $Get(pQuery(..#SCOPEKEY))
+        If tScope = "" Set tScope = "all"
+        Set tDocuments = ..SearchDocuments(tScope)
+        If tDocuments = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHSCOPE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tCase = $Get(pQuery(..#CASEKEY))
+        If tCase = "" Set tCase = "no"
+        If (tCase '= "yes") && (tCase '= "no") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSEARCHCASE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Kill tParams
+        Set tParams("query") = tText
+        Set tParams("documents") = tDocuments
+        Set tParams("regex") = 0
+        Set tParams("case") = $Select(tCase = "yes": 1, 1: 0)
+        Set tParams("sys") = 0
+        Set tParams("gen") = 0
+        Set tParams("max") = $Select(pMax > 0: pMax, 1: ..#SEARCHMAX)
+        Set tSC = ..Route(pVersion, pNamespace, "Search", "", .tParams, "", .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Fail("Search answered no result array", $$$ERROR($$$GeneralError, "search answered no result array"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tRows = []
+        Set tDocs = tAnswer.%GetIterator()
+        While tDocs.%GetNext(.tDocIndex, .tDoc) {
+            If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+            If '$IsObject(tDoc) || 'tDoc.%IsA("%Library.DynamicObject") Continue
+            Set tMatches = tDoc.%Get("matches")
+            If '$IsObject(tMatches) || 'tMatches.%IsA("%Library.DynamicArray") Continue
+            Set tIterator = tMatches.%GetIterator()
+            While tIterator.%GetNext(.tMatchIndex, .tMatch) {
+                If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+                If '$IsObject(tMatch) || 'tMatch.%IsA("%Library.DynamicObject") Continue
+                Set tLine = tMatch.%Get("line")
+                If tLine = "" Set tLine = tMatch.%Get("attrline")
+                Set tRow = {}
+                Do tRow.%Set("Order", tRows.%Size() + 1, "number")
+                Do tRow.%Set("Document", tDoc.%Get("doc"), "string")
+                Do tRow.%Set("Member", tMatch.%Get("member"), "string")
+                If tLine = "" {
+                    Do tRow.%Set("Line", "", "null")
+                } Else {
+                    Do tRow.%Set("Line", +tLine, "number")
+                }
+                Do tRow.%Set("Attribute", tMatch.%Get("attr"), "string")
+                Do tRow.%Set("Text", tMatch.%Get("text"), "string")
+                Do tRows.%Push(tRow)
+            }
+        }
+        Set pRows = tRows
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ..Fail("the search failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's <code>documents</code> for search scope <var>pScope</var>, from
+/// <parameter>SEARCHDOCUMENTS</parameter>; <code>""</code> for a scope it does not declare.</p>
+ClassMethod SearchDocuments(pScope As %String) As %String
+{
+    Set tMasks = ""
+    For tI = 1:1:$Length(..#SEARCHDOCUMENTS, ";") {
+        Set tEntry = $Piece(..#SEARCHDOCUMENTS, ";", tI)
+        If $Piece(tEntry, "=", 1) = pScope Set tMasks = $Piece(tEntry, "=", 2, *)
+    }
+    Quit tMasks
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the SQL catalog's endpoints.</p>
+ClassMethod IsCatalog(pEndpoint As %String) As %Boolean
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: 1, ..#ENDPOINTCATALOGTABLES: 1, ..#ENDPOINTCATALOGVIEWS: 1, ..#ENDPOINTCATALOGPROCEDURES: 1, ..#ENDPOINTCATALOGTABLE: 1, ..#ENDPOINTCATALOGFIELDS: 1, ..#ENDPOINTCATALOGINDICES: 1, ..#ENDPOINTCATALOGTRIGGERS: 1, ..#ENDPOINTCATALOGCONSTRAINTS: 1, ..#ENDPOINTCATALOGPARTITIONS: 1, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: 1, ..#ENDPOINTCATALOGCACHEDQUERIES: 1, ..#ENDPOINTCATALOGTABLESTATEMENTS: 1, ..#ENDPOINTCATALOGVIEW: 1, ..#ENDPOINTCATALOGVIEWFIELDS: 1, ..#ENDPOINTCATALOGVIEWSTATEMENTS: 1, ..#ENDPOINTCATALOGPROCEDURE: 1, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: 1, : 0)
+}
+
+/// <p><var>pEndpoint</var>'s fixed statement, or <code>""</code> for an endpoint that is not the
+/// catalog's.</p>
+ClassMethod CatalogStatement(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASQUERY, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESQUERY, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSQUERY, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESQUERY, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEQUERY, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSQUERY, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESQUERY, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSQUERY, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSQUERY, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSQUERY, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSQUERY, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESQUERY, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWQUERY, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSQUERY, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDUREQUERY, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, : "")
+}
+
+/// <p><var>pEndpoint</var>'s column map (<parameter>CATALOGSCHEMASCOLUMNS</parameter>), or
+/// <code>""</code>.</p>
+ClassMethod CatalogColumns(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASCOLUMNS, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESCOLUMNS, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESCOLUMNS, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLECOLUMNS, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSCOLUMNS, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESCOLUMNS, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSCOLUMNS, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSCOLUMNS, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESCOLUMNS, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWCOLUMNS, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSCOLUMNS, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDURECOLUMNS, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, : "")
+}
+
+/// <p>The rows of SQL catalog endpoint <var>pEndpoint</var>, at most <var>pMax</var> of them when it
+/// is above zero, each carrying exactly its column map's fields
+/// (<parameter>CATALOGSCHEMASCOLUMNS</parameter>).</p>
+/// <p>The four lists read <code>system</code> (<code>yes</code> or <code>no</code>, <code>no</code>
+/// when absent: <code>no</code> keeps no <code>%</code> or <code>INFORMATION_SCHEMA</code> item), and
+/// all but the schemas <code>schema</code>, at most <parameter>MAXSCHEMA</parameter> characters with
+/// no control character, an absent or empty one keeping every schema. A tab reads
+/// <code>table</code> (<parameter>CATALOGTABS</parameter>), <code>view</code>
+/// (<parameter>CATALOGVIEWTABS</parameter>) or <code>procedure</code>
+/// (<parameter>CATALOGPROCEDURETABS</parameter>), <code>Schema.Name</code>, at most
+/// <parameter>MAXTABLE</parameter> characters with no control character, which
+/// <method>CatalogResolve</method> turns into the one object of that kind the caller's own privileges
+/// show before the endpoint's statement is bound with that row's exact schema and name: the vendor's
+/// detail queries filter nothing by privilege, and its subscripts are case-exact. A malformed value is
+/// refused 400 <code>PORT.VALIDATION</code> with its own reason before any route.</p>
+/// <p>The statement is sent as <code>{query, parameters}</code> to the <code>Query</code> route with
+/// <code>max</code> <var>pMax</var>, else <parameter>CATALOGMAX</parameter>. The table information
+/// sends <parameter>CATALOGTABLEMAX</parameter> instead, since its statement lists the table's whole
+/// schema, and keeps only the row naming the resolved table. A table's partitions and partition
+/// mappings are read only for a table its resolve reads as partitioned and otherwise answer no rows
+/// with no further route, since the vendor's queries fail on any other table. A SQL statements tab
+/// binds the object's relation key (<method>CatalogRelation</method>). A view's information is
+/// <parameter>CATALOGVIEWQUERY</parameter>'s one row with <parameter>CATALOGVIEWTEXTQUERY</parameter>'s
+/// text merged into it. A SQL error the route answers under 200 is the internal fault, its text logged
+/// and never sent.</p>
+ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Set tKind = $Select($ListFind($ListFromString(..#CATALOGTABS), pEndpoint): "table", $ListFind($ListFromString(..#CATALOGVIEWTABS), pEndpoint): "view", $ListFind($ListFromString(..#CATALOGPROCEDURETABS), pEndpoint): "procedure", 1: "")
+        Set tSystem = ""
+        Set tSchema = ""
+        Set tName = ""
+        Set tPartitioned = 0
+        If tKind '= "" {
+            Set tObject = $Get(pQuery($Case(tKind, "view": ..#VIEWKEY, "procedure": ..#PROCEDUREKEY, : ..#TABLEKEY)))
+            If (tObject '[ ".") || ($Length(tObject) > ..#MAXTABLE) || ($ZStrip(tObject, "*C") '= tObject) {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Case(tKind, "view": ..#REASONCATALOGVIEW, "procedure": ..#REASONCATALOGPROCEDURE, : ..#REASONCATALOGTABLE), .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tSC = ..CatalogResolve(pVersion, pNamespace, tKind, tObject, .tSchema, .tName, .tPartitioned, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            If $ListFind($ListFromString(..#CATALOGPARTITIONTABS), pEndpoint) && 'tPartitioned {
+                Set pRows = []
+                Set pHttpStatus = 200
+                Quit
+            }
+        } Else {
+            Set tSystem = $Get(pQuery(..#SYSTEMKEY))
+            If tSystem = "" Set tSystem = "no"
+            If (tSystem '= "yes") && (tSystem '= "no") {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGSYSTEM, .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint '= ..#ENDPOINTCATALOGSCHEMAS {
+                Set tSchema = $Get(pQuery(..#SCHEMAKEY))
+                If ($Length(tSchema) > ..#MAXSCHEMA) || ($ZStrip(tSchema, "*C") '= tSchema) {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGSCHEMA, .pHttpStatus, .pFault)
+                    Quit
+                }
+            }
+        }
+        Set tFlag = $Select(tSystem = "yes": 1, 1: 0)
+        Set tParameters = []
+        If pEndpoint = ..#ENDPOINTCATALOGSCHEMAS {
+            Do tParameters.%Push(tFlag, "number")
+        } ElseIf pEndpoint = ..#ENDPOINTCATALOGTABLES {
+            Do tParameters.%Push($Select(tFlag: "SYSTEM TABLE", 1: "BASE TABLE"), "string")
+            Do tParameters.%Push(tSchema, "string")
+            Do tParameters.%Push(tSchema, "string")
+        } ElseIf tKind = "" {
+            Do tParameters.%Push(tFlag, "number")
+            Do tParameters.%Push(tSchema, "string")
+            Do tParameters.%Push(tSchema, "string")
+        } ElseIf pEndpoint = ..#ENDPOINTCATALOGTABLE {
+            Do tParameters.%Push(tSchema, "string")
+        } ElseIf $ListFind($ListFromString(..#CATALOGSTATEMENTTABS), pEndpoint) {
+            Do tParameters.%Push(..CatalogRelation(tSchema, tName), "string")
+        } Else {
+            Do tParameters.%Push(tSchema, "string")
+            Do tParameters.%Push(tName, "string")
+        }
+        Kill tParams
+        Set tParams("max") = $Select(pEndpoint = ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEMAX, pMax > 0: pMax, 1: ..#CATALOGMAX)
+        Set tSC = ..CatalogQuery(pVersion, pNamespace, ..CatalogStatement(pEndpoint), tParameters, .tParams, "query", .tContent, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If (pEndpoint = ..#ENDPOINTCATALOGVIEW) && $IsObject(tContent.%Get(0)) {
+            Set tSC = ..CatalogQuery(pVersion, pNamespace, ..#CATALOGVIEWTEXTQUERY, tParameters, .tParams, "view text", .tTexts, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            Set tText = $Select($IsObject(tTexts.%Get(0)): tTexts.%Get(0).%Get("VIEW_QUERY"), 1: "")
+            If $IsObject(tText) {
+                Do tContent.%Get(0).%Set("VIEW_QUERY", tText)
+            } Else {
+                Do tContent.%Get(0).%Set("VIEW_QUERY", tText, "string")
+            }
+        }
+        Set tColumns = ..CatalogColumns(pEndpoint)
+        Set tRows = []
+        Set tIterator = tContent.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If (pMax > 0) && (tRows.%Size() >= pMax) Quit
+            If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+            If (pEndpoint = ..#ENDPOINTCATALOGTABLE) && (tRow.%Get("NAME") '= tName) Continue
+            Do tRows.%Push(..CatalogRow(tRow, tColumns))
+        }
+        Set pRows = tRows
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ..Fail("the catalog read failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Send fixed statement <var>pStatement</var> with <var>pParameters</var> to the
+/// <code>Query</code> route, its query parameters <var>pParams</var>, and answer the result's
+/// <code>content</code> array as <var>pContent</var>. An answer carrying none is the internal fault,
+/// logged naming <var>pWhat</var>.</p>
+ClassMethod CatalogQuery(pVersion As %Integer, pNamespace As %String, pStatement As %String, pParameters As %DynamicArray, ByRef pParams, pWhat As %String, Output pContent As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pContent = ""
+    Set tBody = {}
+    Do tBody.%Set("query", pStatement, "string")
+    Do tBody.%Set("parameters", pParameters)
+    Set tSC = ..Route(pVersion, pNamespace, "Query", "", .pParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+    If '$IsObject(tContent) || 'tContent.%IsA("%Library.DynamicArray") {
+        Quit ..Fail("Query answered no content array", $$$ERROR($$$GeneralError, "the catalog " _ pWhat _ " answered no content array"), .pHttpStatus, .pFault)
+    }
+    Set pContent = tContent
+    Quit $$$OK
+}
+
+/// <p>The one <var>pKind</var> -- <code>table</code>, <code>view</code> or <code>procedure</code> --
+/// that <var>pObject</var> (<code>Schema.Name</code>, matched without regard to case) names among
+/// those the caller's privileges show it (<parameter>CATALOGRESOLVEQUERY</parameter>,
+/// <parameter>CATALOGVIEWRESOLVEQUERY</parameter> or <parameter>CATALOGPROCEDURERESOLVEQUERY</parameter>,
+/// <code>max</code> 2): its exact <var>pSchema</var> and <var>pName</var>, and, for a table, whether
+/// it is partitioned as <var>pPartitioned</var>. None is 404 <code>PORT.NOTFOUND</code>, not logged,
+/// and two are 400 <code>PORT.VALIDATION</code>, a name whose dots split two ways, each with the
+/// kind's reason.</p>
+ClassMethod CatalogResolve(pVersion As %Integer, pNamespace As %String, pKind As %String, pObject As %String, Output pSchema As %String, Output pName As %String, Output pPartitioned As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pSchema = ""
+    Set pName = ""
+    Set pPartitioned = 0
+    Set tParameters = []
+    Do tParameters.%Push(pObject, "string")
+    Kill tParams
+    Set tParams("max") = 2
+    Set tSC = ..CatalogQuery(pVersion, pNamespace, $Case(pKind, "view": ..#CATALOGVIEWRESOLVEQUERY, "procedure": ..#CATALOGPROCEDURERESOLVEQUERY, : ..#CATALOGRESOLVEQUERY), tParameters, .tParams, "resolve", .tContent, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tContent.%Size() = 0 {
+        Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, $Case(pKind, "view": ..#REASONCATALOGVIEWNOTFOUND, "procedure": ..#REASONCATALOGPROCEDURENOTFOUND, : ..#REASONCATALOGNOTFOUND), .pHttpStatus, .pFault)
+    }
+    If tContent.%Size() > 1 {
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, $Case(pKind, "view": ..#REASONCATALOGVIEWAMBIGUOUS, "procedure": ..#REASONCATALOGPROCEDUREAMBIGUOUS, : ..#REASONCATALOGAMBIGUOUS), .pHttpStatus, .pFault)
+    }
+    Set tRow = tContent.%Get(0)
+    If '$IsObject(tRow) {
+        Quit ..Fail("Query answered a row that is no object", $$$ERROR($$$GeneralError, "the catalog resolve answered a row that is no object"), .pHttpStatus, .pFault)
+    }
+    Set tPrefix = $Select(pKind = "procedure": "ROUTINE_", 1: "TABLE_")
+    Set pSchema = tRow.%Get(tPrefix _ "SCHEMA")
+    Set pName = tRow.%Get(tPrefix _ "NAME")
+    Set pPartitioned = ($ZConvert(tRow.%Get("IS_PARTITIONED"), "U") = "YES")
+    Quit $$$OK
+}
+
+/// <p>The relation key the information schema's statement tables name schema <var>pSchema</var>'s
+/// object <var>pName</var> by: the two in upper case joined by a dot, a dot inside the name read as
+/// <code>$Char(1)</code>, the rule the vendor's own statement listing applies.</p>
+ClassMethod CatalogRelation(pSchema As %String, pName As %String) As %String
+{
+    Quit $ZConvert(pSchema, "U") _ "." _ $ZConvert($Translate(pName, ".", $Char(1)), "U")
+}
+
+/// <p>One vendor row <var>pRow</var> as the row column map <var>pColumns</var> declares
+/// (<parameter>CATALOGSCHEMASCOLUMNS</parameter>). A value the vendor parsed as JSON, because its
+/// text began with a brace or a bracket, is its JSON text again.</p>
+ClassMethod CatalogRow(pRow As %DynamicObject, pColumns As %String) As %DynamicObject
+{
+    Set tOut = {}
+    For tI = 1:1:$Length(pColumns, ",") {
+        Set tEntry = $Piece(pColumns, ",", tI)
+        Set tField = $Piece(tEntry, ":", 1)
+        Set tColumn = $Piece(tEntry, ":", 2)
+        Set tKind = $Piece(tEntry, ":", 3)
+        If tKind = "qualified" {
+            Do tOut.%Set(tField, ..CatalogText(pRow.%Get($Piece(tColumn, ".", 1))) _ "." _ ..CatalogText(pRow.%Get($Piece(tColumn, ".", 2))), "string")
+            Continue
+        }
+        Set tValue = ..CatalogText(pRow.%Get(tColumn))
+        If tKind = "flag" {
+            Set tUpper = $ZConvert(tValue, "U")
+            Do tOut.%Set(tField, (tUpper = "1") || (tUpper = "YES") || (tUpper = "TRUE"), "boolean")
+        } ElseIf tKind = "plain" {
+            Do tOut.%Set(tField, ..PlainText($Translate(tValue, $Char(9, 10, 13), "   ")), "string")
+        } ElseIf (tKind = "number") && (tValue '= "") && $IsValidNum(tValue) && (tValue = +tValue) {
+            Do tOut.%Set(tField, +tValue, "number")
+        } Else {
+            Do tOut.%Set(tField, tValue, "string")
+        }
+    }
+    Quit tOut
+}
+
+/// <p><var>pValue</var> as text: its JSON text when it is an object or an array.</p>
+ClassMethod CatalogText(pValue) As %String [ Private ]
+{
+    If $IsObject(pValue) Quit pValue.%ToJSON()
+    Quit pValue
+}
+
+/// <p>The rows of one macro's lookup in one document's context: none when nothing in that context
+/// defines it, else one <code>{Macro, Document, Line, Definition}</code> row, where
+/// <code>Macro</code> is the name without <code>$$$</code>, <code>Document</code> and
+/// <code>Line</code> are where it is defined (<code>Line</code> <code>null</code> when the instance
+/// names none), and <code>Definition</code> is its definition's lines joined by LF.</p>
+/// <p><code>document</code> must match <parameter>CLASSNAMEPATTERN</parameter> or
+/// <parameter>ROUTINENAMEPATTERN</parameter> and <code>macro</code>
+/// <parameter>MACRONAMEPATTERN</parameter>; either refused is 400 <code>PORT.VALIDATION</code> before
+/// any route. The document's text is read first (<code>udl</code>), so one the namespace does not
+/// hold is 404 <code>PORT.NOTFOUND</code>, unlogged. Both macro routes are then sent
+/// <code>{docname, macroname, includes, superclasses, imports}</code>, built here from
+/// <method>MacroContext</method>; the location is asked only for a macro the definition route
+/// answers.</p>
+ClassMethod MacroRows(pVersion As %Integer, pNamespace As %String, ByRef pQuery, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = ""
+    Try {
+        Set tDocument = $Get(pQuery(..#MACRODOCUMENTKEY))
+        Set tMacro = $Get(pQuery(..#MACROKEY))
+        Set tShaped = $Match(tDocument, ..#CLASSNAMEPATTERN) || $Match(tDocument, ..#ROUTINENAMEPATTERN)
+        If 'tShaped || '$Match(tMacro, ..#MACRONAMEPATTERN) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMACRO, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $Extract(tMacro, 1, 3) = ("$$" _ "$") Set tMacro = $Extract(tMacro, 4, *)
+
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "GetDoc", tDocument, .tNoParams, "", .tSource, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tLines = $Select($IsObject(tSource): tSource.%Get("content"), 1: "")
+        If '$IsObject(tLines) || 'tLines.%IsA("%Library.DynamicArray") Set tLines = []
+        Set tContext = ..MacroContext(tDocument, tLines)
+        Set tBody = {}
+        Do tBody.%Set("docname", tDocument, "string")
+        Do tBody.%Set("macroname", tMacro, "string")
+        Do tBody.%Set("includes", tContext.includes)
+        Do tBody.%Set("superclasses", tContext.superclasses)
+        Do tBody.%Set("imports", tContext.imports)
+
+        Set tSC = ..Route(pVersion, pNamespace, "GetMacroDefinition", "", .tNoParams, tBody, .tAnswer, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tContent = $Select($IsObject(tAnswer): tAnswer.%Get("content"), 1: "")
+        Set tDefinition = $Select($IsObject(tContent): tContent.%Get("definition"), 1: "")
+        Set tText = ""
+        Set tDefined = 0
+        If $IsObject(tDefinition) && tDefinition.%IsA("%Library.DynamicArray") {
+            Set tIterator = tDefinition.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If $IsObject(tLine) Continue
+                Set tText = tText _ $Select(tDefined: $Char(10), 1: "") _ tLine
+                Set tDefined = 1
+            }
+        }
+        Set pRows = []
+        Set pHttpStatus = 200
+        If 'tDefined Quit
+
+        Set tSC = ..Route(pVersion, pNamespace, "GetMacroLocation", "", .tNoParams, tBody, .tWhere, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) {
+            Set pRows = ""
+            Quit
+        }
+        Set tLocation = $Select($IsObject(tWhere): tWhere.%Get("content"), 1: "")
+        Set tAt = $Select($IsObject(tLocation): tLocation.%Get("document"), 1: "")
+        Set tLineNo = $Select($IsObject(tLocation): tLocation.%Get("line"), 1: "")
+        Set tRow = {}
+        Do tRow.%Set("Macro", tMacro, "string")
+        Do tRow.%Set("Document", tAt, "string")
+        If tLineNo = "" {
+            Do tRow.%Set("Line", "", "null")
+        } Else {
+            Do tRow.%Set("Line", +tLineNo, "number")
+        }
+        Do tRow.%Set("Definition", tText, "string")
+        Do pRows.%Push(tRow)
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pRows = ""
+        Set tSC = ..Fail("the macro lookup failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The context a macro in document <var>pName</var> resolves in, from the document's own UDL
+/// lines <var>pLines</var>: <code>{includes, superclasses, imports}</code>, each an array of
+/// names.</p>
+/// <ul>
+/// <li>A class (<code>.cls</code>): every <code>Include</code> and <code>IncludeGenerator</code>
+/// line before its <code>Class</code> line joins <code>includes</code>, every <code>Import</code>
+/// line <code>imports</code>, each naming one name or a parenthesized, comma-separated list; and the
+/// <code>Class</code> line's <code>Extends</code> list is <code>superclasses</code>. A line inside a
+/// <code>/* */</code> comment is skipped.</li>
+/// <li>A routine: every <code>#include</code> line, matched without regard to case, joins
+/// <code>includes</code>, and an include file names itself there first.</li>
+/// </ul>
+/// <p>A list keeps each name matching <parameter>CONTEXTNAMEPATTERN</parameter> once, in the order
+/// the text gives them, and at most <parameter>MAXCONTEXTNAMES</parameter>.</p>
+ClassMethod MacroContext(pName As %String, pLines As %DynamicArray) As %DynamicObject
+{
+    Set tContext = {"includes": [], "superclasses": [], "imports": []}
+    Set tExtension = $ZConvert($Piece(pName, ".", $Length(pName, ".")), "L")
+    If '$IsObject(pLines) || 'pLines.%IsA("%Library.DynamicArray") Set pLines = []
+    If tExtension '= "cls" {
+        If tExtension = "inc" Do ..ContextAdd(tContext.includes, $Piece(pName, ".", 1, $Length(pName, ".") - 1))
+        Set tIterator = pLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If $IsObject(tLine) Continue
+            Set tTrimmed = $ZStrip($Translate(tLine, $Char(9), " "), "<>W")
+            If $ZConvert($Extract(tTrimmed, 1, 8), "L") '= "#include" Continue
+            Set tRest = $ZStrip($Extract(tTrimmed, 9, *), "<W")
+            If (tRest = "") || ($Extract(tTrimmed, 9) '= " ") Continue
+            Do ..ContextAdd(tContext.includes, $Piece(tRest, " ", 1))
+        }
+        Quit tContext
+    }
+    Set tInComment = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If $IsObject(tLine) Continue
+        Set tTrimmed = $ZStrip($Translate(tLine, $Char(9), " "), "<>W")
+        If tInComment {
+            If tTrimmed [ "*/" Set tInComment = 0
+            Continue
+        }
+        If $Extract(tTrimmed, 1, 2) = "/*" {
+            If $Find(tTrimmed, "*/", 3) = 0 Set tInComment = 1
+            Continue
+        }
+        Set tWord = $ZConvert($Piece(tTrimmed, " ", 1), "L")
+        Set tRest = $ZStrip($Piece(tTrimmed, " ", 2, *), "<W")
+        If tWord = "class" {
+            Set tLower = $ZConvert(tRest, "L")
+            Set tAt = $Find(tLower, " extends ")
+            If tAt > 0 Do ..ContextList(tContext.superclasses, $ZStrip($Extract(tRest, tAt, *), "<W"))
+            Quit
+        }
+        If (tWord = "include") || (tWord = "includegenerator") {
+            Do ..ContextList(tContext.includes, tRest)
+        } ElseIf tWord = "import" {
+            Do ..ContextList(tContext.imports, tRest)
+        }
+    }
+    Quit tContext
+}
+
+/// <p>Add each name <var>pText</var> begins with to <var>pList</var> (<method>ContextAdd</method>):
+/// a parenthesized, comma-separated list, or one name ending at the first space or
+/// <code>[</code>.</p>
+ClassMethod ContextList(pList As %DynamicArray, pText As %String) [ Private ]
+{
+    If $Extract(pText) = "(" {
+        Set tInner = $Piece($Extract(pText, 2, *), ")", 1)
+        For tI = 1:1:$Length(tInner, ",") {
+            Do ..ContextAdd(pList, $ZStrip($Piece(tInner, ",", tI), "<>W"))
+        }
+        Quit
+    }
+    Do ..ContextAdd(pList, $Piece($Piece(pText, " ", 1), "[", 1))
+}
+
+/// <p>Push <var>pName</var> onto <var>pList</var> when it matches
+/// <parameter>CONTEXTNAMEPATTERN</parameter>, the list does not hold it yet, and it holds fewer than
+/// <parameter>MAXCONTEXTNAMES</parameter>.</p>
+ClassMethod ContextAdd(pList As %DynamicArray, pName As %String) [ Private ]
+{
+    If '$Match(pName, ..#CONTEXTNAMEPATTERN) Quit
+    If pList.%Size() >= ..#MAXCONTEXTNAMES Quit
+    Set tHeld = 0
+    Set tIterator = pList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If tName = pName Set tHeld = 1
+    }
+    If 'tHeld Do pList.%Push(pName, "string")
 }
 
 /// <p>Whether <var>pPattern</var> is a comma-separated list of pieces each matching
@@ -1315,8 +2158,9 @@ ClassMethod Lines(pText As %String) As %DynamicArray
 
 /// <p>The document a UDL file's lines <var>pLines</var> hold, named from its header, or
 /// <code>""</code> when the header does not parse. Leading lines that are blank, documentation
-/// (<code>///</code>), or an <code>Include</code>, <code>IncludeGenerator</code> or <code>Import</code>
-/// line are skipped, and the first other line decides, its keyword read in any case:
+/// (<code>///</code>), a <code>/* ... */</code> comment, which the vendor's own text keeps above a
+/// class, or an <code>Include</code>, <code>IncludeGenerator</code> or <code>Import</code> line are
+/// skipped, and the first other line decides, its keyword read in any case:
 /// <code>Class &lt;name&gt; ...</code> is <code>&lt;name&gt;.cls</code>, and
 /// <code>ROUTINE &lt;name&gt;</code> is <code>&lt;name&gt;.mac</code>, or <code>.inc</code> or
 /// <code>.int</code> where it carries <code>[Type=INC]</code> or <code>[Type=INT]</code>. The name must
@@ -1325,11 +2169,20 @@ ClassMethod Lines(pText As %String) As %DynamicArray
 ClassMethod Header(pLines As %DynamicArray) As %String
 {
     Set tName = ""
+    Set tInComment = 0
     Set tIterator = pLines.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tLine) {
         Set tWords = $ZStrip($Translate(tLine, $Char(9), " "), "<=>W")
+        If tInComment {
+            If tWords [ "*/" Set tInComment = 0
+            Continue
+        }
         If tWords = "" Continue
         If $Extract(tWords, 1, 3) = "///" Continue
+        If $Extract(tWords, 1, 2) = "/*" {
+            If '$Find(tWords, "*/", 3) Set tInComment = 1
+            Continue
+        }
         Set tKeyword = $ZConvert($Piece(tWords, " ", 1), "L")
         If (tKeyword = "include") || (tKeyword = "includegenerator") || (tKeyword = "import") Continue
         If tKeyword = "class" {
@@ -1570,6 +2423,85 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Fail("the import failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Save the text <var>pQuery</var> carries as the one document <var>pNames</var> names, in
+/// <var>pNamespace</var>, against the version it was read at, and compile it when
+/// <code>Compile</code> is on (AD-51, AD-61 rule 3). In order, each refusal sending nothing:</p>
+/// <ol>
+/// <li>a set of more than one document, a <code>Compile</code> that is not true or false, or an empty
+/// <code>version</code>, is 400 <code>PORT.VALIDATION</code>;</li>
+/// <li>a <code>content</code> longer than <parameter>MAXIMPORTCHARACTERS</parameter> is 400
+/// <code>EXPLORER.SAVE.TOOLARGE</code>;</li>
+/// <li>a text whose header (<method>Header</method> of <method>Lines</method>) does not name the
+/// document exactly, kind included, is 422 <code>EXPLORER.SAVE.HEADER</code>;</li>
+/// <li>a document the namespace no longer holds is <method>PresentSet</method>'s 404, so a save never
+/// creates one;</li>
+/// <li>the text's lines (<method>Lines</method>, plus an empty last line when the text ends with a line
+/// feed) are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
+/// the vendor's <code>If-None-Match</code> and never <code>ignoreConflict</code>, so a document changed
+/// since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
+/// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, and a text the vendor refuses under 200
+/// is 422 <code>EXPLORER.SAVE.REFUSED</code>, or 403 <code>PORT.ACCESSDENIED</code> for an access
+/// refusal (<method>Outcome</method>);</li>
+/// <li>once it saved, with <code>Compile</code> on, the document is compiled with
+/// <parameter>IMPORTCOMPILEFLAGS</parameter>.</li>
+/// </ol>
+/// <p><var>pResult</var> is <code>{lines, errors}</code>, the compiler's console lines and whether it
+/// reported an error, when it compiled, and <code>{}</code> otherwise. A compile error is the compile's
+/// own result and does not undo the save. The text is never stored or logged.</p>
+ClassMethod SaveSet(pVersion As %Integer, pNamespace As %String, pEndpoint As %String, pNames As %List, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If $ListLength(pNames) '= 1 {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVENAMES, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tName = $List(pNames, 1)
+        If '..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIMPORTCOMPILE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tReadVersion = $Get(pQuery(..#VERSIONKEY))
+        If tReadVersion = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONSAVEVERSION, .pHttpStatus, .pFault)
+            Quit
+        }
+        If $Length($Get(pQuery(..#CONTENTKEY))) > ..#MAXIMPORTCHARACTERS {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#SAVETOOLARGE, ##class(OcuPilot.Api.AtelierError).#REASONSAVETOOLARGE, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tLines = ..Lines($Get(pQuery(..#CONTENTKEY)))
+        If $Extract($Get(pQuery(..#CONTENTKEY)), *) = $Char(10) Do tLines.%Push("", "string")
+        If ..Header(tLines) '= tName {
+            Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEHEADER, ##class(OcuPilot.Api.AtelierError).#REASONSAVEHEADER, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..PresentSet(pVersion, pNamespace, pEndpoint, pNames, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tDocument = {"enc": false}
+        Do tDocument.%Set("content", tLines)
+        Kill tNoParams
+        Set tSC = ..Route(pVersion, pNamespace, "PutDoc", tName, .tNoParams, tDocument, .tAnswer, .pHttpStatus, .pFault, 0, , , tReadVersion)
+        If $$$ISERR(tSC) Quit
+        Set pResult = {}
+        If tCompile {
+            Kill tParams
+            Set tParams("flags") = ..#IMPORTCOMPILEFLAGS
+            Set tParams("source") = 0
+            Set tSC = ..Route(pVersion, pNamespace, "Compile", "", .tParams, [(tName)], .tCompiled, .pHttpStatus, .pFault, 1, .tConsole, .tErrors)
+            If $$$ISERR(tSC) Quit
+            Do pResult.%Set("lines", $Select($IsObject(tConsole): tConsole, 1: []))
+            Do pResult.%Set("errors", ''tErrors, "boolean")
+        }
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the save failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }
@@ -1901,7 +2833,8 @@ ClassMethod PlainText(pDesc) As %String
 /// <code>%request.Data</code> and <var>pBody</var>, when it is not <code>""</code>, is a JSON text or
 /// a <class>%DynamicAbstractObject</class> sent as an <code>application/json</code> body
 /// (<method>OcuPilot.Port.AtelierRequest.SetJsonBody</method>). Trailing route arguments are omitted
-/// rather than passed empty.</p>
+/// rather than passed empty. <var>pIfNoneMatch</var>, when it is not <code>""</code>, is seeded as the
+/// request's <parameter>IFNONEMATCHVARIABLE</parameter>, the version a save read (AD-61 rule 3).</p>
 /// <p>The call runs behind <code>New</code>ed <code>%request</code>, <code>%response</code>,
 /// <code>%session</code> and <code>%SourceControl</code>, with fresh stubs. Its output is captured,
 /// or, for a route <parameter>FILEDEVICEROUTES</parameter> names, written to a temporary file that is
@@ -1910,7 +2843,7 @@ ClassMethod PlainText(pDesc) As %String
 /// route call and restored before anything else runs, on every path; no <code>OcuPilot.*</code>
 /// class is called while it is switched. The outcome is <method>Outcome</method>'s, to which
 /// <var>pSoft</var>, <var>pConsole</var> and <var>pErrors</var> are passed through.</p>
-ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
+ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %String, pArg As %String, ByRef pParams, pBody, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean, pIfNoneMatch As %String = "") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pResult = ""
@@ -1939,6 +2872,7 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
             If tKey = "" Quit
             Set %request.Data(tKey, 1) = pParams(tKey)
         }
+        If pIfNoneMatch '= "" Set %request.CgiEnvs(..#IFNONEMATCHVARIABLE) = pIfNoneMatch
         Set %response = ##class(%CSP.Response).%New()
         Set %session = ""
         If $$$ISOK(tCallSC) && tToFile {
@@ -2035,6 +2969,12 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <p>With <var>pSoft</var> (a compile, or an import's load or save), such an error under a 2xx
 /// status is the call's own result rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
 /// <code>console</code> array on every 2xx answer that parses.</p>
+/// <p><code>PutDoc</code>'s own answers (AD-61 rule 6): 409, a version that no longer matches, is 409
+/// <code>EXPLORER.DOCUMENT.CONFLICT</code>, and 423, a document another process holds, is 409
+/// <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault and neither carrying the vendor's
+/// text, the lock's text going to the log at information severity (<method>LogNote</method>); and,
+/// without <var>pSoft</var>, an error under a 2xx status that is not an access refusal is 422
+/// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
 ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
     Set pResult = ""
@@ -2078,6 +3018,17 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
             If tParsed Set pResult = tEnvelope.%Get("result")
             Quit ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ..#REASONNOTFOUND, .pHttpStatus, .pFault)
         }
+        ; A save's version that no longer matches, and a document another process holds, are answers
+        ; rather than faults, so neither is logged as one; the lock's text names a user and a process,
+        ; so it is logged at information severity and never sent (AD-61 rule 6).
+        If (pMethod = "PutDoc") && (pHttp = 409) {
+            Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTCONFLICT, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTCONFLICT, .pHttpStatus, .pFault)
+        }
+        If (pMethod = "PutDoc") && (pHttp = 423) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTLOCKED, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTLOCKED, .pHttpStatus, .pFault)
+            Do ..LogNote(pMethod _ " found the document held by another process", tRawSC, pFault.code)
+            Quit tSC
+        }
         If pHttp = 400 {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONVALIDATION, .pHttpStatus, .pFault)
         } ElseIf pHttp = 403 {
@@ -2100,6 +3051,11 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
         If (tRaw [ "<PROTECT>") || ..AccessDenied(tCodes, tRaw) {
             Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, ..#REASONACCESSDENIED, .pHttpStatus, .pFault)
             Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
+            Quit tSC
+        }
+        If (pMethod = "PutDoc") && tParsed {
+            Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SAVEREFUSED, ##class(OcuPilot.Api.AtelierError).#REASONSAVEREFUSED, .pHttpStatus, .pFault)
+            Do ..LogFault(pMethod _ " refused the text", tRawSC, pFault.code)
             Quit tSC
         }
         Quit ..Fail(pMethod _ " failed", tRawSC, .pHttpStatus, .pFault)
@@ -2133,6 +3089,20 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, pMessage, pStatus, pCode)
 }
 
+/// <p>Send a raw status that answers rather than faults to the log at information severity, and
+/// nowhere else (AD-39, AD-61 rule 6): it never reaches the alert log. Overridable so a fixture can
+/// capture the line; production never overrides it.</p>
+ClassMethod LogNote(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Try {
+        Set tData = {}
+        Do tData.%Set("code", pCode, "string")
+        Do tData.%Set("status", $System.Status.GetErrorText(pStatus), "string")
+        Do ##class(OcuPilot.Kernel.Audit.Log).Info(..#LOGSUBSYSTEM, pMessage, tData)
+    } Catch {
+    }
+}
+
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>
 ClassMethod Deny(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -2160,13 +3130,13 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 }
 
 /// <p><code>objectscript</code> for a list endpoint's <parameter>TYPECOMPILE</parameter>,
-/// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter> and
-/// <parameter>TYPEIMPORT</parameter>, the writes this port carries; <code>""</code> for every read,
-/// which has no script form (AD-59).</p>
+/// <parameter>TYPEDELETE</parameter>, <parameter>TYPEEXPORT</parameter>,
+/// <parameter>TYPEIMPORT</parameter> and <parameter>TYPESAVE</parameter>, the writes this port
+/// carries; <code>""</code> for every read, which has no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
     If (pEndpoint '= ..#ENDPOINTCLASSES) && (pEndpoint '= ..#ENDPOINTROUTINES) Quit ""
-    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) Quit "objectscript"
+    If (pType = ..#TYPECOMPILE) || (pType = ..#TYPEDELETE) || (pType = ..#TYPEEXPORT) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPESAVE) Quit "objectscript"
     Quit ""
 }
 
@@ -2178,8 +3148,13 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>##class(%File).NormalizeFilename(path, root)</code> names and
 /// <code>$System.OBJ.Export</code> of the set to it, and <parameter>TYPEIMPORT</parameter> that file
 /// and <code>$System.OBJ.Load</code> of it, with <parameter>IMPORTCOMPILEFLAGS</parameter> when
-/// <code>Compile</code> is on. A read writes nothing and answers no step. Every value is rendered as a
-/// string literal, so nothing the query carries runs as code.</p>
+/// <code>Compile</code> is on, and <parameter>TYPESAVE</parameter> the text saved as the one document
+/// <code>names</code> holds -- <code>%Compiler.UDL.TextServices.SetTextFromString</code> for a class,
+/// a <code>%Routine</code> for a routine -- then, when <code>Compile</code> is on,
+/// <code>$System.OBJ.CompileList</code> of it with <parameter>IMPORTCOMPILEFLAGS</parameter>. The
+/// save's text is rendered as the placeholder <code>"&lt;content&gt;"</code>, never as the text. A
+/// read writes nothing and answers no step. Every value is rendered as a string literal, so nothing
+/// the query carries runs as code.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
@@ -2200,6 +3175,22 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
             Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.Load(tFile, " _ ..Literal($Select(tCompile: ..#IMPORTCOMPILEFLAGS, 1: "")) _ ")"
         }
         Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+    } ElseIf pType = ..#TYPESAVE {
+        Set tPlaceholder = ..Literal("<" _ ..#CONTENTKEY _ ">")
+        If pEndpoint = ..#ENDPOINTCLASSES {
+            Set tText = tText _ $Char(10) _ " Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString($NAMESPACE, " _ ..Literal($Piece(tNames, ".", 1, $Length(tNames, ".") - 1)) _ ", " _ tPlaceholder _ ", $Char(10))"
+        } Else {
+            Set tText = tText _ $Char(10) _ " Set tRoutine = ##class(%Routine).%New(" _ ..Literal(tNames) _ ")"
+            Set tText = tText _ $Char(10) _ " Do tRoutine.Clear()"
+            Set tText = tText _ $Char(10) _ " Do tRoutine.Write(" _ tPlaceholder _ ")"
+            Set tText = tText _ $Char(10) _ " Set tSC = tRoutine.Save()"
+        }
+        Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        Do ..FlagValue($Get(pQuery(..#COMPILEKEY)), .tCompile)
+        If tCompile {
+            Set tText = tText _ $Char(10) _ " Set tSC = $System.OBJ.CompileList(" _ ..Literal(tNames) _ ", " _ ..Literal(..#IMPORTCOMPILEFLAGS) _ ")"
+            Set tText = tText _ $Char(10) _ " Do $System.Status.DisplayError(tSC)"
+        }
     } Else {
         Set tText = tText _ $Char(10) _ " For tI = 1:1:$Length(" _ ..Literal(tNames) _ ", "","") {"
         Set tText = tText _ $Char(10) _ "     Set tSC = ##class(%RoutineMgr).Delete($Piece(" _ ..Literal(tNames) _ ", "","", tI))"

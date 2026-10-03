@@ -7450,6 +7450,8 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
+- DW-1950: A switch-directory proposal confirmed after the alternate stops being distinct answers 500 INTERNAL instead of a target-changed refusal (ledger; routed by harvest 2026-10-02)
+
 ### Story 18.19: Journal record browser
 
 As an operator,
@@ -7558,7 +7560,7 @@ So that the data model is inspectable.
 
 - **Given** the catalog browser
 - **When** it opens
-- **Then** schemas, tables, views and procedures list, each opening to its fields, indices, triggers and the rest of the classic detail tabs.
+- **Then** schemas, tables, views and procedures list, and a table opens to its Table info, Fields, Maps/Indices, Triggers and Constraints tabs. [SPLIT to 19.14 2026-10-03: the view and procedure tabs and a table's remaining tabs moved; the four lists and these five tabs stay in 19.5]
 
 - **Given** the reads
 - **When** they execute
@@ -7584,6 +7586,8 @@ So that the Explorer answers questions the catalog alone cannot.
 - **Given** the agent's free-form SQL tool, which Release 1 deliberately withheld
 - **When** it is introduced
 - **Then** it passes through the **same** guard, and a DML or DDL statement becomes an ordinary confirmed proposal.
+
+- **Design constraint (measured at Story 19.5's plan, 2026-10-03; DW-1964):** Atelier's `action/query` prepares every statement with SQL privilege checks off (`%Prepare(query,0)`, `%Api.Atelier.v6` :229), so a `%Development` holder with database access read and changed a table it held no SQL privilege on. The console must enforce the caller's SQL privileges itself (prepare in process with privilege checks on) and never pass caller SQL through `action/query`. [ADDED 2026-10-03, Rule 5 by=merge_gate]
 
 ### Story 19.7: The data browser - tree, grid, filter and sort
 
@@ -7665,6 +7669,8 @@ So that the operations agent and the developer agent can differ.
 - **When** it runs a statement
 - **Then** it passes the same DML and DDL guard the console does, and any mutating statement is a confirmed proposal.
 
+- **Design constraint (as 19.6; DW-1964):** the agent's SQL tool enforces the caller's SQL privileges itself (prepare in process with privilege checks on) and never passes caller SQL through Atelier's `action/query`, which prepares with privilege checks off. [ADDED 2026-10-03, Rule 5 by=merge_gate]
+
 ### Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows
 
 As a developer whose account holds `%Development` and no administrative resource,
@@ -7711,6 +7717,25 @@ So that code moves in and out of a namespace without leaving the portal.
 - **Given** export and import are Atelier v7 routes
 - **When** the instance is older
 - **Then** the version gate reports it rather than failing obscurely.
+
+
+### Story 19.14: The SQL catalog's remaining detail tabs
+
+As a developer,
+I want a view's, a procedure's and a table's remaining catalog tabs,
+So that the catalog browser reaches the classic SQL page's detail tabs.
+
+[ADDED 2026-10-03, Rule 5 split of Story 19.5 by=merge_gate: the part of 19.5's first criterion beyond the four lists and a table's Table info, Fields, Maps/Indices, Triggers and Constraints tabs moved here; run right after 19.5. It carries three open questions from 19.5's plan: `StatementIndex` answers other users' statement text, user names, client addresses and call stacks to any `%Development` holder; `Partitions` fails on a table that is not partitioned; a view's or procedure's full text would become row text.]
+
+**Acceptance Criteria:**
+
+- **Given** the catalog browser
+- **When** a view, a procedure or a table is opened
+- **Then** its remaining classic detail tabs show: a view's View info and SQL statements, a procedure's Stored procedure info and SQL statements, and a table's Partitions, Partition mappings, Cached queries and SQL statements.
+
+- **Given** the reads
+- **When** they execute
+- **Then** they use the information schema and the catalog queries, binding every caller value.
 
 ---
 

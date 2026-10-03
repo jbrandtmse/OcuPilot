@@ -105,6 +105,9 @@ const LIVE_PAYLOAD = {
       // database form among the unlisted ones and Local databases last; Story 18.4 Check integrity
       // among the unlisted ones; and Story 18.17 the Integrity log right after Databases.
       // Story 18.16 adds the remote database form among the unlisted ones and Remote databases last.
+      // Story 18.5 adds Journal file databases and Journal file details among the unlisted ones and
+      // Journals last, each refused on %DB_IRISSYS:READ, since this principal holds %Admin_Operate:USE.
+      // Story 18.18 adds Journal settings after Journals, refused on its first pair, %Admin_Manage:USE.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -147,6 +150,27 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/journals/databases',
+          labelKey: 'journalFileDatabaseListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/journals/details',
+          labelKey: 'journalFileDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/journal-records',
+          labelKey: 'journalRecordListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
         },
         {
           route: 'os-management/language-servers/activity',
@@ -313,6 +337,20 @@ const LIVE_PAYLOAD = {
           route: 'os-management/remote-databases',
           labelKey: 'remoteDatabaseListLabel',
           sideBarPosition: 12,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/journals',
+          labelKey: 'journalListLabel',
+          sideBarPosition: 13,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/journal-settings',
+          labelKey: 'journalSettingsLabel',
+          sideBarPosition: 14,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -645,6 +683,13 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   for (const route of ['os-management/remote-databases', 'os-management/remote-databases/edit']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
+  // Story 18.5: Journals and its two unlisted screens declare %Admin_Operate:USE, which this principal
+  // holds, and %DB_IRISSYS:READ, on which each is denied.
+  for (const route of ['os-management/journals', 'os-management/journals/details', 'os-management/journals/databases']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%DB_IRISSYS:READ' }, route);
+  }
+  // Story 18.18: Journal settings declares %Admin_Manage:USE first, on which this principal is denied.
+  assert.deepEqual(service.screenVerdict('os-management/journal-settings'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
   // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
   // holds, and is denied on the second.

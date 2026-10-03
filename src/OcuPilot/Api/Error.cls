@@ -1221,6 +1221,8 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForLock(pCode)
     If tReason '= "" Quit tReason
+    If $Extract(pCode, 1, 8) = "JOURNAL." Set tReason = ##class(OcuPilot.Api.JournalError).ReasonFor(pCode)
+    If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
 
@@ -1416,6 +1418,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 9) = "DATABASE." Quit ..ReasonForDatabase(pCode)
     If $Extract(pCode, 1, 5) = "PATH." Quit ..ReasonForPath(pCode)
     If $Extract(pCode, 1, 15) = "LANGUAGESERVER." Quit ..ReasonForLanguageServer(pCode)
+    If $Extract(pCode, 1, 8) = "JOURNAL." Quit ##class(OcuPilot.Api.JournalError).ReasonFor(pCode)
     Quit ""
 }
 

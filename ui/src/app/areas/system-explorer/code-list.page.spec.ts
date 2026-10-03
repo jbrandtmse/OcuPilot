@@ -34,6 +34,7 @@ const ROOT = '/data/';
 
 const CLASSES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerClassList') as ScreenDeclaration;
 const ROUTINES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerRoutineList') as ScreenDeclaration;
+const SQL_TABLES = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlTables') as ScreenDeclaration;
 
 const row = (name: string) => ({ Name: name, Modified: '2026-10-01 10:00:00.000', Database: 'HSCUSTOM', Generated: false });
 
@@ -178,6 +179,25 @@ describe('System Explorer lists', () => {
     const markers = Array.from(host.querySelectorAll('.ocu-criteria-marker')).map((label) => label.textContent?.trim());
     expect(markers).toEqual([STRINGS.explorerSystemLabel, STRINGS.explorerGeneratedLabel, STRINGS.explorerMappedLabel]);
     expect(host.querySelector('[role="grid"]')).not.toBeNull();
+  });
+
+  it('Story 19.5: the SQL tables list draws its System box unchecked and an empty schema field, and Search sends both', async () => {
+    // Mutation (Rule 19): drop the yes/no checkbox branch from `CodeListPage.checkFields` -> no System
+    // box is drawn and the first assertion goes red.
+    const { host, paths, field, type, check, search } = await mount(SQL_TABLES, [
+      { Table: 'OcuProbe195.Visible', Schema: 'OcuProbe195', Name: 'Visible', Class: 'OcuProbe195.Visible', Owner: '_SYSTEM', Sharded: false, Partitioned: false },
+    ]);
+    expect(paths).toEqual(['/api/ocupilot/screens/explorer.sqltables/read?maxRows=1000']);
+    const boxes = Array.from(host.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-ocu-criterion]'));
+    expect(boxes.map((box) => [box.dataset['ocuCriterion'], box.checked])).toEqual([['system', false]]);
+    expect(Array.from(host.querySelectorAll('.ocu-criteria-marker')).map((label) => label.textContent?.trim())).toEqual([STRINGS.explorerSystemLabel]);
+    expect(field('schema').value).toBe('');
+    expect(field('schema').getAttribute('maxlength')).toBe('128');
+    expect(host.querySelector(`label[for="${field('schema').id}"]`)?.textContent?.trim()).toBe(STRINGS.explorerSqlColumnSchema);
+    await type('schema', 'OcuProbe195');
+    await check('system', true);
+    await search();
+    expect(paths[1]).toBe('/api/ocupilot/screens/explorer.sqltables/read?maxRows=1000&system=yes&schema=OcuProbe195');
   });
 
   it('the Routines list opens on *.mac with generated items checked', async () => {

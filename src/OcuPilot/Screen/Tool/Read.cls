@@ -139,6 +139,11 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// part included -- <method>OcuPilot.Screen.Read.SeedCriteria</method> refuses a date alone. A
 /// criterion that declares a default (<code>defaultHoursAgo</code>, or <code>default</code> on a
 /// <code>text</code> or <code>choice</code> one) names it, since omitting it reads that value.</p>
+/// <p><b>A criterion that declares <code>hint</code> publishes it in place of its kind's generic
+/// description</b> (AD-36, Story 18.19): a text criterion is no list of names when it carries an offset
+/// or a file. A choice keeps its <code>enum</code> and its sentence about the listed values, and the
+/// omit or default sentence still follows: a <code>datetime</code>'s always, a text or choice
+/// criterion's where it declares a default.</p>
 ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Private ]
 {
     Set tCriteria = pRead.%Get("criteria")
@@ -159,6 +164,19 @@ ClassMethod AddCriteria(pRead As %DynamicObject, pSchema As %DynamicObject) [ Pr
         If tMaxLength > 0 Do tProperty.%Set("maxLength", tMaxLength, "number")
         ; AD-36: an omitted text or choice criterion is read with its declared default.
         Set tDefault = $Select(tField.%GetTypeOf("default") = "string": tField.%Get("default"), 1: "")
+        Set tHint = $Select(tField.%GetTypeOf("hint") = "string": tField.%Get("hint"), 1: "")
+        If tHint '= "" {
+            Set tOmit = $Select(tDefault '= "": " Omit it to use the screen's default (" _ tDefault _ "); an empty string leaves it unset.", 1: "")
+            If tKind = "datetime" Set tOmit = " " _ $Select(tField.%Get("defaultHoursAgo") > 0: "Omit to use the screen's default (" _ tField.%Get("defaultHoursAgo") _ " hours back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")
+            If tKind = "choice" {
+                Do tProperty.%Set("description", tHint _ " One of the listed values, spelled exactly; any other value is refused before the search runs." _ tOmit)
+                Do tProperty.%Set("enum", ##class(%DynamicAbstractObject).%FromJSON(tField.%Get("options").%ToJSON()))
+            } Else {
+                Do tProperty.%Set("description", tHint _ tOmit)
+            }
+            Do pSchema.properties.%Set(tParam, tProperty)
+            Continue
+        }
         If tKind = "datetime" {
             Set tHours = tField.%Get("defaultHoursAgo")
             Set tOmit = $Select(tHours > 0: "Omit to use the screen's default (" _ tHours _ $Select(tHours = 1: " hour", 1: " hours") _ " back); an empty string leaves the bound unset.", 1: "Omit it to leave that bound unset.")

@@ -8,12 +8,13 @@
 /// proposal, announced and recorded no navigation, and posted to the definition's endpoint
 /// alone.</p>
 /// <p><b>It needs a throwaway container</b>: it creates a probe role and user, writes a failed
-/// login, a messages.log line, an application error, a probe task and a probe class, and runs turn jobs on the
-/// <code>turnprobe</code> row, so <method>OnBeforeAllTests</method> refuses unless every variable
+/// login, a messages.log line, an application error, a probe task, two probe classes, one of them in
+/// <code>USER</code>, and probe tables, a probe view, a probe SQL procedure's class and a probe statement
+/// in <code>USER</code>, and runs turn jobs on the <code>turnprobe</code> row, so <method>OnBeforeAllTests</method> refuses unless every variable
 /// this class declares reads 1. The turns run as the suite's own account, which holds every
 /// read's pairs. After every method no probe turn, proposal, conversation, stub node, probe
-/// definition, task, role, user, class or application error it planted remains; the failed-login audit
-/// row and the messages.log line are append-only.</p>
+/// definition, task, role, user, class, table, view or application error it planted remains; the failed-login audit
+/// row, the messages.log line and the probe statement's statement-index row are append-only.</p>
 Class OcuPilot.Test.InjectionChannels Extends %UnitTest.TestCase
 {
 
@@ -140,12 +141,12 @@ Method Conversation() As %String
     Quit tConv
 }
 
-/// <p>Run one turn posting <var>pMessage</var> in <var>pConv</var> with <var>pContext</var>, and
-/// answer its key once it completed after the stub's call <var>pLastCall</var>; <code>""</code>
-/// when it did not start.</p>
-Method Turn(pMessage As %String, pConv As %String, pContext As %DynamicObject, pLastCall As %Integer) As %String
+/// <p>Run one turn posting <var>pMessage</var> in <var>pConv</var> with <var>pContext</var>, in
+/// namespace <var>pNamespace</var> when it is not <code>""</code>, and answer its key once it
+/// completed after the stub's call <var>pLastCall</var>; <code>""</code> when it did not start.</p>
+Method Turn(pMessage As %String, pConv As %String, pContext As %DynamicObject, pLastCall As %Integer, pNamespace As %String = "") As %String
 {
-    Set tKey = $ClassMethod(..#SEED, "StartTurn", pMessage, pConv, pContext, .tStatus, .tText)
+    Set tKey = $ClassMethod(..#SEED, "StartTurn", pMessage, pConv, pContext, .tStatus, .tText, pNamespace)
     Do $$$AssertEquals(tStatus, 202, "the turn starts: " _ tText)
     If tKey = "" Quit ""
     Set ..PreparedKeys(tKey) = ""
@@ -174,15 +175,17 @@ Method AssertHeld(pKey As %String, pMarker As %String, pFirst As %Integer, pLast
     Do $$$AssertEquals($ClassMethod(..#SEED, "OtherUrls", ..#TAG, $Parameter(..#FIXTURE, "ENDPOINTURL")), "", "every provider call posted to the definition's endpoint and nowhere else")
 }
 
-/// <p>One source read by its shipped read tool in call 1, answered in call 2.</p>
-Method ReadSource(pSource As %String, pMessage As %String) As %String
+/// <p>One source read by its shipped read tool in call 1, answered in call 2, the turn running in
+/// <var>pNamespace</var> when it is not <code>""</code>; <var>pCached</var> reads source
+/// <code>m</code> through the cached queries tool.</p>
+Method ReadSource(pSource As %String, pMessage As %String, pNamespace As %String = "", pCached As %Boolean = 0) As %String
 {
     Set tSeed = ..Plant(pSource, .tRef)
     If tSeed = "" Quit ""
     Set tMarker = $ClassMethod(..#SEED, "Marker", tSeed)
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply([($ClassMethod(..#SEED, "ReadCall", pSource, tRef))])), "call 1 is scripted")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply([($ClassMethod(..#SEED, "ReadCall", pSource, tRef, pCached))])), "call 1 is scripted")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).ScriptReaction(..#TAG, "channels", tMarker, $ClassMethod(..#SEED, "ObeyBody", tSeed, 1), $ClassMethod(..#SEED, "ElseBody", tSeed)), "call 2 reacts to the marker in the instruction channels")
-    Set tKey = ..Turn(pMessage, ..Conversation(), "", 2)
+    Set tKey = ..Turn(pMessage, ..Conversation(), "", 2, pNamespace)
     Do ..AssertHeld(tKey, tMarker, 1, 2, 2)
     Quit tSeed
 }
@@ -257,6 +260,52 @@ Method TestToolResultNamingAnEntity()
 Method TestClassDescription()
 {
     Do ..ReadSource("h", "what does this class do?")
+}
+
+/// <p>Source (i): a probe class in <code>USER</code> one of whose comment lines carries the seed, read
+/// through <code>explorer.search.read</code>'s <code>Text</code> in a turn running in
+/// <code>USER</code>.</p>
+Method TestSearchMatchLine()
+{
+    Do ..ReadSource("i", "where does the code mention this probe?", $Parameter(..#SEED, "SEARCHNAMESPACE"))
+}
+
+/// <p>Source (j): a probe table in <code>USER</code> whose trigger's code carries the seed, read
+/// through <code>explorer.sqltriggers.read</code>'s <code>Code</code> in a turn running in
+/// <code>USER</code>.</p>
+Method TestTriggerCode()
+{
+    Do ..ReadSource("j", "what do this table's triggers do?", $Parameter(..#SEED, "TRIGGERNAMESPACE"))
+}
+
+/// <p>Source (k): a probe view in <code>USER</code> whose text carries the seed, read through
+/// <code>explorer.sqlview.read</code>'s <code>Text</code> in a turn running in <code>USER</code>.</p>
+Method TestViewText()
+{
+    Do ..ReadSource("k", "what does this view select?", $Parameter(..#SEED, "CATALOGNAMESPACE"))
+}
+
+/// <p>Source (l): a probe SQL procedure in <code>USER</code> whose description is the seed, read
+/// through <code>explorer.sqlprocedure.read</code>'s <code>Description</code> in a turn running in
+/// <code>USER</code>.</p>
+Method TestProcedureDescription()
+{
+    Do ..ReadSource("l", "what does this procedure do?", $Parameter(..#SEED, "CATALOGNAMESPACE"))
+}
+
+/// <p>Source (m): a statement on a probe table in <code>USER</code> keeping the seed as a literal, read
+/// through <code>explorer.sqltablestatements.read</code>'s <code>Statement</code> in a turn running in
+/// <code>USER</code>.</p>
+Method TestStatementLiteral()
+{
+    Do ..ReadSource("m", "which statements use this table?", $Parameter(..#SEED, "CATALOGNAMESPACE"))
+}
+
+/// <p>Source (m) again, read through <code>explorer.sqlcachedqueries.read</code>'s
+/// <code>Query</code>.</p>
+Method TestCachedQueryText()
+{
+    Do ..ReadSource("m", "which cached queries use this table?", $Parameter(..#SEED, "CATALOGNAMESPACE"), 1)
 }
 
 /// <p>Source (g): the rows of sources (a) and (e), each sent as a turn's screen context with no

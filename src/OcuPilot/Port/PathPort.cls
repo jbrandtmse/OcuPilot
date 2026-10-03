@@ -21,10 +21,13 @@
 /// <code>%SYS</code> is <class>OcuPilot.Port.AdminPort</class>'s; the port switches there itself,
 /// by explicit save and restore (AD-16), only to read the configured databases an overwrite may
 /// not reach, from <code>Config.Databases</code>' <code>List</code> query, and reads the journal
-/// directories from <class>%SYS.Journal.System</class>, both on every call. Seams a test subclass
+/// directories from <class>%SYS.Journal.System</class>, the journal history from
+/// <code>%SYS.Journal.File:ByTimeReverseOrder</code> and the write-image journal's directory from
+/// <code>Config.config</code>, each on every call. Seams a test subclass
 /// may override: <method>AdminPortClass</method>, <method>ManagerDirectory</method>,
 /// <method>ConfigurationFile</method>, <method>DatabaseDirectories</method>,
 /// <method>JournalDirectories</method>, <method>JournalSources</method>,
+/// <method>JournalHistoryDirectories</method>, <method>WijDirectory</method>,
 /// <method>ServedDirectory</method>, <method>HoldsPrivilege</method> and
 /// <method>NameAdmitted</method>. Production overrides none of them.</p>
 Class OcuPilot.Port.PathPort Extends %RegisteredObject
@@ -408,7 +411,9 @@ ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean
 /// <p>Whether normalized file path <var>pFile</var> is one of the instance's own files an
 /// overwrite must not reach: <method>DirectlyInConfigurationDirectory</method>,
 /// <method>DatabaseFileBelowManagerDirectory</method>, <method>InDatabaseDirectory</method> or
-/// <method>InJournalDirectory</method>. It says nothing about whether the file exists.</p>
+/// <method>InJournalDirectory</method>, whose journal directories include every directory a file the
+/// journal history lists sits in and the write-image journal's directory (DW-1797). It says nothing
+/// about whether the file exists.</p>
 ClassMethod InstanceFile(pFile As %String) As %Boolean
 {
     Quit ..DirectlyInConfigurationDirectory(pFile) || ..DatabaseFileBelowManagerDirectory(pFile) || ..InDatabaseDirectory(pFile) || ..InJournalDirectory(pFile)
@@ -628,11 +633,12 @@ ClassMethod VolumeDirectories(pDirectory As %String, Output pDirectories As %Lis
 }
 
 /// <p>The instance's journal directories in <var>pDirectories</var>, each normalized with its
-/// trailing separator and named once, read on every call through <method>JournalSources</method>:
+/// trailing separator and named once, read on every call: through <method>JournalSources</method>,
 /// the primary directory, the alternate directory, and the directory of the file journaling writes
-/// now. One the instance answers empty is left out. On failure the list is empty and the status
-/// says why. Overridable so a fixture can name others or fail the read; production never overrides
-/// it.</p>
+/// now; then every directory <method>JournalHistoryDirectories</method> names, and the write-image
+/// journal's directory, <method>WijDirectory</method> (DW-1797). One the instance answers empty is
+/// left out. On any failure the list is empty and the status says why. Overridable so a fixture can
+/// name others or fail the read; production never overrides it.</p>
 ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
 {
     Set tSC = $$$OK
@@ -641,7 +647,13 @@ ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
         Set tSC = ..JournalSources(.tPrimary, .tAlternate, .tCurrent)
         If $$$ISERR(tSC) Quit
         If tCurrent '= "" Set tCurrent = ##class(%File).GetDirectory(tCurrent)
-        For tDirectory = tPrimary, tAlternate, tCurrent {
+        Set tSC = ..JournalHistoryDirectories(.tHistory)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..WijDirectory(.tWij)
+        If $$$ISERR(tSC) Quit
+        Set tAll = $ListBuild(tPrimary, tAlternate, tCurrent) _ tHistory _ $ListBuild(tWij)
+        For tI = 1:1:$ListLength(tAll) {
+            Set tDirectory = $ListGet(tAll, tI)
             If tDirectory = "" Continue
             Set tDirectory = ##class(%File).NormalizeDirectory(tDirectory)
             If tDirectory = "" {
@@ -654,6 +666,70 @@ ClassMethod JournalDirectories(Output pDirectories As %List) As %Status
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Set pDirectories = ""
+    Quit tSC
+}
+
+/// <p>The directory of every file the instance's journal history lists, in <var>pDirectories</var>,
+/// each normalized with its trailing separator and named once, newest file first: the parent of each
+/// <code>Name</code> <code>%SYS.Journal.File:ByTimeReverseOrder</code> answers, read in
+/// <code>%SYS</code> by explicit save and restore (AD-16) on every call and never kept (DW-1797). The
+/// history follows each file's link to the one before it across directories and stops at the first
+/// missing file, so a directory older than such a gap is not named. On failure the list is empty
+/// and the status says why. Overridable so a fixture can name others or fail the read; production
+/// never overrides it.</p>
+ClassMethod JournalHistoryDirectories(Output pDirectories As %List) As %Status
+{
+    Set tSC = $$$OK
+    Set pDirectories = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("%SYS.Journal.File:ByTimeReverseOrder")
+        Set tSC = tRS.Execute()
+        While $$$ISOK(tSC) && tRS.Next(.tSC) {
+            Set tName = tRS.Get("Name")
+            If tName = "" Continue
+            Set tDirectory = ##class(%File).NormalizeDirectory(##class(%File).GetDirectory(tName))
+            If tDirectory = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "a journal history directory did not normalize")
+                Quit
+            }
+            If '$ListFind(pDirectories, tDirectory) Set pDirectories = pDirectories _ $ListBuild(tDirectory)
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pDirectories = ""
+    Quit tSC
+}
+
+/// <p>The write-image journal's directory in <var>pDirectory</var>: <code>Config.config</code>'s
+/// <code>wijdir</code>, read in <code>%SYS</code> by explicit save and restore (AD-16) on every call,
+/// where an empty value is <method>ManagerDirectory</method> (DW-1797). On failure it is empty and the
+/// status says why. Overridable so a fixture can name another or fail the read; production never
+/// overrides it.</p>
+ClassMethod WijDirectory(Output pDirectory As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pDirectory = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProperties
+        Set tSC = ##class(Config.config).Get(.tProperties)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pDirectory = $Get(tProperties("wijdir"))
+        If pDirectory = "" Set pDirectory = ..ManagerDirectory()
+        If pDirectory = "" Set tSC = $$$ERROR($$$GeneralError, "the write-image journal's directory could not be read")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pDirectory = ""
     Quit tSC
 }
 

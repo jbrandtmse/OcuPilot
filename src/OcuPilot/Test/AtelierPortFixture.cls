@@ -6,14 +6,17 @@
 /// <method>GetNamespace</method>, <method>GetDocNames</method>, <method>GetDoc</method>,
 /// <method>Index</method>, <method>Compile</method>, <method>DeleteDocs</method>,
 /// <method>ExportToXMLFile</method>, <method>ListDocumentsInXMLFiles</method>,
-/// <method>LoadXMLFiles</method> and <method>PutDoc</method> stand in for the vendor's routes: each
+/// <method>LoadXMLFiles</method>, <method>PutDoc</method>, <method>Search</method>,
+/// <method>GetMacroDefinition</method>, <method>GetMacroLocation</method> and <method>Query</method>
+/// stand in for the vendor's routes: each
 /// records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
-/// the request's query data, content type and body -- leaves <code>%SourceControl</code> set, as
+/// the request's query data, content type, body and <code>If-None-Match</code> -- leaves
+/// <code>%SourceControl</code> set, as
 /// a vendor route does, sets the armed HTTP status and writes the armed envelope. <method>GateClass</method>,
 /// <method>HighestVersion</method> and <method>DatabaseResources</method> answer what a test arms,
-/// and <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>.
-/// State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
+/// <method>LogFault</method> always routes through <class>OcuPilot.Test.FaultProbe</class>, and
+/// <method>LogNote</method> through <class>OcuPilot.Test.LogProbe</class>. State lives in <code>^||OcuPilotAtelierFixture</code>.</p>
 /// <p>A canned route runs while the port has switched to the read's namespace, so a test that arms
 /// one reads the install namespace.</p>
 Class OcuPilot.Test.AtelierPortFixture Extends OcuPilot.Port.AtelierPort
@@ -66,6 +69,15 @@ ClassMethod Arm(pMethod As %String, pStatus As %String, pText As %String, pRetur
     Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild(pStatus, pText, pReturn, 0)
 }
 
+/// <p>Queue one answer for route <var>pMethod</var>, <var>pStatus</var> and <var>pText</var>: each call
+/// takes the oldest queued answer before the armed one, so a read that calls one route twice is
+/// answered twice.</p>
+ClassMethod Queue(pMethod As %String, pStatus As %String, pText As %String)
+{
+    Set tIndex = $Increment(^||OcuPilotAtelierFixture("queue", pMethod))
+    Set ^||OcuPilotAtelierFixture("queue", pMethod, tIndex) = $ListBuild(pStatus, pText, $$$OK, 0)
+}
+
 /// <p>Arm route <var>pMethod</var> to write an answer above the capture's ceiling, the way the
 /// vendor's renderer writes one: in pieces, inside a <code>Try</code> whose error it returns.</p>
 ClassMethod ArmOversize(pMethod As %String)
@@ -87,7 +99,7 @@ ClassMethod CallCount() As %Integer
 }
 
 /// <p>Recorded call <var>pIndex</var> (1-based) as <code>{method, current, device, redirect,
-/// namespace, arg, typePassed, params, contentType, body}</code>, or <code>{}</code>.</p>
+/// namespace, arg, typePassed, params, contentType, body, ifNoneMatch}</code>, or <code>{}</code>.</p>
 ClassMethod CallAt(pIndex As %Integer) As %DynamicObject
 {
     Set tJson = $Get(^||OcuPilotAtelierFixture("call", pIndex))
@@ -136,6 +148,16 @@ ClassMethod DatabaseResources(pNamespace As %String, Output pRoutineResource As 
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Do ##class(OcuPilot.Test.FaultProbe).LogRaw("atelierport", pMessage, pStatus, pCode)
+}
+
+/// <p>The information-severity line routed through <class>OcuPilot.Test.LogProbe</class>, so a test
+/// reads its severity and text.</p>
+ClassMethod LogNote(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set tData = {}
+    Do tData.%Set("code", pCode, "string")
+    Do tData.%Set("status", $System.Status.GetErrorText(pStatus), "string")
+    Do ##class(OcuPilot.Test.LogProbe).Info("atelierport", pMessage, tData)
 }
 
 /// <p>The canned <code>GetNamespace</code> route.</p>
@@ -219,8 +241,32 @@ ClassMethod PutDoc(pNamespace As %String, pDocName As %String) As %Status
     Quit ..Answer("PutDoc", pNamespace, pDocName, 0)
 }
 
-/// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an
-/// empty envelope when nothing is armed.</p>
+/// <p>The canned <code>Search</code> route.</p>
+ClassMethod Search(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Search", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>GetMacroDefinition</code> route.</p>
+ClassMethod GetMacroDefinition(pNamespace As %String) As %Status
+{
+    Quit ..Answer("GetMacroDefinition", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>GetMacroLocation</code> route.</p>
+ClassMethod GetMacroLocation(pNamespace As %String) As %Status
+{
+    Quit ..Answer("GetMacroLocation", pNamespace, "", 0)
+}
+
+/// <p>The canned <code>Query</code> route.</p>
+ClassMethod Query(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Query", pNamespace, "", 0)
+}
+
+/// <p>Record the call, then answer with the oldest answer queued for <var>pMethod</var>, else as
+/// armed: <code>200 OK</code> and an empty envelope when nothing is.</p>
 ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, pTypePassed As %Boolean) As %Status [ Private ]
 {
     Set tCall = {}
@@ -247,12 +293,19 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, p
         Do %request.Content.Rewind()
     }
     Do tCall.%Set("body", tBody)
+    Do tCall.%Set("ifNoneMatch", $Get(%request.CgiEnvs("HTTP_IF_NONE_MATCH")))
     Set tIndex = $Increment(^||OcuPilotAtelierFixture("calls"))
     Set ^||OcuPilotAtelierFixture("call", tIndex) = tCall.%ToJSON()
     ; A vendor route leaves the namespace's source-control object behind, as this does.
     Set %SourceControl = "left by the canned route"
 
-    Set tArmed = $Get(^||OcuPilotAtelierFixture("route", pMethod), $ListBuild("200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", $$$OK, 0))
+    Set tNext = $Order(^||OcuPilotAtelierFixture("queue", pMethod, ""), 1, tQueued)
+    If tNext '= "" {
+        Kill ^||OcuPilotAtelierFixture("queue", pMethod, tNext)
+        Set tArmed = tQueued
+    } Else {
+        Set tArmed = $Get(^||OcuPilotAtelierFixture("route", pMethod), $ListBuild("200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", $$$OK, 0))
+    }
     Set %response.Status = $ListGet(tArmed, 1)
     Set tMode = $ListGet(tArmed, 4)
     If tMode = 1 Quit ..WriteOversize()

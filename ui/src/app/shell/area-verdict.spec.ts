@@ -62,6 +62,10 @@ const OPERATOR_MAP = {
         { route: 'os-management/language-servers', allowed: false, failedPair: '%Admin_ExternalLanguageServerEdit:USE' },
         { route: 'os-management/local-databases', allowed: false, failedPair: '%Admin_Manage:USE' },
         { route: 'os-management/remote-databases', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Story 18.5: Journals, which %Operator opens (OcuPilot.Test.WireAreaAnyScreen).
+        { route: 'os-management/journals', allowed: true },
+        // Story 18.18: Journal settings, which %Operator does not open, failing its first pair.
+        { route: 'os-management/journal-settings', allowed: false, failedPair: '%Admin_Manage:USE' },
       ],
     },
     { key: 'tasks', allowed: true, screens: [] },
@@ -159,6 +163,10 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       { gated: 'true', reason: requires('%Admin_ExternalLanguageServerEdit:USE') },
       manage,
       // Story 18.16: Remote databases, the twelfth entry.
+      manage,
+      // Story 18.5: Journals, the thirteenth.
+      open,
+      // Story 18.18: Journal settings, the fourteenth.
       manage,
     ]);
   });

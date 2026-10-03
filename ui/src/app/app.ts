@@ -41,6 +41,7 @@ import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { RemoteDatabaseActions } from './areas/os-management/remote-database-actions';
 import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.store';
+import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -331,6 +332,8 @@ export class App {
   // with the remote database form's store (Story 18.16).
   private readonly remoteDatabaseActions = inject(RemoteDatabaseActions);
   private readonly remoteDatabaseForm = inject(RemoteDatabaseForm);
+  // Journal settings' form store (Story 18.18).
+  private readonly journalSettingsForm = inject(JournalSettingsForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -652,6 +655,8 @@ export class App {
       this.databaseIntegrity.reset();
       // The remote database form holds a remote database THIS principal was creating or re-pointing and has not saved.
       this.remoteDatabaseForm.reset();
+      // The journal settings form holds settings THIS principal was changing and has not saved.
+      this.journalSettingsForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

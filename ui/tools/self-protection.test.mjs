@@ -498,9 +498,17 @@ test('Story 18.15: the refusal of %SYS and %ALL is one sentence on both surfaces
 /** Story 19.2's error class, which declares System Explorer's write refusals and delete reasons. */
 const ATELIER_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AtelierError.cls');
 
-/** Story 19.2's eight published sentences and Story 19.13's export directory refusal: `[parameter, strings.ts key]`. */
+/**
+ * Story 19.2's eight published sentences, Story 19.13's export directory refusal and Story 19.3's
+ * save refusals: `[parameter, strings.ts key]`. A lock refuses a save in the delete's own sentence.
+ */
 const ATELIER_REFUSALS = [
   ['REASONDOCUMENTABSENT', 'explorerDocumentAbsent'],
+  ['REASONDOCUMENTCONFLICT', 'explorerDocumentConflict'],
+  ['REASONDOCUMENTLOCKED', 'explorerDeleteLocked'],
+  ['REASONSAVEHEADER', 'explorerSaveHeader'],
+  ['REASONSAVETOOLARGE', 'explorerSaveTooLarge'],
+  ['REASONSAVEREFUSED', 'explorerSaveRefused'],
   ['REASONEXPORTDIRECTORY', 'explorerExportDirectory'],
   ['REASONIMPORTUNREADABLE', 'explorerImportUnreadable'],
   ['REASONIMPORTCHANGED', 'explorerImportChanged'],
@@ -520,5 +528,43 @@ test("Story 19.2: each of System Explorer's write refusals and delete reasons is
     assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** Story 19.4's port, which declares the search's and the macro lookup's argument refusals. */
+const ATELIER_PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AtelierPort.cls');
+
+/**
+ * Story 19.4's four published refusal sentences, Story 19.5's five and Story 19.14's six:
+ * `[parameter, strings.ts key]`.
+ */
+const FIND_REFUSALS = [
+  ['REASONSEARCHTEXT', 'explorerSearchTextReason'],
+  ['REASONSEARCHSCOPE', 'explorerSearchScopeReason'],
+  ['REASONSEARCHCASE', 'explorerSearchCaseReason'],
+  ['REASONMACRO', 'explorerMacroReason'],
+  // Story 19.5: the SQL catalog's argument and resolve refusals.
+  ['REASONCATALOGSCHEMA', 'explorerSqlSchemaReason'],
+  ['REASONCATALOGSYSTEM', 'explorerSqlSystemReason'],
+  ['REASONCATALOGTABLE', 'explorerSqlTableReason'],
+  ['REASONCATALOGAMBIGUOUS', 'explorerSqlAmbiguousReason'],
+  ['REASONCATALOGNOTFOUND', 'explorerSqlNotFoundReason'],
+  // Story 19.14: a view's and a procedure's name, ambiguity and absence refusals.
+  ['REASONCATALOGVIEW', 'explorerSqlViewReason'],
+  ['REASONCATALOGPROCEDURE', 'explorerSqlProcedureReason'],
+  ['REASONCATALOGVIEWAMBIGUOUS', 'explorerSqlViewAmbiguousReason'],
+  ['REASONCATALOGPROCEDUREAMBIGUOUS', 'explorerSqlProcedureAmbiguousReason'],
+  ['REASONCATALOGVIEWNOTFOUND', 'explorerSqlViewNotFoundReason'],
+  ['REASONCATALOGPROCEDURENOTFOUND', 'explorerSqlProcedureNotFoundReason'],
+];
+
+test("Stories 19.4, 19.5 and 19.14: each of Search's, Macros' and the SQL catalog's argument refusals is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONSEARCHTEXT in AtelierPort.cls -> this goes red naming both.
+  const source = readFileSync(ATELIER_PORT, 'utf8');
+  for (const [parameter, key] of FIND_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `AtelierPort.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   }
 });

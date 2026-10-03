@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-02-2026 07:39'
+last_updated: '2026-10-03'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -279,7 +279,7 @@ development_status:
   18-2-namespaces-and-their-mappings: done
   18-3-databases-configuration-creation-properties-and-volumes: done
   18-4-the-deferred-disk-operations: done
-  18-5-journals: ready-for-dev
+  18-5-journals: done
   18-6-licensing-and-ecp: backlog
   18-7-encryption: backlog
   18-8-superservers-authentication-options-and-managed-file-transfe: backlog
@@ -292,16 +292,16 @@ development_status:
   18-15-enable-interoperability-on-a-namespace: done
   18-16-remote-databases: done
   18-17-namespace-and-database-follow-ups: done
-  18-18-journal-settings: backlog
-  18-19-journal-record-browser: backlog
+  18-18-journal-settings: done
+  18-19-journal-record-browser: done
   epic-18-retrospective: optional
 
   epic-19: in-progress
   19-1-classes-and-routines-listed-and-viewed: done
   19-2-compile-delete-export-and-import: done
-  19-3-the-source-editor-with-etag-conflict-detection: ready-for-dev
-  19-4-search-compare-and-macro-lookup: backlog
-  19-5-the-sql-catalog-browser: backlog
+  19-3-the-source-editor-with-etag-conflict-detection: done
+  19-4-search-compare-and-macro-lookup: done
+  19-5-the-sql-catalog-browser: done
   19-6-the-query-console-and-its-dml-and-ddl-guard: backlog
   19-7-the-data-browser-tree-grid-filter-and-sort: backlog
   19-8-the-data-browser-editing-staging-and-export: backlog
@@ -310,6 +310,7 @@ development_status:
   19-11-the-agent-gains-guarded-sql-and-a-picker: backlog
   19-12-a-development-holder-reaches-system-explorer-as-the-classic: done
   19-13-xml-export-and-import: done
+  19-14-the-sql-catalog-s-remaining-detail-tabs: in-progress
   epic-19-retrospective: optional
 
   epic-20: backlog

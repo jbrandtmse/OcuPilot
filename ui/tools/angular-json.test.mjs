@@ -404,6 +404,42 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 19.13's forward merge of Story 18.16 raised it to 2473kB, the measured 2,472,462-byte initial
 // total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.3 raised it to 2488kB, the measured 2,487,199-byte initial total rounded up to the next kB
+// (the class and routine editors, their store and the two descriptors' mirror), under the 4000kB hard
+// stop.
+// Story 19.4 raised it to 2527kB, the measured 2,526,006-byte initial total rounded up to the next kB
+// (Search, Compare and Macros, the line diff and the three descriptors' mirror), under the 4000kB
+// hard stop.
+// Story 18.5 raised it to 2480kB, the measured 2,479,753-byte initial total rounded up to the next kB
+// (Journals' page, Journal file details' page and the three descriptors' mirror), under the 4000kB hard stop.
+// Story 18.5's forward merge of Story 19.13 raised it to 2495kB, the measured 2,494,043-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 18.5's forward merge of Story 19.3 raised it to 2509kB, the measured 2,508,816-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.4's forward merge of Story 18.5 raised it to 2548kB, the measured 2,547,991-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.4's command-box ranking raised it to 2549kB, the measured 2,548,187-byte initial total
+// rounded up to the next kB (the Screens group's rank and sort), under the 4000kB hard stop.
+// Story 19.5 raised it to 2572kB, the measured 2,571,381-byte initial total rounded up to the next kB
+// (the SQL catalog's nine descriptors' mirror, its strings and the parent-scoped tab strip), under the
+// 4000kB hard stop.
+// Story 18.18 raised it to 2532kB, the measured 2,531,807-byte initial total rounded up to the next kB
+// (Journal settings' form, its store and the descriptor's mirror), under the 4000kB hard stop.
+// Story 18.18's forward merge of Story 19.4 raised it to 2571kB, the measured 2,570,979-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 18.18's forward merge of Story 19.4's command-box ranking raised it to 2572kB, the measured
+// 2,571,157-byte initial total rounded up to the next kB (both branches' additions together), under the
+// 4000kB hard stop.
+// Story 19.5's forward merge of Story 18.18 raised it to 2595kB, the measured 2,594,351-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 18.19 raised it to 2588kB, the measured 2,587,710-byte initial total rounded up to the next kB
+// (Journal records' page, its record dialog and the descriptor's mirror), under the 4000kB hard stop.
+// Story 18.19's forward merge of Story 19.5 raised it to 2611kB, the measured 2,610,856-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.14 raised it to 2621kB, the measured 2,620,708-byte initial total rounded up to the next kB
+// (the nine further SQL catalog descriptors' mirror and their strings), under the 4000kB hard stop.
+// Story 18.19's forward merge of Story 19.14 raised it to 2638kB, the measured 2,637,325-byte initial
+// total rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -416,7 +452,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2473kB', 'DW-1166, Story 19.13 forward merge of Story 18.16: the measured 2,472,462 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2638kB', 'DW-1166, Story 18.19 forward merge of Story 19.14: the measured 2,637,325 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

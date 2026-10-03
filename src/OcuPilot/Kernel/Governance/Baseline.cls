@@ -30,6 +30,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.globalmappings.create": true,
   "osmgmt.globalmappings.delete": true,
   "osmgmt.globalmappings.update": true,
+  "osmgmt.journals.integrity": true,
+  "osmgmt.journals.switchdirectory": true,
+  "osmgmt.journals.switchfile": true,
+  "osmgmt.journalsettings.update": true,
   "osmgmt.localdatabases.create": true,
   "osmgmt.localdatabases.delete": false,
   "osmgmt.localdatabases.expand": false,
@@ -150,6 +154,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.export": true,
   "explorer.routines.export": true,
   "explorer.classes.import": false,
+  "explorer.classes.save": false,
+  "explorer.routines.save": false,
   "explorer.routines.import": false
 }
 }

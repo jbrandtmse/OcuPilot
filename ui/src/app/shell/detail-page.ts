@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRe
 import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
-import { NavigationService, formatRequires, tabMembersFor, withQuery } from '../core/navigation';
+import { NavigationService, formatRequires, routeFromUrl, tabMembersFor, withQuery } from '../core/navigation';
 import { STRINGS, stringFor } from '../core/strings';
 import { ListPage } from './list-page';
 
@@ -31,7 +31,9 @@ let focusOnArrival: string | null = null;
  * **A tabbed screen is one descriptor per tab** (AD-5), so the strip is the group's built members in
  * position order (`tabMembersFor`), each labelled by its `tab.labelKey`, and choosing one navigates
  * to that member's own route, carrying the namespace (AD-44). Each tab's page is its own route, so
- * the read below is always the current tab's, issued once.
+ * the read below is always the current tab's, issued once. **In a parent-scoped group** (AD-5, a SQL
+ * table's catalog tabs) every tab reads the one route id as its criterion, so choosing a tab carries
+ * that id segment, as the address bar holds it, to the member's route.
  *
  * **Keyboard.** The strip is Material's tab nav bar: one Tab stop, Left and Right move between tabs,
  * Enter or Space opens the focused one (EXPERIENCE.md tabs, DESIGN.md tabs). A strip wider than the
@@ -148,7 +150,7 @@ export class DetailPage {
   protected open(tab: DetailTab): void {
     if (tab.gated || tab.active) return;
     focusOnArrival = tab.route;
-    void this.router.navigateByUrl(withQuery(tab.route, this.router.url)).then(
+    void this.router.navigateByUrl(withQuery(this.targetRoute(tab.route), this.router.url)).then(
       (opened) => {
         if (!opened) focusOnArrival = null;
       },
@@ -156,6 +158,20 @@ export class DetailPage {
         focusOnArrival = null;
       }
     );
+  }
+
+  /**
+   * The route a tab opens: its own, plus the current route id segment where the current screen is a
+   * parent-scoped tab rendered with one, which every member of its group reads as its criterion.
+   */
+  private targetRoute(route: string): string {
+    const screen = this.navigation.screenForUrl(this.router.url);
+    if (screen === null || screen.tab === null || screen.parentScope === '') return route;
+    const path = routeFromUrl(this.router.url);
+    const prefix = `${screen.route}/`;
+    if (!path.startsWith(prefix)) return route;
+    const segment = path.slice(prefix.length);
+    return segment === '' || segment.includes('/') ? route : `${route}/${segment}`;
   }
 
   private bump(): void {

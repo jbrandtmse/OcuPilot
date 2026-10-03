@@ -3837,6 +3837,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:16Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): per-criterion read-tool descriptions (Screen/Tool/Read.cls), not floor-blocking
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
+- 2026-10-02T23:22:38Z occurrence=19-4-search-compare-and-macro-lookup note=explorer.search.read text and explorer.macro.read document and macro are described as a comma list where * matches; a * in search text is searched literally and answers no rows with no refusal; fix needs a descriptor-declared criterion description (Screen/Registry.cls criteria grammar)
+- 2026-10-03T00:00:31Z status=routed owner=range-end-cleanup by=cr note=19.4 cr: first silent case, explorer.search.read searches *TODO* or a comma list literally and answers 0 rows unrefused; raise priority
+- 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
+- 2026-10-03T01:39:20Z occurrence=19-5-the-sql-catalog-browser note=the nine catalog read tools' schema and table criteria are described as comma lists where * matches; the port takes one exact name
+- 2026-10-03T10:32:35Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=the nine new catalog read tools' table, view and procedure criteria carry the generic text description
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8184,6 +8189,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: JournalDirectories reads GetPrimaryDirectory, GetAlternateDirectory and GetCurrentFileName only; after a journal directory change the older files stay where they were and the journal history still lists them (inference; never changed on the throwaway). Config.config wijdir is empty on ocupilot-b-ci, so IRIS.WIJ is refused there only as a manager-directory file.
 - 2026-09-28T22:34:01Z status=routed owner=18-5-journals by=cr note=18.5 changes journal directories: add the history's directories and the WIJ directory to the refusal, read at call time
+- 2026-10-02T19:51:35Z status=resolved-by:18-5-journals owner=18-5-journals by=adjudication note=PathPort refuses the journal history's directories and the WIJ directory (081bbd5e; PathPortInstance 10/10 run 3154, AC6)
 
 ### DW-1798: PATH.INSTANCE does not cover OcuPilot's own static bundle (csp/ocupilot/): DW-1790's review note named it, and the decision widened only databases and journals
 - source: spec-18-1-the-directory-allow-list.md | severity: med | fix-risk: low | footprint: in-story
@@ -8998,6 +9004,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-3-the-range-end-cleanup-part-3.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: 23.3 batch d review on ocupilot-b-ci: three agent-ledger runs left three _SYSTEM turns and conversations, removed by hand; predates 23.3
 - 2026-10-02T06:44:18Z status=routed owner=range-end-cleanup by=cr note=test isolation on a reused container; same family as DW-1916 and DW-1917
+- 2026-10-02T23:22:39Z occurrence=19-4-search-compare-and-macro-lookup note=Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest red in the 19.4 sweep on ocupilot-a2-ci (up over 24 h): 24 _SYSTEM conversation entries left by browser-spec turns, oldest 2026-10-01T22:56Z, past the one-day retention the test arranges; a fresh CI throwaway holds none
 
 ### DW-1939: A change toast for a remote database opens Local databases: Local and Remote databases share entity type database-configuration and screenForEntityType takes the lowest side-bar position
 - source: spec-18-16-remote-databases.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -9049,6 +9056,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 36981402635 (head 46beffad) browser shard 3/3: turn.browser-spec.mjs:231 waitForSelector [data-slot=lock] .ocu-banner timed out after 56.8 s; the spec ran 10/10 on ocupilot-a2-ci from the same tree (that test 22.8 s); 19.2's turn.ts and panel.ts edits only add the confirm's output field
 - 2026-10-02T08:43:18Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: CI flake; shard 3/3 also hosted DW-1925
 
+### DW-1947: A least-privileged caller's finished journal integrity-check task row outlives the port's read until SweepOwnTasks removes it
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 step 9 (2026-10-02): the caller cannot delete its own finished INTEGRITYCHECK row; AwaitTask's ForgetTask leaves it for SweepOwnTasks (within 24 h)
+- 2026-10-02T15:01:52Z status=by-design owner=18-5-journals by=merge_gate note=named limit like the record list's task row; ruled by the orchestrator under the owner's standing grant 2026-10-02
+
+### DW-1950: A switch-directory proposal confirmed after the alternate stops being distinct answers 500 INTERNAL instead of a target-changed refusal
+- source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
+- 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal
+- 2026-10-03T04:30:11Z status=resolved-by:18-18-journal-settings owner=18-18-journal-settings by=adjudication note=PRECONDITIONCODES: a stale switch-directory confirm closes 409 target-changed (e16c410a; DW-1950 mutation run 3237)
 ### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
@@ -9059,3 +9076,175 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: rework of run 37012695762: the dialog opens before AllowedDirectoriesStore answers; the picker grows and the dialog re-centres, so a click aimed at 'A file on this computer' landed on the directory dropdown (the spec now waits for the picker)
 - 2026-10-02T14:23:35Z status=wontfix-accepted owner=19-13-xml-export-and-import by=harvest note=reopen_if=a user reports a misclick in the import or export dialog while its directories load
 - 2026-10-02T14:37:28Z status=wontfix-accepted owner=19-13-xml-export-and-import by=cr note=reopen_if=a user reports a misclick in either dialog while it loads; 64 px measured on import, export (inference)
+
+### DW-1953: JOURNAL.SWITCHDIR.UNMOVED's sentence shows a literal <directory> where only the code is rendered (the confirm route, a refused tool call)
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalError.ReasonFor(SWITCHDIRUNMOVED) answers the template; Api/Confirm.ReasonFor renders by code; only the screen route carries the port's filled Unmoved() reason
+- 2026-10-02T19:49:21Z status=wontfix-theoretical owner=18-5-journals by=cr note=real only if a confirm's SWITCHDIR stays put with %Admin_Manage:USE held (measured: it moves) or an out-of-band race
+
+### DW-1954: A vendor SWITCHDIR 409 is logged at error severity before JournalPort maps it to JOURNAL.SWITCHDIR.NOOTHER
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AdminPort.Fail logs every refusal but UNLOGGEDREFUSALS (Lock/DELETE/409, AD-2); reachable only past DIRSTATE's own refusal (a race) and in JournalWrite's direct port leg
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=alerts.log shows a SWITCHDIR 409 line from a product call, or a test asserts alert state after JournalWrite
+
+### DW-1955: AC6's former-journal and WIJ directory refusal is pinned at PathPort.Resolve, not through an overwriting file consumer
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: PathPortInstance calls ResolveOf(..., overwrite 1), the same entry 16.4's task export and 19.13's XML export call unchanged; no consumer leg seeds a former journal directory
+- 2026-10-02T19:49:21Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a file consumer resolves a server path other than through PathPort.Resolve
+
+### DW-1956: Switch directory's fingerprint covers CurrentFile, so a journal file roll between mint and confirm refuses the confirm
+- source: spec-18-5-journals.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalSwitchDirectory.FINGERPRINTSUBJECT is CurrentFile,CurrentDirectory,OtherDirectory, as the spec's tools table declares STATE / CurrentFile,CurrentDirectory; fails closed, the agent re-proposes
+- 2026-10-02T19:49:21Z status=by-design owner=18-5-journals by=cr note=spec Boundaries tools table names the subject; reopen only through a spec amendment
+
+### DW-1959: JournalRead's and the journals browser spec's closed-file precondition calls take the no-switch path in every current run, so dropping either stays green
+- source: spec-18-5-journals.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: CI shard 1 runs AdminPortAsync (pos 3, its in-test EnsureClosedFile switches) before JournalRead (pos 40); the browser spec's AC3 switch leg runs before its AC5 and AC2 legs; the slot-B throwaway lists hundreds of files, so neither call has switched in any run
+- 2026-10-02T21:40:16Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a missing closed journal file or fewer than two listed files
+- 2026-10-02T21:40:29Z status=wontfix-accepted owner=18-5-journals by=cr note=reopen_if=a CI leg reds JournalRead or journals.browser-spec on a closed-file need; the browser hook may switch on CI
+### DW-1951: The empty Remote databases screen offers 'Or ask the agent: create a remote database.' with a chip labelled by the raw lowercase action id 'create' instead of its display label
+- source: Planner observation on the 1.0.7 demo (517e6af4) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
+- 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
+### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
+- 2026-10-02T18:45:35Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=harvest note=reopen_if=a deleted document is reported reappearing after a Save, or the vendor gains a conditional put that refuses a missing document; the window is one PresentSet-to-PutDoc call
+- 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a document deleted by another writer reappears after a Save; cr: not MED, ms window, own text re-created
+
+### DW-1949: A save or import text whose JSON-escaped form passes the instance's longest string reaches the screen route's payload serialization as a 500, not EXPLORER.SAVE.TOOLARGE (inference)
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Api.ScreenAction.Run serializes the payload with %ToJSON() before the port's length check; Story 19.13's import shares the limit
+- 2026-10-02T18:45:35Z status=routed owner=burndown by=harvest note=Epic 19 burn-down: check the length before serialization, or map the <MAXSTRING> to the port's too-large code
+- 2026-10-02T19:20:03Z status=wontfix-accepted owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=reopen_if=a Save of pasted text over 3,400,000 characters is reported answering 500; a LOW, which burndown never owns
+
+### DW-1952: AD-61 rule 6 does not name PutDoc's error under a 2xx answer as 422 EXPLORER.SAVE.REFUSED, which Story 19.3's I/O matrix specifies and AtelierPort.Outcome ships
+- source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Rule 6 ends 'anything else is INTERNAL' and its 19.3 amendment names only PutDoc 409 and 423; Outcome answers a parsed PutDoc 2xx error that is no access refusal 422 SAVEREFUSED, logged (matrix row 'Vendor soft refusal').
+- 2026-10-02T19:20:03Z status=routed owner=19-3-the-source-editor-with-etag-conflict-detection by=cr note=lead amends AD-61 rule 6 (Rule 20) with the 2xx soft refusal case; code matches the spec gate
+- 2026-10-02T19:23:32Z status=resolved-by:19-3-the-source-editor-with-etag-conflict-detection owner=19-3-the-source-editor-with-etag-conflict-detection by=adjudication note=AD-61 rule 6 amended at ARCHITECTURE-SPINE.md:916 (Rule 20, memlog entry 303): a PutDoc 2xx error that is no access refusal is 422 EXPLORER.SAVE.REFUSED, logged, never sent
+
+### DW-1957: IRIS defect candidate: the Atelier action/search route splices the bracketed part of its documents parameter into SQL
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: documents=OcuProbe194*.mac[1=0] found nothing and [1=] answered an SQL error where the bare mask found the probe (%Library.RoutineMgr:1146,1257-1262 turns the bracketed part into Filter); AtelierPort builds documents from the declared scope only (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905 and DW-1926
+
+### DW-1958: IRIS defect candidate: the Atelier action/search route runs a caller-supplied regex with no operation limit
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.4 plan on ocupilot-a2-ci: FindInFilesRegex builds %Regex.Matcher with OperationLimit 0; (a+)+c against 22 a's took 0.094 s and quadrupled per two characters (inference: hours at 40), a denial-of-service shape; AtelierPort always sends regex=0 (AD-61 rule 7)
+- 2026-10-02T20:10:34Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926 and the documents splice
+
+### DW-1960: AtelierPort's MACRONAMEPATTERN refuses a macro name holding an underscore or starting with a digit, which a few vendor macros use
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irislib's .inc files define 28,574 macro names, 54 of them with an underscore or a leading digit (mostly SQL enum internals such as OSQLEnumAggregateFunctionCOVAR_POP); a lookup of one is refused 400 PORT.VALIDATION. The pattern is the spec's Matrix row (Bad macro input).
+- 2026-10-03T00:00:23Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=spec-bound: the pattern is the I/O Matrix's; reopens only by a spec amendment widening it to [A-Za-z0-9_]
+
+### DW-1961: MacroContext's header parse ignores a /* comment opened mid-line and skips a line a one-line /* */ comment begins, and counts a routine's #include inside /* */ or #if 0, so a lookup can miss or add a context name
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.MacroContext treats /* only at a line's start and closes on any */; routines get no comment or conditional tracking. Names stay inside the gated namespace and CONTEXTNAMEPATTERN keeps , and : out of the vendor's argument string, so a hostile text can only change its own lookup.
+- 2026-10-03T00:00:23Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=cr note=reopen_if=a Macros lookup on a real document reports a macro defined or undefined contrary to the compiler
+
+### DW-1962: Typing Definition and pressing Enter in the command box now opens Macros, not Definitions: Macros' alias macro definition matches and the box lists in declaration order without ranking by match
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
+- 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
+- 2026-10-03T02:40:39Z status=resolved-by:19-4-search-compare-and-macro-lookup owner=19-4-search-compare-and-macro-lookup by=merge_gate note=fixed at the orchestrator's request (rework 2, 742a39f0 + re-review patch): command-box Screens rows rank exact label, label prefix, other label match, then alias or route only; favorites first within a rank; Definition + Enter opens Definitions; Macros keeps its alias
+
+### DW-1963: IRIS defect candidate: the Atelier action/query route prepares every statement with SQL privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.5 plan on ocupilot-a2-ci: %Api.Atelier.v6:229 calls %SQL.Statement.%Prepare(query,0); a principal with %Development:USE and %DB_USER:RW and no SQL grant read rows from an ungranted table and ran an UPDATE that persisted; with checkPriv=1 both answer SQLCODE -99
+- 2026-10-03T01:39:20Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957 and DW-1958
+
+### DW-1964: The query console (19.6) and the agent's SQL tool (19.11) must enforce the caller's SQL privileges themselves and never pass caller SQL through Atelier's action/query, which prepares with privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
+- 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
+
+### DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck
+- source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: JournalPort.ResolveDirectory calls PathPort.Resolve(...,0,1), which refuses only the manager directory itself and the served directory (PathPort.cls:317-323); every database directory under the manager root exists and holds IRIS.DAT and iris.lck (/durable/iris/mgr/user/); Task 0 c measured the vendor writing iris.lck into a newly set alternate
+- 2026-10-03T03:45:21Z status=decision-pending owner=burndown by=cr note=unverified med (inference: lock-file collision); refusing database directories amends AD-21's sixth case
+- 2026-10-03T09:57:28Z status=routed owner=burndown by=merge_gate note=decided 2026-10-03: refuse an existing database's directory as a journal directory (amends AD-21 sixth case); Epic 18 close burn-down
+
+### DW-1967: The purge rule's archive-target branch runs only against a seam settings read, never against an instance with an archive target
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalSettingsWrite pins both halves through JournalSettingsPort.Archive; the vendor GET copies Config.Journal's ArchiveName string as stored (Journal.Settings GetSettings), the shape the seam sets; the spec's Never list forbids a test creating an archive target
+- 2026-10-03T03:45:21Z status=by-design owner=18-18-journal-settings by=cr note=spec Never list: no test creates an archive target; reopen only through a spec amendment
+
+### DW-1968: An agent proposal that changes a journal directory lists that directory's old value among the card's unchanged fields
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: JournalSettingsUpdate.MergeUpdate keeps the fresh read's CurrentDirectory/AlternateDirectory while the change rides the Root/Path rows, and Disclosure.Rows shows payload keys outside the diff; dropping the key would stop the read-back comparing the directory (the DerivedFields pin, run 3284); LocalDatabaseUpdate's NewVolumeDirectory is the same
+- 2026-10-03T03:45:21Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a person misreads a directory proposal's unchanged row, or the volume-directory model drops its key
+
+### DW-1969: A copy-out draft taken after a proposed journal directory stops resolving renders a script that sends the old directory, omitting the change
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Draft.ToolDerivedFields leaves the payload as it is when JournalSettingsUpdate.DerivedFields cannot resolve the root, and JournalPort.Snippet is pure, so the script carries the fresh read's directory; the live write is refused by the port's own re-resolution
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a draft script run after its directory was removed is reported as not making the reviewed change
+
+### DW-1970: EXPERIENCE.md :378 lists "Not set" among Journal settings' new literals, though the code reuses the OAuth client row's published string
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The page's wijSizeValue renders STRINGS.oauthClientNotSet; "Not set" is already published at EXPERIENCE.md :518-519; the only fix rewrites an existing line of a file Epic 19 edits concurrently (add-only rule)
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a strings test or reader flags the literal as published twice; fix once EXPERIENCE.md is uncontended
+
+### DW-1971: With an archive target set, checking Purge archived leaves the disabled purge counts showing values the Save sends as 0
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: journal-settings.store.ts keeps the counts' text when PurgeArchived is checked, while JournalRules.PurgeRule and the port send both 0; reachable only on an instance with an archive target, which no test may create; the form re-reads after the Save
+- 2026-10-03T03:45:32Z status=wontfix-accepted owner=18-18-journal-settings by=cr note=reopen_if=a person on an instance with an archive target reports the counts not reading 0 after Purge archived
+
+### DW-1972: The settings script mirrors only the purge rule's count half, so a target removed between mint and draft yields PurgeArchived true in the script
+- source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: JournalPort.Snippet applies PurgeCounts only, since a pure Snippet cannot read ArchiveName; the stored payload already carries the merge's purge rule, so script and write differ only if the archive target disappears between mint and draft
+- 2026-10-03T03:45:32Z status=wontfix-theoretical owner=18-18-journal-settings by=cr note=real only if an archive target is removed between a proposal's mint and its copy-out draft
+### DW-1965: The command box ranks a gated screen by its name like any other, so a closest-named screen the caller cannot open takes the active row and Enter does nothing
+- source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.
+- 2026-10-03T02:38:34Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=ranking keys are the DW-1962 ruling (name, favorite, order); gated rows stay listed, reason inline (EXPERIENCE.md)
+
+### DW-1975: CI flake (first sighting): gate.browser-spec.mjs AC1b and AC2/AC3 time out after 30 s waiting for Permissions > Users to navigate after sign-in
+- source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
+- 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
+### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
+- source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
+- 2026-10-03T06:37:36Z status=routed owner=19-5-the-sql-catalog-browser by=harvest note=lead ruling: fix at code review with a fixed bound for this one endpoint (5,000, still bounded per AD-36; the spec intent's max rule amended by the lead)
+- 2026-10-03T07:11:26Z status=resolved-by:19-5-the-sql-catalog-browser owner=19-5-the-sql-catalog-browser by=adjudication note=code review patched it: Catalog.Table sends CATALOGTABLESMAX-style fixed 5,000 (CATALOGTABLEMAX) and keeps the resolved row; fixture leg pins max 5,000 and a live leg reads Table info at cap 1
+
+### DW-1974: strings.test.mjs moves the Fixed-strings bound from 2100 to 2300 without the comment line every earlier move carries
+- source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/tools/strings.test.mjs:574-577: each prior bound move has a 'the bound moves to N under the same protocol' line; 19.5's move has none, and Epic 18's uncommitted 18.19 diff edits the same lines
+- 2026-10-03T07:09:04Z status=wontfix-accepted owner=19-5-the-sql-catalog-browser by=cr note=contended with Epic 18's same hunk; lead adds it at merge-forward; reopen_if=bound line has no comment naming its merged value after the merge
+
+### DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: The page sorts every read by the descriptor's default Address asc (data-table.ts:924), so order 1 fetches the newest rows and draws them ascending; the rows are right, the label reads wrong.
+- 2026-10-03T14:57:35Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports Newest first showing oldest first; fix needs the page to steer the store's remembered sort
+- 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
+
+### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: loadRecord clears the record and fetches with no loading state; the guard's journal file list read alone took 1.67 s at Task 0, so every dialog opens blank first. A skeleton needs a new string in contended strings.ts and EXPERIENCE.md.
+- 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports the record dialog opening blank, or EXPERIENCE.md gains a dialog loading pattern
+- 2026-10-03T15:02:19Z status=wontfix-accepted owner=18-19-journal-record-browser by=adjudication note=confirmed; reopen_if as filed
+
+### DW-1981: Journal records' offset and value inputs carry no maxlength, so an over-long entry is refused only by the server
+- source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: journal-records.page.ts renders the text criteria without [attr.maxlength] (code-list.page.ts:164 sets it); the server refuses READ.CRITERION. The patch was written and measured but the merged bundle sits 32 bytes under angular.json's 2611kB warning, a contended line.
+- 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=angular.json's budget is next re-based with room, or a user reports a refused over-long offset or value
+- 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down
+### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
+- 2026-10-03T14:19:33Z status=escalated owner=burndown by=cr note=shared shell table; design call (wrapping info row, expandable cell or scrollable tooltip) for the decision sheet
+- 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=design item for the shared data-table cell; driving cases: a view's text (up to 5,856 characters measured), a procedure's description, trigger code
+
+### DW-1977: The SQL statements tabs' statistics are the last aggregated ones: a statement run since the instance last aggregated reads blank Executions, times and First seen, and nothing but a StatementIndex-style aggregation call fills them, so 'which statements run most often' can answer blank or stale with no sign on screen
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on slot A (HSCUSTOM): freshly run statements read StatCount, StatTotal and StatFirst NULL through INFORMATION_SCHEMA.STATEMENTS; no %SYS.Task aggregates SQL statistics (only AutoStatsCollection). Design Notes accepted 'classic counts can be newer' as an inference
+- 2026-10-03T14:19:38Z status=decision-pending owner=burndown by=cr note=options: accept as is; add one sentence on the three tabs and in the tool's description that statistics are as of the last aggregation (recommended); aggregate (refused by AD-61 rule 7)
+- 2026-10-03T14:36:23Z status=routed owner=burndown by=merge_gate note=accepted as recommended: one sentence on the three statements tabs and in the tool description that the figures are as of the instance's last aggregation; a follow-up head after 19.14 merges if green and merged by 19:00Z, else Epic 19's burn-down
+
+### DW-1978: The SQL table's nine-tab strip hides its last tabs at common widths: 3 to 5 tabs fall outside the visible strip from 1024 to 1600 px (Constraints, Cached queries and SQL statements always among them); all nine fit at 1920
+- source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
+- evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
+- 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
