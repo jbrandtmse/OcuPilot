@@ -2,11 +2,11 @@
 title: 'Story 18.19: Journal record browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
-baseline_revision: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
+status: 'done'
+baseline_revision: 'fc3c5de0860dfba192e4877e6155e7f4faab6bf0'
 baseline_commit: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -493,7 +493,7 @@ Rejected:
 
 ### Rework 1 (CI)
 
-- [ ] [CI] browser shard 1/3 of run 37127676205 (`6344e34f`): `ui/browser/journal-records.browser-spec.mjs` "AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape" failed at `:304` (numbered as at `9becc6df`) with `failed to find element matching selector "#ocu-journal-records-value"`, read at once after the dialog is gone. Closing moves from `journal-records/:id` to `journal-records`, two route entries, so `ScreenOutlet` and the page are created afresh and the form renders on a later change-detection pass (inference). The leg passes on `ocupilot-b-ci`. Make the leg wait for the form before reading it, and check every other leg that reads the page right after a route change.
+- [x] [CI] browser shard 1/3 of run 37127676205 (`6344e34f`): `ui/browser/journal-records.browser-spec.mjs` "AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape" failed at `:304` (numbered as at `9becc6df`) with `failed to find element matching selector "#ocu-journal-records-value"`, read at once after the dialog is gone. Closing moves from `journal-records/:id` to `journal-records`, two route entries, so `ScreenOutlet` and the page are created afresh and the form renders on a later change-detection pass (inference). The leg passes on `ocupilot-b-ci`. Make the leg wait for the form before reading it, and check every other leg that reads the page right after a route change.
 
 ## Spec Change Log
 
@@ -527,6 +527,18 @@ Rejected:
   - `[false]` `[reject]` A two-pair principal leaves finished task rows and one Protect audit event — recorded at Task 0 h(i) and named limit 3; the tests remove those rows.
   - `[false]` `[reject]` A direct port caller without `%DB_IRISSYS:READ` gets 500 — every caller (screen, tool, route) gates on that pair first; only test code calls the port directly.
   - `[false]` `[reject]` The diff cannot show that Task 0 ran first — not a defect of the change; the order is recorded under Measured at implement.
+
+### 2026-10-03 — Review pass (rework 1, CI)
+
+- verdicts: 7 findings — high 0, medium 0, low 0, false 7, maybe-false 0
+- findings:
+  - `[false]` `[reject]` The pass records no verification of its own in the spec — written under `## Auto Run Result` at finalize, after review.
+  - `[false]` `[reject]` Nothing records that the other legs were checked — recorded under `## Auto Run Result` at finalize.
+  - `[false]` `[reject]` Only CI can show the race is gone — the new predicate holds only once the new page's form exists, because the dialog leaves only with the old page (`dialogOpen` keys on the route id); kept as a residual risk.
+  - `[false]` `[reject]` `## Auto Run Result` and the Verification lines predate this edit — as the first row.
+  - `[false]` `[reject]` The new test comment states an inference as fact — the mechanism was read this pass: no `RouteReuseStrategy` in `ui/src`, the default reuses only on the same `routeConfig`, `RouterOutlet.activateWith` only marks for check, and the app is zoneless.
+  - `[false]` `[reject]` Closing rebuilds the list page — the spec's design (the dialog's own `:id` route); the criteria live in `HELD_SEARCHES`, which outlives the page.
+  - `[false]` `[reject]` The leg's AC5, AC7 title covers a Task-sourced assertion — the title is unchanged; "Close returns to the list route with the criteria kept" is a Task line, and the leg is the Tasks' "closes on Escape" leg.
 
 ## Design Notes
 
@@ -677,6 +689,7 @@ Recorded (each reverted byte-identical, the throwaway reloaded from the reverted
 - mutation: `JournalRecordDetail.HandleGet` sends no `Cache-Control` → `JournalRecordDetail.TestTheRouteAnswersOverTheWireLogsNoValueAndNoToolReachesIt` red alone (run 4452)
 - mutation: the cold open sets the newest file whatever the search names by then → page spec "an arrival while a cold open waits for Journals' read" red alone (vitest)
 - (QA) `ui/browser/journal-records.browser-spec.mjs` gained the refusal leg; `src/OcuPilot/Test/JournalProbe.cls` gained `RequireJournaled`, called by `SetReadable`
+- mutation: `onCloseDetail` clears the `value` criterion before navigating → browser `AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape` red alone, on "closing keeps the criteria" (actual `''`), not on its wait (rebuild and redeploy)
 
 Final tree, `ocupilot-b-ci` (loaded with `load-throwaway.sh`, 0 compile errors), after the review patches: the full ObjectScript sweep (runs 3998-4422, read back from `%UnitTest_Result`) ran 425 classes and 3,490 tests, 3,488 passed. The story's classes: `JournalRecords` 9/9 (run 4149), `JournalRecordDetail` 5/5 (4148), `JournalDescriptor` 13/13 (4145), `JournalRead` 6/6 (4147), `ReadTool` 28/28 (4287), `Descriptor` 60/60 (4080), `SurfaceCoverage` 4/4 (4334), `EndpointCoverage` 2/2 (4099), `ScreenRead` 30/30 (4313), `Navigation` 14/14 (4208), `Wire` 20/20 (4414), `ToolRoundTrip` 2/2 (4361), `ToolDispatch` 18/18 (4357), `ToolEmit` 11/11 (4359), `AdminPortAsync` 6/6 (4002). Two failures, both in methods this story does not touch, from the throwaway's age (inference; both pass in CI): `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (Task history past 1,000 rows, run 4417, red since run 3130) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` ("this instance holds no expired row another suite created", run 4299). `npm test`: tools 1780/1780, components 2226/2226; `npm run build` passes; initial bundle 2,587,710 bytes (`maximumWarning` 2588kB); rebuilt bundle redeployed, then `journal-records.browser-spec.mjs` 3/3 and `journals.browser-spec.mjs` 5/5; `smoke.sh` 50/50; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; EXPERIENCE.md 1003 lines. End state: no `OCUPROBE185*` database, resource, directory, namespace or principal, and no readable probe global; journal settings as found, journaling in `/durable/iris/mgr/journal/`; 0 agent definitions, 0 policy rows; 442 async task rows (445 at S0; none left by this story's classes); monitor 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
 
@@ -706,3 +719,29 @@ Blocking condition: none
 **Follow-up review: recommended.** Five medium entries were patched. Unverified risk: the AC4 readable-record legs write a journaled global into the install namespace's routines database. They assume that database is journaled on a fresh CI instance, which was measured only on this throwaway.
 
 **Residual risks:** named limits 1-5 stand. The 30 s scan bound is shown only through a lowered bound, because the longest measured scan is 13.9 s.
+
+### Rework 1 (CI run 37127676205)
+
+Status: done
+Blocking condition: none
+
+**Diff base** `fc3c5de0860dfba192e4877e6155e7f4faab6bf0` (frontmatter `baseline_revision`).
+
+**Root cause, read from the code.** Close navigates from `journal-records/:id` to `journal-records`, two route configs (`buildRoutes`). `ui/src` has no `RouteReuseStrategy`, and the default reuses a component only on the same `routeConfig`, so the router destroys the old `ScreenOutlet` with its page, dialog and form. `RouterOutlet.activateWith` creates the new one and only marks it for check, and the app is zoneless, so the new form renders on the next change-detection pass. The leg's wait for "no dialog" could end inside that gap. That a slow CI browser is what hit the gap is an inference. The criteria live in `HELD_SEARCHES`, which outlives the page, so the product keeps them.
+
+**Change.**
+
+- `ui/browser/journal-records.browser-spec.mjs`: after Escape, the AC5/AC7 close leg waits for three things: no dialog, the bare records path, and `#ocu-journal-records-value`. Only then does it read the value. The assertion "closing keeps the criteria" is unchanged and stays outside the wait. The leg's mutation comment names the close mutation.
+- The other legs here and in `journals.browser-spec.mjs` already wait before each read that follows a route change: `openRecords` waits for the heading and rows, the dialog waits for its value, and the refusal leg waits for the refusal. None changed.
+
+**Review.** 7 findings, all false, each with its reason in the triage log. Nothing patched, nothing deferred. Follow-up review is not recommended: this was a follow-up pass and patched no high.
+
+**Verification** (`ocupilot-b-ci`).
+
+- `npm run build` passes, and the bundle is redeployed. `main-WLQGBLMY.js` is served, the reverted tree's bundle.
+- `journal-records.browser-spec.mjs`: 4/4 in four separate runs, one call each. Three ran in the implement pass and one on the final tree.
+- The mutation above: red alone on its assertion. It was reverted byte-identical, then rebuilt and redeployed.
+- `client-lint` and `browser-reset` are clean, and so is `lint-docs.sh`.
+- No ObjectScript or product code changed, so no sweep ran.
+
+**Residual risk.** No local run reproduces the CI timing. The next CI browser shard is the check that the race is gone.

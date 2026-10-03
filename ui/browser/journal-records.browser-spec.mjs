@@ -268,7 +268,8 @@ test('AC2: the probe filter lists the first ten seeded records, and Next records
 });
 
 // AC5. Mutation (Rule 19): render the dialog's values through `[innerHTML]`, rebuild and redeploy ->
-// the markup value renders a <b> element and goes red.
+// the markup value renders a <b> element and goes red. Clear the `value` criterion in
+// `onCloseDetail`, rebuild and redeploy -> red on "closing keeps the criteria".
 test('AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   try {
@@ -300,7 +301,17 @@ test('AC5, AC7: a seeded record opens the dialog, which shows its values as text
     assert.ok(opened.url.startsWith(`/ocupilot/${RECORDS_ROUTE}/`), `on the id route: ${opened.url}`);
     await assertStructure(page, RECORDS_ROUTE, true);
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    // Closing routes to the bare records route: the router removes the old page with its dialog and
+    // form, and the new page's form renders on the next change-detection pass, so wait for that
+    // form, not for the dialog's absence alone.
+    await page.waitForFunction(
+      (route) =>
+        document.querySelector('[role="dialog"]') === null &&
+        window.location.pathname.replace(/\/$/, '') === `/ocupilot/${route}` &&
+        document.querySelector('#ocu-journal-records-value') !== null,
+      { timeout: config.navigationTimeoutMs },
+      RECORDS_ROUTE
+    );
     const kept = await page.$eval('#ocu-journal-records-value', (node) => node.value);
     assert.equal(kept, 'OcuProbe185', 'closing keeps the criteria');
   } finally {
