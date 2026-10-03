@@ -2,7 +2,7 @@
 title: 'Story 19.4: Search, compare and macro lookup'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 baseline_commit: '6f718d934244b6f45b511e5cb72f1d15038bac7e'
 review_loop_iteration: 0
@@ -195,7 +195,7 @@ deferred:
   - client rosters: `navigation.test.mjs` :249-266, `navigation-wire.test.mjs` :528-602, `rail-wire.spec.ts` :533-730, `screen-mirror.test.mjs` `withCriteria` :1247-1270.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs` -- rebase `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
-- [ ] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
+- [x] [CI] Run 37080963199 (head ddf5c5a3) red, browser shard 2/3: `ui/browser/definitions.browser-spec.mjs:445` expects the command box's screens for `Definition` to be exactly `['Definitions']` and gets `['Macros','Definitions']` (Macros' alias `macro definition`). Ruling: Macros legitimately matches; the assertion becomes "Definitions is offered and the Definition form is not". Check every other command-box spec for an exact offered list the new screens widen. Prove on `ocupilot-a2-ci` with a rebuilt bundle.
 
 **Acceptance Criteria:**
 
@@ -259,6 +259,15 @@ Rejected: screen context lacks `Attribute` (spec's context fields; the tool row 
   - `[false]` `[reject]` `max` defaults to 200 when no cap is named — the spec's Tasks state it (`max` is `maxRows`, else 200).
   - `[low]` `[reject]` Compare's prompts lead the agent to other reads — the prompts are the spec's Design Notes › Strings, and the agent has no compare by design (AC6).
   - `[false]` `[reject]` The spec's run-result section still said `Status: blocked` — finalize rewrites that section; nothing in code.
+
+### 2026-10-02 — Review pass (CI rework 1)
+
+- verdicts: 4 findings — high 0, medium 0, low 1, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The `[CI]` item's sweep of the other command-box specs had no recorded outcome, and `## Auto Run Result` still described the earlier pass — the fix is an edit to this spec; finalize records the sweep under Rework 1.
+  - `[false]` `[reject]` The alias `macro definition` could have been narrowed instead of the assertion — the lead's ruling on the `[CI]` item keeps the alias (a person looks up a macro's definition on Macros); Macros being offered for `Definition` is intended.
+  - `[false]` `[reject]` Membership no longer catches any other screen offered for `Definition` — the test's claim is only that the list is offered and the form is not; both recorded mutations redden it, and other areas' screens are not its subject.
+  - `[false]` `[reject]` `macro-lookup.page.ts:101` labels the definition block with the Agent area's `agentDefinitionFormLabel` — `strings.ts` keeps one key per value, so an identical literal renders its existing key; the block reads "Definition" as intended, and the line predates this pass.
 
 ## Design Notes
 
@@ -409,6 +418,7 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - (QA) `ui/browser/system-explorer-find.browser-spec.mjs` -- two added legs: Compare identical and refused side, Macros empty state.
 - mutation: Compare's identical status sentence replaced, rebuilt and redeployed -> `system-explorer-find` "AC4 (QA)" went red; Macros' empty sentence given no document -> "AC5 (QA)" went red; both reverted byte for byte.
 - (Review) mutation: `readSide` reads an unavailable side's empty text → `code-compare.page.spec.ts` "names a side the instance keeps no source for"; the generation check dropped, and a re-compare blanking the diff → "Compare state"; a routine side matched to `class` events → "compares a routine again"; `hunks` without its spare line → `line-diff.spec.ts` "never collapses a single unchanged line"; `hitLocation` without the member-attribute case, `useArrival` keeping the sent search, the status line without its fault check → three `code-search.page.spec.ts` cases; Macros keeping an omitted document, and skipping `forget` → two `macro-lookup.page.spec.ts` cases; one word of `REASONSEARCHTEXT` → `self-protection.test.mjs` Story 19.4; text bound `>=`, cap 60, whole tree recompiled → `AtelierPortSearch` (run 2809) and `AtelierPortMacro` (run 2810). Each reverted byte for byte; green after (runs 2811, 2812).
+- (CI) mutation: `screenCandidates` also offers `agent/definitions/edit`, rebuilt and redeployed → `definitions` "AC5: the form is routable and listed nowhere" on the form assertion (offered `["Macros","Definition","Definitions"]`); `screenCandidates` drops `agent/definitions` → the same test on the list assertion (offered `["Macros"]`). Reverted byte for byte, clean bundle redeployed, 10/10 green.
 
 ## Auto Run Result
 
@@ -430,3 +440,13 @@ Blocking condition: none
 - Follow-up review: not recommended (no high and one medium entry patched).
 - Verification: the story's 14 ObjectScript classes green one per call (runs 2376-2389); the full sweep once on `ocupilot-a2-ci`, 416 classes, 3,428 tests, 2 red, both residue of the throwaway's age, not this story: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (1,583 task-history rows, DW-1554) and `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` (24 `_SYSTEM` conversation entries from browser-spec turns since 2026-10-01T22:56Z, older than the one-day retention the test's probe definition sets; no 19.4 test leaves an entry). `npm test` once: tools 1,777/1,777, components 2,170/2,170 in 162 files. `system-explorer-find` 3/3 after the rebuilt bundle was deployed; `lint-docs` and `check-objectscript` clean. Each new page-spec case reddened under its mutation and the tree was restored.
 - Residual risk: the two new tools' criterion descriptions stay wrong until DW-1001 lands; a `*` in a model's search text answers no rows rather than a refusal.
+
+### Rework 1 (CI run 37080963199)
+
+Status: done
+Blocking condition: none
+
+- **Change:** `ui/browser/definitions.browser-spec.mjs` test 5 ("AC5: the form is routable and listed nowhere") asserts that the command box's offered screens for `Definition` include `STRINGS.agentDefinitionListLabel` and exclude `STRINGS.agentDefinitionFormLabel`, in place of exact equality with `['Definitions']`; a one-sentence comment says why (Macros' alias `macro definition` legitimately matches). No other line changed.
+- **Sweep:** no other command-box spec holds an exact offered-screen list the new screens widen. `system-explorer` already asserts membership; `account-and-filter`, `security` and `web-applications` read one row by id or selector for needles no new screen matches; `tasks` and `command-bar.spec.ts` read the Actions group; `theme`, `panel` and `audit` type nothing; `command-box.spec.ts` uses a stub roster.
+- **Review:** follow-up pass, two layers (verification-gap, intent-alignment) over the diff from `69afc567`: 4 findings, low 1 and false 3, all rejected with their reasons in the triage log; nothing patched or deferred. Follow-up review recommended: false (no `high` patched).
+- **Verification:** bundle rebuilt and deployed to `ocupilot-a2-ci` (`main-CW3DWYXW.js`, the clean tree's); `definitions` 10/10, `system-explorer-find` 6/6, `system-explorer` 4/4, one file per run; `npm run test:tools` 1,779/1,779; `lint-docs` clean. The `(CI) mutation:` line in `## Verification` records both mutations reddening test 5 alone. No ObjectScript changed, so no class run or sweep (Rule 29). `baseline_revision` kept at the story baseline.

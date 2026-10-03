@@ -441,11 +441,17 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     // with no separator -- which starts with neither `"Definition "` nor equals `"Definition"`.
     // Both of the assertions that stood here therefore passed whether or not the form was
     // offered.
+    // Membership rather than exact equality: another area's listed screen may legitimately match
+    // the needle through its own aliases (System Explorer's Macros declares `macro definition`),
+    // and the claim here is only that the list is offered and the form is not.
     const offered = await screensOffered(page, 'Definition');
-    assert.deepEqual(
-      offered,
-      [STRINGS.agentDefinitionListLabel],
-      `the command box offers the list alone, and no Definition form: ${JSON.stringify(offered)}`
+    assert.ok(
+      offered.includes(STRINGS.agentDefinitionListLabel),
+      `the command box offers the Definitions list: ${JSON.stringify(offered)}`
+    );
+    assert.ok(
+      !offered.includes(STRINGS.agentDefinitionFormLabel),
+      `and no offered screen is the Definition form: ${JSON.stringify(offered)}`
     );
 
     await page.keyboard.press('Escape');
