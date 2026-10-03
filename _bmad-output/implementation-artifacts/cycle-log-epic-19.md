@@ -188,3 +188,6 @@
 2026-10-03T07:19:52Z	Epic 19	stage_spawned	stage=epic-context spawn_at=2026-10-03T07:19:52Z model=opus agent_name=19-14-epic-context-1 reason=planning_artifacts_newer(spine_19.5_gate,epics.md_19.14_split,18.18_merge)
 2026-10-03T07:25:15Z	Epic 19	epic_context_compiled	spawn_at=2026-10-03T07:19:52Z model=opus agent=a21a3969189714de8 path=_bmad-output/implementation-artifacts/epic-19-context.md lines=144 header_ok=true
 2026-10-03T07:25:15Z	Story 19.14	stage_spawned	stage=plan spawn_at=2026-10-03T07:25:15Z model=opus agent_name=19-14-sql-tabs-plan-1 cycle_iteration=1 inbox=none ci_prev_story=19.5_run37105955025_pending(rule28_plan_does_not_wait) prompt_first_line=one_iris_execute_tests_per_message(orchestrator_2026-10-03)
+2026-10-03T09:56:51Z	Story 19.5	ci_resolved	story=19.5 run=37105955025 head=c73371cb result=success resolved_at=resume boundary_reported=main merged=feature_65ae4a27(orchestrator)
+2026-10-03T07:25:15Z	Story 19.14	stage_failed	stage=plan spawn_at=2026-10-03T09:56:51Z agent=af039bdc0a62bf10f cause=weekly_rate_limit_HTTP_429(agent_terminated_mid-read) residue=11_OcuProbe1914_classes_in_USER_on_ocupilot-a2-ci(removed_by_lead:DeletePackage,classes_left=0) spec=none_written
+2026-10-03T09:56:51Z	Story 19.14	stage_spawned	stage=plan spawn_at= model=opus agent_name=19-14-sql-tabs-plan-2 cycle_iteration=1 redispatch=1(after_429)
