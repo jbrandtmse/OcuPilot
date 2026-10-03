@@ -294,7 +294,7 @@ development_status:
   18-17-namespace-and-database-follow-ups: done
   18-18-journal-settings: done
   18-19-journal-record-browser: done
-  18-20-ecp-data-servers: backlog
+  18-20-ecp-data-servers: ready-for-dev
   18-21-ecp-settings-and-application-servers: backlog
   epic-18-retrospective: optional
 

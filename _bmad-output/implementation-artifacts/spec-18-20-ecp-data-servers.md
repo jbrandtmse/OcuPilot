@@ -528,6 +528,7 @@ deferred: []
 ## Spec Change Log
 
 - 2026-10-03, runner (spec gate): wrote AD-26, AD-44, AD-51 and AD-52; AD-13's `foldcase`, AD-8's pairs and any AD-15/AD-53 case wait for Task 0. Decisions 2 to 7 confirmed by the runner; Decision 1 (the SSL check's `%Admin_Secure:USE`, narrower than the classic page) asked of the orchestrator before the implement spawn.
+- 2026-10-03, orchestrator (merge gate): Decision 1 accepted -- the create and update declare `%Admin_Secure:USE` only while `SSLConfig` is 1, refused by name before any port call; Task 0 measures both paths, and if the `%ECPClient` read needs no pair, the pair is dropped and the measurement recorded. Decisions 2 to 7 confirmed.
 
 ## Review Triage Log
 
