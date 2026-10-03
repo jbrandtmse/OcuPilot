@@ -9248,3 +9248,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
 - evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
+
+### DW-1985: A one-row count reads '1 rows' (no singular form): seen on the SQL tables list as the demo account and in the agent panel's context line
+- source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
+- 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
