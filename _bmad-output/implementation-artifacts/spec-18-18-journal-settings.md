@@ -2,14 +2,14 @@
 title: 'Story 18.18: Journal settings'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
 deferred: []
-baseline_revision: '71e24556d9b041a2f354275097ba2345e36b90ca'
+baseline_revision: 'a1c7fd5846b9ef72c97bfe7d1b8b3df0aa7cc733'
 baseline_commit: '71e24556d9b041a2f354275097ba2345e36b90ca'
 ---
 
@@ -375,7 +375,7 @@ Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-
 
 ### Rework 1 (CI)
 
-- [ ] [CI] browser shard 2/3 of run 37091469927 (`8fe230e5`): `ui/browser/language-servers.browser-spec.mjs` AC5 ("a holder of OS management's pairs without the own pair sees External language servers alone unavailable", `:339-356`) now also finds "Journal settings: Requires %Admin_Journal:USE" unavailable, because Journal settings' own pair is new in this story (the browser twin of the `LanguageServerWire` roster the implement pass already fixed; reproduced locally) -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37091469927 -- the fix keeps the leg's intent (External language servers alone unavailable for lack of its own pair), the same way `LanguageServerWire` was fixed, and checks every other browser spec that pins OS management's side bar or its unavailable entries for the same omission. (The same run's two `gate.browser-spec.mjs` failures, 30 s navigation timeouts on Permissions › Users, pass 6/6 locally and are re-checked on this rework's CI, not worked here.)
+- [x] [CI] browser shard 2/3 of run 37091469927 (`8fe230e5`): `ui/browser/language-servers.browser-spec.mjs` AC5 ("a holder of OS management's pairs without the own pair sees External language servers alone unavailable", `:339-356`) now also finds "Journal settings: Requires %Admin_Journal:USE" unavailable, because Journal settings' own pair is new in this story (the browser twin of the `LanguageServerWire` roster the implement pass already fixed; reproduced locally) -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37091469927 -- the fix keeps the leg's intent (External language servers alone unavailable for lack of its own pair), the same way `LanguageServerWire` was fixed, and checks every other browser spec that pins OS management's side bar or its unavailable entries for the same omission. (The same run's two `gate.browser-spec.mjs` failures, 30 s navigation timeouts on Permissions › Users, pass 6/6 locally and are re-checked on this rework's CI, not worked here.)
 
 ## Spec Change Log
 
@@ -419,6 +419,23 @@ Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-
   - `[false]` `[reject]` `ui/angular.json` changes a value in an add-only file (intent-alignment 9) — the spec's Client task directs the DW-1166 re-base, the one sanctioned value edit.
   - `[false]` `[reject]` `JOURNAL.SETTINGS.FREEZE` lives on the tool, not `JournalError` (intent-alignment 10) — "Codes" governs envelope codes; consequence codes live on the tool (18.5's `CONSEQUENCECODE`).
   - `[low]` `[reject]` The spec contradicts itself (intent-alignment 11) — the stale `## Auto Run Result` is rewritten at finalize; `## Verification` lists its commands and mutation lines.
+
+### 2026-10-02 — Review pass (rework 1, CI)
+
+- verdicts: 12 findings — high 0, medium 0, low 6, false 6, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The `[CI]` item is unticked while the status reads in-review (verification-gap) — the fix edits this build's spec; finalize ticks it.
+  - `[false]` `[reject]` No green run of the fixed AC5 is recorded (verification-gap) — the stage ran `language-servers.browser-spec.mjs` 2/2 on `ocupilot-b-ci` before and after the review patch (`## Auto Run Result`).
+  - `[false]` `[reject]` The leg ties Story 16.10's spec to Journal settings' pair instead of granting its principal `%Admin_Journal:USE` (intent-alignment) — the CI item asks for the `LanguageServerWire` fix, which takes Journal settings out by its own pair (`LanguageServerWire.cls:278-281`); the leg does the same.
+  - `[false]` `[reject]` AC1's "listed unavailable, naming that pair" has its only DOM pin in 16.10's AC5 (intent-alignment) — no bad outcome: `WireSecurityRead.cls:571` pins Journal settings' `failedPair` `%Admin_Journal:USE`, and this diff adds a DOM pin rather than removing one.
+  - `[false]` `[reject]` The filter drops every Journal settings line, so a duplicated entry would pass (intent-alignment) — `journals.browser-spec.mjs:276` holds the side bar at exactly 14 entries, so a duplicate goes red there.
+  - `[low]` `[patch]` The `deepEqual` message still read "only External language servers is unavailable" (intent-alignment) — reworded to "apart from Journal settings, only External language servers is unavailable"; spec re-run 2/2.
+  - `[false]` `[reject]` The leg covers only the side-bar half of the "Missing pair" row (intent-alignment) — the 403 with zero port calls and the measured pairs are pinned by `JournalWriteGate` (mutations recorded), outside this rework.
+  - `[low]` `[reject]` The check of the other browser specs is not recorded (intent-alignment) — the fix edits this build's spec; `## Auto Run Result` records it, and the auditor's own scan found no remaining case.
+  - `[low]` `[reject]` The `[CI]` item is unticked (intent-alignment) — as the first row.
+  - `[false]` `[reject]` No green run of the patched AC5 is recorded (intent-alignment) — as the second row.
+  - `[low]` `[reject]` `## Auto Run Result` still reads the earlier pass (intent-alignment) — the fix edits this build's spec; finalize rewrites it.
+  - `[low]` `[reject]` `footprint_extensions` omits `language-servers.browser-spec.mjs` (intent-alignment) — the fix edits this build's spec; this pass's result lists it.
 
 ## Design Notes
 
@@ -571,40 +588,20 @@ Mutations run on `ocupilot-b-ci`, each loaded, then reverted byte-identical and 
 - mutation: `JournalSettingsUpdate.DerivedFields` sets the primary under the alternate's key → `JournalSettingsWrite` primary leg red on its read-back (run 3726) (CR)
 - mutation: `%Admin_Operate:USE` dropped from `JournalSettingsUpdate.EXTRAPAIRS` and from the all-pairs principal → `JournalWriteGate` declared-pairs write leg red, 500 with the size stored (run 3727) (CR)
 - mutation: Freeze on error's consequence carried on Compress files' view → `journal-settings.page.spec.ts` AC6 red; the store's root-less name skipped, and the no-op Save keeping the read-back → their two store legs red (vitest) (CR)
+- mutation: `language-servers.browser-spec.mjs` AC5 asserts over every unavailable entry again (the Journal settings exclusion dropped) → AC5 red, Journal settings' `Requires %Admin_Journal:USE` beside External language servers, as in CI (1/2, `ocupilot-b-ci`) (rework 1)
+- mutation: the AC5 principal's role also holds `%Admin_Journal:U` → AC5 red on "Journal settings is unavailable on its own pair" (1/2, `ocupilot-b-ci`) (rework 1)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-- **Change:** Journal settings (OS management, position 14) is a form page over the vendor's settings `GET`. Its Save (`PUT /journal/settings`, `Area/OsMgmt/JournalSave.cls`) and the agent's `osmgmt.journalsettings.update` both run one merge tool through `JournalPort`. That tool sends the ten settable keys read fresh, never `ArchiveName`, `wijdir` or `targwijsz`, applies the purge rule in the merge and again in the port, takes the directories as a root and a relative name that must already exist, applies the rules in `Area/OsMgmt/JournalRules.cls` on both callers, requires `%DB_IRISSYS:WRITE`, `%Admin_Operate:USE` and, when a root is sent, `%Admin_FileSystemAccess:USE`, and carries `JOURNAL.SETTINGS.FREEZE`. For DW-1950, `Write.PRECONDITIONCODES` names the codes `Prohibited.Target` reads as absent; switch directory names `JOURNAL.SWITCHDIR.NOOTHER`. Task 0 resumed at step 6 with the parked plumbing applied.
-- **Files:**
-  - New:
-    - server: `JournalRules`, `JournalSave`, `Descriptor/JournalSettings`, `Tool/JournalSettingsUpdate`;
-    - tests: `JournalSettingsWrite`, `JournalSettingsRules`, the seams `JournalSettingsPort`, `SeamJournalSettingsUpdate` and `JournalSettingsSaveFixture`;
-    - client: `journal-settings.store.ts` and `.page.ts` with their specs, and `journal-settings.browser-spec.mjs`.
-  - Changed:
-    - ports and kernel: `JournalPort`, `AdminPort`, `JournalError`, `Router`, `EntityType`, `EntityRef`, `Baseline`, `Prohibited`, `Write`, `JournalSwitchDirectory`, `Classification`, regenerated `ToolFields`;
-    - tests: the journal tests and the rosters;
-    - client: `app.ts`, `proposal-view.ts`, `screen-outlet.ts`, `strings.ts`, regenerated `screens.generated.ts`;
-    - other: `ci-throwaway.sh`, `angular.json`, and EXPERIENCE.md lines 164 and 378.
-- **Review (2 layers, 22 findings):**
-  - 6 entries patched, all in tests: the agent schema's directory arguments and the tool's port query are pinned; the alternate leg's mutation note now names `DerivedFields`; a no-change Save is pinned (200, no `PUT`); the port's purge rule is pinned on both branches; an assertion that could not fail is deleted; the missing-directory case moved to the primary.
-  - 16 rejected with reasons (Review Triage Log); 0 deferred.
-  - The stage's matrix audit added the card's Freeze on error sentence test (`tools/proposal-view.test.mjs`).
-  - The full sweep's LanguageServerWire failure was this story's own: an area holder is now also refused Journal settings on `%Admin_Journal:USE`. The roster was updated, re-run 3707.
-- **Follow-up review:** recommended. Patched: 4 medium, 2 low. The risk left unverified: the purge rule's archive-target branch, in the merge and in the port, runs only against a seam settings read that names an archive target. No instance with one was exercised, because no test may create one.
-- **Verification (`ocupilot-b-ci`):**
-  - Story classes green after the patches: `JournalDescriptor` (3278), `JournalSettingsWrite` (3279), `JournalSettingsRules` (3280), `JournalWriteGate` (3281); `JournalRead`, `JournalWrite` and the rosters green in runs 3252-3277 (339 tests, 1 known failure).
-  - The full sweep, once: 420 classes and 3,452 tests (runs 3287-3706, read from `%UnitTest_Result`), 3 failed:
-    - LanguageServerWire: fixed, re-run green;
-    - `Retention`'s expired rows and `WireSecurityRead`'s 1,000-row task history: this old throwaway's age (inference; both pass in CI).
-  - The instance offered two classes this tree lacks, `ProviderStream` and `ProviderStreamFamilies`, both green. `PathPortInstance` took about 30 minutes because this throwaway's journal history holds 752 files.
-  - Client: `npm test` 1,779 tools and 2,166 component tests green; `npm run build` green; `journal-settings` 4/4 and the three roster browser specs 11/11 on the handoff's build, with no client source changed since.
-  - Initial bundle 2,531,807 bytes, so `maximumWarning` was re-based from 2509kB to 2532kB under DW-1166.
-  - `smoke.sh`: 50/50 passed. `check-objectscript` and `lint-docs` clean. EXPERIENCE.md 1002 lines: the intent's "1001" predates the forward merge, and the count is unchanged.
-  - 18 recorded mutations (`## Verification`).
-- **End state:** journal settings equal Task 0's S0, `wijdir` "" and `targwijsz` 0, journaling in `/durable/iris/mgr/journal/`. No `OCUPROBE*` user or role, 0 agent definitions, 0 policy rows. The monitor read 2 and was cleared to 0 with `$SYSTEM.Monitor.Clear()`. Three probe directories remain because they hold journal files, which no test deletes: `ocuprobe185alt` (Story 18.5), `ocuprobe185set` (Task 0) and `ocuprobe185settings` (11 files).
-- **Residual risks:**
-  - Epic 19 will collide when the two merge: `ReadTool`'s count, `maximumWarning`, EXPERIENCE.md:378 and the one-line lists.
-  - `footprint_extensions`: `JournalRules.cls`, `JournalSave.cls`, `app.ts`, `app.spec.ts`, `ci-throwaway.sh`, `angular.json`, EXPERIENCE.md, `ui/tools/proposal-view.test.mjs`, `Test/LanguageServerWire.cls`.
+- **Rework 1 (CI), 2026-10-02.** Browser shard 2/3 of run 37091469927 (`8fe230e5`) was red: `language-servers.browser-spec.mjs` AC5 also found Journal settings unavailable, because its own pair `%Admin_Journal:USE` is new in this story. The leg now does what `LanguageServerWire` does: it requires Journal settings unavailable on `%Admin_Journal:USE`, takes that line out, and holds the rest at exactly External language servers on its own pair.
+- **Files changed:**
+  - `ui/browser/language-servers.browser-spec.mjs`: the AC5 leg, its title and the file header.
+  - This spec: the `[CI]` tick, two `mutation:` lines, the triage rows and this result.
+- **Other browser specs checked:** none pins OS management's unavailable entries. `journals`, `journal-settings`, `remote-databases` and `license-usage` already list 14 entries; `local-databases` and `namespaces` compare a leading slice; the other side-bar reason checks are in other areas.
+- **Review (2 layers):** 12 findings (low 6, false 6). One low patched: the `deepEqual` message names the Journal settings exception. 11 rejected; rows in `## Review Triage Log`. None deferred. Follow-up review: false (follow-up pass, no high patched; patched by verdict: low 1).
+- **Verification (`ocupilot-b-ci`):** `npm run build` green, bundle redeployed and matched against `dist`; `language-servers.browser-spec.mjs` 2/2 before and after the review patch, red under both mutations (1/2 each) and restored byte-identical; `npm run test:tools` 1,780/1,780; `lint-docs` 0. The `gate.browser-spec.mjs` timeouts were not worked; this rework's CI re-checks them.
+- **Throwaway:** no ObjectScript loaded and no journal setting changed; the leg's principal and role are gone after its cleanup.
+- **footprint_extensions:** `ui/browser/language-servers.browser-spec.mjs`.

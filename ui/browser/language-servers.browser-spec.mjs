@@ -8,7 +8,8 @@
  * time, pid, severity chip and text with "Explain this entry" beside each; back on the list, Stop opens the warning dialog stating the published
  * consequence, whose Proceed sends one request after which the row reads "No"; a second Stop is
  * refused with the published sentence. A principal holding OS management's pairs but not
- * `%Admin_ExternalLanguageServerEdit:USE` sees this entry alone unavailable, naming that pair. Both
+ * `%Admin_ExternalLanguageServerEdit:USE` sees this entry unavailable, naming that pair, beside Journal
+ * settings on its own `%Admin_Journal:USE` and no other. Both
  * screens pass the structural and contrast checks at 1280 light, 720 light and 1280 dark, with no
  * entry beyond the baseline (DW-1337).
  *
@@ -48,6 +49,8 @@ const SERVER_PORT = 31293;
 /** The kernel file whose first number is the low bound of the container's ephemeral port range. */
 const PORT_RANGE_FILE = '/proc/sys/net/ipv4/ip_local_port_range';
 const OWN_PAIR = '%Admin_ExternalLanguageServerEdit:USE';
+/** Journal settings' own pair (Story 18.18), which the area principal does not hold either. */
+const JOURNAL_PAIR = '%Admin_Journal:USE';
 const PRINCIPAL = 'OcuPilotELSBrowserArea';
 const PRINCIPAL_ROLE = 'OcuPilotELSBrowserAreaRole';
 const PRINCIPAL_PASSWORD = 'OcuPilotELSBrowser1!';
@@ -336,7 +339,7 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the editor, whi
 // AC5. Mutation (Rule 19): drop the own pair from LanguageServerList's `privileges` and
 // `ownPrivileges` and recompile on the throwaway -> External language servers reads open and the
 // refused-entry assertion goes red.
-test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers alone unavailable', async () => {
+test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable on it, beside Journal settings on its own', async () => {
   const { context, page } = await signedInAt(browser, { ...config, username: PRINCIPAL, password: PRINCIPAL_PASSWORD }, '/ocupilot/os-management/processes?ns=HSCUSTOM', VIEWPORTS.wide);
   try {
     await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaOsManagement}"]`);
@@ -352,11 +355,14 @@ test('AC5: a holder of OS management\'s pairs without the own pair sees External
         reason: (item.querySelector('.ocu-side-bar-reason')?.textContent ?? '').trim(),
       }))
     );
-    const refused = entries.filter((entry) => entry.disabled);
+    const refused = entries.filter((entry) => entry.disabled).map((entry) => `${entry.label}: ${entry.reason}`);
+    // Story 18.18's Journal settings declares its own pair too, which this principal does not hold.
+    const journal = `${STRINGS.journalSettingsLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', JOURNAL_PAIR)}`;
+    assert.ok(refused.includes(journal), `Journal settings is unavailable on its own pair, ${JOURNAL_PAIR}: ${JSON.stringify(entries)}`);
     assert.deepEqual(
-      refused.map((entry) => `${entry.label}: ${entry.reason}`),
+      refused.filter((line) => line !== journal),
       [`${STRINGS.languageServersLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', OWN_PAIR)}`],
-      `only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
+      `apart from Journal settings, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
     );
     assert.ok(entries.length >= 9, 'while the other OS management entries stay open');
   } finally {
