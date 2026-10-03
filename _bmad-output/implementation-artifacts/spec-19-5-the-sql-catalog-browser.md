@@ -2,14 +2,22 @@
 title: 'Story 19.5: The SQL catalog browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '7460978a5b2bc805f42203feee498e40be814f72'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Catalog.Table sends the read's max, as the intent's max rule says; TablesOnly lists the whole schema and the read keeps the resolved table's row, so a table the vendor lists after the first maxRows rows of its schema reads no Table info row.
+    evidence: |-
+      Reachable only for a schema with more tables than the read's cap plus one: 1,001 on the screen, the operator's row cap plus one for the agent (default 201); the largest measured schema holds 195. A fixed bound for this one endpoint (the implement pass first sent 5,000) would need the intent's max rule amended. Lead to rule.
+    location: >-
+      src/OcuPilot/Port/AtelierPort.cls (CatalogRows)
+    severity: low
 ---
 
 <intent-contract>
@@ -78,26 +86,26 @@ deferred: []
 
 **Execution:**
 
-- [ ] Task 0 (`ocupilot-a2-ci`, before code): ten background jobs of 40 catalog calls each through a probe port subclass under the capture; any death adds `Query` to `FILEDEVICEROUTES`. Confirm the resolve's case-insensitive match and `%STARTSWITH '%'`. Record both in Design Notes.
-- [ ] `src/OcuPilot/Port/AtelierPort.cls` -- the catalog family.
+- [x] Task 0 (`ocupilot-a2-ci`, before code): ten background jobs of 40 catalog calls each through a probe port subclass under the capture; any death adds `Query` to `FILEDEVICEROUTES`. Confirm the resolve's case-insensitive match and `%STARTSWITH '%'`. Record both in Design Notes.
+- [x] `src/OcuPilot/Port/AtelierPort.cls` -- the catalog family.
   - Nine endpoints `Catalog.Schemas`, `Catalog.Tables`, `Catalog.Views`, `Catalog.Procedures`, `Catalog.Table`, `Catalog.Fields`, `Catalog.Indices`, `Catalog.Triggers`, `Catalog.Constraints`, served for `LIST` only; `MinVersion` arms and `Query:6`.
   - One parameter per statement (Design Notes › Statements) and one column map per endpoint.
   - `CatalogRows`: validate the criteria; resolve `table` for the five tab endpoints; route `Query`; map columns to the declared fields; read `"0"`/`"1"` flags as booleans; cut at `maxRows`.
   - `REASON*` sentences (Design Notes › Strings); one doc paragraph.
-- [ ] `src/OcuPilot/Screen/Descriptor/` (new, nine) -- `ExplorerSqlSchemas`, `ExplorerSqlTables`, `ExplorerSqlViews`, `ExplorerSqlProcedures` (listed, side bar 6-9, `list (server criteria)`, criteria `system` choice yes/no default no, plus `schema` text 128 on the last three); `ExplorerSqlTable`, `ExplorerSqlFields`, `ExplorerSqlIndices`, `ExplorerSqlTriggers`, `ExplorerSqlConstraints` (`detail`, side bar 0, `parentScope` `system-explorer/sql-tables`, criterion `table` text 257, `tab.group` `system-explorer/sql-tables/document`, positions 1-5). Fields, tables, context, prompts and tool identifiers per Design Notes.
-- [ ] `src/OcuPilot/Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` -- a parent-scoped tab group: every member declares the same `parentScope` and the same one criterion, or the group is refused (AD-5 draft).
-- [ ] `ui/src/app/shell/detail-page.ts` -- in a parent-scoped group, `open()` keeps the route id; the side bar marks the parent list current for its tabs (`side-bar.ts`).
-- [ ] `ui/src/app/shell/screen-outlet.ts` -- the four lists in `DESCRIPTOR_PAGES` → `CodeListPage`; regenerate `screens.generated.ts`.
-- [ ] `ui/src/app/core/strings.ts` -- the keys, each `/** EXPERIENCE.md:595 */`.
-- [ ] EXPERIENCE.md -- one Fixed-strings row after :594; :159 in place: "Classes · Routines · Search · Compare · Macros · SQL schemas · SQL tables · SQL views · SQL procedures; a table opens to its catalog tabs".
-- [ ] `src/OcuPilot/Test/AtelierPortCatalog.cls` (new) -- through the fixture: each endpoint's exact `query`, `parameters` and `max`; every validation refusal before any route; the version gate; a soft SQL error → 500 with nothing sent.
-- [ ] `src/OcuPilot/Test/AtelierPortCatalogLive.cls` (new) with `Test/ExplorerSqlProbe.cls` -- in USER, creates and drops schema `OcuProbe195` (a table with a primary key, an index, a trigger, a unique key and a foreign key; a second table; a view; a procedure; two delimited names that collide as `Schema.Table`): every matrix row live, cap and `truncated` through `Screen.Read`, and a purpose-built principal granted SELECT on one table only.
-- [ ] `src/OcuPilot/Test/ExplorerCatalog.cls` (new) -- over HTTP `/screens/<Descriptor>/read` for a list and a tab; each tool through dispatch: rows only, `Code` past 1,000 in `truncatedFields`; arrival criteria accepted.
-- [ ] `Test/AtelierPortDenial.cls`, `AtelierDenialProbe.cls` -- catalog legs refused without `%Development`, and without the namespace's READ.
-- [ ] `Test/InjectionChannels.cls`, `InjectionSeed.cls` -- source (j): a probe trigger whose code carries the seed, read through `explorer.sqltriggers.read`.
-- [ ] Rosters (Design Notes › Rosters).
-- [ ] Client tests: `detail-page` spec (id kept across a parent-scoped group); `code-list.page.spec.ts` (a catalog list's System box and schema field); `ui/browser/system-explorer-sql.browser-spec.mjs` (new): Tables → open the probe table → Fields → Triggers keeps the table and shows the code as text; System toggle.
-- [ ] `ui/angular.json`, `ui/tools/angular-json.test.mjs` -- re-base `maximumWarning` to the measured build (DW-1166); stop and ask above 3,800 kB.
+- [x] `src/OcuPilot/Screen/Descriptor/` (new, nine) -- `ExplorerSqlSchemas`, `ExplorerSqlTables`, `ExplorerSqlViews`, `ExplorerSqlProcedures` (listed, side bar 6-9, `list (server criteria)`, criteria `system` choice yes/no default no, plus `schema` text 128 on the last three); `ExplorerSqlTable`, `ExplorerSqlFields`, `ExplorerSqlIndices`, `ExplorerSqlTriggers`, `ExplorerSqlConstraints` (`detail`, side bar 0, `parentScope` `system-explorer/sql-tables`, criterion `table` text 257, `tab.group` `system-explorer/sql-tables/document`, positions 1-5). Fields, tables, context, prompts and tool identifiers per Design Notes.
+- [x] `src/OcuPilot/Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` -- a parent-scoped tab group: every member declares the same `parentScope` and the same one criterion, or the group is refused (AD-5 draft).
+- [x] `ui/src/app/shell/detail-page.ts` -- in a parent-scoped group, `open()` keeps the route id; the side bar marks the parent list current for its tabs (`side-bar.ts`).
+- [x] `ui/src/app/shell/screen-outlet.ts` -- the four lists in `DESCRIPTOR_PAGES` → `CodeListPage`; regenerate `screens.generated.ts`.
+- [x] `ui/src/app/core/strings.ts` -- the keys, each `/** EXPERIENCE.md:595 */`.
+- [x] EXPERIENCE.md -- one Fixed-strings row after :594; :159 in place: "Classes · Routines · Search · Compare · Macros · SQL schemas · SQL tables · SQL views · SQL procedures; a table opens to its catalog tabs".
+- [x] `src/OcuPilot/Test/AtelierPortCatalog.cls` (new) -- through the fixture: each endpoint's exact `query`, `parameters` and `max`; every validation refusal before any route; the version gate; a soft SQL error → 500 with nothing sent.
+- [x] `src/OcuPilot/Test/AtelierPortCatalogLive.cls` (new) with `Test/ExplorerSqlProbe.cls` -- in USER, creates and drops schema `OcuProbe195` (a table with a primary key, an index, a trigger, a unique key and a foreign key; a second table; a view; a procedure; two delimited names that collide as `Schema.Table`): every matrix row live, cap and `truncated` through `Screen.Read`, and a purpose-built principal granted SELECT on one table only.
+- [x] `src/OcuPilot/Test/ExplorerCatalog.cls` (new) -- over HTTP `/screens/<Descriptor>/read` for a list and a tab; each tool through dispatch: rows only, `Code` past 1,000 in `truncatedFields`; arrival criteria accepted.
+- [x] `Test/AtelierPortDenial.cls`, `AtelierDenialProbe.cls` -- catalog legs refused without `%Development`, and without the namespace's READ.
+- [x] `Test/InjectionChannels.cls`, `InjectionSeed.cls` -- source (j): a probe trigger whose code carries the seed, read through `explorer.sqltriggers.read`.
+- [x] Rosters (Design Notes › Rosters).
+- [x] Client tests: `detail-page` spec (id kept across a parent-scoped group); `code-list.page.spec.ts` (a catalog list's System box and schema field); `ui/browser/system-explorer-sql.browser-spec.mjs` (new): Tables → open the probe table → Fields → Triggers keeps the table and shows the code as text; System toggle.
+- [x] `ui/angular.json`, `ui/tools/angular-json.test.mjs` -- re-base `maximumWarning` to the measured build (DW-1166); stop and ask above 3,800 kB.
 
 **Acceptance Criteria:**
 
@@ -115,6 +123,28 @@ deferred: []
 - 2026-10-03, lead (spec gate, by=merge_gate): the split is approved as recommended: this story keeps the four lists and a table's Table info, Fields, Maps/Indices, Triggers and Constraints tabs; Story 19.14 (`19-14-the-sql-catalog-s-remaining-detail-tabs`, right after 19.5) takes the rest. The detail-tab privilege decision is accepted (a tab answers only for a table the caller's Tables list shows). The spine carries the drafts (AD-61 rules 2, 3, 6, 7, 8; AD-7's fifth shape; AD-36; AD-5). The plan's `deferred:` items are harvested: the `action/query` privilege bypass as DW-1963 (vendor-defect candidate) and DW-1964 (design constraint routed to 19.6, named in epics.md 19.6 and 19.11), the criteria description as a DW-1001 occurrence. `strings.test.mjs`'s Fixed-strings bound goes from 2100 to 2300 (approved by=merge_gate; whoever lands second takes the larger cap that covers the merged count and keeps Story 18.5's comment).
 
 ## Review Triage Log
+
+### 2026-10-02 — Review pass
+
+- verdicts: 17 findings — high 0, medium 1, low 11, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Three of the four SQL list pages are resolved by no client test — added `screen-outlet.spec.ts` "the four SQL catalog lists resolve to the criteria-form list page"; dropping `ExplorerSqlViews` from `DESCRIPTOR_PAGES` reddened it.
+  - `[low]` `[patch]` The browser's "System box opens unchecked" assertion runs after `searchList` forces the box — it now reads the box before the first search.
+  - `[low]` `[patch]` AD-5's group rule compares `kind` and `maxLength` with no corpus case — `TabCorpus` gains a length-only mismatch; comparing on `param` alone in `screen-mirror.mjs` reddened its leg.
+  - `[false]` `[reject]` AC1, AC4 and AC5 clauses lack `mutation:` lines — Rule 19 asks one demonstrated mutation per AC, and each carries one, observed.
+  - `[low]` `[patch]` `AtelierPortCatalogLive`'s system-off `%Dictionary` zero passes on a failed read — the status is asserted beside the size.
+  - `[low]` `[patch]` `ExplorerCatalog`'s bound assertions are skipped when Triggers answers other than one row — the size is asserted before the guard.
+  - `[low]` `[patch]` `ExplorerDescriptor`'s tab-group test header claims a name-cell assertion it does not make — the clause is deleted.
+  - `[low]` `[reject]` Design Notes' Statements table shows `? = ''` and `NOT %STARTSWITH` — the fix edits the spec; the two cells were corrected at origin.
+  - `[low]` `[patch]` `Catalog.Table` sent `max` 5,000 against the intent's "max is the read's maxRows" — it now sends the read's `max`; a table listed past the cap in its schema reads no row, recorded in `deferred:` for the lead.
+  - `[false]` `[reject]` Table info binds the schema alone with `grantOnly` 0 — `TablesOnly` takes no table argument, the port keeps the resolved row alone, and the resolve is privilege-filtered (the live principal leg answers 404 on every hidden tab).
+  - `[low]` `[patch]` `ExplorerSqlTable`'s doc comment says its row is the classic Table Info tab's — it now names `TablesOnly`'s row.
+  - `[false]` `[reject]` Trigger code's screen-context cut is untested — every screen's context passes `Api/Turn.cls`'s `Bound.Apply` (:557), and `Code` is a declared context field.
+  - `[low]` `[reject]` Schemas, Views and Procedures are not read by a restricted principal — the vendor's privilege filtering of these sources was measured at plan, AC4 pins tables, and three more principal legs are more than a direct correction.
+  - `[low]` `[reject]` Tables filters on `TABLE_TYPE`, not schema name — no `BASE TABLE` sits in a `%` or `INFORMATION_SCHEMA` schema in HSCUSTOM (probed this pass) or USER (the live leg); the statement is the Design Notes'.
+  - `[false]` `[reject]` The banner and cap notice are not tested for the catalog — both are the shared list pages' rendering of a fault and of `truncated`, pinned by those pages' own suites.
+  - `[false]` `[reject]` The old-instance and SQL-error rows run only through the fixture — no live 2026.2 route answers version 5, and no fixed statement can be made to fail live; the canned `Query` route is the designed surface.
+  - `[low]` `[reject]` The schema reason reads "1 to 128" while an empty schema is accepted — empty is the criterion's absent value; the sentence was approved at the gate, and rewording it edits EXPERIENCE.md and `strings.ts` for no user-visible gain.
 
 ## Design Notes
 
@@ -166,6 +196,13 @@ deferred: []
 
   The largest schema holds 195 tables, under the 1,000 cap.
 
+**Task 0, measured on `ocupilot-a2-ci`, 2026-10-02.**
+
+- Ten background jobs of 40 catalog calls each, through a probe subclass's `Route` under the capture: 400 of 400 answered 200 and no process died, so `Query` stays off `FILEDEVICEROUTES`.
+- The resolve matched `%Dictionary.ClassDefinition` typed exactly, in lower case and in upper case, and nothing for a near miss. `%STARTSWITH '%'` kept exactly USER's 1,488 `%` routine rows, and every system table and view sits in a `%` or `INFORMATION_SCHEMA` schema.
+- A bound empty value is SQL `NULL`, and `NOT %STARTSWITH` is a syntax error (SQLCODE -1); the Statements below are written accordingly.
+- DDL refuses a dot in a delimited name, so the probe projects the two colliding names from class definitions; each compile reports its extent query's error after the table is projected.
+
 **Decisions.**
 
 - *Route.* `action/query` with port-owned statements, so Atelier carries every call and AD-61 needs no named case. It is safe without 19.6's guard because no caller text reaches `query`. AC3's fixture leg pins that.
@@ -183,8 +220,8 @@ deferred: []
 | Endpoint | `query` | Fields |
 |---|---|---|
 | `Catalog.Schemas` | `CALL %SQL_Manager.Schemas(?)` (system 0/1) | `Schema`, `Tables`, `Views`, `Procedures` |
-| `Catalog.Tables` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', ?) AND (? = '' OR TABLE_SCHEMA = ?)` | `Table`, `Schema`, `Name`, `Class`, `Owner`, `Sharded`, `Partitioned` |
-| `Catalog.Views` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_UPDATABLE, CHECK_OPTION FROM INFORMATION_SCHEMA.VIEWS WHERE (? = 1 OR (TABLE_SCHEMA NOT %STARTSWITH '%' AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? = '' OR TABLE_SCHEMA = ?)` | `View`, `Schema`, `Name`, `Class`, `Owner`, `Updatable`, `CheckOption` |
+| `Catalog.Tables` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_SHARDED, IS_PARTITIONED FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', ?) AND (? IS NULL OR TABLE_SCHEMA = ?)` | `Table`, `Schema`, `Name`, `Class`, `Owner`, `Sharded`, `Partitioned` |
+| `Catalog.Views` | `SELECT TABLE_SCHEMA, TABLE_NAME, CLASSNAME, OWNER, IS_UPDATABLE, CHECK_OPTION FROM INFORMATION_SCHEMA.VIEWS WHERE (? = 1 OR (NOT (TABLE_SCHEMA %STARTSWITH '%') AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA')) AND (? IS NULL OR TABLE_SCHEMA = ?)` | `View`, `Schema`, `Name`, `Class`, `Owner`, `Updatable`, `CheckOption` |
 | `Catalog.Procedures` | the same over `INFORMATION_SCHEMA.ROUTINES` (`ROUTINE_SCHEMA`, `ROUTINE_NAME`, `ROUTINE_TYPE`, `CLASSNAME`, `METHOD_OR_QUERY_NAME`), never `ROUTINE_DEFINITION` | `Procedure`, `Schema`, `Name`, `Type`, `Class`, `Method` |
 | resolve (`max` 2) | `SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'SYSTEM TABLE') AND TABLE_SCHEMA \|\| '.' \|\| TABLE_NAME = ?` | — |
 | `Catalog.Table` | `CALL %SQL_Manager.TablesOnly(?, 0)`, kept to the resolved row | `Name`, `Owner`, `LastCompiled`, `External`, `ReadOnly`, `Partitioned`, `Class`, `ExtentSize`, `ExternalType` |
@@ -285,11 +322,29 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - AC6: `ExplorerSqlTriggers` `classicPage` `""` → `ExplorerDescriptor`.
 - AC7: `ExplorerSqlTables` privileges `[]` → `DeveloperFloor` and the denial leg.
 - AC8: the Tables name cell linking to the list itself, rebuilt and redeployed → the browser open leg.
+- mutation: AC1, `CatalogRows` binds the tables' type as always `SYSTEM TABLE` → `AtelierPortCatalogLive.TestTheListsReadTheProbeObjectsWithoutSystemItems` and `TestSystemItemsListWhenChosen` (run 2841).
+- mutation: AC2, `CatalogRows` binds `Catalog.Fields`' name and schema swapped → `AtelierPortCatalogLive.TestATableReadsItsFiveTabs` (run 2842); `DetailPage.open` navigating to the bare `tab.route` → `detail-page.spec.ts` "in a parent-scoped group a tab opens with the route id", and, rebuilt and redeployed, `system-explorer-sql.browser-spec.mjs` AC2/AC8 (its Fields path wait).
+- mutation: AC3, the schema spliced into the statement's text in `CatalogRows` → `AtelierPortCatalog.TestEachListSendsItsFixedStatementAndBoundValues` (run 2843).
+- mutation: AC4, `CatalogResolve` skipped for `Catalog.Triggers`, the caller's name split at its first dot → `AtelierPortCatalogLive.TestAPrincipalReadsOnlyTheTableItWasGranted` (run 2844) and `AtelierPortCatalog.TestEachTabResolvesItsTableAndBindsTheResolvedNames` (run 2845).
+- mutation: AC5, `Kernel/Agent/Bound.Apply`'s per-field cut skipped → `ExplorerCatalog.TestTheReadToolsAnswerBoundedRowsAlone` (run 2848).
+- mutation: AC6, `ExplorerSqlTriggers` `classicPage` `""` → `ExplorerDescriptor.TestEachDeclarationValidatesAndIsGatedOnTheMeasuredPair` (run 2849).
+- mutation: AC6, the classic-page union dropped from `Screen/Gate.RequiredPairs` → `ExplorerDescriptor.TestACustomResourceOnTheSqlPageGatesAllNine` (run 2859).
+- mutation: AC7, `ExplorerSqlTables` privileges `[]` → `DeveloperFloor.TestEveryOpenScreenMatchesItsClassicPage` (run 2850) and `AtelierPortDenial.TestTheCatalogIsRefusedNamingThePair` (run 2851).
+- mutation: AC8, `data-table.ts`'s link chain skipping `documentScreenFor` for the Tables list, rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs` AC2/AC8 (its open path wait).
+- mutation: AC1, `ExplorerSqlViews` dropped from `screen-outlet.ts`' `DESCRIPTOR_PAGES` → `screen-outlet.spec.ts` "the four SQL catalog lists resolve to the criteria-form list page"; AD-5's group rule compared on `param` alone in `screen-mirror.mjs` → `screen-mirror.test.mjs`'s TabCorpus leg (the new length case).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- This pass: the plan only. Everything below the intent is written for the recommended 19.5 scope. With the split approved and epics.md amended, the spec gate can set `ready-for-dev` once it has ruled on the four spine drafts and the detail-tab privilege decision.
-- For the lead: `deferred:` carries the measured `action/query` privilege bypass (checkPriv 0: SELECT and UPDATE on an ungranted table), design input for 19.6 and 19.11. The approvals this scope needs are the strings bound and the `angular.json` budget.
+- **Change:** `AtelierPort` gains nine `Catalog.*` endpoints over `action/query` (`Query:6`), each a fixed statement parameter with every caller value in `parameters`; the five tabs resolve `table` through `INFORMATION_SCHEMA.TABLES` first (none 404, two 400). Nine descriptors: four listed SQL lists (side bar 6-9, `CodeListPage`) and a parent-scoped tab group under SQL tables, with nine `explorer.sql*.read` tools. `Registry.cls` and `screen-mirror.mjs` refuse a group whose members differ in parent or criterion; the tab strip keeps the route id and the side bar marks SQL tables.
+- **Files:**
+  - `src/OcuPilot/Port/AtelierPort.cls`: the catalog family. `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`: the group rule. `Screen/Descriptor/ExplorerSql*.cls` (nine, new).
+  - `ui/src/app/shell/{detail-page,side-bar,screen-outlet}.ts`, `core/strings.ts` (84 keys), `core/screens.generated.ts` (regenerated), EXPERIENCE.md (:159, :595), `ui/angular.json` (2572kB).
+  - Tests: `AtelierPortCatalog`, `AtelierPortCatalogLive`, `ExplorerCatalog`, `ExplorerSqlProbe` (new); fixture `Query`; denial, injection (source j), descriptor, rosters, `TabCorpus`; `detail-page`, `side-bar`, `screen-outlet`, `code-list.page` specs; `system-explorer-sql.browser-spec.mjs` (new); `scripts/ci-throwaway.sh` roster comment.
+- **Review:** 17 findings (high 0, medium 1, low 11, false 5). Patched 8 (medium 1, low 7), including `Catalog.Table` now sending the read's `max` per the intent. Rejected 9, each with its reason in the triage log. Follow-up review: false (one medium patched).
+- **Verification:** `check-objectscript` 0 problems, harness OK; `npm test` 1,779 tool and 2,201 component tests green; `lint-docs` clean; build 2.57 MB under 2572kB. Story classes green in the sweep (runs 2889, 2890, 2891, 2949, 2950, 2979, 2980, 3006, 3153, 3200, 3227); browser `system-explorer-sql`, `system-explorer`, `a11y-structural-invariants` green on the redeployed bundle. Probe objects and principals read back gone.
+- **Full sweep** (`ocupilot-a2-ci`, once): 424 classes, 3,458 tests. Red, all residue: `Retention` (DW-1929, the instance's age) and `WireSecurityRead` (DW-1554). Empty: `JournalWrite`, `JournalWriteGate` and `PathPortInstance` refuse to arm because this throwaway's compose file (2026-10-01 14:41) predates `OCUPILOT_ALLOW_JOURNAL` in `ci-throwaway.sh`; CI's fresh throwaways set it.
+- **For the lead:** `deferred:` asks for a ruling on Table info's `max`. AD-61 rule 5 could record Task 0 (400 `Query` calls under the capture, no death); the spine was not edited. Footprint extension: `scripts/ci-throwaway.sh`. Expected merge conflicts with Epic 18: `ReadTool` :93-94, `ToolRoundTrip` `REFUSEEMPTY`, the budget (2572kB here, 2571kB there), the end of `strings.ts`, and `screens.generated.ts` (regenerate).
+- **Residual risk:** Tables' system filter is `TABLE_TYPE`, measured in HSCUSTOM and USER only.

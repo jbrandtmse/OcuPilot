@@ -157,9 +157,11 @@ export class SideBar {
     // fewer entries than the last one would otherwise leave every entry at -1 -- a side bar
     // with no tab stop at all, unreachable by keyboard.
     const focused = Math.min(this.focusedIndex(), Math.max(0, screens.length - 1));
-    // Every tab of a tabbed screen marks its group's one entry current (AD-5).
+    // Every tab of a tabbed screen marks its group's one entry current (AD-5); a parent-scoped
+    // group's head is unlisted, so its tabs mark the parent list they are reached from.
     const current = screenForUrl(this.router.url);
-    const groupRoute = current === null ? '' : tabGroupFor(current)?.route ?? '';
+    const groupRoute =
+      current === null ? '' : current.tab !== null && current.parentScope !== '' ? current.parentScope : tabGroupFor(current)?.route ?? '';
     return screens.map((screen, index) => {
       const verdict = this.navigation.screenVerdict(screen.route);
       const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));

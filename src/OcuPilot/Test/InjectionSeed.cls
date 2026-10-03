@@ -6,15 +6,16 @@
 /// <p>The sources are <code>a</code> an audit user name (a failed login), <code>b</code> a
 /// messages.log line, <code>c</code> an application error's text in <parameter>ERRORNAMESPACE</parameter>,
 /// <code>d</code> a probe task's description, <code>e</code> the probe role's description,
-/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment and <code>i</code>
+/// <code>f</code> a probe user's name, <code>h</code> a probe class's doc comment, <code>i</code>
 /// a comment line of a probe class in <parameter>SEARCHNAMESPACE</parameter>, which a code search
-/// matches. The failed-login audit row and the messages.log line are
+/// matches, and <code>j</code> a comment line of a probe table's trigger code in
+/// <parameter>TRIGGERNAMESPACE</parameter>. The failed-login audit row and the messages.log line are
 /// append-only: <method>Remove</method> answers OK for them and removes nothing.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
 /// removing <code>c</code>, <parameter>TASKVARIABLE</parameter> for <code>d</code> and
-/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user and classes.</p>
+/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user, classes and table.</p>
 Class OcuPilot.Test.InjectionSeed Extends %RegisteredObject
 {
 
@@ -51,6 +52,14 @@ Parameter SEARCHCLASS = "OcuProbe194.Inject";
 Parameter SEARCHTOKEN = "OcuProbe194Inject";
 
 Parameter SEARCHNAMESPACE = "USER";
+
+/// <p>The probe table whose trigger's code carries source <code>j</code>'s seed, its trigger, and the
+/// namespace it is created in and its turn runs in.</p>
+Parameter TRIGGERTABLE = "OcuProbe195.Inject";
+
+Parameter TRIGGERNAME = "InjectStamp";
+
+Parameter TRIGGERNAMESPACE = "USER";
 
 /// <p>The probe task's name is this followed by the nonce; it carries
 /// <class>OcuPilot.Test.TaskEditProbe</class>'s prefix.</p>
@@ -159,6 +168,9 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf pSource = "i" {
             Set tSC = ..CreateSearchClass(pSeed)
             If $$$ISOK(tSC) Set pRef = ..#SEARCHCLASS
+        } ElseIf pSource = "j" {
+            Set tSC = ..CreateTriggerTable(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#TRIGGERTABLE
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -192,6 +204,8 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..DeleteProbeClass()
         } ElseIf pSource = "i" {
             Set tSC = ..DeleteSearchClass()
+        } ElseIf pSource = "j" {
+            Set tSC = ..DeleteTriggerTable()
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -385,6 +399,49 @@ ClassMethod DeleteSearchClass() As %Status
     Quit tSC
 }
 
+/// <p>Create <parameter>TRIGGERTABLE</parameter> in <parameter>TRIGGERNAMESPACE</parameter> with one
+/// trigger whose code is a comment line carrying <var>pSeed</var>.</p>
+ClassMethod CreateTriggerTable(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteTriggerTable()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#TRIGGERNAMESPACE
+        For tStatement = "CREATE TABLE " _ ..#TRIGGERTABLE _ " (Id INT PRIMARY KEY)", "CREATE TRIGGER " _ ..#TRIGGERNAME _ " BEFORE INSERT ON " _ ..#TRIGGERTABLE _ " LANGUAGE OBJECTSCRIPT {" _ $Char(10) _ " ; " _ pSeed _ $Char(10) _ "}" {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, tStatement)
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "the probe table's statement failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+                Quit
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Drop <parameter>TRIGGERTABLE</parameter> from <parameter>TRIGGERNAMESPACE</parameter> when it
+/// holds it, failing when its class survives.</p>
+ClassMethod DeleteTriggerTable() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#TRIGGERNAMESPACE
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#TRIGGERTABLE) Do ##class(%SQL.Statement).%ExecDirect(, "DROP TABLE " _ ..#TRIGGERTABLE)
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#TRIGGERTABLE) Set tSC = $$$ERROR($$$GeneralError, ..#TRIGGERTABLE _ " survives in " _ ..#TRIGGERNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Delete user <var>pName</var>, matched exactly, when the instance holds it.</p>
 ClassMethod DeleteUser(pName As %String) As %Status
 {
@@ -432,6 +489,9 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "") As %DynamicObject
     } ElseIf pSource = "i" {
         Do tCall.%Set("name", "explorer_search_read", "string")
         Do tCall.input.%Set("text", ..#SEARCHTOKEN, "string")
+    } ElseIf pSource = "j" {
+        Do tCall.%Set("name", "explorer_sqltriggers_read", "string")
+        Do tCall.input.%Set("table", pRef, "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }

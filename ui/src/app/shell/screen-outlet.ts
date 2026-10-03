@@ -199,6 +199,11 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSearch': CodeSearchPage,
   'OcuPilot.Screen.Descriptor.ExplorerCompare': CodeComparePage,
   'OcuPilot.Screen.Descriptor.ExplorerMacro': MacroLookupPage,
+  // Story 19.5: the SQL catalog's four lists, each a criteria form drawn from its declared criteria.
+  'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlTables': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlViews': CodeListPage,
+  'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures': CodeListPage,
 };
 
 /**

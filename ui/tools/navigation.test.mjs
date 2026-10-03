@@ -258,12 +258,23 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/classes/editor',
       'system-explorer/routines/document',
       'system-explorer/routines/editor',
+      // Story 19.5: a SQL table's five unlisted tabs, by descriptor class name.
+      'system-explorer/sql-tables/constraints',
+      'system-explorer/sql-tables/fields',
+      'system-explorer/sql-tables/indices',
+      'system-explorer/sql-tables/document',
+      'system-explorer/sql-tables/triggers',
       'system-explorer/classes',
       'system-explorer/routines',
       // Story 19.4: Search, Compare and Macros, after Routines.
       'system-explorer/search',
       'system-explorer/compare',
       'system-explorer/macros',
+      // Story 19.5: the SQL catalog's four lists, after Macros.
+      'system-explorer/sql-schemas',
+      'system-explorer/sql-tables',
+      'system-explorer/sql-views',
+      'system-explorer/sql-procedures',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

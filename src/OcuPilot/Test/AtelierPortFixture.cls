@@ -7,8 +7,8 @@
 /// <method>Index</method>, <method>Compile</method>, <method>DeleteDocs</method>,
 /// <method>ExportToXMLFile</method>, <method>ListDocumentsInXMLFiles</method>,
 /// <method>LoadXMLFiles</method>, <method>PutDoc</method>, <method>Search</method>,
-/// <method>GetMacroDefinition</method> and <method>GetMacroLocation</method> stand in for the vendor's
-/// routes: each
+/// <method>GetMacroDefinition</method>, <method>GetMacroLocation</method> and <method>Query</method>
+/// stand in for the vendor's routes: each
 /// records what it was handed --
 /// the namespace and device current while it ran and whether output was redirected, its arguments,
 /// the request's query data, content type, body and <code>If-None-Match</code> -- leaves
@@ -67,6 +67,15 @@ ClassMethod SetResources(pRoutine As %String, pGlobal As %String, pMapped As %St
 ClassMethod Arm(pMethod As %String, pStatus As %String, pText As %String, pReturn As %Status = {$$$OK})
 {
     Set ^||OcuPilotAtelierFixture("route", pMethod) = $ListBuild(pStatus, pText, pReturn, 0)
+}
+
+/// <p>Queue one answer for route <var>pMethod</var>, <var>pStatus</var> and <var>pText</var>: each call
+/// takes the oldest queued answer before the armed one, so a read that calls one route twice is
+/// answered twice.</p>
+ClassMethod Queue(pMethod As %String, pStatus As %String, pText As %String)
+{
+    Set tIndex = $Increment(^||OcuPilotAtelierFixture("queue", pMethod))
+    Set ^||OcuPilotAtelierFixture("queue", pMethod, tIndex) = $ListBuild(pStatus, pText, $$$OK, 0)
 }
 
 /// <p>Arm route <var>pMethod</var> to write an answer above the capture's ceiling, the way the
@@ -250,8 +259,14 @@ ClassMethod GetMacroLocation(pNamespace As %String) As %Status
     Quit ..Answer("GetMacroLocation", pNamespace, "", 0)
 }
 
-/// <p>Record the call, then answer as armed for <var>pMethod</var>: <code>200 OK</code> and an
-/// empty envelope when nothing is armed.</p>
+/// <p>The canned <code>Query</code> route.</p>
+ClassMethod Query(pNamespace As %String) As %Status
+{
+    Quit ..Answer("Query", pNamespace, "", 0)
+}
+
+/// <p>Record the call, then answer with the oldest answer queued for <var>pMethod</var>, else as
+/// armed: <code>200 OK</code> and an empty envelope when nothing is.</p>
 ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, pTypePassed As %Boolean) As %Status [ Private ]
 {
     Set tCall = {}
@@ -284,7 +299,13 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pArg As %String, p
     ; A vendor route leaves the namespace's source-control object behind, as this does.
     Set %SourceControl = "left by the canned route"
 
-    Set tArmed = $Get(^||OcuPilotAtelierFixture("route", pMethod), $ListBuild("200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", $$$OK, 0))
+    Set tNext = $Order(^||OcuPilotAtelierFixture("queue", pMethod, ""), 1, tQueued)
+    If tNext '= "" {
+        Kill ^||OcuPilotAtelierFixture("queue", pMethod, tNext)
+        Set tArmed = tQueued
+    } Else {
+        Set tArmed = $Get(^||OcuPilotAtelierFixture("route", pMethod), $ListBuild("200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{}}", $$$OK, 0))
+    }
     Set %response.Status = $ListGet(tArmed, 1)
     Set tMode = $ListGet(tArmed, 4)
     If tMode = 1 Quit ..WriteOversize()

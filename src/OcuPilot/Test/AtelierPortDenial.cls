@@ -15,6 +15,9 @@
 /// Search, Compare and Macros screens on the navigation map, are refused naming that pair; without
 /// READ on <code>USER</code>'s database the port refuses both there naming that pair, before any
 /// route.</li>
+/// <li>The SQL catalog (Story 19.5): without <code>%Development:USE</code> a list's and a tab's reads,
+/// and the four lists on the navigation map, are refused naming that pair; without READ on
+/// <code>USER</code>'s database the port refuses both there naming that pair, before any route.</li>
 /// </ul>
 /// <p>The direct calls run in a child process (<class>OcuPilot.Test.AtelierDenialProbe</class>) that
 /// logs in as the principal, so this process never changes identity.</p>
@@ -377,6 +380,35 @@ Method TestSearchAndMacrosAreRefusedNamingThePair()
 
     Do $$$AssertEquals(..Read(..#FULLUSER, "explorer.search", "text=Quit&maxRows=1&ns=" _ ..#OTHERNAMESPACE), "200 rows=1", "the full principal searches USER")
     Do $$$AssertEquals(..Read(..#FULLUSER, "explorer.macro", "document=%25Library.Persistent.cls&macro=OK&ns=" _ ..#OTHERNAMESPACE), "200 rows=1", "and looks a macro up there")
+}
+
+/// <p>Story 19.5 AC7: without <code>%Development:USE</code> the SQL tables and Triggers reads are
+/// refused 403 naming it by the route and by the port before any route, and the navigation map draws
+/// the four catalog lists unavailable naming it; without READ on <code>USER</code>'s database the port
+/// refuses both there naming that pair before any route; and the full principal is answered the schemas
+/// in <code>USER</code>.</p>
+/// <p>Mutation (Rule 19): give <class>OcuPilot.Screen.Descriptor.ExplorerSqlTables</class> an empty
+/// pair set -&gt; the navigation map opens SQL tables and the verdict assertion goes red.</p>
+Method TestTheCatalogIsRefusedNamingThePair()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")
+    Set tHere = $Namespace
+    Do $$$AssertEquals(..Read(..#NODEVUSER, "explorer.sqltables", "ns=" _ tHere), "403 AUTH.NOPRIVILEGE %Development:USE", "the tables read is refused by the route, naming the pair")
+    Do $$$AssertEquals(..Read(..#NODEVUSER, "explorer.sqltriggers", "table=%25Dictionary.ClassDefinition&ns=" _ tHere), "403 AUTH.NOPRIVILEGE %Development:USE", "and so is a tab's")
+    Do $$$AssertEquals(..Verdicts(..#NODEVUSER, "system-explorer/sql-schemas,system-explorer/sql-tables,system-explorer/sql-views,system-explorer/sql-procedures"), "0 %Development:USE,0 %Development:USE,0 %Development:USE,0 %Development:USE", "the map draws the four catalog lists unavailable, naming the pair")
+    Set tProbe = ..ProbeAs(..#NODEVUSER, tHere)
+    Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(..LegText(tProbe, tHere, "Catalog.Tables"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "the port refuses a list before any route")
+    Do $$$AssertEquals(..LegText(tProbe, tHere, "Catalog.Triggers"), "403 calls=0 AUTH.NOPRIVILEGE %Development:USE", "and a tab")
+
+    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#OTHERNAMESPACE, .tOther, .tGlobals, .tMapped, .tResolved)
+    Set tProbe = ..ProbeAs(..#NOUSERUSER, ..#OTHERNAMESPACE)
+    Do $$$AssertEquals(tProbe.%Get("error"), "", "the probe ran: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.Tables"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "a USER list is refused naming the database's pair")
+    Do $$$AssertEquals(..LegText(tProbe, ..#OTHERNAMESPACE, "Catalog.Triggers"), "403 calls=0 AUTH.NOPRIVILEGE " _ tOther _ ":READ", "and so is a USER tab")
+
+    Set tRead = ..Read(..#FULLUSER, "explorer.sqlschemas", "maxRows=1&system=yes&ns=" _ ..#OTHERNAMESPACE)
+    Do $$$AssertTrue($Extract(tRead, 1, 9) = "200 rows=", "the full principal reads the schemas in USER, which its SQL privileges filter: " _ tRead)
 }
 
 }

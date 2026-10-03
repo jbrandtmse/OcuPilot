@@ -660,9 +660,11 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 /// <p>A member is any declaration whose <code>tab</code> is an object with a string
 /// <code>group</code>. Groups are checked in the order their first member appears. For each: the
 /// group names a built member (the declaration at the group's route, built, declaring that group);
-/// every member shares that member's <code>area</code> and <code>archetype</code>; and the members'
-/// positions, sorted, run 1 to their count with no gap or repeat. A shape one member cannot hold on
-/// its own is <method>TabProblem</method>'s.</p>
+/// every member shares that member's <code>area</code> and <code>archetype</code>; the members'
+/// positions, sorted, run 1 to their count with no gap or repeat; and every member shares its
+/// <code>parentScope</code>, and in a parent-scoped group its one criterion's <code>param</code>,
+/// <code>kind</code> and <code>maxLength</code>, since the strip carries the one route id from tab to
+/// tab. A shape one member cannot hold on its own is <method>TabProblem</method>'s.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>tabGroupProblem</code> returns the same sentence
 /// for every roster case in <class>OcuPilot.Test.TabCorpus</class>.</p>
 ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
@@ -725,11 +727,50 @@ ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
                 Set tProblem = tHead.%Get("descriptor") _ ": tab.group '" _ tGroup _ "' declares positions " _ tText _ ", and a tab group's positions run 1 to " _ tMembers(tGroup) _ " with no gap or repeat (AD-5)"
                 Quit
             }
+            Set tParent = ..TabParent(tHead.%Get("declaration"))
+            Set tCriterion = ..TabCriterion(tHead.%Get("declaration"))
+            For tM = 1:1:tMembers(tGroup) {
+                Set tDeclaration = tMembers(tGroup, tM).%Get("declaration")
+                Set tMemberParent = ..TabParent(tDeclaration)
+                If tMemberParent '= tParent {
+                    Set tProblem = tMembers(tGroup, tM).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is declared with parentScope '" _ tMemberParent _ "', and a tab group's members share the parentScope '" _ tParent _ "' of '" _ tGroup _ "' (AD-5)"
+                    Quit
+                }
+                If tParent = "" Continue
+                Set tMemberCriterion = ..TabCriterion(tDeclaration)
+                If tMemberCriterion '= tCriterion {
+                    Set tProblem = tMembers(tGroup, tM).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is parent-scoped and reads criterion " _ tMemberCriterion _ ", and its members share the one criterion " _ tCriterion _ " of '" _ tGroup _ "' (AD-5)"
+                    Quit
+                }
+            }
+            If tProblem '= "" Quit
         }
     } Catch ex {
         Set tProblem = "the tab groups could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p><var>pDeclaration</var>'s <code>parentScope</code>, or <code>""</code> when it declares none
+/// as a string.</p>
+ClassMethod TabParent(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    If pDeclaration.%GetTypeOf("parentScope") '= "string" Quit ""
+    Quit pDeclaration.%Get("parentScope")
+}
+
+/// <p><var>pDeclaration</var>'s one read criterion as <code>'param' (kind, maxLength)</code>, or
+/// <code>none</code> when its read declares other than exactly one.</p>
+ClassMethod TabCriterion(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    If pDeclaration.%GetTypeOf("read") '= "object" Quit "none"
+    Set tCriteria = pDeclaration.%Get("read").%Get("criteria")
+    If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit "none"
+    Set tFields = tCriteria.%Get("fields")
+    If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") || (tFields.%Size() '= 1) Quit "none"
+    Set tField = tFields.%Get(0)
+    If '$IsObject(tField) Quit "none"
+    Quit "'" _ tField.%Get("param") _ "' (" _ tField.%Get("kind") _ ", " _ tField.%Get("maxLength") _ ")"
 }
 
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>ownPrivileges</code>, or <code>""</code>
