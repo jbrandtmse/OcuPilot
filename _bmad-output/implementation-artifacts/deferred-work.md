@@ -3840,6 +3840,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T23:22:38Z occurrence=19-4-search-compare-and-macro-lookup note=explorer.search.read text and explorer.macro.read document and macro are described as a comma list where * matches; a * in search text is searched literally and answers no rows with no refusal; fix needs a descriptor-declared criterion description (Screen/Registry.cls criteria grammar)
 - 2026-10-03T00:00:31Z status=routed owner=range-end-cleanup by=cr note=19.4 cr: first silent case, explorer.search.read searches *TODO* or a comma list literally and answers 0 rows unrefused; raise priority
 - 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
+- 2026-10-03T01:39:20Z occurrence=19-5-the-sql-catalog-browser note=the nine catalog read tools' schema and table criteria are described as comma lists where * matches; the port takes one exact name
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9145,3 +9146,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: 19.4 re-review: definitions.browser-spec test 5 offers [Macros, Definitions] for Definition; the command box (Story 15.2) ranks favorites then declaration order, not match quality
 - 2026-10-03T01:37:11Z status=wontfix-accepted owner=19-4-search-compare-and-macro-lookup by=lead note=reopen_if=a person reports Enter on a screen's own label opening another screen; the fix is label-prefix ranking in the command box, not dropping the alias
+
+### DW-1963: IRIS defect candidate: the Atelier action/query route prepares every statement with SQL privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.5 plan on ocupilot-a2-ci: %Api.Atelier.v6:229 calls %SQL.Statement.%Prepare(query,0); a principal with %Development:USE and %DB_USER:RW and no SQL grant read rows from an ungranted table and ran an UPDATE that persisted; with checkPriv=1 both answer SQLCODE -99
+- 2026-10-03T01:39:20Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957 and DW-1958
+
+### DW-1964: The query console (19.6) and the agent's SQL tool (19.11) must enforce the caller's SQL privileges themselves and never pass caller SQL through Atelier's action/query, which prepares with privilege checks off
+- source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
+- evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
+- 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on

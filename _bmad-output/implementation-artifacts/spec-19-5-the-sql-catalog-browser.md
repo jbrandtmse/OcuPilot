@@ -2,26 +2,14 @@
 title: 'Story 19.5: The SQL catalog browser'
 type: 'feature'
 created: '2026-10-02'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      Atelier's action/query prepares every statement with SQL privilege checks off, so a %Development holder with database access reads and changes tables it holds no SQL privilege on.
-    evidence: |-
-      irissys/%Api/Atelier/v6.cls:229 calls %SQL.Statement.%Prepare(query,0); irislib/%SQL/Statement.cls:513 says checkPriv=0 skips prepare-time checks. Measured on ocupilot-a2-ci (plan 19.5): a principal with %Development:USE and %DB_USER:RW and no SQL grant ran SELECT on an ungranted table (row returned) and an UPDATE that persisted; with checkPriv=1 both were SQLCODE -99. Design input for 19.6's console and 19.11's agent SQL; 19.5 sends only port-owned statements.
-    location: irissys/%Api/Atelier/v6.cls:229
-    severity: high
-  - summary: >-
-      DW-1001 occurrence: the nine new catalog read tools describe their text criteria (schema, table) as comma lists where * matches.
-    evidence: |-
-      Screen/Tool/Read.cls AddCriteria gives every text criterion that description; the port takes one exact name. Not fixed here: Epic 19's burn-down owns the descriptor-declared criterion description (DW-1001).
-    location: src/OcuPilot/Screen/Tool/Read.cls:171
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -124,11 +112,13 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-10-03, lead (spec gate, by=merge_gate): the split is approved as recommended: this story keeps the four lists and a table's Table info, Fields, Maps/Indices, Triggers and Constraints tabs; Story 19.14 (`19-14-the-sql-catalog-s-remaining-detail-tabs`, right after 19.5) takes the rest. The detail-tab privilege decision is accepted (a tab answers only for a table the caller's Tables list shows). The spine carries the drafts (AD-61 rules 2, 3, 6, 7, 8; AD-7's fifth shape; AD-36; AD-5). The plan's `deferred:` items are harvested: the `action/query` privilege bypass as DW-1963 (vendor-defect candidate) and DW-1964 (design constraint routed to 19.6, named in epics.md 19.6 and 19.11), the criteria description as a DW-1001 occurrence. `strings.test.mjs`'s Fixed-strings bound goes from 2100 to 2300 (approved by=merge_gate; whoever lands second takes the larger cap that covers the merged count and keeps Story 18.5's comment).
+
 ## Review Triage Log
 
 ## Design Notes
 
-**Why this spec is blocked (Rule 5, ask-first).** The epics.md criterion asks for every classic detail tab. `%CSP.UI.Portal.SQL.Home` has nine table tabs (Table Info, Fields, Maps/Indices, Partitions, Partition Mappings, Triggers, Constraints, Cached Queries, Table's SQL Statements), two view tabs and two procedure tabs (`Home.cls:473-488`). Full parity is 17 screens and 17 read tools, against 19.4's three, which already ran oversized. **Recommended split:**
+**The split (approved by=merge_gate 2026-10-03).** The epics.md criterion asks for every classic detail tab. `%CSP.UI.Portal.SQL.Home` has nine table tabs (Table Info, Fields, Maps/Indices, Partitions, Partition Mappings, Triggers, Constraints, Cached Queries, Table's SQL Statements), two view tabs and two procedure tabs (`Home.cls:473-488`). Full parity is 17 screens and 17 read tools, against 19.4's three, which already ran oversized. **Recommended split:**
 
 - **19.5 (amended, this spec):** the four lists, and a table's Table info, Fields, Maps/Indices, Triggers and Constraints. That is nine screens. Amended AC1: "…schemas, tables, views and procedures list, and a table opens to its Table info, Fields, Maps/Indices, Triggers and Constraints tabs." AC2 is unchanged.
 - **19.14 (new, `N.<M+1>`; key `19-14-the-sql-catalogs-remaining-detail-tabs`):** View info (`ViewInfo`, `ViewInfo2`, `ViewFields`) and View's SQL Statements; Stored procedure Info and its SQL Statements; a table's Partitions, Partition Mappings, Cached Queries and SQL Statements. That is nine screens on this spec's port family and tab mechanism. It carries the questions this split keeps out of 19.5:
@@ -298,8 +288,8 @@ Load source into `ocupilot-a2-ci` and never restart it:
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: split -- full parity with the classic SQL page's detail tabs is 17 screens and 17 read tools (19.4 shipped 3 and ran oversized). Recommended: Story 19.5 = SQL schemas, tables, views and procedures lists plus a table's Table info, Fields, Maps/Indices, Triggers and Constraints tabs (9 screens; AC1 amended as in Design Notes); new Story 19.14 (`19-14-the-sql-catalogs-remaining-detail-tabs`) = View info and SQL statements, Stored procedure info and SQL statements, and a table's Partitions, Partition mappings, Cached queries and SQL statements (9 screens on 19.5's port family and tab mechanism).
+Status: ready-for-dev
+Blocking condition: none
 
 - This pass: the plan only. Everything below the intent is written for the recommended 19.5 scope. With the split approved and epics.md amended, the spec gate can set `ready-for-dev` once it has ruled on the four spine drafts and the detail-tab privilege decision.
 - For the lead: `deferred:` carries the measured `action/query` privilege bypass (checkPriv 0: SELECT and UPDATE on an ungranted table), design input for 19.6 and 19.11. The approvals this scope needs are the strings bound and the `angular.json` budget.
