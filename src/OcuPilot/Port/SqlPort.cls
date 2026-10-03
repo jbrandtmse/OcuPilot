@@ -9,11 +9,14 @@
 /// (<method>InputProblem</method>); then the password refusal, before any prepare
 /// (<parameter>PASSWORDPATTERN</parameter>); then the prepare, whose statement type decides the kind
 /// through the closed table <method>KindOf</method>; then the refusal of the session, administration
-/// and server-file kinds. Nothing is prepared before the gate, the bounds and the password check
-/// have answered.</p>
+/// and server-file kinds; then, for a DDL statement, the system privilege its type requires
+/// (<parameter>DDLPRIVILEGES</parameter>), asked of the instance. Nothing is prepared before the gate,
+/// the bounds and the password check have answered.</p>
 /// <p><b>The namespace is switched by explicit save and restore</b> (AD-16) around a region that calls
 /// only vendor classes (<method>Prepared</method>, <method>Executed</method>,
-/// <method>Explained</method>), and the restore is the first line of each <code>Catch</code>.</p>
+/// <method>Explained</method>, <method>HoldsPrivilege</method>, <method>Closed</method>), and the
+/// restore is the first line of each <code>Catch</code>. Each statement is released before the
+/// namespace is restored (<method>Closed</method>).</p>
 /// <p><b>A statement's text, values, rows, SQL error text and plan reach the caller's answer and
 /// nothing else</b> (AD-39's sixth exception): no log line here carries any of them. A prepare or
 /// execute error is the <code>error</code> outcome, never a fault.</p>
@@ -71,9 +74,23 @@ Parameter MAXANSWER As INTEGER = 1000000;
 /// <p>ODBC select mode, so dates and times read alike across locales.</p>
 Parameter SELECTMODE As INTEGER = 1;
 
-/// <p>Text that sets a password: refused before any prepare, because the instance keeps a prepared
-/// statement's text in its statement index.</p>
-Parameter PASSWORDPATTERN = "(?i)\bIDENTIF(Y|IED)\b";
+/// <p>Text that sets a password, refused before any prepare, because the instance keeps a prepared
+/// statement's text in its statement index. <code>CREATE USER</code> and <code>ALTER USER</code> take
+/// one after <code>IDENTIFY BY</code>, <code>IDENTIFIED BY</code> or <code>[WITH] PASSWORD</code>, so
+/// the pattern matches <code>IDENTIFY</code> or <code>IDENTIFIED</code> anywhere, or the words
+/// <code>CREATE</code> or <code>ALTER</code>, <code>USER</code> and <code>PASSWORD</code> in that
+/// order, comments and literals included; a column named <code>Password</code> in any other statement
+/// passes. Each atomic group commits to the first occurrence, which keeps the match linear in the
+/// text's length.</p>
+Parameter PASSWORDPATTERN = "(?is)\bIDENTIF(Y|IED)\b|^(?>.*?\b(?:CREATE|ALTER)\b)(?>.*?\bUSER\b).*\bPASSWORD\b";
+
+/// <p>The system privilege the SQL reference names for a DDL statement type, as
+/// <code>type:privilege</code> pairs: a statement of a listed type runs only for a caller who holds
+/// it (<method>HoldsPrivilege</method>). An unlisted type is left to the instance's own check.</p>
+Parameter DDLPRIVILEGES = "9:%CREATE_TABLE,10:%ALTER_TABLE,11:%DROP_TABLE,12:%CREATE_VIEW,13:%ALTER_VIEW,15:%ALTER_TABLE,17:%ALTER_TABLE,35:%CREATE_FUNCTION,36:%CREATE_METHOD,37:%CREATE_PROCEDURE,38:%CREATE_QUERY,39:%DROP_FUNCTION,40:%DROP_METHOD,41:%DROP_PROCEDURE,42:%DROP_QUERY,43:%CREATE_TRIGGER,44:%DROP_TRIGGER,52:%ALTER_TABLE,54:%MANAGE_MODEL,55:%MANAGE_MODEL,56:%MANAGE_MODEL,57:%MANAGE_MODEL,58:%USE_MODEL,60:%CREATE_ML_CONFIGURATION,61:%ALTER_ML_CONFIGURATION,62:%DROP_ML_CONFIGURATION,66:%BUILD_INDEX";
+
+/// <p>The SQLCODE the instance answers a privilege violation with.</p>
+Parameter PRIVILEGESQLCODE As INTEGER = -99;
 
 /// <p>The closed kind table over <code>%Metadata.statementType</code>. A number no row names is
 /// <parameter>KINDOTHER</parameter>.</p>
@@ -165,6 +182,18 @@ ClassMethod KindOf(pType As %String) As %String
     Quit ..#KINDOTHER
 }
 
+/// <p>The system privilege a statement of type <var>pType</var> requires, from
+/// <parameter>DDLPRIVILEGES</parameter>, or <code>""</code> for a type it does not list. Pure.</p>
+ClassMethod PrivilegeFor(pType As %String) As %String
+{
+    If (pType = "") || '$Match(pType, "^[0-9]+$") Quit ""
+    Set tPairs = $ListFromString(..#DDLPRIVILEGES)
+    For tI = 1:1:$ListLength(tPairs) {
+        If +$Piece($List(tPairs, tI), ":", 1) = +pType Return $Piece($List(tPairs, tI), ":", 2)
+    }
+    Quit ""
+}
+
 /// <p>Whether a statement of kind <var>pKind</var> runs only once a person confirms it: every kind
 /// but <parameter>KINDQUERY</parameter> that the console runs at all.</p>
 ClassMethod Mutating(pKind As %String) As %Boolean
@@ -223,6 +252,12 @@ ClassMethod SetsPassword(pText As %String) As %Boolean
 /// take a value, <code>Tables</code> the tables and views the instance's statement index records for
 /// the statement, a view's base tables among them -- or, when the prepare failed, the same object with
 /// <code>Kind</code> empty and <code>error</code> <code>{sqlcode, message}</code>.</p>
+/// <p>A DDL statement of a type <parameter>DDLPRIVILEGES</parameter> lists is answered the same way,
+/// with the instance's privilege violation (<parameter>PRIVILEGESQLCODE</parameter>), unless
+/// <code>%CHECKPRIV</code> in <var>pNamespace</var> answers that the caller holds the type's system
+/// privilege. The instance checks that privilege only when it compiles the statement, and a cached
+/// compile another session still holds open answers the next prepare of the same text without it
+/// (measured).</p>
 /// <p>Otherwise an error status, with <var>pHttpStatus</var> and <var>pFault</var>: 403
 /// <code>AUTH.NOPRIVILEGE</code> naming the pair; 400 <code>PORT.VALIDATION</code> for a namespace
 /// whose code databases cannot be named; 400 <code>EXPLORER.SQL.INPUT</code>; 422
@@ -276,6 +311,23 @@ ClassMethod Classify(pNamespace As %String, pText As %String, Output pGuard As %
         }
         Set tSC = ..RefuseKind(tKind, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+        Set tPrivilege = ..PrivilegeFor(tType)
+        If tPrivilege '= "" {
+            Set tSC = ..HoldsPrivilege(pNamespace, tPrivilege, .tHolds)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Fail("the statement's system privilege could not be checked", tSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            If 'tHolds {
+                Set tRefused = ..EmptyGuard(pNamespace)
+                Set tError = {}
+                Do tError.%Set("sqlcode", ..#PRIVILEGESQLCODE, "number")
+                Do tError.%Set("message", $SYSTEM.SQL.Functions.SQLCODE(..#PRIVILEGESQLCODE), "string")
+                Do tRefused.%Set("error", tError)
+                Set pGuard = tRefused
+                Quit
+            }
+        }
         Set pGuard = tGuard
     } Catch ex {
         Set pGuard = ""
@@ -634,8 +686,9 @@ ClassMethod ErrorAnswer(pKind As %String, pCode As %String, pMessage As %String)
 /// <code>INFORMATION_SCHEMA.VIEW_TABLE_USAGE</code>; <code>indexed</code> is 0 when either cannot be
 /// read.</p>
 /// <p><b>The switched region calls vendor classes only</b> (AD-16): nothing in it reaches an
-/// OcuPilot class, and the restore is the first line of the <code>Catch</code>. An error status names
-/// the exception and nothing of the statement.</p>
+/// OcuPilot class, and the restore is the first line of the <code>Catch</code>. The statement is
+/// released in <var>pNamespace</var> (<method>Closed</method>). An error status names the exception
+/// and nothing of the statement.</p>
 ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %DynamicObject) As %Status [ Private ]
 {
     Set pRaw = {}
@@ -711,9 +764,12 @@ ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %Dy
             Do pRaw.%Set("tables", tTables)
             Do pRaw.%Set("defaultSchema", $SYSTEM.SQL.Schema.Default(), "string")
         }
+        Set (tMetadata, tStatement) = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        Set tMetadata = ""
+        Do ..Closed(pNamespace, .tStatement)
         Set pRaw = {}
         Set tSC = $$$ERROR($$$GeneralError, "the prepare raised " _ ex.Name)
     }
@@ -733,7 +789,8 @@ ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %Dy
 /// <code>rolledBack</code> when <code>$TLevel</code> was left above where it started and was rolled
 /// back to it, <code>changed</code> when the second prepare answered another type or failed.</p>
 /// <p><b>The switched region calls vendor classes only</b> (AD-16), and the restore is the first line
-/// of the <code>Catch</code>, before the alarm is cleared and the transaction rolled back.</p>
+/// of the <code>Catch</code>, before the alarm is cleared and the transaction rolled back. The
+/// statement is released in <var>pNamespace</var>, its results first (<method>Closed</method>).</p>
 ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer, pValues As %DynamicArray, pBound As %Integer, pFetch As %Boolean, pMaxRows As %Integer, Output pRaw As %DynamicObject) As %Status [ Private ]
 {
     Set pRaw = {"sqlcode": 0, "message": "", "rowCount": 0, "stopped": false, "rolledBack": false, "changed": false}
@@ -748,6 +805,7 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
         Set tPrepareSC = tStatement.%Prepare(pText, 1)
         If $$$ISERR(tPrepareSC) || (+tStatement.%Metadata.statementType '= +pType) {
             Do pRaw.%Set("changed", 1, "boolean")
+            Set tStatement = ""
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -827,10 +885,13 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
             }
             Do pRaw.%Set("rolledBack", 1, "boolean")
         }
+        Set (tSet, tMeta, tResult, tStatement) = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         If tAlarmed Do $System.Alarm.Clear()
+        Set (tSet, tMeta, tResult) = ""
+        Do ..Closed(pNamespace, .tStatement)
         Set tRolledBack = 0
         While $TLevel > tLevel {
             TRollback 1
@@ -879,6 +940,53 @@ ClassMethod Explained(pNamespace As %String, pText As %String, Output pPlan As %
         Set tSC = $$$ERROR($$$GeneralError, "the plan read raised " _ ex.Name)
     }
     Quit tSC
+}
+
+/// <p>Whether the caller holds the system privilege <var>pPrivilege</var>, a name from
+/// <parameter>DDLPRIVILEGES</parameter>, in <var>pNamespace</var>, read at this call from the instance
+/// with <code>%CHECKPRIV</code>, which the instance never answers from a cached query: SQLCODE 0 is
+/// held and 100 is not. Any other answer is an error status naming its SQLCODE. The switched region
+/// calls vendor classes only.</p>
+ClassMethod HoldsPrivilege(pNamespace As %String, pPrivilege As %String, Output pHolds As %Boolean) As %Status [ Private ]
+{
+    Set pHolds = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "%CHECKPRIV " _ pPrivilege)
+        Set tCode = tResult.%SQLCODE
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+        If tCode = 0 {
+            Set pHolds = 1
+        } ElseIf tCode '= 100 {
+            Set tSC = $$$ERROR($$$GeneralError, "the privilege check answered SQLCODE " _ tCode)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pHolds = 0
+        Set tSC = $$$ERROR($$$GeneralError, "the privilege check raised " _ ex.Name)
+    }
+    Quit tSC
+}
+
+/// <p>Release <var>pStatement</var> in <var>pNamespace</var>, its own namespace. A statement of a
+/// type the instance prepares for one use purges its cached query as it closes, in the namespace it
+/// closes in; closed in another, that cached query outlives it and answers a later prepare of the same
+/// text without the privilege check its compile makes (measured). A caller releases every other
+/// reference to the statement first.</p>
+ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pStatement = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set pStatement = ""
+    }
 }
 
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>

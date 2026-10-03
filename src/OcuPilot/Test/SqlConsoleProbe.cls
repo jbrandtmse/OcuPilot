@@ -174,6 +174,86 @@ ClassMethod HoldsTable(pTable As %String) As %Boolean
     Quit tHolds
 }
 
+/// <p>Whether <parameter>NAMESPACE</parameter> holds a routine (a procedure or a function) named
+/// <var>pRoutine</var>.</p>
+ClassMethod HoldsRoutine(pRoutine As %String) As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tHolds = 0
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA || '.' || ROUTINE_NAME = ?", pRoutine)
+        If tResult.%Next() Set tHolds = (tResult.%GetData(1) > 0)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tHolds
+}
+
+/// <p>Prepare each statement of <var>pTexts</var> in <parameter>NAMESPACE</parameter> as the caller
+/// and hold it open in <var>pHeld</var> until <method>Release</method>, so its cached compile stays
+/// in the namespace: another account's statement, prepared first. Answers how many prepared.</p>
+ClassMethod Hold(pTexts As %List, Output pHeld) As %Integer
+{
+    Kill pHeld
+    Set tPrepared = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tI = 1:1:$ListLength(pTexts) {
+            Set pHeld(tI) = ##class(%SQL.Statement).%New()
+            If $$$ISOK(pHeld(tI).%Prepare($List(pTexts, tI), 1)) Set tPrepared = tPrepared + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tPrepared
+}
+
+/// <p>Release the statements <method>Hold</method> held, in <parameter>NAMESPACE</parameter>, where
+/// each purges its cached compile as it closes.</p>
+ClassMethod Release(ByRef pHeld)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill pHeld
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Kill pHeld
+    }
+}
+
+/// <p>Prepare <var>pText</var> in <var>pNamespace</var> with privilege checks on, outside the port,
+/// releasing the statement there: <code>{outcome: prepared}</code> or <code>{outcome: error,
+/// sqlcode}</code>.</p>
+ClassMethod PreparedIn(pNamespace As %String, pText As %String) As %DynamicObject
+{
+    Set tAnswer = {}
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tSC = tStatement.%Prepare(pText, 1)
+        Set tStatement = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISOK(tSC) {
+            Do tAnswer.%Set("outcome", "prepared", "string")
+        } Else {
+            Set tMessage = ""
+            Do tAnswer.%Set("outcome", "error", "string")
+            Do tAnswer.%Set("sqlcode", $System.Status.StatusToSQLCODE(tSC, .tMessage), "number")
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do tAnswer.%Set("outcome", "raised " _ ex.Name, "string")
+    }
+    Quit tAnswer
+}
+
 /// <p>How many statement-index rows <parameter>NAMESPACE</parameter> holds whose text carries
 /// <var>pMark</var>, or <code>-1</code> when the read failed.</p>
 ClassMethod IndexRows(pMark As %String) As %Integer
@@ -288,9 +368,9 @@ ClassMethod RemovePrincipals() As %Status
 
 /// <p>Run <var>pLegs</var> -- JSON text of an array of <code>{op, namespace, statement, values?,
 /// maxRows?}</code>, <code>op</code> one of <code>classify</code>, <code>query</code>,
-/// <code>write</code> and <code>plan</code> -- through <class>OcuPilot.Port.SqlPort</class> as
-/// <var>pUsername</var> in a child process, and answer what it signalled, or an object carrying
-/// <code>error</code>.</p>
+/// <code>write</code> and <code>plan</code>, through <class>OcuPilot.Port.SqlPort</class>, or
+/// <code>prepare</code>, outside it (<method>PreparedIn</method>) -- as <var>pUsername</var> in a
+/// child process, and answer what it signalled, or an object carrying <code>error</code>.</p>
 ClassMethod ProbeAs(pUsername As %String, pLegs As %String) As %DynamicObject
 {
     Set tOut = {}
@@ -333,6 +413,9 @@ ClassMethod RunAs(pParent As %Integer, pUsername As %String, pLegs As %String)
             Set tOp = tLeg.%Get("op")
             If tOp = "classify" {
                 Set tSC = ##class(OcuPilot.Port.SqlPort).Classify(tLeg.%Get("namespace"), tLeg.%Get("statement"), .tAnswer, .tHttp, .tFault)
+            } ElseIf tOp = "prepare" {
+                Set tAnswer = ..PreparedIn(tLeg.%Get("namespace"), tLeg.%Get("statement"))
+                Set tSC = $$$OK
             } ElseIf tOp = "plan" {
                 Set tSC = ##class(OcuPilot.Port.SqlPort).Plan(tLeg.%Get("namespace"), tLeg.%Get("statement"), .tAnswer, .tHttp, .tFault)
             } Else {

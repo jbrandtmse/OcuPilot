@@ -1,5 +1,6 @@
 /// <p>Pins <class>OcuPilot.Port.SqlPort</class>'s pure parts and its tool (Story 19.6): the closed kind
-/// table over every statement type number, the bounds and the password refusal held before anything
+/// table over every statement type number, the DDL privilege table and the instance's knowledge of
+/// each name in it, the bounds and the password refusal held before anything
 /// is prepared, the endpoint and id it serves, the script form, the self-protection rules of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.SqlStatement</method>,
 /// <class>OcuPilot.Screen.Tool.ExplorerSqlRun</class>'s declarations and value parsing, and a source
@@ -7,7 +8,7 @@
 /// <code>Invoke</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in the namespace it runs in and a
 /// <code>USER</code> namespace. It creates nothing; the statements it hands the port are refused before
-/// any prepare.</p>
+/// any prepare, and it prepares only <code>%CHECKPRIV</code> itself.</p>
 Class OcuPilot.Test.SqlPort Extends %UnitTest.TestCase
 {
 
@@ -18,6 +19,10 @@ Parameter TOOL = "OcuPilot.Screen.Tool.ExplorerSqlRun";
 /// <p>The kind table as the spec's Design Notes state it, typed here apart from the port's own
 /// parameters so the two are compared rather than read twice.</p>
 Parameter EXPECTEDKINDS = "query=1,28,32,79;dml=2,3,4;ddl=9,10,11,12,13,14,15,17,35,36,37,38,39,40,41,42,43,44,52,54,55,56,57,58,60,61,62,63,64,65,66,67,68,70,71;call=45;other=16,25,27,99;session=5,6,20,21,22,23,24,26,46,47,48,51,53,59,78;administration=7,8,18,19,29,30,31,33,34,49,50;serverfiles=69,72,73,74,75,76,77,80";
+
+/// <p>The DDL privilege table as the SQL reference states it, typed here apart from the port's own
+/// parameter so the two are compared rather than read twice.</p>
+Parameter EXPECTEDPRIVILEGES = "9:%CREATE_TABLE,10:%ALTER_TABLE,11:%DROP_TABLE,12:%CREATE_VIEW,13:%ALTER_VIEW,15:%ALTER_TABLE,17:%ALTER_TABLE,35:%CREATE_FUNCTION,36:%CREATE_METHOD,37:%CREATE_PROCEDURE,38:%CREATE_QUERY,39:%DROP_FUNCTION,40:%DROP_METHOD,41:%DROP_PROCEDURE,42:%DROP_QUERY,43:%CREATE_TRIGGER,44:%DROP_TRIGGER,52:%ALTER_TABLE,54:%MANAGE_MODEL,55:%MANAGE_MODEL,56:%MANAGE_MODEL,57:%MANAGE_MODEL,58:%USE_MODEL,60:%CREATE_ML_CONFIGURATION,61:%ALTER_ML_CONFIGURATION,62:%DROP_ML_CONFIGURATION,66:%BUILD_INDEX";
 
 /// <p>The kind table maps every type number 1 to 80, and 99, to the kind the spec names, and an
 /// unnamed number, an empty type and a non-number to <code>other</code>; only the four runnable
@@ -51,6 +56,38 @@ Method TestTheKindTableNamesEveryTypeNumber()
     Do $$$AssertEquals($ClassMethod(..#PORT, "Bounded", "query") _ $ClassMethod(..#PORT, "Bounded", "dml") _ $ClassMethod(..#PORT, "Bounded", "ddl") _ $ClassMethod(..#PORT, "Bounded", "call"), "1100", "a query and DML run under the alarm, DDL and a CALL do not")
 }
 
+/// <p>The DDL privilege table names, for each statement type number 1 to 81 and 99, the system
+/// privilege the SQL reference ties to it, or none; and the instance knows every name it holds:
+/// <code>%CHECKPRIV</code> answers each held (0) or not held (100), never an error, which the port
+/// would answer as a fault for every caller.</p>
+/// <p>Mutation (Rule 19): misspell <code>%CREATE_FUNCTION</code> in
+/// <parameter>OcuPilot.Port.SqlPort.DDLPRIVILEGES</parameter> -- the roster leg and the known-name leg
+/// go red.</p>
+Method TestEveryDdlPrivilegeIsNamedAndKnown()
+{
+    Kill tExpected, tNames
+    For tI = 1:1:$Length(..#EXPECTEDPRIVILEGES, ",") {
+        Set tPair = $Piece(..#EXPECTEDPRIVILEGES, ",", tI)
+        Set tExpected(+$Piece(tPair, ":", 1)) = $Piece(tPair, ":", 2)
+    }
+    Set tWrong = ""
+    For tType = 1:1:81, 99 {
+        Set tPrivilege = $ClassMethod(..#PORT, "PrivilegeFor", tType)
+        If tPrivilege '= $Get(tExpected(tType)) Set tWrong = tWrong _ " " _ tType _ "=" _ tPrivilege
+        If tPrivilege '= "" Set tNames(tPrivilege) = ""
+    }
+    Do $$$AssertEquals(tWrong, "", "each type number 1 to 81 and 99 requires the privilege the reference names, or none")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "PrivilegeFor", "") _ $ClassMethod(..#PORT, "PrivilegeFor", "x"), "", "an empty or non-numeric type requires none")
+    Set tUnknown = ""
+    Set tName = $Order(tNames(""))
+    While tName '= "" {
+        Set tCode = ##class(%SQL.Statement).%ExecDirect(, "%CHECKPRIV " _ tName).%SQLCODE
+        If (tCode '= 0) && (tCode '= 100) Set tUnknown = tUnknown _ " " _ tName _ "=" _ tCode
+        Set tName = $Order(tNames(tName))
+    }
+    Do $$$AssertEquals(tUnknown, "", "the instance knows every privilege the table names")
+}
+
 /// <p>The bounds: a statement of 1 to 100,000 characters, at most 100 values each a string of at most
 /// 32,767 characters, and Max rows from 1 to 1,000; the port refuses anything else 400
 /// <code>EXPLORER.SQL.INPUT</code> before any prepare.</p>
@@ -80,15 +117,21 @@ Method TestTheBoundsAreHeldBeforeAnyPrepare()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "400 EXPLORER.SQL.INPUT", "and a run with 101 values")
 }
 
-/// <p>Text that sets a password is read as text and refused 422 <code>EXPLORER.SQL.PASSWORD</code>:
-/// <code>IDENTIFY</code> and <code>IDENTIFIED</code> as whole words in any case, and nothing else.
+/// <p>Text that sets a password is read as text and refused 422 <code>EXPLORER.SQL.PASSWORD</code>, in
+/// the three spellings <code>CREATE USER</code> and <code>ALTER USER</code> take: <code>IDENTIFY</code>
+/// or <code>IDENTIFIED</code> as whole words in any case, or <code>CREATE</code> or <code>ALTER</code>,
+/// <code>USER</code> and <code>PASSWORD</code> in that order, a comment between them included; a column
+/// named <code>Password</code> in a query or an UPDATE is not refused.
 /// <class>OcuPilot.Test.SqlPortLive</class> pins that nothing reaches the statement index.</p>
+/// <p>Mutation (Rule 19): drop the <code>PASSWORD</code> alternative from
+/// <parameter>OcuPilot.Port.SqlPort.PASSWORDPATTERN</parameter> -- the three <code>PASSWORD</code> legs go
+/// red; reduce it to the bare word <code>PASSWORD</code> -- the two column legs go red.</p>
 Method TestAPasswordStatementIsRefusedByItsText()
 {
-    For tText = "CREATE USER OcuProbe196Nobody IDENTIFY BY 'OcuProbe196NotACredential'", "alter user OcuProbe196Nobody identified by OcuProbe196NotACredential", "SELECT 1 /* Identify */" {
+    For tText = "CREATE USER OcuProbe196Nobody IDENTIFY BY 'OcuProbe196NotACredential'", "alter user OcuProbe196Nobody identified by OcuProbe196NotACredential", "CREATE USER OcuProbe196Nobody PASSWORD 'OcuProbe196NotACredential'", "alter user OcuProbe196Nobody with password OcuProbe196NotACredential", "CREATE /* c */ USER OcuProbe196Nobody WITH PASSWORD 'OcuProbe196NotACredential'", "SELECT 1 /* Identify */" {
         Do $$$AssertTrue($ClassMethod(..#PORT, "SetsPassword", tText), "sets a password: " _ tText)
     }
-    For tText = "SELECT IDENTITY(1)", "SELECT IdentifyNo FROM OcuProbe196.Granted", "SELECT 1" {
+    For tText = "SELECT IDENTITY(1)", "SELECT IdentifyNo FROM OcuProbe196.Granted", "SELECT PasswordHint FROM OcuProbe196.Granted", "SELECT Password FROM OcuProbe196.User", "UPDATE OcuProbe196.User SET Password = ?", "SELECT 1" {
         Do $$$AssertTrue('$ClassMethod(..#PORT, "SetsPassword", tText), "does not: " _ tText)
     }
     Set tSC = $ClassMethod(..#PORT, "Classify", "USER", "CREATE USER OcuProbe196Nobody IDENTIFY BY 'OcuProbe196NotACredential'", .tGuard, .tHttp, .tFault)

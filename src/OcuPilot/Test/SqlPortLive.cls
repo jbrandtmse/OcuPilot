@@ -8,7 +8,8 @@
 /// through the statement index and a view's usage; a statement the index answers no row for refused,
 /// its log line carrying none of it; and, as real principals in child processes, the gate naming the
 /// missing pair and the instance refusing SQLCODE -99 at prepare for every statement on a table the
-/// principal holds no SQL privilege on (DW-1964). <code>THROUGH</code> needs a foreign server that
+/// principal holds no SQL privilege on (DW-1964), every kind still refused although another account
+/// holds the same statement open, and no cached DDL compile left behind by the console (DW-1986). <code>THROUGH</code> needs a foreign server that
 /// passes statements through, which a probe cannot make; the kind table pins its type.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a <code>USER</code> namespace.
 /// It creates and removes the probe objects, data included, and three principals, so it runs on a
@@ -275,8 +276,6 @@ Method TestTheGateNamesTheMissingPair()
 /// the UPDATE leg changes the table and goes red.</p>
 Method TestTheInstanceRefusesAnUngrantedTableAtPrepare()
 {
-    ; A CREATE TABLE text another account has prepared in the namespace is answered from its cached
-    ; query without the principal's privilege check (measured), so this run's table name is its own.
     Set tMade = "OcuProbe196.Made" _ $Translate($ZTimeStamp, ",.", "")
     Set tLegs = [
         {"op": "query", "namespace": "USER", "statement": "SELECT Name FROM OcuProbe196.Granted WHERE Num < 3"},
@@ -295,6 +294,68 @@ Method TestTheInstanceRefusesAnUngrantedTableAtPrepare()
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted", $Parameter(..#PROBE, "HIDDEN")), "2 3", "the ungranted table is unchanged")
     Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsTable", tMade), "and nothing was created")
+}
+
+/// <p>DW-1986: this account prepares, and holds open, two CREATE TABLE and two CREATE PROCEDURE
+/// statements, an UPDATE, a CALL and a SELECT on the table the principal holds no privilege on. A held
+/// DDL compile answers the next prepare of the same text without the system privilege check the
+/// instance makes only when it compiles, so each text is sent once and every leg meets a held compile.
+/// The principal, holding none of the privileges, sends each through the console -- one CREATE of each
+/// kind classified and one run, the UPDATE and the CALL run, the SELECT queried -- and each is answered
+/// SQLCODE -99: nothing is created and the table is unchanged.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.PrivilegeFor</method> answering no privilege
+/// -- the four DDL legs go red.</p>
+Method TestAStatementAnotherAccountHoldsOpenIsStillChecked()
+{
+    Set tToken = $Translate($ZTimeStamp, ",.", "")
+    Set tTables = $ListBuild("OcuProbe196.HeldA" _ tToken, "OcuProbe196.HeldB" _ tToken)
+    Set tRoutines = $ListBuild("OcuProbe196.HeldCallA" _ tToken, "OcuProbe196.HeldCallB" _ tToken)
+    Set tLegs = [
+        {"op": "classify", "namespace": (..#NAMESPACE), "statement": ("CREATE TABLE " _ $List(tTables, 1) _ " (X INTEGER)")},
+        {"op": "write", "namespace": (..#NAMESPACE), "statement": ("CREATE TABLE " _ $List(tTables, 2) _ " (X INTEGER)")},
+        {"op": "classify", "namespace": (..#NAMESPACE), "statement": ("CREATE PROCEDURE " _ $List(tRoutines, 1) _ "() LANGUAGE OBJECTSCRIPT { Quit }")},
+        {"op": "write", "namespace": (..#NAMESPACE), "statement": ("CREATE PROCEDURE " _ $List(tRoutines, 2) _ "() LANGUAGE OBJECTSCRIPT { Quit }")},
+        {"op": "write", "namespace": (..#NAMESPACE), "statement": "UPDATE OcuProbe196.Hidden SET Num = Num + 20"},
+        {"op": "write", "namespace": (..#NAMESPACE), "statement": "CALL OcuProbe196.HiddenCount()"},
+        {"op": "query", "namespace": (..#NAMESPACE), "statement": "SELECT Name, Num FROM OcuProbe196.Hidden"}
+    ]
+    Set tTexts = ""
+    For tI = 0:1:tLegs.%Size() - 1 {
+        Set tTexts = tTexts _ $ListBuild(tLegs.%Get(tI).%Get("statement"))
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Hold", tTexts, .tHeld), 7, "this account prepares every statement and holds it open")
+    Set tProbe = $ClassMethod(..#PROBE, "ProbeAs", $Parameter(..#PROBE, "USER"), tLegs.%ToJSON())
+    Do $ClassMethod(..#PROBE, "Release", .tHeld)
+    For tI = 0:1:6 {
+        Do $$$AssertEquals($ClassMethod(..#PROBE, "LegText", tProbe, tI), "200   error -99", "leg " _ tI _ ": the principal is refused")
+    }
+    For tI = 1, 2 {
+        Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsTable", $List(tTables, tI)), "no table was created (" _ tI _ ")")
+        Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsRoutine", $List(tRoutines, tI)), "and no procedure (" _ tI _ ")")
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted", $Parameter(..#PROBE, "HIDDEN")), "2 3", "the ungranted table is unchanged")
+}
+
+/// <p>DW-1986: a DDL statement this account's console classified, and one it ran, leave no cached
+/// compile behind, because the port releases each statement in its own namespace, where the instance
+/// purges a one-use statement's cached query as it closes: the principal's own prepare of either text,
+/// outside the port, is compiled afresh and refused SQLCODE -99.</p>
+/// <p>Mutation (Rule 19): release the statement after restoring the namespace in
+/// <method>OcuPilot.Port.SqlPort.Prepared</method> -- the classified leg goes red; in
+/// <method>OcuPilot.Port.SqlPort.Executed</method> -- the run leg goes red.</p>
+Method TestTheConsoleLeavesNoCachedDdlCompileBehind()
+{
+    Set tToken = $Translate($ZTimeStamp, ",.", "")
+    Set tClassified = "CREATE TABLE OcuProbe196.Left" _ tToken _ " (X INTEGER)"
+    Set tRan = "CREATE PROCEDURE OcuProbe196.LeftCall" _ tToken _ "() LANGUAGE OBJECTSCRIPT { Quit }"
+    Set tSC = $ClassMethod(..#PORT, "Classify", ..#NAMESPACE, tClassified, .tGuard, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC): tGuard.Kind, 1: ..Said(tSC, "", .tHttp, .tFault)), "ddl", "this account's console classifies a CREATE TABLE")
+    Set tSC = $ClassMethod(..#PORT, "Run", ..#NAMESPACE, tRan, [], 10, "write", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""ddl"",""outcome"":""done"",""rowCount"":0}", "and runs a CREATE PROCEDURE")
+    Set tLegs = [{"op": "prepare", "namespace": (..#NAMESPACE), "statement": (tClassified)}, {"op": "prepare", "namespace": (..#NAMESPACE), "statement": (tRan)}].%ToJSON()
+    Set tProbe = $ClassMethod(..#PROBE, "ProbeAs", $Parameter(..#PROBE, "USER"), tLegs)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LegText", tProbe, 0), "200   error -99", "the classified text is compiled afresh for the principal")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LegText", tProbe, 1), "200   error -99", "and so is the text that ran")
 }
 
 }
