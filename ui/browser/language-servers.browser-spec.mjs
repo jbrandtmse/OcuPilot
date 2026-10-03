@@ -338,8 +338,9 @@ test('AC1-AC3: Start reads Running "Yes" changed; the name opens the editor, whi
 
 // AC5. Mutation (Rule 19): drop the own pair from LanguageServerList's `privileges` and
 // `ownPrivileges` and recompile on the throwaway -> External language servers reads open and the
-// refused-entry assertion goes red.
-test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable on it, beside Journal settings on its own', async () => {
+// refused-entry assertion goes red. Grant the principal's role `%Admin_Journal:U` -> Journal
+// settings reads open and its assertion goes red.
+test('AC5: a holder of OS management\'s pairs without the own pair sees External language servers unavailable naming that pair, and Journal settings naming %Admin_Journal:USE, and no other', async () => {
   const { context, page } = await signedInAt(browser, { ...config, username: PRINCIPAL, password: PRINCIPAL_PASSWORD }, '/ocupilot/os-management/processes?ns=HSCUSTOM', VIEWPORTS.wide);
   try {
     await page.click(`.ocu-rail-item[aria-label="${STRINGS.navAreaOsManagement}"]`);
@@ -359,12 +360,13 @@ test('AC5: a holder of OS management\'s pairs without the own pair sees External
     // Story 18.18's Journal settings declares its own pair too, which this principal does not hold.
     const journal = `${STRINGS.journalSettingsLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', JOURNAL_PAIR)}`;
     assert.ok(refused.includes(journal), `Journal settings is unavailable on its own pair, ${JOURNAL_PAIR}: ${JSON.stringify(entries)}`);
+    refused.splice(refused.indexOf(journal), 1);
     assert.deepEqual(
-      refused.filter((line) => line !== journal),
+      refused,
       [`${STRINGS.languageServersLabel}: ${STRINGS.privilegeRequiresResource.replace('<resource>', OWN_PAIR)}`],
       `apart from Journal settings, only External language servers is unavailable, naming its own pair: ${JSON.stringify(entries)}`
     );
-    assert.ok(entries.length >= 9, 'while the other OS management entries stay open');
+    assert.ok(entries.filter((entry) => !entry.disabled).length >= 9, 'while the other OS management entries stay open');
   } finally {
     await context.close();
   }

@@ -377,6 +377,26 @@ Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-
 
 - [x] [CI] browser shard 2/3 of run 37091469927 (`8fe230e5`): `ui/browser/language-servers.browser-spec.mjs` AC5 ("a holder of OS management's pairs without the own pair sees External language servers alone unavailable", `:339-356`) now also finds "Journal settings: Requires %Admin_Journal:USE" unavailable, because Journal settings' own pair is new in this story (the browser twin of the `LanguageServerWire` roster the implement pass already fixed; reproduced locally) -- https://github.com/jbrandtmse/OcuPilot/actions/runs/37091469927 -- the fix keeps the leg's intent (External language servers alone unavailable for lack of its own pair), the same way `LanguageServerWire` was fixed, and checks every other browser spec that pins OS management's side bar or its unavailable entries for the same omission. (The same run's two `gate.browser-spec.mjs` failures, 30 s navigation timeouts on Permissions › Users, pass 6/6 locally and are re-checked on this rework's CI, not worked here.)
 
+### Review Findings (rework 1)
+
+Code review 2026-10-03 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; diff `a1c7fd58..584838aa`): 18 raw, 15 entries; 5 patch, 0 defer, 10 rejected; high 0, med 0. `[CI]` confirmed fixed, the leg pins its title; no other browser spec pins OS management's unavailable entries; Rule 3 met.
+
+- [x] [Review][Patch] (low) The leg dropped every Journal settings line where `LanguageServerWire` drops one; it now removes exactly one [ui/browser/language-servers.browser-spec.mjs:363]
+- [x] [Review][Patch] (low) "the other OS management entries stay open" counted every entry, Journal settings' refused one included; it counts open entries [ui/browser/language-servers.browser-spec.mjs:369]
+- [x] [Review][Patch] (low) The leg's in-file mutation note named only the External language servers half [ui/browser/language-servers.browser-spec.mjs:339]
+- [x] [Review][Patch] (low) The title's "on it ... on its own" read as "alone"; it names both pairs [ui/browser/language-servers.browser-spec.mjs:343]
+- [x] [Review][Patch] (low) Rule 19: the first rework mutation edited the assertion, not its subject; replaced in `## Verification` by a role-grant mutation, both observed red [spec]
+- Rejected (outside the rework, not HIGH): AC1's only DOM pin of the refused entry is Story 16.10's spec; `WireSecurityRead.cls:571` pins the `failedPair`.
+- Rejected (false, by design): the next OS management own-pair screen reddens this leg again; the exact roster is the intended tripwire, as in `LanguageServerWire`.
+- Rejected (false): `gate.browser-spec.mjs`'s timeouts have no ledger entry; this head's CI re-runs them, and a red takes the red path.
+- Rejected (false): `createPrincipal`'s doc comment still reads true.
+- Rejected (spec edit): Code Map's browser roster and the `(loop)` command omit `language-servers` and `LanguageServerWire`.
+- Rejected (spec edit): the rewritten `## Auto Run Result` drops the first pass's `footprint_extensions` and Epic 19 collision note (relayed to the lead).
+- Rejected (spec edit): the throwaway line omits the handoff's own-session `Terminate()`.
+- Rejected (spec edit): the rework is dated 2026-10-03 and 2026-10-02 (UTC against local).
+- Rejected (spec edit): two triage rows repeat, and one cites `journals:276` for the count at `:277`.
+- Rejected (low): "Both" ends a short line in the file header.
+
 ## Spec Change Log
 
 - 2026-10-03, runner (rework 1, trigger=ci): re-opened for the `[CI]` item under Tasks & Acceptance; nothing else changes.
@@ -588,8 +608,8 @@ Mutations run on `ocupilot-b-ci`, each loaded, then reverted byte-identical and 
 - mutation: `JournalSettingsUpdate.DerivedFields` sets the primary under the alternate's key → `JournalSettingsWrite` primary leg red on its read-back (run 3726) (CR)
 - mutation: `%Admin_Operate:USE` dropped from `JournalSettingsUpdate.EXTRAPAIRS` and from the all-pairs principal → `JournalWriteGate` declared-pairs write leg red, 500 with the size stored (run 3727) (CR)
 - mutation: Freeze on error's consequence carried on Compress files' view → `journal-settings.page.spec.ts` AC6 red; the store's root-less name skipped, and the no-op Save keeping the read-back → their two store legs red (vitest) (CR)
-- mutation: `language-servers.browser-spec.mjs` AC5 asserts over every unavailable entry again (the Journal settings exclusion dropped) → AC5 red, Journal settings' `Requires %Admin_Journal:USE` beside External language servers, as in CI (1/2, `ocupilot-b-ci`) (rework 1)
-- mutation: the AC5 principal's role also holds `%Admin_Journal:U` → AC5 red on "Journal settings is unavailable on its own pair" (1/2, `ocupilot-b-ci`) (rework 1)
+- mutation: the AC5 principal's role also holds `%Admin_ExternalLanguageServerEdit:U` → `language-servers.browser-spec.mjs` AC5 red on its exact list alone, External language servers open (1/2, `ocupilot-b-ci`) (CR, rework 1)
+- mutation: the AC5 principal's role also holds `%Admin_Journal:U` → AC5 red on "Journal settings is unavailable on its own pair" (1/2, `ocupilot-b-ci`; re-run on the CR-patched leg) (rework 1)
 
 ## Auto Run Result
 

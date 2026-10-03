@@ -9064,6 +9064,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-5-journals.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Reproduced on ocupilot-b-ci 2026-10-02: Prohibited.Target treats JournalPort DIRSTATE's 409 NOOTHER at the confirm's fresh read as an error; fails closed, nothing switches
 - 2026-10-02T18:49:28Z status=routed owner=18-18-journal-settings by=harvest note=Journal settings makes primary==alternate reachable; map a NOOTHER fresh read to the target-changed refusal
+- 2026-10-03T04:30:11Z status=resolved-by:18-18-journal-settings owner=18-18-journal-settings by=adjudication note=PRECONDITIONCODES: a stale switch-directory confirm closes 409 target-changed (e16c410a; DW-1950 mutation run 3237)
 ### DW-1945: Story 19.2's AC3 pin (ExplorerWrite.MintFor) calls the tool's View directly, skipping the dispatcher's governance, schema check, pairs and the tool result the model reads
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
