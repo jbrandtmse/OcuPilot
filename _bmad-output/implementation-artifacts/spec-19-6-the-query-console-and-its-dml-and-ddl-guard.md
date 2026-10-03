@@ -4,41 +4,14 @@ type: 'feature'
 created: '2026-10-03'
 status: 'done'
 baseline_revision: '3858df8f6c5587f22660dd42ba618b7f1dd7f2b2'
+baseline_commit: '3858df8f6c5587f22660dd42ba618b7f1dd7f2b2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      Vendor candidate: a CREATE TABLE text a privileged account has already prepared in a namespace is
-      answered from its cached query without the next principal's privilege check, so a principal with no
-      DDL privilege creates the table through %Prepare(text, 1); DW-1964's CREATE TABLE leg uses a fresh name per run.
-    evidence: |-
-      ocupilot-a2-ci 2026-10-03: principal with %Development:USE, %DB_USER:RW, no grants; CREATE TABLE OcuProbe196.Made (X INTEGER)
-      ran after _SYSTEM had prepared the same text, and answered -99 under a never-prepared name; DROP TABLE,
-      TRUNCATE, SELECT and UPDATE stayed -99. The classic SQL page prepares the same way (inference).
-    location: 'src/OcuPilot/Port/SqlPort.cls (Prepared, Executed)'
-    severity: 'medium'
-  - summary: >-
-      An INSERT through a view over OcuPilot's tables, by a principal granted privileges on the view but not
-      on its base tables, is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for
-      an INSERT, and INFORMATION_SCHEMA.VIEW_TABLE_USAGE hides the base table from that principal.
-    evidence: |-
-      ocupilot-a2-ci 2026-10-03: principal with %Development:USE, %DB_HSCUSTOM:RW and SELECT, INSERT, DELETE on a view
-      over OcuPilot_Kernel_State.Proposal; Classify recorded only the view for INSERT, the base table for DELETE and
-      SELECT. As %All the view expansion finds it. Whether the vendor then runs that INSERT is unmeasured.
-    location: 'src/OcuPilot/Port/SqlPort.cls (Prepared)'
-    severity: 'medium'
-  - summary: >-
-      Whether an IRIS SQL form other than IDENTIFY BY or IDENTIFIED BY sets a password, which the pre-prepare text
-      refusal would let reach the statement index (DW-1982's root cause).
-    evidence: |-
-      Settle by listing the IRIS SQL statements that accept a password. A name probe of INFORMATION_SCHEMA.ROUTINES in
-      HSCUSTOM found no password-setting routine (inference: a name probe does not cover the population).
-    location: 'src/OcuPilot/Port/SqlPort.cls (PASSWORDPATTERN)'
-    severity: 'medium (unverified)'
+deferred: []
 ---
 
 <intent-contract>
@@ -235,6 +208,8 @@ deferred:
 - **DW-1964:** Given a principal with `%Development:USE` and `%DB_USER:RW` granted SELECT on one probe table only, when it runs SELECT, UPDATE, TRUNCATE, CREATE TABLE and CALL against the other through the console's run route and its write path, then each answers SQLCODE -99 and the table is unchanged. No console path calls `action/query` (the `SqlPort` source pin).
 
 ## Spec Change Log
+
+- 2026-10-03, lead (dev_complete): the `deferred:` items are harvested: the cached CREATE TABLE privilege bypass as DW-1986 (vendor-defect candidate), the view-only INSERT gap as DW-1987 and the password-syntax question as DW-1988 (both routed to this story for the code review).
 
 - 2026-10-03, lead (spec gate, by=merge_gate): the split is approved: Story 19.15 (`19-15-the-query-console-runs-a-query-in-the-background`, right after 19.6) takes the run-in-background option; this spec's scope stands. The design is approved as planned; the spine carries the drafts (AD-61's named case for `Port/SqlPort` with the alarm-rollback and `Explain` measurements, AD-10, AD-21, AD-36, AD-39, AD-53, AD-51, AD-44, AD-13, AD-8). The plan's `deferred:` vendor item is filed as DW-1982 (decision-pending). Contended edits approved: EXPERIENCE.md :159 in place; :173 hand-merged by whichever of 19.6 and Epic 18's story lands second, keeping both; `angular.json` under the re-measure rule.
 

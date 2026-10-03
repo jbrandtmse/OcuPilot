@@ -9263,3 +9263,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: gate-spec settle fix (DW-1975) | severity: low | fix-risk: low | footprint: cross-epic
 - evidence: found by the DW-1975 fix's held-read reproduction: test 6 failed under the hook with the old and new spec when the whole file ran, passed alone; not yet seen in CI
 - 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=one-line fix: wait for .ocu-form-bar-actions before the Cancel lookup
+
+### DW-1986: IRIS defect candidate: a CREATE TABLE text another account has already prepared in the namespace is answered from its cached query without the next principal's privilege check, so a principal with no DDL privilege creates the table through %Prepare(text, 1)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_USER:RW, no grants ran CREATE TABLE after _SYSTEM prepared the same text and got -99 under a never-prepared name; DROP, TRUNCATE, SELECT, UPDATE stayed -99
+- 2026-10-03T22:13:40Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with DW-1963 and DW-1982; the classic SQL page prepares the same way (inference)
+
+### DW-1987: An INSERT through a view over OcuPilot's tables by a principal granted the view but not its base tables is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for an INSERT and VIEW_TABLE_USAGE hides the base table from that principal
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_HSCUSTOM:RW and SELECT, INSERT, DELETE on a view over OcuPilot_Kernel_State.Proposal; the INSERT recorded only the view; whether the vendor then runs it is unmeasured
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review fails it closed (refuse DML over a view whose base tables the port cannot fully resolve as the instance sees them) or states why not
+
+### DW-1988: Whether an IRIS SQL form other than IDENTIFY BY or IDENTIFIED BY sets a password, which the console's pre-prepare refusal would let reach the statement index (DW-1982)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: SqlPort PASSWORDPATTERN covers IDENTIFY BY / IDENTIFIED BY; a name probe of INFORMATION_SCHEMA.ROUTINES found no password-setting routine (inference: a name probe does not cover the population)
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review settles it from the IRIS SQL reference (statements that accept a password) and widens the refusal if needed
