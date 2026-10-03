@@ -27,12 +27,13 @@ Parameter SETTINGSCONFIRM = "OcuPilot.Test.DatabaseConfirm";
 
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A
-/// step is <code>{kind: "action"|"confirm"|"save"|"confirmsettings", action, id, values, proposalId,
-/// body}</code>, a <code>save</code> being Journal settings' Save of <code>body</code> and a
+/// step is <code>{kind: "action"|"confirm"|"save"|"savesent"|"confirmsettings", action, id, values,
+/// proposalId, body}</code>, a <code>save</code> being Journal settings' Save of <code>body</code>, held
+/// at the port, a <code>savesent</code> the same Save sent to the instance, and a
 /// <code>confirmsettings</code> a settings proposal's confirm through
 /// <parameter>SETTINGSCONFIRM</parameter>; its answer is
-/// <code>{http, code, failedPair, calls, types}</code>, what the port was asked during that step
-/// alone.</p>
+/// <code>{http, code, failedPair, calls, types, verdict?}</code>, what the port was asked during that
+/// step alone and the read-back's verdict when the answer carries one.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
 {
     Set tOut = {}
@@ -65,6 +66,10 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
     Do $ClassMethod(..#SEAM, "Clear")
     If pStep.%Get("kind") = "save" {
         Set tSC = ..Save(pStep.%Get("body"), .tBody, .tHttp)
+    } ElseIf pStep.%Get("kind") = "savesent" {
+        Do $ClassMethod(..#SETTINGSPORT, "Release")
+        Set tSC = ..Save(pStep.%Get("body"), .tBody, .tHttp)
+        Do $ClassMethod(..#SETTINGSPORT, "Hold")
     } ElseIf pStep.%Get("kind") = "confirmsettings" {
         Set tSC = $ClassMethod(..#SETTINGSCONFIRM, "Confirm", pStep.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
         If $$$ISOK(tSC) && (tCode = "") Set tHttp = 200
@@ -87,6 +92,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         If $IsObject(tAnswer) {
             Set tCode = tAnswer.%Get("code")
             If $IsObject(tAnswer.%Get("detail")) Set tPair = tAnswer.%Get("detail").%Get("failedPair")
+            If $IsObject(tAnswer.%Get("readBack")) Do tLeg.%Set("verdict", tAnswer.%Get("readBack").%Get("verdict"), "string")
         }
     }
     Do tLeg.%Set("http", +tHttp, "number")

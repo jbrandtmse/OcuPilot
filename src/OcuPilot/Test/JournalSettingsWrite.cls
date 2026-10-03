@@ -6,7 +6,8 @@
 /// recorded by <class>OcuPilot.Test.JournalSettingsPort</class>: a size change sending the settable set
 /// read fresh and none of the shown-only keys; a key moved since the mint refusing the confirm; an
 /// alternate picked to a probe directory that Journals' directory switch then moves journaling to and
-/// back; the purge rule's two branches; and the Freeze on error consequence on the card.</p>
+/// back; a primary picked to it, which journaling moves to at once; the purge rule's two branches; and
+/// the Freeze on error consequence on the card.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s test account, journaling on, a caller holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>: it changes the
@@ -193,6 +194,24 @@ Method TestAnAlternatePickedIsStoredAndSwitchedToAndBack()
     Do $$$AssertEquals(##class(%File).NormalizeDirectory($ClassMethod(..#PROBE, "JournalSettings").%Get("AlternateDirectory")), tDirectory, "the instance holds the alternate")
 }
 
+/// <p>AC3, AD-21: a primary picked as an allowed root and a probe directory's name, on the Save, is
+/// sent under the vendor's primary key, read back, and journaling moves there at once (measured at
+/// the story's Task 0).</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Screen.Tool.JournalSettingsUpdate.DerivedFields</method>
+/// set the primary under the alternate's key -&gt; the payload's primary is the old one, the read-back
+/// differs and this goes red.</p>
+Method TestAPrimaryPickedIsStoredAndJournaledTo()
+{
+    Set tSC = $ClassMethod(..#PROBE, "SeedDirectory", ..#DIRSUFFIX, .tDirectory)
+    Do $$$AssertStatusOK(tSC, "the probe directory exists")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Save({"primaryRoot": ($ClassMethod(..#PROBE, "Manager")), "primaryPath": ($Piece(tDirectory, "/", *-1))}, .tHttp, .tCode, .tFields, .tReadBack)
+    Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "200 ", "the Save answers 200")
+    Do $$$AssertEquals(..Member($ClassMethod(..#SEAM, "PutBody", 1), "CurrentDirectory"), tDirectory, "sending the resolved directory under the vendor's primary key")
+    Do $$$AssertEquals(..Verdict(tReadBack), "matches", "and its read-back matches, compared unslashed")
+    Do $$$AssertEquals($ZConvert($ClassMethod(..#PROBE, "CurrentDirectory"), "L"), $ZConvert(tDirectory, "L"), "journaling writes in the new primary at once")
+}
+
 /// <p>AC4: the classic page's purge rule shapes every body. With no archive target,
 /// <code>PurgeArchived</code> sent true is sent false, on the Save and on the agent's confirmed
 /// proposal; over a fresh read naming an archive target with <code>PurgeArchived</code> on, the merge
@@ -210,6 +229,7 @@ Method TestThePurgeRuleShapesTheBody()
     Do $$$AssertEquals(tHttp _ " " _ tCode _ tFields, "200 ", "the Save answers 200")
     Set tBody = $ClassMethod(..#SEAM, "PutBody", 1)
     Do $$$AssertEquals(..Member(tBody, "PurgeArchived") _ " " _ ..Member(tBody, "DaysBeforePurge") _ " " _ ..Member(tBody, "BackupsBeforePurge"), "0 " _ tSaved.%Get("DaysBeforePurge") _ " " _ tSaved.%Get("BackupsBeforePurge"), "with no archive target the flag is sent false and the counts as read: " _ tBody)
+    Do $$$AssertEquals(..Verdict(tReadBack), "matches", "and its read-back matches, so the Save's own merge sent the flag false, not only the port")
     Do $$$AssertStatusOK(..Restore(), "the size is put back")
     Do $ClassMethod(..#SEAM, "Clear")
 
@@ -268,7 +288,8 @@ Method TestFreezeOnErrorCarriesItsConsequence()
 /// key 400 <code>PORT.FIELD.UNEXPECTED</code> on that field with nothing written, and a size change
 /// 200 with its read-back, each as JSON.</p>
 /// <p>Mutation (Rule 19): admit every key in <method>OcuPilot.Area.OsMgmt.JournalSave.Update</method>
-/// -&gt; the shown-only key reaches the vendor and the 400 leg goes red.</p>
+/// -&gt; the kernel merge refuses the key as <code>TOOL.ARGUMENTS</code> instead and the 400 leg's
+/// code goes red.</p>
 Method TestTheRouteAnswersOverTheWire()
 {
     Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/journal/settings"

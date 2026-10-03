@@ -24,6 +24,12 @@ ClassMethod Hold()
     Set ^||OcuPilotJournalSettingsPort("hold") = 1
 }
 
+/// <p>Send the next settings <code>PUT</code>s to the instance again, as before <method>Hold</method>.</p>
+ClassMethod Release()
+{
+    Kill ^||OcuPilotJournalSettingsPort("hold")
+}
+
 /// <p>Answer the settings <code>GET</code> with <code>ArchiveName</code> reading <var>pName</var>, until
 /// <method>Clear</method>, so a test reaches the port's purge rule for an archive target without
 /// creating one.</p>

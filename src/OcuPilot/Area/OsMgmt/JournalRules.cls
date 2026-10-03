@@ -5,7 +5,8 @@
 /// rule over the arguments a merge applies (<method>PurgeRule</method>).</p>
 /// <p><b>Every sentence is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s</b>, and each
 /// refuses a value the admin API's <code>PUT</code> would answer 500 for, store rounded or store
-/// unchecked (measured at the story's Task 0): it checks no type, range or directory itself.</p>
+/// unchecked (measured at the story's Task 0): the admin API checks no type, range or directory
+/// itself.</p>
 Class OcuPilot.Area.OsMgmt.JournalRules Extends %RegisteredObject
 {
 
@@ -83,13 +84,14 @@ ClassMethod Validate(pArgs As %DynamicObject, Output pViolations, Output pHttpSt
 
 /// <p>The rules of <method>Validate</method> as one problem sentence naming each field and its
 /// published sentence, or <code>""</code>, in <var>pProblem</var>: what the tool's
-/// <code>ArgumentProblem</code> answers. A refusal that names no field answers its own sentence.</p>
+/// <code>ArgumentProblem</code> answers. A refusal that names no field answers its own sentence; an
+/// internal fault is an error status.</p>
 ClassMethod Problem(pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
     Set tSC = ..Validate(pArgs, .tViolations, .tHttp, .tFault)
     If $$$ISERR(tSC) {
-        If '$IsObject($Get(tFault)) Quit tSC
+        If '$IsObject($Get(tFault)) || (tFault.%Get("reason") = "") || (tFault.%Get("code") = ##class(OcuPilot.Api.Error).#INTERNAL) Quit tSC
         Set pProblem = tFault.%Get("reason")
         Quit $$$OK
     }

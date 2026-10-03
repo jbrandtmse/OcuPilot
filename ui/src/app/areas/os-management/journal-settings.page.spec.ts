@@ -134,6 +134,7 @@ describe('JournalSettingsPage', () => {
     input(host, 'ocu-journal-settings-FreezeOnError').click();
     await settle(fixture);
     expect(host.querySelector('[data-slot="freeze-consequence"]')?.textContent?.trim()).toBe(STRINGS.journalSettingsFreezeConsequence);
+    expect(host.querySelector('[data-field="FreezeOnError"] [data-slot="freeze-consequence"]')).not.toBeNull();
     expect(input(host, 'ocu-journal-settings-FreezeOnError').getAttribute('aria-describedby')).toBe('ocu-journal-settings-freeze-consequence');
   });
 

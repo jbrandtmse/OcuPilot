@@ -68,6 +68,8 @@ interface FlagView {
   readonly reason: string;
   readonly invalid: boolean;
   readonly describedBy: string | null;
+  /** The id of the consequence drawn under this checkbox while it is checked, or null. */
+  readonly consequence: string | null;
 }
 
 /** One directory, resolved for drawing. */
@@ -248,10 +250,10 @@ interface DirectoryView {
           @if (view.invalid) {
             <p class="ocu-form-error" [id]="view.id + '-reason'">{{ view.reason }}</p>
           }
+          @if (view.consequence) {
+            <p class="ocu-field-caption" [id]="view.consequence" data-slot="freeze-consequence">{{ STRINGS.journalSettingsFreezeConsequence }}</p>
+          }
         </div>
-      }
-      @if (freezeOn) {
-        <p class="ocu-field-caption" [id]="freezeConsequenceId" data-slot="freeze-consequence">{{ STRINGS.journalSettingsFreezeConsequence }}</p>
       }
     </section>
 
@@ -312,7 +314,6 @@ export class JournalSettingsPage {
 
   protected readonly shownOnlyHintId = SHOWN_ONLY_HINT_ID;
 
-  protected readonly freezeConsequenceId = FREEZE_CONSEQUENCE_ID;
 
   /** Bumped by the stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
@@ -438,12 +439,6 @@ export class JournalSettingsPage {
     ];
   }
 
-  /** Whether Freeze on error is checked, which draws its consequence under the checkbox. */
-  protected get freezeOn(): boolean {
-    this.generation();
-    return this.store.flag(FREEZE_FIELD);
-  }
-
   protected get archiveValue(): string {
     this.generation();
     const value = this.store.shown(ARCHIVE_FIELD);
@@ -531,7 +526,7 @@ export class JournalSettingsPage {
     const reason = this.store.violationFor(field);
     const invalid = reason !== '';
     const described = [invalid ? `${id}-reason` : null, consequence].filter((entry): entry is string => entry !== null);
-    return { field, label, id, checked: this.store.flag(field), disabled, reason, invalid, describedBy: described.length === 0 ? null : described.join(' ') };
+    return { field, label, id, checked: this.store.flag(field), disabled, reason, invalid, describedBy: described.length === 0 ? null : described.join(' '), consequence };
   }
 
   /** After a refused Save: the error summary takes focus, then the first invalid field. */

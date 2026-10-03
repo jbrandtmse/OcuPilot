@@ -110,6 +110,25 @@ describe('the journal settings store', () => {
     expect(JSON.parse(writes(calls)[0].body)).toEqual({ alternateRoot: '/durable/iris/mgr/', alternatePath: 'journal2' });
   });
 
+  it('AD-21: a name typed before any root is chosen is sent, so the Save refuses it on the root rather than reading saved', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    store.changeDirectory('primary');
+    store.setDirectoryLocation('primary', '', 'journal2', false);
+    await store.save();
+    expect(JSON.parse(writes(calls)[0]?.body ?? '{}')).toEqual({ primaryRoot: '', primaryPath: 'journal2' });
+  });
+
+  it('AD-58: a Save that sends nothing after an accepted one shows no read-back of the earlier write', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    store.setText('FileSizeLimit', '1000');
+    await store.save();
+    expect(store.readBack()?.verdict).toBe('matches');
+    expect(await store.save()).toBe(true);
+    expect([writes(calls).length, store.saved(), store.readBack()]).toEqual([1, true, null]);
+  });
+
   it('Cancel beside a picker sends nothing for that directory, and the form is clean again', async () => {
     const { store, calls, formDirty } = mount();
     await store.open();

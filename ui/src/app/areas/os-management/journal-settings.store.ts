@@ -357,6 +357,7 @@ export class JournalSettingsForm {
     const body = this.saveBody();
     if (Object.keys(body).length === 0) {
       this.clearRefusal();
+      this.readBackValue = null;
       this.savedValue = true;
       this.formDirty.setDirty(false);
       this.notify();
@@ -399,7 +400,10 @@ export class JournalSettingsForm {
     return this.injector.get(ApiService);
   }
 
-  /** The body of a Save: the changed fields only, and a directory's two arguments only while it is changed. */
+  /**
+   * The body of a Save: the changed fields only, and a directory's two arguments only while it is
+   * changed and names something, a name with no root chosen included so the Save refuses it on the root.
+   */
   private saveBody(): Record<string, unknown> {
     const body: Record<string, unknown> = {};
     for (const field of TEXT_FIELDS) {
@@ -410,7 +414,7 @@ export class JournalSettingsForm {
       if (this.flag(field) !== (this.openedFlags[field] ?? false)) body[field] = this.flag(field);
     }
     for (const which of JOURNAL_DIRECTORIES) {
-      if (!this.changing(which) || this.root(which) === '') continue;
+      if (!this.changing(which) || (this.root(which) === '' && this.path(which) === '')) continue;
       body[rootField(which)] = this.root(which);
       body[pathField(which)] = this.path(which);
     }

@@ -4,7 +4,7 @@
  *
  * What it pins, each on rendered DOM or on the instance itself:
  *
- * 1. **The list** (AC1, AC11): OS management's thirteenth and last side-bar entry reads "Journals",
+ * 1. **The list** (AC1, AC11): OS management's thirteenth side-bar entry reads "Journals",
  *    Logs lists no journal screen, and the list's first row is the file the instance writes now.
  * 2. **Switch file** (AC3): the command bar's screen-level Switch file warns naming that file, and
  *    once proceeded the list re-reads with a new newest file, the one the instance now writes, in

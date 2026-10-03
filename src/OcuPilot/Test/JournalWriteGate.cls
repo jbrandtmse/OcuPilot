@@ -4,7 +4,8 @@
 /// and at the agent's confirm of each tool, with zero port calls; and a principal holding exactly the
 /// declared pairs reaches the port on both callers. And Story 18.18's settings update the same way, at
 /// the mint's gate, on the Save (<class>OcuPilot.Test.JournalSettingsSaveFixture</class>) and at the
-/// confirm.</p>
+/// confirm; and a principal holding exactly its declared pairs completes a settings write on the
+/// instance, which changes the journal settings and starts a journal file until they are restored.</p>
 /// <p>The legs run in a child process logged in as the principal
 /// (<class>OcuPilot.Test.JournalWriteGateProbe</class>), which reports what
 /// <class>OcuPilot.Test.JournalIntegrityPort</class> was asked; the integrity check is answered by that
@@ -221,6 +222,27 @@ Method TestEachMissingSettingsPairIsRefusedByNameBeforeAnyPortCall()
     Set tRun = ..RunChild(tUser, [(tStep)])
     Set tLeg = ..Leg(tRun, 1)
     Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("http") = 200) && (tLeg.%Get("calls") > 0) && (tLeg.%Get("types") [ "Journal.Settings/GET"), "and its Save reaches the port's read: " _ ..LegText(tRun, 1))
+}
+
+/// <p>Story 18.18, AD-8: a principal holding exactly Journal settings' declared pairs, the path port's
+/// beside them, completes a changed-size Save on the instance: 200, read back <code>matches</code>,
+/// and the size stored, never the measured half-applied write (stored, then 500).</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_Operate:USE</code> from
+/// <parameter>OcuPilot.Screen.Tool.JournalSettingsUpdate.EXTRAPAIRS</parameter> and from this
+/// principal -&gt; the gate admits it, the vendor stores the size and answers 500, and this goes
+/// red.</p>
+Method TestExactlyTheDeclaredSettingsPairsCompleteAWrite()
+{
+    Set tUser = $Piece($Piece(..#SETTINGSPRINCIPALS, ",", 5), ":", 1)
+    Set tOther = $Select($ClassMethod(..#PROBE, "JournalSettings").%Get("FileSizeLimit") = 1000: 1001, 1: 1000)
+    Set tStep = {"kind": "savesent"}
+    Do tStep.%Set("body", {"FileSizeLimit": (tOther)})
+    Set tRun = ..RunChild(tUser, [(tStep)])
+    Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
+    Set tLeg = ..Leg(tRun, 1)
+    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("verdict"), 1: "absent"), "200 matches", "the Save completes and reads back matches: " _ ..LegText(tRun, 1))
+    Do $$$AssertTrue($IsObject(tLeg) && (tLeg.%Get("types") [ "Journal.Settings/PUT"), "sending the settings PUT to the instance")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "JournalSettings").%Get("FileSizeLimit"), tOther, "and the instance holds the size")
 }
 
 /// <p>Mint Journal settings' proposal for <var>pUser</var> carrying <var>pArgs</var>, read as the
