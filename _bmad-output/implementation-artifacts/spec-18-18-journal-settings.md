@@ -10,7 +10,7 @@ context:
 warnings: ['oversized']
 deferred: []
 baseline_revision: 'a1c7fd5846b9ef72c97bfe7d1b8b3df0aa7cc733'
-baseline_commit: '71e24556d9b041a2f354275097ba2345e36b90ca'
+baseline_commit: 'a1c7fd5846b9ef72c97bfe7d1b8b3df0aa7cc733'
 ---
 
 <intent-contract>
