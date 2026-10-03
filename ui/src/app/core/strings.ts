@@ -4920,6 +4920,8 @@ export const STRINGS = {
   explorerSqlProcedureStatementsPrompt2: 'How often is this procedure called?',
   /** EXPERIENCE.md:596 */
   explorerSqlProcedureStatementsPrompt3: 'Where is this procedure called from?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
 } as const;
 
 /**

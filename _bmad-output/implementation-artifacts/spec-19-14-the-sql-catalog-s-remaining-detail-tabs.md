@@ -2,9 +2,9 @@
 title: "Story 19.14: The SQL catalog's remaining detail tabs"
 type: 'feature'
 created: '2026-10-03'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '8c24bca121f307d187915edd05ed7ec288004da9'
+baseline_revision: '8dc0806552d6d02806254042b2706d0e0ef0a7db'
 baseline_commit: '8c24bca121f307d187915edd05ed7ec288004da9'
 followup_review_recommended: false
 context:
@@ -12,7 +12,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-19-5-the-sql-catalog-browser.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The spine does not record the optional `read.note` declaration key (`key` and `text`) that Story 19.14's DW-1977 follow-up adds.
+    evidence: |-
+      Registry.ReadProblem and screen-mirror.mjs readProblem accept read.note, validated alike over ReadSourceCorpus; AD-36 lists the read's declared features and records a criterion's hint (ARCHITECTURE-SPINE.md:598) but has no note clause.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md (AD-36)
+    severity: medium
 ---
 
 <intent-contract>
@@ -135,7 +142,7 @@ deferred: []
   - `system-explorer-sql.browser-spec.mjs`: nine table tabs; Partitions empty on `Visible`; SQL statements shows the probe statement; open a view (View info shows its text, then Fields, then SQL statements); open a procedure.
 - [ ] `ui/angular.json`, `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Repair the cut comment lines at :424, :430 and :433. Stop and ask above 3,800 kB.
 
-- [ ] [Follow-up] DW-1977 (by=merge_gate): one sentence, a Fixed string in this story's EXPERIENCE.md row, saying the statistics are as of the instance's last aggregation (a recently run statement can read blank), shown as the note on the three SQL statements tabs and in the three statements read tools' descriptions. No aggregation, no `StatementIndex`, no read changes. Pin it with a test and a `mutation:` line.
+- [x] [Follow-up] DW-1977 (by=merge_gate): one sentence, a Fixed string in this story's EXPERIENCE.md row, saying the statistics are as of the instance's last aggregation (a recently run statement can read blank), shown as the note on the three SQL statements tabs and in the three statements read tools' descriptions. No aggregation, no `StatementIndex`, no read changes. Pin it with a test and a `mutation:` line.
 
 **Acceptance Criteria:**
 
@@ -212,6 +219,19 @@ Rejected:
   - `[false]` `[reject]` The 403 legs cover 2 of the 9 endpoints — `Invoke` evaluates both pair sets (`AtelierPort.cls:839`, `:857`) before any endpoint dispatch, for every endpoint.
   - `[false]` `[reject]` The order gate, version, arguments is untested for the new kinds — the version check (`:871-878`) precedes `CatalogRows` (`:943`) in `Invoke` for every endpoint.
   - `[false]` `[reject]` The procedure group's id carry is exercised only in the browser — that leg asserts the id on the statements path and is green; the mechanism is 19.5's.
+
+### 2026-10-03 — Review pass (rework 1)
+
+- verdicts: 8 findings — high 0, medium 1, low 4, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote` checked only the description's suffix, so a `Read.Description` that replaced its sentence with the note stayed green (verification-gap) — the four description legs now assert exact equality; the replace mutation reddens it (run 3829), green again 3830.
+  - `[medium]` `[defer]` The spine does not record the `read.note` declaration key, where AD-36 records a criterion's `hint` (intent-alignment) — the fix is a spine write, which Rule 20 gives the lead and this stage may not make; filed in `deferred:`.
+  - `[low]` `[reject]` EXPERIENCE.md's Component Patterns and screen contract do not mention the note element (intent-alignment) — the 19.14 Fixed-strings row records the sentence and where it shows; a pattern paragraph is new document surface for one element on three screens.
+  - `[low]` `[reject]` The bundle budget moves from 2621kB to 2622kB, which the item does not mention (intent-alignment) — the measured build is 2,621,812 bytes; the two lines are the story's approved contended re-base, and the Epic 18 merge re-measures either way.
+  - `[false]` `[reject]` A general `read.note` key changes the read contract, against "no read changes" (intent-alignment, reading E2) — the item's "no read changes" sits beside "no aggregation, no `StatementIndex`"; no port statement, `Screen/Read.cls` or row field changes, and the mirror test limits the note to the three statements reads.
+  - `[false]` `[reject]` "No read changes" has no test, and `AtelierPortCatalogTabs` was not re-run (intent-alignment) — the diff holds no port, read executor or row-field file, so no read can differ.
+  - `[low]` `[reject]` The note shows above the table while a refusal banner is up (intent-alignment) — a static sentence about statistics beside a refusal misleads no one, and hiding it adds a branch.
+  - `[false]` `[reject]` The EXPERIENCE.md-to-`STRINGS` link rests on a test the auditor did not run (intent-alignment) — `npm run test:tools` ran it green (1,781), its Fixed-strings literal and line-citation checks included.
 
 ## Design Notes
 
@@ -377,6 +397,14 @@ The `SUBSTRING` keeps a full answer under the capture ceiling. It cuts at 1,021 
 
 **Integration ACs:** AC11. **Ledger inbox:** none owned; DW-1001 occurrence in `deferred:`.
 
+**Follow-up DW-1977 (rework 1).** The sentence is "Statistics are as of the instance's last aggregation, so a recently run statement can read blank.", key `explorerSqlStatementsNote`.
+
+- The three statements descriptors declare it on their read: `"note": {"key": "explorerSqlStatementsNote", "text": "<the sentence>"}` (AD-5, AD-36). `Registry.ReadProblem` and the mirror's `readProblem` accept it alike: absent or null is sound; otherwise an object of exactly `key` and `text`, each a non-empty string. The cases go in the corpus both engines already run for `readProblem`.
+- `ListPage` renders the declared note's string above the table, whatever the row count. `declaredStringKeys` lists the key. `Screen.Tool.Read.Description` appends the `text`.
+- `screen-mirror.test.mjs` holds each declared `text` equal to `STRINGS[key]`. The sentence is appended to the literals of EXPERIENCE.md's 19.14 row (:596).
+- Tests: `ExplorerDescriptor` (the three tools' descriptions end with the sentence, and the table info tool's does not), the corpus in both engines, a component spec, and the browser spec on the three statements tabs.
+- Footprint: Epic 18 edits `Registry.cls` :1479-1770, `screen-mirror.mjs` :1732-1800 and :3386-3410, `Read.cls` :142-180 and `_components.scss` :742 and :2831. This pass keeps clear of those lines.
+
 ## Verification
 
 Load source into `ocupilot-a2-ci` and never restart it:
@@ -426,6 +454,11 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - (QA) No test added: every AC and matrix row has a real-runtime pin with a recorded mutation; AtelierPortCatalogTabs (run 3804) and AtelierPortCatalogTabsLive (run 3805) re-run green on a clean reload of the tree.
 - (CR) mutation: AC1, AC5, `CATALOGSTATEMENTSQUERY` put back to the build's (cut at 1,024 unmarked, a row per location, no `GROUP BY`) → `AtelierPortCatalogTabs.TestNoStatementReadSelectsAnIdentifyingColumn` (run 3810) and `AtelierPortCatalogTabsLive.TestLongTextIsWholeThroughTheRead` (run 3811).
 - (CR) mutation: AC5, `AS EXECUTIONS` renamed in the port's statement alone and `%SQL_Manager.StatementIndex` written into `CatalogRelation`'s body → the same test's exact-statement and method-scan assertions (run 3812). Reverted byte for byte; green again: `AtelierPortCatalogTabs` 3813, `AtelierPortCatalogTabsLive` 3814, `ExplorerCatalog` 3808, `InjectionChannels` 3809, `ExplorerDescriptor` 3815, `system-explorer-sql.browser-spec.mjs`, `npm run test:tools` (1,780).
+- (rework 1) mutation: DW-1977, `Registry.ReadProblem`'s note check skipped → `ReadTool.TestEveryReadSourceCorpusCaseGetsItsSentence` (run 3821); the same skip in `screen-mirror.mjs`' `readProblem` → `screen-mirror.test.mjs`' ReadSourceCorpus leg ("a note that is a string").
+- (rework 1) mutation: DW-1977, the note append dropped from `Screen.Tool.Read.Description` → `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote`, its three description legs (run 3822); the note dropped from `ExplorerSqlViewStatements` → the same test's two view legs (run 3823).
+- (rework 1) mutation: DW-1977, the note key dropped from `declaredStringKeys` → `screen-mirror.test.mjs` "every read note's text is the string its key names".
+- (rework 1) mutation: DW-1977, the note paragraph dropped from `ListPage`'s template → `list-page.spec.ts`' three Story 19.14 note legs; rebuilt and redeployed → `system-explorer-sql.browser-spec.mjs`' three statements legs. Each reverted byte for byte, `git status --short` and `git diff --stat` as before; green again: `ExplorerDescriptor` 3824, `ReadTool` 3825, `Descriptor` 3826, `ToolRoundTrip` 3827, the browser spec on the redeployed bundle, `npm run test:tools` (1,781).
+- (rework 1, review) mutation: DW-1977, `Screen.Tool.Read.Description` replaces its sentence with the note's text instead of appending it → `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote`, its three exact-description legs (run 3829); reverted byte for byte, green again 3830.
 
 ## Auto Run Result
 
@@ -457,6 +490,14 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - A statement over 1,021 characters is cut with `...` on the screen, as the classic tab does (code review).
 - Nine tabs page the strip behind its arrows at common widths.
 - Merge conflicts with Epic 18 are expected on the approved contended lines.
+
+**Rework 1 (DW-1977).**
+
+- **Change.** The three SQL statements reads declare `read.note` (`explorerSqlStatementsNote`: "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."). `Registry.ReadProblem` and the mirror's `readProblem` accept the key alike over eight `ReadSourceCorpus` cases, `ListPage` draws the note above the table, and `Read.Description` appends its text. No read, port statement or row field changes.
+- **Files.** The three `ExplorerSql*Statements.cls` descriptors; `Screen/Registry.cls`, `Screen/Tool/Read.cls`; `ui/tools/screen-mirror.mjs` and `screens.generated.ts`; `list-page.ts`, `_components.scss`; `strings.ts` and EXPERIENCE.md :596. Tests: `ExplorerDescriptor`, `ReadSourceCorpus`, `screen-mirror.test.mjs`, `list-page.spec.ts`, `system-explorer-sql.browser-spec.mjs`. `angular.json` and `angular-json.test.mjs`: budget 2622kB (measured 2,621,812 bytes).
+- **Review.** 8 findings: medium 1, low 4, false 3. Patched 1 low (the description test asserts exact equality). Deferred 1 medium (AD-36 does not record `read.note`; a spine write for the lead, Rule 20). Rejected 3 low and 3 false, reasons in the triage log. Follow-up review: `false` (follow-up pass; patched high 0, medium 0, low 1).
+- **Verification (`ocupilot-a2-ci`).** Each green alone: `ExplorerDescriptor` 3830, `ReadTool` 3825, `Descriptor` 3826, `ToolRoundTrip` 3827. `npm run test:tools` 1,781 pass; shell component specs 964 pass. On the rebuilt bundle, whose `main` hash equals the deployed one: `system-explorer-sql` 4/4, `a11y-structural-invariants` 12/12. `check-objectscript` 0 problems, `lint-docs` 0 issues. Mutations are in `## Verification`.
+- **Residual risks.** `angular.json:54` and the pinned line in `angular-json.test.mjs` are the story's approved contended re-base, which Epic 18 also edits; this pass changes only their value. `strings.ts` gains one key at its end, where Epic 18 also appends.
 
 Status: done
 Blocking condition: none

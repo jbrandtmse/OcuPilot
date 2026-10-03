@@ -14,6 +14,9 @@
 /// Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter>, beside READ on the
 /// namespace's code databases (AD-29). It replaces <code>%CSP.UI.Portal.SQL.Home</code>, whose
 /// custom resource also gates it (AD-44). No action and no refresh (AD-43).</p>
+/// <p>Its read declares a <code>note</code>: the statistics are as of the instance's last
+/// aggregation, so a recently run statement can read blank. The page shows it above the rows and the
+/// read tool's description ends with it (AD-36).</p>
 Class OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -52,6 +55,7 @@ XData Declaration
     "filter": ["Statement", "PlanState", "Location"],
     "sort": {"fields": ["Statement", "Executions", "TotalTime", "FirstSeen"], "default": "Statement", "direction": "asc"},
     "paging": "cap",
+    "note": {"key": "explorerSqlStatementsNote", "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."},
     "criteria": {
       "fields": [
         {"param": "table", "labelKey": "explorerSqlColumnTable", "kind": "text", "maxLength": 257}

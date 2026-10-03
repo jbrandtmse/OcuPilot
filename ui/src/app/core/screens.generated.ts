@@ -290,6 +290,8 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
   /** The server-search criteria this read carries, absent for a read bounded by the cap alone. */
   readonly criteria?: ReadCriteria | null;
+  /** One sentence about the rows, shown above the table and ending the read tool's description. */
+  readonly note?: { readonly key: string; readonly text: string } | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
@@ -6488,6 +6490,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "direction": "asc"
       },
       "paging": "cap",
+      "note": {
+        "key": "explorerSqlStatementsNote",
+        "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
+      },
       "criteria": {
         "fields": [
           {
@@ -7138,6 +7144,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "direction": "asc"
       },
       "paging": "cap",
+      "note": {
+        "key": "explorerSqlStatementsNote",
+        "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
+      },
       "criteria": {
         "fields": [
           {
@@ -7956,6 +7966,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "direction": "asc"
       },
       "paging": "cap",
+      "note": {
+        "key": "explorerSqlStatementsNote",
+        "text": "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
+      },
       "criteria": {
         "fields": [
           {

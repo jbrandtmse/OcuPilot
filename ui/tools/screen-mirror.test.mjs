@@ -182,6 +182,32 @@ test('every string key a table or banner declaration names is one the key check 
   );
 });
 
+// Story 19.14 (DW-1977): a read's note is one sentence in two places, the client string its page
+// renders and the `text` its read tool's description ends with, so each declared `text` is held equal
+// to the string its `key` names, and the key check reads the key. The three SQL statements tabs
+// declare it.
+//
+// Mutation (Rule 19): drop the note key from `declaredStringKeys` -> the key assertion goes red; change
+// one descriptor's `text` -> the equality goes red naming it.
+test('every read note\'s text is the string its key names, and the three SQL statements reads declare one', () => {
+  const strings = loadStrings();
+  const noted = readSources().screens.filter((screen) => screen.declaration.read?.note);
+  assert.deepEqual(
+    noted.map((screen) => screen.className).sort(),
+    [
+      'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+    ],
+    'the three SQL statements reads declare a note'
+  );
+  for (const screen of noted) {
+    const { key, text } = screen.declaration.read.note;
+    assert.equal(text, strings[key], `${screen.file}: its note's text is STRINGS.${key}`);
+    assert.ok(declaredStringKeys(screen.declaration).includes(key), `${screen.file}: the key check reads its note key`);
+  }
+});
+
 // AD-13 as amended by DW-1359, and DW-1364 itself: the kernel declares its per-type id rules as
 // data and this generator mirrors them, so the client's key builder folds what the instance folds.
 // A declaration the client cannot honour must fail the BUILD -- mirroring it as a rule name
@@ -678,6 +704,7 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.table !== undefined) declaration.table = structuredClone(testCase.table);
     if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
     if (testCase.area !== undefined) declaration.area = testCase.area;
+    if (testCase.note !== undefined) declaration.read.note = structuredClone(testCase.note);
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }

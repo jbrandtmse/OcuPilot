@@ -1030,6 +1030,30 @@ ClassMethod RowActionIdsOf(pDeclaration As %DynamicObject) As %List [ Private ]
     Quit tIds
 }
 
+/// <p>What is wrong with <var>pRead</var>'s <code>note</code>, or <code>""</code> (AD-36, Story
+/// 19.14). A note is one sentence about the read's rows: its list page shows it above the table and
+/// its read tool's description ends with it. Absent or <code>null</code> declares none; otherwise it
+/// is an object of exactly <code>key</code>, the client string the page renders, and
+/// <code>text</code>, the same sentence for the tool, each a non-empty string.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>readNoteProblem</code> returns the same sentences,
+/// and <class>OcuPilot.Test.ReadSourceCorpus</class> is the corpus both engines run.</p>
+ClassMethod ReadNoteProblem(pRead As %DynamicObject) As %String [ Private ]
+{
+    Set tType = pRead.%GetTypeOf("note")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit "read.note is not an object declaring its key and text (AD-36)"
+    Set tNote = pRead.%Get("note")
+    Set tProblem = ..UnknownKeyProblem(tNote, "read.note", $ListBuild("key", "text"))
+    If tProblem '= "" Quit tProblem
+    For tKey = "key", "text" {
+        If (tNote.%GetTypeOf(tKey) '= "string") || (tNote.%Get(tKey) = "") {
+            Set tProblem = "read.note." _ tKey _ " is not a non-empty string (AD-36)"
+            Quit
+        }
+    }
+    Quit tProblem
+}
+
 /// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
 /// and one lower-case screen segment, so its read tool is <code>&lt;toolIdentifier&gt;.read</code>
 /// (Conventions, Tool naming).</p>
@@ -1070,7 +1094,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// secret field is filterable or sortable (a filter over one would let a tool probe its value);
 /// <code>sort.default</code> is one of <code>sort.fields</code>; <code>sort.direction</code> is
 /// <code>asc</code> or <code>desc</code>; <code>paging</code> is <code>cap</code>, since no admin
-/// LIST accepts a cursor; and <code>toolIdentifier</code> matches
+/// LIST accepts a cursor; an optional <code>note</code> is <method>ReadNoteProblem</method>'s; and
+/// <code>toolIdentifier</code> matches
 /// <parameter>READTOOLIDENTIFIERPATTERN</parameter>. <code>read</code>, <code>read.source</code>,
 /// <code>read.sort</code> and <code>context</code> carry only their declared keys, and
 /// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
@@ -1103,7 +1128,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tRead = pDeclaration.%Get("read")
-        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging", "criteria"))
+        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging", "criteria", "note"))
         If tProblem '= "" Quit
 
         If tRead.%GetTypeOf("source") '= "object" {
@@ -1387,6 +1412,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.paging '" _ tRead.%Get("paging") _ "' is not 'cap'"
             Quit
         }
+        Set tProblem = ..ReadNoteProblem(tRead)
+        If tProblem '= "" Quit
 
         Set tIdentifier = pDeclaration.%Get("toolIdentifier")
         If '$Match(tIdentifier, ..#READTOOLIDENTIFIERPATTERN) {

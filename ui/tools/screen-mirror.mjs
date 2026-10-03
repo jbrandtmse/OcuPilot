@@ -1142,6 +1142,26 @@ export function sideBarPositionProblem(declaration) {
 }
 
 /**
+ * What is wrong with a read's `note`, or `null` (AD-36, Story 19.14). A note is one sentence about the
+ * read's rows: its list page shows it above the table and its read tool's description ends with it.
+ * Absent or `null` declares none; otherwise it is an object of exactly `key`, the client string the
+ * page renders, and `text`, the same sentence for the tool, each a non-empty string.
+ * `OcuPilot.Screen.Registry.ReadNoteProblem` returns the same sentences, and
+ * `OcuPilot.Test.ReadSourceCorpus` is the corpus both engines run.
+ */
+function readNoteProblem(read) {
+  const { note } = read;
+  if (note === undefined || note === null) return null;
+  if (typeof note !== 'object' || Array.isArray(note)) return 'read.note is not an object declaring its key and text (AD-36)';
+  const keysFault = unknownKeyProblem('read.note', note, ['key', 'text']);
+  if (keysFault !== null) return keysFault;
+  for (const key of ['key', 'text']) {
+    if (typeof note[key] !== 'string' || note[key] === '') return `read.note.${key} is not a non-empty string (AD-36)`;
+  }
+  return null;
+}
+
+/**
  * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
@@ -1157,10 +1177,11 @@ export function sideBarPositionProblem(declaration) {
  * named without a package, which declares neither a `rowGet` nor `criteria`.
  * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
  * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
- * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
- * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
- * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field. A read declares its table (`tableProblem`)
+ * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), an optional
+ * `note` is `readNoteProblem`'s, and the `toolIdentifier` is `<area>.<screen>` in lower case.
+ * `read`, `read.source`, `read.sort` and `context` carry only their declared keys, and
+ * `context.secretFields` is declared, so a misspelt key is refused rather than read as no secret
+ * field. A read declares its table (`tableProblem`)
  * unless it is a `form-page` that declares none (`rendersNoTable`), and a table with no read is
  * refused. Last of all, a read on the `admin` port whose `privileges`
  * omit `%DB_IRISSYS:READ` is refused, because the port runs every endpoint in `%SYS` -- a `state`
@@ -1177,7 +1198,7 @@ export function readProblem(declaration) {
     return null;
   }
   if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
-  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging', 'criteria']);
+  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging', 'criteria', 'note']);
   if (readKeysFault !== null) return readKeysFault;
   const source = read.source;
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
@@ -1418,6 +1439,8 @@ export function readProblem(declaration) {
     return "read.paging 'cursor' is refused: neither declared source kind accepts a cursor; declare 'cap' (AD-36)";
   }
   if (read.paging !== 'cap') return `read.paging '${read.paging}' is not 'cap'`;
+  const noteFault = readNoteProblem(read);
+  if (noteFault !== null) return noteFault;
   if (typeof declaration.toolIdentifier !== 'string' || !READ_TOOL_IDENTIFIER_RE.test(declaration.toolIdentifier)) {
     return (
       `toolIdentifier '${declaration.toolIdentifier}' declares a read and is not <area>.<screen> in ` +
@@ -2839,8 +2862,8 @@ export function tableProblem(declaration, fields, secrets) {
 /**
  * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its
  * `entityLabelKey`, its table's
- * column labels, column empty-cell keys and two empty-state keys, its banner's `messageKey`, and
- * each suggested prompt's `groupKey` and `textKey`.
+ * column labels, column empty-cell keys and two empty-state keys, its banner's `messageKey`, its
+ * read's note key, and each suggested prompt's `groupKey` and `textKey`.
  * Empty keys are not listed.
  *
  * The banner's key belongs here for the reason the others do: `stringFor` answers `''` for a key
@@ -2858,6 +2881,8 @@ export function declaredStringKeys(declaration) {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
   if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
+  const note = declaration.read?.note;
+  if (note !== null && typeof note === 'object') keys.push(note.key);
   const { multiSelect } = declaration;
   if (multiSelect !== null && typeof multiSelect === 'object') keys.push(multiSelect.ineligibleKey);
   const { suggestedPrompts } = declaration;
@@ -3419,6 +3444,8 @@ export interface ReadDeclaration {
   readonly paging: 'cap';
   /** The server-search criteria this read carries, absent for a read bounded by the cap alone. */
   readonly criteria?: ReadCriteria | null;
+  /** One sentence about the rows, shown above the table and ending the read tool's description. */
+  readonly note?: { readonly key: string; readonly text: string } | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */

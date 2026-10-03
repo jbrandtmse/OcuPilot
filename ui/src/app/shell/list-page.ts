@@ -57,6 +57,9 @@ export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
  * lacks; otherwise a click runs it. Nothing here sets the banner from a write's answer: the change
  * event's re-read and the refresh tick do (AD-14, AD-43).
  *
+ * **A read may declare a note** (AD-36): one sentence about its rows, drawn above the table whatever
+ * they hold, the SQL statements tabs' word on when their statistics were last aggregated.
+ *
  * **A parent-scoped list reads for its route id** (AD-5). A screen declaring a `parentScope` declares
  * exactly one criterion, and the page fills it with the id the URL carries (`parentCriteria`), read
  * at call time so a refresh reads for the id the page is showing. The page drops the store's answers
@@ -103,6 +106,9 @@ export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
         <span class="ocu-banner-message">{{ refusalText }}</span>
       </p>
     }
+    @if (noteText) {
+      <p class="ocu-list-page-note">{{ noteText }}</p>
+    }
     @if (list; as view) {
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
     }
@@ -145,12 +151,21 @@ export class ListPage {
 
   protected readonly bannerReasonId = BANNER_REASON_ID;
 
+  /**
+   * The read's declared note (AD-36), or `''` when it declares none: one sentence about the rows,
+   * shown above the table whatever they hold, through the string its `key` names. The read tool's
+   * description ends with the same sentence, and the mirror holds the two equal.
+   */
+  protected readonly noteText: string;
+
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
       this.list = null;
+      this.noteText = '';
       return;
     }
+    this.noteText = screen.read.note ? stringFor(screen.read.note.key) : '';
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
     // Every parent's page shares the descriptor's store, so what it holds may be another parent's
