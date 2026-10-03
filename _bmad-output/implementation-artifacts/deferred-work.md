@@ -9162,3 +9162,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-4-search-compare-and-macro-lookup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 19.4 rework 2 re-review: a %Development-only holder typing Definition gets Definitions (OcuPilotAdmin:USE, gated) first and active, Macros second; choose() ignores a gated row. Before the rework Enter opened Macros.
 - 2026-10-03T02:38:34Z status=by-design owner=19-4-search-compare-and-macro-lookup by=cr note=ranking keys are the DW-1962 ruling (name, favorite, order); gated rows stay listed, reason inline (EXPERIENCE.md)
+
+### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
+- source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
+- 2026-10-03T06:37:36Z status=routed owner=19-5-the-sql-catalog-browser by=harvest note=lead ruling: fix at code review with a fixed bound for this one endpoint (5,000, still bounded per AD-36; the spec intent's max rule amended by the lead)

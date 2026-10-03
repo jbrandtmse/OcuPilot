@@ -5,6 +5,7 @@ created: '2026-10-02'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '7460978a5b2bc805f42203feee498e40be814f72'
+baseline_commit: '7460978a5b2bc805f42203feee498e40be814f72'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -33,7 +34,7 @@ deferred:
 **Always:**
 
 - AD-61's order for every catalog endpoint: the gate (`%Development:USE`, then the namespace's READ pairs), the endpoint, the version (`MINVERSIONS` `Query:6`), the arguments, then the route.
-- The body is `{query, parameters}` through `AtelierRequest.SetJsonBody`. `query` is the endpoint's fixed text from a port parameter; `parameters` holds only validated caller values in declared order. `max` is the read's `maxRows` (cap plus one), or 2 for the table resolve.
+- The body is `{query, parameters}` through `AtelierRequest.SetJsonBody`. `query` is the endpoint's fixed text from a port parameter; `parameters` holds only validated caller values in declared order. `max` is the read's `maxRows` (cap plus one), or 2 for the table resolve, or a fixed 5,000 for `Catalog.Table`'s schema listing, of which only the resolved table's row is kept [AMENDED 2026-10-03, lead ruling on DW-1973].
 - A tab's `table` (`Schema.Table`) is resolved first through the privilege-filtered `INFORMATION_SCHEMA.TABLES`; the catalog call is then bound with the exact schema and table that row answers. No row is 404 `PORT.NOTFOUND` (unlogged); two rows is 400 `PORT.VALIDATION`.
 - Trigger `Code` reaches a tool and screen context only as a row field, cut by AD-24's per-field bound and wrapped by AD-60.
 - Every screen declares `classicPage` `%CSP.UI.Portal.SQL.Home`, `%Development:USE`, scope `namespace`, entity type `class`, and three prompts in the `webAppPromptGroupCode` group.
@@ -119,6 +120,8 @@ deferred:
 - AC8 (Integration, Rule 1): Given a row in SQL tables on the real instance, when the person opens it and switches to Triggers, then that tab reads the same table through its own declared read.
 
 ## Spec Change Log
+
+- 2026-10-03, lead (dev_complete): the `deferred:` Table info item is harvested as DW-1973 and ruled: `Catalog.Table` sends a fixed 5,000 to `TablesOnly` (bounded, AD-36) and keeps only the resolved row; the intent's `max` rule is amended to say so; the code review applies it.
 
 - 2026-10-03, lead (spec gate, by=merge_gate): the split is approved as recommended: this story keeps the four lists and a table's Table info, Fields, Maps/Indices, Triggers and Constraints tabs; Story 19.14 (`19-14-the-sql-catalog-s-remaining-detail-tabs`, right after 19.5) takes the rest. The detail-tab privilege decision is accepted (a tab answers only for a table the caller's Tables list shows). The spine carries the drafts (AD-61 rules 2, 3, 6, 7, 8; AD-7's fifth shape; AD-36; AD-5). The plan's `deferred:` items are harvested: the `action/query` privilege bypass as DW-1963 (vendor-defect candidate) and DW-1964 (design constraint routed to 19.6, named in epics.md 19.6 and 19.11), the criteria description as a DW-1001 occurrence. `strings.test.mjs`'s Fixed-strings bound goes from 2100 to 2300 (approved by=merge_gate; whoever lands second takes the larger cap that covers the merged count and keeps Story 18.5's comment).
 
