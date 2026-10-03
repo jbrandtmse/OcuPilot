@@ -480,6 +480,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.19's self-queued read** [AMENDED 2026-10-03, Story 18.19 spec gate, Rule 20]: `Journal.Record` `LIST` queues itself and is polled like the audit list. Because the vendor's list counts each kept row twice, the port sends twice the rows the read asks (checked on slot A on 2026-09-28: 10 gave 5 and 40 gave 20; measured again at Story 18.19's Task 0 on `ocupilot-b-ci`, 2026-10-03: 4, 10, 40 and 2002 gave 2, 5, 20 and 1001), which is exact only when no row is skipped. Its rows and filter sit in the vendor's task row until the port deletes it or AD-37's sweep does.
 
+  **Story 18.20's queued write** [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20]: `QUEUEDWRITES` also names `ECP.DataServer` `SERVERACTION`, the last Stage 2 async path. It queues through `ShouldRunAsync()` (read in the vendor source), carries a port-built `{Action}` and no secret, and is read once by the port's one poller. The vendor's own refusals (an out-of-range `Action`, #5026) arrive as the task's failure, never as the call's status.
+
 ### AD-27 — The dependency on the experimental admin API is confined to the port and always has a fallback
 
 - **Binds:** `AdminPort`, every screen and tool it backs; NFR-8; PRD Open Question 3 and the top risk in PRD section 11
@@ -724,6 +726,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.6's `CLASSICPAGES`**: the license key activation declares `%CSP.UI.Portal.Dialog.LicenseActivate`; the license server create, update and delete, performed on `%CSP.UI.Portal.LicenseServers` itself, declare none [AMENDED 2026-10-03, Story 18.6 spec gate, Rule 20].
 
+  **Story 18.20's `CLASSICPAGES`**: the ECP data server create, update and change status declare `%CSP.UI.Portal.Dialog.ECPDataServer`; the delete, performed on `%CSP.UI.Portal.ECPDataServers` itself, declares none [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20].
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -817,6 +821,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
     Story 18.5's case: `JournalPort`, which builds `Journal.File` `INTEGRITYCHECK`'s body from the integrity tool's declared `CheckDetails` and answers the switches' fresh read through a port-composed `STATE` type [AMENDED 2026-10-02, Story 18.5 spec gate, Rule 20], and switch directory's through `DIRSTATE` (`STATE` plus the other directory, refusing 409 `JOURNAL.SWITCHDIR.NOOTHER` at the fresh read) [AMENDED 2026-10-02, Story 18.5 implement, Rule 20].
 
     Story 18.6's case: `LicensePort`, which validates the activation's secret key text with `License.Key` `VALIDATE` and sends the `PUT` only when the text is valid [AMENDED 2026-10-03, Story 18.6 spec gate, Rule 20].
+
+    Story 18.20's case: `EcpPort`, which builds `ECP.DataServer` `SERVERACTION`'s `{Action}` from the change status tool's declared `Status` (`notconnected` 1, `disabled` 2, `normal` 3). Before anything is queued, it refuses `normal` while the license enables no ECP (`ECP.LICENSE`, through `RemoteDatabasePort.NetworkEnabled()`) and a status equal to its fresh `LIST` row's (`ECP.STATUS.SAME`), so no instance whose license lacks ECP is ever sent `Action` 3 [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20].
     **A tool may name the codes its fresh read refuses with when the action's precondition no longer holds** (`PRECONDITIONCODES`, Story 18.18, DW-1950): the mint and a screen action answer that refusal as it is, and inside a confirm the prohibited set reads it as it reads a 404, so the fingerprint re-read closes the proposal target-changed. Switch directory names `JOURNAL.SWITCHDIR.NOOTHER` [AMENDED 2026-10-02, Story 18.18 spec gate, Rule 20].
   - **AD-4 has no subject here.** Its Rule prevents "a confirmed change to two fields silently erasing the other forty"; a write that sends no body erases nothing. An action-style write is not avoiding the merge idiom — the idiom does not apply to it.
   - **The fingerprint covers the fresh read, not the sent body.** AD-6 words it as "the complete property set the write will send" because for a merge write AD-4 makes the body a copy of the fresh read, so the two sets coincide. For a bodyless write they diverge and the sent body is empty, so the fresh read is the set — which is the reading that preserves what AD-6 protects, a write against state that moved under the diff. Taking the sent body literally would mean an empty fingerprint and no protection at all.
@@ -850,6 +856,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   `RemoteDatabasePort` (Story 18.16) sequences a remote database's create and update: `ECP.DataServer` `GET`, the bounded listing (AD-21's seventh case), then `Database.ConfigCRUD` `PUT`; its delete is `DatabasePort`'s configuration delete, which sends no file delete for a remote configuration [AMENDED 2026-10-01, Story 18.16 spec gate, Rule 20].
 
   `LicensePort` (Story 18.6) sequences a license key activation: `License.Key` `VALIDATE` of the text, then the `PUT` only when it answers valid [AMENDED 2026-10-03, Story 18.6 spec gate, Rule 20].
+
+  `EcpPort` (Story 18.20) sequences a status change: the license check, the `LIST` row, then `SERVERACTION` [AMENDED 2026-10-03, Story 18.20 spec gate, Rule 20].
 
 ### AD-53 — A screen's own action and the agent's write are one operation, reached by two callers
 
