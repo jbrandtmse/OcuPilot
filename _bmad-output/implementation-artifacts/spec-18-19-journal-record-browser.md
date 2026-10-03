@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-10-02'
 status: 'done'
 baseline_revision: 'fc3c5de0860dfba192e4877e6155e7f4faab6bf0'
-baseline_commit: 'b72bb7dadafcb1022f8e9a86242d71a75b636b1f'
+baseline_commit: 'fc3c5de0860dfba192e4877e6155e7f4faab6bf0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -494,6 +494,21 @@ Rejected:
 ### Rework 1 (CI)
 
 - [x] [CI] browser shard 1/3 of run 37127676205 (`6344e34f`): `ui/browser/journal-records.browser-spec.mjs` "AC5, AC7: a seeded record opens the dialog, which shows its values as text and closes on Escape" failed at `:304` (numbered as at `9becc6df`) with `failed to find element matching selector "#ocu-journal-records-value"`, read at once after the dialog is gone. Closing moves from `journal-records/:id` to `journal-records`, two route entries, so `ScreenOutlet` and the page are created afresh and the form renders on a later change-detection pass (inference). The leg passes on `ocupilot-b-ci`. Make the leg wait for the form before reading it, and check every other leg that reads the page right after a route change.
+
+### Review Findings (rework 1)
+
+Code review of rework 1, 2026-10-03 (`full-opus`; four layers; `fc3c5de0..dad5b103` only; 18 rows, 15 entries, all rejected). The `[CI]` item holds in the code: `buildRoutes` gives `:id` its own route config, `ui/src` has no `RouteReuseStrategy`, the dialog leaves only with the old page, and the form waits on no read (`list` is set in the constructor), so the wait's last clause is the failed read's own precondition. No other leg here or in `journals.browser-spec.mjs` reads after a route change without a wait. CI run 37133418355 was pending.
+
+Rejected:
+
+- `low` The combined wait times out without naming which clause failed: met only if this leg times out again, and splitting a correct wait adds calls.
+- `false` The path clause is redundant: it is the only check that close returns to the list route, since a dialog hidden without navigating stays on `/:id`.
+- `false` Nothing shows the fix works: the wait cannot end before `#ocu-journal-records-value` exists, and nothing navigates between the wait and the read.
+- `low` Close checks only the `value` criterion: an unchanged line, not HIGH; every criterion lives in the one `HELD_SEARCHES` object.
+- `low` The close mutation's comment sits under `// AC5.`: cosmetic; the leg's AC labels were adjudicated in rework triage row 7.
+- `false` The committed `baseline_commit` disagrees with `baseline_revision`: the working tree carries the lead's correction.
+- `low` The cycle log's `dev_complete` line omits the loc fields: lead bookkeeping, not code.
+- `low` Spec text, eight rows (one CI run named as proof; rework triage rows marked false; Verification's "Final tree" 3/3 for four legs; `:304` is `:302` at `9becc6df`; mixed inference labels; the mechanism told five times; the round-1 journaled-database risk not marked closed by run 37127676205's green `instance`; two unclear Verification lines): each fix edits the spec under review.
 
 ## Spec Change Log
 
