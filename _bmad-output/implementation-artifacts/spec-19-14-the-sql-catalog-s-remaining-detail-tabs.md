@@ -5,21 +5,14 @@ created: '2026-10-03'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '8dc0806552d6d02806254042b2706d0e0ef0a7db'
-baseline_commit: '8c24bca121f307d187915edd05ed7ec288004da9'
+baseline_commit: '8dc0806552d6d02806254042b2706d0e0ef0a7db'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-19-5-the-sql-catalog-browser.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      The spine does not record the optional `read.note` declaration key (`key` and `text`) that Story 19.14's DW-1977 follow-up adds.
-    evidence: |-
-      Registry.ReadProblem and screen-mirror.mjs readProblem accept read.note, validated alike over ReadSourceCorpus; AD-36 lists the read's declared features and records a criterion's hint (ARCHITECTURE-SPINE.md:598) but has no note clause.
-    location: >-
-      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md (AD-36)
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -191,6 +184,8 @@ Rejected:
 - spec-only: the Residual risks line about Design Notes' wording.
 
 ## Spec Change Log
+
+- 2026-10-03, lead (rework 1 dev_complete): the `deferred:` spine write is done (AD-36 now records `read.note`); `baseline_commit` is the rework's baseline `8dc08065`.
 
 - 2026-10-03, lead (rework 1, orchestrator follow-up): re-opened for the `[Follow-up]` item (DW-1977, the statistics note).
 
