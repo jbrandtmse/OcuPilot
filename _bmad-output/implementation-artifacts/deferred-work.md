@@ -3839,6 +3839,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-02T00:25:27Z occurrence=19-1-classes-and-routines-listed-and-viewed
 - 2026-10-02T23:22:38Z occurrence=19-4-search-compare-and-macro-lookup note=explorer.search.read text and explorer.macro.read document and macro are described as a comma list where * matches; a * in search text is searched literally and answers no rows with no refusal; fix needs a descriptor-declared criterion description (Screen/Registry.cls criteria grammar)
 - 2026-10-03T00:00:31Z status=routed owner=range-end-cleanup by=cr note=19.4 cr: first silent case, explorer.search.read searches *TODO* or a comma list literally and answers 0 rows unrefused; raise priority
+- 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
