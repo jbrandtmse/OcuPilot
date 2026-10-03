@@ -2,7 +2,8 @@
 /// has a line in <class>OcuPilot.Kernel.Governance.Baseline</class>, the audit purge's, the
 /// namespace delete's, the database delete's, the task import's, Story 18.4's eight disk
 /// operations', Story 18.15's enable of interoperability's, Story 19.2's two document deletes' and
-/// Story 19.13's two document imports' lines are <code>false</code>, and every other line is
+/// Story 19.13's two document imports' and Story 18.6's license key activation's and license server
+/// delete's lines are <code>false</code>, and every other line is
 /// <code>true</code>.</p>
 /// <p><b>What it needs from the environment:</b> the compiled tool registry. Live-safe: it reads
 /// the registry and the baseline and writes nothing.</p>
@@ -11,7 +12,7 @@ Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 
 /// <p>The lines some story's criteria ship disabled, in the baseline's own line order,
 /// comma-separated.</p>
-Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, osmgmt.remotedatabases.delete, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete, explorer.classes.import, explorer.classes.save, explorer.routines.save, explorer.routines.import";
+Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.licensekey.activate, osmgmt.licenseservers.delete, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, osmgmt.remotedatabases.delete, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete, explorer.classes.import, explorer.classes.save, explorer.routines.save, explorer.routines.import";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is
 /// asserted too, so an empty registry cannot pass by looping zero times.</p>
@@ -67,7 +68,7 @@ Method TestThePurgeIsTheOneDisabledLine()
         Do $$$AssertEquals(tList.%GetTypeOf(tKey), "boolean", tKey _ ": the line is a JSON boolean")
         If 'tValue Set tDisabled = tDisabled _ $ListBuild(tKey)
     }
-    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the remote database delete, the two document deletes and the two document imports are the lines listed false")
+    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the remote database delete, the two document deletes, the two document imports, the license key's activation and the license server delete are the lines listed false")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("probe.not.listed", .tListed) _ "|" _ tListed, "0|0", "an unlisted key reads disabled and unlisted")
 }
 

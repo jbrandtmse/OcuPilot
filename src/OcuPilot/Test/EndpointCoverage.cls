@@ -202,6 +202,11 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/language-server" path="/api/ocupilot/language-server" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="PUT" url="/journal/settings" path="/api/ocupilot/journal/settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/journal/record" path="/api/ocupilot/journal/record" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/license/key/validate" path="/api/ocupilot/license/key/validate" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/license-server/form" path="/api/ocupilot/license-server/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/license-server/name" path="/api/ocupilot/license-server/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/license-server/:id" path="/api/ocupilot/license-server/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/license-server" path="/api/ocupilot/license-server" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/mapping/:kind/form" path="/api/ocupilot/mapping/global/form" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the path names no namespace, which the handler answers 404 before any read"/>
 <probe class="Api.Router" method="GET" url="/mapping/:kind/name" path="/api/ocupilot/mapping/global/name" disposition="envelope" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind"/>
 <probe class="Api.Router" method="PUT" url="/mapping/:kind/:id" path="/api/ocupilot/mapping/global/global" disposition="envelope" refusal="1" substitute="global" substitutewhy="a mapping kind that is not one of the three answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes the global kind; the identifier segment carries the same value, which names no namespace and mapping pair, so the handler refuses before any write"/>

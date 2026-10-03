@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integerset,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton,namespace:foldcase,global-mapping:foldcase-firstpart,routine-mapping:foldcase-firstpart,package-mapping:foldcase-firstpart,database-configuration:foldcase,database:directoryset,class:documentset,routine:documentset,journal-settings:singleton,license-key:singleton,license-server:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by

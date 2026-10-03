@@ -194,6 +194,13 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'os-management/license-servers/edit',
+          labelKey: 'aboutLicenseServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/license-usage/users',
           labelKey: 'licenseUsageByUser',
           sideBarPosition: 0,
@@ -351,6 +358,20 @@ const LIVE_PAYLOAD = {
           route: 'os-management/journal-settings',
           labelKey: 'journalSettingsLabel',
           sideBarPosition: 14,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-key',
+          labelKey: 'licenseKeyLabel',
+          sideBarPosition: 15,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-servers',
+          labelKey: 'licenseServerListLabel',
+          sideBarPosition: 16,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -690,6 +711,11 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   }
   // Story 18.18: Journal settings declares %Admin_Manage:USE first, on which this principal is denied.
   assert.deepEqual(service.screenVerdict('os-management/journal-settings'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  // Story 18.6: License key, License servers and the license server form declare %Admin_Manage:USE
+  // first, on which this principal is denied.
+  for (const route of ['os-management/license-key', 'os-management/license-servers', 'os-management/license-servers/edit']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
   // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
   // holds, and is denied on the second.

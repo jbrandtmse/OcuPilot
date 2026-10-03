@@ -305,6 +305,10 @@ services:
       # The journal record classes sign in as probe principals holding Journal records' pairs, with
       # and without read on their probe database, and list and open records as them (Story 18.19).
       # classes: JournalRecordDetail, JournalRecords
+      # The license server gate class signs in as probe principals holding License servers' pairs,
+      # with and without the system database's write, and writes probe license servers as them
+      # (Story 18.6).
+      # classes: LicenseWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -485,6 +489,13 @@ services:
       # Save and confirm paths, and restore every setting they found (Story 18.18).
       # classes: JournalSettingsRules, JournalSettingsWrite
       OCUPILOT_ALLOW_JOURNAL: "1"
+      # Creates, edits and deletes license servers in this instance's own configuration through the
+      # shipped Save, row-action and confirm paths. Its own variable because no narrower one names
+      # that effect: a license server entry tells the instance where to ask for license units. The
+      # classes touch only OCUPROBE186* servers, each by exact name, and never change the license
+      # key: the activation reaches only a seam port that sends nothing (Story 18.6).
+      # classes: LicenseServerWrite, LicenseWriteGate
+      OCUPILOT_ALLOW_LICENSE_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

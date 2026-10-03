@@ -66,6 +66,9 @@ const OPERATOR_MAP = {
         { route: 'os-management/journals', allowed: true },
         // Story 18.18: Journal settings, which %Operator does not open, failing its first pair.
         { route: 'os-management/journal-settings', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Story 18.6: License key and License servers, which %Operator does not open either.
+        { route: 'os-management/license-key', allowed: false, failedPair: '%Admin_Manage:USE' },
+        { route: 'os-management/license-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
       ],
     },
     { key: 'tasks', allowed: true, screens: [] },
@@ -167,6 +170,9 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       // Story 18.5: Journals, the thirteenth.
       open,
       // Story 18.18: Journal settings, the fourteenth.
+      manage,
+      // Story 18.6: License key and License servers, the fifteenth and sixteenth.
+      manage,
       manage,
     ]);
   });

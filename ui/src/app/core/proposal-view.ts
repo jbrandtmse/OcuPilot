@@ -260,6 +260,9 @@ export const CONSEQUENCE_JOURNALINTEGRITY = 'JOURNAL.INTEGRITY';
 /** Story 18.18: a journal settings write that leaves Freeze on error on, stated as the form states it. */
 export const CONSEQUENCE_JOURNALSETTINGSFREEZE = 'JOURNAL.SETTINGS.FREEZE';
 
+/** Story 18.6: a license server delete while the instance's license key is a multi-server key. */
+export const CONSEQUENCE_LICENSEMULTIKEY = 'LICENSE.SERVER.MULTIKEY';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -324,6 +327,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_NAMESPACEINTEROP) return STRINGS.namespaceEnableInteropConsequence;
   // The form's own Freeze on error line, published once.
   if (code === CONSEQUENCE_JOURNALSETTINGSFREEZE) return STRINGS.journalSettingsFreezeConsequence;
+  // Story 18.6: removing a license server a multi-server key may use.
+  if (code === CONSEQUENCE_LICENSEMULTIKEY) return STRINGS.licenseServerMultiKeyConsequence;
   return '';
 }
 

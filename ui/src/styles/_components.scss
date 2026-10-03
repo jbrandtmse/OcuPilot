@@ -7918,3 +7918,34 @@ app-ldap-editor-page .ocu-field-checkbox input[type='radio'] {
   background: var(--ocu-egress-warning-container);
   color: var(--ocu-egress-warning);
 }
+
+// License key (Story 18.6): the line under the field block and the activate dialog's verdict, in
+// body text; the reduction lines as a plain list; and Print, beneath the block and outside the print
+// region, so print media shows the fields alone.
+.ocu-license-key-note {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-license-key-actions {
+  display: flex;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-license-key-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin: var(--ocu-space-4) 0 0;
+}
+
+.ocu-license-key-reductions {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding-inline-start: var(--ocu-space-6);
+  color: var(--ocu-on-surface);
+}

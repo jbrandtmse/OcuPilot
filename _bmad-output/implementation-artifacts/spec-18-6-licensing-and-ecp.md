@@ -2,7 +2,8 @@
 title: 'Story 18.6: Licensing and ECP'
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '23b5dfc203d5425d5484f1702ed353ec9b3a0834'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -449,8 +450,39 @@ These rows are Part A's.
 ## Spec Change Log
 
 - 2026-10-03, runner (orchestrator merge gate): split approved; this spec keeps Part A, and Parts B and C (Stories 18.20 and 18.21) were removed from it (their outlines stay at commit `fe080653`). Decisions 1 to 6 confirmed. Task 0 step e and its halt condition gained the orchestrator's activation-probe condition. The runner wrote AD-13, AD-21, AD-36, AD-44, AD-51, AD-52 and AD-53 at the spec gate; AD-8's pairs and any AD-15/AD-53 vendor-event case wait for Task 0.
+- 2026-10-03, implement (Task 0), for the runner: AD-8, after Story 18.18's paragraph: "**Story 18.6's licensing screens** [AMENDED 2026-10-03, Story 18.6 Task 0, Rule 20]: License key and License servers declare OS management's `%Admin_Manage:USE` and `%DB_IRISSYS:READ`, the classic pages' `RESOURCE`. `osmgmt.licenseservers.create`, `.update` and `.delete` also declare `%DB_IRISSYS:WRITE`, each refused by name before any port call. A principal holding the screen's two pairs was answered `<PROTECT>` in `Config.LicenseServers` on every write, with nothing changed. With `%DB_IRISSYS:WRITE` added, each write succeeded; `%Admin_Secure:USE` or `%Admin_Operate:USE` alone did not help (measured on `ocupilot-b-ci`, 2026-10-03). `osmgmt.licensekey.activate` declares the screen's set; its success path is never run on any instance, so a pair `Upgrade()` might need beyond them is unmeasured."
+- 2026-10-03, implement (Task 0), for the runner: AD-15's named-case list and AD-53's named-gap list, each one sentence: "Activating a license key (`License.Key` `PUT`, Story 18.6) is unmeasured: no instance here may activate one." No license server write needs a case: each records `%System/%System/ConfigurationChange` (measured, auditing on).
+- 2026-10-03, implement (Task 0), for the runner: AD-2, a sentence after the `UNLOGGEDREFUSALS` one: "While a key is active, `License.Key` `VALIDATE` answers an invalid key with its verdict object under an error status (500, #8603). The port answers a `CHECKTYPES` pair's error-status answer object at 200 and logs nothing of it, and it logs nothing for a `License.Key` `PUT` refused 400, because the status text is the key check's reason, which no log line carries (Story 18.6, measured at Task 0) [AMENDED 2026-10-03, Story 18.6 Task 0, Rule 20]."
 
 ## Review Triage Log
+
+### 2026-10-03 — Review pass
+
+- verdicts: 23 findings — high 0, medium 5, low 7, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `POST /license/key/validate`'s 200 branch is never run (verification-gap) — added `LicenseKey.TestTheValidateRouteAnswersAValidKeyWithoutItsText` (seam armed, through `LicenseRulesFixture.Check`, which now also answers `Cache-Control`): exact body, `no-store`, no marker, one check; red on an echo mutation (run 4546).
+  - `[medium]` `[patch]` the delete's multi-server-key consequence has no server-side test (verification-gap) — `SeamLicenseServerDelete.KeyServer` answers a test's key server type; added `LicenseDescriptor.TestTheDeleteNamesAMultiServerKeyAsItsConsequence` against `$SYSTEM.License.KeyServer()` and the seam's `Multi`/`Single`; red on an inverted comparison (run 4547).
+  - `[low]` `[patch]` the create test's `Shape` mutation claim could not redden it (verification-gap) — the test now asserts the sent `Port` is a number; red with `Shape` returning at once (run 4548).
+  - `[medium]` `[patch]` the key-secrecy test's ledger leg cannot fail, a screen action writing no ledger row (verification-gap) — the leg moved to `TestTheActivationIsAbsentFromEveryRosterTheAgentSees`: the model's call now carries `Key` with a marker, and the turn's ledger rows are asserted present and marker-free before deletion; red with `Dispatch` ledgering the call's raw input as its target (run 4983).
+  - `[medium]` `[patch]` A4's chrome legs pass when the chrome is not on screen (verification-gap) — the leg opens the side bar and asserts each chrome element visible on screen, then not visible on print media; red with `app-side-bar` dropped from `_print.scss` (browser run 2026-10-03T18:59Z).
+  - `[false]` `[reject]` A0 has no pinning test or `mutation:` line (verification-gap) — A0 is Task 0's recorded measurement, not code; nothing to falsify.
+  - `[low]` `[patch]` the A4 `mutation:` line carries no run id (verification-gap) — rewritten with the new mutation and its browser run time.
+  - `[false]` `[reject]` Validate answers structured data plus `features` rather than sentences (intent-alignment) — the client composes OcuPilot's sentences from `strings.ts` (page spec asserts both lines); `features` is the Tasks' planned member; no vendor prose crosses.
+  - `[false]` `[reject]` vendor data values (feature names, from/to) reach the caller (intent-alignment) — the Never list bars `InvalidReason`/`RestartReason` text, pinned by run 4526; values are data the screen states.
+  - `[low]` `[patch]` no principal holding exactly the screen's set activates (intent-alignment) — `LicenseWriteGate`'s reader test now activates through the armed seam as `OCUPROBE186GREADER` (run 4545 green).
+  - `[false]` `[reject]` List id `{single, []}` and the form's `toolIdentifier` against the table's `[Name]` and "none" (intent-alignment) — the siblings (`DeviceList`, `RemoteDatabaseList`, `LanguageServerList`) declare the same; the row id is the name (browser A5 sends `{action: delete, id: OCUPROBE186…}`), and the form has no read, so no read tool.
+  - `[low]` `[patch]` the agent leg for the taken name `local` is skipped (intent-alignment) — `TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite` now asserts the agent's create is refused as already present (run 4544 green).
+  - `[low]` `[patch]` the agent's confirm of a delete whose server has gone is untested (intent-alignment) — `TestAnAbsentTargetIsRefusedAndNothingIsSent` gained it: 409 target changed, nothing sent (run 4544 green).
+  - `[medium]` `[patch]` the license server classes compare no snapshot (intent-alignment; Boundaries "a snapshot compares the before and after") — `LicenseProbe.LicenseLines` (the license facts and every license server); `LicenseServerWrite` and `LicenseWriteGate` take it before each test and assert it after, with a non-empty floor; red with `RemoveAll` keeping the probe servers (run 4984).
+  - `[false]` `[reject]` the change event is checked on the server answer, not the client bus (intent-alignment) — the answer's `{action, target}` is the event (AD-14), which `ScreenActionHandler` publishes on every applied answer (`screen-action-handler.ts:1169`).
+  - `[false]` `[reject]` the malformed activation runs in process, not over HTTP (intent-alignment) — `LicenseActionFixture.Act` runs the route's own `ScreenAction.Handle`; the seam is what observes VALIDATE-once-no-PUT.
+  - `[low]` `[patch]` key secrecy checks `messages.log` but not other logs (intent-alignment) — `alerts.log` added; audit and `^ERRORS` not added: the secret travels the shared AD-56 path `UserPassword` pins.
+  - `[low]` `[reject]` the View row's listed values are not pinned on the instance (intent-alignment) — they are this instance's key, so a pin breaks on another; read by hand on `ocupilot-b-ci` 2026-10-03: 54702, Server, Concurrent User, Single, 8, 20/20, 2027-06-26, 18 features, 0 applications.
+  - `[false]` `[reject]` `LicensePort`'s `GET` strips `AuthorizationKey` only for its own callers (intent-alignment) — the screen and tool read through `admin`, where `context.secretFields` drops it (run 4525).
+  - `[false]` `[reject]` the AD-2 `CHECKTYPES` sentence is only proposed (intent-alignment) — the runner writes the spine from `## Spec Change Log`; the implement stage may not.
+  - `[false]` `[reject]` `Prohibited` gives `license-key` the reviewed field `Key` (intent-alignment) — `Test/Prohibited` requires every declared secret among its type's reviewed fields (run 4512 red, 4513 green); recorded under Measured at implement.
+  - `[false]` `[reject]` the activation declares no server `Consequence` (intent-alignment) — `Consequence` is read only by `Mint`, which an unadvertised tool never reaches; the dialog states it.
+  - `[false]` `[reject]` `LICENSE.SERVER.VALIDATION` and `LICENSE.SERVER.MULTIKEY` go beyond the six named codes (intent-alignment) — the envelope code carries the field violations as `JournalError`'s does, and the consequence code is the Tasks' planned clause.
 
 ## Design Notes
 
@@ -484,6 +516,37 @@ These rows are Part A's.
   - `ECP.Settings` `GET` answered 0.002 s: `{AppServerSettings{MaxServers 2, ClientReconnectDuration 1200, ClientReconnectInterval 5}, DataServerSettings{MaxServerConn 1, ServerTroubleDuration 60, SSLECPServer 0}}`.
   - `ECP.AppServerList`, `ECP.AppServerSSLConnection` and `ECP.DataServer` `LIST` each answered `[]` in under 0.01 s.
 - `%Service_ECP` is disabled, and neither `%ECPServer` nor `%ECPClient` exists.
+
+**Measured at implement** (Task 0, on `ocupilot-b-ci`, 2026-10-03 17:02-17:08 UTC; no halt condition fired):
+
+- **Plumbing.** `AdminPort` gained `CHECKTYPES` (`License.Key/VALIDATE`) and the three `MUTATINGTYPES` pairs, `License.Server/DELETE` joined `BODYLESSTYPES`, and `License.Key/PUT/400` joined `UNLOGGEDREFUSALS`. `Test/LicenseProbe.cls` holds the probe helper; the step driver was a throwaway-only class, deleted after Task 0.
+- **S0.** Community key: order 54702, capacity "InterSystems IRIS Community license", expiration 68112, key server Single, 8 units. `IsPendingActivation` 0, `MaxECPServers()` 0, `NetworkEnabled()` 0. No `iris.key` and no `iris_saved.key`, and no `*.key` file in `/tmp`, the directory `%File.TempFilename` writes to. One license server, `LOCAL 127.0.0.1:4002`. Auditing on, `ConfigurationChange` enabled.
+- **a, b (reads).**
+  - `License.Key` `GET` answered 200 in 0.002 s with fourteen keys. `OrderNumber`, `LicenseUnits`, `CoresLicensed` and `CoresEnforced` are numbers, the two lists are arrays, and the rest are strings.
+  - `License.Server` `LIST` took 0.003 s. `GET` took 0.001 s and answered `LOCAL`'s row for `local` and `LOCAL`, and 404 for `NOSUCH186`.
+- **c (`VALIDATE`, malformed).**
+  - The vendor answers an invalid key with its verdict object under an error status (500, #8603 "Not a valid license key file."). While a key is active, `RunValidate` adds `CheckKeyForUpgrade`'s status to its own.
+  - The body is `{IsValid false, RequiresRestart false, RestartReason "", HasReductions true, Reductions {}}`, so `HasReductions` is true for an invalid key.
+  - The plan's port answered that 500 as a fault and logged the reason, raising the monitor state, which was then cleared. `AdminPort` now answers a `CHECKTYPES` pair's error-status object at 200, unlogged.
+  - Re-run: 200 in 0.003 s, `IsValid` false. No temporary key file before or after, no snapshot change, no audit event, no log line. `InvalidReason` holds no path.
+- **d.** `{Key:""}` answered 200 with `IsValid` false. `{}` answered 400 `PORT.VALIDATION` on `Key` (#40301) and was logged; `LicensePort` refuses an empty key before any call.
+- **e.** c answered `IsValid` false and S0's license state was recorded first. A `PUT` of the identical text answered 400 in 0.003 s, unlogged. No key file was written, so none was removed, and every license fact read as at S0, `IsPendingActivation` 0.
+- **f.** c, d and e recorded no audit event.
+- **g-k (license servers).**
+  - g: `PUT name=ocuprobe186a` answered 201 in 0.155 s. The name is stored as `OCUPROBE186A`, and `GET` answers it in either case.
+  - h: `KeyDirectory` was seeded through `%SYS`. A `PUT {Port:4998}` alone kept `Address` and `KeyDirectory`, so the update sends `{Address, Port}`.
+  - i: a `PUT` of the fresh `GET` body unchanged answered 200 in 0.002 s with no event. `Address` is stored exactly as sent (`LocalHost` kept), and a port sent as `"4998"` reads back as the number 4998. No `compare` is declared.
+  - j: the vendor accepts a name with a space or a dot, and ports 0 and 70000, each 201 and stored as sent. It refuses an empty `Address` on a create (500 #5659), an absent one (400 #40301), port `x` (500 #7207) and a 65-character name (500 #7201).
+  - k: `DELETE` answered 200 in 0.15 s, and a second `DELETE` 404 `PORT.NOTFOUND`.
+- **l.** g, h and k started no process. The vendor wrote no `messages.log` line; the only lines were OcuPilot's own for j's refusals and k's second delete.
+- **m.** Every license server write records `%System/%System/ConfigurationChange` (Create, Modify or Delete section LicenseServer `<NAME>`); an unchanged `PUT` records none. No AD-15/AD-53 case is needed for them.
+- **6 (pairs).**
+  - Exactly `%Admin_Manage:USE`, `%DB_IRISSYS:READ` and the install namespace's code read: a, b and c answered 200. e answered the vendor's own 400 for the key.
+  - g, h and k each answered 500 `<PROTECT>` in `Config.LicenseServers`, with nothing changed. The vendor still recorded a `ConfigurationChange` event and a `%Security/Protect` event for each.
+  - With `%DB_IRISSYS:WRITE` added alone, g answered 201 and h and k 200. With `%Admin_Secure:USE` alone or `%Admin_Operate:USE` alone, the same refusals.
+- **7.** `RemoveAll` left nothing. S2 equals S0 apart from the `messages.log` and `alerts.log` counts (the loader's install lines and OcuPilot's own error lines from refused probes), the probe session's process, and the monitor state, which read 2 and was cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **9.** The license server writes declare `%DB_IRISSYS:WRITE`, the update sends `{Address, Port}`, the canonical name is upper case, and only the activation is an unmeasured AD-15/AD-53 case.
+- **Implement.** `Prohibited` gives `license-key` one reviewed field, `Key`, where the plan named none: `Test/Prohibited` requires every declared secret to be one of its type's reviewed few (run 4512 red, 4513 green). The activation declares no server `Consequence`: unadvertised, it is never minted, so the activate dialog states the consequence and the restart and reduction sentences.
 
 **Decisions.** Each is applied in this plan unless the orchestrator rules otherwise at the merge gate.
 
@@ -563,10 +626,38 @@ These rows are Part A's.
 - A6: `%DB_IRISSYS:WRITE` is dropped from `PrivilegePairs` (if Task 0 keeps it), and `LicenseWriteGate` goes red. The port range check is dropped, and the port leg goes red.
 - A7: a baseline key is dropped, and `GovernanceBaseline` goes red. `sideBarPosition` is set to 0, and `Navigation` and `navigation.test.mjs` go red.
 
+- mutation: `AuthorizationKey` dropped from `LicenseKey`'s `context.secretFields` → `LicenseKey.TestTheReadAndTheToolAnswerTheFieldsWithoutTheAuthorizationKey` red alone, on both answers (run 4525)
+- mutation: `LicensePort.Validate` puts the vendor's `InvalidReason` in the fault → `LicenseKey.TestAMalformedKeyIsRefusedOnTheFieldAndChangesNothing` red alone (run 4526)
+- mutation: `LicensePort.Activate` skips `Validate` → `LicenseKey.TestTheActivationValidatesThenWritesOnlyWhenValid` red alone, the seam recording the `PUT` (run 4527)
+- mutation: `LicenseKeyActivate.ADVERTISED` 1 → `LicenseKey.TestTheActivationIsAbsentFromEveryRosterTheAgentSees` red alone (run 4528)
+- mutation: `_print.scss`'s chrome rule loses `app-side-bar` → `license-key.browser-spec.mjs` A4 red alone, "app-side-bar does not print", after rebuild and redeploy (browser run 2026-10-03T18:59Z; the leg now first asserts each chrome element shows on screen)
+- mutation: `LicenseRules.HandleValidate` echoes the key text into its answer → `LicenseKey.TestTheValidateRouteAnswersAValidKeyWithoutItsText` red alone (run 4546)
+- mutation: `LicenseServerDelete.Consequence` compares with `'=` → `LicenseDescriptor.TestTheDeleteNamesAMultiServerKeyAsItsConsequence` red alone (run 4547)
+- mutation: `LicenseRules.Shape` returns at once → `LicenseServerWrite.TestACreateWritesTheAddressAndPortOnBothCallers` red alone, on the sent port's type (run 4548)
+- mutation: `LicenseKeyPage.closeDialog` keeps the text → `license-key.page.spec.ts` "closing the dialog clears the text" red alone (vitest, 2026-10-03T18:58Z)
+- mutation: `Dispatch.AnswerOne` ledgers the call's raw input as its target → `LicenseKey.TestTheActivationIsAbsentFromEveryRosterTheAgentSees` red alone, on the ledger leg (run 4983)
+- mutation: `LicenseProbe.RemoveAll` keeps the probe license servers → `LicenseServerWrite`'s per-test license snapshot red (run 4984)
+- mutation: `LicenseServerUpdate.MergeUpdate` sends only the changed field → `LicenseServerWrite.TestAnUpdateSendsTheCompleteSetReadFreshAndNeverTheKeyDirectory` red alone (run 4529)
+- mutation: `LicenseServerUpdate.PERMITTEDFIELDS` admits `KeyDirectory` → `LicenseServerWrite.TestACallersKeyDirectoryIsNeverSent` red alone (run 4530)
+- mutation: `LicenseServerCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `LicenseWriteGate.TestTheMissingWritePairIsRefusedBeforeAnyPortCall` red alone, the agent's create reaching the port (run 4531)
+- mutation: `LicenseRules.IsPort` drops the range → `LicenseServerWrite.TestBadNamesAddressesAndPortsAreRefusedBeforeAnyWrite` red alone, port 65536 written (run 4532)
+- mutation: `osmgmt.licensekey.activate` dropped from the baseline → `GovernanceBaseline` red on both its key-line and disabled-line tests (run 4533)
+- mutation: `LicenseKey` `sideBarPosition` 0 → `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 4534), and `navigation.test.mjs` red on its two OS management rosters after the mirror is regenerated
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 - **Plan:** halted for a split (Part A Licensing, Part B ECP data servers, Part C ECP settings and application servers); the orchestrator approved it and confirmed Decisions 1 to 6 on 2026-10-03. The runner trimmed this spec to Part A and set it ready for development.
 - **Measured at plan:** read-only, on `ocupilot-b-ci`, with no write to any instance (Design Notes › Measured at plan).
+- **Implemented:** Part A. Task 0 ran first on `ocupilot-b-ci` with no halt (Design Notes › Measured at implement; three runner entries in `## Spec Change Log`). License key (OS management 15: the thirteen fields without `AuthorizationKey`, the activate dialog with Validate and the destructive Activate, Print under `_print.scss`) and License servers (16, with its form), `LicensePort` (`VALIDATE` before any `PUT`), the screen-only `POST /license/key/validate`, the four tools (activation unadvertised, its key and the delete's `false`), `LicenseError`, and every roster. No key was activated anywhere; every success path ran through `LicenseSeamPort`.
+- **Files:**
+  - Product, server: `Port/LicensePort.cls`, `Api/LicenseError.cls`, `Area/OsMgmt/LicenseRules.cls` and `LicenseServerSave.cls`, three descriptors and four tools (new); `AdminPort` (`CHECKTYPES`, three mutating pairs, an unlogged 400), `Router`, `Error` (two dispatch lines), `EntityType`, `EntityRef`, `Baseline`, `Prohibited`, `Classification` and the regenerated `ToolFields` (add-only).
+  - Product, client: `license-key.page.ts`, `license-server-form.page.ts` and `.store.ts`, `license-server-actions.ts`, `_print.scss` (new); `app.ts`, `strings.ts`, `screen-actions.ts`, `proposal-view.ts`, `screen-outlet.ts`, `screen-action-handler.ts`, `styles.scss`, `_components.scss`, the regenerated `screens.generated.ts`, and `angular.json` (`maximumWarning` 2638kB to 2677kB from 2,676,623 measured bytes, DW-1166).
+  - Tests: twelve new `Test/License*` and seam classes, seventeen roster classes and `PortFixture`; four new component specs and the `area-verdict` and `rail-wire` specs; `license-key` and `license-servers` browser specs and the four side-bar lists (16 entries); `angular-json`, `navigation`, `navigation-wire`, `proposal-view` and `screen-mirror` tool tests.
+  - Docs and CI: EXPERIENCE.md (:164, :173, :375, :479; 1005 lines), `scripts/ci-throwaway.sh` (`OCUPILOT_ALLOW_LICENSE_CONFIG`).
+- **Review:** 23 findings (Review Triage Log): 11 patched (5 medium, 6 low), each a test leg; 12 rejected (11 false, 1 low); nothing deferred, no intent gap or bad spec. The stage also added EXPERIENCE.md :375's missing "; and" and a close-dialog assertion in `license-key.page.spec.ts`. Follow-up review: `false` — five mediums were patched, but each patched leg was shown red under a named mutation (runs 4546-4548, 4983, 4984, browser 18:59Z), and no product code changed in review.
+- **Verification (final tree):** the full ObjectScript sweep, one class at a time on `ocupilot-b-ci` (runs 4549-4982, read back from `%UnitTest_Result`; the runner's two-hour limit stopped it after run 4966 landed, and the last sixteen classes ran as one resumed list): 434 classes, 3,564 tests, 3,562 passed. The two failures are the throwaway's age (inference; both pass in CI): `Retention.TestAnEntryAgesByItsOwnDefinitionAndTheLedgerByTheLongest` (run 4859) and `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (run 4977). After the review mutations, `LicenseServerWrite` 6/6 (run 4985) and `LicenseKey` 9/9 (run 4986). `npm test`: tools 1781/1781, components 2259/2259; `npm run build` passes (initial 2,676,623 bytes). Rebuilt bundle redeployed; the seven `(loop)` browser specs 22/22. `smoke.sh` 50/50. `check-objectscript.py` 0 problems, `lint-docs.sh` clean, secret grep 0.
+- **End state (`ocupilot-b-ci`):** the license as at S0 (order 54702, Single, 8 units, `IsPendingActivation` 0, `MaxECPServers` 0, `NetworkEnabled` 0, no `iris.key` or saved key file, 0 temporary key files); license servers `LOCAL` alone; no `OCUPROBE186*` server, user or role; journal settings as found; 0 agent definitions, 0 policy rows; monitor state read 2 after the sweep and was cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Residual risks:** the activation's success path is unmeasured on any instance (Named limit 1). `_components.scss` and `screen-mirror.test.mjs`, outside the contended list, are also appended by Epic 19 (add-only both sides; a textual merge conflict at the file ends is likely). `footprint_extensions`: `Port/LicensePort.cls`, `Area/OsMgmt/License*.cls`, `Api/LicenseError.cls`, `ui/src/styles/_print.scss`, `ui/src/styles.scss`.

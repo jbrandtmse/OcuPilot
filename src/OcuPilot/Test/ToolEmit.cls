@@ -226,6 +226,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; system database (measured); every other write tool must still name its own.
             Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
             If (tTool.name '= "osmgmt.localdatabases.update") && (tTool.name '= "osmgmt.namespaces.enableinterop") && '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            ; Story 18.6: the license key's activation declares its screen's set and no write pair of its
+            ; own (AD-8 as amended 2026-10-03).
+            If tTool.name = "osmgmt.licensekey.activate" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
             ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
             If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))

@@ -97,6 +97,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.RemoteDatabaseList',
   // Story 18.5: Journals, whose two switches and Check integrity each warn first.
   'OcuPilot.Screen.Descriptor.JournalList',
+  // Story 18.6: License servers, whose Delete types the server's name.
+  'OcuPilot.Screen.Descriptor.LicenseServerList',
 ];
 
 /**
@@ -393,6 +395,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LanguageServerList': { delete: STRINGS.languageServerDeleteConsequence },
   // Story 18.16: the remote database's Delete types the name; its file stays on the data server.
   [REMOTE_DATABASE_LIST]: { delete: STRINGS.remoteDatabaseDeleteConsequence },
+  // Story 18.6: the license server's Delete types the server's name.
+  'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
 };
 
 /**
