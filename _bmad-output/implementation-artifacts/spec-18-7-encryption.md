@@ -2,13 +2,23 @@
 title: 'Story 18.7: Encryption'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'Kernel/Proposal/Prohibited.cls: the Codes doc comment still reads "twenty-six in all" (now 27, PROHIBITED.OCUPILOTKEY); left as is because the file is add-only while Epic 19 runs.'
+  - 'Test/WireSecurityRead TestTaskHistoryPairSetsAreEnforcedForARealPrincipal fails on ocupilot-b-ci (4,600 task history rows against its 1,000-row cap, a throwaway up since 2026-10-01); environmental, not this story.'
+  - summary: >-
+      Prohibited.DependsOnKey compares a database's EncryptionKeyID with the key file's Id as exact strings; a format or case difference between the two vendor answers would let a protected key's removal through.
+    evidence: |-
+      maybe-false (no encrypted database exists on these instances, and activating a key is out of this story's scope). Settled by Story 18.22's Task 0, which activates a probe key: compare Database.SysCRUD LIST EncryptionKeyID for a database encrypted with it against KeyInFile LIST Id.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls DependsOnKey
+    severity: high (unverified)
+baseline_revision: '71c38bb69f86ec6148484f3ad172233119a92b3c'
 ---
 
 <intent-contract>
@@ -276,7 +286,44 @@ deferred: []
 
 - 2026-10-04, spec gate (runner, per the orchestrator merge gate): split approved (18.7 key files; 18.22 key activation; 18.23 startup settings; 18.24 wallet secrets, DW-1555 re-owned); Decisions 1 to 7 confirmed, Decision 3's keys built `false` pending the owner's AD-22 answer, Decision 6's grammar left to the burn-down; amendments 1 to 7 written to the spine and epics.md; the outlines of 18.22 to 18.24 removed (kept at `0a3dfe43`); status `blocked` to `ready-for-dev`.
 
+- 2026-10-04, implement Task 0 (for the runner, Rule 20): amendment 8 reads "**Story 18.7's Encryption key files declare `%Admin_FileSystemAccess:USE` as their own pair** beside Security's set, because their read resolves a key file through `PathPort`; the key-file writes declare no pair beyond the screen's three, and `removekey` also declares `%Admin_Manage:USE` for its self-protection read; each is refused by name before any port call (measured on `ocupilot-b-ci`, 2026-10-04) [AMENDED 2026-10-04, Story 18.7 Task 0, Rule 20]." Amendment 9 is not needed: the vendor records `%System/%Security/DBEncChange` for every key-file write with auditing on.
+
+- 2026-10-04, implement (for the runner): AD-10's key-file arm reads its databases' and the journal's keys through the tool's port and refuses on a read that fails; a key removal whose reader lacks `%Admin_Manage:USE` therefore never reaches the vendor, which is why `removekey` declares that pair (amendment 8 already says so). No other AD sentence changed.
+
 ## Review Triage Log
+
+### 2026-10-04 — Review pass
+
+- verdicts: 27 findings — high 0, medium 9, low 8, false 9, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the journal-key and failed-read arms of `DependsOnKey` had no test — the seam gains `system`, `journal` and `readfails` modes and the protected-key test loops over all four kinds on both callers (run 6423; mutations run 6420)
+  - `[medium]` `[patch]` (verification-gap) the script was rendered for one tool of five — the placeholder test now mints and takes the create, administrator add, key add and key removal (run 6423; mutation run 6420)
+  - `[low]` `[patch]` (verification-gap) `EncryptionPort.Invoke`'s own `PATH.NAME` guard had no test — the raw-file leg runs through `PortFixture` and a new stubbed `Test/EncryptionEndpointPort`, so no vendor endpoint is built even when a guard regresses (run 6422; mutation run 6419)
+  - `[medium]` `[patch]` (verification-gap) an existing administrator the file does not list was never sent — screen and confirm legs pin 422 `CREDENTIALS`, nothing sent, no log line (run 6423; mutation run 6420)
+  - `[medium]` `[patch]` (verification-gap) the rules' limits were tested only with empty values — the Save loop adds a 51-character name and a 2-character password; the wide-character rule is checked on `EncryptionRules.FieldCode` in `EncryptionDescriptor` (the in-process Save fixture's stream does not carry a wide character as HTTP does) (runs 6423, 6425; mutation run 6420)
+  - `[medium]` `[patch]` (verification-gap) the remover's screen key removal ran after its confirm had removed the key — it now removes a second key and both legs are asserted (run 6424; mutation run 6421)
+  - `[medium]` `[patch]` (verification-gap) the encryption-facts equality had no floor — each `OnAfterOneTest` asserts both snapshots carry no `error` member (runs 6422-6424)
+  - `[low]` `[patch]` (verification-gap) `FileState("probe-raw.key")` could not fail under the stub — deleted
+  - `[low]` `[reject]` (verification-gap) `Test/Prohibited`'s trailing length-0 assertion for the two removal tools is true by construction — the exemption's exact `tool:value` match is the check (a removal tool admitting anything else fails the no-field assertion), so no defect escapes; restructuring adds branches
+  - `[medium]` `[patch]` (verification-gap) `DraftRegistry`'s secret probe was vacuous for the five key-file tools — same root cause as the script finding; covered by the extended placeholder test
+  - `[low]` `[patch]` (verification-gap) `Test/SeamEncryptionKeyFileCreate` was referenced nowhere — deleted (and from the throwaway)
+  - `[low]` `[patch]` (verification-gap) `side-bar-pins.test.mjs`'s literal-list leg missed the gated legs' `$$eval` collectors — the collector regex reads any `$$eval` that reads the label (mutation: a literal list restored in `security.browser-spec.mjs` → red)
+  - `[false]` `[reject]` (verification-gap) ACs without a mutation line — Rule 19 is per AC and A1 to A6 each carry one; A4's parts now carry theirs; A0 is Task 0's measurement
+  - `[low]` `[patch]` (verification-gap) `EncryptionPort`'s class doc claimed pre-write state checks it does not make — sentence corrected
+  - `[maybe-false]` `[defer]` (verification-gap) `DependsOnKey` compares key ids as exact strings — settled by Story 18.22's Task 0 measurement (frontmatter `deferred`)
+  - `[low]` `[reject]` (intent-alignment) `removekey`'s `%Admin_Manage:USE` is not drawn on the Remove control — no AD requires per-row gating on a tool's own pair; the refusal names the pair (AD-8), and gating adds client branches
+  - `[false]` `[reject]` (intent-alignment) port admission ahead of 18.22/18.23 and Task 0's ACTIVATE/DEACTIVATE sends — Task 0 steps 1 and 5 mandate both
+  - `[false]` `[reject]` (intent-alignment) the 3-character password floor — "non-empty" holds; the floor is the vendor's own measured refusal (#1209), refused on the field instead of as an unmapped 500
+  - `[false]` `[reject]` (intent-alignment) S2 differs from S0 by log lines and the monitor state — the spec's declared differences
+  - `[medium]` `[patch]` (intent-alignment) self-protection was exercised for OcuPilot's own database alone — same root cause as the first finding
+  - `[false]` `[reject]` (intent-alignment) prefix and index pins remain in browser specs — the Code Map deems prefix slices safe and Decision 7 asserts verdicts only for each leg's subject
+  - `[false]` `[reject]` (intent-alignment) the form's `toolIdentifier` — every form descriptor declares one (`osmgmt.deviceform`, `osmgmt.ecpdataserverform`); no read tool is registered
+  - `[low]` `[reject]` (intent-alignment) the port does not project key rows to three members — the vendor's measured shape is exactly `{Id, KeyLen, Description}` and the fresh-read test pins it (mutation 6273); projection would guard an unobserved vendor change
+  - `[false]` `[reject]` (intent-alignment) strings reuse — the spec's own Code Map names the "Administrator" column and "Create key file"; no value is held under two keys
+  - `[medium]` `[patch]` (intent-alignment) copy-out secrets checked for one tool — same root cause as the script finding
+  - `[false]` `[reject]` (intent-alignment) password secrecy for store and screen context — the page spec asserts the store holds no marker, and screen context is built from declared context fields only
+  - `[false]` `[reject]` (intent-alignment) in-place edits to shared kernel files — Epic 19's branch changes none of them against the feature branch now; the edits extend one-line lists and counts, and `Read`, `Registry` and `AdminPort` are declared footprint extensions
+- also found by the sweep: `DerivedFields` counted 3 no-template endpoints (run 6321), and this story's three key-file endpoints make 6; `AuditingUpdate` counted 26 prohibited codes (run 6669), and `PROHIBITED.OCUPILOTKEY` makes 27 — both counts bumped (runs 6412, 6770)
 
 ## Design Notes
 
@@ -297,6 +344,20 @@ deferred: []
 - State: every `Security.System` encryption property off or empty; no activated database or data-element key; 0 of 14 databases encrypted; 0 KMIP server configurations; `PendingRestart` 1 with the two known `MaxServerConn` reasons.
 - License: no readable source checks a license for encryption (the five endpoints, the four classic pages, the portal menu, `%SYSTEM.Encryption`); `$SYSTEM.License.GetFeature(0..29)` names no encryption feature; the Community limits page names mirroring, ECP, sharding and API Manager as excluded, so encryption is not license-gated (inference; Task 0 step 4a measures).
 - `^EncryptionKey` and `^DATABASE1` are object code only. The classic pages: `RESOURCE` `%Admin_Secure`, none Hidden, `NormalizePage` answers each class name, the `%SYS.Portal.Resources:List` query answered no row.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-04 17:05-17:11 UTC, as `_SYSTEM` through `RunAs`; evidence `/tmp/epic-18-d6/187/t0/`; no halt condition met):
+
+- **Pairs:** every key-file read and write (create, add and remove administrator, add and remove key) succeeded as a principal holding exactly `%Admin_Secure:USE`, `%Admin_FileSystemAccess:USE` and `%DB_IRISSYS:READ`, so the writes declare no extra pair and no candidate leg was needed. Without `%Admin_FileSystemAccess:USE` the vendor writes still succeeded and only `PathPort`'s gate refused (403 naming the pair). The `removekey` arm's reads: `Database.SysCRUD` `LIST`, `Namespace.Namespace` `GET` and `Database.ConfigCRUD` `LIST` answered 403 with Security's set and 200 with `%Admin_Manage:USE` added; `Settings` `GET` 200 with Security's set. So `removekey` declares `%Admin_Manage:USE`.
+- **Reachability (13 routes, no 501):** `Settings` `GET` 200 (1.7 ms); `Key` `LIST` 200 `[]` (0.2 ms); `Key` `DATAELEMENTLIST` 200 `[]` (0.2 ms); `File` `POST` 201 (16 to 29 ms, the new key's id only in `Location`, `/api/admin/v1/security/encryption/key?id=<id>`, which `InvokeLocated` returns); `KeyInFile` `LIST` 200 `[{Id: string, KeyLen: number, Description: string}]` (3.7 ms) with `KeyLen` in **bits**; `AdminInFile` `LIST` 200 `[{Name: string}]` (1.5 ms), names stored upper case; `AdminInFile` `POST` 201 and `DELETE` 200; `KeyInFile` `POST` 201 (no `Location`) and `DELETE` 200. Step 5: `File` `ACTIVATE` on an absent file 404 (the file check), `Key` `DEACTIVATE` with no `id` and body `{}` 400 (body validation), `Settings` `PUT` `{}` 400 (body validation); the encryption facts unchanged after each.
+- **License:** Community creates key files; `EncryptionSeamPort`'s `created` mode is not needed.
+- **Limits and refusals:** `KeyLen` 128, 192, 256 accepted, 100 400 #40303; an empty name or password 500 #5022; a password under 3 characters 500 #1209, so `EncryptionRules` requires 3 and `PASSWORD`'s sentence says so; administrator names of 51, 200, 1,000 and 4,096 characters accepted (no vendor cap), so the rule keeps the classic page's 50; a 1,000-character description accepted (no vendor limit, so no `DESCRIPTION` code). An existing file 500 #5027, unchanged; a missing directory is created by the vendor.
+- **Administrators:** names compare without case. `POST` with a wrong password 500 #5001 (`<FUNCTION>` inside the vendor's add, no distinct code), an absent existing name 500 #1204, a taken name 409 #1205. `DELETE` last 409 #1210, absent 404 #1204.
+- **Keys:** `POST` with a wrong password 500 #1219, an absent name 500 #1204. `DELETE` absent 404 #1221; the only key 200, after which the file's `KeyInFile` `LIST` answers 500 #5022 as a non-key file does.
+- **Non-key files** (text, empty, binary, JSON): `KeyInFile` `LIST` 500 #5022 (logged); `AdminInFile` `LIST` 200 `[{"Name":""}]`, unlogged. A missing file is `PATH.NOFILE` before any call. A raw `file`, `File` or `DBEncStartKeyFile` to `AdminPort` is 400 `PATH.NAME` with no vendor call and no log line.
+- **Audit (auditing on):** each create records `%System/%Security/DBEncChange` "Encryption key and keyfile created", each administrator or key add or remove the same event "Encryption keyfile modified"; refused writes record none. No AD-15 or AD-53 named case.
+- **Effects:** no key activated, no `Security.System` property moved, no process started, no `PendingRestart` reason added (the two `MaxServerConn` reasons stand). S2 equals S0 apart from `messages.log` +28 and `alerts.log` +9 (OcuPilot's own lines for the refused probes and the instance's alert-throttle lines they caused) and the monitor state, 2, cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Set from the record:** the credentials refusal is mapped from `KeyInFile` #1219 and #1204 and `AdminInFile` `POST` #5001 (`PROPERTYFAULTS`), and stays logged (Decision 6); an existing administrator the file does not list is refused before the call, since `AdminInFile`'s #1204 is also its `DELETE`'s absent name (404); `UNLOGGEDREFUSALS` gains `AdminInFile/POST/409` and `AdminInFile/DELETE/409`. A key file is recognized by its administrator list (a non-key file answers one empty name), so a chosen non-key file is refused `UNREADABLE` with no log line, and a key file whose last key was removed reads as holding no keys.
+- **At build:** the port maps the vendor's state answers (#1205 and #1210 to `TOOL.ARGUMENTS`, #1204 and #1221 to 404) and the tools refuse the same states first, in `StateRefusal` on both callers. `ScreenRead` needs no exemption: its live-row sweep covers the `admin` port alone. Rosters the planned table did not name: `DraftRegistry` gains `REFUSEDDRAFTS` (a synthetic target the port refuses renders one comment step; the placeholders are pinned on a real probe file), `ToolWrite` gains `AHEADTYPES` (the three pairs admitted for 18.22 and 18.23, each asserted unreached), and `Test/Prohibited` holds a secret-body write with advertised arguments as a body-sending one (`SendsFields`), so the reviewed few are the create's and the adds' arguments and secrets, the removes' row names being fingerprinted. `side-bar-pins.test.mjs` refuses count pins and literal lists over collected side-bar labels in every spec, and requires the helper of the 19 specs that assert a side bar; the 13 other readers only find or click an entry. Bundle 2,850,010 bytes (warning re-based to 2851kB); `strings.test.mjs` bound 2600 (2544 literals).
 
 **Decisions** (confirmed by the orchestrator at the spec gate, 2026-10-04, by=merge_gate):
 
@@ -373,11 +434,38 @@ deferred: []
 - A5: `AdminPort`'s `PATHRESOLVED` guard removed → `EncryptionDescriptor`'s raw-`file` leg red; a tool's `PrivilegePairs` drops `%Admin_FileSystemAccess:USE` → `EncryptionWriteGate` red.
 - A6: `security.encryptionkeyfile.removekey` dropped from the baseline → `GovernanceBaseline` red; `EncryptionKeyFile` `sideBarPosition` 0 → `Navigation` and `navigation.test.mjs` red; a literal `entries.length, 19` restored in one OS management spec → `side-bar-pins.test.mjs` red.
 
+Recorded (each reverted byte-identical: the throwaway's copy re-synced from the worktree and recompiled with subclasses; client files restored from a copy and compared):
+
+- mutation: `EncryptionPort.List` hands the vendor `path` unresolved → `EncryptionKeyFileRead.TestMissingCriteriaAMissingFileAndATextFileAreRefused` red (run 6270)
+- mutation: `EncryptionPort.Keys` adds a raw material member → screen reads project it away; `EncryptionKeyFileRead`'s fresh-read leg red (run 6273; run 6271 showed the screen legs alone stay green)
+- mutation: `EncryptionPort.Resolve` resolves a create with overwrite 1 → `EncryptionKeyFileWrite.TestACreateIsRefusedOnItsFieldWithNothingSent` red, a `POST` sent (run 6267)
+- mutation: `CheckCreate`'s missing-directory refusal dropped → the same test red, the vendor created the folder (run 6268)
+- mutation: `EncryptionKeyFileAddAdmin.StateRefusal` admits a listed name → `TestAdministratorRefusalsSendNothingOrLeaveTheFileUnchanged` red, a `POST` sent (run 6265)
+- mutation: `EncryptionKeyFileRemoveAdmin.StateRefusal` admits the last administrator → the same test red, a `DELETE` sent (run 6266)
+- mutation: `Prohibited.Prohibits` sends a key file to `ReviewedFewOnly` instead of `KeyFile` → `TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red, the screen's `DELETE` sent (run 6274)
+- mutation: `AdminPort.InvokeLocated`'s `PATHRESOLVED` guard dropped → `EncryptionKeyFileRead.TestARawFileToTheAdminPortIsRefusedBeforeTheVendor` red (run 6277; the leg now resolves every endpoint to `EndpointFixture`, after run 6275 showed the unstubbed leg reaching the vendor's `Settings` `PUT`, which refused the body and changed nothing)
+- mutation: `EncryptionKeyFileWrite.PrivilegePairs` drops `%Admin_FileSystemAccess:USE` → `EncryptionWriteGate.TestWithoutTheFileSystemPairEveryReadAndWriteIsRefused` red (run 6278)
+- mutation: `EncryptionKeyFileRemoveKey.EXTRAPAIRS` emptied → `EncryptionWriteGate.TestTheKeyRemovalNeedsAdminManage` red (run 6279)
+- mutation: `security.encryptionkeyfile.removekey` dropped from `Baseline` → `GovernanceBaseline` red (run 6280)
+- mutation: `KeyLen` dropped from `Prohibited.EncryptionKeyFileFields`' change list → `Test/Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red naming the add key (run 6288)
+- mutation: `EncryptionKeyFile` `sideBarPosition` 0 → `Navigation` stays green (it carries no Security leg, run 6281), `Wire` red (run 6282), `navigation.test.mjs` red after the mirror's regeneration (`node --test`)
+- mutation: an `entries.length, 19` pin restored in `journals.browser-spec.mjs` → `side-bar-pins.test.mjs` red (`node --test`)
+- mutation: the page's last-administrator guard, its `clearDialog` value reset, the handler's `TYPED_VALUES` branch, the form's confirmation check, the form store's preselection guard and the store's criteria each dropped → their component specs red (`ng test`); `CONSEQUENCE_ENCRYPTIONREMOVEKEY` dropped → `proposal-view.test.mjs` red; one word of `REASONADMINLAST` changed → `self-protection.test.mjs` red
+- mutation: the create form's `clearPasswords` after an accepted Save dropped, rebuilt and redeployed → `encryption-key-file.browser-spec.mjs` A1 red
+- mutation (Matrix Test Audit): the Add key dialog's `new-key-consequence` line dropped → `encryption-key-file.page.spec.ts` "adds a key ..." red (`ng test`)
+- mutation (Matrix Test Audit): `EncryptionKeyFileRemoveKey.FINGERPRINTSUBJECT` without `Keys` → `EncryptionKeyFileWrite.TestAKeyRemovedSinceTheMintClosesTheProposal` red at its target-changed assertion (run 6298; the registry's adequacy rule also reddened seven sibling tests); reverted, reloaded, green at run 6297's tree
+- Matrix Test Audit (implement stage): the Add key dialog now states `ENCRYPTION.KEYFILE.NEWKEY` (matrix row Add a key), a key removed since the mint is pinned target-changed (row Remove a key), and the browser spec walks the Add administrator dialog too (A6)
+- mutation (review patches, one combined run each class, reverted and reloaded, green at runs 6422-6425): `DependsOnKey`'s journal comparison dropped and its failed database read answering 0 → the `journal` and `readfails` legs of `TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red (run 6420); `NAMEMAXLENGTH` 60 → the 51-character Save leg red (run 6420); `Snippet`'s `File` `POST` body without `AdminPassword` → the create's placeholder leg red (run 6420); `AddAdmin`'s listed-name check removed → both unlisted-administrator legs red (run 6420); `EncryptionPort.Invoke`'s `NamesKeyFile` refusal removed → every `EncryptionEndpointPort` raw-file leg red with no vendor endpoint built (run 6419); `EncryptionKeyFileRemoveKey.EXTRAPAIRS` plus `%Admin_Operate:USE` → the remover's confirm and screen legs red (run 6421)
+- mutation: a literal side-bar list restored in `security.browser-spec.mjs`'s gated leg → `side-bar-pins.test.mjs` literal-list leg red (`node --test`)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Planned:** Part A, Encryption key files with DW-1774 and the 13-route reachability Task 0 (Boundaries, matrix, Code Map, Task 0 with its halt conditions, server and client execution, rosters, tests, ACs A0-A6, Verification in Rule 29's shape, planned mutations), self-reviewed against the READY-FOR-DEVELOPMENT standard.
-- **Spec gate:** the orchestrator approved the split and Decisions 1 to 7 on 2026-10-04; the runner wrote amendments 1 to 7 and trimmed the other parts' outlines.
-- **Measured at plan:** read-only on `ocupilot-b-ci` (Design Notes › Measured at plan); no write to any instance, no admin API write, no activation, no restart. EXPERIENCE.md reads 1019 lines on this tree.
+- **Implemented (Part A):** Task 0 on `ocupilot-b-ci` (no halt: all 13 routes reachable, Community creates key files, the writes need exactly the screens' three pairs and `removekey` also `%Admin_Manage:USE`); `Port/EncryptionPort` with the `encryption` read source, `AdminPort`'s `PATHRESOLVED` guard and the eight admitted pairs; three descriptors, five write tools, the create Save, `EncryptionRules`, `EncryptionError`, the `PROHIBITED.OCUPILOTKEY` arm, the five baseline keys `false`; the key file page and create form with stores; DW-1774's `side-bar-spec.mjs`, 18 converted specs and `side-bar-pins.test.mjs`; EXPERIENCE.md at 1019 lines; rosters.
+- **Files:** server `Port/EncryptionPort`, `Port/AdminPort`, `Area/Security/EncryptionRules`, `EncryptionKeyFileSave`, `Api/EncryptionError`, `Api/Error` (two dispatch lines), `Api/Router`, `Screen/Read`, `Screen/Registry`, `Kernel/EntityType`, `Kernel/Governance/Baseline`, `Kernel/Proposal/Prohibited`, three descriptors, seven tool classes, regenerated field lists; tests `Encryption*` (probe, seam, fixtures, four suites), `Seam*` tools and the roster classes in the Code Map plus `DerivedFields` and `AuditingUpdate`; client page, form, stores, actions and specs, shell and core registrations, `strings.ts` (bound 2600), `angular.json` (2851kB); tools `screen-mirror`, `side-bar-pins` and roster tests; `scripts/ci-throwaway.sh` (`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`).
+- **Implement-stage additions:** Matrix Test Audit (the Add key dialog states `NEWKEY`; a key removed since the mint is target-changed; the browser spec walks the Add administrator dialog); review patches in the triage log (11 entries patched, 1 deferred, 12 findings rejected with reasons); bundle re-based to 2851kB (measured 2,850,010 bytes).
+- **Follow-up review recommended: true** (patched by verdict: medium 6 entries, low 5): the review patches are tests and a doc sentence, but two risks stay unverified: `DependsOnKey`'s key-id comparison format (deferred to Story 18.22's Task 0) and a wide-character administrator name over HTTP (pinned on `EncryptionRules` only; the in-process Save fixture cannot carry it).
+- **Verification:** story classes green (runs 6422-6425, 24 tests; `DerivedFields` 6412, `AuditingUpdate` 6770); full ObjectScript sweep, four shards, 457 classes and 3,757 tests: failures attributed — `DerivedFields` and `AuditingUpdate` (this story's counts, fixed), `Retention` (an older suite's expired rows), `PathPortInstance` (HSSYSLOCALTEMP's lost `IRIS.DAT`, DW-2033), `WireSecurityRead` task history (the 1,000-row cap on a 3-day-old throwaway), the last three environmental (inference; they pass in CI); browser: 18 converted specs green (91 tests), `encryption-key-file` 3/3 on the rebuilt bundle; `npm test` (1,805 tool and 2,394 component tests) and `npm run build` green; `check-objectscript` and `lint-docs` clean; smoke 49/49 (1 skipped); end state: no probe directory, key file or principal, encryption facts and the two known `PendingRestart` reasons as at S0, 0 agent definitions, 0 policy rows, monitor cleared to 0 with `$SYSTEM.Monitor.Clear()`.
+- **Residual risks:** mutation run 6275 (handoff) sent `Settings` `PUT {DBEncStartKeyFile}` to the vendor once, which refused the body and changed nothing (facts re-read equal to S0); the leg is now stubbed. A key file with no keys logs one line per read (the vendor's list fails). `AdminInFile`'s #5001 maps to credentials because the vendor answers no distinct code.

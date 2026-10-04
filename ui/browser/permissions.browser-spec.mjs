@@ -27,6 +27,7 @@ import { parseMarkers } from './iris-session.mjs';
 import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -271,12 +272,8 @@ test('AC1: the Permissions side bar reads Users, Roles, Resources, Services, and
         };
       });
       assert.equal(sideBar.area, STRINGS.navAreaPermissions, `${key}: in the Permissions area`);
-      assert.deepEqual(
-        sideBar.entries,
-        [STRINGS.userListLabel, STRINGS.userColumnRoles, STRINGS.resourceListLabel, STRINGS.serviceListLabel],
-        `${key}: the side bar lists the four entries in their declared order`
-      );
-      assert.deepEqual(sideBar.entries, ['Users', 'Roles', 'Resources', 'Services']);
+      assert.deepEqual(sideBar.entries, sideBarLabels('permissions'), `${key}: the side bar lists its entries in their declared order`);
+      assert.deepEqual(sideBar.entries.slice(0, 4), ['Users', 'Roles', 'Resources', 'Services'], `${key}: the first four in the published words`);
       assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
     } finally {
       await context.close();

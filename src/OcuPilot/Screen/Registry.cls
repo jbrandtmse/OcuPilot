@@ -1139,8 +1139,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', the eight sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', the nine sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1548,8 +1548,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) {
-            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier and timeline ports alone (AD-21)"
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) {
+            Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
         }
 

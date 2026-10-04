@@ -35,6 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { saveAndSettle, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -224,7 +225,7 @@ test('C1, C8: ECP settings is the eighteenth OS management entry and shows the s
     await formDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[17], STRINGS.ecpSettingsLabel, 'ECP settings is the eighteenth');
     const legends = await page.$$eval('fieldset[data-group] > legend', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(legends, [STRINGS.ecpSettingsAppServerLegend, STRINGS.ecpSettingsDataServerLegend]);

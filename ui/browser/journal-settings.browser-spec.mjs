@@ -34,6 +34,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { saveAndSettle, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -226,7 +227,7 @@ test('AC1, AC9: Journal settings is the fourteenth OS management entry and shows
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     // Story 18.6: License key and License servers follow it; Story 18.20: ECP data servers follows them,
     // and Story 18.21: ECP settings and ECP application servers follow that.
-    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
     assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
     for (const id of FIELD_IDS) assert.notEqual(await page.$(id), null, `${id} is drawn`);

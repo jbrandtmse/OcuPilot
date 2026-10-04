@@ -28,6 +28,7 @@ import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './li
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -177,11 +178,8 @@ test('AC1: Background tasks is the fifth Tasks entry, and a seeded compact is li
       STRINGS.backgroundTaskListLabel
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
-    assert.deepEqual(
-      labels,
-      [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel, STRINGS.taskHistoryLabel, STRINGS.backgroundTaskListLabel],
-      'the side bar lists Background tasks fifth'
-    );
+    assert.deepEqual(labels, sideBarLabels('tasks'), 'the side bar lists the Tasks entries in their declared order');
+    assert.equal(labels[4], STRINGS.backgroundTaskListLabel, 'Background tasks fifth');
     const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(
       headers.slice(0, 7),

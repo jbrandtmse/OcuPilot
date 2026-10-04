@@ -248,6 +248,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
+      'security/encryption-key-file/administrators',
+      'security/encryption-key-file/create',
       // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',
@@ -272,6 +274,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing',
       // Story 18.1: Allowed directories, the seventh Security and secrets entry.
       'security/allowed-directories',
+      'security/encryption-key-file',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -578,8 +581,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration and Allowed directories'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories and Encryption key files'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

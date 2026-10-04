@@ -36,6 +36,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -247,7 +248,7 @@ test('A7: License servers is the sixteenth OS management entry, lists its four c
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     // Story 18.20: ECP data servers follows it, and Story 18.21's two follow that.
-    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[15], STRINGS.licenseServerListLabel, 'License servers is the sixteenth');
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.languageServerFieldAddress, STRINGS.sslTestPort, STRINGS.licenseServerKeyDirectory]);

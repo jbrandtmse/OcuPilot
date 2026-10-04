@@ -79,7 +79,7 @@ Method TestEveryTemplateEndpointHasOneList()
     Do $$$AssertEquals(tAudit, 1, "1 audit event list")
     Do $$$AssertEquals(tMetadata, 1, "1 server description metadata list")
     Do $$$AssertEquals(tClientMetadata, 1, "1 client configuration metadata list")
-    Do $$$AssertEquals(tNone, 3, "3 endpoints recorded as needing no template")
+    Do $$$AssertEquals(tNone, 6, "6 endpoints recorded as needing no template: Lock, Process, Task.Manager and Story 18.7's three key file endpoints")
     Do $$$AssertEquals(tMalformedRows, "", "every row carries a shape and a template type" _ $Select(tMalformedRows = "": "", 1: "; malformed:" _ tMalformedRows))
 }
 

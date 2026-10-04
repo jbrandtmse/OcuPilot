@@ -36,6 +36,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -223,7 +224,7 @@ test('C4, C8: ECP application servers is the nineteenth OS management entry, its
     await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[18], STRINGS.ecpAppServersLabel, 'ECP application servers is the nineteenth');
     const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [STRINGS.sslPromptGroupConnections, STRINGS.ecpSslConnectionsLabel]);

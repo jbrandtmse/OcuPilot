@@ -49,6 +49,7 @@ import {
   scriptReply,
   setTag,
 } from './turnprobe-spec.mjs';
+import { entriesAbout, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -480,9 +481,8 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
         reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
       }))
     );
-    assert.deepEqual(
-      entries,
-      [
+    assert.deepEqual(entries.map((entry) => entry.label), sideBarLabels('security'), 'the side bar lists every entry in its declared order');
+    const about1 = [
         { label: STRINGS.sslListLabel, disabled: null, reason: '' },
         { label: STRINGS.x509ListLabel, disabled: null, reason: '' },
         { label: STRINGS.ldapListLabel, disabled: null, reason: '' },
@@ -490,9 +490,8 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
         { label: STRINGS.oauthLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_OAuth2_Client:USE') },
         { label: STRINGS.auditingConfigurationLink, disabled: null, reason: '' },
         { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_FileSystemAccess:USE') },
-      ],
-      'SSL/TLS, X.509, LDAP and Auditing are available; Wallet, OAuth 2.0 and Allowed directories are not, each naming its pair'
-    );
+    ];
+    assert.deepEqual(entriesAbout(entries, about1), about1, 'SSL/TLS, X.509, LDAP and Auditing are available; Wallet, OAuth 2.0 and Allowed directories are not, each naming its pair');
 
     // DW-1879: each gated entry keeps its name on one line and reads its reason after it, in both
     // themes, and the page with the side bar open passes the structural walk.
@@ -509,7 +508,7 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
       await frames(page);
       assert.deepEqual(
         await gatedLayout(page),
-        [STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.allowedDirectoriesLabel].map((label) => ({ label, lines: 1, after: true })),
+        entries.filter((entry) => entry.disabled === 'true').map((entry) => ({ label: entry.label, lines: 1, after: true })),
         `${theme}: every gated name is on one line with its reason after it`
       );
       const { entries: walked } = await detectScreen(page, { route: 'security/ssl', checks: theme === 'light' ? INVARIANTS : ['contrast'], viewport: VIEWPORTS.wide.width, theme, minimums });

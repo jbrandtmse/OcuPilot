@@ -35,6 +35,8 @@ import { LicenseServerForm } from './areas/os-management/license-server-form.sto
 import { EcpDataServerForm } from './areas/os-management/ecp-data-server-form.store';
 import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
 import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
+import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.store';
+import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -1296,6 +1298,14 @@ describe('the shell frame', () => {
     await ecpSettingsForm.open();
     ecpSettingsForm.setText('AppServerSettings.MaxServers', '3');
     expect(ecpSettingsForm.text('AppServerSettings.MaxServers')).toBe('3');
+    // And Encryption key files (Story 18.7): a key file THIS principal chose, and one it was creating.
+    const encryptionKeyFileStore = TestBed.inject(EncryptionKeyFileStore);
+    encryptionKeyFileStore.setLocation('/probe/root/', 'keys/probe.key');
+    expect(encryptionKeyFileStore.path()).toBe('keys/probe.key');
+    const encryptionKeyFileForm = TestBed.inject(EncryptionKeyFileForm);
+    encryptionKeyFileForm.open('APRINCIPAL');
+    encryptionKeyFileForm.setValue('Description', 'a key THIS principal described');
+    expect(encryptionKeyFileForm.value('Description')).not.toBe('');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1450,6 +1460,10 @@ describe('the shell frame', () => {
     // goes red, and the next principal's ECP settings hold the previous one's read and typed number.
     expect(ecpSettingsForm.text('AppServerSettings.ClientReconnectInterval')).toBe('');
     expect(ecpSettingsForm.text('AppServerSettings.MaxServers')).toBe('');
+    // Mutation (Rule 19): delete `this.encryptionKeyFileStore.reset()` or `this.encryptionKeyFileForm.reset()`
+    // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal sees the previous one's key file.
+    expect(encryptionKeyFileStore.path()).toBe('');
+    expect(encryptionKeyFileForm.value('Description')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

@@ -36,6 +36,7 @@ import { parseMarkers } from './iris-session.mjs';
 import { clickRowCentre, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { entriesAbout, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -293,8 +294,8 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     assert.deepEqual(reads, [TABS[0].read], 'the OAuth 2.0 screen issued exactly one read, its first tab\'s');
 
     const sideBar = await sideBarOf(page);
-    assert.deepEqual(sideBar.entries, [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink, STRINGS.allowedDirectoriesLabel]);
-    assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories'], 'in the published words');
+    assert.deepEqual(sideBar.entries, sideBarLabels('security'));
+    assert.deepEqual(sideBar.entries.slice(0, 7), ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories'], 'in the published words');
     assert.equal(sideBar.current, STRINGS.oauthLabel, 'and OAuth 2.0 is the current entry');
 
     const strip = await stripOf(page);
@@ -514,9 +515,8 @@ test('AD-8 as amended for DW-1852: with the authorization server pairs alone the
         reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
       }))
     );
-    assert.deepEqual(
-      entries,
-      [
+    assert.deepEqual(entries.map((entry) => entry.label), sideBarLabels('security'), 'the side bar lists every entry in its declared order');
+    const about1 = [
         { label: STRINGS.sslListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.x509ListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.ldapListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
@@ -524,9 +524,8 @@ test('AD-8 as amended for DW-1852: with the authorization server pairs alone the
         { label: STRINGS.oauthLabel, disabled: null, reason: '' },
         { label: STRINGS.auditingConfigurationLink, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
-      ],
-      'every Security entry is listed, and OAuth 2.0 alone is open'
-    );
+    ];
+    assert.deepEqual(entriesAbout(entries, about1), about1, 'every Security entry is listed, and OAuth 2.0 alone is open');
 
     const readsBefore = reads.length;
     await page.evaluate((label) => {

@@ -279,6 +279,13 @@ export const CONSEQUENCE_ECPSETTINGSRESTART = 'ECP.SETTINGS.RESTART';
 export const CONSEQUENCE_ECPSSLAUTHORIZE = 'ECP.SSL.AUTHORIZE';
 export const CONSEQUENCE_ECPSSLREJECT = 'ECP.SSL.REJECT';
 
+/**
+ * Story 18.7: a new encryption key, unique and lost with every key file holding it, and the removal of
+ * a key from a key file, each stated as its screen states it.
+ */
+export const CONSEQUENCE_ENCRYPTIONNEWKEY = 'ENCRYPTION.KEYFILE.NEWKEY';
+export const CONSEQUENCE_ENCRYPTIONREMOVEKEY = 'ENCRYPTION.KEYFILE.REMOVEKEY';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -352,6 +359,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ECPSETTINGSRESTART) return STRINGS.ecpSettingsRestart;
   if (code === CONSEQUENCE_ECPSSLAUTHORIZE) return STRINGS.ecpSslAuthorizeConsequence;
   if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
+  // Story 18.7: the new key's and the key removal's sentences, each published once.
+  if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONREMOVEKEY) return STRINGS.encryptionKeyFileRemoveKeyLoss;
   return '';
 }
 

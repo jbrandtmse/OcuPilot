@@ -170,6 +170,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "REMOTEDATABASEDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LICENSEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ECPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ENCRYPTIONDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }

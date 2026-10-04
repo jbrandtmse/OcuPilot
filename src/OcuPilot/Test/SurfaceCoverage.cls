@@ -191,6 +191,9 @@ XData Coverage
 <screen name="EcpSettings" class="OcuPilot.Test.EcpDescriptor" method="TestEcpSettingsIsOsManagementsEighteenthEntry"/>
 <screen name="EcpAppServerTab" class="OcuPilot.Test.EcpDescriptor" method="TestEcpApplicationServersIsOsManagementsNineteenthEntry" corpus="the two ECP application server tabs are asserted together in one loop"/>
 <screen name="EcpSslConnectionTab" class="OcuPilot.Test.EcpDescriptor" method="TestEcpApplicationServersIsOsManagementsNineteenthEntry" corpus="the two ECP application server tabs are asserted together in one loop"/>
+<screen name="EncryptionKeyFile" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
+<screen name="EncryptionKeyFileAdminList" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
+<screen name="EncryptionKeyFileForm" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -344,6 +347,11 @@ XData Coverage
 <tool name="osmgmt.ecpsslconnections.authorize" class="OcuPilot.Test.EcpDescriptor" method="TestTheStoryTwentyOneToolsDeclareTheirKindsPortsAndPairs" corpus="Story 18.21's four tools are asserted together in one loop"/>
 <tool name="osmgmt.ecpsslconnections.reject" class="OcuPilot.Test.EcpDescriptor" method="TestTheStoryTwentyOneToolsDeclareTheirKindsPortsAndPairs" corpus="Story 18.21's four tools are asserted together in one loop"/>
 <tool name="osmgmt.ecpsslconnections.delete" class="OcuPilot.Test.EcpDescriptor" method="TestTheStoryTwentyOneToolsDeclareTheirKindsPortsAndPairs" corpus="Story 18.21's four tools are asserted together in one loop"/>
+<tool name="security.encryptionkeyfile.create" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.encryptionkeyfile.addkey" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.encryptionkeyfile.removekey" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.encryptionkeyfileadmins.addadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.encryptionkeyfileadmins.removeadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

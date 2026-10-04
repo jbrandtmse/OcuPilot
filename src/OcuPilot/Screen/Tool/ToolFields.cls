@@ -283,6 +283,16 @@ XData Tools
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.encryptionkeyfile.addkey": {"fieldList":"Security.Encryption.KeyInFile","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.encryptionkeyfile.create": {"fieldList":"Security.Encryption.File","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.encryptionkeyfileadmins.addadministrator": {"fieldList":"Security.Encryption.AdminInFile","fields":[
+  {"path":"OldAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true},
+  {"path":"NewAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "security.ldap.create": {"fieldList":"Security.LDAP","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LDAPAttributes[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},
