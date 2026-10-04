@@ -9384,6 +9384,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-20-ecp-data-servers.md (implement) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EcpPort maps only the vendor's #1454 (SSLECPClientNotExist), so a disabled %ECPClient is likely accepted (inference); AD-8 rules out the %ECPClient read, which needs %Admin_Secure:USE. Settle on a throwaway: seed a disabled %ECPClient, create a probe at 192.0.2.10 with SSLConfig 1, read whether it is stored, remove both.
 - 2026-10-04T05:57:45Z status=routed owner=18-21-ecp-settings-and-application-servers by=harvest note=18.21 owns the ECP SSL/TLS authorization surfaces; measure, then refuse or name the gap
+- 2026-10-04T10:07:19Z status=resolved-by:18-21-ecp-settings-and-application-servers by=adjudication note=measured at 18.21's Task 0: the vendor refuses SSLConfig 1 over a disabled %ECPClient with #1454, which EcpPort maps to ECP.DATASERVER.SSLCLIENT
 
 ### DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVER.SSLCLIENT
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: med | fix-risk: low | footprint: in-story
