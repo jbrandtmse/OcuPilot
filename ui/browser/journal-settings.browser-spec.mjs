@@ -224,8 +224,9 @@ test('AC1, AC9: Journal settings is the fourteenth OS management entry and shows
     await formDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    // Story 18.6: License key and License servers follow it; Story 18.20: ECP data servers follows them.
-    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.6: License key and License servers follow it; Story 18.20: ECP data servers follows them,
+    // and Story 18.21: ECP settings and ECP application servers follow that.
+    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
     assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
     for (const id of FIELD_IDS) assert.notEqual(await page.$(id), null, `${id} is drawn`);

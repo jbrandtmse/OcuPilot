@@ -209,7 +209,10 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         ; list's fields to records it seeds.
         ; Story 18.20: a fresh instance holds no ECP data server; EcpDataServerWrite holds the list's
         ; fields to two seeded probe rows.
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList"), tClass) Continue
+        ; Story 18.21: no application server can connect to a fresh instance, and none is authorized;
+        ; EcpDescriptor holds Connections' fields to the vendor query's columns, and EcpSslConnectionWrite
+        ; holds the SSL/TLS authorizations' fields to a seeded probe row.
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery

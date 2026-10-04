@@ -319,6 +319,10 @@ services:
       # with and without the system database's write and %Admin_Operate, and writes probe data servers
       # and changes their status as them (Story 18.20).
       # classes: EcpWriteGate
+      # The ECP settings gate class signs in as probe principals holding ECP settings' and ECP
+      # application servers' pairs, with and without %Admin_Secure and the system database's write,
+      # and saves the settings and deletes probe SSL/TLS names as them (Story 18.21).
+      # classes: EcpSettingsGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -516,6 +520,10 @@ services:
       # OCUPROBEECP* servers at a TEST-NET-1 address, each by exact name, open no ECP connection, and
       # never send Action 3: Normal reaches only a seam port that sends nothing (Story 18.20).
       # classes: EcpDataServerStatus, EcpDataServerWrite, EcpWriteGate
+      # The settings classes change the ECP settings and restore them, sending every MaxServerConn
+      # change and every SSL/TLS one only to a seam port that sends nothing; the SSL/TLS classes
+      # authorize and delete OCUPROBEECP* SSL/TLS names and seed a marked %ECPClient (Story 18.21).
+      # classes: EcpSettingsGate, EcpSettingsWrite, EcpSslConnectionWrite
       OCUPILOT_ALLOW_ECP_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

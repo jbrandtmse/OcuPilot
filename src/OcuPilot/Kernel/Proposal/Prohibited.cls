@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -456,6 +456,19 @@ Parameter TYPELICENSESERVER = "license-server";
 /// <p>An ECP data server (Story 18.20), whose create, change, status change and delete the reviewed-few
 /// sweep alone judges (<method>EcpDataServerFields</method>): AD-10 names no effect on one.</p>
 Parameter TYPEECPDATASERVER = "ecp-data-server";
+
+/// <p>The instance's ECP settings (Story 18.21), a singleton whose one merge write the reviewed-few sweep
+/// alone judges, its member rows folded into their object (<method>Changed</method>): AD-10 names no
+/// effect on them.</p>
+Parameter TYPEECPSETTINGS = "ecp-settings";
+
+/// <p>An ECP application server's SSL/TLS computer name (Story 18.21), whose authorize, reject and delete
+/// the reviewed-few sweep alone judges: AD-10 names no effect on one.</p>
+Parameter TYPEECPSSLCONNECTION = "ecp-ssl-connection";
+
+/// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
+/// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
+Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
 
 /// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
 /// arm does not judge.</p>
@@ -871,6 +884,9 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
     If pType = ..#TYPELICENSEKEY Quit $ListBuild("Key")
     If pType = ..#TYPEECPDATASERVER Quit ..EcpDataServerFields()
+    ; Story 18.21: the settings' two objects, and the name an SSL/TLS delete's card lists.
+    If pType = ..#TYPEECPSETTINGS Quit $ListFromString(..#ECPSETTINGSGROUPS)
+    If pType = ..#TYPEECPSSLCONNECTION Quit $ListBuild("SSLComputerName")
     Quit ""
 }
 
@@ -1066,7 +1082,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1252,6 +1268,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; An ECP data server (Story 18.20): AD-10 names no effect on one.
         If tType = ..#TYPEECPDATASERVER {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; The ECP settings and an ECP SSL/TLS computer name (Story 18.21): AD-10 names no effect on
+        ; either.
+        If (tType = ..#TYPEECPSETTINGS) || (tType = ..#TYPEECPSSLCONNECTION) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -4018,6 +4040,16 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             If $Piece(tField, ".", 1) = ..#CUSTOMFIELD, $Length(tField, ".") > 1 {
                 Set tMember = $Piece(tField, ".", 2, *)
                 Set tField = ..#CUSTOMFIELD
+                If $Data(pChanged(tField)) Continue
+                If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
+                Set pChanged(tField) = ""
+                Set pChanged = pChanged + 1
+                Continue
+            }
+            ; And so is an ECP settings object's <Object>.<member> row (Story 18.21).
+            If $ListFind($ListFromString(..#ECPSETTINGSGROUPS), $Piece(tField, ".", 1)), $Length(tField, ".") > 1 {
+                Set tMember = $Piece(tField, ".", 2, *)
+                Set tField = $Piece(tField, ".", 1)
                 If $Data(pChanged(tField)) Continue
                 If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
                 Set pChanged(tField) = ""

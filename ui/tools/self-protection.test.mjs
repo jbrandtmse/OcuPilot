@@ -616,3 +616,53 @@ test('Story 18.20: the status dialog draws the current status with the labels an
   const client = Object.fromEntries([...dialog[1].matchAll(/(\w+):\s*'([^']*)'/g)].map((found) => [found[1], found[2]]));
   assert.deepEqual(client, server, "the dialog's current-status labels are the port's same-status labels, status for status");
 });
+
+/** Story 18.21's SSL/TLS authorization tools, which declare the two state refusals and the status each needs. */
+const ECP_SSL_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EcpSslConnection${name}.cls`);
+
+/** Story 18.21's published sentences: `[file, parameter, strings.ts key]`. */
+const ECP_SETTINGS_SENTENCES = [
+  [ECP_ERROR, 'REASONSETTINGSCOUNT', 'ecpSettingsCountRange'],
+  [ECP_ERROR, 'REASONSETTINGSRECOVERY', 'ecpSettingsRecoveryRange'],
+  [ECP_ERROR, 'REASONSETTINGSINTERVAL', 'ecpSettingsIntervalRange'],
+  [ECP_ERROR, 'REASONSETTINGSTROUBLE', 'ecpSettingsTroubleRange'],
+  [ECP_ERROR, 'REASONSETTINGSSSLSHAPE', 'ecpSettingsSslChoice'],
+  [ECP_ERROR, 'REASONSETTINGSSSLSERVER', 'ecpSettingsServerSsl'],
+  [ECP_ERROR, 'REASONSETTINGSSERVERS', 'ecpSettingsServersBelow'],
+  [ECP_ERROR, 'REASONSETTINGSRESTART', 'ecpSettingsRestart'],
+  [ECP_ERROR, 'REASONSSLAUTHORIZE', 'ecpSslAuthorizeConsequence'],
+  [ECP_ERROR, 'REASONSSLREJECT', 'ecpSslRejectConsequence'],
+  [ECP_ERROR, 'REASONSSLNOTPENDING', 'ecpSslRefusalNotPending'],
+  [ECP_ERROR, 'REASONSSLNOTAUTHORIZED', 'ecpSslRefusalNotAuthorized'],
+  [ECP_SSL_TOOL('Authorize'), 'NOTPENDINGREASON', 'ecpSslRefusalNotPending'],
+  [ECP_SSL_TOOL('Reject'), 'NOTPENDINGREASON', 'ecpSslRefusalNotPending'],
+  [ECP_SSL_TOOL('Delete'), 'NOTAUTHORIZEDREASON', 'ecpSslRefusalNotAuthorized'],
+];
+
+test("Story 18.21: each ECP settings refusal, consequence and SSL/TLS state refusal is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of NOTPENDINGREASON in EcpSslConnectionAuthorize.cls -> this goes red naming both.
+  for (const [file, parameter, key] of ECP_SETTINGS_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\' sentences on a row in any status but the one each tool needs', async () => {
+  // Mutation (Rule 19): drop the ECP branch from `selfProtectionReason` -> the refused rows go red.
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const { selfProtectionReason, ECP_SSL_PENDING_RULE, ECP_SSL_AUTHORIZED_RULE, ECP_SSL_PENDING_STATUS, ECP_SSL_AUTHORIZED_STATUS } = await import('../src/app/core/self-protection.ts');
+  const needed = (name) => /Parameter NEEDEDSTATUS = "([^"]+)";/.exec(readFileSync(ECP_SSL_TOOL(name), 'utf8'))?.[1];
+  assert.equal(ECP_SSL_PENDING_STATUS, needed('Authorize'), "the pending rule's status is Authorize's");
+  assert.equal(ECP_SSL_PENDING_STATUS, needed('Reject'), "and Reject's");
+  assert.equal(ECP_SSL_AUTHORIZED_STATUS, needed('Delete'), "the authorized rule's status is Delete's");
+  const name = 'CN=OCUPROBEECP';
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name, '', { Status: 'Pending' }), '', 'a pending row may be authorized or rejected');
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name, '', { Status: 'Authorized' }), STRINGS.ecpSslRefusalNotPending, 'an authorized row may not');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', { Status: 'Authorized' }), '', 'an authorized row may be deleted');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', { Status: 'Pending' }), STRINGS.ecpSslRefusalNotAuthorized, 'a pending row may not');
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', null), '', 'for either rule');
+});

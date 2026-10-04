@@ -279,6 +279,11 @@ Method TestAnAreaHolderKeepsOsManagementAndIsRefusedTheServers()
     Set tJournal = $ListFind(tRefused, "os-management/journal-settings=%Admin_Journal:USE")
     Do $$$AssertTrue(tJournal > 0, "Journal settings is refused on its own pair, %Admin_Journal:USE: " _ $ListToString(tRefused, " "))
     If tJournal Set tRefused = $List(tRefused, 1, tJournal - 1) _ $List(tRefused, tJournal + 1, *)
+    ; Story 18.21's ECP settings declares its own pair too, %Admin_Secure:USE, which this principal does
+    ; not hold.
+    Set tEcpSettings = $ListFind(tRefused, "os-management/ecp-settings=%Admin_Secure:USE")
+    Do $$$AssertTrue(tEcpSettings > 0, "ECP settings is refused on its own pair, %Admin_Secure:USE: " _ $ListToString(tRefused, " "))
+    If tEcpSettings Set tRefused = $List(tRefused, 1, tEcpSettings - 1) _ $List(tRefused, tEcpSettings + 1, *)
     Do $$$AssertEquals($ListToString(tRefused, " "), "os-management/language-servers=" _ ..#OWNPAIR, "only External language servers is refused, on its own pair")
     Do $$$AssertTrue(tOpen > 0, "and every other listed OS management screen is open")
     For tRead = "osmgmt.languageservers/read?maxRows=5", "osmgmt.languageserveractivity/read?maxRows=5&name=" _ ##class(%CSP.Page).EscapeURL(..#PROBE) {

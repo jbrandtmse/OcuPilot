@@ -34,6 +34,7 @@ import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.s
 import { LicenseServerForm } from './areas/os-management/license-server-form.store';
 import { EcpDataServerForm } from './areas/os-management/ecp-data-server-form.store';
 import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
+import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
@@ -565,7 +566,11 @@ describe('the shell frame', () => {
                           sources: [{ source: 'logs/xdbc', shown: true, requires: '', count: 1, truncated: false, last: null }],
                         },
                       }
-                    : { kind: 'ok', status: 200, body: { rows: [] } },
+                    : path.startsWith('/api/ocupilot/screens/osmgmt.ecpsettings/read')
+                      ? { kind: 'ok', status: 200, body: { rows: [{ 'AppServerSettings.MaxServers': 2, 'AppServerSettings.ClientReconnectInterval': 5 }], truncated: false } }
+                      : path.startsWith('/api/ocupilot/ecp-settings/form')
+                        ? { kind: 'ok', status: 200, body: { licensed: false, serverSsl: 'absent' } }
+                        : { kind: 'ok', status: 200, body: { rows: [] } },
           } as unknown as ApiService,
         },
       ],
@@ -1286,6 +1291,11 @@ describe('the shell frame', () => {
     await journalSettingsForm.open();
     journalSettingsForm.setText('FileSizeLimit', '1000');
     expect(journalSettingsForm.text('FileSizeLimit')).toBe('1000');
+    // And ECP settings (Story 18.21): the settings THIS principal read and a number they typed.
+    const ecpSettingsForm = TestBed.inject(EcpSettingsForm);
+    await ecpSettingsForm.open();
+    ecpSettingsForm.setText('AppServerSettings.MaxServers', '3');
+    expect(ecpSettingsForm.text('AppServerSettings.MaxServers')).toBe('3');
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1436,6 +1446,10 @@ describe('the shell frame', () => {
     // goes red, and the next principal's Journal settings hold the previous one's read and typed size.
     expect(journalSettingsForm.directory('primary')).toBe('');
     expect(journalSettingsForm.text('FileSizeLimit')).toBe('');
+    // Mutation (Rule 19): delete `this.ecpSettingsForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's ECP settings hold the previous one's read and typed number.
+    expect(ecpSettingsForm.text('AppServerSettings.ClientReconnectInterval')).toBe('');
+    expect(ecpSettingsForm.text('AppServerSettings.MaxServers')).toBe('');
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

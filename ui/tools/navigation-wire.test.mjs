@@ -145,6 +145,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 18.21: ECP application servers' unlisted SSL/TLS authorizations tab, by descriptor class name.
+        {
+          route: 'os-management/ecp-application-servers/ssl',
+          labelKey: 'ecpSslConnectionsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/namespaces/global-mappings/edit',
           labelKey: 'globalMappingFormLabel',
@@ -388,6 +396,22 @@ const LIVE_PAYLOAD = {
           route: 'os-management/ecp-data-servers',
           labelKey: 'ecpDataServerListLabel',
           sideBarPosition: 17,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth, each
+        // refused on %Admin_Manage:USE.
+        {
+          route: 'os-management/ecp-settings',
+          labelKey: 'ecpSettingsLabel',
+          sideBarPosition: 18,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/ecp-application-servers',
+          labelKey: 'ecpAppServersLabel',
+          sideBarPosition: 19,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -735,6 +759,11 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // Story 18.20: ECP data servers and its form declare %Admin_Manage:USE first, on which this principal
   // is denied.
   for (const route of ['os-management/ecp-data-servers', 'os-management/ecp-data-servers/edit']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
+  // Story 18.21: ECP settings, ECP application servers and its SSL/TLS authorizations tab declare
+  // %Admin_Manage:USE first, on which this principal is denied.
+  for (const route of ['os-management/ecp-settings', 'os-management/ecp-application-servers', 'os-management/ecp-application-servers/ssl']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is

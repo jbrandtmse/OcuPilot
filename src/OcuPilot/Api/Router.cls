@@ -237,6 +237,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
   <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
+  <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
 </Routes>
 }
@@ -1761,6 +1763,21 @@ ClassMethod ExplorerSqlBackgroundPoll(pId As %String) As %Status
 ClassMethod ExplorerSqlBackgroundStart() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
+/// form read, delegating to <class>OcuPilot.Area.OsMgmt.EcpSettingsRules</class>. It precedes
+/// <code>/ecp-settings</code>.</p>
+ClassMethod EcpSettingsFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ecp-settings</code> (Story 18.21): ECP settings' Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpSettingsUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsSave).HandleUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data

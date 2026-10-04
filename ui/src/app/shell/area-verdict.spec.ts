@@ -71,6 +71,11 @@ const OPERATOR_MAP = {
         { route: 'os-management/license-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
         // Story 18.20: ECP data servers, which %Operator does not open either.
         { route: 'os-management/ecp-data-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Story 18.21: ECP settings and ECP application servers, which %Operator does not open either.
+        { route: 'os-management/ecp-settings', allowed: false, failedPair: '%Admin_Manage:USE' },
+        { route: 'os-management/ecp-application-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Its unlisted SSL/TLS tab, which the entry would open were it allowed (DW-1852).
+        { route: 'os-management/ecp-application-servers/ssl', allowed: false, failedPair: '%Admin_Manage:USE' },
       ],
     },
     { key: 'tasks', allowed: true, screens: [] },
@@ -177,6 +182,9 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       manage,
       manage,
       // Story 18.20: ECP data servers, the seventeenth.
+      manage,
+      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
+      manage,
       manage,
     ]);
   });
