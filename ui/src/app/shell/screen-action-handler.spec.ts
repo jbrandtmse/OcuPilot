@@ -1990,3 +1990,85 @@ describe('the Locks list\u2019s removals', () => {
     expect(handler.lastRefusal()?.reason).toBe(STRINGS.lockRemoveInTransaction);
   });
 });
+
+/**
+ * Story 18.21: the SSL/TLS authorizations tab's Authorize and Reject each warn with their consequence
+ * before anything is sent, its Delete types the SSL computer name under its consequence, and a row in
+ * the wrong state is refused in the tools' published sentence.
+ */
+describe('the ECP SSL/TLS authorizations tab\u2019s Authorize, Reject and Delete (Story 18.21)', () => {
+  const TAB = 'OcuPilot.Screen.Descriptor.EcpSslConnectionTab';
+  const NAME = 'CN=OCUPROBEECPP';
+  const TARGET = { type: 'ecp-ssl-connection', scope: 'instance', id: NAME };
+  const PENDING = { SSLComputerName: NAME, ClientIP: '192.0.2.20', Status: 'Pending' };
+
+  it('registers the three row actions the tab declares', () => {
+    const { actions } = mount(undefined, TAB);
+    for (const action of ['authorize', 'reject', 'delete']) expect(actions.has(TAB, action)).toBe(true);
+  });
+
+  it('opens the warning before Authorize and Reject with each consequence, sends nothing on Cancel, and sends once past Proceed', async () => {
+    // Mutation (Rule 19): remove the EcpSslConnectionTab entry from WARNING_CONSEQUENCES -> each is sent
+    // at once and the warning assertions go red.
+    for (const [action, verb, consequence] of [
+      ['authorize', STRINGS.ecpSslAuthorize, STRINGS.ecpSslAuthorizeConsequence],
+      ['reject', STRINGS.ecpSslReject, STRINGS.ecpSslRejectConsequence],
+    ] as const) {
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, TAB);
+      handler.startFor(TAB, action, NAME, PENDING, store);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('warning');
+      expect(pending?.verb).toBe(verb);
+      expect(pending?.consequence).toBe(consequence);
+      handler.cancelPending();
+      await settle();
+      expect(calls).toHaveLength(0);
+      handler.startFor(TAB, action, NAME, PENDING, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.ecpsslconnections/action');
+      expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: NAME }]);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated ecp-ssl-connection ${NAME}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('opens Delete\u2019s typed-name dialog with its consequence and no advisory, and sends the name once confirmed', async () => {
+    // Mutation (Rule 19): drop the EcpSslConnectionTab entry from DESTRUCTIVE_CONSEQUENCES -> no dialog
+    // opens and the typed-name assertions go red.
+    const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: TARGET } }, TAB);
+    const authorized = { ...PENDING, Status: 'Authorized' };
+    handler.startFor(TAB, 'delete', NAME, authorized, store);
+    const pending = handler.pending();
+    expect([pending?.kind, pending?.name, pending?.consequence, pending?.advisory]).toEqual(['typed-name', NAME, STRINGS.ecpSslConnectionDeleteConsequence, '']);
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+    handler.startFor(TAB, 'delete', NAME, authorized, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'delete', id: NAME }]);
+    expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`deleted ecp-ssl-connection ${NAME}`]);
+  });
+
+  it('shows a wrong-state refusal in the tools\u2019 published sentence rather than the envelope\u2019s generic reason', async () => {
+    // The row each action starts from reads the status that action needs, so the rule lets it through
+    // and the instance's own fresh read refuses it.
+    // Mutation (Rule 19): drop ecpSslRefusalNotPending or ecpSslRefusalNotAuthorized from
+    // PUBLISHED_PROBLEMS -> the store shows the generic reason and this goes red.
+    for (const [action, problem, row] of [
+      ['authorize', STRINGS.ecpSslRefusalNotPending, PENDING],
+      ['delete', STRINGS.ecpSslRefusalNotAuthorized, { ...PENDING, Status: 'Authorized' }],
+    ] as const) {
+      const refused = { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The generic reason.', detail: { problem } } as unknown as JsonResult<unknown>;
+      const { handler, store, calls, events } = mount(refused, TAB);
+      handler.startFor(TAB, action, NAME, row, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls).toHaveLength(1);
+      expect(store.refusal()).toBe(problem);
+      expect(events).toEqual([]);
+      TestBed.resetTestingModule();
+    }
+  });
+});

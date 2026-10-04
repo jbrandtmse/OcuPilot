@@ -270,6 +270,15 @@ export const CONSEQUENCE_LICENSEMULTIKEY = 'LICENSE.SERVER.MULTIKEY';
 export const CONSEQUENCE_ECPSTATUSDISCONNECT = 'ECP.STATUS.DISCONNECT';
 export const CONSEQUENCE_ECPSTATUSCONNECT = 'ECP.STATUS.CONNECT';
 
+/**
+ * Story 18.21: an ECP settings write that changes the maximum number of application servers, which
+ * takes effect only after a restart, and an SSL/TLS authorize or reject, each stated as its screen
+ * states it.
+ */
+export const CONSEQUENCE_ECPSETTINGSRESTART = 'ECP.SETTINGS.RESTART';
+export const CONSEQUENCE_ECPSSLAUTHORIZE = 'ECP.SSL.AUTHORIZE';
+export const CONSEQUENCE_ECPSSLREJECT = 'ECP.SSL.REJECT';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -339,6 +348,10 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.20: the Change status dialog's own consequence sentences, published once.
   if (code === CONSEQUENCE_ECPSTATUSDISCONNECT) return STRINGS.ecpDataServerDisconnectConsequence;
   if (code === CONSEQUENCE_ECPSTATUSCONNECT) return STRINGS.ecpDataServerConnectConsequence;
+  // Story 18.21: the settings' restart sentence and the two warnings, each published once.
+  if (code === CONSEQUENCE_ECPSETTINGSRESTART) return STRINGS.ecpSettingsRestart;
+  if (code === CONSEQUENCE_ECPSSLAUTHORIZE) return STRINGS.ecpSslAuthorizeConsequence;
+  if (code === CONSEQUENCE_ECPSSLREJECT) return STRINGS.ecpSslRejectConsequence;
   return '';
 }
 

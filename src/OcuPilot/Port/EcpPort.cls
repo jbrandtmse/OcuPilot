@@ -25,6 +25,11 @@
 /// <parameter>OcuPilot.Api.EcpError.SSLCLIENT</parameter> on <code>SSLConfig</code>.</p>
 /// <p><b>A <code>DELETE</code></b> the vendor refuses 409 (#423, a remote database uses the server) is
 /// 409 <parameter>OcuPilot.Api.EcpError.INUSE</parameter>.</p>
+/// <p><b>The settings</b> (Story 18.21): <code>ECP.Settings</code> takes no query, so its read and its
+/// <code>PUT</code> are sent without one; the <code>PUT</code> is refused on its field before it is sent
+/// when it asks for SSL/TLS while <code>%ECPServer</code> is not enabled, or names fewer data servers than
+/// the instance defines (<method>SettingsPut</method>). <code>ECP.AppServerSSLConnection</code> is the
+/// admin port's own call.</p>
 /// <p><b>Caller contract:</b> every vendor call goes through <method>Call</method>, so a test port
 /// overrides that one method, and <method>NetworkEnabled</method> is the license seam.</p>
 Class OcuPilot.Port.EcpPort Extends OcuPilot.Port.AdminPort
@@ -81,6 +86,28 @@ Parameter LIMITPAIR = "%Admin_Secure:USE";
 /// <p>The field the vendor's SSL/TLS refusal names.</p>
 Parameter SSLFIELD = "SSLConfig";
 
+/// <p>The endpoint an ECP SSL/TLS configuration is read through (Story 18.21), the two configurations'
+/// fixed names, the read's enablement member, and <method>SslState</method>'s three answers.</p>
+Parameter SSLCONFIGENDPOINT = "Security.SSLConfig";
+
+Parameter SERVERSSL = "%ECPServer";
+
+Parameter CLIENTSSL = "%ECPClient";
+
+Parameter SSLENABLEDFIELD = "Enabled";
+
+Parameter SSLABSENT = "absent";
+
+Parameter SSLDISABLED = "disabled";
+
+Parameter SSLENABLED = "enabled";
+
+/// <p>The settings group and member that ask for ECP SSL/TLS support (0 Disabled, 1 Enabled, 2
+/// Required).</p>
+Parameter SSLGROUP = "DataServerSettings";
+
+Parameter SSLSERVERFIELD = "SSLECPServer";
+
 /// <p>One vendor call: <method>OcuPilot.Port.AdminPort.Invoke</method>. Every call this port makes
 /// goes through here, so a test port overrides this one method to record or answer a call.</p>
 ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -112,7 +139,131 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Kill tQuery(..#STATUSQUERY)
         Quit ..Call(pEndpoint, pType, .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
     }
+    ; Story 18.21: the settings singleton takes no query, so the caller's identifying parameter is not
+    ; sent (the JournalPort model), and its PUT is checked before it is sent.
+    If pEndpoint = ..#SETTINGSENDPOINT {
+        If pType = "PUT" Quit ..SettingsPut(pBody, .pResult, .pHttpStatus, .pFault)
+        Kill tQuery
+        Quit ..Call(pEndpoint, pType, .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
+    }
     Quit ..Call(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The state of the ECP SSL/TLS configuration <var>pName</var> (<parameter>SERVERSSL</parameter> or
+/// <parameter>CLIENTSSL</parameter>) as the caller reads it now through <code>Security.SSLConfig</code>
+/// <code>GET</code>, in <var>pState</var>: <code>absent</code> (the read's 404, logged by nobody, as
+/// every read's 404 is), <code>disabled</code> or <code>enabled</code>. Any other failure, the read's
+/// 403 for a caller without <code>%Admin_Secure:USE</code> among them, is an error status carrying
+/// <var>pHttpStatus</var> and <var>pFault</var>.</p>
+/// <p><b>Caller contract:</b> the settings <code>PUT</code>, the settings tool's rules and
+/// <method>OcuPilot.Area.OsMgmt.EcpSettingsRules.HandleForm</method> read it here, so a test port
+/// answers all three through <method>Call</method>.</p>
+ClassMethod SslState(pName As %String, Output pState As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pState = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Kill tQuery
+    Set tQuery(..#NAMEPARAM) = pName
+    Set tSC = ..Call(..#SSLCONFIGENDPOINT, "GET", .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) {
+        If ##class(OcuPilot.Screen.Read).IsAbsence($Get(pHttpStatus), $Get(pFault)) {
+            Set pState = ..#SSLABSENT
+            Set pHttpStatus = 0
+            Set pFault = ""
+            Quit $$$OK
+        }
+        Quit tSC
+    }
+    Set tEnabled = ""
+    If $IsObject($Get(tAnswer)) && tAnswer.%IsA("%Library.DynamicObject") Set tEnabled = ..Text(tAnswer, ..#SSLENABLEDFIELD)
+    Set pState = $Select((tEnabled = 1) || ($ZConvert(tEnabled, "L") = "true"): ..#SSLENABLED, 1: ..#SSLDISABLED)
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pBody</var>'s <parameter>SSLGROUP</parameter>.<parameter>SSLSERVERFIELD</parameter>
+/// asks for SSL/TLS: 1 or 2.</p>
+ClassMethod AsksServerSsl(pBody As %DynamicAbstractObject) As %Boolean
+{
+    Set tValue = ..Member(pBody, ..#SSLGROUP, ..#SSLSERVERFIELD)
+    Quit (tValue = 1) || (tValue = 2)
+}
+
+/// <p><var>pBody</var>'s member <var>pMember</var> of its object <var>pGroup</var> as text, or
+/// <code>""</code>.</p>
+ClassMethod Member(pBody As %DynamicAbstractObject, pGroup As %String, pMember As %String) As %String
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    If pBody.%GetTypeOf(pGroup) '= "object" Quit ""
+    Quit ..Text(pBody.%Get(pGroup), pMember)
+}
+
+/// <p>The settings write (Story 18.21): before the vendor's <code>PUT</code>, refuse 422
+/// <parameter>OcuPilot.Api.EcpError.SETTINGSVALIDATION</parameter> on
+/// <code>DataServerSettings.SSLECPServer</code> with
+/// <parameter>OcuPilot.Api.EcpError.SETTINGSSSLSERVER</parameter> when <var>pBody</var> asks for SSL/TLS
+/// while <parameter>SERVERSSL</parameter> is not enabled (<method>SslState</method>), and on
+/// <code>AppServerSettings.MaxServers</code> with
+/// <parameter>OcuPilot.Api.EcpError.SETTINGSSERVERS</parameter> when that number is below the data servers
+/// the instance defines, sending nothing; then the vendor's <code>PUT</code> with no query. The vendor
+/// does not stop at a refused member (AD-4), so each refusal it would make after storing another is made
+/// here first.</p>
+ClassMethod SettingsPut(pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ..SettingsRefusal(pBody, .tField, .tCode, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tCode '= "" Quit ..RefusedAs(##class(OcuPilot.Api.EcpError).#SETTINGSVALIDATION, tField, tCode, .pHttpStatus, .pFault)
+    Kill tQuery
+    Quit ..Call(..#SETTINGSENDPOINT, "PUT", .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The refusal a settings body <var>pBody</var> meets before any vendor write, as its field
+/// <var>pField</var> and code <var>pCode</var>, or both <code>""</code>: SSL/TLS asked for while
+/// <parameter>SERVERSSL</parameter> is not enabled, then a maximum number of data servers below the
+/// number the instance defines. A read that fails is an error status carrying <var>pHttpStatus</var> and
+/// <var>pFault</var>.</p>
+ClassMethod SettingsRefusal(pBody As %DynamicAbstractObject, Output pField As %String, Output pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pField = ""
+    Set pCode = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If ..AsksServerSsl(pBody) {
+        Set tSC = ..SslState(..#SERVERSSL, .tState, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If tState '= ..#SSLENABLED {
+            Set pField = ..#SSLGROUP _ "." _ ..#SSLSERVERFIELD
+            Set pCode = ##class(OcuPilot.Api.EcpError).#SETTINGSSSLSERVER
+            Quit $$$OK
+        }
+    }
+    Set tMaximum = ..Member(pBody, ..#LIMITGROUP, ..#LIMITFIELD)
+    If $Match(tMaximum, "[0-9]{1,5}") {
+        Set tSC = ..Rows(.tRows, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If tRows.%Size() > (+tMaximum) {
+            Set pField = ..#LIMITGROUP _ "." _ ..#LIMITFIELD
+            Set pCode = ##class(OcuPilot.Api.EcpError).#SETTINGSSERVERS
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>A 422 refusal whose envelope carries <var>pEnvelopeCode</var> and whose one violation names
+/// <var>pField</var> with <var>pCode</var> and its sentence, with nothing sent.</p>
+ClassMethod RefusedAs(pEnvelopeCode As %String, pField As %String, pCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = ..Refused(pField, pCode, .pHttpStatus, .pFault)
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#VALIDATIONFAILED, pEnvelopeCode, ##class(OcuPilot.Api.EcpError).ReasonFor(pEnvelopeCode))
+    Set tViolation = {}
+    Do tViolation.%Set("field", pField, "string")
+    Do tViolation.%Set("code", pCode, "string")
+    Do tViolation.%Set("reason", ##class(OcuPilot.Api.EcpError).ReasonFor(pCode), "string")
+    Do pFault.%Set("detail", {"violations": [(tViolation)]})
+    Quit $$$ERROR($$$GeneralError, pCode)
 }
 
 /// <p>The vendor's <code>Action</code> for status <var>pStatus</var>, compared without regard to case,
@@ -371,7 +522,10 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>{Action}</code>, except Normal on an instance whose license enables no ECP, which renders no
 /// call and one <code>comment</code> step carrying the license sentence, as <method>Invoke</method>
 /// refuses it; a <code>PUT</code>, a <code>DELETE</code> and every other call are the admin port's
-/// script. The list read, the limit and the same-status check are guards a script cannot carry.</p>
+/// script. The list read, the limit and the same-status check are guards a script cannot carry. A
+/// settings <code>PUT</code> is one <code>PUT /ecp/settings</code> step with no query, or, where
+/// <method>SettingsRefusal</method> refuses it, one <code>comment</code> step carrying that sentence and no
+/// call; the SSL/TLS authorization actions are the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If (pEndpoint = ..#ENDPOINT) && (pType = ..#ACTIONTYPE) {
@@ -388,6 +542,14 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If pEndpoint = ..#ENDPOINT {
         Merge tQuery = pQuery
         Kill tQuery(..#STATUSQUERY)
+        Quit ##super(pEndpoint, pType, .tQuery, pBody, pContext)
+    }
+    ; Story 18.21: a settings PUT the port would refuse renders no call and one comment step with its
+    ; sentence; otherwise one PUT /ecp/settings step with the body and no query.
+    If (pEndpoint = ..#SETTINGSENDPOINT) && (pType = "PUT") {
+        Set tSC = ..SettingsRefusal(pBody, .tField, .tCode, .tHttp, .tFault)
+        If $$$ISOK(tSC) && (tCode '= "") Quit [(..Step("comment", ##class(OcuPilot.Api.EcpError).ReasonFor(tCode)))]
+        Kill tQuery
         Quit ##super(pEndpoint, pType, .tQuery, pBody, pContext)
     }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)

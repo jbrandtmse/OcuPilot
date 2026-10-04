@@ -319,6 +319,9 @@ test('AC1, AC8: Remote databases is the twelfth OS management entry and lists th
       STRINGS.licenseServerListLabel,
       // Story 18.20: ECP data servers, the seventeenth.
       STRINGS.ecpDataServerListLabel,
+      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
+      STRINGS.ecpSettingsLabel,
+      STRINGS.ecpAppServersLabel,
     ]);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.remoteDatabaseServer, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);

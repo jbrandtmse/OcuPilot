@@ -369,7 +369,8 @@ test('B1, B7: ECP data servers is the seventeenth OS management entry, says what
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.21: ECP settings and ECP application servers follow it.
+    assert.equal(bar.entries.length, 19, `nineteen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[16], STRINGS.ecpDataServerListLabel, 'ECP data servers is the seventeenth');
     assert.equal(await page.$eval('[data-ecp="caveat"]', (node) => node.textContent.trim()), STRINGS.ecpDataServerStatusCaveat);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));

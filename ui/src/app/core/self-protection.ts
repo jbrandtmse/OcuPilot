@@ -83,6 +83,19 @@ export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
  */
 export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
 
+/**
+ * The ECP SSL/TLS authorization rules (Story 18.21): Authorize and Reject need a row whose `Status`
+ * reads `Pending`, and Delete one whose `Status` reads `Authorized`. Each tool refuses any other row
+ * with the rule's sentence, on both callers, because the vendor answers OK for any name; with no row
+ * the instance alone refuses.
+ */
+export const ECP_SSL_PENDING_RULE = 'ecp-ssl-pending';
+export const ECP_SSL_AUTHORIZED_RULE = 'ecp-ssl-authorized';
+
+/** The status each ECP SSL/TLS rule needs, as the vendor's list answers it. */
+export const ECP_SSL_PENDING_STATUS = 'Pending';
+export const ECP_SSL_AUTHORIZED_STATUS = 'Authorized';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
@@ -126,7 +139,9 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
  * still refuses the write. `ocupilot-session` reads the row's `Application` under the web
- * application's canonical rule, and answers `''` with no row.
+ * application's canonical rule, and answers `''` with no row. `ecp-ssl-pending` and
+ * `ecp-ssl-authorized` read the row's `Status`, answering their sentence for a row in any other
+ * status and `''` with no row.
  */
 export function selfProtectionReason(
   rule: string,
@@ -140,6 +155,12 @@ export function selfProtectionReason(
   if (rule === SYSTEM_RESOURCE_RULE) {
     const allow = row?.['AllowDelete'];
     return allow === false || allow === 'false' || allow === 0 || allow === '0' ? STRINGS.resourceRefusalSystem : '';
+  }
+  if (rule === ECP_SSL_PENDING_RULE || rule === ECP_SSL_AUTHORIZED_RULE) {
+    if (row === null) return '';
+    const pending = rule === ECP_SSL_PENDING_RULE;
+    if (row['Status'] === (pending ? ECP_SSL_PENDING_STATUS : ECP_SSL_AUTHORIZED_STATUS)) return '';
+    return pending ? STRINGS.ecpSslRefusalNotPending : STRINGS.ecpSslRefusalNotAuthorized;
   }
   if (rule === OCUPILOT_SESSION_RULE) {
     const application = row?.['Application'];

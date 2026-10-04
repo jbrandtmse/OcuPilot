@@ -526,5 +526,7 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'osmgmt.remotedatabases.update': { Directory: 'unslashed' },
     // Story 18.18: the vendor stores a journal directory with its trailing slash (measured at Task 0).
     'osmgmt.journalsettings.update': { CurrentDirectory: 'unslashed', AlternateDirectory: 'unslashed' },
+    // Story 18.21: the vendor answers each settings group whole, its unsent members included.
+    'osmgmt.ecpsettings.update': { AppServerSettings: 'members', DataServerSettings: 'members' },
   });
 });

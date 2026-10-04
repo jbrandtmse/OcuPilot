@@ -195,11 +195,13 @@ test('every read note\'s text is the string its key names, and the three SQL sta
   assert.deepEqual(
     noted.map((screen) => screen.className).sort(),
     [
+      // Story 18.21: ECP application servers' Connections tab states when its statuses were read.
+      'OcuPilot.Screen.Descriptor.EcpAppServerTab',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
     ],
-    'the three SQL statements reads declare a note'
+    'the three SQL statements reads and the ECP Connections tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -255,6 +257,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['license-server', 'foldcase'],
     // Story 18.20: an ECP data server's name folds case, as the instance stores it upper-cased.
     ['ecp-data-server', 'foldcase'],
+    // Story 18.21: the instance's ECP settings are one object.
+    ['ecp-settings', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -833,11 +837,14 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   // Story 19.5's SQL table tabs, a parent-scoped group whose head is unlisted, beside both.
   // Story 19.14's nine table tabs in the classic page's order, and its view and procedure groups too.
   assert.deepEqual(members, [
+    // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
+    ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
     ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
@@ -2322,12 +2329,13 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Background tasks does beside the Tasks area's; Story 16.10's External language servers and its
   // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
   // Story 16.25's editor owns it the same way; Story 18.18's Journal settings owns %Admin_Journal
-  // beside OS management's set.
+  // beside OS management's set, and Story 18.21's ECP settings owns %Admin_Secure the same way.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
+      'OcuPilot.Screen.Descriptor.EcpSettings',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
