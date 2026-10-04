@@ -9205,6 +9205,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
 - 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
+- 2026-10-04T00:14:03Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=Epic 19 sightings: runs 37127162301 (tests 2,3), 37129484494 attempt 1 (test 2), 37138831685 attempt 1 (tests 2,3), 37157693521 (test 4); priority raised to med, fix-risk low (by=merge_gate)
+- 2026-10-04T00:14:03Z status=resolved-by:19-14-the-sql-catalog-s-remaining-detail-tabs owner=19-14-the-sql-catalog-s-remaining-detail-tabs by=adjudication note=fixed by aaa2460d (released in 1.0.8): signedInAndMovedTo waits for the gate's own navigation to the Definition form, openScreen waits for the clicked entry's route; held-read reproduction red on the old spec and green on the new, mutation restoring the 100 ms settle red; 1.0.8's PR ran all checks green
 ### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
 - source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
@@ -9299,3 +9301,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The pattern's first alternative is unanchored (?is)\bIDENTIF(Y|IED)\b; UPDATE Cases SET Status = 'Identified' is refused before prepare. Fail-closed; a bound ? value is not read, so the word can be sent as a value.
 - 2026-10-04T00:06:36Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=cr note=spec names IDENTIFY/IDENTIFIED as the pattern's first half (Tasks, Refusals before prepare); reopen only by spec amendment
+### DW-1985: A one-row count reads '1 rows' (no singular form): seen on the SQL tables list as the demo account and in the agent panel's context line
+- source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
+- 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
