@@ -29,8 +29,10 @@ import { DATA_PATH } from './data-browser.store';
  * and an SQL error, a refusal as an alert, and no page entering the screen's store. Story 19.8 adds,
  * over a stub of the action handler: the row actions on a table and the read-only line on a view;
  * Add, Duplicate, Delete and Restore; the save dialog's Proceed and Cancel; a mixed answer rolled back
- * by key and the page read again; staged rows surviving paging; `FormDirty`; the leave dialog over
- * another table; a refused save; and a namespace switch discarding what is staged.
+ * by key and the page read again, a failed insert kept staged; the Change column through a save;
+ * staged rows surviving paging; `FormDirty`; the leave dialog over another table; a save's answer
+ * arriving after its staging was dropped; leaving the route dropping what is staged; a refused save;
+ * and a namespace switch discarding what is staged.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlData') as ScreenDeclaration;
@@ -605,8 +607,9 @@ describe('Data browser', () => {
   // --- Story 19.8: editing, staging and saving -----------------------------------------------------
 
   // AC9. Mutation (Rule 19): `writable` drops its key check -> the keyless table offers the row actions
-  // and this goes red.
-  it('a table whose key this account lists offers the row actions; a view and a keyless table read the read-only line and offer none', async () => {
+  // and this goes red; `writable` ignores `keyUnique` -> the table keyed by a repeating column offers
+  // them and this goes red.
+  it('a table whose key this account lists offers the row actions; a view, a keyless table and one whose key may repeat read the read-only line and offer none', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
     await expandAndOpen(mounted);
@@ -623,6 +626,11 @@ describe('Data browser', () => {
     mounted.page = pageAnswer([['k1', '1', '1', '']], { key: [] });
     await click(mounted, all(mounted.host, 'tree-object')[0]);
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    expect(el(mounted.host, 'edit-actions')).toBeNull();
+    expect(el(mounted.host, 'read-only').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnly);
+    expect(all(mounted.host, 'status-cell')).toHaveLength(0);
+    mounted.page = pageAnswer([['r1', '1', '1', '']], { keyUnique: false });
+    await click(mounted, el(mounted.host, 'refresh'));
     expect(el(mounted.host, 'edit-actions')).toBeNull();
     expect(el(mounted.host, 'read-only').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnly);
     expect(all(mounted.host, 'status-cell')).toHaveLength(0);
@@ -772,9 +780,10 @@ describe('Data browser', () => {
     expect(mounted.formDirty.dirty()).toBe(false);
   });
 
-  // AC5, AC10. Mutation (Rule 19): `applyResults` removes a sent insert only when it saved -> the failed
-  // new row stays and this goes red; `outcomeText` drops an error's message -> its Change cell goes red.
-  it("a failed insert is removed; an error row names its SQLCODE and message; the stopped row and those after it read Not run", async () => {
+  // AC5, AC10. Mutation (Rule 19): `applyResults` removes a failed insert -> the typed row goes and this
+  // goes red; `outcomeText` drops an error's message -> its Change cell goes red; `outcomeText` reads a
+  // stopped row as skipped -> its Change cell goes red.
+  it('a failed insert stays staged with what was typed and names why; an error row names its SQLCODE and message; the stopped row reads its bound and those after it Not run', async () => {
     const mounted = await mount();
     const rows = [
       ['n1', '1', '1', 'note1'],
@@ -806,13 +815,85 @@ describe('Data browser', () => {
     await proceed(mounted);
     expect(JSON.parse(mounted.sends[0].values?.['changes'] ?? '[]').map((change: { op: string }) => change.op)).toEqual(['update', 'update', 'update', 'insert']);
     expect(texts(mounted.host, 'status-cell')).toEqual([
+      `${STRINGS.explorerSqlCode.replace('<code>', '-119')}: Duplicate key`,
       `${STRINGS.explorerSqlCode.replace('<code>', '-105')}: Value out of range`,
-      STRINGS.explorerSqlDataOutcomeSkipped,
+      STRINGS.explorerSqlStopped.replace('<s>', '2'),
       STRINGS.explorerSqlDataOutcomeSkipped,
     ]);
-    expect(texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0)).toEqual(['n1', 'n2', 'n3']);
+    expect(texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0)).toEqual(['fresh', 'n1', 'n2', 'n3']);
     expect(el(mounted.host, 'status').textContent?.trim().startsWith('Saved 0 of 4 changes; 4 rolled back.')).toBe(true);
-    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    expect(mounted.formDirty.dirty()).toBe(true);
+    await edit(mounted, 0, 1, 'fresher');
+    expect(texts(mounted.host, 'status-cell')[0]).toBe(STRINGS.explorerSqlDataNew);
+  });
+
+  // AC12. Mutation (Rule 19): the page draws the grid's Change column only while it offers its editors
+  // -> the column goes while the save is on its way and this goes red.
+  it('the Change column and its cells stay while a save is on its way, and no editor opens', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'pending');
+    const columns = el(mounted.host, 'grid').getAttribute('aria-colcount');
+    mounted.holdSend = true;
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(el(mounted.host, 'grid').getAttribute('aria-colcount')).toBe(columns);
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.tableChangedTag]);
+    el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'editor')).toBeNull();
+    for (const release of mounted.heldSends.splice(0)) release();
+    await settle(mounted.fixture);
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.formSaved]);
+  });
+
+  // AC11. Mutation (Rule 19): `save` applies an answer whose staging was dropped meanwhile -> the page is
+  // read again and its status line claims the old save, and this goes red.
+  it('a save answering after its staging was dropped applies nothing to what is staged now', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'old');
+    mounted.holdSend = true;
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'OcuProbe197', Tables: true, Views: true, Procedures: false }])]);
+    mounted.routes.set(tablesPath('OcuProbe197'), [readAnswer([{ Schema: 'OcuProbe197', Name: 'Plain' }])]);
+    mounted.routes.set(viewsPath('OcuProbe197'), [readAnswer([])]);
+    await mounted.switchTo('SAMPLES');
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'new');
+    const posts = dataPosts(mounted).length;
+    for (const release of mounted.heldSends.splice(0)) release();
+    await settle(mounted.fixture);
+    expect(dataPosts(mounted)).toHaveLength(posts);
+    expect(el(mounted.host, 'status').textContent).not.toContain('Saved 1 of 1');
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.tableChangedTag]);
+  });
+
+  // AC11. Mutation (Rule 19): the page keeps what is staged when it is left -> the page opened again
+  // still offers Save changes (1) and this goes red.
+  it('leaving the route drops what is staged, so the page opened again offers nothing to save', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'left');
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    mounted.fixture.destroy();
+    expect(mounted.formDirty.dirty()).toBe(false);
+    const again = TestBed.createComponent(DataBrowserPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    const host = again.nativeElement as HTMLElement;
+    expect(el(host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(texts(host, 'status-cell')).toEqual(['']);
+    expect(texts(host, 'cell')[0]).toBe('n1');
   });
 
   // Mutation (Rule 19): `discard` leaves a save on its way marked as saving -> the page opened again

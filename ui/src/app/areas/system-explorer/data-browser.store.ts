@@ -103,6 +103,8 @@ interface AnswerFrame {
   readonly table: BrowseTable;
   readonly columns: readonly BrowseColumn[];
   readonly key: readonly string[];
+  /** Whether the key names one row each: `false` for a column merely named ID, which orders a page but may repeat. */
+  readonly keyUnique: boolean;
 }
 
 /** What the instance last answered for the open table or view. */
@@ -140,6 +142,8 @@ export interface DataBrowserDeps {
 export interface StagedRow {
   /** `p<index>` for the page's row at that index, or a new row's id. */
   readonly id: string;
+  /** The row's identity, which a re-read keeps: a page row's key values, or a new row's id. */
+  readonly key: string;
   /** The page row's index, or `null` for a new row. */
   readonly page: number | null;
   readonly cells: readonly (string | null)[];
@@ -152,8 +156,8 @@ export interface StagedRow {
   readonly status: string;
 }
 
-/** The Change cell's words for a kept outcome. */
-export function outcomeText(outcome: RowOutcome, sqlcode: number | null, message: string): string {
+/** The Change cell's words for a kept outcome; `seconds` is the bound a stopped row ran out of. */
+export function outcomeText(outcome: RowOutcome, sqlcode: number | null, message: string, seconds?: number): string {
   switch (outcome) {
     case 'saved':
       return STRINGS.formSaved;
@@ -164,6 +168,7 @@ export function outcomeText(outcome: RowOutcome, sqlcode: number | null, message
     case 'refused':
       return STRINGS.explorerSqlDataOutcomeRefused;
     case 'stopped':
+      return typeof seconds === 'number' ? fillPlaceholders(STRINGS.explorerSqlStopped, { s: seconds }) : STRINGS.explorerSqlDataOutcomeSkipped;
     case 'skipped':
       return STRINGS.explorerSqlDataOutcomeSkipped;
     default: {
@@ -188,6 +193,7 @@ export function resultsOf(output: unknown): SaveResult[] {
       outcome: result['outcome'] as RowOutcome,
       sqlcode: typeof result['sqlcode'] === 'number' ? result['sqlcode'] : null,
       message: typeof result['message'] === 'string' ? result['message'] : '',
+      ...(typeof result['seconds'] === 'number' ? { seconds: result['seconds'] } : {}),
     }));
 }
 
@@ -219,6 +225,7 @@ function frameOf(record: Readonly<Record<string, unknown>>): AnswerFrame {
         generated: column['generated'] === true,
       })),
     key: Array.isArray(record['key']) ? record['key'].filter((name): name is string => typeof name === 'string') : [],
+    keyUnique: record['keyUnique'] !== false,
   };
 }
 
@@ -398,10 +405,10 @@ export class DataBrowserState {
     return this.staged.counts();
   }
 
-  /** Whether the open table's rows may change here: a table, not a view, whose key this account can list. */
+  /** Whether the open table's rows may change here: a table, not a view, whose key this account can list and which names one row each. */
   writable(): boolean {
     const answer = this.answerValue;
-    return answer !== null && answer.table.type === 'table' && answer.key.length > 0;
+    return answer !== null && answer.table.type === 'table' && answer.key.length > 0 && answer.keyUnique;
   }
 
   /**
@@ -415,18 +422,20 @@ export class DataBrowserState {
     const fresh: StagedRow[] = this.writable()
       ? this.staged.newRows().map((row: NewRow) => ({
           id: row.id,
+          key: row.id,
           page: null,
           cells: columns.map((column) => (Object.hasOwn(row.values, column.name) ? row.values[column.name] : null)),
           staged: columns.map((column) => Object.hasOwn(row.values, column.name)),
           cut: columns.map(() => false),
           deleted: false,
           isNew: true,
-          status: STRINGS.explorerSqlDataNew,
+          status: (row.outcome === null ? '' : outcomeText(row.outcome.outcome, row.outcome.sqlcode, row.outcome.message, row.outcome.seconds)) || STRINGS.explorerSqlDataNew,
         }))
       : [];
     const overlaid: OverlayRow[] = this.writable() ? this.staged.overlay(answer.key, columns, answer.rows) : this.staged.overlay([], columns, answer.rows);
     const page: StagedRow[] = overlaid.map((row, index) => ({
       id: `p${index}`,
+      key: row.key,
       page: index,
       cells: row.cells,
       staged: row.staged,
@@ -438,7 +447,7 @@ export class DataBrowserState {
         : row.staged.some((flag) => flag)
           ? STRINGS.tableChangedTag
           : row.outcome !== null
-            ? outcomeText(row.outcome.outcome, row.outcome.sqlcode, row.outcome.message)
+            ? outcomeText(row.outcome.outcome, row.outcome.sqlcode, row.outcome.message, row.outcome.seconds)
             : '',
     }));
     return [...fresh, ...page];

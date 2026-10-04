@@ -12,7 +12,8 @@ import type { BrowseColumn, StagedRow } from './data-browser.store';
  * the total and the offset -- its keys, the sorted header's `aria-sort` and the key column's marker,
  * the header and Ctrl/Cmd+PageDown and PageUp intents, and the filter row's inputs and their Enter and
  * Escape; and, editable, the Change column, the editor keys, the editor's own keys, undo and focus,
- * the cells that never open one, and the cut-cell tooltip.
+ * the cells that never open one, a NULL left empty, a re-read row, an IME composition, focus back to a
+ * refused editor, and the cut-cell tooltip.
  */
 
 const COLUMNS: readonly BrowseColumn[] = [
@@ -49,6 +50,7 @@ interface Mounted {
 function staged(cells: readonly (readonly (string | null)[])[], options: { readonly isNew?: readonly number[]; readonly deleted?: readonly number[]; readonly cut?: readonly (readonly number[])[] } = {}): StagedRow[] {
   return cells.map((row, index) => ({
     id: options.isNew?.includes(index) ? `new${index}` : `p${index}`,
+    key: options.isNew?.includes(index) ? `new${index}` : JSON.stringify([row[0] ?? null]),
     page: options.isNew?.includes(index) ? null : index,
     cells: row,
     staged: row.map(() => false),
@@ -331,6 +333,123 @@ describe('Data browser grid', () => {
     await press(mounted, 'ArrowRight');
     await press(mounted, 'F2');
     expect(editorOf(mounted.host)).not.toBeNull();
+  });
+
+  // AC2. Mutation (Rule 19): `commit` parses an editor opened on a NULL as typed -> it stages an empty
+  // value and this goes red.
+  it('an editor F2 opens on a NULL commits NULL while it is left empty; Backspace opens one that stages an empty value', async () => {
+    const mounted = await mount(staged([['a', null, '2', '1', '1', 'memo']]), 1, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    expect(await press(mounted, 'ArrowRight')).toBe('ocu-data-cell-r0-c2');
+    await press(mounted, 'F2');
+    expect(editorOf(mounted.host)?.value).toBe('');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle(mounted);
+    expect(mounted.edited).toEqual([{ row: 'p0', column: 1, value: null }]);
+    await press(mounted, 'Backspace');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle(mounted);
+    expect(mounted.edited.at(-1)).toEqual({ row: 'p0', column: 1, value: '' });
+  });
+
+  // AC1. Mutation (Rule 19): `editTarget` lets a text cell holding a line break open -> the one-line
+  // editor opens over it and this goes red.
+  it('a text cell holding a line break opens no editor, so a one-line editor never drops it', async () => {
+    const mounted = await mount(staged([['a', 'line one\nline two', '2', '1', '1', 'memo']]), 1, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'F2');
+    expect(editorOf(mounted.host)).toBeNull();
+    expect(mounted.announced.at(-1)).toBe(STRINGS.explorerSqlDataNotEditable);
+    await press(mounted, 'x');
+    expect(editorOf(mounted.host)).toBeNull();
+    expect(mounted.edited).toEqual([]);
+  });
+
+  // AC6. Mutation (Rule 19): `editorRowHolds` compares the row's place and id alone -> the editor stays
+  // open over the row a re-read moved there and this goes red.
+  it('an editor whose row a re-read replaced closes and stages nothing', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo'], ['b', 'bee', '3', '0', '2', 'memo']]), 2, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'x');
+    expect(editorOf(mounted.host)).not.toBeNull();
+    mounted.fixture.componentRef.setInput('rows', staged([['b', 'bee', '3', '0', '2', 'memo']]));
+    await settle(mounted);
+    expect(editorOf(mounted.host)).toBeNull();
+    expect(mounted.edited).toEqual([]);
+  });
+
+  // Mutation (Rule 19): drop the `isComposing` check from `onEditorKeydown` -> the composition's Enter
+  // commits and this goes red.
+  it('Enter that ends an IME composition stays in the editor', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo']]), 1, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'F2');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+    await settle(mounted);
+    expect(editorOf(mounted.host)).not.toBeNull();
+    expect(mounted.edited).toEqual([]);
+  });
+
+  // Mutation (Rule 19): `onGridKeydown` ignores a key while an editor is open -> focus stays on the grid
+  // and this goes red.
+  it('a key or press on the grid while a refused editor is open returns focus to that editor', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo']]), 1, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    for (let at = 0; at < 3; at += 1) await press(mounted, 'ArrowRight');
+    await press(mounted, '4');
+    await type(mounted, editorOf(mounted.host) as HTMLInputElement, '4.5');
+    editorOf(mounted.host)?.dispatchEvent(new FocusEvent('blur'));
+    await settle(mounted);
+    expect(editorOf(mounted.host)?.getAttribute('aria-invalid')).toBe('true');
+    grid(mounted.host).focus();
+    await press(mounted, 'ArrowDown');
+    expect(document.activeElement).toBe(editorOf(mounted.host));
+    grid(mounted.host).focus();
+    (mounted.host.querySelector('#ocu-data-cell-r0-c1') as HTMLElement).click();
+    await settle(mounted);
+    expect(document.activeElement).toBe(editorOf(mounted.host));
+    expect(mounted.edited).toEqual([]);
+  });
+
+  // Mutation (Rule 19): Tab commits and moves down, or Shift+Enter commits and moves down -> the
+  // active cell lands elsewhere and this goes red.
+  it('Tab commits and moves right and Shift+Enter up, neither wrapping past the grid\'s edge', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo'], ['b', 'bee', '3', '0', '2', 'memo']]), 2, 0, true, EDIT_COLUMNS);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'x');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await settle(mounted);
+    expect(mounted.edited.at(-1)).toEqual({ row: 'p0', column: 1, value: 'x' });
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c3');
+    await press(mounted, '7');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+    await settle(mounted);
+    expect(mounted.edited.at(-1)).toEqual({ row: 'p0', column: 2, value: '7' });
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c3');
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowLeft');
+    await press(mounted, 'y');
+    editorOf(mounted.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+    await settle(mounted);
+    expect(mounted.edited.at(-1)).toEqual({ row: 'p1', column: 1, value: 'y' });
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c2');
+    const last = await mount(staged([['a', 'abc']]), 1, 0, true, EDIT_COLUMNS.slice(0, 2));
+    await press(last, 'ArrowDown');
+    await press(last, 'End');
+    await press(last, 'z');
+    editorOf(last.host)?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await settle(last);
+    expect(last.edited).toEqual([{ row: 'p0', column: 1, value: 'z' }]);
+    expect(grid(last.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c2');
   });
 
   // AC13 (DW-2028). jsdom lays nothing out, so every element is made to read as cut here.

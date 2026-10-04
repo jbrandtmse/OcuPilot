@@ -3,8 +3,9 @@
 /// path way in: an update saved and a value changed since the read -- by case alone too -- answered
 /// <code>changed</code>; every kind's value read by the data browser's own page comparing equal; NULL
 /// guarded <code>IS NULL</code>, and NULL beside an empty string stored; an insert, and a delete answered
-/// <code>gone</code> once its row is removed; the instance's own refusals; a view, a keyless table and a
-/// column grant leaving out the key refused before any write; the column rules refused before any
+/// <code>gone</code> once its row is removed; the instance's own refusals; a view, a keyless table, a
+/// table keyed only by a repeating ID column and a column grant leaving out the key refused before any
+/// write, and an identity-keyed table saved; the column rules refused before any
 /// write; the budget stopping a row and skipping the rest; a failed save's log lines carrying nothing of
 /// the request; and, as real principals in child processes, the gate naming the missing pair, each
 /// grant deciding its rows, and a text another account holds open still refused.</p>
@@ -189,14 +190,26 @@ Method TestAHeldTextIsStillRefused()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Row", "a", "Name") _ " " _ $ClassMethod(..#PROBE, "Row", "f", "Name"), "Name=abc Name=eff", "and nothing changed")
 }
 
-/// <p>Matrix row Not writable: a view, a keyless table, and a column grant that leaves out the key are
-/// each refused 409 <code>EXPLORER.DATA.READONLY</code> before any write.</p>
+/// <p>Matrix row Not writable: a view, a keyless table, a table keyed only by a column named ID that
+/// repeats, and a column grant that leaves out the key are each refused 409
+/// <code>EXPLORER.DATA.READONLY</code> before any write, while a table keyed by its identity column
+/// saves.</p>
 /// <p>Mutation (Rule 19): drop the key check from <method>OcuPilot.Port.SqlPort.Save</method> -- the
-/// keyless leg runs its delete and goes red.</p>
+/// keyless leg runs its delete and goes red. Drop the <code>keyUnique</code> check -- the repeating ID's
+/// delete removes both its rows and goes red.</p>
 Method TestATableThatCannotBeWrittenIsRefused()
 {
     Do $$$AssertEquals(..Saved([{"op": "update", "key": {"Code": "a"}, "original": {"Name": "abc"}, "values": {"Name": "view"}}], "OcuProbe198.EditView"), "409 EXPLORER.DATA.READONLY ", "a view")
     Do $$$AssertEquals(..Saved([{"op": "delete", "key": {"N": "1"}}], "OcuProbe198.Comp"), "409 EXPLORER.DATA.READONLY ", "a keyless table")
+    Do $$$AssertEquals(..Saved([{"op": "delete", "key": {"ID": "1"}}], "OcuProbe198.Dup"), "409 EXPLORER.DATA.READONLY ", "a table keyed only by a column named ID that repeats")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Value", "SELECT COUNT(*) FROM OcuProbe198.Dup WHERE ID = 1"), 2, "and both its rows stay")
+    Set tPage = ""
+    Set tSC = ##class(OcuPilot.Port.SqlPort).BrowsePlan(..#NAMESPACE, {"schema": "OcuProbe198", "table": "Dup"}, .tPlan, .tHttp, .tFault)
+    If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Port.SqlPort).BrowseRun(..#NAMESPACE, tPlan, .tPage, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject(tPage): tPage.key.%ToJSON() _ " " _ tPage.keyUnique, 1: $System.Status.GetErrorText(tSC)), "[""ID""] 0", "its page orders by ID and says no save may target it")
+    Set tId = $ClassMethod(..#PROBE, "Value", "SELECT Id2 FROM OcuProbe198.Ident")
+    Do $$$AssertEquals(..Saved([{"op": "update", "key": {"Id2": (tId _ "")}, "original": {"Name": "first"}, "values": {"Name": "renamed"}}], "OcuProbe198.Ident"), "saved 0:saved/1 saved=1 failed=0", "while a table keyed by its identity column saves")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Value", "SELECT Name FROM OcuProbe198.Ident"), "renamed", "and stores the row")
     Set tLegs = [{"namespace": (..#NAMESPACE), "table": "OcuProbe198.Pair", "changes": [{"op": "update", "key": {"A": "1", "B": "1"}, "original": {"Name": "one-one"}, "values": {"Name": "col"}}]}]
     Set tProbe = $ClassMethod(..#PROBE, "ProbeAs", $Parameter(..#PROBE, "ROUSER"), tLegs.%ToJSON())
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LegLine", tProbe, 0), "409 EXPLORER.DATA.READONLY ", "a column grant leaving out the key")

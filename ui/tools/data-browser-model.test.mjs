@@ -206,9 +206,10 @@ test('a staged value shows on the row with the same key after the page moves, so
   const rows = staged.overlay(['Code'], COLUMNS, first);
   assert.ok(staged.stage(rows[1].key, { Code: 'b' }, 'Name', 'name-b', 'renamed'));
   assert.equal(staged.count(), 1);
-  const moved = staged.overlay(['Code'], COLUMNS, pageOf('z', 'b', 'y').reverse());
-  assert.deepEqual(moved.map((row) => row.cells[1]), ['name-y', 'renamed', 'name-z'], 'shown on b wherever it sits');
-  assert.deepEqual(moved[1].staged, [false, true, false, false]);
+  const moved = staged.overlay(['Code'], COLUMNS, pageOf('z', 'y', 'b'));
+  assert.deepEqual(moved.map((row) => row.cells[1]), ['name-z', 'name-y', 'renamed'], 'shown on b wherever it sits');
+  assert.deepEqual(moved[2].staged, [false, true, false, false]);
+  assert.deepEqual(moved[1].staged, [false, false, false, false], 'and on no row at the place b was read from');
   assert.ok(staged.stage(rows[1].key, { Code: 'b' }, 'Name', 'name-b', 'name-b'), 'committing the value read');
   assert.equal(staged.count(), 0, 'unstages the cell');
 });
@@ -217,9 +218,9 @@ test('a staged value shows on the row with the same key after the page moves, so
 test('a duplicate copies the row but its key, identity, generated, stream, binary and cut cells; a new row is removed, a read one marked', () => {
   const staged = new model.StagedChanges();
   const id = staged.duplicate(COLUMNS, { Code: 'a', Name: 'name-a', Seq: '7', Memo: 'memo' }, (name) => name === 'Name');
-  assert.deepEqual(staged.newRows(), [{ id, values: {} }], 'the cut Name is left out too');
+  assert.deepEqual(staged.newRows(), [{ id, values: {}, outcome: null }], 'the cut Name is left out too');
   const second = staged.duplicate(COLUMNS, { Code: 'a', Name: 'name-a', Seq: '7', Memo: 'memo' }, () => false);
-  assert.deepEqual(staged.newRows()[0], { id: second, values: { Name: 'name-a' } }, 'the newest first, its key left empty');
+  assert.deepEqual(staged.newRows()[0], { id: second, values: { Name: 'name-a' }, outcome: null }, 'the newest first, its key left empty');
   staged.removeNew(id);
   assert.equal(staged.newRows().length, 1);
   assert.ok(staged.toggleDelete('["b"]', { Code: 'b' }));
@@ -239,6 +240,34 @@ test('the 101st staged row is refused, while a row already staged still takes mo
   assert.ok(staged.toggleDelete('["5"]', { Code: '5' }), 'and a delete');
   assert.equal(staged.discard(), 100);
   assert.equal(staged.count(), 0);
+});
+
+// AC5. Mutation (Rule 19): `applyResults` removes a failed insert -> the typed row goes and this goes
+// red.
+test('a failed insert stays staged with what was typed and its outcome until it is edited; kept outcomes go only when a save is applied', () => {
+  const staged = new model.StagedChanges();
+  staged.stage('["a"]', { Code: 'a' }, 'Name', 'name-a', 'A');
+  const id = staged.addRow({ Code: 'a', Name: 'dup' });
+  assert.ok(id !== null);
+  staged.toWire();
+  const { saved, failed } = staged.applyResults(
+    [
+      { index: 0, outcome: 'saved' },
+      { index: 1, outcome: 'error', sqlcode: -119, message: 'dup' },
+    ],
+    ['Code']
+  );
+  assert.deepEqual([saved, failed], [1, 1]);
+  assert.equal(staged.count(), 1, 'the failed insert is still staged');
+  assert.deepEqual(staged.newRows(), [{ id, values: { Code: 'a', Name: 'dup' }, outcome: { outcome: 'error', sqlcode: -119, message: 'dup' } }]);
+  assert.deepEqual(staged.toWire(), [{ op: 'insert', values: { Code: 'a', Name: 'dup' } }], 'and sent again with the next save');
+  assert.equal(staged.overlay(['Code'], COLUMNS, pageOf('a'))[0].outcome?.outcome, 'saved', 'composing that save keeps the last outcomes');
+  staged.setNew(id, 'Code', 'b');
+  assert.equal(staged.newRows()[0].outcome, null, 'editing the row drops its reason');
+  const stopped = staged.applyResults([{ index: 0, outcome: 'stopped', seconds: 2 }], ['Code']);
+  assert.deepEqual([stopped.saved, stopped.failed], [0, 1]);
+  assert.deepEqual(staged.newRows()[0].outcome, { outcome: 'stopped', sqlcode: null, message: '', seconds: 2 }, 'a stopped insert keeps its bound');
+  assert.equal(staged.overlay(['Code'], COLUMNS, pageOf('a'))[0].outcome, null, 'and applying a save replaces the last outcomes');
 });
 
 // AC6. Mutation (Rule 19): `overlay` shows each outcome on the page row at its place among the

@@ -280,4 +280,34 @@ Method TestTheKeyShipsDisabledAndASaveLeavesNoTrace()
     Do $$$AssertEquals(tFound, "", "and no log line carries its values or the instance's answer")
 }
 
+/// <p>The concurrency rows over HTTP (AC4, AC8): a row another session changed after the page read it
+/// answers <code>changed</code> and is left as that session wrote it, whether the change is a new value
+/// or only a change of case, and a delete of a row another session removed answers <code>gone</code>.</p>
+/// <p>Mutation (Rule 19): guard text with <code>=</code> in <method>OcuPilot.Port.SqlPort.SaveComposed</method>
+/// -- the case-only leg answers <code>saved</code> and goes red.</p>
+Method TestARowAnotherSessionChangedIsChangedAndARemovedRowIsGone()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "USER"
+        Set tSC = $$$OK
+        For tText = "UPDATE OcuProbe198.Edit SET Name = 'ABC' WHERE Code = 'a'", "UPDATE OcuProbe198.Edit SET Name = 'other' WHERE Code = 'b'", "DELETE FROM OcuProbe198.Edit WHERE Code = 'c'" {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, tText)
+            If tResult.%SQLCODE < 0 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Do $$$AssertStatusOK(tSC, "another session changes two rows and removes one")
+    Set tChanges = []
+    Do tChanges.%Push({"op": "update", "key": {"Code": "a"}, "original": {"Name": "abc"}, "values": {"Name": "mine"}})
+    Do tChanges.%Push({"op": "update", "key": {"Code": "b"}, "original": {"Name": "bee"}, "values": {"Name": "mine"}})
+    Do tChanges.%Push({"op": "delete", "key": {"Code": "c"}})
+    Do ..Save("OcuProbe198.Edit", tChanges, .tStatus, .tAnswer)
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("output")): tAnswer.output.%ToJSON(), 1: ..Code(tStatus, .tAnswer)), "{""outcome"":""saved"",""results"":[{""index"":0,""outcome"":""changed"",""rowCount"":0},{""index"":1,""outcome"":""changed"",""rowCount"":0},{""index"":2,""outcome"":""gone"",""rowCount"":0}],""saved"":0,""failed"":3}", "the case-only change and the new value answer changed, the removed row gone")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Row", "a", "Name") _ " " _ $ClassMethod(..#PROBE, "Row", "b", "Name") _ " " _ $ClassMethod(..#PROBE, "Row", "c"), "Name=ABC Name=other absent", "nothing was written over the other session's rows")
+}
+
 }

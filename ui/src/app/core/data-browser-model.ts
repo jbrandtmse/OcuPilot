@@ -410,11 +410,12 @@ export const MAX_STAGED_ROWS = 100;
 /** A staged row's outcome, as the instance answered it. */
 export type RowOutcome = 'saved' | 'changed' | 'gone' | 'refused' | 'error' | 'stopped' | 'skipped';
 
-/** What a save answered for one row: its outcome, and an SQL error's code and message. */
+/** What a save answered for one row: its outcome, an SQL error's code and message, and the bound a stopped row ran out of. */
 export interface OutcomeNote {
   readonly outcome: RowOutcome;
   readonly sqlcode: number | null;
   readonly message: string;
+  readonly seconds?: number;
 }
 
 /** One row's result in a save's answer. */
@@ -423,6 +424,7 @@ export interface SaveResult {
   readonly outcome: RowOutcome;
   readonly sqlcode?: number | null;
   readonly message?: string;
+  readonly seconds?: number;
 }
 
 /** One change as a save sends it (Story 19.8's wire). */
@@ -446,10 +448,11 @@ export interface OverlayRow {
   readonly outcome: OutcomeNote | null;
 }
 
-/** A new row, staged for an insert. */
+/** A new row, staged for an insert, with the outcome the last save kept for it when it failed. */
 export interface NewRow {
   readonly id: string;
   readonly values: Readonly<Record<string, string | null>>;
+  readonly outcome: OutcomeNote | null;
 }
 
 interface StagedUpdate {
@@ -467,9 +470,9 @@ type Sent = { readonly kind: 'update' | 'delete'; readonly rowKey: string } | { 
  * deletes. It refuses a 101st row (`MAX_STAGED_ROWS`).
  *
  * `toWire` composes a save -- deletes, then updates, then inserts -- and records which staged row each
- * sent index is; `applyResults` drops the saved rows, rolls every failed row back to the values read
- * (an insert removed, a delete restored) and keeps each outcome by key, so an answer applied after the
- * page moved marks rows by key, never by position.
+ * sent index is; `applyResults` drops the saved rows, rolls every failed update and delete back to the
+ * values read, keeps a failed insert staged with what was typed, and keeps each outcome by key (a new
+ * row's by its id), so an answer applied after the page moved marks rows by key, never by position.
  *
  * Re-expresses the harvest's per-cell save and its index-keyed reconciliation (`grid.js` :1767,
  * :1865-2004) as staging keyed by the row's key. Framework-free.
@@ -482,6 +485,9 @@ export class StagedChanges {
   private readonly deletes = new Map<string, Readonly<Record<string, string>>>();
 
   private readonly outcomes = new Map<string, OutcomeNote>();
+
+  /** The outcomes kept for new rows a save could not insert, by their id. */
+  private readonly newOutcomes = new Map<string, OutcomeNote>();
 
   private sent: Sent[] = [];
 
@@ -572,20 +578,23 @@ export class StagedChanges {
     return this.addRow(copy);
   }
 
-  /** Set `column` of the new row `id` to `value`. */
+  /** Set `column` of the new row `id` to `value`, which drops the outcome a failed save kept for it. */
   setNew(id: string, column: string, value: string | null): void {
     const values = this.inserts.get(id);
-    if (values !== undefined) values[column] = value;
+    if (values === undefined) return;
+    values[column] = value;
+    this.newOutcomes.delete(id);
   }
 
   /** Remove the new row `id`. */
   removeNew(id: string): void {
     this.inserts.delete(id);
+    this.newOutcomes.delete(id);
   }
 
-  /** The new rows, the newest first. */
+  /** The new rows, the newest first, each with the outcome a failed save kept for it. */
   newRows(): readonly NewRow[] {
-    return [...this.inserts.entries()].reverse().map(([id, values]) => ({ id, values: { ...values } }));
+    return [...this.inserts.entries()].reverse().map(([id, values]) => ({ id, values: { ...values }, outcome: this.newOutcomes.get(id) ?? null }));
   }
 
   /** Forget every staged row and outcome, answering how many rows were staged. */
@@ -595,6 +604,7 @@ export class StagedChanges {
     this.inserts.clear();
     this.deletes.clear();
     this.outcomes.clear();
+    this.newOutcomes.clear();
     this.sent = [];
     return count;
   }
@@ -624,11 +634,9 @@ export class StagedChanges {
 
   /**
    * The changes a save sends -- deletes, then updates, then each new row that sets a value -- and the
-   * staged row each index is, which `applyResults` reads. The outcomes kept from the last save are
-   * dropped.
+   * staged row each index is, which `applyResults` reads.
    */
   toWire(): WireChange[] {
-    this.outcomes.clear();
     const changes: WireChange[] = [];
     const sent: Sent[] = [];
     for (const [identity, key] of this.deletes) {
@@ -650,24 +658,36 @@ export class StagedChanges {
   }
 
   /**
-   * Apply a save's `results` to what `toWire` sent: a saved row leaves staging, a failed one is rolled
-   * back to the values read -- an update dropped, an insert removed, a delete restored -- and each
-   * row's outcome is kept by its key, a saved insert's under the `key` columns its values set. Answers
-   * how many were saved and how many failed.
+   * Apply a save's `results` to what `toWire` sent, in place of the outcomes the last save kept: a saved
+   * row leaves staging; a failed update is dropped and a failed delete restored, back to the values
+   * read; a failed insert stays staged with what was typed. Each row's outcome is kept by its key, a
+   * saved insert's under the `key` columns its values set and a failed insert's by its id. Answers how
+   * many were saved and how many failed.
    */
   applyResults(results: readonly SaveResult[], key: readonly string[]): { readonly saved: number; readonly failed: number } {
     let saved = 0;
     let failed = 0;
+    this.outcomes.clear();
+    this.newOutcomes.clear();
     for (const result of results) {
       const sent = this.sent[result.index];
       if (sent === undefined) continue;
-      const note: OutcomeNote = { outcome: result.outcome, sqlcode: typeof result.sqlcode === 'number' ? result.sqlcode : null, message: result.message ?? '' };
+      const note: OutcomeNote = {
+        outcome: result.outcome,
+        sqlcode: typeof result.sqlcode === 'number' ? result.sqlcode : null,
+        message: result.message ?? '',
+        ...(typeof result.seconds === 'number' ? { seconds: result.seconds } : {}),
+      };
       if (result.outcome === 'saved') saved += 1;
       else failed += 1;
       if (sent.kind === 'insert') {
+        if (result.outcome !== 'saved') {
+          if (this.inserts.has(sent.id)) this.newOutcomes.set(sent.id, note);
+          continue;
+        }
         const values = this.inserts.get(sent.id) ?? {};
         this.inserts.delete(sent.id);
-        if (result.outcome === 'saved' && key.length > 0 && key.every((name) => typeof values[name] === 'string')) this.outcomes.set(rowKey(key, values), note);
+        if (key.length > 0 && key.every((name) => typeof values[name] === 'string')) this.outcomes.set(rowKey(key, values), note);
         continue;
       }
       this.updates.delete(sent.rowKey);

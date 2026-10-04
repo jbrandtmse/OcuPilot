@@ -4,8 +4,9 @@
 /// a column of every kind, a stream and a computed column, its rows put back by <method>Fill</method>;
 /// <parameter>PAIR</parameter>, keyed by <code>A</code> and <code>B</code>;
 /// <parameter>IDENT</parameter>, keyed by its identity column; <parameter>COMP</parameter>, keyless,
-/// with a computed and a row-version column; <parameter>SLOW</parameter>, whose every update waits a
-/// second in a trigger; and the view <parameter>EDITVIEW</parameter> over <parameter>EDIT</parameter>.
+/// with a computed and a row-version column; <parameter>DUP</parameter>, keyless, whose column named
+/// <code>ID</code> repeats a value; <parameter>SLOW</parameter>, whose every update waits a second in a
+/// trigger; and the view <parameter>EDITVIEW</parameter> over <parameter>EDIT</parameter>.
 /// In the install namespace, the view <parameter>OWNVIEW</parameter> over OcuPilot's own proposal
 /// table.</p>
 /// <p>Each principal holds <class>OcuPilot.Test.SqlConsoleProbe</class>'s role pairs:
@@ -33,6 +34,9 @@ Parameter PAIR = "OcuProbe198.Pair";
 Parameter IDENT = "OcuProbe198.Ident";
 
 Parameter COMP = "OcuProbe198.Comp";
+
+/// <p>A keyless table whose column named ID repeats a value, so it names no one row.</p>
+Parameter DUP = "OcuProbe198.Dup";
 
 Parameter SLOW = "OcuProbe198.Slow";
 
@@ -73,6 +77,7 @@ ClassMethod Make() As %Status
         "CREATE TABLE " _ ..#PAIR _ " (A INTEGER, B INTEGER, Name VARCHAR(20), PRIMARY KEY (A, B))",
         "CREATE TABLE " _ ..#IDENT _ " (Id2 IDENTITY, Name VARCHAR(20))",
         "CREATE TABLE " _ ..#COMP _ " (N INTEGER, Twice INTEGER COMPUTECODE { Set {*} = {N} * 2 } COMPUTEONCHANGE (N), Ver ROWVERSION)",
+        "CREATE TABLE " _ ..#DUP _ " (ID INTEGER, Name VARCHAR(20))",
         "CREATE TABLE " _ ..#SLOW _ " (K INTEGER PRIMARY KEY, Name VARCHAR(20))",
         "CREATE TRIGGER " _ ..#SLOWTRIGGER _ " BEFORE UPDATE ON " _ ..#SLOW _ " LANGUAGE OBJECTSCRIPT { Hang 1 }",
         "CREATE VIEW " _ ..#EDITVIEW _ " AS SELECT Code, Name FROM " _ ..#EDIT
@@ -94,11 +99,12 @@ ClassMethod Make() As %Status
 /// <p>Put every probe table's rows back as <method>Make</method> made them: <parameter>EDIT</parameter>
 /// rows <code>a</code> to <code>f</code>, row <code>a</code> carrying a value of every kind and
 /// <code>e</code> a NULL name; <parameter>PAIR</parameter>'s two rows; <parameter>IDENT</parameter>'s
-/// one; <parameter>COMP</parameter>'s one; and <parameter>SLOW</parameter>'s rows 1 to 4.</p>
+/// one; <parameter>COMP</parameter>'s one; <parameter>DUP</parameter>'s two, both ID 1; and
+/// <parameter>SLOW</parameter>'s rows 1 to 4.</p>
 ClassMethod Fill() As %Status
 {
     Set tStatements = $ListBuild(
-        "DELETE FROM " _ ..#EDIT, "DELETE FROM " _ ..#PAIR, "DELETE FROM " _ ..#IDENT, "DELETE FROM " _ ..#COMP, "DELETE FROM " _ ..#SLOW,
+        "DELETE FROM " _ ..#EDIT, "DELETE FROM " _ ..#PAIR, "DELETE FROM " _ ..#IDENT, "DELETE FROM " _ ..#COMP, "DELETE FROM " _ ..#DUP, "DELETE FROM " _ ..#SLOW,
         "INSERT INTO " _ ..#EDIT _ " (Code, Name, Num, Dbl, Born, Stamp, Tm, Flag, Pt, Memo) VALUES ('a', 'abc', 1.5, .1, '2026-10-01', '2026-10-01 08:00:00', '13:45:00', 1, '2026-10-01 12:34:56.123456', 'memo')",
         "INSERT INTO " _ ..#EDIT _ " (Code, Name, Note, Num) VALUES ('b', 'bee', 'nb', 2)",
         "INSERT INTO " _ ..#EDIT _ " (Code, Name, Note, Num) VALUES ('c', 'sea', 'nc', 3)",
@@ -109,6 +115,8 @@ ClassMethod Fill() As %Status
         "INSERT INTO " _ ..#PAIR _ " (A, B, Name) VALUES (1, 2, 'one-two')",
         "INSERT INTO " _ ..#IDENT _ " (Name) VALUES ('first')",
         "INSERT INTO " _ ..#COMP _ " (N) VALUES (1)",
+        "INSERT INTO " _ ..#DUP _ " (ID, Name) VALUES (1, 'one')",
+        "INSERT INTO " _ ..#DUP _ " (ID, Name) VALUES (1, 'also one')",
         "INSERT INTO " _ ..#SLOW _ " (K, Name) VALUES (1, 'o1')",
         "INSERT INTO " _ ..#SLOW _ " (K, Name) VALUES (2, 'o2')",
         "INSERT INTO " _ ..#SLOW _ " (K, Name) VALUES (3, 'o3')",
@@ -151,7 +159,7 @@ ClassMethod Remove() As %Status
     Try {
         For tNamespace = tHome, ..#NAMESPACE {
             Set $NAMESPACE = tNamespace
-            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP VIEW " _ ..#EDITVIEW, "DROP TRIGGER " _ ..#SLOWTRIGGER, "DROP TABLE " _ ..#EDIT _ " CASCADE", "DROP TABLE " _ ..#PAIR _ " CASCADE", "DROP TABLE " _ ..#IDENT _ " CASCADE", "DROP TABLE " _ ..#COMP _ " CASCADE", "DROP TABLE " _ ..#SLOW _ " CASCADE" {
+            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP VIEW " _ ..#EDITVIEW, "DROP TRIGGER " _ ..#SLOWTRIGGER, "DROP TABLE " _ ..#EDIT _ " CASCADE", "DROP TABLE " _ ..#PAIR _ " CASCADE", "DROP TABLE " _ ..#IDENT _ " CASCADE", "DROP TABLE " _ ..#COMP _ " CASCADE", "DROP TABLE " _ ..#DUP _ " CASCADE", "DROP TABLE " _ ..#SLOW _ " CASCADE" {
                 Do ##class(%SQL.Statement).%ExecDirect(, tDrop)
             }
             Do $System.OBJ.DeletePackage(..#SCHEMA, "-d")

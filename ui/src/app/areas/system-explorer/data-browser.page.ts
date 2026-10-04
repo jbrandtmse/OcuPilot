@@ -132,7 +132,8 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
             [total]="total"
             [sort]="sort"
             [drafts]="drafts"
-            [editable]="editing"
+            [editable]="writable"
+            [saving]="savingNow"
             (sorted)="onSort($event)"
             (drafted)="onDraft($event)"
             (applied)="onApply($event)"
@@ -336,6 +337,12 @@ export class DataBrowserPage {
   protected get writable(): boolean {
     this.generation();
     return this.state.writable();
+  }
+
+  /** Whether a save is on its way: the grid keeps its Change column and opens no editor. */
+  protected get savingNow(): boolean {
+    this.generation();
+    return this.state.saving();
   }
 
   /** Whether the grid offers its editors: a writable table, with no save on its way. */

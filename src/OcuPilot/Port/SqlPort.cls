@@ -1471,7 +1471,9 @@ ClassMethod CellOf(pKind As %String, pValue As %String, Output pNull As %Boolean
 /// and none is the same 404.</li>
 /// <li>The key is the first primary key constraint's columns, else the identity column, else a
 /// column named <parameter>ROWIDCOLUMN</parameter>, and none unless every key column is
-/// listed.</li>
+/// listed. <code>keyUnique</code> says whether it is the primary key or the identity column, each
+/// naming one row; a column merely named <parameter>ROWIDCOLUMN</parameter> orders a page but may
+/// repeat (Story 19.8).</li>
 /// <li>Each filter and the sort must name a listed column exactly, of a kind other than
 /// <code>stream</code> and <code>binary</code>; otherwise 400 <code>EXPLORER.DATA.INPUT</code>.</li>
 /// <li>A view's base tables are those the statement index records for a <code>SELECT</code> of its
@@ -1480,7 +1482,7 @@ ClassMethod CellOf(pKind As %String, pValue As %String, Output pNull As %Boolean
 /// keeps the instance's answer as the plan's <code>error</code>.</li>
 /// </ul>
 /// <p><var>pPlan</var> is <code>{namespace, start, bound, table: {schema, name, type}, columns:
-/// [{name, type, kind, nullable, key, identity, generated}], key, filters: [{column, kind, value}], sort, offset, size,
+/// [{name, type, kind, nullable, key, identity, generated}], key, keyUnique, filters: [{column, kind, value}], sort, offset, size,
 /// tables, page, pageValues, count, countValues}</code> (<method>Composed</method>), with
 /// <code>stopped</code> when the budget ran out first and <code>error</code> as above.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9). No statement here is
@@ -1572,6 +1574,9 @@ ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output
             If tRow.%Get(1) '= tRows.%Get(0).%Get(1) Quit
             Set tKey = tKey _ $ListBuild(tRow.%Get(0))
         }
+        ; A primary key or an identity column names one row each; a column merely named ID orders a
+        ; page but may repeat, so it is never a key a save targets.
+        Set tKeyUnique = (tKey '= "") || (tIdentity '= "")
         If tKey = "" Set tKey = $Select(tIdentity '= "": $ListBuild(tIdentity), tRowId '= "": $ListBuild(tRowId), 1: "")
         For tI = 1:1:$ListLength(tKey) {
             If '$Data(tKindOf($List(tKey, tI))) {
@@ -1579,6 +1584,8 @@ ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output
                 Quit
             }
         }
+        If tKey = "" Set tKeyUnique = 0
+        Do tPlan.%Set("keyUnique", tKeyUnique, "boolean")
         Set tKeyNames = []
         For tI = 1:1:$ListLength(tKey) {
             Do tKeyNames.%Push($List(tKey, tI), "string")
@@ -1662,7 +1669,8 @@ ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output
 /// <p>Run <var>pPlan</var>, a plan <method>BrowsePlan</method> answered, in <var>pNamespace</var>
 /// (Story 19.7): the gate again, then the page and, with what remains of the plan's budget, the
 /// count, each through <method>Executed</method> with its values bound. Every answer carries
-/// <code>table</code>, <code>columns</code> and <code>key</code>, and is one of:</p>
+/// <code>table</code>, <code>columns</code>, <code>key</code> and <code>keyUnique</code>, and is one
+/// of:</p>
 /// <ul>
 /// <li><code>{outcome: rows, rows, offset, size, more, total, truncated, cuts}</code>: at most the
 /// page size of rows, each a cell per column (<method>CellOf</method>, <code>null</code> for SQL
@@ -1692,6 +1700,7 @@ ClassMethod BrowseRun(pNamespace As %String, pPlan As %DynamicObject, Output pAn
         Do tAnswer.%Set("table", pPlan.%Get("table"))
         Do tAnswer.%Set("columns", pPlan.%Get("columns"))
         Do tAnswer.%Set("key", pPlan.%Get("key"))
+        Do tAnswer.%Set("keyUnique", ''pPlan.%Get("keyUnique"), "boolean")
         Set tBound = +pPlan.%Get("bound")
         If pPlan.%Get("stopped") {
             Set pAnswer = ..StoppedBrowse(tAnswer, tBound)
@@ -2221,7 +2230,9 @@ ClassMethod SavePlan(pNamespace As %String, ByRef pQuery, Output pAnswer As %Dyn
 /// <li>the changes' shape (<method>SaveChanges</method>) and the names', else 400
 /// <code>TOOL.ARGUMENTS</code>;</li>
 /// <li>the plan (<method>BrowsePlan</method>): 404 <code>EXPLORER.DATA.NOTFOUND</code>, and 409
-/// <code>EXPLORER.DATA.READONLY</code> for a view or a table with no key the caller can list;</li>
+/// <code>EXPLORER.DATA.READONLY</code> for a view, a table with no key the caller can list, or one
+/// keyed only by a column named <code>ID</code> that is neither its primary key nor an identity
+/// column (<code>keyUnique</code> false);</li>
 /// <li>the column rules (<method>ChangeProblem</method>), else 400
 /// <code>EXPLORER.DATA.CHANGES</code>;</li>
 /// <li>each change in order, one statement each (<method>SaveComposed</method>) through
@@ -2255,7 +2266,7 @@ ClassMethod Save(pNamespace As %String, ByRef pQuery, Output pAnswer As %Dynamic
         }
         Set tSC = ..SaveTable(pNamespace, tSchema, tName, .tPlan, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
-        If 'tPlan.%Get("stopped") && ((tPlan.%Get("table").%Get("type") '= "table") || (tPlan.%Get("key").%Size() = 0)) {
+        If 'tPlan.%Get("stopped") && ((tPlan.%Get("table").%Get("type") '= "table") || (tPlan.%Get("key").%Size() = 0) || 'tPlan.%Get("keyUnique")) {
             Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DATAREADONLY, ##class(OcuPilot.Api.AtelierError).#REASONDATAREADONLY, .pHttpStatus, .pFault)
             Quit
         }

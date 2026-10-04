@@ -80,9 +80,14 @@ interface RowView {
   readonly cells: readonly CellRender[];
 }
 
-/** The open editor: the row and the grid column it edits, the text it opened with, what it holds, and its refusal. */
+/**
+ * The open editor: the row (its id, its identity and its place) and the grid column it edits, the text
+ * it opened with, what it holds, its refusal, and whether it opened on a NULL it shows empty.
+ */
 interface EditorState {
   readonly rowId: string;
+  readonly rowKey: string;
+  readonly nullRead: boolean;
   readonly row: number;
   readonly column: number;
   readonly initial: string;
@@ -139,15 +144,18 @@ let gridCount = 0;
  * unknown. Every cell is one line cut with an ellipsis, a NULL muted and a number right-aligned in
  * tabular figures.
  *
- * **Editing** (`editable`): a leading Change column reads each row's state as text. On a cell that
- * may change -- not a key, identity, generated, stream, binary or cut cell of a row read, nor any cell
- * of a deleted row; a key cell of a new row may -- F2 or Enter opens the editor at the end of the
+ * **Editing** (`editable`): a leading Change column reads each row's state as text, also while
+ * `saving`, when no editor opens. On a cell that may change -- not a key, identity, generated, stream,
+ * binary or cut cell of a row read, a text cell holding a line break, which a one-line editor would
+ * drop, nor any cell of a deleted row; a key cell of a new row may -- F2 or Enter opens the editor at the end of the
  * value, a printable key opens it with that character and Backspace opens it empty; Delete stages
  * NULL on a column that takes it; on a BIT cell Enter, Space and F2 toggle the value instead. The
  * editor takes focus: Escape cancels, Ctrl/Cmd+Z restores the value it opened with, Enter and
  * Shift+Enter commit and move down and up, Tab and Shift+Tab commit and move right and left without
  * wrapping, and blur commits; a value the column refuses keeps it open, `aria-invalid`, its hint
- * linked by `aria-describedby`. Focus then returns to the grid on its cell.
+ * linked by `aria-describedby`, and a key or press on the grid meanwhile returns focus to it. Focus
+ * then returns to the grid on its cell. An editor opened by F2 or Enter on a NULL commits NULL while it
+ * is left empty, and an editor whose row a re-read moved or replaced closes unstaged.
  *
  * **A cut cell shows its whole value in a tooltip** (DW-2028) when the pointer rests on it or it
  * becomes the active cell while the grid has focus; Escape, a scroll, a press in the grid, a resize
@@ -360,6 +368,9 @@ export class DataBrowserGrid {
   /** Whether the table's rows may change here, which draws the Change column and the editors. */
   readonly editable = input(false);
 
+  /** Whether a save is on its way: the Change column stays and no editor opens. */
+  readonly saving = input(false);
+
   /** A sortable header was activated. */
   readonly sorted = output<string>();
 
@@ -427,8 +438,7 @@ export class DataBrowserGrid {
     effect(() => {
       const open = this.editor();
       if (open === null) return;
-      const row = this.rows()[open.row];
-      if (row === undefined || row.id !== open.rowId || !this.editable()) this.editor.set(null);
+      if (!this.editorRowHolds(open) || !this.editable() || this.saving()) this.editor.set(null);
     });
     // Emitted only when it changes: a listener marks the page dirty, which hands the grid new rows.
     effect(() => {
@@ -643,7 +653,10 @@ export class DataBrowserGrid {
   }
 
   protected onCellClick(row: number, column: number): void {
-    if (this.editor() !== null) return;
+    if (this.editor() !== null) {
+      this.focusEditor();
+      return;
+    }
     this.active.set({ row, column });
     this.afterActiveCellMoved();
   }
@@ -653,7 +666,13 @@ export class DataBrowserGrid {
   }
 
   protected onGridKeydown(event: KeyboardEvent): void {
-    if (this.editor() !== null) return;
+    if (this.editor() !== null) {
+      if (event.key !== 'Tab') {
+        event.preventDefault();
+        this.focusEditor();
+      }
+      return;
+    }
     const control = event.ctrlKey || event.metaKey;
     const page = pageKey(event.key, control);
     if (page !== null) {
@@ -686,7 +705,7 @@ export class DataBrowserGrid {
   protected onEditorKeydown(event: KeyboardEvent): void {
     event.stopPropagation();
     const open = this.editor();
-    if (open === null) return;
+    if (open === null || event.isComposing) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       this.editor.set(null);
@@ -728,7 +747,7 @@ export class DataBrowserGrid {
     const key = event.key;
     const printable = key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
     const editKey = key === 'F2' || key === 'Enter' || key === 'Backspace' || key === 'Delete' || printable;
-    if (!editKey || !this.editable()) return false;
+    if (!editKey || !this.editable() || this.saving()) return false;
     const target = this.editTarget(current);
     if (target === null) {
       event.preventDefault();
@@ -747,8 +766,9 @@ export class DataBrowserGrid {
       return true;
     }
     const value = row.cells[data] ?? null;
-    const text = key === 'F2' || key === 'Enter' ? (value ?? '') : key === 'Backspace' ? '' : key;
-    this.openEditor(current, row.id, text, value ?? '');
+    const atValue = key === 'F2' || key === 'Enter';
+    const text = atValue ? (value ?? '') : key === 'Backspace' ? '' : key;
+    this.openEditor(current, row, text, value ?? '', atValue && value === null);
     return true;
   }
 
@@ -765,13 +785,17 @@ export class DataBrowserGrid {
     const column = this.columns()[data];
     if (row === undefined || column === undefined || row.deleted) return null;
     if (row.isNew ? !insertable(column) : !editable(column) || row.cut[data] === true) return null;
+    if (column.kind === 'text' && /[\r\n]/.test(row.cells[data] ?? '')) return null;
     return { row, column, data };
   }
 
-  /** Open the editor on `position` holding `text`, caret at its end, with `initial` the value it opened with. */
-  private openEditor(position: CellPosition, rowId: string, text: string, initial: string): void {
+  /**
+   * Open the editor on `position` of `row` holding `text`, caret at its end, with `initial` the value it
+   * opened with; `nullRead` when it shows a NULL as empty.
+   */
+  private openEditor(position: CellPosition, row: StagedRow, text: string, initial: string, nullRead: boolean): void {
     this.hideTooltip();
-    this.editor.set({ rowId, row: position.row, column: position.column, initial, text, problem: '' });
+    this.editor.set({ rowId: row.id, rowKey: row.key, nullRead, row: position.row, column: position.column, initial, text, problem: '' });
     const column = this.columns()[position.column - this.firstData()];
     if (column !== undefined) this.announced.emit(fillPlaceholders(STRINGS.explorerSqlDataEditing, { column: column.name }));
     afterNextRender(
@@ -794,11 +818,11 @@ export class DataBrowserGrid {
     if (open === null) return;
     const data = open.column - this.firstData();
     const column = this.columns()[data];
-    if (column === undefined) {
+    if (column === undefined || !this.editorRowHolds(open)) {
       this.editor.set(null);
       return;
     }
-    const parsed = parseCellInput(column, open.text);
+    const parsed = open.nullRead && open.text === '' ? { value: null } : parseCellInput(column, open.text);
     if ('problem' in parsed) {
       this.editor.set({ ...open, problem: parsed.problem });
       return;
@@ -821,6 +845,17 @@ export class DataBrowserGrid {
 
   private focusGrid(): void {
     afterNextRender(() => this.gridElement()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /** Return focus to the open editor, which holds a value to fix or cancel. */
+  private focusEditor(): void {
+    this.editorElement()?.nativeElement.focus();
+  }
+
+  /** Whether the row `open` edits is still the one at its place: same id and same identity. */
+  private editorRowHolds(open: EditorState): boolean {
+    const row = this.rows()[open.row];
+    return row !== undefined && row.id === open.rowId && row.key === open.rowKey;
   }
 
   /** Cycle the sort of data column `index`, when it is sortable. */

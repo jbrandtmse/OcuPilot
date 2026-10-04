@@ -9390,6 +9390,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
 - 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+- 2026-10-04T19:24:34Z status=resolved-by:19-8-the-data-browser-editing-staging-and-export owner=19-8-the-data-browser-editing-staging-and-export by=adjudication note=the data table's cut-cell tooltip is ported into data-browser-grid.ts (data-table.ts untouched): on pointer rest and on the active cell, hidden by Escape, scroll, a press or an open editor; pinned by AC13's grid spec and browser leg
 
 ### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
@@ -9518,3 +9519,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
 - 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
+
+### DW-2053: Data browser counts an untouched new row in Save changes (n) and the save dialog but never sends it, so a Proceed with only such rows does nothing and says nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: StagedChanges.count() and counts() include every insert while toWire() skips one with no values (data-browser-model.ts); DataBrowserState.save() then returns false with no announcement
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a Save that sent nothing, or Story 19.16 changes how staged rows count
+
+### DW-2054: Data browser edits of a row whose key cell is cut at 1,000 characters or shown as binary hex send the shown text as the key, so the save answers changed or gone and writes nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.pageRow takes key values from the page's displayed cells; SqlPort.BrowseRun cuts a cell at MAXCELL and renders binary as 0x hex
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a table with a binary or over-1,000-character primary key is edited in Data browser
+
+### DW-2055: Data browser checks no value against the save's 32,767-character and 1,000,000-character bounds before sending, and the 400 it gets back names no row
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: parseCellInput takes text as typed; refusalText (sql-query.store.ts) shows only the envelope reason and drops detail.problem
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a whole save refused with TOOL.ARGUMENTS after pasting a long value
+
+### DW-2056: A data browser row answered error with no SQLCODE and no message (a trigger's open transaction rolled back, an insert counting no row, a run that raised) leaves its Change cell blank
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SaveOutcome answers RowResult(index, error, "", "", "") on four paths and outcomeText joins two empty parts to ''; a fallback sentence needs a new strings.ts key
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=such a row is answered on a real table; strings.ts is contended with Epic 18 now
+
+### DW-2057: explorer.sqldata.save's AD-59 script composes every guard as %EXACT where the port compares a non-text column with =, because the pure snippet reads no catalog
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SnippetPlan marks every column kind text, so SaveComposed renders %EXACT for a number or date guard; SaveSnippet's doc comment says so; no proposal for this tool can be drafted
+- 2026-10-04T19:18:05Z status=wontfix-theoretical owner=19-8-the-data-browser-editing-staging-and-export by=cr note=real only if Story 19.11 lets the agent propose a row change, so a person could take this script
