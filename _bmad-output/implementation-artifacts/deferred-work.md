@@ -9391,6 +9391,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-b-ci messages.log holds one severity-2 [OcuPilot.Log] 'ECP.DataServer failed with HTTP 500 ... ERROR #1454' line per refused SSL save and no vendor line; AD-2 logs every failure outside UNLOGGEDREFUSALS, whose entries match endpoint/type/status only, so none can scope to #1454; monitor state read 1 then 2 across this review's runs.
 - 2026-10-04T06:51:44Z status=decision-pending owner=burndown by=cr note=recommend amending AD-2: unlog the mapped ECP.DataServer PUT #1454 (code-scoped UNLOGGEDREFUSALS), as 18.6 did for its 400
 - 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
+- 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -9488,3 +9489,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
 - 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
+
+### DW-2033: ocupilot-b-ci's HSSYSLOCALTEMP lost its IRIS.DAT at 11:32:11 UTC while still mounted, right after a test's ECP server create and remote database create; PathPortInstance now fails there
+- source: runner investigation, Story 18.21 implement sweep (2026-10-04) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Audit: 11:32:11.720 Create section ECPServer OCUPROBEECPA and .864 Create section Database OCUPROBEECPR (EcpDataServerWrite's in-use leg, pid 1204757); at .999 the stream dirs of mgr, HSCUSTOM, hssys, hssyslocaltemp and user were recreated and hssyslocaltemp/IRIS.DAT is gone, SYS.Database still Mounted 1. Cause inference: the vendor's configuration activation; unreproduced; the same seeding ran many times before without it.
+- 2026-10-04T14:41:54Z status=routed owner=burndown by=runner note=investigate on a fresh throwaway (seed a data server, then a remote database on it, watch mgr/*/IRIS.DAT); IRIS defect candidate if reproduced; never restart ocupilot-b-ci to repair it
