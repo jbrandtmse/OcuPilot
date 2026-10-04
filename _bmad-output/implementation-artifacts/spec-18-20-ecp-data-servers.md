@@ -2,8 +2,9 @@
 title: 'Story 18.20: ECP data servers'
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'in-progress'
 review_loop_iteration: 0
+baseline_revision: '31b13332f0ce11d7f2a73235bf96fa380306e855'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -24,7 +25,7 @@ deferred: []
 **Always:**
 
 - **Task 0 runs first, on `ocupilot-b-ci` only**, before any descriptor, tool or page (Tasks › Task 0). Its probe objects use the prefix `OCUPROBEECP`, which no other probe prefix matches (`NamespaceWriteProbe`'s `OCUPROBE182` would match an `OCUPROBE1820…` name). It restores what it found and halts on any contradiction.
-- **Configuration only, never a connection.** A probe data server points at `127.0.0.1:1972`. Nothing sends `ECP.DataServer` `DBLIST`, sends `SERVERACTION` with `Action` 3 to the vendor, changes `%Service_ECP`, `Config.ECP`, `Config.config` or `Security.System`, activates a license key, or needs a restart.
+- **Configuration only, never a connection.** A probe data server points at an address in TEST-NET-1 (`192.0.2.0/24`, as other suites use `192.0.2.10`), which can never connect, with an in-range port: each configuration write runs the vendor's `ECPClient` activation, so on a licensed instance a reachable in-range address might really be contacted (orchestrator ruling, 2026-10-03). The product never contacts a data server beyond what the vendor's own configuration write does, as the classic page (inference). Nothing sends `ECP.DataServer` `DBLIST`, sends `SERVERACTION` with `Action` 3 to the vendor, changes `%Service_ECP`, `Config.ECP`, `Config.config` or `Security.System`, activates a license key, or needs a restart.
 - **Screens:**
 
   | Descriptor | Route | Archetype | Pos | Entity type, id | `classicPage` | `toolIdentifier` |
@@ -86,11 +87,12 @@ deferred: []
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 | --- | --- | --- | --- |
-| List | Probe data servers `OCUPROBEECPA` and `OCUPROBEECPB` at `127.0.0.1:1972` | The list and `osmgmt.ecpdataservers.read` answer both rows from one read, `Status` "Not Connected". The caveat line shows. | none |
-| Create | Name `ocuprobeecpc`, Address `127.0.0.1`, Port 1972, through the form's Save and through a confirmed proposal | `PUT /ecp/data-server?name=ocuprobeecpc` with the five keys. Listed as `OCUPROBEECPC`; the read-back reads `matches`; no ECP process starts. | none |
+| List | Probe data servers `OCUPROBEECPA` and `OCUPROBEECPB` at `192.0.2.10:1972` | The list and `osmgmt.ecpdataservers.read` answer both rows from one read, `Status` "Not Connected". The caveat line shows. | none |
+| Create | Name `ocuprobeecpc`, Address `192.0.2.10`, Port 1972, through the form's Save and through a confirmed proposal, with fewer data servers configured than `AppServerSettings.MaxServers` | `PUT /ecp/data-server?name=ocuprobeecpc` with the five keys. Listed as `OCUPROBEECPC`; the read-back reads `matches`; no ECP process starts. | none |
 | Update | `OCUPROBEECPA`, Port 1973, BatchMode on | The complete set read fresh is sent, with two diff rows. A stored non-zero `MirrorConnection` is sent unchanged. | none |
 | Field refusals | Name `1 a`, `ocuprobeecpa` (taken), 65 characters; Address empty or `my host`; Port 0, 65536 or `x`; `MirrorConnection` 2, or 0 over a stored 1 | Refused on the field before any vendor write, on both callers | `ECP.DATASERVER.NAME.SHAPE`, `.NAME.TAKEN`, `.ADDRESS`, `.PORT`, `.MIRROR` |
 | SSL without a client configuration | `SSLConfig` 1, with `%ECPClient` absent (stock) | Refused on `SSLConfig`; nothing is stored | `ECP.DATASERVER.SSLCLIENT` |
+| Server limit | The configured data servers reach `AppServerSettings.MaxServers`, read from `ECP.Settings` (2 on a stock instance, never hard-coded) | The create is refused before any vendor write, with a sentence naming the limit; no `PUT`, no audit event, no log line | 409 `ECP.SERVER.LIMIT` |
 | Delete, unused | `OCUPROBEECPB`, through the typed-name dialog or a confirmed proposal | `DELETE /ecp/data-server` is sent, and the row leaves the list | none |
 | Delete, in use | Remote database `OCUPROBEECPR` (seeded) uses `OCUPROBEECPA` | The advisory names `OCUPROBEECPR` when the dialog opens or the proposal is minted. The vendor refuses the delete, and the server stays. | 409 `ECP.DATASERVER.INUSE` |
 | Disable, real | `OCUPROBEECPA` reads Not Connected; choose Disabled in the dialog, or confirm a proposal | `SERVERACTION {Action:2}` is queued and polled within the bound. The list shows Disabled, the read-back reads `matches`, and `messages.log` gains no ERROR #7846. No ECP process starts. | none |
@@ -324,17 +326,18 @@ deferred: []
    - Record every answer, and whether a least-privileged caller's finished task row is left behind.
 8. **Cleanup proof:** run `RemoveAll`, then take S2. It must equal S0 apart from counters, the declared `messages.log` lines, and the monitor state. If the monitor state moved, clear it with `$SYSTEM.Monitor.Clear()`.
 9. **HALT** with status `blocked`, blocking condition `intent gap: observation contradicts the plan: <what>`, and nothing built, if any of these hold. Record the step-7 evidence first for any pair halt.
-   - At any step, `EcpJobs()` is above 0, or `messages.log` gains an ECP connection line.
+   - At any step, `EcpJobs()` is above 0, or `messages.log` gains an ECP connection line other than each configuration write's two declared severity-0 lines (`Activating Network`, `ECP-<n> sys <m> - '<NAME>' (address:port)`; no process starts, inference). Step d's port-70000 probe's failure lines are a Task 0 probe artifact (orchestrator ruling, 2026-10-03), and no test sends an out-of-range port to the vendor.
    - A status changes on a server other than the target, or the target lands anywhere but the requested state.
    - A license fact, `%Service_ECP`, `Config.ECP` or `Config.config` changes.
    - A route cannot be reached through `AdminPort`, or `SERVERACTION` does not queue.
    - f or g takes longer than `ASYNCTIMEOUT`.
    - A read takes more than 2 s.
    - The vendor deletes a data server that a remote database uses.
-   - A write needs a pair outside these: the screen's set; `%DB_IRISSYS:WRITE` for a `Config` write; `%Admin_Operate:USE` for the poll; and `%Admin_Secure:USE` for the `%ECPClient` read alone.
+   - A write needs a pair outside these: the screen's set; `%DB_IRISSYS:WRITE` for a `Config` write; `%Admin_Operate:USE` for the poll.
    - A probe task row cannot be removed.
    - S2 differs from S0 beyond the declared differences.
-10. **Otherwise, set these from the record:**
+10. **Resume here after the orchestrator's ruling (2026-10-03).** Steps 1 to 9 ran (Design Notes › Measured at implement); the plumbing patch `_bmad-output/implementation-artifacts/spec-18-20-task0-plumbing.patch` is applied first (`git apply`), with `EcpProbe`'s probe addresses moved to `192.0.2.10`. The rulings: the port-70000 line is a probe artifact, and `EcpRules` refuses any port outside 1 to 65535 (0 and 70000 included) with zero vendor calls; the create refuses 409 `ECP.SERVER.LIMIT` before any vendor write once the configured data servers reach `AppServerSettings.MaxServers` (read from the instance), tests hold at most two probe servers, and one test fills to the limit and pins the refusal; each write's two severity-0 lines are declared; the vendor's #1454 (`SSLConfig` 1 without `%ECPClient`) maps to `ECP.DATASERVER.SSLCLIENT`, never a 500, and no tool declares `%Admin_Secure:USE`.
+11. **Otherwise, set these from the record:**
     - **Each tool's pairs.** Drop `%DB_IRISSYS:WRITE` where step 7 shows it is not needed. Add to the change status any pair f/g needed.
     - **The SSL rule.**
       - If d's vendor refuses `SSLConfig` 1 without `%ECPClient`, `EcpPort` maps that refusal to `ECP.DATASERVER.SSLCLIENT` and the tools declare no pair for it.
@@ -527,8 +530,11 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-03, orchestrator (merge gate, Task 0 halt): the port-70000 connection line is a Task 0 probe artifact; probe data servers use TEST-NET-1 (`192.0.2.0/24`) with an in-range port; `ECP.SERVER.LIMIT` (409) refuses a create past `AppServerSettings.MaxServers` before any vendor write; each write's two severity-0 `messages.log` lines are declared; the measured pairs stand, Decision 1's `%Admin_Secure:USE` is dropped and #1454 maps to a refusal. The runner wrote AD-8, AD-13, AD-15, AD-52 and AD-53; the spec is re-opened at Task 0 step 10.
+
 - 2026-10-03, runner (spec gate): wrote AD-26, AD-44, AD-51 and AD-52; AD-13's `foldcase`, AD-8's pairs and any AD-15/AD-53 case wait for Task 0. Decisions 2 to 7 confirmed by the runner; Decision 1 (the SSL check's `%Admin_Secure:USE`, narrower than the classic page) asked of the orchestrator before the implement spawn.
 - 2026-10-03, orchestrator (merge gate): Decision 1 accepted -- the create and update declare `%Admin_Secure:USE` only while `SSLConfig` is 1, refused by name before any port call; Task 0 measures both paths, and if the `%ECPClient` read needs no pair, the pair is dropped and the measurement recorded. Decisions 2 to 7 confirmed.
+- 2026-10-03, implement (Task 0, halted): measured AD sentences for the runner. AD-8: `osmgmt.ecpdataservers.create`, `.update` and `.delete` declare `%DB_IRISSYS:WRITE`; `.changestatus` declares `%Admin_Operate:USE` alone; no SSL argument pair, because the vendor refuses `SSLConfig` 1 without `%ECPClient` (#1454) and `EcpPort` maps that, so Decision 1's `%Admin_Secure:USE` is dropped (the `%ECPClient` read needs it: 403 without, 404 with). AD-13: `ecp-data-server` keeps `foldcase`. AD-15 and AD-53: `SERVERACTION` records no vendor event with auditing on. Step 10: `ECP.STATUS.REFUSED` is a 500 from `SERVERACTION`; no value-type change. Open for the ruling: the port-70000 connection line, and `MaxServers` 2, which caps the probe servers a test may hold at two and answers a third create 500 #456 with no refusal code.
 
 ## Review Triage Log
 
@@ -568,6 +574,25 @@ deferred: []
   - `ECP.DataServer` `LIST` answered 200 `[]` in 0.004 s;
   - `GET name=NOSUCHPROBE` answered 404 `PORT.NOTFOUND` in 0.001 s.
 - `ocupilot-slot-b` reads the same license and service facts.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-03 23:43-23:50 UTC, halted at step d's re-measure; evidence in `/tmp/epic-18-d6/1820/t0/`). Every write ran through `AdminPort` as `irisowner` (`%All`) unless a principal is named. The monitor state read 2 at the start, left by an earlier sweep, and was cleared to 0 before S0.
+
+- Step 1: the three `ECP.DataServer` pairs joined `MUTATINGTYPES` and `PortFixture`'s copy, `DELETE` joined `BODYLESSTYPES`, and `SERVERACTION` joined `QUEUEDWRITES` and `AdminPortAsync`'s pin (run 5018, 6/6). `Test/EcpProbe.cls` is written.
+- a. `LIST` took 0.002 s and `GET` 0.001 s in either case. `Status` reads "Not Connected". `LIST` answers `RemotePort` as a number and the three flags as booleans; `GET` answers `Port` and `MirrorConnection` as numbers and `SSLConfig` and `BatchMode` as booleans.
+- b. `PUT name=ocuprobeecpa {Address, Port}` answered 201 in 0.144 s. It is stored as `OCUPROBEECPA` and `GET` reads it in either case; `BatchMode`, `MirrorConnection` and `SSLConfig` stored 0. Event: `ConfigurationChange` "Create section ECPServer OCUPROBEECPA".
+- c. `{Port:1973}` alone and `{BatchMode:true}` alone each kept the other keys, 200 with "Modify section ECPServer" each. The fresh `GET` body sent back unchanged answered 200 in 0.001 s with no event. `ReadBack.Compare` reads a sent `SSLConfig` 1 equal to a read `true`.
+- d. Refused, nothing stored: an empty `Address` 500 #5659; an absent `Address` or `Port` 400 #40301; port `"x"` 500 #7207; a name with a space or a dot 500 #458; 65 characters 500 #7201; `MirrorConnection` 2 500 #476; `my host` 500 #7200; `SSLConfig` 1 or `true` without `%ECPClient` 500 #1454, on a create and on an update, whose `Port` change was not applied. Port 0 is stored (201). Port 70000: the halt below.
+- `Config.config` `MaxServers` is 2, and it caps the data servers: with two defined, a third create answers 500 #456 ("MaxServers parameter must be increased to at least 3"), the vendor logs it at severity 2, nothing is stored, and a "Create section ECPServer" event is still written.
+- e. With `OCUPROBEECPR` on the server, `DELETE` answered 409 #423 in 0.003 s (`PORT.CONFLICT`); the server stayed, with no event. With the remote database removed it answered 200 in 0.123 s ("Delete section ECPServer"), and again 404 `PORT.NOTFOUND`, logged as a write's 404 is.
+- f. `SERVERACTION {Action:2}` was queued and polled: 200 in 0.062 s against the 30 s bound, state 1 to 4, `LIST` "Disabled", no log line, the task row removed by the poller.
+- g. `{Action:1}` answered 200 in 0.061 s, back to "Not Connected". Sent again on Not Connected it answered 200 and changed nothing: the vendor accepts a same-state action, with no #5026.
+- h. `{Action:4}`'s task failed, and the port answered 500 `INTERNAL`, logging #40303.
+- i. `{Action:2}`, then `DELETE` while Disabled: 200, deleted. j. 75 s after the last action: no ECP job and no new line.
+- Each configuration write logs `Activating Network` and `ECP-<n> sys <m> - '<NAME>' (<address>:<port>)` at severity 0: configuration activation, with no process started (inference).
+- 6. With auditing on, b, c and e wrote the events above; f, g, h and i wrote no vendor event.
+- 7. A principal holding `%Admin_Manage:USE`, `%DB_IRISSYS:READ` and the code read: `LIST` and `GET` answered; `PUT` and `DELETE` answered 500 `<PROTECT>` on `^SYS("CONFIG","IRIS","ECPServers",…)`, nothing changed; `SERVERACTION` answered 403 at the `AsyncResult` poll while the queued action ran (state 4). Adding `%DB_IRISSYS:WRITE`: create 201, update 200, delete 200, action still 403 and applied. Adding `%Admin_Operate:USE`: action 200 twice, configuration writes still `<PROTECT>`. Adding `%Admin_Secure:USE`: neither; `Security.SSLConfig GET name=%ECPClient` answers 404 with it and 403 without. `%DB_IRISSYS:WRITE` with `%Admin_Operate:USE`: action 200. The probe user's ten finished task rows stayed until `RemoveAll` deleted them as objects.
+- 8. `RemoveAll` left nothing. S2 equals S0 apart from `messages.log` (8,493 to 8,575 lines), `alerts.log` (310 to 319), job type 59's count (84 to 89) and the monitor state (0 to 2, from the severity-2 refusal lines of d, e and 7), cleared with `$SYSTEM.Monitor.Clear()`. After the halt the same held, with the monitor state 0.
+- **Halt (step 9, first condition).** Re-measuring d's port 70000 with no other data server defined, because the first run met #456 first: the vendor stored nothing and answered 500 #456, and `messages.log` gained at severity 1 `<WIDE CHAR>Init+20^ECPClient` and `ECP connection OCUPROBEECPG - 127.0.0.1:70000 failed`. `EcpJobs()` stayed 0, and no line recurred. `EcpRules` refuses that port before any vendor write.
 
 **Decisions.** Each is applied in this plan. The runner confirms them at the spec gate.
 
@@ -669,11 +694,16 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: Task 0 step d's port-70000 PUT made `messages.log` gain an ECP connection line (step 9, first condition), and `MaxServers` 2 caps the data servers a test may hold and answers a third create 500 #456 with no refusal code; the orchestrator rules both, and whether the severity-0 `Activating Network` / `ECP-<n> sys <m>` lines every configuration write logs count as connection lines
 
 - **Planned:** Story 18.20 from Part B of `spec-18-6-licensing-and-ecp.md` at commit `fe080653`, re-validated against the current tree (18.6 and 18.16 built).
   - It covers: the Task 0 with its halt conditions; the server and client execution; the rosters (with the position-0 order); the tests; ACs B0-B7; Verification; seven decisions; and six proposed spine amendments (1 to 4 at the spec gate, 5 and 6 after Task 0).
   - Size is about Story 18.6 Part A: two descriptors, four write tools, one port, one area error class, a custom list page with one dialog, and one form page.
 - **Measured at plan:** read-only, on `ocupilot-b-ci` and `ocupilot-slot-b`, with no write to any instance and no `DBLIST`, `SERVERACTION` or other ECP write (Design Notes › Measured at plan). The vendor and classic sources were read from the export and `irissys/`.
 - **Tree state at dispatch:** the only uncommitted change was the runner's own `stage_spawned` line in `cycle-log-epic-18.md`, written at this spawn. This stage did not touch it and leaves this spec uncommitted.
+- **Implement (Task 0, halted 2026-10-03 23:49 UTC):** Task 0 step 1 is built (the three `AdminPort` list additions, `PortFixture`'s copy, `AdminPortAsync`'s pin, `Test/EcpProbe.cls`; `AdminPortAsync` run 5018, 6/6). Steps a to j and 6 to 8 are recorded under Design Notes › Measured at implement and the measured AD sentences under `## Spec Change Log`; nothing past step 1 is built.
+  - The stage checked the halt on the throwaway: `messages.log:8581` and `:8583` read, at severity 1, `<WIDE CHAR>Init+20^ECPClient` and `ECP connection OCUPROBEECPG - 127.0.0.1:70000 failed`, and `:8578` shows `OCUPROBEECPG` created at port 0 three seconds earlier. Since the #456 answer reads "at least 3", whether other data servers were defined at that moment is unresolved (inference).
+  - The throwaway was checked after the halt: no `OCUPROBEECP*` data server, remote database, user, role or task row; 0 ECP jobs; `NetworkEnabled` 0, `%Service_ECP` off, `MaxServers` 2; the monitor state 0. The handoff cleared the monitor state with `$SYSTEM.Monitor.Clear()` three times (2 before S0, left by an earlier sweep; 2 after step 8; 1 after the re-measure). The audit database was not purged.
+  - The shim `/tmp/epic-18-d6/1820/sweep-bin/docker` arms `OCUPILOT_ALLOW_ECP_CONFIG` and `OCUPILOT_ALLOW_DATABASE_CONFIG` with the 18.6 shim's three variables. The Task 0 evidence is in `/tmp/epic-18-d6/1820/t0/`.
+  - The tree is left uncommitted for the runner: this spec, `src/OcuPilot/Port/AdminPort.cls`, `src/OcuPilot/Test/AdminPortAsync.cls`, `src/OcuPilot/Test/PortFixture.cls` and the new `src/OcuPilot/Test/EcpProbe.cls`. Their diff is saved at `/tmp/epic-18-d6/1820/task0-plumbing.patch`.
