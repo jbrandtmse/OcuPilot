@@ -640,3 +640,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-04T08:45:30Z	Story 18.20	ci_resolved	story=18.20 run=37187414647 head=76df3dc8 result=failure jobs=browser_shard_1/3(system-explorer-sql-query_AC2/AC9_DW-2024_second_sighting;passes_2/2_locally) instance=4/4_green a11y=12/12_green
 2026-10-04T08:50:19Z	Epic 18	integrate_forward	from=4bb7754a(feature;DW-2025_console_fix) merge=a82a7261 parents=4d788eb2,4bb7754a conflicts=0 bundle=2736712B(under_2737kB,not_re-based) checks=tools_1786/1786,components_2328/2328,check-objectscript_0/1501,lint-docs_0,lint_spine_ok rosters=ReadTool_28,SurfaceCoverage_4,Descriptor_60,ToolRoundTrip_2,EcpDescriptor_7
 2026-10-04T08:50:19Z	Story 18.20	committed	sha=a82a7261(forward_merge_for_fast-forward) ci=pending run=37190183552 head_confirmed_by=headSha pushed=alone supersedes_run=37187414647(76df3dc8,DW-2024)
+2026-10-04T09:42:52Z	Story 18.20	ci_resolved	story=18.20 run=37190183552 head=a82a7261 result=success resolved_at=boundary(next_implement)
+2026-10-04T09:42:52Z	Story 18.20	boundary_reported	to=main code_head=a82a7261 ci=success run=37190183552 branch_head=pending(skip-ci_bookkeeping_only)
