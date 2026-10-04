@@ -270,3 +270,4 @@
 2026-10-04T06:28:20Z	Story 19.15	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty
 2026-10-04T06:30:02Z	Story 19.15	smoke_complete	method=api+cli result=pass iterations=1 defects_caught=0 target=ocupilot-a2-ci(merged_code) evidence=api(background_start_202_running,poll_ended_with_rows,dml_start_answers_prepare_error_-30_no_job,unknown_id_404_EXPLORER.SQL.BACKGROUND.NOTFOUND),smoke.sh,review_browser_3/3 model=claude-opus-5-5
 2026-10-04T06:30:02Z	Epic 19	integrated_forward	feature=c1514d94(log_only;no_conflict) by=runner
+2026-10-04T06:30:28Z	Story 19.15	committed	sha=16b50ec8 story_commits=79273d02(build),f121b82d(review_patches+QA_leg) merge=feature_c1514d94(log_only) submodules= ci=pending run=37182979085 superseded=37180750968(79273d02) release=1.0.9_candidate
