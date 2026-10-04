@@ -6867,6 +6867,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: full sweep on ocupilot-ci run 8192: %SYS_Task.History held 1,026 rows on the 3-day-old throwaway; a fresh CI throwaway holds far fewer
 - 2026-09-23T14:43:42Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=harvest note=reopen_if=a CI instance job fails TestTaskHistoryPairSetsAreEnforcedForARealPrincipal
+- 2026-10-04T22:45:55Z occurrence=wontfix-accepted by=harvest note=Story 18.7's sweep on the 3-day-old ocupilot-b-ci saw it again (4,600 task-history rows over the 1,000 cap); green 25/25 on the rebuilt throwaway 2026-10-04T22:39Z, so the environmental cause is observed, not inferred
 
 ### DW-1557: AdminPort's DW-1473 paragraph still says no shipped tool issues Task.CRUD/SUSPEND, which 7.6 made false; its 'The nine' count and 'no screen read reaches one' are stale too
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9661,3 +9662,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37228982542 (browser shard 1/3, head f3c01129) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: structural-walk.mjs fieldNames :526 reads each [data-ocu-walk-field] node by id after one querySelectorAll; the transfer spec :222 walks right after typing into the path picker, whose listing re-renders the dialog's fields (inference); 19.8 changes neither file
 - 2026-10-04T20:34:37Z status=routed owner=range-end-cleanup by=runner note=first sighting; the fix is fieldNames tolerating a node replaced mid-walk (re-query once) or the spec waiting for the picker's listing before the walk
+
+### DW-2059: Prohibited.DependsOnKey compares a database's EncryptionKeyID with the key file's Id as exact strings; a format or case difference between the two vendor answers would let a protected key's removal through
+- source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: high | fix-risk: low | footprint: in-footprint
+- evidence: maybe-false: no encrypted database exists on these instances and activating a key is out of 18.7's scope; settled by Story 18.22's Task 0, which activates a probe key: compare Database.SysCRUD LIST EncryptionKeyID for a database encrypted with it against KeyInFile LIST Id (src/OcuPilot/Kernel/Proposal/Prohibited.cls DependsOnKey)
+- 2026-10-04T22:45:55Z status=routed owner=18-22-database-and-data-element-encryption-keys by=harvest note=18.22's Task 0 activates a probe key and can measure both formats; fix the comparison there if they differ
+
+### DW-2060: Kernel/Proposal/Prohibited.cls's Codes doc comment still reads twenty-six codes; PROHIBITED.OCUPILOTKEY makes 27
+- source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: the file is add-only while Epic 19 runs, so 18.7 left the sentence; a doc count only, no behavior
+- 2026-10-04T22:45:55Z status=routed owner=range-end-cleanup by=harvest note=correct the count once Epic 19 no longer holds the file add-only
