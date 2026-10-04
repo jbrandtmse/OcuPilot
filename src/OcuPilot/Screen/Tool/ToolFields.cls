@@ -44,6 +44,14 @@ XData Tools
   {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
   {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.ecpsettings.update": {"fieldList":"ECP.Settings","fields":[
+  {"path":"DataServerSettings.SSLECPServer","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"DataServerSettings.ServerTroubleDuration","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"DataServerSettings.MaxServerConn","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.MaxServers","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.ClientReconnectDuration","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.ClientReconnectInterval","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"}
+]},
 "osmgmt.globalmappings.create": {"fieldList":"Namespace.GlobalMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

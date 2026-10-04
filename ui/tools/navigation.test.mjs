@@ -157,6 +157,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.20: the unlisted ECP data server form, reached from ECP data servers, by descriptor
       // class name.
       'os-management/ecp-data-servers/edit',
+      // Story 18.21: ECP application servers' unlisted SSL/TLS authorizations tab, by descriptor
+      // class name.
+      'os-management/ecp-application-servers/ssl',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
@@ -215,6 +218,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/license-servers',
       // Story 18.20: ECP data servers, the seventeenth.
       'os-management/ecp-data-servers',
+      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
+      'os-management/ecp-settings',
+      'os-management/ecp-application-servers',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -356,6 +362,9 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/license-servers',
       // Story 18.20: the seventeenth.
       'os-management/ecp-data-servers',
+      // Story 18.21: the eighteenth and nineteenth.
+      'os-management/ecp-settings',
+      'os-management/ecp-application-servers',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -388,6 +397,25 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(ecpForm?.route, 'os-management/ecp-data-servers/edit', "ECP data servers' Create opens its own form");
   assert.equal(isListedScreen(ecpForm), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(screenForRoute('os-management/ecp-data-servers'))?.route, 'os-management/ecp-data-servers/edit', 'and a row name opens it at its id route');
+  // Story 18.21 (C8): ECP settings is the eighteenth entry, a form page of its own, and ECP
+  // application servers the nineteenth, whose Connections tab heads a strip with SSL/TLS
+  // authorizations, which takes no position.
+  const ecpSettings = screenForRoute('os-management/ecp-settings');
+  assert.equal(stringFor(ecpSettings.labelKey), STRINGS.ecpSettingsLabel);
+  assert.equal(ecpSettings.sideBarPosition, 18);
+  assert.equal(ecpSettings.archetype, 'form-page');
+  const appServers = screenForRoute('os-management/ecp-application-servers');
+  assert.equal(stringFor(appServers.labelKey), STRINGS.ecpAppServersLabel);
+  assert.equal(appServers.sideBarPosition, 19);
+  assert.deepEqual(
+    tabMembersFor(appServers).map((tab) => [tab.route, stringFor(tab.tab.labelKey)]),
+    [
+      ['os-management/ecp-application-servers', STRINGS.sslPromptGroupConnections],
+      ['os-management/ecp-application-servers/ssl', STRINGS.ecpSslConnectionsLabel],
+    ]
+  );
+  assert.equal(tabGroupFor(screenForRoute('os-management/ecp-application-servers/ssl'))?.route, 'os-management/ecp-application-servers');
+  assert.equal(isListedScreen(screenForRoute('os-management/ecp-application-servers/ssl')), false, 'the SSL/TLS tab takes no side-bar position');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

@@ -40,7 +40,8 @@ Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
 Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.delete";
 
 /// <p>The ECP data server status change and delete, which the baseline also disables (Story 18.20).</p>
-Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataservers.delete";
+/// <p>Story 18.21 adds the ECP SSL/TLS authorization delete, which the baseline disables too.</p>
+Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataservers.delete,osmgmt.ecpsslconnections.delete";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";

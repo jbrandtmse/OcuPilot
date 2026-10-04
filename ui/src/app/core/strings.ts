@@ -5303,6 +5303,94 @@ export const STRINGS = {
   impactRemoteDatabasesUseNone: 'no remote database uses it',
   /** EXPERIENCE.md:577 */
   impactRemoteDatabasesUseUnchecked: 'which remote databases use it was not checked',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsLabel: 'ECP settings',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersLabel: 'ECP application servers',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsLabel: 'SSL/TLS authorizations',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionEntity: 'ECP SSL/TLS authorization',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsAppServerLegend: 'This instance as an ECP application server',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsDataServerLegend: 'This instance as an ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsMaxServers: 'Maximum number of data servers',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsReconnectDuration: 'Time to wait for recovery (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsReconnectInterval: 'Time between reconnections (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsMaxServerConn: 'Maximum number of application servers',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsTroubleDuration: 'Time interval for Troubled state (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsSslSupport: 'ECP SSL/TLS support',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRestart:
+    'A changed maximum number of application servers takes effect only after the instance restarts.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsServerSsl: 'Create and enable the %ECPServer SSL/TLS configuration before using SSL/TLS.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsCountRange: 'Enter a whole number from 0 to 254.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRecoveryRange: 'Enter a whole number of seconds from 10 to 65535.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsIntervalRange: 'Enter a whole number of seconds from 1 to 60.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsTroubleRange: 'Enter a whole number of seconds from 20 to 65535.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsSslChoice: 'Choose Disabled, Enabled or Required.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsServersBelow:
+    'This instance defines more ECP data servers than that. Delete one first, or enter a larger number.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRefusedAction: 'change the ECP settings',
+  /** EXPERIENCE.md:375 */
+  ecpClientIp: 'Client IP',
+  /** EXPERIENCE.md:375 */
+  ecpSslComputerName: 'SSL computer name',
+  /** EXPERIENCE.md:375 */
+  ecpAppServerListEmpty: 'No application servers are connected to this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionListEmpty: 'No SSL/TLS authorizations on this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionListEmptyAgent: 'explain how an ECP application server is authorized',
+  /** EXPERIENCE.md:375 */
+  ecpSslAuthorize: 'Authorize',
+  /** EXPERIENCE.md:375 */
+  ecpSslReject: 'Reject',
+  /** EXPERIENCE.md:375 */
+  ecpSslAuthorizeConsequence:
+    'Authorizing lets the application server that presents this certificate connect to this instance over ECP.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRejectConsequence: 'Rejecting refuses this application server\'s pending connection.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRefusalNotPending: 'This application server is not waiting for authorization.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRefusalNotAuthorized: 'This application server is not authorized.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt1: 'What do the ECP settings on this instance control?',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt2: 'When does a changed maximum number of application servers take effect?',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt3: 'What does ECP SSL/TLS support need before it can be enabled?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt1: 'Which ECP application servers are connected to this instance?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt2: 'What does each application server status mean?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt3: 'How does this instance act as an ECP data server?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt1: 'Which ECP application servers are authorized to connect over SSL/TLS?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt2: 'What happens when I authorize an ECP application server?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt3: 'What does deleting an SSL/TLS authorization change?',
+  /** EXPERIENCE.md:479 */
+  ecpSslConnectionDeleteConsequence:
+    'Deleting this authorization means the application server that presents this certificate must be authorized again the next time it connects. Its current connection is not affected. This cannot be undone.',
 } as const;
 
 /**

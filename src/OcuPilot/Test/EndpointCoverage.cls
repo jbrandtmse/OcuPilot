@@ -249,6 +249,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/explorer/sql/background/:id/cancel" path="/api/ocupilot/explorer/sql/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/explorer/sql/background/:id" path="/api/ocupilot/explorer/sql/background/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/background" path="/api/ocupilot/explorer/sql/background" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/ecp-settings/form" path="/api/ocupilot/ecp-settings/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/ecp-settings" path="/api/ocupilot/ecp-settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/data" path="/api/ocupilot/explorer/sql/data" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

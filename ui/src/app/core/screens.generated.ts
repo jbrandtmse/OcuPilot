@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -510,7 +510,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "journal-record",
   "license-key",
   "license-server",
-  "ecp-data-server"
+  "ecp-data-server",
+  "ecp-settings",
+  "ecp-ssl-connection"
 ];
 
 /**
@@ -553,7 +555,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "journal-settings": "singleton",
   "license-key": "singleton",
   "license-server": "foldcase",
-  "ecp-data-server": "foldcase"
+  "ecp-data-server": "foldcase",
+  "ecp-settings": "singleton"
 };
 
 /**
@@ -4006,6 +4009,146 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpAppServerTab",
+    "route": "os-management/ecp-application-servers",
+    "area": "os-management",
+    "labelKey": "ecpAppServersLabel",
+    "sideBarPosition": 19,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ClientName",
+        "Status",
+        "IPAddress",
+        "IPPort"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ecpAppServerListEmpty",
+    "commandAliases": [
+      "ecp application servers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECPAppServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.AppServerList",
+        "type": "LIST"
+      },
+      "fields": [
+        "ClientName",
+        "Status",
+        "IPAddress",
+        "IPPort"
+      ],
+      "filter": [
+        "ClientName",
+        "Status",
+        "IPAddress"
+      ],
+      "sort": {
+        "fields": [
+          "ClientName",
+          "Status",
+          "IPAddress",
+          "IPPort"
+        ],
+        "default": "ClientName",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "ecpDataServerStatusCaveat",
+        "text": "Each status is what the instance reported when this list was read."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ClientName",
+          "labelKey": "processDetailsClientName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "IPAddress",
+          "labelKey": "ecpClientIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "IPPort",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/ecp-application-servers",
+      "position": 1,
+      "labelKey": "sslPromptGroupConnections"
+    },
+    "toolIdentifier": "osmgmt.ecpappservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.EcpDataServerForm",
     "route": "os-management/ecp-data-servers/edit",
     "area": "os-management",
@@ -4236,6 +4379,261 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpSettings",
+    "route": "os-management/ecp-settings",
+    "area": "os-management",
+    "labelKey": "ecpSettingsLabel",
+    "sideBarPosition": 18,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "ecp-settings",
+    "entityLabelKey": "ecpSettingsLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "AppServerSettings.MaxServers",
+        "AppServerSettings.ClientReconnectDuration",
+        "AppServerSettings.ClientReconnectInterval",
+        "DataServerSettings.MaxServerConn",
+        "DataServerSettings.ServerTroubleDuration",
+        "DataServerSettings.SSLECPServer"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "ecp settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECP",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.Settings",
+        "type": "GET"
+      },
+      "fields": [
+        "AppServerSettings.MaxServers",
+        "AppServerSettings.ClientReconnectDuration",
+        "AppServerSettings.ClientReconnectInterval",
+        "DataServerSettings.MaxServerConn",
+        "DataServerSettings.ServerTroubleDuration",
+        "DataServerSettings.SSLECPServer"
+      ],
+      "filter": [
+        "AppServerSettings.MaxServers"
+      ],
+      "sort": {
+        "fields": [
+          "AppServerSettings.MaxServers"
+        ],
+        "default": "AppServerSettings.MaxServers",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "osmgmt.ecpsettings",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpSslConnectionTab",
+    "route": "os-management/ecp-application-servers/ssl",
+    "area": "os-management",
+    "labelKey": "ecpSslConnectionsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ecp-ssl-connection",
+    "entityLabelKey": "ecpSslConnectionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "authorize",
+        "selfProtection": "ecp-ssl-pending"
+      },
+      {
+        "id": "reject",
+        "selfProtection": "ecp-ssl-pending"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "ecp-ssl-authorized"
+      }
+    ],
+    "context": {
+      "fields": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ecpSslConnectionListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECPAppServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.AppServerSSLConnection",
+        "type": "LIST"
+      },
+      "fields": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "filter": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "SSLComputerName",
+          "ClientIP",
+          "Status"
+        ],
+        "default": "SSLComputerName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "SSLComputerName",
+          "labelKey": "ecpSslComputerName",
+          "kind": "name"
+        },
+        {
+          "field": "ClientIP",
+          "labelKey": "ecpClientIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "ecpSslConnectionListEmptyAgent"
+    },
+    "tab": {
+      "group": "os-management/ecp-application-servers",
+      "position": 2,
+      "labelKey": "ecpSslConnectionsLabel"
+    },
+    "toolIdentifier": "osmgmt.ecpsslconnections",
+    "refreshDefault": 0,
+    "banner": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],

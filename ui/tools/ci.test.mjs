@@ -2841,3 +2841,24 @@ test("each shard job's timeout is at least 1.5 times its largest leg's estimate 
     );
   }
 });
+
+// Story 18.21 (the orchestrator's Task 0 ruling): a real MaxServerConn change leaves an instance pending
+// a restart that no restore clears, CI's throwaways included, so no browser spec types into or saves
+// the maximum number of application servers. Only the ECP settings spec names the member; it types only
+// through its `retype`, which refuses that control, and it sends no request and fills no field of its
+// own. `OcuPilot.Test.EcpDescriptor.TestNoTestSendsMaxServerConnToTheVendor` is the ObjectScript twin.
+//
+// Mutations (Rule 19): delete the RESTART refusal from `retype` in ecp-settings.browser-spec.mjs -> the
+// refusal assertion goes red; name `MaxServerConn` in another browser spec -> the roster assertion goes red.
+test('Story 18.21: no browser spec types into or saves the maximum number of application servers', () => {
+  const dir = join(REPO_ROOT, 'ui', 'browser');
+  const naming = readdirSync(dir)
+    .filter((name) => name.endsWith('.mjs') && readFileSync(join(dir, name), 'utf8').includes('MaxServerConn'))
+    .sort();
+  assert.deepEqual(naming, ['ecp-settings.browser-spec.mjs'], 'only the ECP settings spec names MaxServerConn');
+  const spec = readFileSync(join(dir, 'ecp-settings.browser-spec.mjs'), 'utf8');
+  assert.match(spec, /const RESTART = controlId\('DataServerSettings\.MaxServerConn'\);/, 'its control is bound to RESTART');
+  assert.match(spec, /async function retype\(page, selector, value\) \{\n\s+if \(selector === RESTART\) throw /, 'retype refuses that control before it types');
+  assert.equal(spec.match(/\.type\(/g)?.length ?? 0, 1, "retype's own page.type is the one place the spec types");
+  assert.equal(/\bfetch\(|method: 'PUT'|\.fill\(|keyboard\.(type|sendCharacter)\(/.test(spec), false, 'and the spec sends no request and fills no field of its own');
+});

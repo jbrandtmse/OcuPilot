@@ -4,7 +4,7 @@
 
 ## Goal
 
-This epic brings OcuPilot to System Administration and System Operation parity on the experimental `/api/admin` v2 service. It covers namespaces and mappings, local and remote databases and their disk operations, journals, licensing and ECP, encryption, superservers, authentication options, MFT, SQL privileges, the web-application and monitoring extras, and installing into a chosen namespace. Each screen arrives with its read tool and its confirmed single-write tools from one descriptor, so the agent grows with the portal. Stage 2 is the first versioned IPM release after the contest. It deepens the dependency on an experimental API by about twenty screens, so measured payloads, containment and self-protection carry the weight.
+This epic brings OcuPilot to System Administration and System Operation parity on the experimental `/api/admin` v2 service. It covers namespaces and mappings, local and remote databases and their disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, the web-application and monitoring extras, and installing into a chosen namespace. Each screen arrives with its read tool and its confirmed single-write tools from one descriptor, so the agent grows with the portal. Stage 2 is the first versioned IPM release after the contest. It deepens the dependency on an experimental API by about twenty screens, so measured payloads, containment and self-protection carry the weight.
 
 ## Stories
 
@@ -43,54 +43,70 @@ This epic brings OcuPilot to System Administration and System Operation parity o
   - Probe objects use a prefix no other suite's prefix matches.
   - Build on the pinned 2026.2 image. An endpoint the inventory fixture does not cover means re-running the inventory audit.
 - **Every instance here runs a Community license, CI included.** No test activates a key, opens an ECP connection or needs a restart. Every success path that needs a licensed instance runs through a test seam.
-- **Specification mismatches still ahead:**
-  - 18.9: sql-privilege rows use `Object` and `Action` (checked), so a revoke is built from those. A role owner's `AdminOption` is the string `"0"` or `"1"` (reported), so compare the value.
-  - 18.11: `BusyProcesses` always has ten rows. Drop the empty ones.
+- **Slot B's throwaway `ocupilot-b-ci`.**
+  - It reads `Config.CPF.PendingRestart` 1 permanently since 18.21's Task 0. Never restart it, and report any check that reads that state.
+  - Its HSSYSLOCALTEMP lost its `IRIS.DAT` to macOS's nightly /tmp cleaner (DW-2033 and DW-2034), not to an IRIS fault. `PathPortInstance` is red there for that reason alone.
 - **Governance.**
-  - Every destructive or disruptive action defaults to disabled.
+  - Every destructive or disruptive action defaults to disabled. Encryption changes are among them.
   - Each new write key gets its `Kernel/Governance/Baseline.cls` line in the same change.
   - Through 2026-10-04, other new keys enter enabled unless the story says otherwise. After that, the owner decides.
 - **Secrets and key material are write-only.** They are never returned, logged, kept in a proposal or put in a queued body.
-- **Bundle budget.** Each story re-bases `angular.json`'s `maximumWarning` to the measured total (DW-1166). It is 2,728 kB after 18.20. `maximumError` is 4,000 kB, and a runner stops and asks above 3,800 kB.
+- **Bundle budget.** Each story re-bases `angular.json`'s `maximumWarning` to the measured total (DW-1166). It is 2,805 kB after 18.21 and the 19.7 merge. `maximumError` is 4,000 kB, and a runner stops and asks above 3,800 kB.
+- **Specification mismatches still ahead:**
+  - 18.9: sql-privilege rows use `Object` and `Action` (checked), so a revoke is built from those. A role owner's `AdminOption` is the string `"0"` or `"1"` (reported), so compare the value.
+  - 18.11: `BusyProcesses` always has ten rows. Drop the empty ones.
 - **Routed ledger items.** Each one is addressed or declined with a reason.
-  - 18.21: DW-2006. A data server Save may store SSL/TLS over a *disabled* `%ECPClient` configuration, which the classic dialog refuses, because `EcpPort` maps only the vendor's #1454 for an absent one (inference). Measure it on the throwaway: seed a disabled `%ECPClient`, create a probe at `192.0.2.10` with `SSLConfig` 1, read whether it is stored, and remove both. Then refuse it, or name the gap.
-  - 18.7: DW-1555 (RSA and symmetric-key wallet secrets) and DW-1774. DW-1774's rule binds every story that adds a listed screen: extend every pinned side-bar list, found with `grep -l ocu-side-bar-label ui/browser` plus `ui/tools/navigation.test.mjs`.
+  - 18.7:
+    - DW-1555: create and edit RSA and symmetric-key wallet secrets, which Story 8.6 shows read-only.
+    - DW-1774: a story that adds a listed screen extends every pinned side-bar list of its area, found with `grep -l ocu-side-bar-label ui/browser` plus `ui/tools/navigation.test.mjs`. 18.8 and 18.9 meet it too.
   - 18.9: DW-236.
   - 18.13: DW-219 and DW-423.
-  - Epic close burn-down:
-    - DW-1966: make Journal settings refuse an existing database's directory, OcuPilot's own included, as a journal directory.
+  - Epic close burn-down (all decided):
+    - DW-1966: refuse an existing database's directory, OcuPilot's own included, as a journal directory (AD-21).
     - DW-1979: make Journal records' Newest first draw the newest record first.
     - DW-1981: give the record browser's inputs a `maxlength`, with a budget re-base.
-    - DW-2007 is decision-pending: whether to amend AD-2 so that the vendor's #1454, which `EcpPort` maps to `ECP.DATASERVER.SSLCLIENT`, is left unlogged.
+    - DW-2007: add a code-scoped `UNLOGGEDREFUSALS` entry, so that the vendor's #1454, which `EcpPort` maps to `ECP.DATASERVER.SSLCLIENT`, is not logged (AD-2).
 
 ## Technical Decisions
 
 - **Containment (AD-2, AD-27, AD-52).**
-  - Only `AdminPort` names an `%Api.Admin.*` class. The declared ports extend it and build the bodies, fresh-read types and call sequences.
-  - The outcome comes from both `tSC` and `%response.Status`. A call through a vendor class is allowed only as a named AD-27 case.
+  - Only `AdminPort` names an `%Api.Admin.*` class. A write tool declares the port it reaches its target through, and that port builds the bodies, fresh reads and call sequences.
+  - The outcome comes from both `tSC` and `%response.Status`. A call through a vendor class is allowed only as a named AD-27 case, such as `WalletPort`'s composed wallet read.
   - Only the vendor's own 404 reads as no rows (AD-36).
-  - A failure outside `UNLOGGEDREFUSALS` is logged at severity 2, which raises the instance's alert state even when a port maps it to a refusal. That list matches endpoint, type and status only, not a vendor code (DW-2007).
+  - A failure outside `UNLOGGEDREFUSALS` is logged at severity 2, which raises the instance's alert state even when a port maps it to a refusal. The list's entries match endpoint, type and status. The burn-down adds the one entry scoped by vendor code (#1454).
 - **Pairs (AD-8, AD-29, AD-44).**
-  - `ResourcesOR()` is only a lower bound. It is `%Admin_Manage` on every licensing and ECP class.
+  - `ResourcesOR()` is only a lower bound.
   - Read the backing class's own check, then run the call as a purpose-built least-privileged role. Never use `%Operator`. Administrative resources are required at `USE`.
-  - Every `Config.*` write measured so far needed `%DB_IRISSYS:WRITE` beyond its screen's set. That covers devices, namespaces, databases, remote databases, language servers, license servers and ECP data servers.
+  - Every `Config.*` write measured so far needed `%DB_IRISSYS:WRITE` beyond its screen's set. 18.21's SSL/TLS authorization tools needed it too, for `^SYS("ECPSSL")`.
   - A tool declares such extra pairs, plus `%Admin_Operate:USE` where it polls an async task. It refuses a caller without them by name, before any port call.
+  - A screen whose vendor read calls `Security.System.Get` declares `%Admin_Secure:USE` as its own pair, as ECP settings does.
   - No new surface relies on the API floor alone, which admits `%Development:USE`.
   - `CLASSICPAGES` lists every classic page beyond the descriptor's own whose operation a write performs, spelled as `NormalizePage` answers.
   - A removal names its impact through the owning screens' declared reads, with the caller's privileges.
 - **Write kinds.**
-  - Merge (AD-4): read fresh and send the complete set. Measure whether the `PUT` keeps omitted keys.
-  - Create (AD-54): fingerprint the name's absence.
-  - Action (AD-51): a declared request type with no body. A port-built body is a named entry. The fingerprint subject covers every precondition field. `PRECONDITIONCODES` names the fresh-read refusals that close a proposal as target-changed.
-  - Secret-only body (AD-56).
-  - The screen and the agent are two callers of one tool (AD-53, AD-55). The screen's call mints no proposal and emits no marker, and read-only and the kill switch do not gate it. An unadvertised tool, such as the license key activation, is a named case in AD-53.
-  - Every write has a read-back (AD-58), a port `Snippet` that mirrors every branch (AD-59), a change event (AD-14) and the per-target lock (`WRITE.TARGETBUSY` after 10 s, AD-34).
-  - A write the vendor does not audit, measured with auditing on, is a named case in AD-15 and AD-53. The latest is ECP data servers' Change status.
+  - **Merge (AD-4).** Read fresh and send the complete set.
+    - A nested body is merged member by member, and each object is sent complete, as `ECP.Settings` is.
+    - The vendor does not stop at a refused member, so a port pre-checks any refusal that would leave a write half-applied.
+    - Admin `PUT`s are upserts, so the fresh read and the fingerprint guard against a target deleted since the read.
+  - **Create (AD-54).** Fingerprint the name's absence.
+  - **Action (AD-51).** A declared request type with no body. A port-built body is a named entry.
+    - The fingerprint covers every precondition field.
+    - `PRECONDITIONCODES` names the fresh-read refusals that close a proposal as target-changed.
+  - **Secret-only body (AD-56).** A type that takes only its declared secrets. An empty secret clears the stored value only where `CLEARABLESECRETS` says so.
+  - **The screen and the agent are two callers of one tool (AD-53, AD-55).** The screen's call mints no proposal and emits no marker, and read-only and the kill switch do not gate it. An unadvertised tool is a named AD-53 case.
+  - **Every write has:**
+    - a read-back (AD-58);
+    - a port `Snippet` that mirrors every branch (AD-59);
+    - a change event (AD-14);
+    - the per-target lock, `WRITE.TARGETBUSY` after 10 s (AD-34).
+  - **Unaudited writes.** A write the vendor does not audit, measured with auditing on, is a named case in AD-15 and AD-53. 18.21's SSL/TLS Authorize, Reject and Delete are the latest.
 - **Ids and fields (AD-13, AD-3).**
-  - A new entity type joins the kernel's closed enum. Its id is `foldcase` where the instance stores names in upper case (`CAPITALNAME`), as `license-server` and `ecp-data-server` do.
-  - A singleton is declared as such (`journal-settings`, `license-key`).
-  - Fields are derived from the endpoint's body template into the generated sources, which are regenerated and never hand-merged. A mutating endpoint with no template, such as `ECP.AppServerSSLConnection`, derives from its class (pinned by a test) or is action-style.
-  - Every field is classified, and an unclassified field is emitted secret.
+  - A new entity type joins the kernel's closed enum.
+    - Its id is `foldcase` where the instance stores names in upper case.
+    - It is kept exactly where the vendor matches exactly, as `ecp-ssl-connection` is.
+  - A singleton is declared as such: `journal-settings`, `license-key`, `ecp-settings`.
+  - Fields are derived from the endpoint's body template into the generated sources, which are regenerated and never hand-merged. An endpoint with no template derives from its class, pinned by a test that fails when the instance disagrees, or is action-style.
+  - Every field is classified by a reviewed per-tool entry, and an unclassified field is emitted secret.
 - **Reads (AD-36).**
   - One declared read serves both the screen and the tool.
   - The available shapes:
@@ -104,53 +120,52 @@ This epic brings OcuPilot to System Administration and System Operation parity o
   - A payload with no schema stays screen-only. A key that completes key material is declared secret and never answered, such as `AuthorizationKey`.
 - **Async (AD-26).**
   - The port refuses a mutating type that would queue unless `QUEUEDWRITES` names it.
-  - A queued body carries no secret, because the vendor writes it in plain text to a public task row and to the journal.
+  - It never queues a body that carries a secret, because the vendor writes the body in plain text to a public task row and to the journal. That is why 16.14's LDAP test runs in process.
   - Each task has one poller, which reads the task's end once. A second read logs ERROR #7846 and raises the instance to Warning.
-  - Past the bound, the write answers "started" and its read-back is `unchecked`. No slice polls.
-  - A least-privileged caller's finished task row is left for the 24-hour sweep (AD-37).
-  - `ECP.DataServer` `SERVERACTION` (18.20) is the last async path in Stage 2.
+  - Past the bound, the write answers "started" and its read-back is `unchecked`.
+  - `ECP.DataServer` `SERVERACTION` was the last Stage 2 async path.
 - **Server paths (AD-21).** No endpoint accepts a caller's path.
   - **Sixth case:** a root plus a relative name, which `PathPort` resolves at the mint and again at the write.
-    - A file the consumer reads is a `source` and must exist.
+    - A file the consumer reads is a `source` and must exist (`PATH.NOFILE`).
+    - An overwriting file consumer declares its overwrite as a constant.
     - A directory the vendor writes is refused the manager directory, OcuPilot's served directory, and every database, volume, journal and WIJ directory, read at call time.
-  - **Seventh case:** a remote directory only as the data server's own listing spells it, through `RemoteDatabasePort`'s bounded child job.
+  - **Seventh case:** a remote directory only as the data server's own listing spells it.
   - **Eighth case:** a journal file only when it equals a listed `Name`.
-  - A location that can name another host, such as `KeyDirectory`, is shown and never set. A license key comes only from text the person pastes or loads in the browser.
+  - A location that can name another host is shown and never set. A license key comes only from text the person pastes or loads in the browser.
   - A caller value that reaches code the vendor executes comes only from a closed set.
 - **Text and self-protection.**
   - OcuPilot answers in its own sentences. Vendor text is logged and never sent, and a check's console lines reach only the screen and the proposal card (AD-39).
   - AD-10's predicates live once, in the kernel. Each is stated over the effect, evaluated inside the confirm's atomic transition, and pinned by a test that fails when it is removed.
   - Every grant outside OcuPilot's own applications, roles and resources is permitted at the strongest confirmation. New prohibitions go in AD-10.
-- **ECP (18.20 done, 18.21 next).**
-  - **The license.** On Community, `NetworkEnabled()` and `MaxECPServers()` are both 0, and `%Service_ECP` is disabled. Neither `%ECPServer` nor `%ECPClient` exists, every ECP list is empty, and no status can reach Normal.
-  - **What never to send:** a `DBLIST`, a `SERVERACTION` with `Action` 3, or any change to `%Service_ECP`. A `DBLIST` on Community blocked for about 11 s and started client daemons that outlive the call.
-  - **Probes.** A probe data server is configuration only, at a TEST-NET-1 address (`192.0.2.0/24`) with an in-range port, because every configuration write runs the vendor's client activation. Each test asserts that no ECP process (job types 31 to 35) runs after it.
-  - **Routes alone.** The harvested ECP status implementation was never identified, so these screens rely on the routes alone, and each screen carries that caveat.
-  - **What 18.20 left for reuse:**
-    - `Api/EcpError.cls`, dispatched by the `ECP.` prefix in `Api/Error.cls`;
-    - `ECP.LICENSE`'s sentence, "This instance's license does not include ECP.", published once in EXPERIENCE.md and pinned equal to the kernel copy;
-    - `Port/EcpPort`, whose `NetworkEnabled()` delegates to `RemoteDatabasePort.NetworkEnabled()`;
-    - the seam `Test/EcpSeamPort` with `^||OcuPilotRemoteLicensed`, and `Test/EcpProbe.cls`.
-  - **The data server limit.** `ECP.Settings`' `AppServerSettings.MaxServers` (2 on a stock instance) caps the data servers. AD-52 records the two paths to 409 `ECP.SERVER.LIMIT`.
-  - **`ECP.Settings`:**
-    - Its body is nested: `{AppServerSettings{MaxServers, ClientReconnectDuration, ClientReconnectInterval}, DataServerSettings{MaxServerConn, ServerTroubleDuration, SSLECPServer}}`. The stock values are 2, 1200, 5, 1, 60 and 0.
-    - Its `GET` needs `%Admin_Secure:USE`, because the vendor calls `Security.System.Get`. Without it a principal is answered 500 `PORT.ACCESSDENIED` (measured). So the screen's read cannot rest on OS management's set alone (inference); Task 0 measures the read's and the `PUT`'s pairs.
-    - The `PUT` sets only the keys it is sent, across `Config.config`, `Config.ECP` and `Security.System`. It is the first merge over a nested body, and Task 0's evidence decides between the kernel merging dotted fields and a port that flattens them.
-    - A changed `MaxServerConn` takes effect after a restart. If a restored value leaves a pending-restart state, Task 0 halts.
-    - `SSLECPServer` is 0, 1 or 2. The classic page checks `%Admin_Secure` before changing it, and a value of 1 or 2 is refused while the `%ECPServer` SSL/TLS configuration is absent or disabled.
-    - Reading an SSL/TLS configuration such as `%ECPClient` answered 403 without `%Admin_Secure:USE` (measured).
-  - **Application servers.**
-    - `ECP.AppServerList` only reads: `ClientName, Status, IPAddress, IPPort`.
-    - `ECP.AppServerSSLConnection` lists authorized and pending names, each with its `Status`. Rows are seeded only in tests, with `SYS.ECP.AddAuthorizedCN`.
-    - Its `AUTHORIZE`, `REJECT` and `DELETE` answer OK for any name. A fresh read must therefore find the row in the state the action requires.
-  - **Classic pages:** `%CSP.UI.Portal.ECP` and `%CSP.UI.Portal.ECPAppServers` (18.21), beside 18.20's `%CSP.UI.Portal.ECPDataServers` and `%CSP.UI.Portal.Dialog.ECPDataServer`. None is Hidden.
-- **Licensing (18.6, done).** `LicensePort` sends a `VALIDATE` of the key's text and sends the `PUT` only when it answers valid. The activation is unadvertised, its governance key ships disabled, and its success path was never run on any instance.
-- **Per story, still to come.**
-  - 18.7: `Security.Encryption.Settings` is excluded by the v2 pin, so establish the reachable subset on the instance before any UI. `Encryption.Settings` `AdminPassword` is a credential field.
+- **What earlier stories left for reuse.**
+  - Ports: `PathPort` and its picker, `NamespacePort`, `DatabasePort`, `RemoteDatabasePort`, `JournalPort`, `LicensePort`, `BackgroundTaskPort`, `MonitorPort`, `MgmntPort` and `WalletPort`.
+  - `EcpPort`, with `Api/EcpError.cls`, the seam `Test/EcpSeamPort` and `Test/EcpProbe.cls`.
+  - The read-back, removal impact, the copy-out draft and the sanitizer.
+  - **ECP rules for any later test:**
+    - A test that changes `MaxServerConn` runs through `EcpSeamPort`'s `ecpserver` mode. An ObjectScript guard and a browser-spec twin in `ci.test.mjs` hold that rule.
+    - Probe data servers are configuration only, at TEST-NET-1 (`192.0.2.0/24`).
+    - Never send a `DBLIST`, a `SERVERACTION` with `Action` 3, or any change to `%Service_ECP`.
+- **18.7, Encryption.**
+  - **Task 0 comes first.** It establishes the reachable subset on the instance before any UI. The startup-settings half ships behind an explicit version gate or as a classic-portal link-out.
+  - **`Security.Encryption.Settings`.** AD-26 lists it as "excluded by the v2 pin".
+    - The architecture review's reading: v1 takes `AdminName` and `AdminPassword` from request headers, while v2 takes them from the body, so under the pin the endpoint has no CSP coupling.
+    - Whether its routes answer is what Task 0 measures.
+    - Its template's `AdminPassword` is a credential field.
+  - **Endpoints with no body template.** `Security.Encryption.AdminInFile`, `Security.Encryption.File` and `Security.Encryption.KeyInFile` publish none (the review's endpoint census). Their fields therefore derive from their classes, pinned by a test, or they are action-style.
+  - **Key files.** A key file is a server location (inference from the notes on DW-1777 and DW-1778).
+    - A key file the write creates is a sixth-case `file` consumer.
+    - A key file the write reads or activates is a `source`.
+  - **Secrets.** Key-file passwords, administrator passwords and key material are never queued, logged, proposed or answered. AD-56's secret-only body fits a request type that takes only them (inference).
+  - **DW-1555, RSA and symmetric-key wallet secrets.**
+    - The wallet secret's field list is one per `Type`: `%Wallet.KeyValue`, `%Wallet.RSA` and `%Wallet.SymmetricKey`. Each is derived from its class and pinned by a test.
+    - `WalletPort` composes the read, `{Type, Usage, RequireTLS, AllowedHosts}`, and never returns the stored value. So the fingerprint cannot see a change to the value.
+    - Story 8.6's read-only view for these two types, and its two sentences, are what this replaces.
+- **Later stories.**
   - 18.8:
     - Disabling `%Service_WebGateway` is refused `PROHIBITED.SERVINGSERVICE`.
-    - AD-10 also prohibits disabling the superserver, which no tool reaches yet because it is not a `Security.Service`. 18.8's superserver writes carry that arm (inference).
-    - An authentication change that would break OcuPilot's own sign-in is refused.
+    - AD-10 also prohibits disabling the superserver, so 18.8's superserver writes carry that arm (inference).
+    - A change that would break OcuPilot's own sign-in, which depends on the instance's JWT issuer, is refused.
+    - The LDAP list and its full editor already shipped, so the read-only LDAP view is likely covered (inference).
   - 18.9: its criterion refusing `%All` and `%Admin_*` grants predates AD-10's amendment. Reconcile at the spec gate, where the spine governs.
   - 18.10: spec-based REST services go through `MgmntPort`.
   - 18.11:
@@ -161,17 +176,17 @@ This epic brings OcuPilot to System Administration and System Operation parity o
   - 18.12:
     - Earlier turns reach the model capped at 65,536 characters, with the oldest dropped first (AD-24).
     - A proxy is judged by the egress policy (AD-42).
-    - OcuPilot's provider SSL configuration's `VerifyPeer`, `CAFile`, `Type` and `Enabled` are prohibited to change. Custom-CA support therefore cannot rely on editing them (inference).
+    - OcuPilot's provider SSL configuration's `VerifyPeer`, `CAFile`, `Type` and `Enabled` are prohibited to change, so custom-CA support cannot rely on editing them (inference).
     - The credential ladder never returns a value into a status or error.
   - 18.13:
     - There is one idempotent installer with two entry points (AD-17).
     - Code goes in the install namespace and globals in OcuPilot's protected database (AD-9).
     - The own-namespace, own-mapping and own-database predicates key off the namespace the API runs in, read at the write.
 - **Spine amendments at the spec gate (Rule 20).** Amend the spine for anything new:
-  - AD-4 nested merges, AD-8 pairs (argument pairs included), AD-10 predicates and AD-13 entity types;
+  - AD-4 nested merges, AD-8 pairs, AD-10 predicates and AD-13 entity types;
   - AD-21 path cases, AD-26 queued writes, AD-27 named cases and AD-36 read shapes;
   - AD-44 `CLASSICPAGES`, and AD-51 port-built bodies and precondition codes;
-  - AD-15 and AD-53 unaudited writes, such as an SSL/TLS authorization action that records no event.
+  - AD-15 and AD-53 unaudited writes.
 
 ## UX & Interaction Patterns
 
@@ -179,22 +194,26 @@ This epic brings OcuPilot to System Administration and System Operation parity o
   - Every screen registers the 10-item screen contract and ships three suggested prompts.
   - The DW-1337 structural gate holds in both themes.
   - The side bar lists only built screens, at positions above 0.
-- **Placement.** OS management now lists seventeen entries: License key 15, License servers 16 and ECP data servers 17. 18.21 appends ECP settings at 18 and ECP application servers at 19. It also adds both to EXPERIENCE.md's OS management row.
+- **Placement.**
+  - OS management lists nineteen entries, ending with ECP settings at 18 and ECP application servers at 19.
+  - Security and secrets lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing and Allowed directories.
+  - EXPERIENCE.md places no encryption page yet. 18.7's plan picks the area, adds the entries to that area's row, and extends its pinned lists (DW-1774).
 - **Strings.**
   - New strings go in EXPERIENCE.md's Fixed strings, and a refusal sentence is published once and pinned to the kernel copy.
-  - Edit EXPERIENCE.md in place, so that it keeps 1006 lines, because `strings.ts` cites it by line.
+  - Edit EXPERIENCE.md in place, so that it keeps its line count (1,019 now), because `strings.ts` cites it by line.
   - `strings.ts` holds each value under one key, and a label another screen already publishes reuses that key.
   - After editing EXPERIENCE.md or epics.md, run `cd ui && npm run test:tools`.
 - **Dialogs and pages.**
   - Dialogs are the closed set in EXPERIENCE.md's Dialogs line, and a new dialog joins it. Everything else is a full-page route, and dialogs never stack.
   - **Destructive confirm:** the title names the action and the target, and the body states the consequence. A typed name must match exactly, case-sensitive.
-  - An action that removes nothing, such as Change status, takes the destructive treatment with no typed name. An agent proposal has no typed name either; it uses the destructive bar and Confirm.
-- **Editors and wizards.**
+  - An action that removes nothing takes the destructive treatment with no typed name. An agent proposal has no typed name either; it uses the destructive bar and Confirm.
+- **Editors.**
   - An editor is a form-page whose tabs mirror the classic page, with one form, a sticky Save and an unsaved-changes guard.
   - A setting shown but never set is read-only, with a hint naming the classic page.
-  - A choice the license or a precondition rules out is drawn `aria-disabled` with its reason, as 18.20 does for an unlicensed Normal.
+  - A choice the license or a precondition rules out is drawn `aria-disabled` with its reason.
   - The path picker offers only allow-list roots plus a relative name.
   - A wait that may block is bounded and stated before it starts.
+  - 18.7's startup options (interactive, unattended and KMIP) each state their consequence.
 - **Controls and feedback.**
   - Gated controls stay focusable and `aria-disabled`, and name their reason.
   - An async write reads "<operation> running on the instance since <time>", then "<operation> finished."
@@ -203,15 +222,9 @@ This epic brings OcuPilot to System Administration and System Operation parity o
 
 ## Cross-Story Dependencies
 
-- **Order.** Done: 18.1-18.6 and 18.14-18.20. Next comes 18.21, then 18.7-18.13, then the epic close burn-down.
-- **18.21** reuses 18.20's `EcpError`, the `ECP.LICENSE` sentence, `EcpPort.NetworkEnabled()`, the seam and the probe. It owns the ECP SSL/TLS authorization surfaces and DW-2006.
-- **Later stories build on:**
-  - `PathPort` and its picker, `NamespacePort`, `DatabasePort`, `RemoteDatabasePort` and `EcpPort`;
-  - `JournalPort`, `LicensePort`, `BackgroundTaskPort`, `MonitorPort`, `MgmntPort` and `WalletPort`;
-  - the LDAP and Services editors, governance, the read-back, removal impact, the copy-out draft and the sanitizer.
-- **18.8:** the LDAP list and its full editor already shipped, so the read-only LDAP view is likely covered (inference).
-- **18.12:** each screen story delivers its own tool parity. 18.12's context budgeting matters more as the roster grows.
-- **Epic 19 runs in parallel** and merges forward at story boundaries (19.6 is merged). Its spine amendments are its own.
+- **Order.** Done: 18.1-18.6 and 18.14-18.21. Next comes 18.7, then 18.8-18.13, then the epic close burn-down.
+- **Within the epic.** 18.8 and 18.9 meet DW-1774's pinned-list rule too. Each screen story delivers its own tool parity, so 18.12's context budgeting matters more as the roster grows.
+- **Epic 19 runs in parallel** and merges forward at story boundaries. 19.6, 19.15 and 19.7 are merged here. Its spine amendments are its own.
   - Keep edits to these shared files add-only:
     - the kernel and registry, `Error.cls`, `Router.cls`, `Baseline.cls`, `Prohibited.cls`, `Gate.cls` and `Classification.cls`;
     - the test rosters, `ci-throwaway.sh`, `ci.test.mjs` and `angular.json`;
@@ -219,3 +232,4 @@ This epic brings OcuPilot to System Administration and System Operation parity o
     - EXPERIENCE.md and the spine.
   - Union one-line list members and roster counts at the merge.
   - Regenerate `screens.generated.ts` and `ToolFields.cls` instead of hand-merging them.
+  - **AD-53's named-gap ordinals.** Epic 19's list (a fourteenth and a sixteen) collides with Epic 18's (fourteenth, sixteenth and seventeenth). The merge renumbers them. A new case takes the next ordinal after both lists (inference).

@@ -102,6 +102,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 18.20: ECP data servers, whose Delete types the server's name and states its impact, and
   // whose Change status its own page runs.
   'OcuPilot.Screen.Descriptor.EcpDataServerList',
+  // Story 18.21: the SSL/TLS authorizations tab, whose Authorize and Reject each warn first and whose
+  // Delete types the SSL computer name.
+  'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
 ];
 
 /**
@@ -181,6 +184,12 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
 export const ECP_CHANGE_STATUS = 'changestatus';
+
+/**
+ * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
+ * warn first, and whose Delete types the SSL computer name and carries no advisory.
+ */
+export const ECP_SSL_CONNECTION_TAB = 'OcuPilot.Screen.Descriptor.EcpSslConnectionTab';
 
 /**
  * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
@@ -415,6 +424,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
   // Story 18.20: the ECP data server's Delete types the server's name.
   [ECP_DATA_SERVER_LIST]: { delete: STRINGS.ecpDataServerDeleteConsequence },
+  // Story 18.21: an SSL/TLS authorization's Delete types the SSL computer name.
+  [ECP_SSL_CONNECTION_TAB]: { delete: STRINGS.ecpSslConnectionDeleteConsequence },
 };
 
 /**
@@ -493,6 +504,9 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     [JOURNAL_SWITCH_DIRECTORY]: STRINGS.journalSwitchDirectoryConsequence,
     [JOURNAL_INTEGRITY]: STRINGS.journalIntegrityConsequence,
   },
+  // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
+  // removes anything, so each warns.
+  [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
 };
 
 /**
@@ -555,6 +569,9 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.lockRemoveTooMany,
   // Story 18.15: an enable of interoperability in %SYS or %ALL.
   STRINGS.namespaceEnableInteropSystem,
+  // Story 18.21: an SSL/TLS authorization action on a row in the wrong state.
+  STRINGS.ecpSslRefusalNotPending,
+  STRINGS.ecpSslRefusalNotAuthorized,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */

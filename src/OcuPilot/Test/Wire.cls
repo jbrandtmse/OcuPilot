@@ -714,6 +714,16 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
     ; Story 18.20 lists ECP data servers last, after License servers, and its unlisted ECP data server
     ; editor sorts between the device editor and the global mapping editor, each denied on
     ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
+    ; Story 18.21 lists ECP settings and ECP application servers last, after ECP data servers, and its
+    ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
+    ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
+    ; roster below stays the one before it.
+    Set tEcpSettings = ",{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcpSettings)+1, *), tEcpSettings, "ECP settings and ECP application servers are listed last, after ECP data servers, denied on %Admin_Manage:USE")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcpSettings)) _ "]"
+    Set tEcpTab = ",{""route"":""os-management/ecp-application-servers/ssl"",""labelKey"":""ecpSslConnectionsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(($Find(tScreens, "os-management/ecp-data-servers/edit") < $Find(tScreens, tEcpTab)) && ($Find(tScreens, tEcpTab) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global mapping editor, denied on %Admin_Manage:USE")
+    Set tScreens = $Replace(tScreens, tEcpTab, "")
     Set tEcp = ",{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
     Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcp)+1, *), tEcp, "ECP data servers is listed last, after License servers, denied on %Admin_Manage:USE")
     Set tScreens = $Extract(tScreens, 1, *-$Length(tEcp)) _ "]"

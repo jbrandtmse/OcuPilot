@@ -2822,7 +2822,13 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// running in (Story 16.2), explained by
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSESSIONREASON</parameter> and refused by
 /// the kernel whatever the caller.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session";
+/// <p><code>ecp-ssl-pending</code> and <code>ecp-ssl-authorized</code> are the ECP SSL/TLS
+/// authorization ones (Story 18.21): a row whose <code>Status</code> does not read
+/// <code>Pending</code>, for Authorize and Reject, or <code>Authorized</code>, for Delete, explained by
+/// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTPENDING</parameter> and
+/// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTAUTHORIZED</parameter> and refused by each tool's
+/// <code>StateDiff</code>.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

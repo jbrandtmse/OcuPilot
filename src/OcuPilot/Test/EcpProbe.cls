@@ -6,7 +6,14 @@
 /// it. Every object it creates or removes is named with <parameter>PREFIX</parameter> (compared
 /// upper-cased), and it never touches another.</p>
 /// <p><method>RemoveAll</method> removes every probe object by exact name, in order: the probe remote
-/// databases, the probe data servers, the principals, and the async task rows a probe account queued.</p>
+/// databases, the probe data servers, the principals, the async task rows a probe account queued, the
+/// probe SSL/TLS computer names (<parameter>DNPREFIX</parameter>) and the SSL/TLS configurations this
+/// helper marked (<parameter>SSLMARKER</parameter>), and restores the ECP settings it is handed.</p>
+/// <p>Story 18.21 adds the ECP settings (<method>Settings</method>, <method>RestoreSettings</method>,
+/// <method>PendingRestart</method>), the SSL/TLS authorizations (<method>SeedAuthorized</method>,
+/// <method>RemoveAuthorized</method>, <method>AuthorizedNames</method>, <method>PendingNames</method>)
+/// and the <code>%ECPClient</code> and <code>%ECPServer</code> configurations (<method>SeedSsl</method>,
+/// <method>RemoveSsl</method>), each in <code>%SYS</code>.</p>
 /// <p><method>Run</method> issues one admin API call through a port and times it; <method>RunAs</method>
 /// runs a plan of such calls as a probe principal in a child process.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -37,6 +44,15 @@ Parameter ECPJOBTYPES = "31,32,33,34,35";
 
 /// <p>The ECP daemons' routine names.</p>
 Parameter ECPROUTINES = "ECPWorker,ECPCliR,ECPCliW,ECPSrvR,ECPSrvW";
+
+/// <p>The prefix every probe SSL/TLS computer name starts with, compared upper-cased.</p>
+Parameter DNPREFIX = "CN=OCUPROBEECP";
+
+/// <p>The description that marks an SSL/TLS configuration this helper created, and so may remove.</p>
+Parameter SSLMARKER = "OcuPilot ECP probe (throwaway)";
+
+/// <p>The two SSL/TLS configurations ECP reads, by their fixed names.</p>
+Parameter SSLNAMES = "%ECPClient,%ECPServer";
 
 /// <p>Whether <var>pName</var> is a probe name.</p>
 ClassMethod IsProbe(pName As %String) As %Boolean
@@ -266,9 +282,11 @@ ClassMethod SeedPrincipal(pUser As %String = {..#USER}, pRole As %String = {..#R
 
 /// <p>Remove every probe object, each by its exact name, in order: probe remote databases, probe data
 /// servers (a server a probe left Disabled is set back to Not Connected first when its delete is
-/// refused), the principals, and the probe task rows. <var>pRemaining</var> is how many survived, and
-/// the status is an error when any did.</p>
-ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
+/// refused), the principals, the probe task rows, the probe SSL/TLS computer names and the marked
+/// SSL/TLS configurations; then restore <var>pSettings</var>, a <method>Settings</method> answer, when
+/// one is given. <var>pRemaining</var> is how many survived, and the status is an error when any
+/// did.</p>
+ClassMethod RemoveAll(Output pRemaining As %Integer, pSettings As %DynamicObject = "") As %Status
 {
     Set pRemaining = 0
     Set tSC = $$$OK
@@ -303,6 +321,14 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
         }
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, ..RemoveProbeTaskRows(.tRemoved))
+        Set tNames = ..ProbeDns()
+        For tI = 1:1:$ListLength(tNames) {
+            Set tSC = $$$ADDSC(tSC, ..RemoveAuthorized($List(tNames, tI)))
+        }
+        For tI = 1:1:$Length(..#SSLNAMES, ",") {
+            Set tSC = $$$ADDSC(tSC, ..RemoveSsl($Piece(..#SSLNAMES, ",", tI)))
+        }
+        If $IsObject(pSettings) Set tSC = $$$ADDSC(tSC, ..RestoreSettings(pSettings))
         Set pRemaining = ..Remaining()
         If pRemaining > 0 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, pRemaining _ " probe object(s) survived their removal"))
     } Catch ex {
@@ -312,11 +338,11 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
     Quit tSC
 }
 
-/// <p>How many probe objects the instance holds: remote databases, data servers, users, roles and
-/// task rows.</p>
+/// <p>How many probe objects the instance holds: remote databases, data servers, users, roles, task
+/// rows, SSL/TLS computer names and marked SSL/TLS configurations.</p>
 ClassMethod Remaining() As %Integer
 {
-    Quit $ListLength(..ProbeRemotes()) + $ListLength(..ProbeServers()) + $ListLength(..ProbeNames("Security.Users:List", "Name")) + $ListLength(..ProbeNames("Security.Roles:List", "Name")) + $ListLength(..ProbeTaskRows())
+    Quit $ListLength(..ProbeRemotes()) + $ListLength(..ProbeServers()) + $ListLength(..ProbeNames("Security.Users:List", "Name")) + $ListLength(..ProbeNames("Security.Roles:List", "Name")) + $ListLength(..ProbeTaskRows()) + $ListLength(..ProbeDns()) + ..MarkedSsl()
 }
 
 /// <p>The probe data servers the instance defines.</p>
@@ -566,13 +592,290 @@ ClassMethod Child(pParent As %Integer, pUser As %String, pPlan As %String)
     Do $System.Event.Signal(pParent, tOut.%ToJSON())
 }
 
+/// <p>Whether <var>pName</var> is a probe SSL/TLS computer name (<parameter>DNPREFIX</parameter>,
+/// compared upper-cased).</p>
+ClassMethod IsProbeDn(pName As %String) As %Boolean
+{
+    Quit ($Extract($ZConvert(pName, "U"), 1, $Length(..#DNPREFIX)) = ..#DNPREFIX)
+}
+
+/// <p>Pre-authorize the probe SSL/TLS computer name <var>pName</var> (test-only seeding through
+/// <code>SYS.ECP</code> in <code>%SYS</code>, the only way to make a row).</p>
+ClassMethod SeedAuthorized(pName As %String) As %Status
+{
+    If '..IsProbeDn(pName) Quit $$$ERROR($$$GeneralError, "a probe SSL/TLS computer name starts with " _ ..#DNPREFIX)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(SYS.ECP).AddAuthorizedCN(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove the probe SSL/TLS computer name <var>pName</var> from the authorized list (test-only, in
+/// <code>%SYS</code>); an absent name is no error.</p>
+ClassMethod RemoveAuthorized(pName As %String) As %Status
+{
+    If '..IsProbeDn(pName) Quit $$$ERROR($$$GeneralError, "a probe SSL/TLS computer name starts with " _ ..#DNPREFIX)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(SYS.ECP).RemoveAuthorizedCN(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Every authorized SSL/TLS computer name, as <code>SYS.ECP:SSLAuthorizedConnections</code> answers
+/// them in <code>%SYS</code>.</p>
+ClassMethod AuthorizedNames() As %List
+{
+    Quit ..QueryNames("SYS.ECP:SSLAuthorizedConnections")
+}
+
+/// <p>Every pending SSL/TLS computer name, as <code>SYS.ECP:SSLPendingConnections</code> answers them
+/// in <code>%SYS</code>.</p>
+ClassMethod PendingNames() As %List
+{
+    Quit ..QueryNames("SYS.ECP:SSLPendingConnections")
+}
+
+/// <p>The probe SSL/TLS computer names the authorized list holds.</p>
+ClassMethod ProbeDns() As %List
+{
+    Set tOut = ""
+    Set tNames = ..AuthorizedNames()
+    Set tPointer = 0
+    While $ListNext(tNames, tPointer, tName) {
+        If ..IsProbeDn(tName) Set tOut = tOut _ $ListBuild(tName)
+    }
+    Quit tOut
+}
+
+/// <p>The <code>SSLComputerName</code> column of <var>pQuery</var>, read in <code>%SYS</code>.</p>
+ClassMethod QueryNames(pQuery As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New(pQuery)
+        If $$$ISOK(tRS.Execute()) {
+            While tRS.Next() {
+                Set tNames = tNames _ $ListBuild(tRS.Get("SSLComputerName"))
+            }
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tNames
+}
+
+/// <p>Create the ECP SSL/TLS configuration <var>pName</var> (<code>%ECPClient</code> or
+/// <code>%ECPServer</code>), a server configuration when <var>pServer</var> is 1, enabled as
+/// <var>pEnabled</var> says and marked with <parameter>SSLMARKER</parameter>, only when no
+/// configuration of that name exists (test-only, in <code>%SYS</code>). An existing one is an error and
+/// is left alone.</p>
+ClassMethod SeedSsl(pName As %String, pServer As %Boolean = 0, pEnabled As %Boolean = 0) As %Status
+{
+    If '$ListFind($ListFromString(..#SSLNAMES), pName) Quit $$$ERROR($$$GeneralError, "this helper seeds only " _ ..#SSLNAMES)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.SSLConfigs).Exists(pName) {
+            Set tSC = $$$ERROR($$$GeneralError, "the SSL/TLS configuration " _ pName _ " already exists, and this helper will not adopt it")
+        } Else {
+            Kill tProps
+            Set tProps("Type") = $Select(pServer: 1, 1: 0)
+            Set tProps("VerifyPeer") = 0
+            Set tProps("Enabled") = ''pEnabled
+            Set tProps("Description") = ..#SSLMARKER
+            Set tSC = ##class(Security.SSLConfigs).Create(pName, .tProps)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Delete the ECP SSL/TLS configuration <var>pName</var> when this helper marked it; one that is
+/// anybody else's is left alone, and an absent one is no error.</p>
+ClassMethod RemoveSsl(pName As %String) As %Status
+{
+    If '$ListFind($ListFromString(..#SSLNAMES), pName) Quit $$$ERROR($$$GeneralError, "this helper removes only " _ ..#SSLNAMES)
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.SSLConfigs).Exists(pName, .tConfig) && (tConfig.Description = ..#SSLMARKER) {
+            Set tConfig = ""
+            Set tSC = ##class(Security.SSLConfigs).Delete(pName)
+        }
+        Set tConfig = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Set the marked ECP SSL/TLS configuration <var>pName</var>'s <code>Enabled</code> to
+/// <var>pEnabled</var> (test-only, in <code>%SYS</code>); a configuration this helper did not mark is an
+/// error and is left alone.</p>
+ClassMethod EnableSsl(pName As %String, pEnabled As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If '##class(Security.SSLConfigs).Exists(pName, .tConfig) || (tConfig.Description '= ..#SSLMARKER) {
+            Set tSC = $$$ERROR($$$GeneralError, "the SSL/TLS configuration " _ pName _ " is not this helper's own")
+        } Else {
+            Set tConfig = ""
+            Kill tProps
+            Set tProps("Enabled") = ''pEnabled
+            Set tSC = ##class(Security.SSLConfigs).Modify(pName, .tProps)
+        }
+        Set tConfig = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>How many of <parameter>SSLNAMES</parameter> exist carrying <parameter>SSLMARKER</parameter>.</p>
+ClassMethod MarkedSsl() As %Integer
+{
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$Length(..#SSLNAMES, ",") {
+            If ##class(Security.SSLConfigs).Exists($Piece(..#SSLNAMES, ",", tI), .tConfig) && (tConfig.Description = ..#SSLMARKER) Set tCount = tCount + 1
+            Set tConfig = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tCount
+}
+
+/// <p>The six ECP settings as the instance stores them, read in <code>%SYS</code>:
+/// <code>{MaxServers, MaxServerConn}</code> from <code>Config.config</code>,
+/// <code>{ClientReconnectDuration, ClientReconnectInterval, ServerTroubleDuration}</code> from
+/// <code>Config.ECP</code> and <code>SSLECPServer</code> from <code>Security.System</code>, each a
+/// number; an object carrying <code>error</code> when they cannot be read.</p>
+ClassMethod Settings() As %DynamicObject
+{
+    Set tOut = {}
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tConfig, tECP, tSystem
+        Set tSC = ##class(Config.config).Get(.tConfig)
+        Set tSC = $$$ADDSC(tSC, ##class(Config.ECP).Get(.tECP))
+        Set tSC = $$$ADDSC(tSC, ##class(Security.System).Get(, .tSystem))
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) {
+            Do tOut.%Set("error", $System.Status.GetErrorText(tSC))
+        } Else {
+            Do tOut.%Set("MaxServers", +$Get(tConfig("MaxServers")), "number")
+            Do tOut.%Set("MaxServerConn", +$Get(tConfig("MaxServerConn")), "number")
+            Do tOut.%Set("ClientReconnectDuration", +$Get(tECP("ClientReconnectDuration")), "number")
+            Do tOut.%Set("ClientReconnectInterval", +$Get(tECP("ClientReconnectInterval")), "number")
+            Do tOut.%Set("ServerTroubleDuration", +$Get(tECP("ServerTroubleDuration")), "number")
+            Do tOut.%Set("SSLECPServer", +$Get(tSystem("SSLECPServer")), "number")
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tOut = {}
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Quit tOut
+}
+
+/// <p>Write back each of <var>pSettings</var>' six members (a <method>Settings</method> answer) that
+/// differs from the stored value, through <code>Config.config</code>, <code>Config.ECP</code> and
+/// <code>Security.System</code> in <code>%SYS</code> (test-only). Nothing is written when nothing
+/// differs.</p>
+ClassMethod RestoreSettings(pSettings As %DynamicObject) As %Status
+{
+    If '$IsObject(pSettings) || (pSettings.%GetTypeOf("error") '= "unassigned") Quit $$$ERROR($$$GeneralError, "no ECP settings to restore")
+    Set tNow = ..Settings()
+    If tNow.%GetTypeOf("error") '= "unassigned" Quit $$$ERROR($$$GeneralError, tNow.%Get("error"))
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Kill tConfig, tECP, tSystem
+        For tMember = "MaxServers", "MaxServerConn" {
+            If pSettings.%Get(tMember) '= tNow.%Get(tMember) Set tConfig(tMember) = pSettings.%Get(tMember)
+        }
+        For tMember = "ClientReconnectDuration", "ClientReconnectInterval", "ServerTroubleDuration" {
+            If pSettings.%Get(tMember) '= tNow.%Get(tMember) Set tECP(tMember) = pSettings.%Get(tMember)
+        }
+        If pSettings.%Get("SSLECPServer") '= tNow.%Get("SSLECPServer") Set tSystem("SSLECPServer") = pSettings.%Get("SSLECPServer")
+        Set $NAMESPACE = "%SYS"
+        If $Data(tSystem) Set tSC = $$$ADDSC(tSC, ##class(Security.System).Modify(, .tSystem))
+        If $Data(tECP) Set tSC = $$$ADDSC(tSC, ##class(Config.ECP).Modify(.tECP))
+        If $Data(tConfig) Set tSC = $$$ADDSC(tSC, ##class(Config.config).Modify(.tConfig))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+    }
+    Quit tSC
+}
+
+/// <p>Whether the instance needs a restart to activate a modified configuration parameter
+/// (<code>Config.CPF.PendingRestart</code>, read in <code>%SYS</code>), with its reasons' text in
+/// <var>pReasons</var>, one per <code>pReasons(n)</code>; -1 when it cannot be read.</p>
+ClassMethod PendingRestart(Output pReasons) As %Integer
+{
+    Kill pReasons
+    Set tPending = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tReasons
+        Set tPending = +##class(Config.CPF).PendingRestart(.tReasons)
+        Set $NAMESPACE = tOrigNS
+        For tI = 1:1:+$Get(tReasons) {
+            Set pReasons(tI) = $Get(tReasons(tI))
+        }
+        Set pReasons = +$Get(tReasons)
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tPending = -1
+    }
+    Quit tPending
+}
+
 /// <p>A canonical snapshot of what a data server write or status change can reach, as a sorted array
 /// of lines: the license facts; every ECP data server with its listed status and connection state;
 /// every remote database configuration; the count of processes per job type and of ECP jobs;
 /// <code>Config.ECP</code> and <code>Config.config</code>'s ECP values; <code>%Service_ECP</code>'s
-/// enablement; the <code>%ECPClient</code> SSL/TLS configuration; the monitor state; the line counts of
-/// <code>messages.log</code> and <code>alerts.log</code> and of ERROR #7846 lines; and the async task
-/// rows a probe account queued.</p>
+/// enablement; the <code>%ECPClient</code> and <code>%ECPServer</code> SSL/TLS configurations; the monitor
+/// state; the line counts of <code>messages.log</code> and <code>alerts.log</code> and of ERROR #7846
+/// lines; the async task rows a probe account queued; the six ECP settings; whether a restart is
+/// pending; and the authorized and pending SSL/TLS computer names.</p>
 ClassMethod Snapshot() As %DynamicArray
 {
     Kill tLines
@@ -582,6 +885,15 @@ ClassMethod Snapshot() As %DynamicArray
     Set tPointer = 0
     While $ListNext(tTasks, tPointer, tTask) {
         Set tLines("task|" _ tTask) = ""
+    }
+    Set tLines("ecpsettings|" _ ..Settings().%ToJSON()) = ""
+    Set tLines("pendingrestart|" _ ..PendingRestart()) = ""
+    For tKind = "authorized", "pending" {
+        Set tNames = $Select(tKind = "authorized": ..AuthorizedNames(), 1: ..PendingNames())
+        Set tPointer = 0
+        While $ListNext(tNames, tPointer, tName) {
+            Set tLines("sslname|" _ tKind _ "|" _ tName) = ""
+        }
     }
     Set tOrigNS = $NAMESPACE
     Try {
@@ -633,6 +945,9 @@ ClassMethod Snapshot() As %DynamicArray
         Set tService = ""
         Set tSSL = ##class(Security.SSLConfigs).Exists("%ECPClient", .tSSLObject)
         Set tLines("sslconfig|%ECPClient|" _ tSSL _ "|" _ $Select(tSSL && $IsObject($Get(tSSLObject)): tSSLObject.Enabled, 1: "")) = ""
+        Set tSSLObject = ""
+        Set tSSL = ##class(Security.SSLConfigs).Exists("%ECPServer", .tSSLObject)
+        Set tLines("sslconfig|%ECPServer|" _ tSSL _ "|" _ $Select(tSSL && $IsObject($Get(tSSLObject)): tSSLObject.Enabled, 1: "")) = ""
         Set tSSLObject = ""
         Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set $NAMESPACE = tOrigNS

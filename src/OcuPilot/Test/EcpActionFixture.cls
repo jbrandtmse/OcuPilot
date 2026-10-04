@@ -4,6 +4,8 @@
 /// <class>OcuPilot.Test.SeamEcpDataServerDelete</class>, so each action's fresh read and write go through
 /// <class>OcuPilot.Test.EcpSeamPort</class>, which records them. The pairs, the prohibited set and
 /// everything else are the shipped route's.</p>
+/// <p>Story 18.21 adds the SSL/TLS authorizations tab's Authorize, Reject and Delete, each run through its
+/// <code>OcuPilot.Test.SeamEcpSslConnection*</code> subclass.</p>
 /// <p><method>Act</method> runs <method>OcuPilot.Api.ScreenAction.Handle</method> in this process
 /// against request and response stubs and captures the envelope it writes.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -18,6 +20,10 @@ ClassMethod ToolFor(pDescriptor As %String, pActionId As %String, Output pTool A
     If $$$ISERR(tSC) Quit tSC
     If $Get(pToolClass) = "OcuPilot.Screen.Tool.EcpDataServerChangeStatus" Set pToolClass = "OcuPilot.Test.SeamEcpDataServerChangeStatus"
     If $Get(pToolClass) = "OcuPilot.Screen.Tool.EcpDataServerDelete" Set pToolClass = "OcuPilot.Test.SeamEcpDataServerDelete"
+    ; Story 18.21: the SSL/TLS authorizations tab's three actions.
+    If $Get(pToolClass) = "OcuPilot.Screen.Tool.EcpSslConnectionAuthorize" Set pToolClass = "OcuPilot.Test.SeamEcpSslConnectionAuthorize"
+    If $Get(pToolClass) = "OcuPilot.Screen.Tool.EcpSslConnectionReject" Set pToolClass = "OcuPilot.Test.SeamEcpSslConnectionReject"
+    If $Get(pToolClass) = "OcuPilot.Screen.Tool.EcpSslConnectionDelete" Set pToolClass = "OcuPilot.Test.SeamEcpSslConnectionDelete"
     Quit tSC
 }
 
