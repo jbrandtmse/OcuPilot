@@ -142,4 +142,39 @@ Parameter SQLPARAMETERS = "EXPLORER.SQL.PARAMETERS";
 
 Parameter REASONSQLPARAMETERS = "Give one value for each ? in the statement.";
 
+/// <p>Envelope code: a statement of any kind but a query sent to the console's background run, which
+/// runs only a query (Story 19.15). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter>
+/// slug with 422.</p>
+Parameter SQLBACKGROUNDQUERYONLY = "EXPLORER.SQL.BACKGROUND.QUERYONLY";
+
+Parameter REASONSQLBACKGROUNDQUERYONLY = "Only a query runs in the background; use Run for a statement that changes something.";
+
+/// <p>Envelope code: a background run started while one the caller started still runs (Story 19.15). Rendered on
+/// the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, its
+/// <code>detail.runId</code> naming the running run.</p>
+Parameter SQLBACKGROUNDBUSY = "EXPLORER.SQL.BACKGROUND.BUSY";
+
+Parameter REASONSQLBACKGROUNDBUSY = "A query you started is already running in the background; cancel it or wait for it to end.";
+
+/// <p>Envelope code: a background run started while the instance runs as many as it allows (Story
+/// 19.15). Rendered on the <parameter>OcuPilot.Api.Error.UNAVAILABLE</parameter> slug with 503.</p>
+Parameter SQLBACKGROUNDFULL = "EXPLORER.SQL.BACKGROUND.FULL";
+
+Parameter REASONSQLBACKGROUNDFULL = "As many background queries as this instance allows are running; try again when one ends.";
+
+/// <p>Envelope code: no background run of the caller's has this id -- another user's, an unknown or a
+/// swept run alike (Story 19.15). Rendered on the <parameter>OcuPilot.Api.Error.NOTFOUND</parameter>
+/// slug with 404.</p>
+Parameter SQLBACKGROUNDNOTFOUND = "EXPLORER.SQL.BACKGROUND.NOTFOUND";
+
+Parameter REASONSQLBACKGROUNDNOTFOUND = "No background run of yours has this id; an ended run is kept for 15 minutes.";
+
+/// <p>Envelope code: a background run that ended without an answer -- its job was not accepted, or
+/// stopped before it answered (Story 19.15). Rendered on the
+/// <parameter>OcuPilot.Api.Error.UNAVAILABLE</parameter> slug with 503, and carried as a failed run's
+/// <code>refusal</code>.</p>
+Parameter SQLBACKGROUNDLOST = "EXPLORER.SQL.BACKGROUND.LOST";
+
+Parameter REASONSQLBACKGROUNDLOST = "The background run ended without an answer; run it again.";
+
 }

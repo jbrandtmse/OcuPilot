@@ -12,8 +12,8 @@ import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler, type ActionRefusal, type ActionSink, type ActionValues } from '../../shell/screen-action-handler';
 import { ARCHETYPE_PAGES, DESCRIPTOR_PAGES, resolveScreenPage } from '../../shell/screen-outlet';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { SqlQueryPage } from './sql-query.page';
-import { SQL_PLAN_PATH, SQL_RUN_PATH } from './sql-query.store';
+import { SQL_BACKGROUND_SCHEDULE, SqlQueryPage } from './sql-query.page';
+import { SQL_BACKGROUND_PATH, SQL_PLAN_PATH, SQL_RUN_PATH, backgroundPath } from './sql-query.store';
 
 /**
  * SQL query over stubs of what the instance supplies -- the console's run and plan routes and the
@@ -24,6 +24,12 @@ import { SQL_PLAN_PATH, SQL_RUN_PATH } from './sql-query.store';
  * the `run` action with the three declared values, an SQL error's code and message, a stopped query
  * and a stopped DML statement, a run whose open transaction was undone, a plan and a statement with none, refusals as an alert naming a missing pair, and no answer entering the
  * screen's store.
+ *
+ * Story 19.15's background run is driven over per-path answers and a manual poll schedule: its start
+ * posted in scope, its section polled to its rows while Run and Explain plan still answer, its cancel,
+ * a failed run's refusal, a swept run leaving the section, a transient poll failure polled again, a
+ * refused poll ending the section's running state, a start refusal, a busy owner attaching the run it
+ * names, and the polling stopped when the page goes and resumed on its return.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlQuery') as ScreenDeclaration;
@@ -62,6 +68,10 @@ interface Mounted {
   readonly sends: Send[];
   /** What the next post answers. */
   answer: Answer;
+  /** What a request to one path answers, first queued first, before falling back to `answer`. */
+  readonly routes: Map<string, Answer[]>;
+  /** The background polls the page scheduled and has not yet been sent. */
+  readonly scheduled: (() => void)[];
   /** What the next confirmed run answers: applied with output, or refused. */
   sendAnswer: { applied: true; output: unknown } | { applied: false; reason: string; code: string; detail?: Record<string, unknown> };
 }
@@ -74,13 +84,15 @@ async function mount(): Promise<Mounted> {
     sends: [] as Send[],
     answer: { ok: { outcome: 'rows', kind: 'query', columns: [], rows: [], truncated: false } } as Answer,
     sendAnswer: { applied: true, output: null } as Mounted['sendAnswer'],
+    routes: new Map<string, Answer[]>(),
+    scheduled: [] as (() => void)[],
   };
   let lastRefusal: ActionRefusal | null = null;
   let lastOutput: unknown = null;
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       mounted.posts.push({ path, body: JSON.parse(init.body ?? '{}') as Record<string, unknown>, scope: init.scope });
-      const answer = mounted.answer;
+      const answer = mounted.routes.get(path)?.shift() ?? mounted.answer;
       if ('ok' in answer) return { kind: 'ok', status: 200, body: answer.ok as T };
       return { kind: 'error', status: answer.status, code: answer.code, reason: answer.reason, detail: answer.detail ?? null };
     },
@@ -111,6 +123,7 @@ async function mount(): Promise<Mounted> {
       { provide: ScreenStores, useValue: stores },
       { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'USER', subscribe: () => () => undefined } as unknown as ScopeService },
+      { provide: SQL_BACKGROUND_SCHEDULE, useValue: (run: () => void) => mounted.scheduled.push(run) },
     ],
   });
   await TestBed.inject(Router).navigateByUrl(`/${SCREEN.route}?ns=USER`);
@@ -148,6 +161,29 @@ function dialog(): HTMLElement | null {
 afterEach(() => {
   for (const node of planted.splice(0)) node.remove();
 });
+
+/** A run id the background stubs answer with. */
+const RUN_ID = '0123456789abcdef0123456789abcdef';
+
+/** Queue `answers` for requests to `path`. */
+function route(mounted: Mounted, path: string, ...answers: Answer[]): void {
+  mounted.routes.set(path, [...(mounted.routes.get(path) ?? []), ...answers]);
+}
+
+/** A background run's poll answer. */
+function view(status: string, extra: Record<string, unknown> = {}): Answer {
+  return { ok: { id: RUN_ID, status, startedAt: '2026-10-03T00:00:00Z', endedAt: status === 'running' ? null : '2026-10-03T00:00:05Z', cancelRequested: false, ...extra } };
+}
+
+/** Send the polls the page scheduled, and let their answers land. */
+async function flush(mounted: Mounted): Promise<void> {
+  for (const run of mounted.scheduled.splice(0)) run();
+  await settle(mounted.fixture);
+}
+
+function backgroundStatus(host: HTMLElement): string {
+  return el(host, 'background-status')?.textContent?.trim() ?? '';
+}
 
 describe('SQL query', () => {
   it("is the console's own page, and the empty console invites a statement with Run unavailable", async () => {
@@ -343,5 +379,158 @@ describe('SQL query', () => {
     (dialog()?.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
     await settle(mounted.fixture);
     expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.explorerSqlRefusalOcuPilot);
+  });
+
+  it('runs a query in the background: the start posted in scope, its section polled to its rows, while Run still answers', async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('running'));
+    await type(mounted, 'SELECT COUNT(*) FROM OcuProbe1915.Granted a, OcuProbe1915.Granted b');
+    expect(el(mounted.host, 'background').getAttribute('aria-disabled')).toBe('false');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts[0]).toEqual({ path: SQL_BACKGROUND_PATH, body: { statement: 'SELECT COUNT(*) FROM OcuProbe1915.Granted a, OcuProbe1915.Granted b', parameters: [], maxRows: 1000 }, scope: 'USER' });
+    expect(mounted.posts[1].path).toBe(backgroundPath(RUN_ID));
+    expect(el(mounted.host, 'background-status').getAttribute('role')).toBe('status');
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+    expect(el(mounted.host, 'background-cancel')?.textContent?.trim()).toBe(STRINGS.actionCancel);
+    expect(el(mounted.host, 'background').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'run').getAttribute('aria-disabled')).toBe('false');
+    expect(el(mounted.host, 'explain').getAttribute('aria-disabled')).toBe('false');
+    expect(mounted.scheduled.length).toBe(1);
+
+    mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: '<plans><plan>Read master map</plan></plans>', truncated: false } };
+    el<HTMLButtonElement>(mounted.host, 'explain').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.at(-1)?.path).toBe(SQL_PLAN_PATH);
+    expect(el(mounted.host, 'plan').textContent).toBe('<plans><plan>Read master map</plan></plans>');
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+
+    mounted.answer = { ok: { outcome: 'rows', kind: 'query', columns: ['Name'], rows: [['now']], truncated: false } };
+    await run(mounted);
+    expect(mounted.posts.at(-1)?.path).toBe(SQL_RUN_PATH);
+    expect([...mounted.host.querySelectorAll('[data-ocu-sql="cell"]')].map((cell) => cell.textContent)).toEqual(['now']);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'rows', kind: 'query', columns: ['N'], rows: [['102400000']], truncated: true } }));
+    await flush(mounted);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlRowsCut.replace('<n>', '1'));
+    expect([...mounted.host.querySelectorAll('[data-ocu-sql="background-cell"]')].map((cell) => cell.textContent)).toEqual(['102400000']);
+    expect(el(mounted.host, 'background-results').getAttribute('role')).toBe('table');
+    expect([...mounted.host.querySelectorAll('[data-ocu-sql="cell"]')].map((cell) => cell.textContent)).toEqual(['now']);
+    expect(el(mounted.host, 'background-cancel')).toBeNull();
+    expect(el(mounted.host, 'background').getAttribute('aria-disabled')).toBe('false');
+    expect(mounted.scheduled.length).toBe(0);
+    expect(mounted.stores.for(SCREEN.descriptor, SCREEN.refreshRates).data()).toEqual([]);
+  });
+
+  it('cancels a background run: Cancel posts its cancel route, and the section reads Canceled', async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('running'));
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    route(mounted, backgroundPath(RUN_ID, true), view('running', { cancelRequested: true }));
+    el<HTMLButtonElement>(mounted.host, 'background-cancel').click();
+    await settle(mounted.fixture);
+    expect(mounted.posts.at(-1)?.path).toBe(backgroundPath(RUN_ID, true));
+    route(mounted, backgroundPath(RUN_ID), view('canceled', { cancelRequested: true }));
+    await flush(mounted);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundCanceled);
+    expect(el(mounted.host, 'background-cancel')).toBeNull();
+  });
+
+  it("shows a failed run's refusal as an alert in its section, and a run its poll no longer finds leaves the section", async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('failed', { refusal: { code: 'EXPLORER.SQL.BACKGROUND.LOST', reason: STRINGS.explorerSqlBackgroundLostReason } }));
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'background-refusal').getAttribute('role')).toBe('alert');
+    expect(el(mounted.host, 'background-refusal').textContent?.trim()).toBe(STRINGS.explorerSqlBackgroundLostReason);
+    expect(el(mounted.host, 'refusal')).toBeNull();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), { status: 404, code: 'EXPLORER.SQL.BACKGROUND.NOTFOUND', reason: STRINGS.explorerSqlBackgroundNotFoundReason });
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'background-run')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the transient branch of `readBackground`, so a 503 is read as a refusal ->
+  // the section reads a refusal and schedules no poll, and this goes red.
+  it('polls again after a transient poll failure, and the section keeps reading running until the run ends', async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), { status: 503, code: 'API.UNAVAILABLE', reason: 'unavailable' });
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(mounted.scheduled.length).toBe(1);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+    expect(el(mounted.host, 'background-refusal')).toBeNull();
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'rows', kind: 'query', columns: ['One'], rows: [['1']], truncated: false } }));
+    await flush(mounted);
+    expect([...mounted.host.querySelectorAll('[data-ocu-sql="background-cell"]')].map((cell) => cell.textContent)).toEqual(['1']);
+  });
+
+  // Mutation (Rule 19): leave `readBackground`'s refusal branch with the status it had -> the section
+  // still reads running, Run in background stays unavailable, and this goes red.
+  it('ends the section running state when a poll is refused, so Run in background answers again', async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), { status: 403, code: 'AUTH.NOPRIVILEGE', reason: STRINGS.explorerSqlBackgroundLostReason });
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'background-refusal').getAttribute('role')).toBe('alert');
+    expect(backgroundStatus(mounted.host)).toBe('');
+    expect(el(mounted.host, 'background-cancel')).toBeNull();
+    expect(el(mounted.host, 'background').getAttribute('aria-disabled')).toBe('false');
+    expect(mounted.scheduled.length).toBe(0);
+  });
+
+  it("shows a start refusal as the console's banner, attaches a busy owner's running run, and draws the value fields a start asks for", async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { status: 422, code: 'EXPLORER.SQL.BACKGROUND.QUERYONLY', reason: STRINGS.explorerSqlBackgroundQueryOnlyReason });
+    await type(mounted, 'UPDATE OcuProbe1915.Granted SET Num = 3');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.explorerSqlBackgroundQueryOnlyReason);
+    expect(el(mounted.host, 'background-run')).toBeNull();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { outcome: 'parameters', count: 1 } });
+    await type(mounted, 'SELECT Name FROM OcuProbe1915.Granted WHERE Num > ?');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(status(mounted.host)).toBe(STRINGS.explorerSqlTakesValues.replace('<n>', '1'));
+    expect(mounted.host.querySelectorAll('[data-ocu-sql="value"]').length).toBe(1);
+    route(mounted, SQL_BACKGROUND_PATH, { status: 409, code: 'EXPLORER.SQL.BACKGROUND.BUSY', reason: STRINGS.explorerSqlBackgroundBusyReason, detail: { runId: RUN_ID } });
+    route(mounted, backgroundPath(RUN_ID), view('running'));
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.explorerSqlBackgroundBusyReason);
+    expect(mounted.posts.at(-1)?.path).toBe(backgroundPath(RUN_ID));
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+  });
+
+  it('stops polling when the page goes, and follows a run still running again on its return', async () => {
+    const mounted = await mount();
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('running'));
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    const sent = mounted.posts.length;
+    mounted.fixture.destroy();
+    await flush(mounted);
+    expect(mounted.posts.length).toBe(sent);
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'rows', kind: 'query', columns: ['One'], rows: [['1']], truncated: false } }));
+    const again = TestBed.createComponent(SqlQueryPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    expect(mounted.posts.length).toBe(sent + 1);
+    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.tableRowCount.replace('<n>', '1'));
   });
 });

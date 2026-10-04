@@ -7666,6 +7666,23 @@ app-log-hub-page {
   overflow: auto;
 }
 
+// SQL query's Background run section (Story 19.15): below the console's own answer, its heading and
+// Cancel on one line, then its status line, a refusal, an SQL error's message and its rows in the same
+// grid.
+.ocu-sql-query-background {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-block-start: var(--ocu-space-4);
+}
+
+.ocu-sql-query-background-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+}
+
 // A confirmed compile's console lines on the proposal card, held to the page pane's height and
 // scrolled from the keyboard inside their focusable block.
 .ocu-proposal-card-output .ocu-code-block-pre {

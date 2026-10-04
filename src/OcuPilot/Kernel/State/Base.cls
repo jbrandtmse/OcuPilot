@@ -476,6 +476,44 @@ ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Take the SQL run lock <code>^OcuPilotSqlRun(</code><var>pKey</var><code>)</code>, waiting at
+/// most <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it. The key
+/// <code>"reserve"</code> is the reserve section; a run key is the lock its background job holds for
+/// its whole life. The lock outlives this frame and is released by <method>GuardedSqlRunUnlock</method>
+/// or by the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.SqlRun</class>.</p>
+ClassMethod GuardedSqlRunLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotSqlRun(pKey):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the SQL run lock <var>pKey</var>. Releasing a lock this process does not
+/// hold changes nothing.</p>
+ClassMethod GuardedSqlRunUnlock(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotSqlRun(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Take the proposal target lock
 /// <code>^OcuPilotProposalTarget(</code><var>pKey</var><code>)</code>, waiting at most
 /// <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it.</p>

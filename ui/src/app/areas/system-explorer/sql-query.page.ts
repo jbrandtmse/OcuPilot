@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, InjectionToken, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
 import { NavigationService } from '../../core/navigation';
+import { schedulePoll } from '../../core/poll-schedule';
 import { ScopeService } from '../../core/scope';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
@@ -10,7 +12,13 @@ import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { WarningDialog } from '../../shell/warning-dialog';
 import { fillPlaceholders } from './code-list.store';
-import { SqlQueryState, consequenceFor, statusLineFor, type SqlQueryDeps, type SqlRows } from './sql-query.store';
+import { SqlQueryState, backgroundStatusLineFor, consequenceFor, statusLineFor, type SqlQueryDeps, type SqlRows } from './sql-query.store';
+
+/** When a background run's next poll is sent: `schedulePoll` everywhere but a spec, which drives the poll by hand. */
+export const SQL_BACKGROUND_SCHEDULE = new InjectionToken<(run: () => void, delayMs: number) => void>('SQL_BACKGROUND_SCHEDULE', {
+  providedIn: 'root',
+  factory: () => schedulePoll,
+});
 
 /** One `SqlQueryState` per screen store, so a return to the screen finds the last statement and answer. */
 const HELD = new WeakMap<ScreenStore, SqlQueryState>();
@@ -37,6 +45,12 @@ interface RowView {
   readonly cells: readonly string[];
 }
 
+/** One even track per column of `shown`, each at least wide enough to read. */
+function trackTemplate(shown: SqlRows | null): string {
+  const count = Math.max(1, shown?.columns.length ?? 1);
+  return `repeat(${count}, minmax(10rem, 1fr))`;
+}
+
 /**
  * System Explorer's SQL query (Story 19.6): a statement on the code surface, Max rows, Run and
  * Explain plan, and what the instance answered -- a status line, a page-owned grid of text cells, an
@@ -48,6 +62,11 @@ interface RowView {
  * `run` (AD-53). Value fields appear when the instance asks for values, and go when the statement
  * changes.
  *
+ * **A query can run in the background** (Story 19.15): Run in background starts it and the Background
+ * run section follows it -- its own status line, Cancel while it runs, a failed run's refusal as an
+ * alert, and its rows through the same grid template as Run's. Run and Explain plan stay usable while
+ * it runs. Polling stops when the page goes and resumes when it returns to a run still running.
+ *
  * **Everything shown is text** (AD-11): a cell, an error and a plan are interpolated, never markup.
  * The answer lives in `SqlQueryState`, never in the screen's store, so it never reaches screen context
  * (AD-39's sixth exception). A refusal is an alert banner; a privilege denial names its pair.
@@ -58,7 +77,7 @@ interface RowView {
 @Component({
   selector: 'app-sql-query-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [WarningDialog],
+  imports: [NgTemplateOutlet, WarningDialog],
   template: `<section class="ocu-form-page ocu-sql-query" [attr.aria-busy]="running">
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-sql="refusal">{{ refusal }}</p>
@@ -111,6 +130,9 @@ interface RowView {
         <button type="button" class="ocu-button-text" data-ocu-sql="explain" [attr.aria-disabled]="blocked" (click)="onPlan()">
           {{ STRINGS.explorerSqlExplainPlan }}
         </button>
+        <button type="button" class="ocu-button-text" data-ocu-sql="background" [attr.aria-disabled]="backgroundBlocked" (click)="onBackground()">
+          {{ STRINGS.explorerSqlRunInBackground }}
+        </button>
         <button type="submit" class="ocu-button-primary" data-ocu-sql="run" [attr.aria-disabled]="blocked">{{ STRINGS.actionRun }}</button>
       </div>
     </form>
@@ -123,12 +145,41 @@ interface RowView {
       <pre class="ocu-source-text ocu-sql-query-plan" tabindex="0" data-ocu-sql="plan" [attr.aria-label]="STRINGS.explorerSqlPlanHeading">{{ plan }}</pre>
     }
     @if (result; as shown) {
+      <ng-container
+        [ngTemplateOutlet]="grid"
+        [ngTemplateOutletContext]="{ $implicit: shown, rows: rows, template: template, label: STRINGS.explorerSqlQueryLabel, slot: '' }"
+      />
+    }
+    @if (hasBackground) {
+      <div class="ocu-sql-query-background" data-ocu-sql="background-run">
+        <div class="ocu-sql-query-background-head">
+          <h2 class="ocu-details-heading">{{ STRINGS.explorerSqlBackgroundHeading }}</h2>
+          @if (backgroundRunning) {
+            <button type="button" class="ocu-button-text" data-ocu-sql="background-cancel" (click)="onCancelBackground()">{{ STRINGS.actionCancel }}</button>
+          }
+        </div>
+        <p class="ocu-explorer-status" role="status" data-ocu-sql="background-status">{{ backgroundStatusLine }}</p>
+        @if (hasBackgroundRefusal) {
+          <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-sql="background-refusal">{{ backgroundRefusal }}</p>
+        }
+        @if (hasBackgroundMessage) {
+          <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-sql="background-message" [attr.aria-label]="backgroundStatusLine">{{ backgroundMessage }}</pre>
+        }
+        @if (backgroundResult; as shown) {
+          <ng-container
+            [ngTemplateOutlet]="grid"
+            [ngTemplateOutletContext]="{ $implicit: shown, rows: backgroundRows, template: backgroundTemplate, label: STRINGS.explorerSqlBackgroundHeading, slot: 'background-' }"
+          />
+        }
+      </div>
+    }
+    <ng-template #grid let-shown let-rows="rows" let-template="template" let-label="label" let-slot="slot">
       <div class="ocu-data-table-frame">
         <div
           class="ocu-data-table-grid ocu-sql-query-results"
           role="table"
-          data-ocu-sql="results"
-          [attr.aria-label]="STRINGS.explorerSqlQueryLabel"
+          [attr.data-ocu-sql]="slot + 'results'"
+          [attr.aria-label]="label"
           [attr.aria-rowcount]="shown.rows.length + 1"
         >
           <div class="ocu-data-table-head" role="rowgroup">
@@ -146,7 +197,7 @@ interface RowView {
                 <div class="ocu-data-table-row" role="row" [attr.aria-rowindex]="row.key + 2" [style.grid-template-columns]="template">
                   @for (cell of row.cells; track $index) {
                     <div class="ocu-data-table-cell" role="cell">
-                      <span class="ocu-data-table-text ocu-sql-query-cell" data-ocu-sql="cell">{{ cell }}</span>
+                      <span class="ocu-data-table-text ocu-sql-query-cell" [attr.data-ocu-sql]="slot + 'cell'">{{ cell }}</span>
                     </div>
                   }
                 </div>
@@ -155,7 +206,7 @@ interface RowView {
           </div>
         </div>
       </div>
-    }
+    </ng-template>
     @if (confirming) {
       <app-warning-dialog
         [verb]="STRINGS.explorerSqlConfirmTitle"
@@ -191,12 +242,17 @@ export class SqlQueryPage {
       sender: inject(ScreenActionHandler),
       descriptor: this.screen?.descriptor ?? '',
       scope: () => this.scope.namespace(),
+      schedule: inject(SQL_BACKGROUND_SCHEDULE),
     };
     const stop = this.state.subscribe(() => this.bump());
-    // A confirmation answers the namespace and statement it was asked for, so leaving the page cancels it.
+    // A background run left running when the page went is followed again on its return.
+    if (this.state.backgroundStatus() === 'running') void this.state.pollBackground(this.deps);
+    // A confirmation answers the namespace and statement it was asked for, so leaving the page cancels
+    // it; the background run goes on, unpolled until the page returns.
     inject(DestroyRef).onDestroy(() => {
       stop();
       this.state.cancelConfirm();
+      this.state.stopPolling();
     });
   }
 
@@ -219,6 +275,62 @@ export class SqlQueryPage {
   protected get blocked(): boolean {
     this.generation();
     return this.state.running() || this.state.text().trim() === '';
+  }
+
+  /** Run in background stays drawn and answers nothing while its run runs or before a statement is written. */
+  protected get backgroundBlocked(): boolean {
+    this.generation();
+    return this.state.backgroundBusy() || this.state.text().trim() === '';
+  }
+
+  /** Whether the Background run section is drawn: a run is on screen. */
+  protected get hasBackground(): boolean {
+    this.generation();
+    return this.state.backgroundId() !== null;
+  }
+
+  protected get backgroundRunning(): boolean {
+    this.generation();
+    return this.state.backgroundStatus() === 'running';
+  }
+
+  protected get backgroundStatusLine(): string {
+    this.generation();
+    return backgroundStatusLineFor(this.state.backgroundStatus(), this.state.backgroundAnswer());
+  }
+
+  protected get backgroundRefusal(): string {
+    this.generation();
+    return this.state.backgroundRefusal();
+  }
+
+  protected get hasBackgroundRefusal(): boolean {
+    return this.backgroundRefusal !== '';
+  }
+
+  /** A background run's SQL error message, shown as text below its code. */
+  protected get backgroundMessage(): string {
+    this.generation();
+    const answer = this.state.backgroundAnswer();
+    return answer !== null && answer.outcome === 'error' ? answer.message : '';
+  }
+
+  protected get hasBackgroundMessage(): boolean {
+    return this.backgroundMessage !== '';
+  }
+
+  protected get backgroundResult(): SqlRows | null {
+    this.generation();
+    const answer = this.state.backgroundAnswer();
+    return answer !== null && answer.outcome === 'rows' ? answer.result : null;
+  }
+
+  protected get backgroundRows(): readonly RowView[] {
+    return (this.backgroundResult?.rows ?? []).map((cells, key) => ({ key, cells }));
+  }
+
+  protected get backgroundTemplate(): string {
+    return trackTemplate(this.backgroundResult);
   }
 
   protected get refusal(): string {
@@ -284,8 +396,7 @@ export class SqlQueryPage {
 
   /** One even track per column, each at least wide enough to read. */
   protected get template(): string {
-    const count = Math.max(1, this.result?.columns.length ?? 1);
-    return `repeat(${count}, minmax(10rem, 1fr))`;
+    return trackTemplate(this.result);
   }
 
   /** Whether a confirmation waits on Proceed. */
@@ -321,6 +432,15 @@ export class SqlQueryPage {
   protected onPlan(): void {
     if (this.blocked) return;
     void this.state.plan(this.deps);
+  }
+
+  protected onBackground(): void {
+    if (this.backgroundBlocked) return;
+    void this.state.startBackground(this.deps);
+  }
+
+  protected onCancelBackground(): void {
+    void this.state.cancelBackground(this.deps);
   }
 
   protected onProceed(): void {

@@ -528,6 +528,12 @@ const ATELIER_REFUSALS = [
   ['REASONSQLPASSWORD', 'explorerSqlPasswordReason'],
   ['REASONSQLREADS', 'explorerSqlReadsReason'],
   ['REASONSQLPARAMETERS', 'explorerSqlParametersReason'],
+  // Story 19.15: the background run's query-only, busy, full, not-found and lost refusals.
+  ['REASONSQLBACKGROUNDQUERYONLY', 'explorerSqlBackgroundQueryOnlyReason'],
+  ['REASONSQLBACKGROUNDBUSY', 'explorerSqlBackgroundBusyReason'],
+  ['REASONSQLBACKGROUNDFULL', 'explorerSqlBackgroundFullReason'],
+  ['REASONSQLBACKGROUNDNOTFOUND', 'explorerSqlBackgroundNotFoundReason'],
+  ['REASONSQLBACKGROUNDLOST', 'explorerSqlBackgroundLostReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

@@ -230,6 +230,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/license-server" Method="POST" Call="LicenseServerCreate"/>
   <Route Url="/explorer/sql/run" Method="POST" Call="ExplorerSqlRun"/>
   <Route Url="/explorer/sql/plan" Method="POST" Call="ExplorerSqlPlan"/>
+  <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
+  <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
+  <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
 </Routes>
 }
 
@@ -1704,6 +1707,28 @@ ClassMethod ExplorerSqlRun() As %Status
 ClassMethod ExplorerSqlPlan() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandlePlan()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/background/:id/cancel</code> (Story
+/// 19.15): a background run's cancel, delegating to <class>OcuPilot.Area.Explorer.SqlBackground</class>.
+/// The two <code>:id</code> routes precede <code>/explorer/sql/background</code>.</p>
+ClassMethod ExplorerSqlBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /explorer/sql/background/:id</code>: a background
+/// run's poll.</p>
+ClassMethod ExplorerSqlBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/background</code>: a background
+/// run's start.</p>
+ClassMethod ExplorerSqlBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
 }
 
 }

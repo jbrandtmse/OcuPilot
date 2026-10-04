@@ -397,6 +397,61 @@ Method TestAnAssignedPageGatesTheSqlConsole()
     }
 }
 
+/// <p>Story 19.15 AC10: with the probe resource assigned to the classic SQL page, the principal lacking
+/// it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on SQL
+/// query's background start, poll and cancel, and a run reserved and spawned for it past the route
+/// ends <code>failed</code> with that refusal from the job's own gate; the one holding it starts a
+/// background query, polls it and cancels it, and its run ends <code>ended</code> or
+/// <code>canceled</code>.</p>
+/// <p>Mutation (Rule 19): drop the screen gate from
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Read</method>, which the background start reads its body
+/// through -- the lacking principal's start is answered 202 and its leg goes red. Drop the screen gate
+/// from <method>OcuPilot.Area.Explorer.SqlBackground.Run</method> -- the job's run past the route no
+/// longer names the page's resource and its leg goes red.</p>
+Method TestAnAssignedPageGatesTheBackgroundRun()
+{
+    Set tPage = "%CSP.UI.Portal.SQL.Home"
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/explorer/sql/background"
+    Set tScope = "?ns=" _ $NAMESPACE
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tAbsent = "0123456789abcdef0123456789abcdef"
+    Set tBody = "{""statement"":""SELECT 1 AS One""}"
+    For tLeg = $ListBuild("POST", tBase _ tScope, tBody), $ListBuild("GET", tBase _ "/" _ tAbsent _ tScope, ""), $ListBuild("POST", tBase _ "/" _ tAbsent _ "/cancel" _ tScope, "") {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tLeg, 1), $List(tLeg, 2), ..#LACKINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $List(tLeg, 3), "application/json")
+        Set tAnswer = ""
+        Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+        Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: $Get(tText))
+        Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", ..#LACKINGUSER _ ": " _ $List(tLeg, 1) _ " " _ $List(tLeg, 2) _ " with " _ tPage _ " assigned")
+    }
+    Set tStart = ##class(OcuPilot.Test.SqlBackgroundJob).StartAs(..#LACKINGUSER, "OcuPilot.Area.Explorer.SqlBackground", "SELECT 1 AS One")
+    Do $$$AssertEquals(tStart.%Get("http"), 202, ..#LACKINGUSER _ ": a run is reserved and spawned past the route: " _ tStart.%ToJSON())
+    Set tView = ##class(OcuPilot.Test.SqlBackgroundJob).AwaitInProcess(..#LACKINGUSER, tStart.%Get("key"))
+    Set tSaid = $Select($IsObject(tView) && (tView.%GetTypeOf("refusal") = "object"): tView.status _ " " _ tView.refusal.code _ " " _ $Select(tView.refusal.%GetTypeOf("detail") = "object": tView.refusal.detail.%Get("failedPair"), 1: ""), 1: ##class(OcuPilot.Test.SqlBackgroundJob).Said(tView))
+    Do $$$AssertEquals(tSaid, "failed AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", ..#LACKINGUSER _ ": the job's own gate refuses the run, naming the page's resource")
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#LACKINGUSER)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ tScope, ..#HOLDINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody, "application/json")
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+    Do $$$AssertEquals($Get(tStatus), 202, ..#HOLDINGUSER _ ": the background start is answered: " _ $Get(tText))
+    Set tKey = $Select($IsObject(tAnswer): tAnswer.%Get("id"), 1: tAbsent)
+    For tLeg = $ListBuild("GET", tBase _ "/" _ tKey _ tScope), $ListBuild("POST", tBase _ "/" _ tKey _ "/cancel" _ tScope) {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tLeg, 1), $List(tLeg, 2), ..#HOLDINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, "", "application/json")
+        Do $$$AssertEquals($Get(tStatus), 200, ..#HOLDINGUSER _ ": " _ $List(tLeg, 1) _ " of its run is answered: " _ $Get(tText))
+    }
+    Set tDeadline = $ZHorolog + 10
+    For {
+        Do ##class(OcuPilot.Area.Explorer.SqlBackground).View(tKey, ..#HOLDINGUSER, .tFound, .tView)
+        If '$Get(tFound) || (tView.%Get("status") '= "running") || ($ZHorolog > tDeadline) Quit
+        Hang 0.25
+    }
+    Do $$$AssertTrue($Get(tFound) && ((tView.%Get("status") = "ended") || (tView.%Get("status") = "canceled")), "and its run ends, ended or canceled: " _ ##class(OcuPilot.Test.SqlBackgroundJob).Said($Get(tView)))
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#HOLDINGUSER)
+}
+
 /// <p>Mint the namespace create of <var>pName</var> for <var>pUser</var> over a completed turn seeded
 /// for that user.</p>
 Method MintFor(pUser As %String, pName As %String, Output pProposal As %DynamicObject) As %Status

@@ -2,7 +2,8 @@
 title: 'Story 19.15: The query console runs a query in the background'
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '505056dfad7968f2195a7d37acccaea2caecb15a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -158,10 +159,10 @@ deferred: []
 
 **Execution:**
 
-- [ ] Task 0 (`ocupilot-a2-ci`, before code; by=merge_gate): start five concurrent background runs (long probe queries) with ordinary sign-ins alongside; if `messages.log` shows any license-limit line or a sign-in is refused, lower the instance cap to the largest value that stays clean. Record the measurement in Design Notes for the lead's AD-42 note.
+- [x] Task 0 (`ocupilot-a2-ci`, before code; by=merge_gate): start five concurrent background runs (long probe queries) with ordinary sign-ins alongside; if `messages.log` shows any license-limit line or a sign-in is refused, lower the instance cap to the largest value that stays clean. Record the measurement in Design Notes for the lead's AD-42 note.
 
-- [ ] `src/OcuPilot/Kernel/State/Base.cls` -- add-only. Add Private `GuardedSqlRunLock(pKey, pTimeout, Output pHeld)` and `GuardedSqlRunUnlock(pKey)` on `^OcuPilotSqlRun(pKey)`, mirroring the turn-slot pair. The key `"reserve"` is the reserve section, and a run id is the lock its job holds for its life.
-- [ ] `src/OcuPilot/Kernel/State/SqlRun.cls` (new) -- the run store.
+- [x] `src/OcuPilot/Kernel/State/Base.cls` -- add-only. Add Private `GuardedSqlRunLock(pKey, pTimeout, Output pHeld)` and `GuardedSqlRunUnlock(pKey)` on `^OcuPilotSqlRun(pKey)`, mirroring the turn-slot pair. The key `"reserve"` is the reserve section, and a run id is the lock its job holds for its life.
+- [x] `src/OcuPilot/Kernel/State/SqlRun.cls` (new) -- the run store.
   - Properties:
     - `RunKey` (32 hex, unique, from `GenCryptRand`) and `UserName`, both indexed.
     - `Namespace`.
@@ -184,9 +185,9 @@ deferred: []
   - `GuardedSweep(pLimitsClass, pNowSeconds = "")`: delete rows ended more than `RETENTIONSECONDS` ago; reconcile lost rows.
   - Reconcile ends a `running` row whose lock is free, or a `queued` row past `QUEUEDSECONDS` whose lock is free, `failed` with `LOST`.
   - Rationale: AD-9, AD-33's model.
-- [ ] `src/OcuPilot/Api/AtelierError.cls` -- add-only. `EXPLORER.SQL.BACKGROUND.QUERYONLY`, `.BUSY`, `.FULL`, `.NOTFOUND` and `.LOST`, with the reasons in Design Notes › Strings.
-- [ ] `src/OcuPilot/Area/Explorer/SqlConsole.cls` -- extract a non-rendering check, the classify step and `Prohibited.SqlStatement` answering `(pGuard, pHttp, pFault)`, which `Prepare` and `SqlBackground` both call. 19.6's behavior is unchanged.
-- [ ] `src/OcuPilot/Area/Explorer/SqlBackground.cls` (new) -- the three routes and the job.
+- [x] `src/OcuPilot/Api/AtelierError.cls` -- add-only. `EXPLORER.SQL.BACKGROUND.QUERYONLY`, `.BUSY`, `.FULL`, `.NOTFOUND` and `.LOST`, with the reasons in Design Notes › Strings.
+- [x] `src/OcuPilot/Area/Explorer/SqlConsole.cls` -- extract a non-rendering check, the classify step and `Prohibited.SqlStatement` answering `(pGuard, pHttp, pFault)`, which `Prepare` and `SqlBackground` both call. 19.6's behavior is unchanged.
+- [x] `src/OcuPilot/Area/Explorer/SqlBackground.cls` (new) -- the three routes and the job.
   - `HandleStart()`: the 19.6 order, then `Start` and the render.
     - Start answers 202 `{id, status: running}`.
     - Otherwise `parameters`, the error outcome, 422 `QUERYONLY`, 409 `BUSY` with `detail.runId`, 503 `FULL`, or 503 `LOST` when the spawn is not accepted (the row then ends `failed`).
@@ -202,17 +203,17 @@ deferred: []
     4. Run through `PortClass()`, then finish `ended`.
     5. Any fault is logged with no statement text and finishes `failed` `LOST`.
   - Seams: `PortClass()` (`SqlPort`), `MaxRunning()` (5), `LimitsClass()`.
-- [ ] `src/OcuPilot/Api/Router.cls` -- add-only at the tail, in prefix order:
+- [x] `src/OcuPilot/Api/Router.cls` -- add-only at the tail, in prefix order:
   - `POST /explorer/sql/background/:id/cancel`;
   - `GET /explorer/sql/background/:id`;
   - `POST /explorer/sql/background`;
   - three thin wrappers at the class end.
-- [ ] `src/OcuPilot/Kernel/Retention.cls` -- add-only. One `Try`/`..Step` block calling `SqlRun.GuardedSweep(pLimitsClass)`.
-- [ ] `scripts/check-objectscript.py` and `scripts/test_check_objectscript.py`:
+- [x] `src/OcuPilot/Kernel/Retention.cls` -- add-only. One `Try`/`..Step` block calling `SqlRun.GuardedSweep(pLimitsClass)`.
+- [x] `scripts/check-objectscript.py` and `scripts/test_check_objectscript.py`:
   - add `src/OcuPilot/Area/Explorer/SqlBackground.cls` to `JOB_ALLOWED`;
   - name it in rule 19's text and message;
   - add one harness test that it may spawn (AD-42's fourth site).
-- [ ] Tests (ObjectScript, new). Each gates principals on `SqlConsoleProbe.Armed()` and removes what it made:
+- [x] Tests (ObjectScript, new). Each gates principals on `SqlConsoleProbe.Armed()` and removes what it made:
   - `Test/SqlRunStore.cls`: reserve, busy, full, replace, begin, finish, cancel flag, the owner view, reconcile and sweep through the now seam.
   - `Test/SqlBackgroundJob.cls`, with `Test/SqlBackgroundFixture.cls` (`PortClass` → `SqlPortFixture`, `MaxRunning` 1). It covers:
     - the job as a principal, reserved and spawned through `SqlRun`/`Spawn` in a child signed in as the principal and read back through `GET /explorer/sql/background/:id` as that principal: granted rows, and the ungranted table refused -99, alone and while held open;
@@ -230,26 +231,26 @@ deferred: []
     - `BUSY` with `detail.runId`;
     - the classic page's custom resource gating all three routes (reuse `ClassicPageGate`'s assignment, add-only there if needed);
     - a `%Developer` start in USER.
-- [ ] Rosters:
+- [x] Rosters:
   - `Test/EndpointCoverage.cls`: three probe rows, `ocupilot-coverage-probe`.
   - `Test/DeveloperFloorRoutes.cls`: the two POSTs and one GET in `Roster`, and the count words updated.
   - `Test/Retention.cls`: one leg that reddens when the sweep step is removed.
-- [ ] `ui/src/app/areas/system-explorer/sql-query.store.ts`:
+- [x] `ui/src/app/areas/system-explorer/sql-query.store.ts`:
   - add the background path and a `schedule` seam on `SqlQueryDeps` (1,000 ms, `setTimeout` by default);
   - add background state: id, status, answer, refusal, and its own generation;
   - `startBackground` (adopts `parameters`, the error outcome, and `BUSY`'s `detail.runId` by attaching), `pollBackground`, `cancelBackground` and `stopPolling`;
   - none of it touches `runningValue`.
-- [ ] `ui/src/app/areas/system-explorer/sql-query.page.ts`:
+- [x] `ui/src/app/areas/system-explorer/sql-query.page.ts`:
   - a Run in background button beside Run, `aria-disabled` while its run is running or the statement is empty;
   - a Background run section with its own `role="status"` line, Cancel while running, the refusal as `role="alert"`, and its rows through the page's existing grid as an `ng-template`, not a copy;
   - it stops polling on destroy and resumes on init when a held run reads `running`.
-- [ ] `ui/src/app/core/strings.ts` (keys at the end, each `/** EXPERIENCE.md:597 */`) and `ui/src/styles/_components.scss` (add-only, on tokens).
-- [ ] EXPERIENCE.md :597 -- in place. Append the new literals to the String cell and one `Story 19.15` clause to the Where cell, with `[ADDED 2026-10-03 - Story 19.15]`. Add no row, so no gated citation moves.
-- [ ] Client tests:
+- [x] `ui/src/app/core/strings.ts` (keys at the end, each `/** EXPERIENCE.md:597 */`) and `ui/src/styles/_components.scss` (add-only, on tokens).
+- [x] EXPERIENCE.md :597 -- in place. Append the new literals to the String cell and one `Story 19.15` clause to the Where cell, with `[ADDED 2026-10-03 - Story 19.15]`. Add no row, so no gated citation moves.
+- [x] Client tests:
   - `sql-query.page.spec.ts`: per-path stub answers and a manual schedule;
   - `self-protection.test.mjs`: five `ATELIER_REFUSALS` rows;
   - `system-explorer-sql-query.browser-spec.mjs`: one test.
-- [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs` -- re-base `maximumWarning` to the measured build, with a history line. Stop and ask above 3,800 kB.
+- [x] `ui/angular.json` and `ui/tools/angular-json.test.mjs` -- re-base `maximumWarning` to the measured build, with a history line. Stop and ask above 3,800 kB.
 
 **Acceptance Criteria:**
 
@@ -289,6 +290,34 @@ deferred: []
 - 2026-10-03, lead (spec gate, by=merge_gate): caps ruled 1 running run per user and 5 per instance (409 BUSY, 503 FULL), subject to Task 0's license measurement; the spine carries the drafts (AD-42, AD-7, AD-31, AD-36, AD-39, AD-41, AD-61, the retention line). Contended edits: `Router.cls`, `strings.ts`, `_components.scss` add-only; EXPERIENCE.md :597 extended in place; the budget under the re-measure rule; `scripts/check-objectscript.py`'s JOB allow-list gains `Area/Explorer/SqlBackground.cls`.
 
 ## Review Triage Log
+
+### 2026-10-03 — Review pass
+
+- verdicts: 23 findings — high 0, medium 3, low 13, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The job's screen gate (the classic page's resource) had no test that fails without it: the no-pair leg is answered alike by `SqlPort.Gate`, and `ClassicPageGate`'s holding leg accepted `failed` — added a lacking-principal run past the route asserting the job's `AUTH.NOPRIVILEGE` naming `OcuProbe1814Page:USE`, and the holding run must end `ended` or `canceled`; red under the dropped gate (run 4436).
+  - `[medium]` `[patch]` The cancel retry loop was untested (the only cancel waited until the query ran) — added `Test/SqlPortDelayed`, `Test/SqlBackgroundDelayed` and `TestAnEarlyCancelIsSentAgainUntilTheQueryRuns`; red at `CANCELTRIES` 1 (run 4437).
+  - `[medium]` `[patch]` A reserve's reconcile of the owner's lost run was untested — added `SqlRunStore.TestAReserveEndsTheOwnersLostRunFirst`; red with a state read in place of `Reconcile` (run 4438).
+  - `[low]` `[patch]` The start's 503 `LOST` for a spawn not accepted was untested — added `Test/SqlBackgroundUnspawned` and `TestAStartWhoseJobIsNotAcceptedAnswersLost`; red without the refused spawn's `GuardedFinish` (run 4437).
+  - `[low]` `[patch]` The client's re-poll after a transient poll failure was untested — added a page-spec case; red without the transient branch.
+  - `[false]` `[reject]` AC clauses lacking their own `mutation:` lines — Rule 19 asks one demonstrated mutation per AC, and AC1 to AC11 each carry one.
+  - `[low]` `[reject]` An unclassified statement type is never sent to the start route — the refusal is the one predicate `Kind '= query`, which the four sent kinds exercise; a statement of types 16, 25, 27 or 99 would have to be found by probing for a leg that pins nothing new.
+  - `[low]` `[reject]` The id-shape legs stay green without the `IDPATTERN` check — the store's owner lookup answers the identical 404 by design, so no caller can observe the difference.
+  - `[low]` `[patch]` A poll or cancel refused with anything but 404 left the section reading running with Run in background unavailable — the refusal branch now ends the running state (`failed`, the refusal kept as the alert); page-spec case red when the status is left running.
+  - `[low]` `[patch]` `SqlRunStore`'s sweep legs set the clock seam ahead of the instance's, deleting other owners' runs inside their retention — the legs now age their own row and never set the seam ahead (red under the skipped delete, run 4439).
+  - `[low]` `[patch]` Explain plan during a background run was untested — the page spec now asserts it available, posts a plan and keeps the section running.
+  - `[low]` `[reject]` The page's "Canceled." is waited for 15 s in the browser spec while AC5 says 3 s — the server poll pins under 3 s and the page adds at most one 1 s poll; a 3 s browser wait would add timing flake for no new pin.
+  - `[false]` `[reject]` The least-privileged job is started from a signed-in child, not the route — the route refuses that statement before spawning, and the API application grants no application role, so a route-spawned job holds the same identity (exercised by the developer and AC1 legs).
+  - `[low]` `[patch]` Production's cap of five was pinned by no test — `TestTheInstanceCapRefusesAnotherOwnersStart` asserts `MaxRunning()` is 5 (red at 4, run 4437); the FULL render shares BUSY's tested path.
+  - `[false]` `[reject]` Past the bound runs on the fixture's 2 s, not 50 s — the matrix row names the fixture bound.
+  - `[low]` `[patch]` Expired rows were swept only after a reserve that inserted, not at every start — `GuardedReserve` now sweeps after every reserve that held its section; `TestARefusedReserveStillSweeps` red under the old condition (run 4438).
+  - `[low]` `[reject]` An unclassified type is not sent (the intent auditor's sighting) — the same root and reason as the row above.
+  - `[low]` `[patch]` "Not prepared: syntax error" was not sent — `TestEveryKindButAQueryIsRefusedAndNothingIsSpawned` sends one and asserts the error outcome.
+  - `[false]` `[reject]` A non-query with a `?` is asked its values before the 422 — the spec's start order lists `parameters` and the error outcome before `QUERYONLY`, as 19.6's run route orders them.
+  - `[false]` `[reject]` AC9's log check rests on one fixture — every `Log` caller passes a fixed sentence, an exception name or a store status, and `SqlPort.Fail`'s status is a code and the default reason.
+  - `[low]` `[patch]` The 900 s retention reads the turn's `RETENTIONSECONDS`, so the NOTFOUND sentence's "15 minutes" could drift — the sweep test asserts the sentence names the retention's minutes.
+  - `[false]` `[reject]` "Never stored" against the statement index — OcuPilot stores neither; the index row is AD-7's fifth shape.
+  - `[false]` `[reject]` Beyond the intent (public `Gate`/`RenderFault`, `core/poll-schedule.ts`, cancel retries) — a cross-class call needs them public, the poll timer lives in `core/` as the turn store's does (progress polling, not AD-43's refresh), and each retry re-checks the run lock.
 
 ## Design Notes
 
@@ -356,6 +385,13 @@ deferred: []
 - *Alarm in a job:* `SqlPortFixture.Run` (2 s) stopped the COUNT after 2.00 s, both as U in a job (twice) and as `irisowner` in a job and in the session. One earlier run in a probe sequence answered `stopped` only after 5.5 s (unexplained; contention from the probe before it (inference)).
 - *JOB argument:* a 3,400,000-character argument reached its child whole. SqlPort's bounds cap the run's one argument at about 3,377,000 characters.
 - *License:* the key carries 8 license units, 6 available at the probe.
+
+**Task 0, measured on `ocupilot-a2-ci`, 2026-10-03.** Probe principals, tables and run rows were removed and checked gone.
+
+- Through the route: five principals each started a six-way cross-join COUNT (`POST /explorer/sql/background`, 202 each). While the five ran, license units read 7 of 8 consumed, against 2 before and after: each running job held one unit for its user and released it when it ended.
+- Alongside: API sign-ins of `_SYSTEM`, two of the five and two other principals, nine concurrent requests from three users, and the classic portal page each answered 200; a sixth start answered 503 `FULL`; `messages.log` carried no license line over the window. The five were canceled by their owners.
+- Before code, five jobs spawned from session processes signed in as five principals, each running `SqlPort.Run`, left units at 2 and wrote no license line.
+- Ruling: the instance cap stays 5. At five runs one unit of this 8-unit key remains for other users' held processes (inference).
 
 **Strings.** All go into row :597, in place. Fixed strings measure 2,322 against the bound of 2,500, so the nine new ones need no raise; Epic 18's additions are unknown here (inference).
 
@@ -449,10 +485,45 @@ Load into `ocupilot-a2-ci` and never restart it:
 - AC10: `HandleStart`'s screen gate dropped → the custom-resource start leg.
 - AC11: the store never adopts the polled `result` → the browser leg.
 
+- mutation: AC1, `HandleStart` runs the query in the request before `Start` → `SqlBackgroundRoutes.TestTheStartAnswersARunIdAtOnce`, its within-a-second leg (run 4414).
+- mutation: AC2, the query-only check dropped from `HandleStart` → `SqlBackgroundRoutes.TestEveryKindButAQueryIsRefusedAndNothingIsSpawned`, its four `QUERYONLY` legs and "no answer spawned a run" (run 4413); the job's own check refused each, the table unchanged.
+- mutation: AC3, the `$Username` check dropped from `SqlBackground.Run` → `SqlBackgroundJob.TestAJobOfAnotherUsersProcessRefusesToRun` (run 4410).
+- mutation: AC4, `SqlPort.Bounded` answering 0 for a query, with its two fixtures recompiled → `SqlBackgroundJob.TestAQueryPastTheBoundIsStopped` (run 4424).
+- mutation: AC5, `SqlBackground.Cancel` setting the flag without `CancelQuery` → `SqlBackgroundJob.TestTheOwnersCancelStopsTheQuery`, still running 10 s after the cancel (run 4412).
+- mutation: AC6, the owner dropped from `SqlRun.IdForOwner`'s statement → `SqlBackgroundRoutes.TestAnotherUsersRunAnswersTheSameNotFound`, both 404 legs (run 4415).
+- mutation: AC7, the per-owner check skipped in `SqlRun.GuardedReserve` → `SqlBackgroundRoutes.TestABusyOwnerIsNamedItsRunningRun` (run 4416) and `SqlRunStore.TestAReserveInsertsOneRowAndRefusesALiveOwner` (run 4417); the instance count skipped → `SqlBackgroundJob.TestTheInstanceCapRefusesAnotherOwnersStart` (run 4418) and `SqlRunStore.TestTheInstanceCapRefusesAnotherOwner` (run 4419).
+- mutation: AC8, `SqlRun.GuardedSweep`'s delete skipped → `SqlBackgroundRoutes.TestASweptOrReplacedRunIsGone`, its swept leg (run 4420), and `SqlRunStore.TestTheSweepDeletesOnlyARunPastRetention`, whose clock seam is never set ahead of the instance's (run 4439); `SqlRun.Reconcile` ending nothing → `SqlBackgroundJob.TestARunWhoseJobDiedReadsLost` (run 4422) and `SqlRunStore`'s two lost legs (run 4423); the step removed from `Retention.Sweep` → `Retention.TestABackgroundRunPastRetentionIsSwept` (run 4425, beside the known DW-1929 residue).
+- mutation: AC9, the statement handed to `FinishRefused` as its logged status → `SqlBackgroundJob.TestTheJobsFailureLineCarriesNoStatement`, its log leg (run 4411).
+- mutation: AC10, the screen gate dropped from `SqlConsole.Read` → `ClassicPageGate.TestAnAssignedPageGatesTheBackgroundRun`, the lacking principal's start (run 4426; 19.6's run and plan legs too); the job's own gate refused that run.
+- mutation: AC11, `SqlQueryState.readBackground` never adopting the polled answer, rebuilt and redeployed → `system-explorer-sql-query.browser-spec.mjs`, the AC11 test at the row-count wait.
+- Each mutation was reverted byte-identical (sha256) and recompiled or rebuilt; then, after a full `LoadDir`, `SqlRunStore` 7/7 (run 4427), `SqlBackgroundJob` 8/8 (4428), `SqlBackgroundRoutes` 7/7 (4429), and the browser spec 3/3 on the rebuilt bundle.
+- mutation: AC3 and AC10, the screen gate dropped from `SqlBackground.Run` → `ClassicPageGate.TestAnAssignedPageGatesTheBackgroundRun`, the lacking principal's run past the route no longer naming the page's resource (run 4436).
+- mutation: AC5, `SqlBackground.CANCELTRIES` set to 1 → `SqlBackgroundJob.TestAnEarlyCancelIsSentAgainUntilTheQueryRuns`, still running 10.26 s after a cancel sent while `SqlPortDelayed` held the job before its statement (run 4437).
+- mutation: the refused spawn's `GuardedFinish` dropped from `SqlBackground.Start` → `SqlBackgroundJob.TestAStartWhoseJobIsNotAcceptedAnswersLost`, the next start refused busy (run 4437).
+- mutation: AC7, `SqlBackground.MaxRunning()` answering 4 → `SqlBackgroundJob.TestTheInstanceCapRefusesAnotherOwnersStart`, its cap pin (run 4437).
+- mutation: AC7 and AC8, `GuardedReserve` reading each live row's state in place of `Reconcile` → `SqlRunStore.TestAReserveEndsTheOwnersLostRunFirst` (run 4438); sweeping only after an insert → `SqlRunStore.TestARefusedReserveStillSweeps` (run 4438).
+- mutation: AC1, `readBackground`'s transient branch dropped → the page spec's "polls again after a transient poll failure"; the refusal branch leaving the status running → "ends the section running state when a poll is refused" (both red in one component run).
+- Each was reverted byte-identical (sha256) and recompiled or rerun; after a full `LoadDir`, `SqlRunStore` 9/9 (run 4432), `SqlBackgroundJob` 10/10 (4433), `SqlBackgroundRoutes` 7/7 (4434) and `ClassicPageGate` 7/7 (4435); System Explorer component specs 109/109; on the rebuilt, redeployed bundle the SQL query browser spec 3/3 and the structural walk 12/12.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned in one story: the run store, the background job and its three routes, and the console's Run in background with poll and cancel. The spine amendments AD-7, AD-31, AD-36, AD-39, AD-41, AD-42, AD-61 and Operational Envelope › Retention are drafted in Design Notes for the lead's gate.
-- Measured on `ocupilot-a2-ci` before planning: job inheritance, cache independence in the job, own and cross-user `CancelQuery`, the alarm in a job, and the size of a `JOB` argument. The probe classes, tables and principals were removed and checked gone.
+**Implemented.** SQL query's Run in background: `Kernel/State/SqlRun` (owner-keyed run row, reserve under the caps, begin, finish, cancel flag, owner view, reconcile of lost runs, sweep at every reserve and in the retention task) and `Area/Explorer/SqlBackground` (start, poll and cancel routes; the job, AD-42's fourth spawn site, which refuses another `$USERNAME`, repeats the gate, classify, self-protection and query-only checks, and runs through `SqlPort` unchanged; `CancelQuery` only while the job holds its run lock, resent while the begun job runs no statement yet). The page's Background run section polls, cancels and re-attaches. Task 0 kept the instance cap at 5 (Design Notes).
+
+**Files.**
+
+- `src/OcuPilot/Kernel/State/SqlRun.cls`, `Base.cls` (run lock pair), `Kernel/Retention.cls` (sweep step): the store.
+- `src/OcuPilot/Area/Explorer/SqlBackground.cls`, `SqlConsole.cls` (`Read`, `Check`, `ErrorOutcome` extracted), `Api/Router.cls` (three routes), `Api/AtelierError.cls` (five codes): the routes and job.
+- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py`: the `JOB` allow-list and its harness test.
+- Tests: `SqlRunStore`, `SqlBackgroundJob`, `SqlBackgroundRoutes`, fixtures `SqlBackgroundFixture`, `SqlBackgroundProbe`, `SqlBackgroundUnindexed`, `SqlBackgroundDelayed`, `SqlBackgroundUnspawned`, `SqlPortDelayed`; legs in `ClassicPageGate`, `Retention`; rows in `EndpointCoverage`, `DeveloperFloorRoutes`.
+- Client: `sql-query.page.ts`, `sql-query.store.ts`, `sql-query.page.spec.ts`, `core/poll-schedule.ts` (the poll's default timer, kept in `core/` as the turn store's is), `core/strings.ts`, `_components.scss`, the browser spec's AC11 test, `self-protection.test.mjs` rows, `angular.json` and `angular-json.test.mjs` (`maximumWarning` 2704kB); EXPERIENCE.md :597 extended in place.
+
+**Review.** 23 findings (two layers; blind and edge-case layers disabled by the project): 12 patched (3 medium, 9 low: the job's own gate, the cancel retry, the reserve's reconcile, the refused spawn's 503, the client's transient re-poll and refused-poll state, sweep at every reserve, a seam that deleted other owners' runs, Explain plan, the cap and retention pins, a syntax-error leg); 0 deferred; 11 rejected (7 false, 4 low), each with its reason in the triage log. The sweep also found a shipped doc comment spelling a `PROHIBITED.` code (`Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode`), reworded.
+
+**Follow-up review:** false. Three medium entries were patched, each a test added over code that already behaved, with its red observed under the named mutation; no unverified risk can be named. Patched by verdict: medium 3, low 9.
+
+**Verification.** Checker 0 problems, harness OK; `npm test` green (1,782 tools, 2,286 components); `lint-docs` clean; build 2.70 MB under the 2704kB warning; browser specs on the redeployed bundle: SQL query 3/3, structural walk 12/12. Full ObjectScript sweep (441 classes, 3,590 tests, one class at a time) green for every class the story touches; `Prohibited` re-run green (4881) after the comment fix. Reds not caused by this story, all on the 2-day-old throwaway: `Retention.TestAnEntryAges…` (DW-1929 residue); `WireSecurityRead.TestTaskHistory…` (task history 2,889 rows past the 1,000 cut, red since run 2329); `MappingCodeGlobals.TestTheCodeGlobals…` (`^oddPKG("OCUPILOT")` with an `sqlname`, red since run 3907, before this stage); `JournalSettingsRules`, `JournalSettingsWrite`, `JournalWrite`, `JournalWriteGate`, `LicenseServerWrite`, `LicenseWriteGate`, `PathPortInstance` refused at class level because the container predates `OCUPILOT_ALLOW_JOURNAL` and `OCUPILOT_ALLOW_LICENSE_CONFIG`.
+
+**Residual risks.** At the cap of five, one unit of the 8-unit Community key remains for other users (inference, Task 0). `Retention`'s foreign-row guard does not count expired background runs, so its sweep can remove another suite's expired run row. Epic 18's `maximumWarning` (2712kB) meets this one at merge under the re-measure rule; `Router.cls`, `strings.ts`, `_components.scss`, `ClassicPageGate.cls` and `EndpointCoverage.cls` union there.
