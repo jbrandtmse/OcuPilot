@@ -643,23 +643,26 @@ export class DataBrowserGrid {
     return this.tooltip()?.text ?? '';
   }
 
-  /** Make the cell at data column `column` of grid row `id` the active cell and focus the grid. */
+  /** Make the cell at data column `column` of grid row `id` the active cell, scroll it into view and focus the grid. */
   activate(id: string, column = 0): void {
     const row = this.rows().findIndex((entry) => entry.id === id);
     if (row < 0) return;
     this.active.set({ row, column: Math.max(0, column + this.firstData()) });
+    this.revealActive();
     this.focusGrid();
   }
 
   /**
    * Make the cell at data column `column` of grid row `id`, or of the header row for `null`, the
-   * active cell without moving focus: a tab switch restores the tab's cell this way. A row the grid
-   * does not draw changes nothing.
+   * active cell and scroll it into view without moving focus: a tab switch restores the tab's cell
+   * this way. `false`, changing nothing, for a row the grid does not draw.
    */
-  place(id: string | null, column: number): void {
+  place(id: string | null, column: number): boolean {
     const row = id === null ? -1 : this.rows().findIndex((entry) => entry.id === id);
-    if (id !== null && row < 0) return;
+    if (id !== null && row < 0) return false;
     this.active.set({ row, column: Math.min(Math.max(0, column + this.firstData()), Math.max(0, this.columnCount() - 1)) });
+    this.revealActive();
+    return true;
   }
 
   /** Whether a cell editor is open. */
@@ -674,7 +677,7 @@ export class DataBrowserGrid {
    */
   commitInPlace(): boolean {
     if (this.editor() === null) return true;
-    this.commit(null);
+    this.commit(null, false);
     if (this.editor() !== null) return false;
     this.gridElement()?.nativeElement.focus();
     return true;
@@ -862,9 +865,10 @@ export class DataBrowserGrid {
 
   /**
    * Commit the editor: a value the column takes is staged and the editor closes, the active cell moving
-   * by `move` and focus returning to the grid; one it refuses keeps the editor open, marked invalid.
+   * by `move` and focus returning to the grid after the next render unless `deferFocus` is `false`,
+   * when the caller places focus itself; one it refuses keeps the editor open, marked invalid.
    */
-  private commit(move: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | null): void {
+  private commit(move: 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | null, deferFocus = true): void {
     const open = this.editor();
     if (open === null) return;
     const data = open.column - this.firstData();
@@ -883,7 +887,19 @@ export class DataBrowserGrid {
     const position = { row: open.row, column: open.column };
     const next = move === null ? null : moveCell(position, move, false, this.rows().length, this.columnCount(), this.visibleRows());
     this.active.set(next === null || next.row < 0 ? position : next);
-    this.focusGrid();
+    if (deferFocus) this.focusGrid();
+  }
+
+  /** Scroll the active cell into the scrolling frame's view once it is drawn. */
+  private revealActive(): void {
+    afterNextRender(
+      () => {
+        const { row, column } = this.active();
+        const id = row === -1 ? this.headId(column) : this.cellId(row, column);
+        document.getElementById(id)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      },
+      { injector: this.injector }
+    );
   }
 
   /** Move the active cell to `next`, reveal it, and show or hide the tooltip for it. */

@@ -57,7 +57,7 @@ deferred: []
     - a single character key.
 - **Go to row:**
   - Row `n` counts the rows the filters match, in the current sort. It is read at offset `floor((n−1)/size)·size`, which must not exceed the route's `MAX_OFFSET`.
-  - With the total known, `n` runs from 1 to the total. With it unknown, `n` runs from 1 to `MAX_OFFSET + size`.
+  - With the total known, `n` runs from 1 to the total. With it unknown, `n` runs from 1 to `MAX_OFFSET + 1`, the furthest row an allowed offset reaches.
   - The active cell moves to that row, in the column it was in. Staged changes survive the move, since it is a page change.
 - **Tabs** (`MAX_TABS` 8):
   - Each tab holds its own open object, filters and drafts, sort, offset, page size, last answer, refusal, announcement, `StagedChanges`, request and staging generations, saving flag and active cell. A read or save that answers for a tab, shown or not, changes only that tab, and changes nothing once the tab is closed.
@@ -145,7 +145,7 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
 
 - [ ] `ui/src/app/core/data-browser-model.ts`, add-only:
   - `MAX_TABS = 8`.
-  - `goToRow(text, size, total)` → `{offset, index}` or `null`: 1 to 9 digits; `n` from 1 to the total, or to `MAX_OFFSET + size` when it is unknown; offset at most `MAX_OFFSET`.
+  - `goToRow(text, size, total)` → `{offset, index}` or `null`: 1 to 9 digits; `n` from 1 to the total, or to `MAX_OFFSET + 1` when it is unknown; offset at most `MAX_OFFSET`.
   - `rowRangeMax(total, size)`.
   - `pageCsvRows(columns, rows)`: each cell's `cellView` text, NULL empty.
   - `DATA_BROWSER_SHORTCUTS`, with `shortcutFor(event, place)` → the action or `null`:
@@ -199,7 +199,7 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
   - :907 in place: one sentence. Data browser captures its own chords only while focus is inside it, and lists them in its Keyboard shortcuts dialog.
   - One Fixed-strings row after :599.
   - Move every citation the suites hold (`npm run test:tools`).
-- [ ] `ui/tools/strings.test.mjs:584`: unchanged in this story (lead, spec gate): 2,546 stays under 2,600, and whichever of Story 19.16 and Story 18.7 lands second raises the bound at the merge under the standing rule.
+- [ ] `ui/tools/strings.test.mjs:584`: unchanged in this story (lead, spec gate): 2,545 stays under 2,600, and whichever of Story 19.16 and Story 18.7 lands second raises the bound at the merge under the standing rule.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 - [ ] **Client tests:**
   - `ui/tools/data-browser-model.test.mjs`:
@@ -279,9 +279,60 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
 - **AC11 (page keys, DW-2031):** Given the grid, when Alt/Option+PageDown or PageUp is pressed, then the next or previous page is read, as Ctrl/Cmd+PageDown and PageUp still do where the browser passes them. The help dialog lists the Alt/Option form.
 - **AC12 (Integration, Rule 1):** Given two probe tables open in tabs on the real instance, when a value is staged in the first, the second tab is selected and then the first again, and Ctrl/Cmd+S and Proceed are pressed, then SQL query's (Story 19.6) SELECT on that table returns the new value.
 
+### Review Findings
+
+Code review 2026-10-04 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 54 rows, 37 entries: 13 patched, 3 deferred, 21 rejected. No high. The patches grew the bundle to 2,859,344 bytes, so `maximumWarning` moves to 2860kB (DW-1166).
+
+- [x] [Review][Patch] (med) The tab chord pressed in the grid dropped focus to the body with the old grid, so a second press did nothing [ui/src/app/areas/system-explorer/data-browser.page.ts:runShortcut]
+- [x] [Review][Patch] (med) On a return to the route the tab's stored active cell was not drawn, so Delete and Duplicate row acted on a row the grid did not show active; a cell whose row is gone is now let go [data-browser.page.ts:afterTabChange]
+- [x] [Review][Patch] (med) Ctrl/Cmd+S from an editor: the grid's deferred focus landed after the save dialog's, leaving focus behind the modal [data-browser-grid.ts:commitInPlace]
+- [x] [Review][Patch] (med) Go to row and a tab switch never scrolled the active cell into view [data-browser-grid.ts:activate, place]
+- [x] [Review][Patch] (med) Go's continuation acted on whichever tab and dialog were current when its page landed, or on a destroyed page [data-browser.page.ts:onGoToRow]
+- [x] [Review][Patch] (med) A late save answer for a tab still open after a return was unpinned: the namespace-switch test now reaches the closed check first [data-browser.page.spec.ts]
+- [x] [Review][Patch] (med) The export's row numbers were pinned only at offset 0, and a row staged for delete before an export not at all [data-browser-export.page.spec.ts]
+- [x] [Review][Patch] (med) The chords browser spec's `includes('101')` failed on any date or time holding 101 in the exported file name [ui/browser/system-explorer-data-browser-chords.browser-spec.mjs:263]
+- [x] [Review][Patch] (low) A namespace switch with only clean tabs had no assertion that no discard line shows [data-browser.page.spec.ts:392]
+- [x] [Review][Patch] (low) Opening an open table with eight tabs open was unpinned [data-browser-tabs.page.spec.ts:198]
+- [x] [Review][Patch] (low) A Go refused from the Go button left focus on Go and announced nothing [data-browser.page.ts:onGoToRow]
+- [x] [Review][Patch] (low) A chords spec mutation comment named a Delete case the test never presses [system-explorer-data-browser-chords.browser-spec.mjs:242]
+- [x] [Review][Patch] (low) Two test titles read "what any staged" [data-browser.page.spec.ts:36, :1042]
+- [x] [Review][Defer] (low) "<table> closed." after the last tab lands in a newly inserted status region (inference) [data-browser.page.ts:272]. Deferred: DW-2063, wontfix-accepted.
+- [x] [Review][Defer] (low) A negative number is written with the formula guard (`'-12.5`) [core/csv.ts]. Deferred: DW-2061, by-design (csv.ts is reused unedited).
+- [x] [Review][Defer] (low) Ctrl/Cmd letter chords match by key only, so they miss on a non-Latin layout [core/data-browser-model.ts:controlLetter]. Deferred: DW-2062, by-design (the Tasks' matcher).
+
+Rejected:
+
+- false:
+  - Head controls carry no chord: EXPERIENCE.md :916 says Data browser lists its chords in its dialog.
+  - Chords inside a dialog are not prevented: the spec makes them inert, with nothing prevented.
+  - The chords spec is untracked: the lead commits QA's file with the story.
+- low, spec-literal:
+  - "No row <n> here." is ungrouped (the matrix reads "No row 5000 here.").
+  - Delete on a tab ignores Backspace.
+  - The scope note's "no editor" wording.
+  - A grouped "1,234" row number is refused (the spec allows 1 to 9 digits).
+  - The grid's `activeRow` output is unconsumed (the Tasks keep it).
+  - No tab shows no Download CSV, rather than an `aria-disabled` one.
+  - The structural walk runs at two tabs only (the AC; DW-1978 holds the strip).
+- low, not worth the change:
+  - "No row <n> here." on a page cut short by the character bound (a fallback read departs from the offset formula).
+  - Cancel during an in-flight Go still lets its read land.
+  - A tree click at the cap clears a refused Page draft.
+  - Auto-repeat of a held chord.
+  - A newer read superseding Go's read during a save.
+  - Closing a tab during its save (the shape 19.8 accepted for leaving the route).
+  - Redundant assertions: Save changes (0) after a reopen, dirty after destroy, model :331.
+  - `rowRangeMax`'s `?? MAX_OFFSET + size` and `goToRow`'s offset guard never bind.
+  - EXPERIENCE.md :671, Go to row's unavailable state, and the dialog's own row.
+  - The duplicated mount harness.
+- spec edits, for the lead:
+  - Boundaries :60 and Tasks :148 say `MAX_OFFSET + size`. The build's "1 to 100,000,000" is right: every row past it reads at an offset past `MAX_OFFSET`.
+  - Design Notes' "26 literals" and 2,546 against 25 keys and 2,545.
+
 ## Spec Change Log
 
-- 2026-10-04, lead (spec gate): the spine carries the drafted AD-36 and AD-39 clarifications (a CSV of the page built in the browser); EXPERIENCE.md :159, :173, :674, :684 and :907 in place are approved (:173 unioned by hand with Epic 18's at merge); the bundle re-base is pre-authorized under DW-1166; the Fixed-strings bound is not raised here (2,546 of 2,600), the second to land raises it; opening a table opens a tab, replacing 19.8's ask on opening, accepted.
+- 2026-10-04, lead (after code review): with the total unknown, go to row runs to `MAX_OFFSET + 1` (Boundaries and Tasks), as built; the string count is 25 literals, 2,545 of 2,600.
+- 2026-10-04, lead (spec gate): the spine carries the drafted AD-36 and AD-39 clarifications (a CSV of the page built in the browser); EXPERIENCE.md :159, :173, :674, :684 and :907 in place are approved (:173 unioned by hand with Epic 18's at merge); the bundle re-base is pre-authorized under DW-1166; the Fixed-strings bound is not raised here (2,545 of 2,600), the second to land raises it; opening a table opens a tab, replacing 19.8's ask on opening, accepted.
 
 ## Review Triage Log
 
@@ -363,7 +414,7 @@ Not bound:
 - **Lifted:** reselecting an open table's tab, and the right-then-left neighbour on close.
 - **Not carried:** global `document` key handling; dialogs that leave chords live behind them; `announce` without clearing; the server-side all-rows export.
 
-**Strings.** 26 literals in one Fixed-strings row after :599:
+**Strings.** 25 literals in one Fixed-strings row after :599:
 
 - **Labels:** "Open tables", "Close tab", "Go to row", "Row number", "Go", "Keyboard shortcuts", "Save changes", "Next or previous page", "Next or previous tab".
 - **Lines:**
@@ -373,7 +424,7 @@ Not bound:
   - "These work while focus is in Data browser and no dialog or editor is open."
 - **Keys:** "Ctrl/Cmd+/", "Ctrl/Cmd+S", "Ctrl/Cmd+G", "Ctrl/Cmd+E", "Alt/Option+Shift+N", "Alt/Option+Shift+D", "Alt/Option+Shift+Delete or Backspace", "Alt/Option+PageDown or PageUp", "Alt/Option+Shift+PageDown or PageUp", "Alt/Option+Shift+W, or Delete on a tab".
 - **Reused:** "Download CSV", "Add row", "Duplicate row", "Delete row", "<n> changes waiting to be saved.", "Leave without saving?", "Confirm", "Cancel", "Close", and "Changes were discarded because the namespace changed.".
-- **Budget:** 2,520 + 26 = 2,546 on this branch. With Story 18.7's 58 in flight, the union reaches about 2,604, above 2,600. Raising the bound to 2,700 is recommended; it is a contended edit, so the lead decides (or the second to land raises it).
+- **Budget:** 2,520 + 25 = 2,545 on this branch. With Story 18.7's 58 in flight, the union reaches about 2,603, above 2,600. Raising the bound to 2,700 is recommended; it is a contended edit, so the lead decides (or the second to land raises it).
 
 **Spine amendments (draft, for the lead's gate; clarifications, apply-and-report):**
 
@@ -451,6 +502,24 @@ Build and deploy before any browser result: `cd ui && npm run build && docker cp
 - mutation: AC10, a tab's name drops the staged suffix -> the tabs spec's strip case and staged-close case red.
 - mutation: AC11, the page's handler drops the Alt/Option page row -> the tabs spec's Alt/Option chords case red.
 - mutation: AC12, `DataBrowserState.save` saves the tab opened last rather than the selected one, rebuilt and copied in -> the tabs browser spec's AC12 leg red.
+- (QA) `ui/browser/system-explorer-data-browser-chords.browser-spec.mjs`, 4/4 on `ocupilot-a2-ci` (AC1, AC2, AC3): the CSV's bytes (BOM, CRLF, the `'` guard on `=`, `+`, `-`, `@`, quoting, NULL empty, a cut cell, no staged value) with no http request under interception; the chords from an editor, a text field, the Rows per page select and the tab strip; reserved chords not prevented.
+- mutation: AC1, `csvField` drops the formula guard -> chords spec "the CSV guards a formula cell..." red.
+- mutation: AC3, `shortcutFor` drops the editor exclusion -> chords spec "in an editor only Ctrl/Cmd+S acts..." red.
+- mutation: AC3, `shortcutPlace` counts a select as a text field -> chords spec "from the tab strip, the Rows per page select and a filter field..." red.
+- mutation: AC3, the export row also binds Ctrl+T -> chords spec "a browser-reserved, zoom, reload or tab chord..." red. Each was applied to a rebuilt, redeployed bundle, reverted, rebuilt and redeployed, and the four specs read green; the sources were `cmp`-identical after the revert.
+- (CR) Each new pinning test went red against the code before its patch, or against the mutation named, reverted `cmp`-identical. After the patches: data-browser component specs 83/83; `npm run test:tools` 1,814/1,814; and on `ocupilot-a2-ci`, bundle rebuilt and copied in, each run alone: tabs 4/4, chords 4/4, edit 3/3, data browser 2/2.
+- mutation: AC3, `commitInPlace` leaves the grid's focus to after the next render -> tabs spec "Ctrl/Cmd+S in an editor commits it..." red (focus behind the save dialog).
+- mutation: AC5:
+  - `activate` scrolls nothing into view -> export spec "reads the page holding row n..." red;
+  - a refused Go leaves focus on Go -> export spec "a number outside 1 to the total..." red.
+- mutation: AC6:
+  - the page restores no tab's active cell on mount -> tabs spec "on a return to the route..." red;
+  - the tab chord leaves focus where it was -> tabs spec "each Alt/Option chord..." red;
+  - `onGoToRow` ignores a change of tab -> export spec "a Go whose page lands after..." red;
+  - `openObject` checks the cap before an open table -> tabs spec cap case red;
+  - `DataTab.save` drops its staging-generation check -> page spec "a save answering after the route was left..." red.
+- mutation: AC1, `exportPage` numbers rows from 1, or leaves out a row staged for delete -> export spec "a page past the first names its own rows..." red, each alone.
+- mutation: AC9, `forget` counts a clean tab as discarded -> page spec "a namespace switch closes every tab, drops an answer..." red.
 
 ## Auto Run Result
 

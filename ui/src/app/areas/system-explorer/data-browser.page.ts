@@ -95,7 +95,8 @@ function tabIdOf(target: EventTarget | null): string | null {
  * Material's tab nav bar named "Open tables" above the head, and is selected; one already open is
  * selected and reads nothing; past `MAX_TABS` nothing opens and the status line says so. Each tab
  * keeps its own filters, sort, page, page size, staged changes and active cell, restored through the
- * grid's `place` when it is selected again, and its grid is its own. A tab is named by its
+ * grid's `place` when it is selected again or the page opens again, and its grid is its own; a tab
+ * chord pressed in the grid moves focus to the new tab's grid. A tab is named by its
  * `<schema>.<table>`, plus ", <n> changes waiting to be saved." while it stages rows, which a dot
  * shows. Its pointer-only close mark, Delete on the focused tab, Alt/Option+Shift+W and Close tab
  * close it, asking "Leave without saving?" through `FormDirty` first when it stages rows; focus then
@@ -373,6 +374,9 @@ export class DataBrowserPage {
   /** Whether a Go is on its way, so a second press sends nothing. */
   private rowBusy = false;
 
+  /** Whether the page has been destroyed, so an answer arriving after it acts on nothing. */
+  private destroyed = false;
+
   constructor() {
     this.screen = this.navigation.screenForUrl(this.router.url);
     this.state = heldFor(this.screen === null ? null : this.stores.for(this.screen.descriptor, this.screen.refreshRates));
@@ -402,6 +406,7 @@ export class DataBrowserPage {
     // Leaving the route asked first (the form-page guard), so every tab's staged rows go with the page;
     // the tabs stay for a return.
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       this.host.removeEventListener('keydown', onKeydown, true);
       stop();
       stopDirty();
@@ -409,6 +414,8 @@ export class DataBrowserPage {
       this.state.discardAll(this.deps);
       this.formDirty.setDirty(false);
     });
+    // A return to the route draws the selected tab's active cell again.
+    this.afterTabChange();
   }
 
   protected get schemas(): readonly TreeSchema[] | null {
@@ -834,18 +841,22 @@ export class DataBrowserPage {
   }
 
   /**
-   * Go: a number outside the range keeps the dialog open, `aria-invalid`; otherwise the page holding
-   * it is read, the dialog closes, and the active cell moves to that row in the column it was in, with
-   * focus on the grid.
+   * Go: a number outside the range keeps the dialog open, `aria-invalid`, with focus on the field;
+   * otherwise the page holding it is read, the dialog closes, and the active cell moves to that row in
+   * the column it was in, with focus on the grid. An answer arriving after another tab was selected,
+   * or after the page was left, changes nothing here.
    */
   protected async onGoToRow(): Promise<void> {
     if (this.rowBusy) return;
     this.rowBusy = true;
+    const tab = this.state.activeTab();
     const column = this.state.activeCell()?.column ?? 0;
     const jump = await this.state.goToRowNumber(this.deps, this.rowDraft());
     this.rowBusy = false;
+    if (this.destroyed || this.state.activeTab() !== tab) return;
     if (jump !== null && 'problem' in jump) {
       this.rowRefusedValue.set(true);
+      this.host.querySelector<HTMLElement>('[data-ocu-data="row-number"]')?.focus();
       return;
     }
     if (!this.rowShown()) return;
@@ -982,9 +993,12 @@ export class DataBrowserPage {
         if (shortcutStep(event) > 0) this.onNext();
         else this.onPrevious();
         return;
-      case 'tab':
-        if (this.state.nextTab(shortcutStep(event))) this.afterTabChange();
+      case 'tab': {
+        // The old tab's grid leaves with the switch, so focus it held moves to the new tab's grid.
+        const fromGrid = event.target instanceof Element && event.target.closest('app-data-browser-grid') !== null;
+        if (this.state.nextTab(shortcutStep(event))) this.afterTabChange(fromGrid);
         return;
+      }
       case 'closeTab': {
         const id = event.key === 'Delete' ? tabIdOf(event.target) : (this.state.activeTab()?.id ?? null);
         if (id !== null) void this.closeTab(id, this.focusInStrip() ? 'strip' : 'other');
@@ -1033,13 +1047,19 @@ export class DataBrowserPage {
     return strip !== null && strip.contains(document.activeElement);
   }
 
-  /** After another tab is selected: the Page field starts over and the tab's own active cell returns. */
-  private afterTabChange(): void {
+  /**
+   * After another tab is selected, or the page opens again: the Page field starts over and the
+   * selected tab's own active cell is drawn again in its grid, or let go when its row is no longer
+   * drawn, so the row actions never act on a row the grid does not show active; with `focusGrid`,
+   * focus moves to that grid.
+   */
+  private afterTabChange(focusGrid = false): void {
     this.resetPageField();
-    const cell = this.state.activeCell();
     afterNextRender(
       () => {
-        if (cell !== null) this.grid()?.place(cell.row, cell.column);
+        const cell = this.state.activeCell();
+        if (cell !== null && this.grid()?.place(cell.row, cell.column) === false) this.state.setActiveCell({ row: null, column: cell.column });
+        if (focusGrid) this.host.querySelector<HTMLElement>('[data-ocu-data="grid"]')?.focus();
       },
       { injector: this.injector }
     );

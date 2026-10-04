@@ -33,7 +33,7 @@ import { DATA_PATH } from './data-browser.store';
  * staged rows surviving paging; `FormDirty`; another table opening in its own tab beside staged rows,
  * and the leave dialog when that tab closes (Story 19.16); a save's answer arriving after its staging
  * was dropped; leaving the route dropping what is staged; a refused save; and a namespace switch
- * closing every tab and discarding what any staged.
+ * closing every tab and discarding what any tab staged.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlData') as ScreenDeclaration;
@@ -405,6 +405,7 @@ describe('Data browser', () => {
     expect(all(mounted.host, 'tab')).toHaveLength(0);
     expect(el(mounted.host, 'heading')).toBeNull();
     expect(el(mounted.host, 'empty').textContent?.trim()).toBe(STRINGS.explorerSqlDataPick);
+    expect(el(mounted.host, 'status').textContent?.trim(), 'no tab held a staged row, so no discard line').toBe('');
   });
 
   it('the tree waits for the scope to resolve before it reads', async () => {
@@ -865,8 +866,8 @@ describe('Data browser', () => {
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.formSaved]);
   });
 
-  // AC11. Mutation (Rule 19): `save` applies an answer whose staging was dropped meanwhile -> the page is
-  // read again and its status line claims the old save, and this goes red.
+  // AC11. The namespace switch closes the saving tab, so its late answer reaches nothing on the tab
+  // opened since.
   it('a save answering after its staging was dropped applies nothing to what is staged now', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
@@ -889,6 +890,40 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'status').textContent).not.toContain('Saved 1 of 1');
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.tableChangedTag]);
+  });
+
+  // AC6, AC11. Mutation (Rule 19): `save` drops its staging-generation check -> the tab still open after
+  // the return takes the old answer, reads the page again and its status line claims the old save, and
+  // this goes red.
+  it('a save answering after the route was left and opened again applies nothing to the same tab\'s rows staged since', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'old');
+    mounted.holdSend = true;
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    const leaving = mounted.formDirty.requestLeave();
+    await settle(mounted.fixture);
+    mounted.formDirty.answer(true);
+    expect(await leaving).toBe(true);
+    mounted.fixture.destroy();
+    const again = TestBed.createComponent(DataBrowserPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    const host = again.nativeElement as HTMLElement;
+    const back: Mounted = { ...mounted, fixture: again, host };
+    expect(el(host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    await edit(back, 0, 1, 'new');
+    expect(el(host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    const posts = dataPosts(mounted).length;
+    for (const release of mounted.heldSends.splice(0)) release();
+    await settle(again);
+    expect(dataPosts(mounted)).toHaveLength(posts);
+    expect(el(host, 'status').textContent).not.toContain('Saved 1 of 1');
+    expect(el(host, 'save').textContent?.trim()).toBe('Save changes (1)');
   });
 
   // AC11. Mutation (Rule 19): the page keeps what is staged when it is left -> the page opened again
@@ -1004,7 +1039,7 @@ describe('Data browser', () => {
 
   // AC11. Mutation (Rule 19): the store's `forget` drops nothing -> the status line never says why the
   // rows went and this goes red.
-  it('a namespace switch closes every tab, discards what any staged, and says so once', async () => {
+  it('a namespace switch closes every tab, discards what any tab staged, and says so once', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
     await expandAndOpen(mounted);

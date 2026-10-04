@@ -318,3 +318,10 @@
 2026-10-04T20:34:49Z	Story 19.8	ci_attempt	run=37228982542 attempt=1 result=failure job=browser_shard_1/3 spec=system-explorer-transfer(AC1) error=DOM.getAttributes_node_not_found(structural_walk) cause=flake_not_19.8 ledger=DW-2058(routed_range-end-cleanup) action=rerun_failed(attempt2)
 2026-10-04T21:09:27Z	Story 19.8	ci_resolved	story=19.8 run=37228982542 attempt=2 head=f3c01129 result=success (attempt1_flake_DW-2058)
 2026-10-04T21:09:27Z	Story 19.16	stage_spawned	stage=implement spawn_at=2026-10-04T21:09:27Z model=opus agent_name=19-16-data-browser-export-implement-1 cycle_iteration=1 head=862e257b throwaway=ocupilot-a2-ci ci_prev_story=19.8_success(rule28)
+2026-10-04T22:50:52Z	Story 19.16	stage_result	stage=implement agent=19-16-data-browser-export-implement-1 status=done head=5f5df980 files=17(client_only) review=2_layers_27_findings(13_patched,14_rejected/false,0_deferred) followup_review_recommended=false sweep=waived(no_src) bundle=2859kB strings=2545/2600 duration_min=100
+2026-10-04T22:50:52Z	Story 19.16	gate	stage=ad-gate result=pass spec_status=done deviations=go-to-row_range_line(MAX_OFFSET),test_harness_file,OcuProbe198(spec)
+2026-10-04T22:50:52Z	Story 19.16	stage_spawned	stage=qa spawn_at=2026-10-04T22:50:52Z model=sonnet agent_name=19-16-data-browser-export-qa-1 cycle_iteration=1
+2026-10-04T22:59:04Z	Story 19.16	stage_result	stage=qa agent=19-16-data-browser-export-qa-1 tests_added=system-explorer-data-browser-chords.browser-spec.mjs(4) mutations_demonstrated=4
+2026-10-04T22:59:04Z	Story 19.16	stage_spawned	stage=code-review spawn_at=2026-10-04T22:59:04Z model=opus agent_name=19-16-data-browser-export-code-review-1 cycle_iteration=1 review_tier=full-opus
+2026-10-04T23:42:33Z	Story 19.16	stage_result	stage=code-review agent=19-16-data-browser-export-code-review-1 status=done entries=high0_med8_low26 rows=54 patched=13 ledgered=DW-2061,DW-2062(by-design),DW-2063(wontfix-accepted) rejected=21 unresolved_high_med=0 bundle=2860kB
+2026-10-04T23:42:33Z	Story 19.16	adjudication	DW-2061_redispositioned_decision-pending(product-wide_csv_guard) DW-2062,DW-2063_confirmed spec_corrected(MAX_OFFSET+1,25_literals)

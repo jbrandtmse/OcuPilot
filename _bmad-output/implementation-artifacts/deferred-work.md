@@ -9658,3 +9658,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37228982542 (browser shard 1/3, head f3c01129) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: structural-walk.mjs fieldNames :526 reads each [data-ocu-walk-field] node by id after one querySelectorAll; the transfer spec :222 walks right after typing into the path picker, whose listing re-renders the dialog's fields (inference); 19.8 changes neither file
 - 2026-10-04T20:34:37Z status=routed owner=range-end-cleanup by=runner note=first sighting; the fix is fieldNames tolerating a node replaced mid-walk (re-query once) or the spec waiting for the picker's listing before the walk
+
+### DW-2061: Data browser's Download CSV writes a negative number with the formula guard ('-12.5), which a spreadsheet reads as text
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: pageCsvRows hands cellView text to core/csv.ts csvText, whose leading-character guard includes '-' (Story 16.23's rule); no export test writes a negative number. The spec reuses core/csv.ts unedited and EXPERIENCE.md's CSV rule prefixes a leading -.
+- 2026-10-04T23:39:06Z status=by-design owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=spec-bound: core/csv.ts reused unedited, EXPERIENCE.md CSV rule prefixes '-'; reopens only by spec amendment
+- 2026-10-04T23:42:23Z status=decision-pending owner=burndown by=adjudication note=product call for the decision sheet, since core/csv.ts's guard is product-wide (Story 16.23): options (a) keep the guard on every cell (as now); (b) exempt a cell the grid formats as a number from the formula guard in Data browser's export only (recommended: a numeric cell cannot start a formula); (c) exempt numeric cells in core/csv.ts for every export
+
+### DW-2062: Data browser's Ctrl/Cmd letter chords match by key only, so on a non-Latin layout Ctrl/Cmd+S, G and E do nothing and the browser's own Save page opens
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: controlLetter compares event.key alone, while optionShiftLetter falls back to event.code when the key is no ASCII letter; a Cyrillic layout reports key 'ы' with code KeyS for Ctrl+S (inference on Chromium's accelerator reading). The spec's Tasks fix the matcher: a letter by key, or under Alt/Option by code.
+- 2026-10-04T23:39:06Z status=by-design owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=spec-bound: Tasks match a Ctrl/Cmd letter by key only; reopen by amending it to optionShiftLetter's code fallback
+
+### DW-2063: Data browser's '<table> closed.' after the last tab closes is written into a role=status region inserted with its text, which screen readers commonly do not announce
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Closing the last tab swaps the page's @if (open) branch for the @else branch, whose own <p role=status> is created holding the line (inference on screen-reader behavior, as DW-1372 and DW-154); Story 19.8's namespace-discard line has the same shape. The fix moves one status element across both branches and the tab panel.
+- 2026-10-04T23:39:06Z status=wontfix-accepted owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=reopen_if=an NVDA or VoiceOver check on Chrome closing the last open tab does not speak the closed line

@@ -17,6 +17,7 @@ import {
   press,
   rowsOf,
   settle,
+  tabFor,
   texts,
   unmountAll,
   type Mounted,
@@ -123,6 +124,25 @@ describe('Data browser Download CSV', () => {
     expect(mounted.requests).toHaveLength(requests);
   });
 
+  // AC1. Mutation (Rule 19): `exportPage` numbers the rows from 1 whatever the page -> a page at offset
+  // 1,000 announces "Saved rows 1-100" and this goes red; it leaves out a row staged for delete -> the
+  // file holds 99 rows and this goes red.
+  it('a page past the first names its own rows, and a row staged for delete is written as read', async () => {
+    const mounted = await mountDataBrowser();
+    mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('r', 100, 1001), { offset: 1000, more: true, total: 2500 }));
+    await openFromTree(mounted, 'Edit');
+    await click(mounted, cellAt(mounted.host, 1, 2));
+    await click(mounted, el(mounted.host, 'delete-row'));
+    expect(texts(mounted.host, 'status-cell')[1]).toBe(STRINGS.explorerSqlDataDeleted);
+    const files = await capture(() => click(mounted, el(mounted.host, 'export')));
+    expect(files).toHaveLength(1);
+    const lines = (await files[0].blob.text()).split('\r\n');
+    expect(lines).toHaveLength(102);
+    expect(lines[1]).toBe(`r1001,name1001,1001,${STRINGS.tableStatusYes},memo`);
+    expect(lines[2]).toBe(`r1002,name1002,1002,${STRINGS.tableStatusYes},memo`);
+    expect(status(mounted).startsWith(`Saved rows 1,001\u20131,100 to ${files[0].download}, as the instance read them.`)).toBe(true);
+  });
+
   // AC1.
   it('with no tab open or no row to write -- a page of none, a stopped or a refused page, or a read on its way -- Download CSV is unavailable, and Ctrl/Cmd+E is kept from the browser and saves nothing', async () => {
     const mounted = await mountDataBrowser();
@@ -160,7 +180,8 @@ describe('Data browser Download CSV', () => {
 
 describe('Data browser Go to row', () => {
   // AC5. Mutation (Rule 19): `goToRow` reads offset `n * size` -> row 237 posts offset 23,700 and this
-  // goes red (the model's offset case reddens too).
+  // goes red (the model's offset case reddens too); `activate` scrolls nothing into view -> the row 237
+  // cell is never revealed and this goes red.
   it('reads the page holding row n and makes it active in the column the cell was in, focus on the grid, staged rows kept', async () => {
     const mounted = await mountDataBrowser();
     mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('e', 100), { more: true, total: 340 }));
@@ -173,7 +194,15 @@ describe('Data browser Go to row', () => {
     expect(el(mounted.host, 'row-number').getAttribute('aria-describedby')).toBe('ocu-data-row-range');
     mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('e', 100, 201), { offset: 200, more: true, total: 340 }));
     await typeRow(mounted, '237');
-    await click(mounted, el(mounted.host, 'go'));
+    const revealed: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element): void {
+      revealed.push(this.id);
+    };
+    await click(mounted, el(mounted.host, 'go')).finally(() => {
+      Element.prototype.scrollIntoView = original;
+    });
+    expect(revealed, 'the active cell is scrolled into view').toContain('ocu-data-cell-r36-c3');
     expect(dataPosts(mounted).at(-1)?.['offset']).toBe(200);
     expect(el(mounted.host, 'row-number')).toBeNull();
     const grid = el(mounted.host, 'grid');
@@ -184,7 +213,7 @@ describe('Data browser Go to row', () => {
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
   });
 
-  // AC5.
+  // AC5. Mutation (Rule 19): a refused Go leaves focus where it was -> focus stays on Go and this goes red.
   it('a number outside 1 to the total keeps the dialog open with the field aria-invalid, and reads nothing', async () => {
     const mounted = await mountDataBrowser();
     mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('e', 100), { more: true, total: 340 }));
@@ -202,6 +231,11 @@ describe('Data browser Go to row', () => {
       expect(el(mounted.host, 'row-number').getAttribute('aria-invalid'), text).toBe('true');
       expect(el(mounted.host, 'row-range').textContent?.trim()).toBe('Enter a row from 1 to 340.');
     }
+    await typeRow(mounted, '341');
+    el(mounted.host, 'go').focus();
+    await click(mounted, el(mounted.host, 'go'));
+    expect(el(mounted.host, 'row-number').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement, 'Go refused moves focus to the field it refused').toBe(el(mounted.host, 'row-number'));
     expect(dataPosts(mounted)).toHaveLength(posts);
     await click(mounted, [...(mounted.host.querySelector('[role="dialog"]') as HTMLElement).querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
     expect(el(mounted.host, 'row-number')).toBeNull();
@@ -253,6 +287,33 @@ describe('Data browser Go to row', () => {
     expect(dataPosts(mounted).at(-1)?.['offset']).toBe(4900);
     expect(el(mounted.host, 'row-number')).toBeNull();
     expect(status(mounted).startsWith('No row 5000 here.')).toBe(true);
+  });
+
+  // AC6. Mutation (Rule 19): `onGoToRow` acts on whichever tab is selected when its page lands -> the
+  // other tab's own Go to row dialog closes under it, and this goes red.
+  it('a Go whose page lands after its dialog closed and another tab was selected changes nothing in that tab', async () => {
+    const mounted = await mountDataBrowser();
+    mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('e', 100), { more: true, total: 340 }));
+    mounted.pages.set('Pair', pageAnswer('Pair', rowsOf('p', 5)));
+    await openFromTree(mounted, 'Edit');
+    await openFromTree(mounted, 'Pair');
+    await click(mounted, cellAt(mounted.host, 1, 2));
+    const pairCell = el(mounted.host, 'grid').getAttribute('aria-activedescendant');
+    await click(mounted, tabFor(mounted.host, `${SCHEMA}.Edit`));
+    await click(mounted, el(mounted.host, 'go-to-row'));
+    await typeRow(mounted, '237');
+    mounted.hold = true;
+    await click(mounted, el(mounted.host, 'go'));
+    expect(mounted.held).toHaveLength(1);
+    await click(mounted, [...(mounted.host.querySelector('[role="dialog"]') as HTMLElement).querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
+    await click(mounted, tabFor(mounted.host, `${SCHEMA}.Pair`));
+    await click(mounted, el(mounted.host, 'go-to-row'));
+    expect(el(mounted.host, 'row-number')).not.toBeNull();
+    mounted.held[0].answer(pageAnswer('Edit', rowsOf('e', 100, 201), { offset: 200, more: true, total: 340 }));
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'row-number'), "Pair's own Go to row dialog stays open").not.toBeNull();
+    expect(el(mounted.host, 'heading').textContent?.trim()).toBe(`${SCHEMA}.Pair`);
+    expect(el(mounted.host, 'grid').getAttribute('aria-activedescendant')).toBe(pairCell);
   });
 });
 

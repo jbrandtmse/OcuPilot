@@ -194,7 +194,7 @@ describe('Data browser tabs', () => {
   });
 
   // AC7. Mutation (Rule 19): `openObject` skips the `MAX_TABS` check -> a ninth tab opens and this goes
-  // red.
+  // red; it checks the cap before an open table -> an open table is refused at the cap and this goes red.
   it(`at most ${MAX_TABS} tables are open: a ninth opens nothing and the status line says so`, async () => {
     const names = Array.from({ length: MAX_TABS + 1 }, (_, at) => `T${at + 1}`);
     const mounted = await mountDataBrowser({ tables: names });
@@ -206,6 +206,9 @@ describe('Data browser tabs', () => {
     expect(dataPosts(mounted)).toHaveLength(posts);
     expect(status(mounted).startsWith('At most 8 tables can be open; close one first.')).toBe(true);
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe(`${SCHEMA}.T${MAX_TABS}`);
+    await openFromTree(mounted, 'T1');
+    expect(tabFor(mounted.host, `${SCHEMA}.T1`).getAttribute('aria-selected')).toBe('true');
+    expect(dataPosts(mounted)).toHaveLength(posts);
   });
 
   // AC8.
@@ -367,6 +370,41 @@ describe('Data browser tabs', () => {
     expect(el(again.host, 'save').textContent?.trim()).toBe('Save changes (0)');
   });
 
+  // AC6. Mutation (Rule 19): the page restores no tab's active cell when it mounts -> the grid opens on
+  // its header while Delete row still acts on the row left active, and this goes red.
+  it('on a return to the route the selected tab\'s active cell is drawn and revealed again, and one whose row is gone leaves the row actions unavailable', async () => {
+    const mounted = await mountDataBrowser();
+    await openEdit(mounted);
+    await click(mounted, cellAt(mounted.host, 2, 2));
+    expect(grid(mounted).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r2-c2');
+    mounted.fixture.destroy();
+    const revealed: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element): void {
+      revealed.push(this.id);
+    };
+    const again = await mountAgain().finally(() => {
+      Element.prototype.scrollIntoView = original;
+    });
+    expect(el(again.host, 'grid').getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r2-c2');
+    expect(revealed).toContain('ocu-data-cell-r2-c2');
+    expect(el(again.host, 'delete-row').getAttribute('aria-disabled')).toBe('false');
+
+    el(again.host, 'add-row').click();
+    await settle(again.fixture);
+    cellAt(again.host, 0, 2).click();
+    await settle(again.fixture);
+    expect(el(again.host, 'grid').getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c2');
+    const leaving = mounted.formDirty.requestLeave();
+    await settle(again.fixture);
+    mounted.formDirty.answer(true);
+    expect(await leaving).toBe(true);
+    again.fixture.destroy();
+    const third = await mountAgain();
+    expect(el(third.host, 'delete-row').getAttribute('aria-disabled')).toBe('true');
+    expect(el(third.host, 'duplicate-row').getAttribute('aria-disabled')).toBe('true');
+  });
+
   // AC9.
   it('a namespace switch closes every tab and says once that staged rows were discarded', async () => {
     const mounted = await mountDataBrowser();
@@ -398,7 +436,8 @@ describe('Data browser shortcuts', () => {
   });
 
   // AC3. Mutation (Rule 19): Ctrl/Cmd+S in an editor skips the editor's commit -> nothing is staged, no
-  // dialog opens, and this goes red.
+  // dialog opens, and this goes red; `commitInPlace` leaves the grid's focus to after the next render ->
+  // the grid takes focus back from the save dialog and this goes red.
   it('Ctrl/Cmd+S in an editor commits it and opens the save dialog; a refused value keeps the editor open and opens nothing', async () => {
     const mounted = await mountDataBrowser();
     await openEdit(mounted);
@@ -412,6 +451,7 @@ describe('Data browser shortcuts', () => {
     expect(el(mounted.host, 'editor')).toBeNull();
     expect(texts(mounted.host, 'cell')[1]).toBe('typed');
     expect(mounted.host.querySelector('app-warning-dialog')?.textContent).toContain('1 rows change, 0 are added and 0 are deleted');
+    expect((mounted.host.querySelector('app-warning-dialog [role="dialog"]') as HTMLElement).contains(document.activeElement), 'focus is in the save dialog, not on the grid behind it').toBe(true);
     await click(mounted, [...(mounted.host.querySelector('app-warning-dialog') as HTMLElement).querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
 
     await click(mounted, cellAt(mounted.host, 1, 3));
@@ -427,7 +467,8 @@ describe('Data browser shortcuts', () => {
 
   // AC3, AC11. Mutation (Rule 19): drop the Alt/Option page row's handling from the page -> Alt+PageDown
   // posts no page and this goes red; count a select as a text field -> Alt/Option+Shift+N on Rows per
-  // page adds nothing and this goes red.
+  // page adds nothing and this goes red; the tab chord leaves focus where it was -> focus falls to the
+  // body with the old grid and this goes red.
   it('each Alt/Option chord does what its control does: add, duplicate and delete a row, change page, change tab; an unavailable one is still kept from the browser', async () => {
     const mounted = await mountDataBrowser();
     mounted.pages.set('Edit', pageAnswer('Edit', rowsOf('e', 100), { more: true, total: 250 }));
@@ -464,9 +505,11 @@ describe('Data browser shortcuts', () => {
 
     await openFromTree(mounted, 'Pair');
     await openFromTree(mounted, 'EditView');
+    grid(mounted).focus();
     await press(mounted, grid(mounted), { key: 'PageDown', altKey: true, shiftKey: true });
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe(EDIT);
-    await press(mounted, grid(mounted), { key: 'PageUp', altKey: true, shiftKey: true });
+    expect(document.activeElement, 'focus moves to the selected tab\'s grid').toBe(grid(mounted));
+    await press(mounted, document.activeElement as HTMLElement, { key: 'PageUp', altKey: true, shiftKey: true });
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe(`${SCHEMA}.EditView`);
   });
 
