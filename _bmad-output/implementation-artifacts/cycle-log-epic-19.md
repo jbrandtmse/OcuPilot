@@ -315,3 +315,6 @@
 2026-10-04T19:46:27Z	Story 19.16	stage_spawned	stage=plan spawn_at=2026-10-04T19:46:27Z model=opus agent_name=19-16-data-browser-export-plan-1 cycle_iteration=1 inbox=none ci_prev=19.8_run_37228982542_pending(rule28_plan_does_not_wait)
 2026-10-04T20:10:17Z	Story 19.16	stage_result	stage=plan agent=19-16-data-browser-export-plan-1 status=ready-for-dev duration_min=22 client_only=true
 2026-10-04T20:10:17Z	Story 19.16	spec_validated	spine=tier1_AD-36,AD-39(csv_in_browser) contended=EXPERIENCE_173_in_place(lead_approved,union_at_merge) strings_bound=unchanged(2546/2600;second_to_land_raises) bundle=rebase_DW-1166 behavior=open_table_opens_tab(accepted) integration_ac=AC12 owned_ledger=none
+2026-10-04T20:34:49Z	Story 19.8	ci_attempt	run=37228982542 attempt=1 result=failure job=browser_shard_1/3 spec=system-explorer-transfer(AC1) error=DOM.getAttributes_node_not_found(structural_walk) cause=flake_not_19.8 ledger=DW-2058(routed_range-end-cleanup) action=rerun_failed(attempt2)
+2026-10-04T21:09:27Z	Story 19.8	ci_resolved	story=19.8 run=37228982542 attempt=2 head=f3c01129 result=success (attempt1_flake_DW-2058)
+2026-10-04T21:09:27Z	Story 19.16	stage_spawned	stage=implement spawn_at=2026-10-04T21:09:27Z model=opus agent_name=19-16-data-browser-export-implement-1 cycle_iteration=1 head=862e257b throwaway=ocupilot-a2-ci ci_prev_story=19.8_success(rule28)
