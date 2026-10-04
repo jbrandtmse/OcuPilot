@@ -21,6 +21,12 @@
 /// <p><b>A statement's text, values, rows, SQL error text and plan reach the caller's answer and
 /// nothing else</b> (AD-39's sixth exception): no log line here carries any of them. A prepare or
 /// execute error is the <code>error</code> outcome, never a fault.</p>
+/// <p><b>The data browser reads a table's or a view's rows here too</b> (AD-61's Story 19.7 case):
+/// <method>BrowsePlan</method> resolves the request through the caller's own privilege-filtered
+/// catalog and composes the page and count statements (<method>Composed</method>);
+/// <method>BrowseRun</method> runs them. Both pass the gate first, prepare with privilege checks on
+/// through <method>Executed</method> under one alarm budget, bind every value, and never pass through
+/// <method>Classify</method>. Their rows, SQLCODE and message reach the caller's answer alone.</p>
 /// <p>Seams a fixture subclass overrides: <method>GateClass</method> and
 /// <method>BoundSeconds</method>. Production overrides neither.</p>
 Class OcuPilot.Port.SqlPort Extends %RegisteredObject
@@ -150,6 +156,71 @@ Parameter ALARMSQLCODE As INTEGER = -450;
 
 /// <p>The subsystem a fault is logged under.</p>
 Parameter LOGSUBSYSTEM = "sqlport";
+
+/// <p>The data browser's kind for each column type the catalog spells (Story 19.7), as
+/// <code>kind=type,type</code> groups: the <code>INFORMATION_SCHEMA.COLUMNS.DATA_TYPE</code> spellings
+/// the instance answers for the DDL types, read on the instance. A type no group names is
+/// <code>text</code>.</p>
+Parameter KINDS = "number=tinyint,smallint,integer,bigint,numeric,double;boolean=bit;date=date;time=time;timestamp=timestamp;stream=longvarchar;binary=varbinary,longvarbinary";
+
+/// <p>The data browser's request keys, its sort's two keys and its two directions.</p>
+Parameter BROWSESCHEMAKEY = "schema";
+
+Parameter BROWSETABLEKEY = "table";
+
+Parameter BROWSEFILTERSKEY = "filters";
+
+Parameter BROWSESORTKEY = "sort";
+
+Parameter BROWSEOFFSETKEY = "offset";
+
+Parameter BROWSESIZEKEY = "size";
+
+Parameter BROWSECOLUMNKEY = "column";
+
+Parameter BROWSEDIRECTIONKEY = "direction";
+
+Parameter BROWSEDIRECTIONS = "asc,desc";
+
+/// <p>The data browser's request bounds: a schema, table or column name, a filter value, the
+/// filters, the offset, and the page sizes with the default.</p>
+Parameter MAXNAME As INTEGER = 128;
+
+Parameter MAXFILTER As INTEGER = 1000;
+
+Parameter MAXFILTERS As INTEGER = 100;
+
+Parameter MAXOFFSET As INTEGER = 99999999;
+
+Parameter PAGESIZES = "50,100,250,500";
+
+Parameter PAGESIZE As INTEGER = 100;
+
+/// <p>What a stream column's select reads, one character past a cell's cut, and what a binary
+/// column's select reads, one byte past the 499 a cell shows.</p>
+Parameter STREAMCHARS As INTEGER = 1001;
+
+Parameter BINARYBYTES As INTEGER = 500;
+
+/// <p>The rows a data browser catalog read keeps: a table with more columns than this is refused
+/// rather than shown in part.</p>
+Parameter MAXCOLUMNS As INTEGER = 1000;
+
+/// <p>The data browser's fixed catalog statements, each sent with its values bound (AD-21,
+/// AD-61): the one table or view a request names, its columns in ordinal order, and its first
+/// primary key's columns. Each reads the caller's own privilege-filtered catalog.</p>
+Parameter BROWSETABLEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+
+Parameter BROWSECOLUMNSQUERY = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, IS_IDENTITY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION";
+
+Parameter BROWSEKEYQUERY = "SELECT k.COLUMN_NAME, c.CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS c JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA AND k.CONSTRAINT_NAME = c.CONSTRAINT_NAME AND k.TABLE_SCHEMA = c.TABLE_SCHEMA AND k.TABLE_NAME = c.TABLE_NAME WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ? AND c.CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY c.CONSTRAINT_NAME, k.ORDINAL_POSITION";
+
+/// <p>The catalog's table types that are views.</p>
+Parameter VIEWTYPES = "VIEW,SYSTEM VIEW";
+
+/// <p>The column a table without a declared key or an identity column is keyed by, when it lists
+/// one.</p>
+Parameter ROWIDCOLUMN = "ID";
 
 /// <p>The class the gate evaluates through. Overridable so a fixture can drive a denial in process;
 /// production never overrides it.</p>
@@ -802,8 +873,10 @@ ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %Dy
 /// a CALL's first result set, are read: at most <var>pMaxRows</var>, one more fetched to learn
 /// whether more exist, each cell cut at <parameter>MAXCELL</parameter> characters, and rows kept
 /// while their JSON text totals at most <parameter>MAXANSWER</parameter> characters.</p>
-/// <p><var>pRaw</var> is <code>{sqlcode, message, rowCount, columns?, rows?, truncated?, stopped,
-/// rolledBack, changed}</code>: <code>stopped</code> when the alarm stopped the run,
+/// <p><var>pRaw</var> is <code>{sqlcode, message, rowCount, columns?, rows?, truncated?, more?, cut?,
+/// stopped, rolledBack, changed}</code>: <code>more</code> when a fetched row was not kept, past
+/// <var>pMaxRows</var> or dropped by the answer's cut, and <code>cut</code> when a cell was cut, the
+/// two parts of <code>truncated</code>; <code>stopped</code> when the alarm stopped the run,
 /// <code>rolledBack</code> when <code>$TLevel</code> was left above where it started and was rolled
 /// back to it, <code>changed</code> when the second prepare answered another type or failed.</p>
 /// <p><b>The switched region calls vendor classes only</b> (AD-16), and the restore is the first line
@@ -857,9 +930,12 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
                 Set tRows = []
                 Set tTotal = 0
                 Set tTruncated = 0
+                Set tMore = 0
+                Set tCut = 0
                 While tSet.%Next() {
                     If tRows.%Size() >= pMaxRows {
                         Set tTruncated = 1
+                        Set tMore = 1
                         Quit
                     }
                     Set tRow = []
@@ -869,12 +945,14 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
                         If $Length(tValue) > ..#MAXCELL {
                             Set tValue = $Extract(tValue, 1, ..#MAXCELL - 1) _ $Char(8230)
                             Set tTruncated = 1
+                            Set tCut = 1
                         }
                         Do tRow.%Push(tValue, "string")
                     }
                     Set tLength = $Length(tRow.%ToJSON())
                     If tTotal + tLength > ..#MAXANSWER {
                         Set tTruncated = 1
+                        Set tMore = 1
                         Quit
                     }
                     Set tTotal = tTotal + tLength
@@ -887,6 +965,8 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
                 Do pRaw.%Set("columns", tColumns)
                 Do pRaw.%Set("rows", tRows)
                 Do pRaw.%Set("truncated", tTruncated, "boolean")
+                Do pRaw.%Set("more", tMore, "boolean")
+                Do pRaw.%Set("cut", tCut, "boolean")
             }
         }
         If tAlarmed {
@@ -1044,6 +1124,683 @@ ClassMethod Literal(pValue As %String) As %String [ Private ]
         If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
     }
     Quit tText
+}
+
+/// <p>The data browser's kind (Story 19.7) of a column whose catalog <code>DATA_TYPE</code> is
+/// <var>pDataType</var>, from <parameter>KINDS</parameter>, ignoring case: <code>number</code>,
+/// <code>boolean</code>, <code>date</code>, <code>time</code>, <code>timestamp</code>,
+/// <code>stream</code>, <code>binary</code>, or <code>text</code> for every type no group names.
+/// Pure.</p>
+ClassMethod KindOfType(pDataType As %String) As %String
+{
+    Set tType = $ZConvert(pDataType, "L")
+    If tType = "" Quit "text"
+    For tI = 1:1:$Length(..#KINDS, ";") {
+        Set tGroup = $Piece(..#KINDS, ";", tI)
+        If $ListFind($ListFromString($Piece(tGroup, "=", 2)), tType) Return $Piece(tGroup, "=", 1)
+    }
+    Quit "text"
+}
+
+/// <p><var>pName</var> as a delimited identifier: wrapped in <code>"</code>, each <code>"</code> in
+/// it doubled. The data browser emits every identifier this way, and only in the catalog's own
+/// spelling (AD-21). Pure.</p>
+ClassMethod Quoted(pName As %String) As %String
+{
+    Quit """" _ $Replace(pName, """", """""") _ """"
+}
+
+/// <p><var>pText</var>, a data browser filter, as the value a <code>LIKE ? ESCAPE '\'</code> binds:
+/// <code>\</code>, <code>%</code> and <code>_</code> each escaped with <code>\</code>, so they match
+/// themselves, then <code>*</code> mapped to <code>%</code> and <code>?</code> to <code>_</code>. The
+/// whole value must match. Pure.</p>
+ClassMethod LikeValue(pText As %String) As %String
+{
+    Set tOut = ""
+    For tI = 1:1:$Length(pText) {
+        Set tChar = $Extract(pText, tI)
+        If (tChar = "\") || (tChar = "%") || (tChar = "_") {
+            Set tOut = tOut _ "\" _ tChar
+        } ElseIf tChar = "*" {
+            Set tOut = tOut _ "%"
+        } ElseIf tChar = "?" {
+            Set tOut = tOut _ "_"
+        } Else {
+            Set tOut = tOut _ tChar
+        }
+    }
+    Quit tOut
+}
+
+/// <p>Whether <var>pText</var> is a name the data browser takes: a string of 1 to
+/// <parameter>MAXNAME</parameter> characters with no control character. Pure.</p>
+ClassMethod BrowseName(pText) As %Boolean
+{
+    If $IsObject(pText) Quit 0
+    If ($Length(pText) < 1) || ($Length(pText) > ..#MAXNAME) Quit 0
+    Quit ($ZStrip(pText, "*C") = pText)
+}
+
+/// <p>Read <var>pBody</var>, a data browser request (Story 19.7), into <var>pRequest</var>,
+/// answering 0 for any shape outside its closed keys and bounds. The body is
+/// <code>{schema, table, filters?, sort?, offset?, size?}</code>: <code>schema</code> and
+/// <code>table</code> names (<method>BrowseName</method>); <code>filters</code> an object mapping a
+/// name to a string of 1 to <parameter>MAXFILTER</parameter> characters, at most
+/// <parameter>MAXFILTERS</parameter> entries; <code>sort</code> <code>{column, direction}</code>, the
+/// direction <code>asc</code> or <code>desc</code>; <code>offset</code> a whole number from 0 to
+/// <parameter>MAXOFFSET</parameter> (0 when absent); <code>size</code> one of
+/// <parameter>PAGESIZES</parameter> (<parameter>PAGESIZE</parameter> when absent). An absent or
+/// <code>null</code> <code>filters</code> or <code>sort</code> is none.</p>
+/// <p><var>pRequest</var> is <code>{schema, table, filters: [{column, value}], sort: {column,
+/// direction} | null, offset, size}</code>, the filters in the body's order. Pure.</p>
+ClassMethod BrowseRequest(pBody, Output pRequest As %DynamicObject) As %Boolean
+{
+    Set pRequest = ""
+    If '$IsObject($Get(pBody)) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
+    Set tKeys = $ListBuild(..#BROWSESCHEMAKEY, ..#BROWSETABLEKEY, ..#BROWSEFILTERSKEY, ..#BROWSESORTKEY, ..#BROWSEOFFSETKEY, ..#BROWSESIZEKEY)
+    Set tStray = 0
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If '$ListFind(tKeys, tKey) Set tStray = 1
+    }
+    If tStray Quit 0
+    For tKey = ..#BROWSESCHEMAKEY, ..#BROWSETABLEKEY {
+        If (pBody.%GetTypeOf(tKey) '= "string") || '..BrowseName(pBody.%Get(tKey)) Return 0
+    }
+    Set tFilters = []
+    Set tType = pBody.%GetTypeOf(..#BROWSEFILTERSKEY)
+    If tType = "object" {
+        Set tGiven = pBody.%Get(..#BROWSEFILTERSKEY)
+        Set tBad = 0
+        Set tIterator = tGiven.%GetIterator()
+        While tIterator.%GetNext(.tColumn, .tValue) {
+            If '..BrowseName(tColumn) || (tGiven.%GetTypeOf(tColumn) '= "string") || ($Length(tValue) < 1) || ($Length(tValue) > ..#MAXFILTER) || (tFilters.%Size() >= ..#MAXFILTERS) {
+                Set tBad = 1
+                Quit
+            }
+            Set tFilter = {}
+            Do tFilter.%Set(..#BROWSECOLUMNKEY, tColumn, "string")
+            Do tFilter.%Set("value", tValue, "string")
+            Do tFilters.%Push(tFilter)
+        }
+        If tBad Quit 0
+    } ElseIf (tType '= "unassigned") && (tType '= "null") {
+        Quit 0
+    }
+    Set tSort = ""
+    Set tType = pBody.%GetTypeOf(..#BROWSESORTKEY)
+    If tType = "object" {
+        Set tGiven = pBody.%Get(..#BROWSESORTKEY)
+        Set tCount = 0
+        Set tStray = 0
+        Set tIterator = tGiven.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Set tCount = tCount + 1
+            If (tKey '= ..#BROWSECOLUMNKEY) && (tKey '= ..#BROWSEDIRECTIONKEY) Set tStray = 1
+        }
+        If tStray || (tCount '= 2) Quit 0
+        If (tGiven.%GetTypeOf(..#BROWSECOLUMNKEY) '= "string") || '..BrowseName(tGiven.%Get(..#BROWSECOLUMNKEY)) Quit 0
+        If (tGiven.%GetTypeOf(..#BROWSEDIRECTIONKEY) '= "string") || '$ListFind($ListFromString(..#BROWSEDIRECTIONS), tGiven.%Get(..#BROWSEDIRECTIONKEY)) Quit 0
+        Set tSort = {}
+        Do tSort.%Set(..#BROWSECOLUMNKEY, tGiven.%Get(..#BROWSECOLUMNKEY), "string")
+        Do tSort.%Set(..#BROWSEDIRECTIONKEY, tGiven.%Get(..#BROWSEDIRECTIONKEY), "string")
+    } ElseIf (tType '= "unassigned") && (tType '= "null") {
+        Quit 0
+    }
+    Set tOffset = 0
+    Set tType = pBody.%GetTypeOf(..#BROWSEOFFSETKEY)
+    If tType = "number" {
+        Set tOffset = pBody.%Get(..#BROWSEOFFSETKEY)
+        If '$Match(tOffset, "^(0|[1-9][0-9]{0,7})$") || (+tOffset > ..#MAXOFFSET) Quit 0
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    Set tSize = ..#PAGESIZE
+    Set tType = pBody.%GetTypeOf(..#BROWSESIZEKEY)
+    If tType = "number" {
+        Set tSize = pBody.%Get(..#BROWSESIZEKEY)
+        If '$Match(tSize, "^[1-9][0-9]{0,2}$") || '$ListFind($ListFromString(..#PAGESIZES), tSize) Quit 0
+    } ElseIf tType '= "unassigned" {
+        Quit 0
+    }
+    Set pRequest = {}
+    Do pRequest.%Set(..#BROWSESCHEMAKEY, pBody.%Get(..#BROWSESCHEMAKEY), "string")
+    Do pRequest.%Set(..#BROWSETABLEKEY, pBody.%Get(..#BROWSETABLEKEY), "string")
+    Do pRequest.%Set(..#BROWSEFILTERSKEY, tFilters)
+    If $IsObject(tSort) {
+        Do pRequest.%Set(..#BROWSESORTKEY, tSort)
+    } Else {
+        Do pRequest.%Set(..#BROWSESORTKEY, "", "null")
+    }
+    Do pRequest.%Set(..#BROWSEOFFSETKEY, +tOffset, "number")
+    Do pRequest.%Set(..#BROWSESIZEKEY, +tSize, "number")
+    Quit 1
+}
+
+/// <p>The data browser's two statements (Story 19.7) for <var>pPlan</var>, a plan
+/// <method>BrowsePlan</method> resolved: <code>{page, pageValues, count, countValues}</code>.</p>
+/// <ul>
+/// <li><code>page</code> is <code>SELECT &lt;columns&gt; FROM "&lt;schema&gt;"."&lt;name&gt;" [WHERE
+/// ...] [ORDER BY ...] OFFSET ? ROWS FETCH NEXT ? ROWS ONLY</code>. The select list names each
+/// column in ordinal order, a stream column as <code>SUBSTRING("col", 1, 1001) AS "col"</code> and a
+/// binary one as <code>SUBSTRING("col", 1, 500) AS "col"</code>.</li>
+/// <li>Each filter is <code>"col" LIKE ? ESCAPE '\'</code>, or <code>%ODBCOUT("col") LIKE ? ESCAPE
+/// '\'</code> for a date, time or timestamp column, joined with <code>AND</code>.</li>
+/// <li>The order is the sort column in its direction, then each key column ascending; with no sort,
+/// the key columns, or none.</li>
+/// <li><code>count</code> is <code>SELECT COUNT(*)</code> over the same <code>FROM</code> and
+/// <code>WHERE</code>.</li>
+/// </ul>
+/// <p><code>pageValues</code> are each filter's <method>LikeValue</method> in order, then the offset
+/// and the page size plus one; <code>countValues</code> the filters' alone. Every identifier is the
+/// plan's catalog spelling, <method>Quoted</method>, and the direction is one of two words. Pure.</p>
+ClassMethod Composed(pPlan As %DynamicObject) As %DynamicObject
+{
+    Set tFrom = ..Quoted(pPlan.%Get("table").%Get("schema")) _ "." _ ..Quoted(pPlan.%Get("table").%Get("name"))
+    Set tSelect = ""
+    Set tIterator = pPlan.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) {
+        Set tName = ..Quoted(tColumn.%Get("name"))
+        Set tKind = tColumn.%Get("kind")
+        If tKind = "stream" {
+            Set tItem = "SUBSTRING(" _ tName _ ", 1, " _ ..#STREAMCHARS _ ") AS " _ tName
+        } ElseIf tKind = "binary" {
+            Set tItem = "SUBSTRING(" _ tName _ ", 1, " _ ..#BINARYBYTES _ ") AS " _ tName
+        } Else {
+            Set tItem = tName
+        }
+        Set tSelect = tSelect _ $Select(tSelect = "": "", 1: ", ") _ tItem
+    }
+    Set tWhere = ""
+    Set tValues = []
+    If pPlan.%GetTypeOf("filters") = "array" {
+        Set tIterator = pPlan.%Get("filters").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tFilter) {
+            Set tName = ..Quoted(tFilter.%Get(..#BROWSECOLUMNKEY))
+            Set tKind = tFilter.%Get("kind")
+            Set tOperand = $Select((tKind = "date") || (tKind = "time") || (tKind = "timestamp"): "%ODBCOUT(" _ tName _ ")", 1: tName)
+            Set tWhere = tWhere _ $Select(tWhere = "": " WHERE ", 1: " AND ") _ tOperand _ " LIKE ? ESCAPE '\'"
+            Do tValues.%Push(..LikeValue(tFilter.%Get("value")), "string")
+        }
+    }
+    Set tOrder = ""
+    Set tSorted = ""
+    If pPlan.%GetTypeOf("sort") = "object" {
+        Set tSorted = pPlan.%Get("sort").%Get(..#BROWSECOLUMNKEY)
+        Set tOrder = ..Quoted(tSorted) _ " " _ $Case(pPlan.%Get("sort").%Get(..#BROWSEDIRECTIONKEY), "desc": "DESC", : "ASC")
+    }
+    If pPlan.%GetTypeOf("key") = "array" {
+        Set tIterator = pPlan.%Get("key").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tKeyColumn) {
+            If tKeyColumn = tSorted Continue
+            Set tOrder = tOrder _ $Select(tOrder = "": "", 1: ", ") _ ..Quoted(tKeyColumn) _ " ASC"
+        }
+    }
+    Set tComposed = {}
+    Do tComposed.%Set("page", "SELECT " _ tSelect _ " FROM " _ tFrom _ tWhere _ $Select(tOrder = "": "", 1: " ORDER BY " _ tOrder) _ " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", "string")
+    Set tPageValues = []
+    Set tIterator = tValues.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue) {
+        Do tPageValues.%Push(tValue, "string")
+    }
+    Do tPageValues.%Push(+pPlan.%Get(..#BROWSEOFFSETKEY), "number")
+    Do tPageValues.%Push(pPlan.%Get(..#BROWSESIZEKEY) + 1, "number")
+    Do tComposed.%Set("pageValues", tPageValues)
+    Do tComposed.%Set("count", "SELECT COUNT(*) FROM " _ tFrom _ tWhere, "string")
+    Do tComposed.%Set("countValues", tValues)
+    Quit tComposed
+}
+
+/// <p>One data browser cell (Story 19.7) of a column of kind <var>pKind</var>, from the
+/// <var>pValue</var> an ODBC-mode fetch answered: <code>""</code> is SQL NULL, answered with
+/// <var>pNull</var> 1; <code>$Char(0)</code> is an empty value, answered as <code>""</code>; a binary
+/// cell is <code>0x</code> and the upper-case hex of at most 499 of its bytes, ending in U+2026 with
+/// <var>pCut</var> 1 when <parameter>BINARYBYTES</parameter> came back; anything else is itself.
+/// Pure.</p>
+ClassMethod CellOf(pKind As %String, pValue As %String, Output pNull As %Boolean, Output pCut As %Boolean) As %String
+{
+    Set pNull = 0
+    Set pCut = 0
+    If pValue = "" {
+        Set pNull = 1
+        Quit ""
+    }
+    If pValue = $Char(0) Quit ""
+    If pKind '= "binary" Quit pValue
+    Set tBytes = $Extract(pValue, 1, ..#BINARYBYTES - 1)
+    Set tHex = "0x"
+    For tI = 1:1:$Length(tBytes) {
+        Set tHex = tHex _ $Translate($Justify($ZHex(+$Ascii(tBytes, tI)), 2), " ", "0")
+    }
+    If $Length(pValue) >= ..#BINARYBYTES {
+        Set tHex = tHex _ $Char(8230)
+        Set pCut = 1
+    }
+    Quit tHex
+}
+
+/// <p>Resolve a data browser request (Story 19.7), <var>pRequest</var> as
+/// <method>BrowseRequest</method> answers it, in <var>pNamespace</var>, into <var>pPlan</var>: the
+/// gate (<method>Gate</method>) first, then only the port's fixed catalog statements over the
+/// caller's own privilege-filtered <code>INFORMATION_SCHEMA</code>, each through
+/// <method>Executed</method> with its values bound, under what remains of one budget of
+/// <method>BoundSeconds</method> whose start the plan keeps.</p>
+/// <ul>
+/// <li>Exactly one <code>TABLES</code> row names the table or view; none, or more, is 404
+/// <code>EXPLORER.DATA.NOTFOUND</code>, unlogged. Its <code>COLUMNS</code> follow in ordinal order,
+/// and none is the same 404.</li>
+/// <li>The key is the first primary key constraint's columns, else the identity column, else a
+/// column named <parameter>ROWIDCOLUMN</parameter>, and none unless every key column is
+/// listed.</li>
+/// <li>Each filter and the sort must name a listed column exactly, of a kind other than
+/// <code>stream</code> and <code>binary</code>; otherwise 400 <code>EXPLORER.DATA.INPUT</code>.</li>
+/// <li>A view's base tables are those the statement index records for a <code>SELECT</code> of its
+/// listed columns (<method>Prepared</method>), which a column grant on the view prepares; a text it
+/// does not index fails closed, 500, logged. A view the instance will not prepare that select for
+/// keeps the instance's answer as the plan's <code>error</code>.</li>
+/// </ul>
+/// <p><var>pPlan</var> is <code>{namespace, start, bound, table: {schema, name, type}, columns:
+/// [{name, type, kind, nullable, key}], key, filters: [{column, kind, value}], sort, offset, size,
+/// tables, page, pageValues, count, countValues}</code> (<method>Composed</method>), with
+/// <code>stopped</code> when the budget ran out first and <code>error</code> as above.</p>
+/// <p>Caller contract: must not be called from an escalated frame (AD-9). No statement here is
+/// classified (<method>Classify</method>), and nothing of a request, a row or the instance's SQL text
+/// is logged.</p>
+ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output pPlan As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pPlan = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPlan = {}
+        Do tPlan.%Set("namespace", pNamespace, "string")
+        Do tPlan.%Set("start", $ZHorolog, "number")
+        Do tPlan.%Set("bound", ..BoundSeconds(), "number")
+        Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject($Get(pRequest)) || 'pRequest.%IsA("%Library.DynamicObject") || '..BrowseName(pRequest.%Get(..#BROWSESCHEMAKEY)) || '..BrowseName(pRequest.%Get(..#BROWSETABLEKEY)) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#DATAINPUT, ##class(OcuPilot.Api.AtelierError).#REASONDATAINPUT, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tTable = {}
+        Do tTable.%Set("schema", pRequest.%Get(..#BROWSESCHEMAKEY), "string")
+        Do tTable.%Set("name", pRequest.%Get(..#BROWSETABLEKEY), "string")
+        Do tTable.%Set("type", "", "string")
+        Do tPlan.%Set("table", tTable)
+        Do tPlan.%Set("columns", [])
+        Do tPlan.%Set("key", [])
+        Do tPlan.%Set("tables", [])
+        Do tPlan.%Set(..#BROWSEOFFSETKEY, +pRequest.%Get(..#BROWSEOFFSETKEY), "number")
+        Do tPlan.%Set(..#BROWSESIZEKEY, $Select(+pRequest.%Get(..#BROWSESIZEKEY): +pRequest.%Get(..#BROWSESIZEKEY), 1: ..#PAGESIZE), "number")
+        Set tSC = ..CatalogRows(pNamespace, tPlan, ..#BROWSETABLEQUERY, [(tTable.schema), (tTable.name)], .tRows, .tStopped, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tStopped {
+            Do tPlan.%Set("stopped", 1, "boolean")
+            Set pPlan = tPlan
+            Quit
+        }
+        If tRows.%Size() '= 1 {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#DATANOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONDATANOTFOUND, .pHttpStatus, .pFault)
+            Quit
+        }
+        Do tTable.%Set("schema", tRows.%Get(0).%Get(0), "string")
+        Do tTable.%Set("name", tRows.%Get(0).%Get(1), "string")
+        Do tTable.%Set("type", $Select($ListFind($ListFromString(..#VIEWTYPES), $ZConvert(tRows.%Get(0).%Get(2), "U")): "view", 1: "table"), "string")
+        Set tSC = ..CatalogRows(pNamespace, tPlan, ..#BROWSECOLUMNSQUERY, [(tTable.schema), (tTable.name)], .tRows, .tStopped, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tStopped {
+            Do tPlan.%Set("stopped", 1, "boolean")
+            Set pPlan = tPlan
+            Quit
+        }
+        If tRows.%Size() = 0 {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.AtelierError).#DATANOTFOUND, ##class(OcuPilot.Api.AtelierError).#REASONDATANOTFOUND, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tColumns = []
+        Set tIdentity = ""
+        Set tRowId = ""
+        Kill tKindOf
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tName = tRow.%Get(0)
+            Set tColumn = {}
+            Do tColumn.%Set("name", tName, "string")
+            Do tColumn.%Set("type", tRow.%Get(1), "string")
+            Do tColumn.%Set("kind", ..KindOfType(tRow.%Get(1)), "string")
+            Do tColumn.%Set("nullable", ($ZConvert(tRow.%Get(2), "U") = "YES"), "boolean")
+            Do tColumn.%Set("key", 0, "boolean")
+            Do tColumns.%Push(tColumn)
+            Set tKindOf(tName) = tColumn.%Get("kind")
+            If (tIdentity = "") && ($ZConvert(tRow.%Get(3), "U") = "YES") Set tIdentity = tName
+            If tName = ..#ROWIDCOLUMN Set tRowId = tName
+        }
+        Do tPlan.%Set("columns", tColumns)
+        Set tSC = ..CatalogRows(pNamespace, tPlan, ..#BROWSEKEYQUERY, [(tTable.schema), (tTable.name)], .tRows, .tStopped, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If tStopped {
+            Do tPlan.%Set("stopped", 1, "boolean")
+            Set pPlan = tPlan
+            Quit
+        }
+        Set tKey = ""
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%Get(1) '= tRows.%Get(0).%Get(1) Quit
+            Set tKey = tKey _ $ListBuild(tRow.%Get(0))
+        }
+        If tKey = "" Set tKey = $Select(tIdentity '= "": $ListBuild(tIdentity), tRowId '= "": $ListBuild(tRowId), 1: "")
+        For tI = 1:1:$ListLength(tKey) {
+            If '$Data(tKindOf($List(tKey, tI))) {
+                Set tKey = ""
+                Quit
+            }
+        }
+        Set tKeyNames = []
+        For tI = 1:1:$ListLength(tKey) {
+            Do tKeyNames.%Push($List(tKey, tI), "string")
+        }
+        Set tIterator = tColumns.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tColumn) {
+            If $ListFind(tKey, tColumn.%Get("name")) Do tColumn.%Set("key", 1, "boolean")
+        }
+        Do tPlan.%Set("key", tKeyNames)
+        Set tFilters = []
+        Set tBad = 0
+        Set tGiven = $Select(pRequest.%GetTypeOf(..#BROWSEFILTERSKEY) = "array": pRequest.%Get(..#BROWSEFILTERSKEY), 1: [])
+        Set tIterator = tGiven.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tFilter) {
+            Set tName = tFilter.%Get(..#BROWSECOLUMNKEY)
+            If '..Browsable(.tKindOf, tName) {
+                Set tBad = 1
+                Quit
+            }
+            Set tResolved = {}
+            Do tResolved.%Set(..#BROWSECOLUMNKEY, tName, "string")
+            Do tResolved.%Set("kind", tKindOf(tName), "string")
+            Do tResolved.%Set("value", tFilter.%Get("value"), "string")
+            Do tFilters.%Push(tResolved)
+        }
+        If 'tBad && (pRequest.%GetTypeOf(..#BROWSESORTKEY) = "object") {
+            If '..Browsable(.tKindOf, pRequest.%Get(..#BROWSESORTKEY).%Get(..#BROWSECOLUMNKEY)) Set tBad = 1
+        }
+        If tBad {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#DATAINPUT, ##class(OcuPilot.Api.AtelierError).#REASONDATAINPUT, .pHttpStatus, .pFault)
+            Quit
+        }
+        Do tPlan.%Set("filters", tFilters)
+        If pRequest.%GetTypeOf(..#BROWSESORTKEY) = "object" {
+            Set tSort = {}
+            Do tSort.%Set(..#BROWSECOLUMNKEY, pRequest.%Get(..#BROWSESORTKEY).%Get(..#BROWSECOLUMNKEY), "string")
+            Do tSort.%Set(..#BROWSEDIRECTIONKEY, $Case(pRequest.%Get(..#BROWSESORTKEY).%Get(..#BROWSEDIRECTIONKEY), "desc": "desc", : "asc"), "string")
+            Do tPlan.%Set("sort", tSort)
+        } Else {
+            Do tPlan.%Set("sort", "", "null")
+        }
+        Set tTables = []
+        Do tTables.%Push(tTable.schema _ "." _ tTable.name, "string")
+        If tTable.type = "view" {
+            Set tListed = ""
+            Set tIterator = tColumns.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tColumn) {
+                Set tListed = tListed _ $Select(tListed = "": "", 1: ", ") _ ..Quoted(tColumn.%Get("name"))
+            }
+            Set tSC = ..Prepared(pNamespace, "SELECT " _ tListed _ " FROM " _ ..Quoted(tTable.schema) _ "." _ ..Quoted(tTable.name), .tRaw)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Fail("a data browser view's tables could not be read", tSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            If tRaw.%GetTypeOf("error") = "object" {
+                Do tPlan.%Set("error", tRaw.%Get("error"))
+            } ElseIf 'tRaw.%Get("indexed") {
+                Set tSC = ..Fail("a data browser view's tables are not recorded by the statement index", $$$ERROR($$$GeneralError, "statement index unreadable"), .pHttpStatus, .pFault)
+                Quit
+            } Else {
+                Set tIterator = tRaw.%Get("tables").%GetIterator()
+                While tIterator.%GetNext(.tIndex, .tBase) {
+                    Do tTables.%Push(tBase, "string")
+                }
+            }
+        }
+        Do tPlan.%Set("tables", tTables)
+        Set tComposed = ..Composed(tPlan)
+        Set tIterator = tComposed.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Do tPlan.%Set(tKey, tValue)
+        }
+        Set pPlan = tPlan
+    } Catch ex {
+        Set pPlan = ""
+        Set tSC = ..Fail("a data browser request could not be planned", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run <var>pPlan</var>, a plan <method>BrowsePlan</method> answered, in <var>pNamespace</var>
+/// (Story 19.7): the gate again, then the page and, with what remains of the plan's budget, the
+/// count, each through <method>Executed</method> with its values bound. Every answer carries
+/// <code>table</code>, <code>columns</code> and <code>key</code>, and is one of:</p>
+/// <ul>
+/// <li><code>{outcome: rows, rows, offset, size, more, total, truncated}</code>: at most the page
+/// size of rows, each a cell per column (<method>CellOf</method>, <code>null</code> for SQL NULL),
+/// cut by whole rows at <parameter>MAXANSWER</parameter> characters; <code>more</code> when a row was
+/// fetched and not kept; <code>truncated</code> when a cell was cut; <code>total</code> the count, or
+/// <code>null</code> when it ran out of budget, was refused or failed;</li>
+/// <li><code>{outcome: stopped, seconds}</code> when the page, or the plan, ran out of the
+/// budget;</li>
+/// <li><code>{outcome: error, sqlcode, message}</code> when the instance refused or failed the
+/// page.</li>
+/// </ul>
+/// <p>The rows, the SQLCODE and the message reach this answer and nothing else (AD-39's sixth
+/// exception): nothing here is logged but a fault's name.</p>
+ClassMethod BrowseRun(pNamespace As %String, pPlan As %DynamicObject, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tAnswer = {}
+        Do tAnswer.%Set("outcome", "", "string")
+        Do tAnswer.%Set("table", pPlan.%Get("table"))
+        Do tAnswer.%Set("columns", pPlan.%Get("columns"))
+        Do tAnswer.%Set("key", pPlan.%Get("key"))
+        Set tBound = +pPlan.%Get("bound")
+        If pPlan.%Get("stopped") {
+            Set pAnswer = ..StoppedBrowse(tAnswer, tBound)
+            Quit
+        }
+        If pPlan.%GetTypeOf("error") = "object" {
+            Set pAnswer = ..ErrorBrowse(tAnswer, pPlan.%Get("error").%Get("sqlcode"), pPlan.%Get("error").%Get("message"))
+            Quit
+        }
+        Set tRemaining = ..Remaining(pPlan.%Get("start"), tBound)
+        If tRemaining < 1 {
+            Set pAnswer = ..StoppedBrowse(tAnswer, tBound)
+            Quit
+        }
+        Set tSize = +pPlan.%Get(..#BROWSESIZEKEY)
+        Set tSC = ..Executed(pNamespace, pPlan.%Get("page"), 1, pPlan.%Get("pageValues"), tRemaining, 1, tSize, .tRaw)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("a data browser page could not be read", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tRaw.%Get("stopped") {
+            Set pAnswer = ..StoppedBrowse(tAnswer, tBound)
+            Quit
+        }
+        If tRaw.%Get("changed") {
+            Set tSC = ..PrepareProblem(pNamespace, pPlan.%Get("page"), .tCode, .tMessage)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Fail("a data browser page could not be prepared", tSC, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set pAnswer = ..ErrorBrowse(tAnswer, tCode, tMessage)
+            Quit
+        }
+        If (tRaw.%Get("sqlcode") < 0) || tRaw.%Get("rolledBack") || (tRaw.%GetTypeOf("rows") '= "array") {
+            Set pAnswer = ..ErrorBrowse(tAnswer, $Select(tRaw.%Get("sqlcode") < 0: tRaw.%Get("sqlcode"), 1: ""), $Select(tRaw.%Get("sqlcode") < 0: tRaw.%Get("message"), 1: ""))
+            Quit
+        }
+        Set tColumns = pPlan.%Get("columns")
+        Set tWidth = tColumns.%Size()
+        Set tRows = []
+        Set tTotal = 0
+        Set tMore = ''tRaw.%Get("more")
+        Set tTruncated = ''tRaw.%Get("cut")
+        Set tIterator = tRaw.%Get("rows").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tFetched) {
+            Set tRow = []
+            For tI = 0:1:tWidth - 1 {
+                Set tCell = ..CellOf(tColumns.%Get(tI).%Get("kind"), tFetched.%Get(tI), .tNull, .tCut)
+                If tCut Set tTruncated = 1
+                If tNull {
+                    Do tRow.%Push("", "null")
+                } Else {
+                    Do tRow.%Push(tCell, "string")
+                }
+            }
+            Set tLength = $Length(tRow.%ToJSON())
+            If tTotal + tLength > ..#MAXANSWER {
+                Set tMore = 1
+                Quit
+            }
+            Set tTotal = tTotal + tLength
+            Do tRows.%Push(tRow)
+        }
+        Do tAnswer.%Set("outcome", ..#OUTCOMEROWS, "string")
+        Do tAnswer.%Set("rows", tRows)
+        Do tAnswer.%Set(..#BROWSEOFFSETKEY, +pPlan.%Get(..#BROWSEOFFSETKEY), "number")
+        Do tAnswer.%Set(..#BROWSESIZEKEY, tSize, "number")
+        Do tAnswer.%Set("more", tMore, "boolean")
+        Set tCount = ""
+        Set tRemaining = ..Remaining(pPlan.%Get("start"), tBound)
+        If tRemaining >= 1 {
+            Set tCountSC = ..Executed(pNamespace, pPlan.%Get("count"), 1, pPlan.%Get("countValues"), tRemaining, 1, 1, .tCountRaw)
+            If $$$ISOK(tCountSC) && 'tCountRaw.%Get("stopped") && 'tCountRaw.%Get("changed") && (tCountRaw.%Get("sqlcode") >= 0) && (tCountRaw.%GetTypeOf("rows") = "array") && $IsObject(tCountRaw.%Get("rows").%Get(0)) {
+                Set tCount = tCountRaw.%Get("rows").%Get(0).%Get(0)
+                If '$Match(tCount, "^[0-9]+$") Set tCount = ""
+            }
+        }
+        If tCount = "" {
+            Do tAnswer.%Set("total", "", "null")
+        } Else {
+            Do tAnswer.%Set("total", +tCount, "number")
+        }
+        Do tAnswer.%Set("truncated", tTruncated, "boolean")
+        Set pAnswer = tAnswer
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("a data browser page could not be read", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pName</var> names a column of <var>pKindOf</var> (each listed column's kind,
+/// subscripted by its exact name) that a filter or a sort may name: any kind but
+/// <code>stream</code> and <code>binary</code>.</p>
+ClassMethod Browsable(ByRef pKindOf, pName As %String) As %Boolean [ Private ]
+{
+    If (pName = "") || '$Data(pKindOf(pName)) Quit 0
+    Quit (pKindOf(pName) '= "stream") && (pKindOf(pName) '= "binary")
+}
+
+/// <p>The whole seconds left of a budget of <var>pBound</var> seconds that started at
+/// <var>pStart</var> (a <code>$ZHorolog</code> reading), rounded up as the alarm counts them, or 0
+/// when none is left.</p>
+ClassMethod Remaining(pStart As %Numeric, pBound As %Integer) As %Integer [ Private ]
+{
+    Set tElapsed = $ZHorolog - pStart
+    If tElapsed < 0 Set tElapsed = tElapsed + 86400
+    Set tLeft = pBound - tElapsed
+    If tLeft <= 0 Quit 0
+    Set tWhole = tLeft \ 1
+    If tWhole < tLeft Set tWhole = tWhole + 1
+    Quit tWhole
+}
+
+/// <p>Run <var>pText</var>, one of the data browser's fixed catalog statements, in
+/// <var>pNamespace</var> with <var>pValues</var> bound, under what remains of <var>pPlan</var>'s
+/// budget, answering its rows in <var>pRows</var>, or <var>pStopped</var> 1 when the budget ran out.
+/// A refusal, a failure, or an answer cut by rows or by a cell is 500 <code>INTERNAL</code>, logged
+/// with nothing the instance answered.</p>
+ClassMethod CatalogRows(pNamespace As %String, pPlan As %DynamicObject, pText As %String, pValues As %DynamicArray, Output pRows As %DynamicArray, Output pStopped As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = []
+    Set pStopped = 0
+    Set tRemaining = ..Remaining(pPlan.%Get("start"), pPlan.%Get("bound"))
+    If tRemaining < 1 {
+        Set pStopped = 1
+        Quit $$$OK
+    }
+    Set tSC = ..Executed(pNamespace, pText, 1, pValues, tRemaining, 1, ..#MAXCOLUMNS, .tRaw)
+    If $$$ISERR(tSC) Quit ..Fail("a data browser catalog read failed", tSC, .pHttpStatus, .pFault)
+    If tRaw.%Get("stopped") {
+        Set pStopped = 1
+        Quit $$$OK
+    }
+    If tRaw.%Get("changed") || (tRaw.%Get("sqlcode") < 0) || tRaw.%Get("more") || tRaw.%Get("cut") || (tRaw.%GetTypeOf("rows") '= "array") {
+        Quit ..Fail("a data browser catalog read failed", $$$ERROR($$$GeneralError, $Select(tRaw.%Get("changed"): "not prepared", tRaw.%Get("more") || tRaw.%Get("cut"): "cut", 1: "refused")), .pHttpStatus, .pFault)
+    }
+    Set pRows = tRaw.%Get("rows")
+    Quit $$$OK
+}
+
+/// <p>Prepare <var>pText</var> in <var>pNamespace</var> with privilege checks on, as
+/// <method>Executed</method> does, to read the SQLCODE and message the instance refuses it with into
+/// <var>pCode</var> and <var>pMessage</var>, both <code>""</code> when it prepares. It reads no
+/// statement index. The switched region calls vendor classes only, and the statement is released in
+/// <var>pNamespace</var>.</p>
+ClassMethod PrepareProblem(pNamespace As %String, pText As %String, Output pCode As %String, Output pMessage As %String) As %Status [ Private ]
+{
+    Set pCode = ""
+    Set pMessage = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tStatement.%SelectMode = ..#SELECTMODE
+        Set tPrepareSC = tStatement.%Prepare(pText, 1)
+        If $$$ISERR(tPrepareSC) {
+            Set tMessage = ""
+            Set pCode = $System.Status.StatusToSQLCODE(tPrepareSC, .tMessage)
+            Set pMessage = tMessage
+        }
+        Set tStatement = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do ..Closed(pNamespace, .tStatement)
+        Set tSC = $$$ERROR($$$GeneralError, "the prepare raised " _ ex.Name)
+    }
+    Quit tSC
+}
+
+/// <p><var>pAnswer</var>, a data browser answer's frame, as the <code>stopped</code> outcome of a
+/// budget of <var>pBound</var> seconds.</p>
+ClassMethod StoppedBrowse(pAnswer As %DynamicObject, pBound As %Integer) As %DynamicObject [ Private ]
+{
+    Do pAnswer.%Set("outcome", ..#OUTCOMESTOPPED, "string")
+    Do pAnswer.%Set("seconds", pBound, "number")
+    Quit pAnswer
+}
+
+/// <p><var>pAnswer</var>, a data browser answer's frame, as the <code>error</code> outcome, an empty
+/// SQLCODE answered as <code>null</code>.</p>
+ClassMethod ErrorBrowse(pAnswer As %DynamicObject, pCode As %String, pMessage As %String) As %DynamicObject [ Private ]
+{
+    Do pAnswer.%Set("outcome", ..#OUTCOMEERROR, "string")
+    If pCode = "" {
+        Do pAnswer.%Set("sqlcode", "", "null")
+    } Else {
+        Do pAnswer.%Set("sqlcode", +pCode, "number")
+    }
+    Do pAnswer.%Set("message", pMessage, "string")
+    Quit pAnswer
 }
 
 }

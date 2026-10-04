@@ -233,6 +233,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
   <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
 </Routes>
 }
 
@@ -1729,6 +1730,13 @@ ClassMethod ExplorerSqlBackgroundPoll(pId As %String) As %Status
 ClassMethod ExplorerSqlBackgroundStart() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data
+/// browser's page read, delegating to <class>OcuPilot.Area.Explorer.SqlData</class>.</p>
+ClassMethod ExplorerSqlData() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlData).HandleBrowse()
 }
 
 }

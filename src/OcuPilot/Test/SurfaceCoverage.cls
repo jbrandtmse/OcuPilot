@@ -169,6 +169,7 @@ XData Coverage
 <screen name="ExplorerSqlPartitionMappings" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlCachedQueries" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlQuery" class="OcuPilot.Test.ExplorerDescriptor" method="TestSqlQueryKeysTheClassicSqlPage"/>
+<screen name="ExplorerSqlData" class="OcuPilot.Test.ExplorerDescriptor" method="TestDataBrowserKeysTheClassicOpenTablePage"/>
 <screen name="ExplorerSqlTableStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTableTabsFormOneParentScopedGroup" corpus="the nine SQL table tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlView" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlViewFields" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>

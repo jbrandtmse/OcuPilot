@@ -2,9 +2,10 @@
 title: 'Story 19.7: The data browser - tree, grid, filter and sort'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '53d93157d80390560027b7a6c19f65ff50411115'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -139,10 +140,10 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe197`, removed after). Record the results in Design Notes.
+- [x] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe197`, removed after). Record the results in Design Notes.
   - (a) Read the `INFORMATION_SCHEMA.COLUMNS.DATA_TYPE` spelling for each DDL type: CHAR, VARCHAR, LONGVARCHAR, BINARY, VARBINARY, LONGVARBINARY, BIT, TINYINT, SMALLINT, INTEGER, BIGINT, NUMERIC, DECIMAL, DOUBLE, DATE, TIME, TIMESTAMP and POSIXTIME. Fix `KINDS` from what the instance answers.
   - (b) Measure `SUBSTRING("<col>", 1, 500)` on a VARBINARY and a LONGVARBINARY column through `Executed`. If it fails, select a binary column as `NULL` and show "NULL", and record that here.
-- [ ] `src/OcuPilot/Port/SqlPort.cls`. Add-only, except `Executed`, which gains the two raw fields `more` and `cut`; its `truncated` and its answer to its callers are unchanged.
+- [x] `src/OcuPilot/Port/SqlPort.cls`. Add-only, except `Executed`, which gains the two raw fields `more` and `cut`; its `truncated` and its answer to its callers are unchanged.
   - `more`: a fetched row was not kept, past `pMaxRows` or dropped by the answer cut.
   - `cut`: a cell was cut.
   - Public pure helpers:
@@ -157,70 +158,70 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
     - read `COLUMNS` in ordinal order;
     - detect the key: the first PRIMARY KEY constraint's `KEY_COLUMN_USAGE` columns, else the `IS_IDENTITY` column, else a column named `ID`, and none unless every key column is listed;
     - check each filter and sort column (else 400);
-    - for a view, read `Prepared(ns, "SELECT COUNT(*) FROM <view>")`'s tables, failing closed (500 logged) when the text is unindexed;
+    - for a view, read `Prepared(ns, "SELECT <listed columns> FROM <view>")`'s tables, failing closed (500 logged) when the text is unindexed;
     - compose.
     - Every statement goes through `Executed` with the remaining budget, the budget's start kept in the plan.
   - `BrowseRun(ns, plan, .answer, .http, .fault)`:
     - run the page, then the count with what remains;
     - map each cell: `""` becomes `null`, `$Char(0)` becomes `""`, and a binary cell becomes `0x` plus upper-case hex of at most 499 bytes, with U+2026 and `truncated` when 500 came back.
     - Answer shapes are in Design Notes › Wire.
-- [ ] `src/OcuPilot/Area/Explorer/SqlData.cls` (new), `HandleBrowse`. In order:
+- [x] `src/OcuPilot/Area/Explorer/SqlData.cls` (new), `HandleBrowse`. In order:
   - the gate: `EvaluateRequired(WithClassicPages(RequiredPairs(descriptor), "%cspapp.exp.utilsqlopenview"))`;
   - `ReadRequestBody`, then `SqlPort.BrowseRequest` (400 `EXPLORER.DATA.INPUT`);
   - the pre-check `Prohibited.SqlStatement("", $LB(schema_"."_table), 1, …)`;
   - `BrowsePlan`, then `Prohibited.SqlStatement(plan page text, plan tables, 1, …)` (403 `FORBIDDEN` with `ReasonFor`);
   - `BrowseRun`, then `Api.Response.JSON`.
   - Faults render as `SqlConsole.RenderFault` does.
-- [ ] `src/OcuPilot/Api/Router.cls`, add-only: `<Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>` at the UrlMap tail, and one thin wrapper at the class end.
-- [ ] `src/OcuPilot/Screen/Descriptor/ExplorerSqlData.cls` (new). It declares:
+- [x] `src/OcuPilot/Api/Router.cls`, add-only: `<Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>` at the UrlMap tail, and one thin wrapper at the class end.
+- [x] `src/OcuPilot/Screen/Descriptor/ExplorerSqlData.cls` (new). It declares:
   - route `system-explorer/sql-data`, label `explorerSqlDataLabel`, side bar 11, `form-page`, no refresh;
   - privileges `[%Development:USE]`, entity `class`, scope `namespace`, id `none`;
   - no action, context fields `[]`;
   - aliases `data browser`, `open table`, `browse table` and `table rows`;
   - three prompts in `webAppPromptGroupCode`;
   - `classicPage` `%cspapp.exp.utilsqlopen`, no exemption, `toolIdentifier` `explorer.sqldata`.
-- [ ] `src/OcuPilot/Api/AtelierError.cls`, add-only: `DATAINPUT` (`EXPLORER.DATA.INPUT`, 400) and `DATANOTFOUND` (`EXPLORER.DATA.NOTFOUND`, 404), with Design Notes › Strings' reasons.
-- [ ] `ui/src/app/core/data-browser-model.ts` (new, framework-free). Pure rules, ported with call sites kept and names changed:
+- [x] `src/OcuPilot/Api/AtelierError.cls`, add-only: `DATAINPUT` (`EXPLORER.DATA.INPUT`, 400) and `DATANOTFOUND` (`EXPLORER.DATA.NOTFOUND`, 404), with Design Notes › Strings' reasons.
+- [x] `ui/src/app/core/data-browser-model.ts` (new, framework-free). Pure rules, ported with call sites kept and names changed:
   - `nextSort`: none, then asc, then desc, then none; a new column starts at asc.
   - `moveCell`: arrows without wrap, Home and End, Ctrl/Cmd+Home and End, PageUp and PageDown by the visible rows, the header row included.
   - Offset paging: first, previous (`max(0, offset - size)`), next (`offset` plus the rows kept), last (`floor((total - 1) / size) * size`, only while `total` is known), go to page (1 to N).
   - `cellView(kind, value)`, `columnTrack(kind)`, `isFilterable(kind)` and the status-line text.
-- [ ] `ui/src/app/areas/system-explorer/data-browser.store.ts` (new, framework-free, one per `ScreenStore`):
+- [x] `ui/src/app/areas/system-explorer/data-browser.store.ts` (new, framework-free, one per `ScreenStore`):
   - tree state, read through `createScreenRead` for `explorer.sqlschemas` (`system=no`), and for `explorer.sqltables` and `explorer.sqlviews` on expand (`schema=<name>`);
   - the open table, filters, sort, offset, size and answer;
   - the refusal, as `refusalText` writes it;
   - a request generation counter that drops stale answers;
   - posts through `requestJson`, scoped to the namespace.
-- [ ] `ui/src/app/areas/system-explorer/data-browser-tree.ts` (new): an APG tree with one Tab stop and `aria-activedescendant`.
+- [x] `ui/src/app/areas/system-explorer/data-browser-tree.ts` (new): an APG tree with one Tab stop and `aria-activedescendant`.
   - Schemas whose Tables or Views flag is set.
   - On expand, tables, then views marked "View".
   - Keys: Up, Down, Home, End, Right (expand or first child), Left (collapse or parent), Enter and Space (open).
   - A truncation line for a read cut at its cap, and an empty-schema line.
-- [ ] `ui/src/app/areas/system-explorer/data-browser-grid.ts` (new):
+- [x] `ui/src/app/areas/system-explorer/data-browser-grid.ts` (new):
   - the filter row as `role="group"` "Column filters", one input per filterable column; Enter applies it and Escape clears it and applies, each returning to the first page;
   - the grid: `role="grid"`, `tabindex="0"`, `aria-activedescendant` on the active cell;
   - header cells `role="columnheader"`, with `aria-sort` on the sorted one and a key marker;
   - Enter, Space or a click on a header cycles the sort; Ctrl/Cmd+PageDown and PageUp change page;
   - `aria-rowcount` is `total + 1`, else -1, and `aria-rowindex` is `offset + i + 2`;
   - cells are a single line with an ellipsis.
-- [ ] `ui/src/app/areas/system-explorer/data-browser.page.ts` (new):
+- [x] `ui/src/app/areas/system-explorer/data-browser.page.ts` (new):
   - the tree and grid split, stacked at the narrow breakpoint, with an empty state until a table opens;
   - a heading for the open table, Refresh (`actionRefresh`), Clear filters and the filter hint;
   - First, Previous, a Page input "of N", Next and Last, with Last disabled while `total` is null; Rows per page;
   - a `role="status"` line and a `role="alert"` refusal.
-- [ ] `ui/src/app/shell/screen-outlet.ts`: add-only import and `DESCRIPTOR_PAGES` entry. Regenerate `ui/src/app/core/screens.generated.ts` with `node tools/screen-mirror.mjs`.
-- [ ] `ui/src/app/core/strings.ts`: keys at the end, each annotated with the new Fixed-strings row's EXPERIENCE.md line. `ui/src/styles/_components.scss`: add-only `ocu-data-browser*` rules on tokens, reusing the `ocu-data-table-*` classes.
-- [ ] EXPERIENCE.md:
+- [x] `ui/src/app/shell/screen-outlet.ts`: add-only import and `DESCRIPTOR_PAGES` entry. Regenerate `ui/src/app/core/screens.generated.ts` with `node tools/screen-mirror.mjs`.
+- [x] `ui/src/app/core/strings.ts`: keys at the end, each annotated with the new Fixed-strings row's EXPERIENCE.md line. `ui/src/styles/_components.scss`: add-only `ocu-data-browser*` rules on tokens, reusing the `ocu-data-table-*` classes.
+- [x] EXPERIENCE.md:
   - :159 in place: add 19.7 to the story list, append `· Data browser`, and add "Data browser opens a table's or a view's rows".
   - A Fixed-strings row after :597.
   - A `### data-browser` paragraph after the `data-table` section: the grid's keys, the tree's keys, filter semantics, offset pagination, and screen-only rows.
   - Move every line citation the suites hold (`npm run test:tools`).
-- [ ] Harvest notice:
+- [x] Harvest notice:
   - `ATTRIBUTIONS.md`: a "Harvested code" row with iris-table-editor's MIT copyright line and full text.
   - `ui/licenses/iris-table-editor.txt` (new) holds that notice.
   - `ui/tools/licenses.mjs` appends every `ui/licenses/*.txt` to the shipped `3rdpartylicenses.txt`.
   - A source header in each ported file names the harvest file it ports.
-- [ ] **Server tests (new):**
+- [x] **Server tests (new):**
   - `src/OcuPilot/Test/SqlBrowse.cls` (pure): `Quoted`, `LikeValue` (every metacharacter), `KindOfType` over `KINDS`, every `BrowseRequest` refusal, `Composed` (texts and value order), and the cell mapping.
   - `src/OcuPilot/Test/SqlBrowseProbe.cls` (fixture):
     - schema `OcuProbe197` in `USER`: a 40-row keyless table with every kind of column; a single-key, a composite-key and an identity table; a two-column table; a view of rows Num > 30; a slow-function view for the bound;
@@ -229,24 +230,24 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
     - `ProbeAs` for `BrowsePlan` and `BrowseRun` legs.
   - `src/OcuPilot/Test/SqlBrowseLive.cls`: every matrix row at the port, including the held-open stale-plan seam through `SqlConsoleProbe.Hold`, and the bound through `SqlPortFixture`.
   - `src/OcuPilot/Test/SqlDataRoutes.cls` (HTTP): input, gate, not found, own tables, a success shape, and a view.
-- [ ] **Server rosters:**
+- [x] **Server rosters:**
   - `Test/ExplorerDescriptor.cls`: append to `DESCRIPTORS` :20, "twenty-eight" :17 becomes "twenty-nine", append to the side-bar order :40, and add `TestDataBrowserKeysTheClassicOpenTablePage` modeled on :264-289, asserting `NormalizePage("/csp/sys/exp/UtilSqlOpen.csp")`.
   - `Test/DeveloperFloor.cls`: append to `SCREENS` :34.
   - `Test/DeveloperFloorRoutes.cls`: add `POST /explorer/sql/data` to `tOthers` :87.
   - `Test/EndpointCoverage.cls`: a probe row before :248.
   - `Test/SurfaceCoverage.cls`: a screen row after :171.
   - `Test/ClassicPageGate.cls`: `TestAnAssignedPageGatesTheDataBrowser`, covering each Open Table page, the lacking and the holding principal, and the route.
-- [ ] **Client tests:**
+- [x] **Client tests:**
   - `ui/tools/data-browser-model.test.mjs` (new).
   - A token check (in that file): every `var(--…)` in the `ocu-data-browser` rules is `--ocu-`, and no `--ite-` appears anywhere under `ui/src`.
   - `ui/tools/licenses.test.mjs` (new).
   - `data-browser.page.spec.ts` and `data-browser-grid.spec.ts` (vitest and jsdom).
   - `ui/browser/system-explorer-data-browser.browser-spec.mjs` (new).
-- [ ] **Client rosters:**
+- [x] **Client rosters:**
   - `ui/tools/navigation.test.mjs`: the route after `system-explorer/sql-query` :298, and the message :308.
   - `ui/browser/system-explorer.browser-spec.mjs`: the eleventh label :136, and the message.
   - `ui/tools/self-protection.test.mjs`: `ATELIER_REFUSALS` :508-537 gains the two reasons.
-- [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
+- [x] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
 - [x] DW-2025 (routed to this story at its spec gate; fixed on its own head f02883e2, merged forward at ca221d2e, before implement): a console statement the statement index does not record (`LIKE ... ESCAPE` on a string column) is answered by name, a 422 the console explains, or classified another way and run; never a 500 (`SqlPort.cls:312`). Pin it with a test and a `mutation:` line.
 
@@ -308,6 +309,32 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
 
 ## Review Triage Log
 
+### 2026-10-04 — Review pass
+
+- verdicts: 21 findings — high 0, medium 11, low 7, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Nothing pins that the count gets only what the page left of the one budget (AC8) — added `Test/SqlBrowseFixture.cls` (records each `Executed` bound) and `SqlBrowseLive.TestTheCountTakesWhatRemainsOfTheBudget`; mutation recorded.
+  - `[medium]` `[patch]` `more` on an answer cut at 1,000,000 characters is unpinned — added the probe's `Wide` table and `SqlBrowseLive.TestAnAnswerCutBySizeSaysMore`; mutation recorded.
+  - `[medium]` `[patch]` The store's Next "past the rows kept" is unpinned (the test page was exactly full) — added the page-spec case with a 37-row page; mutation recorded.
+  - `[medium]` `[patch]` Sort and filter "return to the first page" were asserted only from the first page — the sort and filter cases now page to offset 100 first; mutation recorded.
+  - `[medium]` `[patch]` The stale-answer generation counter has no test — added a held-request page-spec case; mutation recorded.
+  - `[medium]` `[patch]` The view fail-closed branch (base tables unrecorded) is never exercised — `SqlBrowseFixture.Prepared` answers unindexed on demand; `SqlBrowseLive.TestAViewWhoseTablesAreUnrecordedFailsClosed`; mutation recorded.
+  - `[medium]` `[patch]` Nothing checks a request resolves to the catalog's spelling (AC6) — added `SqlBrowseLive.TestARequestResolvesToTheCatalogsSpelling`; mutation recorded.
+  - `[low]` `[patch]` Clear filters is clicked by no test — added the page-spec case, from the second page.
+  - `[medium]` `[patch]` The route's gate-before-body order is unobserved — `SqlDataRoutes.TestTheGateAndAnUnknownTable` posts a bad body as the principal lacking `%Development:USE` and expects 403; mutation recorded.
+  - `[false]` `[reject]` `DeveloperFloorRoutes` skips roster POST routes, so the entry only removes the route from the sweep — the roster lists routes the principal passes; left out, the sweep would expect a refusal the developer does not get, and `SqlDataRoutes.TestAViewOnlyGranteeReadsTheView` pins the 200.
+  - `[false]` `[reject]` Navigation and the side bar weigh only the table page's resource — the intent's clause sits in the route's order list and AC9 has the view page gate the route alone; the spec names the limit.
+  - `[low]` `[reject]` The view base-table lookup and the stale-plan re-prepare run outside `Executed`'s alarm — both only prepare (a one-table select, or a text that just failed to prepare); bounding them needs new guards for a delay no one meets.
+  - `[low]` `[reject]` `Remaining` rounds up, so the last statement may overrun the bound by under a second — the alarm counts whole seconds; rounding down would stop a page that has most of a second left.
+  - `[medium]` `[patch]` `CatalogRows` logged the instance's SQLCODE, against the intent and `Fail`'s own contract — the log line now names only "not prepared", "cut" or "refused".
+  - `[low]` `[reject]` A cut binary cell is 1,001 characters (`0x`, 998 hex digits, U+2026) — the spec's task fixes 499 bytes; the one extra character harms no one.
+  - `[low]` `[reject]` The `ID` key fallback is untested and would mark a view's `ID` column — the spec's task specifies that fallback; class tables answer a primary key on `ID` through the key query.
+  - `[medium]` `[patch]` Matrix rows observed only at the port, not at the route the matrix names — `SqlDataRoutes.TestCellsAndAColumnGrantOverTheWire` pins NULL as JSON `null`, empty as `""`, and a column grant's one column with `total: null` over HTTP; mutation recorded.
+  - `[low]` `[reject]` Banner and status-line paths are tested only in jsdom — jsdom renders the same template, and the browser spec already reads the real route's status line; a real-browser refusal adds principals for no new rendering path.
+  - `[false]` `[reject]` The router's `NS.DENIED` precedence is untested here — it is the router's gate in front of every handler, pinned by `Test/Routing.cls` and `Test/Wire.cls`.
+  - `[low]` `[patch]` `SqlDataRoutes`' header said bad input is refused before any statement, but an unlisted or stream column is refused after the catalog reads — header corrected.
+  - `[medium]` `[patch]` A column grant on a view answered -99 instead of rows (measured on `ocupilot-a2-ci`; it was the implement pass's `deferred:` item) — `BrowsePlan` reads a view's base tables from a select of its listed columns; the deferred item is removed, the task line corrected in place, and `TestTheReadChecksTheCallersPrivileges` gains the view column-grant leg; mutation recorded.
+
 ## Design Notes
 
 **Decisions (for the spec gate):**
@@ -359,6 +386,12 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
   - A LONGVARCHAR reads as its stream's OID text; `SUBSTRING(col, 1, 1001)` reads its text.
   - `LIKE` on DATE, TIME and TIMESTAMP (PosixTime) matches the logical value, so ODBC text matches nothing, while `%ODBCOUT(col) LIKE` matches.
   - `LIKE` matched INTEGER, NUMERIC (`12.5%` matched 12.50) and BIT, and was case-insensitive on VARCHAR.
+
+**Task 0, measured on `ocupilot-a2-ci`, 2026-10-04** (probe tables in `OcuProbe197`, dropped and checked gone):
+
+- (a) `INFORMATION_SCHEMA.COLUMNS.DATA_TYPE`, lower case: CHAR and VARCHAR read `varchar`; LONGVARCHAR `longvarchar`; BINARY and VARBINARY `varbinary`; LONGVARBINARY `longvarbinary`; BIT `bit`; TINYINT, SMALLINT, INTEGER and BIGINT their own names; NUMERIC and DECIMAL `numeric`; DOUBLE `double`; DATE, TIME and TIMESTAMP their own names; POSIXTIME `timestamp`. Also MONEY `numeric`, FLOAT and REAL `double`, DATETIME `timestamp`, TEXT and CLOB `longvarchar`, IMAGE and BLOB `longvarbinary`, UNIQUEIDENTIFIER `guid`, VECTOR `varchar`. `KINDS` names the thirteen spellings the DDL types answer; `guid` and `varchar` are text.
+- (b) `SUBSTRING("col", 1, 500)` on a VARBINARY and a LONGVARBINARY column, prepared with privilege checks on in ODBC mode, reads the raw bytes, 500 of the long value; so a binary column is selected that way, never as `NULL`.
+- In ODBC mode a NUMERIC(10,2) cell reads `1.5`, not `1.50`.
 
 **Wire.** The request is `POST /explorer/sql/data?ns=<NS>`, with the body `{schema, table, filters?, sort?, offset?, size?}`:
 
@@ -495,7 +528,59 @@ Load source into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - AC10: `color: var(--ite-fg)` in the new rules → the token check.
 - AC11: `BrowseRun` answers no rows → the browser spec's created-table leg.
 
+**Mutations run (Rule 19)**, each reverted and the tree checked byte-identical:
+
+- mutation: AC1, the store's tree loop drops the views read -> `data-browser.page.spec.ts` "expanding a schema lists its tables and views" (and the APG keys case) red.
+- mutation: AC2, `BrowsePlan` skips `BROWSEKEYQUERY` -> `SqlBrowseLive.TestTheKeyIsFoundAndOrdersAnUnsortedPage` (Keyed and Pair legs) and `TestTheSortAndItsClearing` red.
+- mutation: AC3, `CellOf` answers `$Char(0)` as NULL -> `SqlBrowseLive.TestNullEmptyStreamAndBinaryCells` and `SqlBrowse.TestTheCellMapping` red.
+- mutation: AC4, `LikeValue` stops escaping `%` -> `SqlBrowse.TestLikeValueEscapesThenMapsTheWildcards` and `TestComposedNamesBindsAndOrders`, and `SqlBrowseLive.TestFiltersMatchTheWholeValue`'s `n%` leg red.
+- mutation: AC5, `nextSort` answers ascending after descending -> `data-browser-model.test.mjs` tri-state case red.
+- mutation: AC6, `Executed`'s `%Prepare(pText, 1)` becomes 0 -> `SqlBrowseLive.TestAStalePlanHeldOpenIsStillRefused` and the column-grant leg of `TestTheReadChecksTheCallersPrivileges` red.
+- mutation: AC7, `HandleBrowse` drops the check on the requested name -> `SqlDataRoutes.TestOcuPilotsOwnTablesAreRefused`'s unknown-table-in-an-OcuPilot-schema leg red.
+- mutation: AC8, `BrowseRun` runs the page with bound 0 -> `SqlBrowseLive.TestThePageAndTheCountShareTheBound` red, through `SqlPortFixture`.
+- mutation: AC9, the descriptor's `classicPage` becomes `""` -> `ExplorerDescriptor.TestDataBrowserKeysTheClassicOpenTablePage` red; `SqlData.Gate` drops the view page -> `ClassicPageGate.TestAnAssignedPageGatesTheDataBrowser`'s view-page leg red.
+- mutation: AC10, `color: var(--ite-fg)` in `.ocu-data-browser-null` -> the token check in `data-browser-model.test.mjs` red.
+- mutation: AC11, `BrowseRun` answers its rows empty -> `system-explorer-data-browser.browser-spec.mjs` AC11 (and AC1-AC5) red.
+- mutation: DW-2025's case, `BrowseRun` classifies the page first -> `SqlBrowseLive.TestAnUnrecordedFilterStillAnswersRows` red; `shipLicenses` drops the append -> `licenses.test.mjs` red.
+- mutation: AC2/AC6, `BrowsePlan` keeps the request's schema and name -> `SqlBrowseLive.TestARequestResolvesToTheCatalogsSpelling` red.
+- mutation: AC6, `BrowsePlan` reads a view's base tables from `SELECT COUNT(*)` -> `SqlBrowseLive.TestTheReadChecksTheCallersPrivileges`'s view column-grant leg red (-99).
+- mutation: AC7, `BrowsePlan` carries on with the view alone when its tables are unrecorded -> `SqlBrowseLive.TestAViewWhoseTablesAreUnrecordedFailsClosed` red, through `SqlBrowseFixture`.
+- mutation: AC8, `BrowseRun` gives the count a fresh bound -> `SqlBrowseLive.TestTheCountTakesWhatRemainsOfTheBudget` red; `Executed`'s answer cut stops setting `more` -> `SqlBrowseLive.TestAnAnswerCutBySizeSaysMore` red.
+- mutation: AC3, `BrowseRun` answers a NULL cell as `""` -> `SqlDataRoutes.TestCellsAndAColumnGrantOverTheWire` red.
+- mutation: Order, `HandleBrowse` reads the body before the gate -> `SqlDataRoutes.TestTheGateAndAnUnknownTable`'s bad-body leg red.
+- mutation: AC3/AC4/AC5, in `data-browser.store.ts`: `nextPage` steps by the page size -> "Next after a page cut short" red; `cycleSort` and `applyFilter` keep the offset -> the sort and filter cases red (each now taken from the second page); `clearFilters` keeps the offset -> "Clear filters" red; the generation check is dropped -> "an answer to an older request is dropped" red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Data browser ships as a listed System Explorer screen (side bar 11): a schema tree over Story 19.5's three catalog reads beside a grid ported from iris-table-editor, reading one page at a time through `POST /explorer/sql/data`, which `SqlPort.BrowsePlan` and `BrowseRun` serve from the caller's own catalog with every value bound and privilege checks on. Rows stay on the screen.
+
+**Files.**
+
+- `src/OcuPilot/Port/SqlPort.cls`: `KINDS`, `KindOfType`, `Quoted`, `LikeValue`, `BrowseRequest`, `Composed`, `CellOf`, `BrowsePlan`, `BrowseRun` and private helpers; `Executed` gains `more` and `cut`.
+- `src/OcuPilot/Area/Explorer/SqlData.cls` (new): the route's handler, in the spec's order.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSqlData.cls` (new): the screen's declaration.
+- `src/OcuPilot/Api/Router.cls`, `Api/AtelierError.cls`: the route and its two codes.
+- `src/OcuPilot/Test/SqlBrowse.cls`, `SqlBrowseLive.cls`, `SqlBrowseProbe.cls`, `SqlBrowseFixture.cls`, `SqlDataRoutes.cls` (new); roster edits in `ExplorerDescriptor`, `ClassicPageGate`, `DeveloperFloor`, `DeveloperFloorRoutes`, `EndpointCoverage`, `SurfaceCoverage`.
+- `ui/src/app/core/data-browser-model.ts`, `areas/system-explorer/data-browser.{store,page}.ts`, `data-browser-{tree,grid}.ts` (new); the outlet entry, `screens.generated.ts`, 31 strings, `ocu-data-browser*` styles.
+- `ui/tools/licenses.mjs`, `ui/licenses/iris-table-editor.txt`, `ATTRIBUTIONS.md`: the MIT notice shipped and recorded.
+- Client tests: `data-browser-model.test.mjs`, `licenses.test.mjs`, two vitest specs, `system-explorer-data-browser.browser-spec.mjs`; roster edits in `navigation.test.mjs`, `self-protection.test.mjs`, `build-output.test.mjs`, `system-explorer.browser-spec.mjs`.
+- `ui/angular.json` and `angular-json.test.mjs`: `maximumWarning` re-based to 2745kB (measured 2,744,433 bytes).
+- EXPERIENCE.md: :159 in place, the Fixed-strings row at :598, the `### data-browser` paragraph.
+
+**Review.** 21 findings (two layers): 13 patched (11 medium, 2 low), 8 rejected (3 false, 5 low), none deferred; reasons are in the triage log. One defect found by the sweep, not the layers: `SqlData`'s doc comment spelled a self-protection code, which `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` refuses; reworded, re-run green (run 4993).
+
+**Follow-up review: recommended** (11 medium patched). Unverified risk: the view base-table lookup now prepares a select of every listed column; it is measured on the probe's views (a column grant, a view-only grant, a view over OcuPilot's table) and not on a view listing a stream or binary column.
+
+**Verification.**
+
+- `check-objectscript` 0 problems; its harness OK.
+- Targeted classes, one per call, green: `SqlBrowse` 6, `SqlBrowseLive` 15, `SqlDataRoutes` 6, `SqlPort` 11, `SqlPortLive` 14, `ExplorerDescriptor` 15, `ClassicPageGate` 8, `DeveloperFloor` 10, `DeveloperFloorRoutes` 1, `EndpointCoverage` 2, `SurfaceCoverage` 4.
+- `npm test`: 1,791 tools tests and 174 component files (2,306 tests) green; `lint-docs` clean.
+- Browser, on the rebuilt and redeployed bundle: data browser 2/2, `system-explorer` 4/4, structural walk 12/12.
+- Full ObjectScript sweep, 24 shards run one at a time, every class once: 445 classes, 3,627 tests. Reds not caused by this story: `MappingCodeGlobals` (the `^oddPKG("OCUPILOT")` residue Stories 19.6 and 19.15 recorded), `WireSecurityRead` (DW-1554), and seven journal and license classes this throwaway is not armed for.
+- Every mutation in `## Verification` applied, red observed, reverted; the tree hash matched before and after; no `OcuProbe197` object or principal is left on `ocupilot-a2-ci`.
+
+**Residual risks.** The bundle line and the Fixed-strings count (about 2,413 of 2,500) meet Epic 18's at merge and need re-measuring there. `TestThePageAndTheCountShareTheBound` and `TestTheCountTakesWhatRemainsOfTheBudget` depend on timing (a 0.005 s-per-row view; a Keyed page under half a second).
