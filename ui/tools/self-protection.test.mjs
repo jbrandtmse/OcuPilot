@@ -536,6 +536,9 @@ const ATELIER_REFUSALS = [
   ['REASONSQLBACKGROUNDFULL', 'explorerSqlBackgroundFullReason'],
   ['REASONSQLBACKGROUNDNOTFOUND', 'explorerSqlBackgroundNotFoundReason'],
   ['REASONSQLBACKGROUNDLOST', 'explorerSqlBackgroundLostReason'],
+  // Story 19.7: Data browser's input and not-found refusals.
+  ['REASONDATAINPUT', 'explorerSqlDataInputReason'],
+  ['REASONDATANOTFOUND', 'explorerSqlDataNotFoundReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

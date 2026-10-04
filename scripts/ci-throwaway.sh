@@ -296,6 +296,9 @@ services:
       # The SQL console's probe signs in as principals granted SQL SELECT on one probe table alone,
       # without %Development:USE, and without READ on USER's database (Story 19.6).
       # classes: SqlConsoleProbe
+      # The data browser's view-kinds class signs in as two principals granted SELECT on a probe view
+      # alone, or on three of its columns (Story 19.7).
+      # classes: SqlBrowseViewKinds
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate

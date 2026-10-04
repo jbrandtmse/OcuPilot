@@ -8016,6 +8016,250 @@ app-ldap-editor-page .ocu-field-checkbox input[type='radio'] {
   color: var(--ocu-on-surface);
 }
 
+// System Explorer's Data browser (Story 19.7): the schema tree beside the open table's grid, the two
+// wrapping to a stack when the column is too narrow for both; the grid reuses the data-table's frame,
+// header, row and cell rules, inside one frame that scrolls both ways under the filter row. Tokens
+// only, never the harvest's own palette.
+.ocu-data-browser {
+  max-width: none;
+}
+
+.ocu-data-browser-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ocu-space-4);
+  min-width: 0;
+}
+
+.ocu-data-browser-tree-pane {
+  display: flex;
+  flex: 0 0 16rem;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-data-browser-main {
+  display: flex;
+  flex: 1 1 32rem;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-data-browser-tree {
+  max-height: 70vh;
+  margin: 0;
+  padding: var(--ocu-space-1) 0;
+  overflow: auto;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+  list-style: none;
+}
+
+.ocu-data-browser-tree:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
+.ocu-data-browser-tree-group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-data-browser-tree-label,
+.ocu-data-browser-tree-line {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  min-height: var(--ocu-row-height);
+  padding: 0 var(--ocu-space-2);
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocu-data-browser-tree-child > .ocu-data-browser-tree-label,
+.ocu-data-browser-tree-child > .ocu-data-browser-tree-line {
+  padding-inline-start: var(--ocu-space-6);
+}
+
+.ocu-data-browser-tree-line {
+  color: var(--ocu-on-surface-variant);
+  white-space: normal;
+  cursor: default;
+}
+
+.ocu-data-browser-tree-chevron {
+  flex: 0 0 1em;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-browser-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ocu-data-browser-tree-view {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-browser-tree-label:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-browser-tree-current > .ocu-data-browser-tree-label {
+  background: var(--ocu-secondary-container);
+}
+
+.ocu-data-browser-tree:focus-visible .ocu-data-browser-tree-active > .ocu-data-browser-tree-label,
+.ocu-data-browser-tree:focus-visible .ocu-data-browser-tree-active > .ocu-data-browser-tree-line {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px var(--ocu-focus-ring-inner);
+}
+
+.ocu-data-browser-tree-note,
+.ocu-data-browser-hint {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-browser-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-data-browser-heading {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-data-browser-actions,
+.ocu-data-browser-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-data-browser-frame {
+  flex: 0 0 auto;
+}
+
+.ocu-data-browser-scroll {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.ocu-data-browser-filters,
+.ocu-data-browser-grid {
+  width: max-content;
+  min-width: 100%;
+}
+
+.ocu-data-browser-filters {
+  display: grid;
+  align-items: center;
+  padding: var(--ocu-space-1) 0;
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-browser-filter,
+.ocu-data-browser-filter-spacer {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0 var(--ocu-space-1);
+}
+
+.ocu-data-browser-grid:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
+.ocu-data-browser-header-sortable {
+  cursor: pointer;
+}
+
+.ocu-data-browser-grid:focus-visible .ocu-data-browser-cell-active {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px var(--ocu-focus-ring-inner);
+}
+
+.ocu-data-browser-key-mark {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-secondary);
+}
+
+.ocu-data-browser-cell {
+  @include typo.ocu-type('code');
+}
+
+.ocu-data-browser-null {
+  color: var(--ocu-on-surface-variant);
+  font-style: italic;
+}
+
+.ocu-data-browser-page-input {
+  width: 5rem;
+}
+
+.ocu-data-browser-page-count {
+  @include typo.ocu-type('body');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-browser-page-problem {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-error);
+}
+
+.ocu-data-browser-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  border: 1px dashed var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+}
+
+.ocu-data-browser-empty-text {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: var(--ocu-space-4);
+  color: var(--ocu-on-surface-variant);
+  text-align: center;
+}
+
 // ECP data servers (Story 18.20): the Change status dialog's current-status line, its three choices,
 // a refused choice drawn unavailable with its reason under it, and the refusal line, on the Remove
 // locks dialog's model.

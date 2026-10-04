@@ -239,6 +239,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
+  <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
 </Routes>
 }
 
@@ -1777,6 +1778,13 @@ ClassMethod EcpSettingsFormRead() As %Status
 ClassMethod EcpSettingsUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data
+/// browser's page read, delegating to <class>OcuPilot.Area.Explorer.SqlData</class>.</p>
+ClassMethod ExplorerSqlData() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlData).HandleBrowse()
 }
 
 }

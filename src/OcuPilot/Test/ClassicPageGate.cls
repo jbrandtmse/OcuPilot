@@ -456,6 +456,33 @@ Method TestAnAssignedPageGatesTheBackgroundRun()
     Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#HOLDINGUSER)
 }
 
+/// <p>Story 19.7 AC9: with the probe resource assigned to either classic Open Table page alone -- the
+/// table page the screen declares, or the view page its route unions -- the principal lacking it is
+/// refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on Data
+/// browser's route, and the one holding it passes every gate and is answered 404
+/// <code>EXPLORER.DATA.NOTFOUND</code> for a table the namespace does not hold, so nothing is read.</p>
+/// <p>Mutation (Rule 19): drop the view page from <method>OcuPilot.Area.Explorer.SqlData.Gate</method>
+/// -- the lacking principal's leg with the view page assigned goes red.</p>
+Method TestAnAssignedPageGatesTheDataBrowser()
+{
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/explorer/sql/data?ns=" _ $NAMESPACE
+    Set tBody = "{""schema"":""OcuProbe1814NoSuch"",""table"":""Gate""}"
+    For tPage = "%cspapp.exp.utilsqlopen", "%cspapp.exp.utilsqlopenview" {
+        Kill tOne
+        Set tOne(tPage) = ""
+        If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+        Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+        Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+        For tCase = $ListBuild(..#LACKINGUSER, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"), $ListBuild(..#HOLDINGUSER, "404 EXPLORER.DATA.NOTFOUND ") {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tPath, $List(tCase, 1), ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody, "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: $Get(tText))
+            Do $$$AssertEquals(tSaid, $List(tCase, 2), $List(tCase, 1) _ ": POST /explorer/sql/data with " _ tPage _ " assigned")
+        }
+    }
+}
+
 /// <p>Mint the namespace create of <var>pName</var> for <var>pUser</var> over a completed turn seeded
 /// for that user.</p>
 Method MintFor(pUser As %String, pName As %String, Output pProposal As %DynamicObject) As %Status

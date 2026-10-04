@@ -9380,6 +9380,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: LicenseSeamPort is process-private and no instance here holds a valid key to send (no activation, by decision)
 - 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when CI gains a valid test license key
 
+### DW-2025: The SQL console refuses 500 INTERNAL ('no statement index row') a query whose string column carries LIKE ... ESCAPE, because SqlPort.Classify refuses any text the statement index does not record
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 19.7 plan on ocupilot-a2-ci: SqlPort.Run of SELECT Num FROM OcuProbe197.Pets WHERE Name LIKE 'n%' ESCAPE '\' answered 500; without ESCAPE it answered rows; the cached query class for ESCAPE on a VARCHAR column carries no statement index hash (SqlPort.cls:312)
+- 2026-10-04T07:19:07Z status=routed owner=19-7-the-data-browser-tree-grid-filter-and-sort by=spec_gate note=fix in 19.7 (same file): answer such a statement by name (a 422 the console explains), or classify it another way and run it; never a 500
+- 2026-10-04T08:34:51Z status=resolved-by:19-7-the-data-browser-tree-grid-filter-and-sort owner=19-7-the-data-browser-tree-grid-filter-and-sort by=merge_gate note=fixed on its own head f02883e2 (run 37186691967 green; merged forward at ca221d2e): Classify refuses a query or DML statement the statement index does not record 422 EXPLORER.SQL.UNRECORDED, AD-10 fail-closed; OcuPilot.Test.SqlUnrecordedStatement pins it, mutation run 4901 red
+
+### DW-2028: Data browser grid cells are cut to one line with no cut-cell tooltip, so a value wider than its column cannot be read in full, where the shared data-table shows one
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
+- 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+
+### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlPort.Composed emits no ORDER BY with no key and no sort, and no tie-breaker after a sort when the key is empty; the spec matrix accepts the instance's order for a keyless table
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec matrix row Sort fixes the instance's order for a keyless table; reopens only via spec amendment
+
+### DW-2030: Data browser refuses 403 PROHIBITED.OCUPILOTSQL any table whose schema, table or column name contains 'ocupilot', because the composed page text goes through SqlStatement's text scan
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlData.HandleBrowse passes the plan's page text to Prohibited.SqlStatement, whose rule (a) refuses a text containing an own-name stem; a column named IsOcuPilotUser makes a user table unbrowsable
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec Boundaries run the check on the composed text; eliding identifiers from the scan needs a spec amendment
+
+### DW-2031: Data browser's Ctrl+PageDown and Ctrl+PageUp page keys are the browser's tab-switch shortcuts in Chrome and Firefox on Windows and Linux, so the grid never receives them there (inference)
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: data-browser-model.ts pageKey and EXPERIENCE.md's data-browser paragraph bind Ctrl/Cmd+PageDown and PageUp; Chromium reserves Ctrl+PgDn/PgUp for tab switching (inference; puppeteer's keys bypass accelerators)
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec grid task names the chord; pager buttons remain; a new chord for 19.8's keyboard help needs a spec amendment
+
+### DW-2032: Data browser's tree is read once per namespace, so a table or view created or dropped since, by SQL query in the same tab for one, shows or leaves only after a reload or a namespace switch
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.loadSchemas returns once schemas are held and toggle reuses a schema's read objects; the AC11 browser leg reloads the page to see its new table
+- 2026-10-04T13:18:00Z status=wontfix-accepted owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=reopen_if=a person reports a table missing from Data browser's tree after creating it in the same session
+### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
+- source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
+- 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
 ### DW-2006: SSL/TLS over a disabled %ECPClient configuration may be stored for an ECP data server, where the classic dialog refuses it
 - source: spec-18-20-ecp-data-servers.md (implement) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EcpPort maps only the vendor's #1454 (SSLECPClientNotExist), so a disabled %ECPClient is likely accepted (inference); AD-8 rules out the %ECPClient read, which needs %Admin_Secure:USE. Settle on a throwaway: seed a disabled %ECPClient, create a probe at 192.0.2.10 with SSLConfig 1, read whether it is stored, remove both.
@@ -9479,6 +9513,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: No element found for selector .ocu-detail-tab[data-route=system-explorer/sql-tables/fields] at :180, right after waitForFunction(location.pathname === document route); the same leg passed on Epic 19's own runs (13742bbb, 79273d02). Story 18.20 changes no shell or tab code (first sighting).
 - 2026-10-04T06:55:48Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; wait for the tab element before focusing it
 - 2026-10-04T08:45:29Z occurrence=range-end-cleanup note=second sighting on OCU-1-epic18: run 37187414647 (76df3dc8) browser shard 1/3, same leg and selector; passes 2/2 on ocupilot-b-ci against 76df3dc8's bundle
+- 2026-10-04T13:25:50Z status=resolved-by:range-end-cleanup owner=range-end-cleanup by=merge_gate note=fixed on its own head 7fcacd04 (run 37201830892 green; fast-forwarded into feature): the spec waits for the Fields tab to be visible before focusing it; a 2 s hold on the page's timers and frames once the address bar reached the document route reddened the old spec with the CI error and left the new one green
 
 ### DW-2026: a11y-structural-invariants.browser-spec.mjs failed all 12 legs on CI with 'Runtime.callFunctionOn timed out' (protocol timeout, 730 s)
 - source: ci run 37184530521 (browser shard 1/3, head a3f957b2) | severity: low | fix-risk: low | footprint: in-epic

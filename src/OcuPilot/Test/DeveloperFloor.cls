@@ -29,9 +29,9 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four, its
 /// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its eighteen SQL catalog
-/// screens (Stories 19.5 and 19.14), SQL query (Story 19.6), and the analytics log (Story 19.12's
-/// audit).</p>
-Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
+/// screens (Stories 19.5 and 19.14), SQL query (Story 19.6), Data browser (Story 19.7), and the
+/// analytics log (Story 19.12's audit).</p>
+Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
 Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
@@ -57,8 +57,10 @@ Parameter ROUTINEDOCUMENT = "%occStatus.inc";
 /// <code>USE</code> inside the page instead, as <code>page:resource</code>, comma-separated:
 /// <code>%CSP.UI.System.ViewCode</code>'s <code>OnPreHTTP</code> checks
 /// <code>$$$DevelopmentResourceName</code>, which <file>%sySecurity.inc</file> defines as
-/// <code>%Development</code>.</p>
-Parameter INTERNALCHECKS = "%CSP.UI.System.ViewCode:%Development";
+/// <code>%Development</code>; and SQL Home's Open Table, <code>%cspapp.exp.utilsqlopen</code>, a
+/// Hidden <code>%CSP.Util.AutoPage</code>, is served by the <code>/csp/sys/exp</code> application,
+/// whose resource is <code>%Development</code> (read on the instance).</p>
+Parameter INTERNALCHECKS = "%CSP.UI.System.ViewCode:%Development,%cspapp.exp.utilsqlopen:%Development";
 
 /// <p>The five members Home's system information samples from the dashboard.</p>
 Parameter DASHBOARDMEMBERS = "uptime,databaseSpace,journalSpace,lockTable,writeDaemon";
@@ -430,7 +432,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
         If (tPage = "") && ($List(tEntry, 3) = "system-explorer") Do $$$AssertTrue($ListFind($ClassMethod(tClass, "PrivilegePairs"), $ListBuild("%Development", "USE")), tKey _ ": replaces no classic page and still declares %Development:USE, the port's own pair")
         If tPage = "" Continue
         Set tChecked = tChecked + 1
-        Do $$$AssertTrue(##class(%Dictionary.CompiledClass).%ExistsId(tPage), tKey _ ": its classic page " _ tPage _ " is compiled")
+        Do $$$AssertTrue(..Compiled(tPage), tKey _ ": its classic page " _ tPage _ " is compiled")
         Set tResource = ..ClassicResource(tPage, .tHasResource)
         Do $$$AssertTrue(tHasResource || (tResource '= ""), tKey _ ": " _ tPage _ " declares no RESOURCE, and no check of its own is recorded in INTERNALCHECKS")
         Set tAdmitted = tHasResource && (tResource = "")
@@ -480,6 +482,16 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyThree()
     }
     Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-three")
     Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports and the SQL run")
+}
+
+/// <p>Whether the class dictionary holds a compiled class named exactly <var>pClass</var>, Hidden
+/// ones included: a Hidden CSP page's <code>%ExistsId</code> answers 0 although its compiled row is
+/// listed (read on the instance).</p>
+ClassMethod Compiled(pClass As %String) As %Boolean
+{
+    If ##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 1
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE %EXACT(Name) = ?", pClass)
+    Quit (tResult.%SQLCODE = 0) && tResult.%Next() && (tResult.%GetData(1) > 0)
 }
 
 /// <p>The compiled <code>RESOURCE</code> of the classic page <var>pPage</var>, with

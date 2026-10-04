@@ -7625,7 +7625,7 @@ So that the Explorer reaches the data and not only the schema.
 
 - **Given** the schema tree, the column metadata with primary-key detection, the paged grid, type-aware cell formatting, wildcard filtering, single-column sorting and pagination
 - **When** each renders
-- **Then** it works against the Atelier port.
+- **Then** it works against the SQL port (`Port/SqlPort`, AD-61's SQL case), the schema tree through the Atelier port's catalog reads [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 5: was 'against the Atelier port'; `action/query` cannot carry rows (AD-61 rule 7)].
 
 - **Given** the harvested grid
 - **When** it is ported
@@ -7641,7 +7641,7 @@ So that the grid is an editor rather than a viewer.
 
 - **Given** inline cell editing with type-specific editors, edit-mode undo, row insert, duplicate and delete, and staged saves
 - **When** each runs
-- **Then** it works, with an optimistic update rolled back on failure.
+- **Then** it works, with an optimistic update rolled back on failure, and its ARIA announcements match the rest of the portal. [AMENDED 2026-10-04, Rule 5 split by=merge_gate: the editing announcements stay here]
 
 - **Given** any save
 - **When** it runs
@@ -7649,7 +7649,9 @@ So that the grid is an editor rather than a viewer.
 
 - **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
 - **When** each is used
-- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
+- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original. [SPLIT to 19.16 2026-10-04: this criterion moved verbatim]
+
+- **DW-2028:** Data browser's grid cuts each cell to one line with no tooltip, so a value wider than its column cannot be read in full; this story ports the shared data table's cut-cell tooltip (`shell/data-table.ts`, on pointer and on the active cell) to the grid. [ADDED 2026-10-04, Rule 17 (1b), routed by Story 19.7's code review]
 
 ### Story 19.9: Documatic and DocDB
 
@@ -7779,6 +7781,20 @@ So that the console stays usable while it runs.
 - **Given** the console
 - **When** a query is submitted
 - **Then** it runs with a run-in-background option (moved verbatim from 19.6's first criterion).
+
+### Story 19.16: The data browser - export, shortcuts, go-to-row and tabs
+
+As a developer,
+I want to export what the grid shows, reach its actions from the keyboard and keep several tables open,
+So that the data browser covers the classic Open Table page's remaining conveniences.
+
+[ADDED 2026-10-04, Rule 5 split of Story 19.8 by=merge_gate: 19.8's third criterion moved here verbatim; run right after 19.8. 19.8 keeps the editors, staging, the confirmed save, key reconciliation and the editing announcements.]
+
+**Acceptance Criteria:**
+
+- **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
+- **When** each is used
+- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
 
 ---
 

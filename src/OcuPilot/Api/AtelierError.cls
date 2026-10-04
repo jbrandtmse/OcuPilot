@@ -184,4 +184,18 @@ Parameter SQLBACKGROUNDLOST = "EXPLORER.SQL.BACKGROUND.LOST";
 
 Parameter REASONSQLBACKGROUNDLOST = "The background run ended without an answer; run it again.";
 
+/// <p>Envelope code: a data browser request outside its shape (Story 19.7): an unknown key, a bad
+/// name, a filter or sort on a column the table does not list or of a stream or binary column, a
+/// direction, an offset or a page size out of range. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter DATAINPUT = "EXPLORER.DATA.INPUT";
+
+Parameter REASONDATAINPUT = "Name a table or view as the tree shows it; filters of up to 1,000 characters on its listed columns that are not streams or binary; a sort on one such column, ascending or descending; an offset from 0; and a page size of 50, 100, 250 or 500.";
+
+/// <p>Envelope code: no table or view the caller's catalog shows has the requested name (Story 19.7).
+/// Rendered on the <parameter>OcuPilot.Api.Error.NOTFOUND</parameter> slug with 404, unlogged.</p>
+Parameter DATANOTFOUND = "EXPLORER.DATA.NOTFOUND";
+
+Parameter REASONDATANOTFOUND = "This namespace holds no table or view by that name that this account can see.";
+
 }

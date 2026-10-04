@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:638 */
+  /** EXPERIENCE.md:639 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5174,6 +5174,71 @@ export const STRINGS = {
   explorerSqlBackgroundNotFoundReason: 'No background run of yours has this id; an ended run is kept for 15 minutes.',
   /** EXPERIENCE.md:597 */
   explorerSqlBackgroundLostReason: 'The background run ended without an answer; run it again.',
+  // Story 19.7: Data browser's title, its tree, filter row, pager and grid labels, its status and
+  // empty lines, its two refusals and its prompts. Refresh, the yes and no words, the tree's "View"
+  // marker and the stopped and SQLCODE lines are reused.
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataLabel: 'Data browser',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataTree: 'Tables and views',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilters: 'Column filters',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilterColumn: 'Filter <column>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataClearFilters: 'Clear filters',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFirstPage: 'First page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPreviousPage: 'Previous page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNextPage: 'Next page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataLastPage: 'Last page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPage: 'Page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataOfPages: 'of <n>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRowsPerPage: 'Rows per page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNull: 'NULL',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataKeyColumn: 'Key column',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPick: 'Pick a table or view in the tree to see its rows.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSchemaEmpty: 'This schema holds no table or view this account can see.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataTreeCut: 'Only the first 1,000 are listed.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilterHint: 'Filters match the whole value: * stands for any run of characters and ? for one character.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRowsOf: 'Rows <first>\u2013<last> of <total>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRows: 'Rows <first>\u2013<last>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNoRows: 'No rows.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNoMatch: 'No rows match the filters.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortedAscending: 'Sorted by <column>, ascending.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortedDescending: 'Sorted by <column>, descending.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortCleared: 'Sort cleared.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPageRange: 'Enter a page from 1 to <n>.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataInputReason: 'Name a table or view as the tree shows it; filters of up to 1,000 characters on its listed columns that are not streams or binary; a sort on one such column, ascending or descending; an offset from 0; and a page size of 50, 100, 250 or 500.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNotFoundReason: 'This namespace holds no table or view by that name that this account can see.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt1: 'How do I filter rows with * and ? here?',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt2: 'Why does this table show fewer columns than its class defines?',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt3: 'Which column is this table\'s key, and how is it found?',
   // Story 18.20: ECP data servers, OS management's seventeenth entry, its form, its Change status
   // dialog, its delete body and the delete's impact phrases.
   /** EXPERIENCE.md:375 */
