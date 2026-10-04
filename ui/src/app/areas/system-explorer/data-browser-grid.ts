@@ -33,7 +33,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { afterTooltipDelay, nextFrame } from '../../core/tooltip-timing';
 import { STRINGS } from '../../core/strings';
 import { fillPlaceholders } from './code-list.store';
-import type { BrowseColumn, StagedRow } from './data-browser.store';
+import type { ActiveCell, BrowseColumn, StagedRow } from './data-browser.store';
 
 /** One header cell as drawn. */
 interface HeaderView {
@@ -160,6 +160,10 @@ let gridCount = 0;
  * **A cut cell shows its whole value in a tooltip** (DW-2028) when the pointer rests on it or it
  * becomes the active cell while the grid has focus; Escape, a scroll, a press in the grid, a resize
  * or an open editor hides it. Ported from `shell/data-table.ts`'s tooltip, its call sites kept.
+ *
+ * **For the page's tabs and shortcuts** (Story 19.16): `activeCell` reports each move of the active
+ * cell, `place` restores a tab's cell without moving focus, and `editorOpen` and `commitInPlace` let
+ * Ctrl/Cmd+S commit an open editor before it opens Save.
  *
  * Ported from iris-table-editor v0.2.3 (MIT, `ui/licenses/iris-table-editor.txt`),
  * `packages/webview/src/grid.js`: `renderFilterRow` (:3685-3808), `applyFilter` (:3815-3843),
@@ -395,6 +399,9 @@ export class DataBrowserGrid {
   /** The row the active cell is on, or `null` on the header row. */
   readonly activeRow = output<string | null>();
 
+  /** The active cell, as its row's id (`null` on the header row) and its data column (-1 the Change column), each time it moves. */
+  readonly activeCell = output<ActiveCell>();
+
   private readonly scroll = viewChild<ElementRef<HTMLElement>>('scroll');
 
   private readonly gridElement = viewChild<ElementRef<HTMLElement>>('grid');
@@ -419,6 +426,9 @@ export class DataBrowserGrid {
 
   /** The active row last emitted. */
   private emittedRow: string | null = null;
+
+  /** The active cell last emitted, or `null` before the first read of it, which is not emitted. */
+  private emittedCell: string | null = null;
 
   private hoverCellId = '';
 
@@ -448,6 +458,18 @@ export class DataBrowserGrid {
       if (id === this.emittedRow) return;
       this.emittedRow = id;
       this.activeRow.emit(id);
+    });
+    // Emitted when the active cell moves, never for where a new grid starts, so a tab switch cannot
+    // hand the tab the cell it is about to restore over.
+    effect(() => {
+      const { row, column } = this.active();
+      const entry = row >= 0 ? this.rows()[row] : undefined;
+      const cell: ActiveCell = { row: entry === undefined ? null : entry.id, column: column - this.firstData() };
+      const key = JSON.stringify(cell);
+      if (key === this.emittedCell) return;
+      const first = this.emittedCell === null;
+      this.emittedCell = key;
+      if (!first) this.activeCell.emit(cell);
     });
     // A chord belongs to the shell; a scroll of any element holding the grid moves the cell out
     // from under the fixed tooltip.
@@ -625,8 +647,37 @@ export class DataBrowserGrid {
   activate(id: string, column = 0): void {
     const row = this.rows().findIndex((entry) => entry.id === id);
     if (row < 0) return;
-    this.active.set({ row, column: column + this.firstData() });
+    this.active.set({ row, column: Math.max(0, column + this.firstData()) });
     this.focusGrid();
+  }
+
+  /**
+   * Make the cell at data column `column` of grid row `id`, or of the header row for `null`, the
+   * active cell without moving focus: a tab switch restores the tab's cell this way. A row the grid
+   * does not draw changes nothing.
+   */
+  place(id: string | null, column: number): void {
+    const row = id === null ? -1 : this.rows().findIndex((entry) => entry.id === id);
+    if (id !== null && row < 0) return;
+    this.active.set({ row, column: Math.min(Math.max(0, column + this.firstData()), Math.max(0, this.columnCount() - 1)) });
+  }
+
+  /** Whether a cell editor is open. */
+  editorOpen(): boolean {
+    return this.editor() !== null;
+  }
+
+  /**
+   * Commit the open editor where it is, without moving the active cell, and put focus on the grid;
+   * `true` when no editor is left open. A value the column refuses keeps the editor open, marked
+   * invalid, and answers `false`.
+   */
+  commitInPlace(): boolean {
+    if (this.editor() === null) return true;
+    this.commit(null);
+    if (this.editor() !== null) return false;
+    this.gridElement()?.nativeElement.focus();
+    return true;
   }
 
   protected onFilterInput(column: string, event: Event): void {

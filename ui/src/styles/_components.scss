@@ -8377,3 +8377,111 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 .ocu-data-browser-head-group {
   scrollbar-gutter: auto;
 }
+
+// Story 19.16: Data browser's tab strip -- Material's tab nav bar on the detail page's tabs tokens,
+// each tab's label, its staged dot and its pointer-only close mark -- the panel under it, the Keyboard
+// shortcuts dialog's list, and the Go to row field with its range line. Tokens only.
+.ocu-data-browser-tabs {
+  --mat-tab-container-height: 40px;
+  --mat-tab-label-text-font: var(--ocu-type-body-family);
+  --mat-tab-label-text-size: var(--ocu-type-body-size);
+  --mat-tab-label-text-line-height: var(--ocu-type-body-line-height);
+  --mat-tab-label-text-tracking: var(--ocu-type-body-tracking);
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-hover-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-focus-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-active-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-hover-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-focus-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-hover-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-focus-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-height: 2px;
+  --mat-tab-divider-color: var(--ocu-outline-variant);
+  --mat-tab-divider-height: 1px;
+
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.ocu-data-browser-tab:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-browser-tab-label {
+  white-space: nowrap;
+}
+
+.ocu-data-browser-tab-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--ocu-space-2);
+  border-radius: 50%;
+  background: var(--ocu-primary);
+}
+
+.ocu-data-browser-tab-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: var(--ocu-space-1);
+  border-radius: var(--ocu-radius-full);
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-browser-tab-close:hover {
+  background: var(--ocu-surface-container-high);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-browser-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+// A shortcut's keys wrap inside the dialog rather than widen it.
+.ocu-data-browser-shortcuts {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--ocu-space-2) var(--ocu-space-4);
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-browser-shortcuts dt {
+  @include typo.ocu-type('body');
+}
+
+.ocu-data-browser-shortcuts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ocu-data-browser-shortcuts kbd {
+  @include typo.ocu-type('code');
+
+  padding: 1px 5px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-data-browser-row-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-data-browser-row-refused {
+  color: var(--ocu-error);
+}

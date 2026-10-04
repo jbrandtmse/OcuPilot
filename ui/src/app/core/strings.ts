@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:640 */
+  /** EXPERIENCE.md:641 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5458,6 +5458,61 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   ecpSslConnectionDeleteConsequence:
     'Deleting this authorization means the application server that presents this certificate must be authorized again the next time it connects. Its current connection is not affected. This cannot be undone.',
+  // Story 19.16: Data browser's tab strip, Close tab and its line, the tab cap, Go to row with its
+  // field, Go, its range line and its no-row line, the export line, the Keyboard shortcuts dialog's
+  // title, scope note and the labels and keys it lists. "Download CSV", "Add row", "Duplicate row",
+  // "Delete row", "<n> changes waiting to be saved.", "Leave without saving?", "Confirm", "Cancel",
+  // "Close" and the namespace discard line are reused.
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataOpenTables: 'Open tables',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataCloseTab: 'Close tab',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataGoToRow: 'Go to row',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataRowNumber: 'Row number',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataGo: 'Go',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataShortcuts: 'Keyboard shortcuts',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataSaveShortcut: 'Save changes',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataPageShortcut: 'Next or previous page',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabShortcut: 'Next or previous tab',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabClosed: '<table> closed.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabCap: 'At most <n> tables can be open; close one first.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataRowRange: 'Enter a row from 1 to <n>.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataNoRow: 'No row <n> here.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataExported: 'Saved rows <first>\u2013<last> to <file>, as the instance read them.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataShortcutsScope: 'These work while focus is in Data browser and no dialog or editor is open.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysHelp: 'Ctrl/Cmd+/',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysSave: 'Ctrl/Cmd+S',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysGoToRow: 'Ctrl/Cmd+G',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysExport: 'Ctrl/Cmd+E',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysAddRow: 'Alt/Option+Shift+N',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysDuplicateRow: 'Alt/Option+Shift+D',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysDeleteRow: 'Alt/Option+Shift+Delete or Backspace',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysPage: 'Alt/Option+PageDown or PageUp',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysTab: 'Alt/Option+Shift+PageDown or PageUp',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysCloseTab: 'Alt/Option+Shift+W, or Delete on a tab',
 } as const;
 
 /**
