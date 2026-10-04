@@ -6,6 +6,11 @@
  * The page with rows, and with the run's answer, passes the structural walk's checks at 1280 light,
  * 720 light and 1280 dark, with no entry beyond the baseline.
  *
+ * Story 19.15 (AC11): a background COUNT started with Run in background leaves Run answering a SELECT
+ * at once, and the Background run section later shows the COUNT's row; Cancel on a second background
+ * COUNT shows Canceled. The probe tables (`OcuPilot.Test.SqlBackgroundProbe`) are made and removed by
+ * that test, and the signed-in account's run rows are removed after it.
+ *
  * Needs the throwaway (it refuses the live container); the table it creates is dropped in `before`
  * and `after`, and `after` asserts none is left.
  *
@@ -36,6 +41,11 @@ const SCHEMA = 'OcuProbe196';
 const MADE = 'OcuProbe196.Made';
 const ECHO = 'OcuProbe196Echo';
 const ROUTE = 'system-explorer/sql-query';
+const BACKGROUND_PROBE = 'OcuPilot.Test.SqlBackgroundProbe';
+/** A five-way cross join's count over the probe table: about five seconds. */
+const COUNT = 'SELECT COUNT(*) AS N FROM OcuProbe1915.Granted a, OcuProbe1915.Granted b, OcuProbe1915.Granted c, OcuProbe1915.Granted d, OcuProbe1915.Granted e';
+/** A six-way cross join's count: minutes, so only Cancel or the bound ends it. */
+const LONGER = `${COUNT}, OcuProbe1915.Granted f`;
 const TABLES_ROUTE = 'system-explorer/sql-tables';
 
 /** The walk's own media feature (`structural-walk.mjs`): a theme flip lands at once rather than mid-transition. */
@@ -108,6 +118,35 @@ async function writeStatement(page, text) {
   await page.click('textarea[data-ocu-sql="statement"]', { clickCount: 3 });
   await page.keyboard.press('Backspace');
   await page.type('textarea[data-ocu-sql="statement"]', text);
+}
+
+/** Make the background probe tables and remove the signed-in account's run rows; whether both took. */
+function makeBackgroundProbe() {
+  const output = runIris(config.container, [
+    marker('MADE', `$System.Status.GetErrorText(##class(${BACKGROUND_PROBE}).Make())`),
+    marker('FORGOT', `##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser("${config.username}")`),
+  ]);
+  return markerValue(output, 'MADE') === '' && markerValue(output, 'FORGOT') === '1';
+}
+
+/** Remove the background probe tables and the signed-in account's run rows; whether both took and no run of its is live. */
+function removeBackgroundProbe() {
+  const output = runIris(config.container, [
+    marker('REMOVED', `$System.Status.GetErrorText(##class(${BACKGROUND_PROBE}).Remove())`),
+    marker('FORGOT', `##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser("${config.username}")`),
+    `Set tLive=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ?","${config.username}")`,
+    marker('LEFT', 'tLive.%Next()_"/"_tLive.%GetData(1)'),
+  ]);
+  return markerValue(output, 'REMOVED') === '' && markerValue(output, 'FORGOT') === '1' && markerValue(output, 'LEFT') === '1/0';
+}
+
+/** Wait until the Background run section's status line reads `text`. */
+async function backgroundReads(page, text, timeout = config.navigationTimeoutMs) {
+  await page.waitForFunction(
+    (wanted) => (document.querySelector('[data-ocu-sql="background-status"]')?.textContent ?? '').trim() === wanted,
+    { timeout },
+    text
+  );
 }
 
 /** Wait until the status line reads `text`. */
@@ -187,5 +226,38 @@ test('AC2, AC9: a confirmed CREATE TABLE runs only at Proceed, and SQL tables th
     );
   } finally {
     await context.close();
+  }
+});
+
+test('AC11: a background COUNT leaves Run answering at once, its row arrives later, and Cancel on a second shows Canceled', async () => {
+  assert.ok(makeBackgroundProbe(), 'the background probe tables exist and the account holds no run row');
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${ROUTE}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await writeStatement(page, COUNT);
+    await page.click('button[data-ocu-sql="background"]');
+    await backgroundReads(page, STRINGS.explorerSqlBackgroundRunning);
+
+    await writeStatement(page, 'SELECT Name FROM OcuProbe1915.Granted WHERE Num = 1');
+    await page.click('button[data-ocu-sql="run"]');
+    await page.waitForSelector('[data-ocu-sql="cell"]', { timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await page.$$eval('[data-ocu-sql="cell"]', (nodes) => nodes.map((node) => node.textContent.trim())), ['n1'], 'Run answers its rows');
+    const meanwhile = await page.$eval('[data-ocu-sql="background-status"]', (node) => node.textContent.trim());
+    assert.equal(meanwhile, STRINGS.explorerSqlBackgroundRunning, 'while the background COUNT still runs');
+
+    // Mutation (Rule 19): `SqlQueryState.readBackground` never adopts the polled answer, rebuilt and
+    // redeployed to the throwaway -> the COUNT's row never reaches the section and this goes red.
+    await backgroundReads(page, STRINGS.tableRowCount.replace('<n>', '1'), 60000);
+    assert.deepEqual(await page.$$eval('[data-ocu-sql="background-cell"]', (nodes) => nodes.map((node) => node.textContent.trim())), ['102400000'], 'the section shows the COUNT\'s row');
+    assert.deepEqual(await structural(page, ROUTE), [], 'SQL query with a background run\'s rows adds no structural entry');
+
+    await writeStatement(page, LONGER);
+    await page.click('button[data-ocu-sql="background"]');
+    await backgroundReads(page, STRINGS.explorerSqlBackgroundRunning);
+    await page.waitForSelector('button[data-ocu-sql="background-cancel"]', { timeout: config.navigationTimeoutMs });
+    await page.click('button[data-ocu-sql="background-cancel"]');
+    await backgroundReads(page, STRINGS.explorerSqlBackgroundCanceled, 15000);
+  } finally {
+    await context.close();
+    assert.ok(removeBackgroundProbe(), 'the background probe tables and the account\'s run rows are removed, and no run of its is live');
   }
 });

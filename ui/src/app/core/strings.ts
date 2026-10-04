@@ -5152,6 +5152,26 @@ export const STRINGS = {
   explorerSqlQueryPrompt2: 'How do I pass a value to a ? in a statement?',
   /** EXPERIENCE.md:597 */
   explorerSqlQueryPrompt3: 'Why was my statement refused here?',
+  // Story 19.15: SQL query's Run in background, its section's heading and two status lines, and the
+  // background run's five refusals. Its ended status reuses 19.6's lines and its Cancel "Cancel".
+  /** EXPERIENCE.md:597 */
+  explorerSqlRunInBackground: 'Run in background',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundHeading: 'Background run',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundRunning: 'Running in the background.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundCanceled: 'Canceled.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundQueryOnlyReason: 'Only a query runs in the background; use Run for a statement that changes something.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundBusyReason: 'A query you started is already running in the background; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundFullReason: 'As many background queries as this instance allows are running; try again when one ends.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundNotFoundReason: 'No background run of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundLostReason: 'The background run ended without an answer; run it again.',
   // Story 18.20: ECP data servers, OS management's seventeenth entry, its form, its Change status
   // dialog, its delete body and the delete's impact phrases.
   /** EXPERIENCE.md:375 */

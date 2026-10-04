@@ -459,6 +459,11 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 18.20's forward merge of Story 19.6 raised it to 2728kB, the measured 2,727,893-byte initial total
 // rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.15 raised it to 2704kB, the measured 2,703,008-byte initial total rounded up to the next kB
+// (SQL query's Run in background, its Background run section, the store's poll and its strings), under
+// the 4000kB hard stop.
+// Story 18.20's forward merge of Story 19.15 raised it to 2737kB, the measured 2,736,473-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -471,7 +476,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2728kB', 'DW-1166, Story 18.20 forward merge of Story 19.6: the measured 2,727,893 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2737kB', 'DW-1166, Story 18.20 forward merge of Story 19.15: the measured 2,736,473 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
