@@ -9377,3 +9377,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: LicenseSeamPort is process-private and no instance here holds a valid key to send (no activation, by decision)
 - 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when CI gains a valid test license key
+
+### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
+- source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
+- 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
