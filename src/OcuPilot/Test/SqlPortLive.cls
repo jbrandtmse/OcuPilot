@@ -6,7 +6,7 @@
 /// and a DML statement stopped at the bound, the DML statement undone; a transaction a run leaves open
 /// rolled back; a plan that executes nothing; a CALL's first result set and its output position taking
 /// no value; OcuPilot's own tables found
-/// through the statement index and a view's usage; a statement the index answers no row for refused,
+/// through the statement index and a view's usage; a statement whose index row cannot be read refused,
 /// its log line carrying none of it; and, as real principals in child processes, the gate naming the
 /// missing pair and the instance refusing SQLCODE -99 at prepare for every statement on a table the
 /// principal holds no SQL privilege on (DW-1964), every kind still refused although another account
