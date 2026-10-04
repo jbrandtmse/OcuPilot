@@ -80,7 +80,7 @@ deferred:
   - EXPERIENCE.md;
   - the rosters `ReadTool`, `SurfaceCoverage`, `Wire`, `PortGate`, `Governance`, `GovernanceBaseline`, `ToolDispatch`, `ToolEmit`, `ToolRoundTrip`, `ClassicPageGate`, `MappingDescriptor` and `Test/Prohibited.cls`.
 
-  This story needs no edit to `Screen/Gate.cls`, `navigation.ts` or `command-box.ts`. `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged. EXPERIENCE.md is edited in place and keeps 1005 lines.
+  This story needs no edit to `Screen/Gate.cls`, `navigation.ts` or `command-box.ts`. `screens.generated.ts` and `ToolFields.cls` are regenerated, never hand-merged. EXPERIENCE.md is edited in place and keeps 1006 lines (after Story 19.6's merge).
 - **`strings.ts` holds each value under one key.** Reuse `tableColumnName`, `languageServerFieldAddress`, `sslTestPort`, `taskHistoryColumnStatus`, `sslListLabel` ("SSL/TLS"), `agentGovernanceDisabled` ("Disabled"), `taskPriorityNormal` ("Normal"), `licenseServerAddressHint`, `actionCreate`, `actionSave`, `actionDelete`, `actionCancel` and `auditDatabaseStillRunning`.
 
 **Never:**
@@ -221,7 +221,7 @@ deferred:
 - `core/strings.ts`: `} as const` is at :5093. `ui/tools/strings.test.mjs` sets a literal bound of 2500 at :581-584, checks one key per value at :621-629, and checks EXPERIENCE.md citations at :816.
 - `ui/angular.json:54` sets `maximumWarning` to 2677kB. It is pinned at `ui/tools/angular-json.test.mjs:458`, whose last history row is :443-445.
 
-**EXPERIENCE.md** (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`, 1005 lines):
+**EXPERIENCE.md** (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`, 1006 lines after Story 19.6's merge):
 
 - :164: the OS management side bar, sixteen entries ending "License servers (Stage 2, Story 18.6)".
 - :173: Dialogs.
@@ -454,7 +454,7 @@ deferred:
 - `core/strings.ts` (add-only, after :5092): each new key under its `/** EXPERIENCE.md:n */` line. Raise `strings.test.mjs:581-584`'s bound only if the literals cross it.
 - Regenerate `core/screens.generated.ts` with `cd ui && node tools/screen-mirror.mjs`.
 - `ui/angular.json`: re-base `maximumWarning` under DW-1166 to the measured initial total, rounded up to the next kB, with its history row in `angular-json.test.mjs`. Stop and ask above 3800kB.
-- **EXPERIENCE.md, in place, keeping 1005 lines.** Then run `cd ui && npm run test:tools`.
+- **EXPERIENCE.md, in place, keeping 1006 lines.** Then run `cd ui && npm run test:tools`.
   - :164 gains "· ECP data servers (Stage 2, Story 18.20)", the seventeenth entry.
   - :173 gains the dialog "change an ECP data server's status (Story 18.20: Not connected, Disabled or Normal, the current one and an unlicensed Normal drawn disabled with their reasons, then the destructive treatment with no typed name)", and its delete list gains "ECP data server".
   - :375 gains "; and ECP data servers (Story 18.20): …", tagged `[ADDED <date> - Story 18.20]`, with every new literal:
@@ -535,7 +535,7 @@ deferred:
   - the four keys are in the baseline, with the delete and change status disabled;
   - every roster and pinned side-bar list includes the screens;
   - the DW-1337 gate holds in both themes;
-  - EXPERIENCE.md reads 1005 lines.
+  - EXPERIENCE.md reads 1006 lines (Story 19.6's merge added one; this story adds none).
 
 ## Spec Change Log
 
@@ -701,7 +701,7 @@ deferred:
   - The story's own classes: `EcpDataServerWrite`, `EcpDataServerStatus`, `EcpWriteGate`, `EcpDescriptor`.
   - The rosters: `Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Navigation`, `Wire`, `WireSecurityRead`, `WireAreaAnyScreen`, `PortGate`, `ClassicPageGate`, `MappingDescriptor`, `DraftRegistry`, `ToolRoundTrip`, `ToolWrite`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolDispatch`, `ToolEmit`, `EntityRef`, `AdminPortAsync`, `RemoteDatabaseWrite`, `RemoteDatabaseDescriptor`.
 - `(loop)` `cd ui && node --test --test-concurrency=1 browser/ecp-data-servers.browser-spec.mjs browser/license-usage.browser-spec.mjs browser/remote-databases.browser-spec.mjs browser/journals.browser-spec.mjs browser/journal-settings.browser-spec.mjs browser/license-key.browser-spec.mjs browser/license-servers.browser-spec.mjs`. Expected: pass.
-- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 1005.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components`, then `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean, and `wc -l` on EXPERIENCE.md reads 1006.
 - `(once, before dev_complete)`, each expected green with a non-zero count:
   1. the full ObjectScript sweep, `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci`, one class at a time;
   2. `cd ui && npm test && npm run build`;
