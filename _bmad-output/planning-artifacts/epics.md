@@ -7651,6 +7651,8 @@ So that the grid is an editor rather than a viewer.
 - **When** each is used
 - **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
 
+- **DW-2028:** Data browser's grid cuts each cell to one line with no tooltip, so a value wider than its column cannot be read in full; this story ports the shared data table's cut-cell tooltip (`shell/data-table.ts`, on pointer and on the active cell) to the grid. [ADDED 2026-10-04, Rule 17 (1b), routed by Story 19.7's code review]
+
 ### Story 19.9: Documatic and DocDB
 
 As a developer,

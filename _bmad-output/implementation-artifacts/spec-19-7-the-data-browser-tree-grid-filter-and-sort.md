@@ -226,7 +226,7 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
   - `src/OcuPilot/Test/SqlBrowseProbe.cls` (fixture):
     - schema `OcuProbe197` in `USER`: a 40-row keyless table with every kind of column; a single-key, a composite-key and an identity table; a two-column table; a view of rows Num > 30; a slow-function view for the bound;
     - principals `OcuProbe197User` (table grants plus `SELECT(Name)`) and `OcuProbe197View` (the view alone), each with `SqlConsoleProbe.EnsurePrincipals`' role pairs, created only where `SqlConsoleProbe.Armed()` reads 1;
-    - it declares no arming variable of its own, so `ci-throwaway.sh`'s roster is unchanged;
+    - it declares no arming variable of its own; QA's `SqlBrowseViewKinds` adds the one `ci-throwaway.sh` line;
     - `ProbeAs` for `BrowsePlan` and `BrowseRun` legs.
   - `src/OcuPilot/Test/SqlBrowseLive.cls`: every matrix row at the port, including the held-open stale-plan seam through `SqlConsoleProbe.Hold`, and the bound through `SqlPortFixture`.
   - `src/OcuPilot/Test/SqlDataRoutes.cls` (HTTP): input, gate, not found, own tables, a success shape, and a view.
@@ -302,6 +302,48 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
   - Given the ported grid and tree, when they render in light and dark, then they draw only `--ocu-*` tokens: no `--ite-*` and no literal color.
   - The structural walk passes in three passes: wide light, narrow light and wide dark.
 - **AC11 (Integration, Rule 1):** Given a table that SQL query (Story 19.6) creates and fills in `USER` on the real instance, when Data browser opens it from the tree, which reads it through Story 19.5's SQL tables read, then its rows show.
+
+### Review Findings
+
+Code review 2026-10-04, tier full-opus, four layers: 59 rows, 22 entries (high 1, med 4, low 17), 24 rejected. 17 entries patched, fix-risk low on each.
+
+- [x] [Review][Patch] high: a namespace switch kept the old namespace's tree, open table and in-flight page, and a cold deep link read the tree before the scope resolved (AD-44) [ui/src/app/areas/system-explorer/data-browser.page.ts:189]
+- [x] [Review][Patch] med: AC8's no-log-line clause had no test [src/OcuPilot/Test/SqlBrowseLive.cls]
+- [x] [Review][Patch] med: `BrowseRun`'s own answer cut, after binary becomes hex, was unpinned [src/OcuPilot/Port/SqlPort.cls:1670]
+- [x] [Review][Patch] med: "a key counts only if every key column is listed" was unpinned (AC6) [src/OcuPilot/Port/SqlPort.cls:1497]
+- [x] [Review][Patch] low: a refused schema read was never read again [ui/src/app/areas/system-explorer/data-browser.store.ts:327]
+- [x] [Review][Patch] low: the tree's refused and cut lines were unasserted [ui/src/app/areas/system-explorer/data-browser.page.spec.ts]
+- [x] [Review][Patch] low: a BIT filter matched 1 and 0, not the yes and no words the grid shows [ui/src/app/core/data-browser-model.ts]
+- [x] [Review][Patch] low: the Page field read "1 to 1" while the total was unknown [ui/src/app/areas/system-explorer/data-browser.page.ts]
+- [x] [Review][Patch] low: EXPERIENCE.md :675 said Last goes to "the last full page's start" [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:675]
+- [x] [Review][Patch] low: Next and Last could post an offset past 99,999,999 [ui/src/app/areas/system-explorer/data-browser.page.ts]
+- [x] [Review][Patch] low: filter inputs had no `maxlength` [ui/src/app/areas/system-explorer/data-browser-grid.ts]
+- [x] [Review][Patch] low: a draft read an inherited member for a column named `constructor` [ui/src/app/areas/system-explorer/data-browser-grid.ts]
+- [x] [Review][Patch] low: "of N" was not tied to the Page field [ui/src/app/areas/system-explorer/data-browser.page.ts]
+- [x] [Review][Patch] low: test docs named the wrong mutation leg and a "page of 500" that holds 400 rows [src/OcuPilot/Test/SqlDataRoutes.cls:149]
+- [x] [Review][Patch] low: `SqlPort` carried SqlBuilder's rules with no provenance line [src/OcuPilot/Port/SqlPort.cls]
+- [x] [Review][Patch] low: page-level Ctrl+PageDown and Cmd+PageUp were untested [ui/src/app/areas/system-explorer/data-browser.page.spec.ts]
+- [x] [Review][Patch] low: PageDown by the rows in view ran only on jsdom's fallback [ui/browser/system-explorer-data-browser.browser-spec.mjs]
+- [x] [Review][Defer] med: grid cells have no cut-cell tooltip [ui/src/app/areas/system-explorer/data-browser-grid.ts] — deferred: routed DW-2028, owner 19-8
+- [x] [Review][Defer] low: keyless pages have no total order [src/OcuPilot/Port/SqlPort.cls] — deferred: by-design DW-2029
+- [x] [Review][Defer] low: a name containing `ocupilot` is refused by the text scan [src/OcuPilot/Area/Explorer/SqlData.cls:57] — deferred: by-design DW-2030
+- [x] [Review][Defer] low: Ctrl+PageDown and PageUp are browser tab shortcuts (inference) [ui/src/app/core/data-browser-model.ts:104] — deferred: by-design DW-2031
+- [x] [Review][Defer] low: the tree never shows objects created after it was read [ui/src/app/areas/system-explorer/data-browser.store.ts] — deferred: wontfix-accepted DW-2032
+
+The bundle warning is re-based to 2746kB, the measured 2,745,839 bytes (DW-1166).
+
+Rejected:
+
+- false: a view-only grantee's base-table lookup misses the base table; measured, the plan carries `OCUPROBE197.PLAIN`, and a nested view resolves to OcuPilot's proposal table.
+- false: the DeveloperFloor deviation's claims; measured, `%ExistsId` is 0 with one compiled row, and `/csp/sys/exp` is guarded by `%Development`.
+- false: the active cell is outlined only under `:focus-visible`; the shared data-table does the same.
+- false: AC11's wait passes at once; `proceed` clears the status before the dialog closes.
+- false: `SqlBrowseViewKinds` duplicates the arming check; `ci.test.mjs` pins its declaration.
+- false: AC1, AC9 and AC10 need more mutations; Rule 19 asks for one per AC.
+- spec-bound: no route into a table, no system schemas, no tree search; literal `*` and `?`; prompts naming "this table".
+- spec edit: the Auto Run Result and Footprint are stale after QA (the lead corrects at commit).
+- theoretical: a budget spent after the column read, a binary character above 255, a row above 1,000,000 characters, and a prepare outside the alarm.
+- low: a blank status for an error with no SQLCODE; no progress line; a generic tree refusal; a page number after a cut page; "No rows." past the end; a refusal hides the grid; stream wording; dotless-i folding; `truncated`'s binary part; a numeric `0.5` filter.
 
 ## Spec Change Log
 
@@ -493,7 +535,7 @@ The select list names each resolved column in ordinal order; a stream column is 
   - `ui/browser/system-explorer.browser-spec.mjs`, `ui/tools/licenses.mjs` and `ATTRIBUTIONS.md`;
   - every new file;
   - epics.md's Story 19.7 block (this epic's).
-- Untouched: `scripts/ci-throwaway.sh`, because the fixture reuses `SqlConsoleProbe.Armed()`.
+- `scripts/ci-throwaway.sh`: one `# classes:` line, for QA's `SqlBrowseViewKinds`; the fixture reuses `SqlConsoleProbe.Armed()`.
 
 **Ledger inbox:** this story owns no entry. No read tool is added, so there is no DW-1001 occurrence.
 
@@ -549,6 +591,13 @@ Load source into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - mutation: AC3, `BrowseRun` answers a NULL cell as `""` -> `SqlDataRoutes.TestCellsAndAColumnGrantOverTheWire` red.
 - mutation: Order, `HandleBrowse` reads the body before the gate -> `SqlDataRoutes.TestTheGateAndAnUnknownTable`'s bad-body leg red.
 - mutation: AC3/AC4/AC5, in `data-browser.store.ts`: `nextPage` steps by the page size -> "Next after a page cut short" red; `cycleSort` and `applyFilter` keep the offset -> the sort and filter cases red (each now taken from the second page); `clearFilters` keeps the offset -> "Clear filters" red; the generation check is dropped -> "an answer to an older request is dropped" red.
+- mutation: AC6/AC7 (QA), `BrowsePlan` stops pushing a view's base tables -> `SqlBrowseViewKinds.TestTheViewPlanRecordsItsBaseTable` red.
+- mutation: AC6 (QA), `BrowsePlan` prepares the view lookup as `SELECT *` -> `SqlBrowseViewKinds.TestAColumnGrantOnAViewWithStreamAndBinaryColumns` red (-99); both reverted, `SqlPort.cls` byte-identical, recompiled green.
+- (QA) `src/OcuPilot/Test/SqlBrowseViewKinds.cls` (new, 3 tests): a view listing a stream and two binary columns, planned and read through `BrowseRun` under a full grant and a column grant, base table 404; `scripts/ci-throwaway.sh` gains its `# classes:` line.
+- mutation: AD-44 (CR), the page drops its `onScopeChange` subscription -> `data-browser.page.spec.ts` "a namespace switch forgets the tree..." and "the tree waits for the scope..." red.
+- mutation: AC8 (CR), `CatalogRows` logs the instance's SQLCODE and message -> `SqlBrowseLive.TestAFailedReadLogsNothingOfTheRequest` red; `BrowseRun`'s own cut stops setting `more` -> `TestAnAnswerCutOnceHexSaysMore` red.
+- mutation: AC6 (CR), `BrowsePlan` keeps a key whose column is not listed -> `TestTheReadChecksTheCallersPrivileges`' keyed column-grant leg red (-99). The three ObjectScript mutations ran together on `ocupilot-a2-ci`'s copy, each reddening its own assertion (run 5405), then restored (run 5406 green).
+- mutation: (CR) `toggle` reuses a refused schema's objects -> "a refused schema read..." red; `filterValue` sends a BIT word as typed -> "a BIT filter..." red.
 
 ## Auto Run Result
 

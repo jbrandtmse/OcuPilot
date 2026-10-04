@@ -1,7 +1,8 @@
 /**
  * Story 19.7 in a real browser, against the throwaway: Data browser in USER lists the probe schema in
  * its tree, expands it to its tables and its views, the view marked, and opens the 40-row probe table
- * to its first page (AC1, AC3); a wildcard filter applied with Enter narrows it and Escape clears it
+ * to its first page (AC1, AC3), where PageDown moves by the rows the frame shows; a wildcard filter
+ * applied with Enter narrows it and Escape clears it
  * (AC4); a header activated twice sorts it descending, `aria-sort` set (AC5); a keyed table's header
  * carries its key marker (AC2); and the page with rows passes the structural walk's checks at 1280
  * light, 720 light and 1280 dark, with no entry beyond the baseline (AC10).
@@ -147,6 +148,18 @@ test('AC1-AC5, AC10: the tree opens the probe table, its filter, its sort and it
     assert.equal(await page.$eval('[data-ocu-data="heading"]', (node) => node.textContent.trim()), `${SCHEMA}.Plain`, 'the open table is the heading');
     assert.equal(await page.$eval('[role="grid"]', (node) => node.getAttribute('aria-rowcount')), '41', 'aria-rowcount is the total plus the header');
     assert.deepEqual(await structural(page, ROUTE), [], 'Data browser with rows adds no structural entry');
+
+    const step = await page.$eval('.ocu-data-browser-scroll', (frame) => {
+      const row = frame.querySelector('.ocu-data-table-body .ocu-data-table-row');
+      return Math.max(1, Math.floor(frame.clientHeight / row.offsetHeight) - 2);
+    });
+    const activeIs = (id) =>
+      page.waitForFunction((wanted) => document.querySelector('[data-ocu-data="grid"]')?.getAttribute('aria-activedescendant') === wanted, { timeout: config.navigationTimeoutMs }, id);
+    await page.click('#ocu-data-cell-r0-c0');
+    await activeIs('ocu-data-cell-r0-c0');
+    await page.keyboard.press('PageDown');
+    await activeIs(`ocu-data-cell-r${Math.min(39, step)}-c0`);
+    assert.notEqual(step, 10, `the frame's measured step (${step}) is not the fallback's, so the measurement is what moved the cell`);
 
     await page.focus('input[data-ocu-data="filter"][data-column="Name"]');
     await page.keyboard.type('n3*');

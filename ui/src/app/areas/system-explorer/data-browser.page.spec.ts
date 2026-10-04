@@ -17,11 +17,13 @@ import { DATA_PATH } from './data-browser.store';
  * Data browser over stubs of what the instance supplies -- the SQL schemas, tables and views reads
  * that fill the tree and the screen's own page route (Story 19.7). The real store, tree, grid and
  * template run, so the assertions are about rendered DOM: the schemas holding a table or a view, a
- * schema expanding to its tables then its views, a view marked, the empty and cut lines, a table
- * opening to its first page posted in scope, the status line with and without a total, Last drawn
- * unavailable while the total is unknown, the paging buttons, the Page field and Rows per page each
- * posting their offset, a stopped page and an SQL error, a refusal as an alert, and no page entering
- * the screen's store.
+ * schema expanding to its tables then its views, a view marked, the empty, cut and refused lines, a
+ * refused schema read again on its next expand, the tree read once the scope resolves and again on a
+ * namespace switch, which forgets the open table, a table opening to its first page posted in scope,
+ * the status line with and without a total, Last drawn unavailable while the total is unknown, the
+ * paging buttons, the Page field, Rows per page and Ctrl/Cmd+PageDown and PageUp each posting their
+ * offset, no page past the route's furthest offset, a BIT filter's yes and no words, a stopped page
+ * and an SQL error, a refusal as an alert, and no page entering the screen's store.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlData') as ScreenDeclaration;
@@ -55,6 +57,15 @@ interface Mounted {
   /** While set, each data post waits in `held` until the test answers it. */
   hold: boolean;
   readonly held: ((answer: Answer) => void)[];
+  /** Resolve the scope to `namespace` and tell its subscribers, as a namespace switch does. */
+  switchTo(namespace: string): Promise<void>;
+}
+
+interface MountOptions {
+  /** Whether the scope has resolved when the page is created; `false` leaves it unresolved. */
+  readonly loaded?: boolean;
+  /** Changes to the routes before the page is created. */
+  readonly routes?: (routes: Map<string, Answer[]>) => void;
 }
 
 const planted: HTMLElement[] = [];
@@ -96,8 +107,9 @@ function pageAnswer(rows: (string | null)[][], extra: Record<string, unknown> = 
   };
 }
 
-async function mount(): Promise<Mounted> {
+async function mount(options: MountOptions = {}): Promise<Mounted> {
   TestBed.resetTestingModule();
+  const scope = { loaded: options.loaded ?? true, namespace: 'USER', listeners: new Set<() => void>() };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
   const mounted = {
     requests: [] as Request[],
@@ -117,6 +129,7 @@ async function mount(): Promise<Mounted> {
   mounted.routes.set(viewsPath('OcuProbe197'), [readAnswer([{ View: 'OcuProbe197.Over30', Schema: 'OcuProbe197', Name: 'Over30' }])]);
   mounted.routes.set(tablesPath('OnlyViews'), [readAnswer([], true)]);
   mounted.routes.set(viewsPath('OnlyViews'), [readAnswer([])]);
+  options.routes?.(mounted.routes);
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       mounted.requests.push({ path, body: init.body === undefined ? null : (JSON.parse(init.body) as Record<string, unknown>), scope: init.scope });
@@ -134,7 +147,17 @@ async function mount(): Promise<Mounted> {
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: NavigationService, useValue: { screenForUrl: () => SCREEN } as unknown as NavigationService },
       { provide: ScreenStores, useValue: stores },
-      { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'USER', subscribe: () => () => undefined } as unknown as ScopeService },
+      {
+        provide: ScopeService,
+        useValue: {
+          loaded: () => scope.loaded,
+          namespace: () => (scope.loaded ? scope.namespace : ''),
+          subscribe: (listener: () => void) => {
+            scope.listeners.add(listener);
+            return () => scope.listeners.delete(listener);
+          },
+        } as unknown as ScopeService,
+      },
     ],
   });
   await TestBed.inject(Router).navigateByUrl(`/${SCREEN.route}?ns=USER`);
@@ -142,7 +165,13 @@ async function mount(): Promise<Mounted> {
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return Object.assign(mounted, { fixture, host: fixture.nativeElement as HTMLElement, stores }) as Mounted;
+  const switchTo = async (namespace: string): Promise<void> => {
+    scope.loaded = true;
+    scope.namespace = namespace;
+    for (const listener of [...scope.listeners]) listener();
+    await settle(fixture);
+  };
+  return Object.assign(mounted, { fixture, host: fixture.nativeElement as HTMLElement, stores, switchTo }) as Mounted;
 }
 
 function el<T extends HTMLElement>(host: ParentNode, slot: string): T {
@@ -239,6 +268,7 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'next').getAttribute('aria-disabled')).toBe('true');
     expect(el(mounted.host, 'last').getAttribute('aria-disabled')).toBe('true');
     expect(el(mounted.host, 'page-count').textContent?.trim()).toBe('of 1');
+    expect(el(mounted.host, 'page').getAttribute('aria-describedby')).toBe('ocu-data-page-count');
     expect(mounted.stores.for(SCREEN.descriptor, SCREEN.refreshRates).data()).toEqual([]);
   });
 
@@ -256,6 +286,99 @@ describe('Data browser', () => {
     await click(mounted, el(mounted.host, 'next'));
     expect(dataPosts(mounted).at(-1)?.['offset']).toBe(100);
     expect(el(mounted.host, 'status').textContent?.trim()).toBe('Rows 101\u2013140');
+    const field = el<HTMLInputElement>(mounted.host, 'page');
+    field.value = 'x';
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'page-problem').textContent?.trim()).toBe('Enter a page from 1 to 1,000,000.');
+  });
+
+  it('Ctrl+PageDown and Cmd+PageUp on the grid post the next and the previous page', async () => {
+    const mounted = await mount();
+    const rows = Array.from({ length: 100 }, (_, at) => [`n${at + 1}`, String(at + 1), '1', '']);
+    mounted.page = pageAnswer(rows, { more: true, total: 250 });
+    await expandAndOpen(mounted);
+    mounted.page = pageAnswer(rows, { offset: 100, more: true, total: 250 });
+    el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', ctrlKey: true, bubbles: true }));
+    await settle(mounted.fixture);
+    expect(dataPosts(mounted).at(-1)?.['offset']).toBe(100);
+    mounted.page = pageAnswer(rows, { more: true, total: 250 });
+    el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', metaKey: true, bubbles: true }));
+    await settle(mounted.fixture);
+    expect(dataPosts(mounted).at(-1)?.['offset']).toBe(0);
+  });
+
+  it('no Next or Last starts past the furthest offset the route takes', async () => {
+    const mounted = await mount();
+    const rows = Array.from({ length: 100 }, (_, at) => [`n${at + 1}`, String(at + 1), '1', '']);
+    mounted.page = pageAnswer(rows, { more: true, total: 150_000_000 });
+    await expandAndOpen(mounted);
+    expect(el(mounted.host, 'last').getAttribute('aria-disabled')).toBe('true');
+    mounted.page = pageAnswer(rows, { offset: 99_999_900, more: true, total: null });
+    await click(mounted, el(mounted.host, 'refresh'));
+    expect(el(mounted.host, 'next').getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('a BIT filter takes the yes and no words the grid shows, in any case', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', '']]);
+    await expandAndOpen(mounted);
+    const flag = all(mounted.host, 'filter')[2] as HTMLInputElement;
+    flag.value = STRINGS.tableStatusYes.toUpperCase();
+    flag.dispatchEvent(new Event('input'));
+    flag.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle(mounted.fixture);
+    expect(dataPosts(mounted).at(-1)?.['filters']).toEqual({ Flag: '1' });
+  });
+
+  // Mutation (Rule 19): drop the page's `onScopeChange` subscription -> the old namespace's tree and
+  // the answer on its way stay on screen and this goes red.
+  it("a namespace switch forgets the tree and the open table, drops an answer on its way, and reads the new namespace's tree", async () => {
+    const mounted = await mount();
+    await click(mounted, all(mounted.host, 'tree-schema')[0]);
+    mounted.hold = true;
+    await click(mounted, all(mounted.host, 'tree-object')[0]);
+    expect(mounted.held).toHaveLength(1);
+    mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'Samples', Tables: true, Views: false, Procedures: false }])]);
+    await mounted.switchTo('SAMPLES');
+    mounted.held[0](pageAnswer([['p1', '1', '1', '']]));
+    await settle(mounted.fixture);
+    expect(mounted.requests.filter((request) => request.path === SCHEMAS_PATH)).toHaveLength(2);
+    expect(texts(mounted.host, 'tree-schema')).toEqual(['\u25b8Samples']);
+    expect(el(mounted.host, 'heading')).toBeNull();
+    expect(el(mounted.host, 'empty').textContent?.trim()).toBe(STRINGS.explorerSqlDataPick);
+  });
+
+  it('the tree waits for the scope to resolve before it reads', async () => {
+    const mounted = await mount({ loaded: false });
+    expect(mounted.requests).toEqual([]);
+    await mounted.switchTo('USER');
+    expect(mounted.requests.map((request) => request.path)).toEqual([SCHEMAS_PATH]);
+    expect(texts(mounted.host, 'tree-schema')).toEqual(['\u25b8OcuProbe197', '\u25b8OnlyViews']);
+  });
+
+  it('a refused schema read says so in place of the empty line and is read again on its next expand', async () => {
+    const mounted = await mount({
+      routes: (routes) => {
+        routes.set(tablesPath('OcuProbe197'), [{ status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'denied' }, readAnswer([{ Schema: 'OcuProbe197', Name: 'Plain' }])]);
+        routes.set(viewsPath('OcuProbe197'), [readAnswer([]), readAnswer([])]);
+      },
+    });
+    const schema = (): HTMLElement => all(mounted.host, 'tree-schema')[0];
+    await click(mounted, schema());
+    expect(texts(mounted.host, 'tree-line')).toEqual([STRINGS.connectivityRequestRefused]);
+    await click(mounted, schema());
+    await click(mounted, schema());
+    expect(texts(mounted.host, 'tree-object')).toEqual(['Plain']);
+    expect(texts(mounted.host, 'tree-line')).toEqual([]);
+  });
+
+  it('a refused schemas read, and one cut at its cap, each say so', async () => {
+    const refused = await mount({ routes: (routes) => routes.set(SCHEMAS_PATH, [{ status: 500, code: 'INTERNAL', reason: 'failed' }]) });
+    expect(el(refused.host, 'tree-fault').textContent?.trim()).toBe(STRINGS.connectivityRequestRefused);
+    const cut = await mount({ routes: (routes) => routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'OcuProbe197', Tables: true, Views: false, Procedures: false }], true)]) });
+    expect(el(cut.host, 'tree-cut').textContent?.trim()).toBe(STRINGS.explorerSqlDataTreeCut);
   });
 
   it('First, Previous, Last, the Page field and Rows per page each post their offset', async () => {

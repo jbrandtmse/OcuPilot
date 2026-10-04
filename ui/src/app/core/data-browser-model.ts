@@ -173,6 +173,18 @@ export function cellView(kind: DataKind, value: string | null): CellView {
   return { text: value, isNull: false, numeric: kind === 'number' };
 }
 
+/**
+ * A filter on a column of kind `kind` as the instance matches it: on a BIT column the yes or no word
+ * `cellView` shows, in any case, is the 1 or 0 the column stores; any other text is sent as typed.
+ */
+export function filterValue(kind: DataKind, text: string): string {
+  if (kind !== 'boolean') return text;
+  const word = text.toLowerCase();
+  if (word === STRINGS.tableStatusYes.toLowerCase()) return '1';
+  if (word === STRINGS.tableStatusNo.toLowerCase()) return '0';
+  return text;
+}
+
 /** A column's track in the grid's template: a floor by kind that never shrinks, sharing the rest. */
 export function columnTrack(kind: DataKind): string {
   const floor: Readonly<Record<DataKind, number>> = {

@@ -143,5 +143,14 @@ describe('Data browser grid', () => {
     expect(mounted.drafted).toEqual([{ column: 'Num', value: '3*' }]);
     expect(mounted.applied).toEqual(['Num']);
     expect(mounted.cleared).toEqual(['Name']);
+    expect(inputs.map((input) => input.getAttribute('maxlength'))).toEqual(['1000', '1000']);
+  });
+
+  it('a column named like an object member starts with an empty filter', async () => {
+    const mounted = await mount(rowsOf(1), 1);
+    mounted.fixture.componentRef.setInput('columns', [{ name: 'constructor', type: 'varchar', kind: 'text', nullable: true, key: false }]);
+    mounted.fixture.detectChanges();
+    await mounted.fixture.whenStable();
+    expect((mounted.host.querySelector('[data-ocu-data="filter"]') as HTMLInputElement).value).toBe('');
   });
 });

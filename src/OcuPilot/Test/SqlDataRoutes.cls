@@ -147,7 +147,8 @@ Method TestTheGateAndAnUnknownTable()
 /// schema is refused before any statement, and a view over OcuPilot's proposal table before any row,
 /// each 403 <code>PROHIBITED.OCUPILOTSQL</code> with its published sentence.</p>
 /// <p>Mutation (Rule 19): drop the check on the requested name from
-/// <method>OcuPilot.Area.Explorer.SqlData.HandleBrowse</method> -- the own-table leg goes red.</p>
+/// <method>OcuPilot.Area.Explorer.SqlData.HandleBrowse</method> -- the leg naming a table the OcuPilot
+/// schema does not hold answers 404 and goes red.</p>
 Method TestOcuPilotsOwnTablesAreRefused()
 {
     Set tView = $Parameter(..#PROBE, "OWNVIEW")

@@ -3,9 +3,11 @@ import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
 import {
+  MAX_OFFSET,
   PAGE_SIZES,
   goToPageOffset,
   lastOffset,
+  nextOffset,
   pageCount,
   pageOf,
   pageRangeLine,
@@ -13,7 +15,7 @@ import {
   type SortState,
 } from '../../core/data-browser-model';
 import { NavigationService, screenForDescriptor } from '../../core/navigation';
-import { ScopeService } from '../../core/scope';
+import { ScopeService, onScopeChange } from '../../core/scope';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
@@ -118,12 +120,12 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
               data-ocu-data="page"
               [value]="pageText"
               [attr.aria-invalid]="hasPageProblem ? true : null"
-              [attr.aria-describedby]="hasPageProblem ? 'ocu-data-page-problem' : null"
+              [attr.aria-describedby]="pageDescribedBy"
               (input)="onPageInput($event)"
               (keydown)="onPageKeydown($event)"
             />
             @if (hasPageCount) {
-              <span class="ocu-data-browser-page-count" data-ocu-data="page-count">{{ pageCountText }}</span>
+              <span class="ocu-data-browser-page-count" id="ocu-data-page-count" data-ocu-data="page-count">{{ pageCountText }}</span>
             }
             <button type="button" class="ocu-button-text" data-ocu-data="next" [attr.aria-disabled]="atEnd" (click)="onNext()">{{ STRINGS.explorerSqlDataNextPage }}</button>
             <button type="button" class="ocu-button-text" data-ocu-data="last" [attr.aria-disabled]="lastBlocked" (click)="onLast()">{{ STRINGS.explorerSqlDataLastPage }}</button>
@@ -186,8 +188,17 @@ export class DataBrowserPage {
       views: screenForDescriptor(TREE_DESCRIPTORS.views),
     };
     const stop = this.state.subscribe(() => this.bump());
-    void this.state.loadSchemas(this.deps);
-    inject(DestroyRef).onDestroy(() => stop());
+    // The tree is read once the scope has resolved, and a namespace switch reads it again (AD-44):
+    // the old namespace's tree, open table and page leave now.
+    const stopScope = onScopeChange(this.scope, () => {
+      this.resetPageField();
+      void this.state.scopeTo(this.deps, this.scope.namespace());
+    });
+    if (this.scope.loaded()) void this.state.scopeTo(this.deps, this.scope.namespace());
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      stopScope();
+    });
   }
 
   protected get schemas(): readonly TreeSchema[] | null {
@@ -286,14 +297,16 @@ export class DataBrowserPage {
     return this.loading || this.pageOffset === 0;
   }
 
+  /** No next page: none is known to exist, or it would start past the furthest offset the route takes. */
   protected get atEnd(): boolean {
     const answer = this.answer;
-    return this.loading || answer === null || answer.outcome !== 'rows' || !answer.more;
+    return this.loading || answer === null || answer.outcome !== 'rows' || !answer.more || nextOffset(answer.offset, answer.rows.length) > MAX_OFFSET;
   }
 
+  /** No Last: the total is unknown, the last page is on screen, or it starts past the furthest offset the route takes. */
   protected get lastBlocked(): boolean {
     const last = lastOffset(this.total, this.pageSize);
-    return this.loading || last === null || last === this.pageOffset;
+    return this.loading || last === null || last === this.pageOffset || last > MAX_OFFSET;
   }
 
   protected get pageText(): string {
@@ -316,6 +329,12 @@ export class DataBrowserPage {
 
   protected get hasPageProblem(): boolean {
     return this.pageProblem !== '';
+  }
+
+  /** What describes the Page field: its range line while one shows, and "of N" while the total is known. */
+  protected get pageDescribedBy(): string | null {
+    const ids = [...(this.hasPageProblem ? ['ocu-data-page-problem'] : []), ...(this.hasPageCount ? ['ocu-data-page-count'] : [])];
+    return ids.length === 0 ? null : ids.join(' ');
   }
 
   protected get statusLine(): string {
@@ -417,13 +436,13 @@ export class DataBrowserPage {
     this.pageDraft.set((event.target as HTMLInputElement).value);
   }
 
-  /** Enter in the Page field goes to that page, or says the range it must fall in. */
+  /** Enter in the Page field goes to that page, or says the range it must fall in: to N, or to the furthest page the route takes while the total is unknown. */
   protected onPageKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Enter') return;
     event.preventDefault();
     const offset = goToPageOffset(this.pageText, this.pageSize, this.total);
     if (offset === null) {
-      this.pageProblemText.set(pageRangeLine(pageCount(this.total, this.pageSize)));
+      this.pageProblemText.set(pageRangeLine(pageCount(this.total, this.pageSize) ?? pageOf(MAX_OFFSET, this.pageSize)));
       return;
     }
     this.resetPageField();

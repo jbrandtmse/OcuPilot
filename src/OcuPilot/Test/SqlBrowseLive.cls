@@ -3,12 +3,14 @@
 /// its offset, the three kinds of key and the order an unsorted page takes from them, a request
 /// resolved to the catalog's spelling, the wildcard and date filters, the sort, NULL beside an empty
 /// value, a stream's cut and binary hex, a filter or sort refused on them and on an unlisted column,
-/// an answer cut by size answering <code>more</code>, a filter on a column whose LIKE the statement
-/// index does not record, OcuPilot's own tables found for the self-protection check, a view whose
-/// tables the index does not record refused, and the bound on the page and on the count, the count
-/// given only what the page left; and, as real principals in child processes, the gate naming the
-/// missing pair, a column grant on a table and on a view, a view-only grant and a plan naming an
-/// ungranted column refused SQLCODE -99 while this account holds its text open.</p>
+/// an answer cut by size answering <code>more</code>, as fetched and again once binary is hex, a
+/// filter on a column whose LIKE the statement index does not record, OcuPilot's own tables found
+/// for the self-protection check, a view whose tables the index does not record refused, a failed
+/// read's log line carrying nothing of the request, and the bound on the page and on the count, the
+/// count given only what the page left; and, as real principals in child processes, the gate naming
+/// the missing pair, a column grant on a table, on a view and leaving out a table's key, a view-only
+/// grant and a plan naming an ungranted column refused SQLCODE -99 while this account holds its text
+/// open.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a <code>USER</code> namespace.
 /// It creates and removes the probe objects, data included, and four principals, so it runs on a
 /// throwaway only: <method>OnBeforeAllTests</method> refuses unless
@@ -248,18 +250,22 @@ Method TestTheGateNamesTheMissingPair()
 }
 
 /// <p>AC6: a principal sees only what it is granted -- a column grant, on a table or on a view, lists
-/// and reads only its column, with no count; a view it holds nothing on answers 404; the view-only
-/// grantee reads the view's ten rows and is answered 404 on its base table.</p>
+/// and reads only its column, with no count; a column grant that leaves out a table's key column
+/// leaves the page with no key, so it is never ordered by a column it cannot read; a view it holds
+/// nothing on answers 404; the view-only grantee reads the view's ten rows and is answered 404 on its
+/// base table.</p>
 /// <p>Mutation (Rule 19): read a view's base tables from <code>SELECT COUNT(*)</code> in
 /// <method>OcuPilot.Port.SqlPort.BrowsePlan</method> -- the view column grant's leg answers -99 and
-/// goes red.</p>
+/// goes red. Keep a key whose column is not listed in that method -- the keyed column grant's leg
+/// answers -99 and goes red.</p>
 Method TestTheReadChecksTheCallersPrivileges()
 {
     Set tLegs = [
         {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Two"}},
         {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "SlowView"}},
         {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Two", "sort": {"column": "Secret", "direction": "asc"}}},
-        {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Over30", "sort": {"column": "Name", "direction": "asc"}}}
+        {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Over30", "sort": {"column": "Name", "direction": "asc"}}},
+        {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Keyed", "sort": {"column": "Name", "direction": "asc"}}}
     ].%ToJSON()
     Set tProbe = $ClassMethod(..#PROBE, "ProbeAs", $Parameter(..#PROBE, "USER"), tLegs)
     Do $$$AssertEquals($Select($IsObject(tProbe): tProbe.%Get("username"), 1: ""), $Parameter(..#PROBE, "USER"), "the probe ran as the principal: " _ $Select($IsObject(tProbe): tProbe.%ToJSON(), 1: ""))
@@ -267,6 +273,7 @@ Method TestTheReadChecksTheCallersPrivileges()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LegLine", tProbe, 1), "404 EXPLORER.DATA.NOTFOUND ", "a view it holds nothing on answers 404")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LegLine", tProbe, 2), "400 EXPLORER.DATA.INPUT ", "and a sort on the ungranted column is an unlisted column")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LegLine", tProbe, 3), "rows [Name] key=[] rows=n31,n32,n33,n34,n35,n36,n37,n38,n39,n40 total=null more=0", "a column grant on a view reads only its column, without a -99")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "LegLine", tProbe, 4), "rows [Name] key=[] rows=one,three,two total=null more=0", "a column grant that leaves out the key column has no key, and reads without a -99")
     Set tLegs = [
         {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Over30", "sort": {"column": "Num", "direction": "asc"}}},
         {"op": "browse", "namespace": (..#NAMESPACE), "request": {"schema": "OcuProbe197", "table": "Plain"}}
@@ -311,8 +318,9 @@ Method TestARequestResolvesToTheCatalogsSpelling()
     Do $$$AssertEquals(tPlan.table.schema _ "." _ tPlan.table.name, "OcuProbe197.Keyed", "so does the answer's table")
 }
 
-/// <p>AC8: a page of 500 rows of three 1,000-character cells stops short of the answer's 1,000,000
-/// characters by whole rows and answers <code>more</code>, so Next reaches the rest.</p>
+/// <p>AC8: a page of 500 asking for 400 rows of three 1,000-character cells stops short of the
+/// answer's 1,000,000 characters by whole rows and answers <code>more</code>, so Next reaches the
+/// rest.</p>
 /// <p>Mutation (Rule 19): drop <code>more</code> from <method>OcuPilot.Port.SqlPort.Executed</method>'s
 /// answer cut -- this goes red.</p>
 Method TestAnAnswerCutBySizeSaysMore()
@@ -326,6 +334,58 @@ Method TestAnAnswerCutBySizeSaysMore()
     Do $$$AssertTrue((tKept > 0) && (tKept < $Parameter(..#PROBE, "WIDEROWS")), "some rows, not all of them: " _ tKept)
     Do $$$AssertTrue($Length(tAnswer.rows.%ToJSON()) <= $Parameter(..#PORT, "MAXANSWER"), "the rows stay within the answer's characters")
     Do $$$AssertEquals(tAnswer.more _ " " _ tAnswer.total _ " " _ tAnswer.truncated, "1 " _ $Parameter(..#PROBE, "WIDEROWS") _ " 1", "more, the whole total, and the cells' cut")
+}
+
+/// <p>AC8: a page whose rows fit the answer as fetched, but not once their binary cells are written as
+/// <code>0x</code> hex, is cut again by whole rows after the cells are mapped and answers
+/// <code>more</code>.</p>
+/// <p>Mutation (Rule 19): drop <code>more</code> from <method>OcuPilot.Port.SqlPort.BrowseRun</method>'s
+/// own answer cut -- this goes red.</p>
+Method TestAnAnswerCutOnceHexSaysMore()
+{
+    Set tAnswer = ..Browse($Parameter(..#PROBE, "BLOBS"), {"size": 500})
+    If tAnswer.%GetTypeOf("rows") '= "array" {
+        Do $$$AssertTrue(0, "the page reads: " _ $ClassMethod(..#PROBE, "Line", tAnswer))
+        Quit
+    }
+    Set tKept = tAnswer.rows.%Size()
+    Do $$$AssertTrue((tKept > 0) && (tKept < $Parameter(..#PROBE, "BLOBROWS")), "some rows, not all of them: " _ tKept)
+    Do $$$AssertTrue($Length(tAnswer.rows.%ToJSON()) <= $Parameter(..#PORT, "MAXANSWER"), "the hex rows stay within the answer's characters")
+    Do $$$AssertEquals(tAnswer.more _ " " _ tAnswer.total, "1 " _ $Parameter(..#PROBE, "BLOBROWS"), "more, and the whole total")
+}
+
+/// <p>AC8: a refused catalog read and a view whose tables the statement index does not record each
+/// write their log line, and neither line carries the requested table or what the instance answered
+/// (AD-39).</p>
+/// <p>Mutation (Rule 19): log the instance's SQLCODE and message in
+/// <method>OcuPilot.Port.SqlPort.CatalogRows</method>'s refusal -- this goes red.</p>
+Method TestAFailedReadLogsNothingOfTheRequest()
+{
+    Set tMark = "OcuProbe197Log" _ $Translate($ZTimeStamp, ",.", "")
+    Set tLog = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tFrom = ##class(%File).GetFileSize(tLog)
+    Set ^||OcuProbe197Refused = tMark
+    Set tSC = $ClassMethod(..#SEAMS, "BrowsePlan", ..#NAMESPACE, $ClassMethod(..#PROBE, "Request", $Parameter(..#PROBE, "PLAIN")), .tPlan, .tHttp, .tFault)
+    Kill ^||OcuProbe197Refused
+    Do $$$AssertEquals($Select($$$ISERR(tSC): $Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), 1: "planned"), "500 INTERNAL", "a refused catalog read is refused 500")
+    Set ^||OcuProbe197Unindexed = 1
+    Set tSC = $ClassMethod(..#SEAMS, "BrowsePlan", ..#NAMESPACE, $ClassMethod(..#PROBE, "Request", $Parameter(..#PROBE, "OVER30")), .tPlan, .tHttp, .tFault)
+    Kill ^||OcuProbe197Unindexed
+    Do $$$AssertEquals($Select($$$ISERR(tSC): $Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), 1: "planned"), "500 INTERNAL", "and so is a view whose tables are unrecorded")
+    Set tLogged = 0
+    Set tFound = ""
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    If tStream.LinkToFile(tLog) && (tStream.Size > tFrom) && tStream.MoveTo(tFrom + 1) {
+        While 'tStream.AtEnd {
+            Set tLine = tStream.ReadLine()
+            If tLine '[ """subsystem"":""sqlport""" Continue
+            Set tLogged = tLogged + 1
+            If $ZConvert(tLine, "U") [ "OCUPROBE197" Set tFound = tLine
+        }
+    }
+    Set tStream = ""
+    Do $$$AssertTrue(tLogged >= 2, "each wrote its log line: " _ tLogged)
+    Do $$$AssertEquals(tFound, "", "and neither carries the table or the instance's answer")
 }
 
 /// <p>AC8: every statement of one request shares one budget -- with a plan whose budget is mostly

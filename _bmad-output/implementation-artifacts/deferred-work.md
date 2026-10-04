@@ -9383,3 +9383,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 19.7 plan on ocupilot-a2-ci: SqlPort.Run of SELECT Num FROM OcuProbe197.Pets WHERE Name LIKE 'n%' ESCAPE '\' answered 500; without ESCAPE it answered rows; the cached query class for ESCAPE on a VARCHAR column carries no statement index hash (SqlPort.cls:312)
 - 2026-10-04T07:19:07Z status=routed owner=19-7-the-data-browser-tree-grid-filter-and-sort by=spec_gate note=fix in 19.7 (same file): answer such a statement by name (a 422 the console explains), or classify it another way and run it; never a 500
 - 2026-10-04T08:34:51Z status=resolved-by:19-7-the-data-browser-tree-grid-filter-and-sort owner=19-7-the-data-browser-tree-grid-filter-and-sort by=merge_gate note=fixed on its own head f02883e2 (run 37186691967 green; merged forward at ca221d2e): Classify refuses a query or DML statement the statement index does not record 422 EXPLORER.SQL.UNRECORDED, AD-10 fail-closed; OcuPilot.Test.SqlUnrecordedStatement pins it, mutation run 4901 red
+
+### DW-2028: Data browser grid cells are cut to one line with no cut-cell tooltip, so a value wider than its column cannot be read in full, where the shared data-table shows one
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
+- 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+
+### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlPort.Composed emits no ORDER BY with no key and no sort, and no tie-breaker after a sort when the key is empty; the spec matrix accepts the instance's order for a keyless table
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec matrix row Sort fixes the instance's order for a keyless table; reopens only via spec amendment
+
+### DW-2030: Data browser refuses 403 PROHIBITED.OCUPILOTSQL any table whose schema, table or column name contains 'ocupilot', because the composed page text goes through SqlStatement's text scan
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlData.HandleBrowse passes the plan's page text to Prohibited.SqlStatement, whose rule (a) refuses a text containing an own-name stem; a column named IsOcuPilotUser makes a user table unbrowsable
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec Boundaries run the check on the composed text; eliding identifiers from the scan needs a spec amendment
+
+### DW-2031: Data browser's Ctrl+PageDown and Ctrl+PageUp page keys are the browser's tab-switch shortcuts in Chrome and Firefox on Windows and Linux, so the grid never receives them there (inference)
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: data-browser-model.ts pageKey and EXPERIENCE.md's data-browser paragraph bind Ctrl/Cmd+PageDown and PageUp; Chromium reserves Ctrl+PgDn/PgUp for tab switching (inference; puppeteer's keys bypass accelerators)
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec grid task names the chord; pager buttons remain; a new chord for 19.8's keyboard help needs a spec amendment
+
+### DW-2032: Data browser's tree is read once per namespace, so a table or view created or dropped since, by SQL query in the same tab for one, shows or leaves only after a reload or a namespace switch
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.loadSchemas returns once schemas are held and toggle reuses a schema's read objects; the AC11 browser leg reloads the page to see its new table
+- 2026-10-04T13:18:00Z status=wontfix-accepted owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=reopen_if=a person reports a table missing from Data browser's tree after creating it in the same session

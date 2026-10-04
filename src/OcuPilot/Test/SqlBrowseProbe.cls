@@ -8,11 +8,14 @@
 /// waiting 0.005 s a call, and the view <parameter>SLOWVIEW</parameter> that calls it once for each of
 /// its 1,600 rows;
 /// <parameter>PETS</parameter>, whose string column is NULL in 28 of 30 rows with its statistics
-/// gathered; and <parameter>WIDE</parameter>, <parameter>WIDEROWS</parameter> rows of three 1,500-character
-/// streams, so a page of 500 passes the answer's 1,000,000 characters. In the install namespace, the
+/// gathered; <parameter>WIDE</parameter>, <parameter>WIDEROWS</parameter> rows of three 1,500-character
+/// streams, more than the answer's 1,000,000 characters hold once each cell is cut to 1,000; and
+/// <parameter>BLOBS</parameter>, <parameter>BLOBROWS</parameter> rows of three 600-byte binary values,
+/// which fit the answer as fetched but not once each is written as hex. In the install namespace, the
 /// view <parameter>OWNVIEW</parameter> over OcuPilot's own proposal table.</p>
 /// <p>Each principal holds <class>OcuPilot.Test.SqlConsoleProbe</class>'s role pairs:
-/// <parameter>USER</parameter> SELECT on the tables and <code>SELECT(Name)</code> on
+/// <parameter>USER</parameter> SELECT on <parameter>PLAIN</parameter>, <parameter>PAIR</parameter> and
+/// <parameter>IDENT</parameter>, and <code>SELECT(Name)</code> on <parameter>KEYED</parameter>, on
 /// <parameter>TWO</parameter> and on <parameter>OVER30</parameter>; <parameter>VIEWUSER</parameter> SELECT on <parameter>OVER30</parameter>
 /// alone; <parameter>NODEVUSER</parameter> no <code>%Development:USE</code>, with
 /// <code>%Admin_Operate:USE</code> to clear the API's floor; <parameter>NOUSERUSER</parameter> no READ
@@ -50,6 +53,11 @@ Parameter WIDE = "OcuProbe197.Wide";
 /// <p>The rows <parameter>WIDE</parameter> holds.</p>
 Parameter WIDEROWS As INTEGER = 400;
 
+Parameter BLOBS = "OcuProbe197.Blobs";
+
+/// <p>The rows <parameter>BLOBS</parameter> holds.</p>
+Parameter BLOBROWS As INTEGER = 400;
+
 /// <p>The view over OcuPilot's own proposal table, made in the install namespace.</p>
 Parameter OWNVIEW = "OcuProbe197.OwnView";
 
@@ -86,6 +94,7 @@ ClassMethod Make() As %Status
         "CREATE TABLE " _ ..#TWO _ " (Name VARCHAR(20), Secret VARCHAR(20))",
         "CREATE TABLE " _ ..#PETS _ " (Num INTEGER, Name VARCHAR(50))",
         "CREATE TABLE " _ ..#WIDE _ " (N INTEGER, A LONGVARCHAR, B LONGVARCHAR, C LONGVARCHAR)",
+        "CREATE TABLE " _ ..#BLOBS _ " (N INTEGER, A LONGVARBINARY, B LONGVARBINARY, C LONGVARBINARY)",
         "CREATE FUNCTION " _ ..#SLOW _ "(IN p INT) RETURNS INT LANGUAGE OBJECTSCRIPT { Hang 0.005 Quit p }"
     )
     Set tOrigNS = $NAMESPACE
@@ -140,6 +149,15 @@ ClassMethod Make() As %Status
                 Quit
             }
         }
+        If $$$ISERR(tSC) Quit
+        Set tBytes = $Translate($Justify("", 600), " ", "A")
+        For tN = 1:1:..#BLOBROWS {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO " _ ..#BLOBS _ " (N, A, B, C) VALUES (?, ?, ?, ?)", tN, tBytes, tBytes, tBytes)
+            If tResult.%SQLCODE < 0 {
+                Set tSC = $$$ERROR($$$GeneralError, "probe blob row " _ tN _ " failed: SQLCODE " _ tResult.%SQLCODE)
+                Quit
+            }
+        }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
@@ -171,7 +189,7 @@ ClassMethod Remove() As %Status
     Try {
         For tNamespace = tHome, ..#NAMESPACE {
             Set $NAMESPACE = tNamespace
-            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP VIEW " _ ..#OVER30, "DROP VIEW " _ ..#SLOWVIEW, "DROP FUNCTION " _ ..#SLOW, "DROP TABLE " _ ..#PLAIN _ " CASCADE", "DROP TABLE " _ ..#KEYED _ " CASCADE", "DROP TABLE " _ ..#PAIR _ " CASCADE", "DROP TABLE " _ ..#IDENT _ " CASCADE", "DROP TABLE " _ ..#TWO _ " CASCADE", "DROP TABLE " _ ..#PETS _ " CASCADE", "DROP TABLE " _ ..#WIDE _ " CASCADE" {
+            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP VIEW " _ ..#OVER30, "DROP VIEW " _ ..#SLOWVIEW, "DROP FUNCTION " _ ..#SLOW, "DROP TABLE " _ ..#PLAIN _ " CASCADE", "DROP TABLE " _ ..#KEYED _ " CASCADE", "DROP TABLE " _ ..#PAIR _ " CASCADE", "DROP TABLE " _ ..#IDENT _ " CASCADE", "DROP TABLE " _ ..#TWO _ " CASCADE", "DROP TABLE " _ ..#PETS _ " CASCADE", "DROP TABLE " _ ..#WIDE _ " CASCADE", "DROP TABLE " _ ..#BLOBS _ " CASCADE" {
                 Do ##class(%SQL.Statement).%ExecDirect(, tDrop)
             }
             Do $System.OBJ.DeletePackage(..#SCHEMA, "-d")
@@ -216,7 +234,7 @@ ClassMethod EnsurePrincipals(pPassword As %String) As %Status
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Quit tSC
-    Set tGrants = $ListBuild("GRANT SELECT ON " _ ..#PLAIN _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#KEYED _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#PAIR _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#IDENT _ " TO " _ ..#USER, "GRANT SELECT (Name) ON " _ ..#TWO _ " TO " _ ..#USER, "GRANT SELECT (Name) ON " _ ..#OVER30 _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#OVER30 _ " TO " _ ..#VIEWUSER, "GRANT SELECT ON " _ ..#PLAIN _ " TO " _ ..#NODEVUSER _ ", " _ ..#NOUSERUSER)
+    Set tGrants = $ListBuild("GRANT SELECT ON " _ ..#PLAIN _ " TO " _ ..#USER, "GRANT SELECT (Name) ON " _ ..#KEYED _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#PAIR _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#IDENT _ " TO " _ ..#USER, "GRANT SELECT (Name) ON " _ ..#TWO _ " TO " _ ..#USER, "GRANT SELECT (Name) ON " _ ..#OVER30 _ " TO " _ ..#USER, "GRANT SELECT ON " _ ..#OVER30 _ " TO " _ ..#VIEWUSER, "GRANT SELECT ON " _ ..#PLAIN _ " TO " _ ..#NODEVUSER _ ", " _ ..#NOUSERUSER)
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
@@ -228,7 +246,7 @@ ClassMethod EnsurePrincipals(pPassword As %String) As %Status
     }
     If $$$ISERR(tSC) Quit tSC
     Set tRead = ($SYSTEM.Security.CheckUserPermission(..#USER, "%Development", "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#NODEVUSER, "%Development", "USE") '= 1) && ($SYSTEM.Security.CheckUserPermission(..#NOUSERUSER, tUserCode, "READ") '= 1)
-    Set tRead = tRead && ..Grants(..#USER, ..#PLAIN, 1) && '..Grants(..#USER, ..#TWO, 1) && '..Grants(..#USER, ..#OVER30, 3)
+    Set tRead = tRead && ..Grants(..#USER, ..#PLAIN, 1) && '..Grants(..#USER, ..#KEYED, 1) && '..Grants(..#USER, ..#TWO, 1) && '..Grants(..#USER, ..#OVER30, 3)
     Set tRead = tRead && ..Grants(..#VIEWUSER, ..#OVER30, 3) && '..Grants(..#VIEWUSER, ..#PLAIN, 1)
     If 'tRead Quit $$$ERROR($$$GeneralError, "the data browser principals' grants did not read back as declared")
     Quit $$$OK

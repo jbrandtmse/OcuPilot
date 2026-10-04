@@ -7,9 +7,10 @@
  * store and hands it what it needs as plain functions, so the component specs drive it directly.
  *
  * **The tree reads three other screens' declared reads** (AD-5): SQL schemas', with `system=no`,
- * once, and SQL tables' and SQL views', with `system=no` and the schema, when a schema expands --
- * each under its own screen's gate and cap. **A page is posted to the screen's own route**,
+ * once per namespace, and SQL tables' and SQL views', with `system=no` and the schema, when a schema
+ * expands -- each under its own screen's gate and cap. **A page is posted to the screen's own route**,
  * `POST /explorer/sql/data`, scoped to the namespace; a request generation drops an older answer.
+ * **A namespace switch forgets everything read in the old one** (AD-44, `scopeTo`).
  *
  * **The answer is screen-only** (AD-36, AD-39's sixth exception): rows, an SQLCODE and its message
  * live in this state and are rendered as text; none of it enters the screen's store, so none of it
@@ -20,6 +21,7 @@ import type { ApiService, JsonResult } from '../../core/api';
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZES,
+  filterValue,
   lastOffset,
   nextOffset,
   nextSort,
@@ -202,6 +204,12 @@ export class DataBrowserState {
   /** Which page request is current; an answer to an older one is dropped. */
   private generation = 0;
 
+  /** Which tree is current; a tree read answering after a namespace switch is dropped. */
+  private treeGeneration = 0;
+
+  /** The namespace the tree and the open object were read in, `''` before the first. */
+  private namespaceValue = '';
+
   private readonly listeners = new Set<() => void>();
 
   subscribe(listener: () => void): () => void {
@@ -269,13 +277,29 @@ export class DataBrowserState {
     return this.announcementValue;
   }
 
+  /**
+   * Scope the state to `namespace` (AD-44): a namespace other than the one the tree and the open
+   * object were read in forgets both and drops every read still on its way, then the tree is read.
+   * `''`, a scope not yet resolved, reads nothing.
+   */
+  async scopeTo(deps: DataBrowserDeps, namespace: string): Promise<void> {
+    if (namespace === '') return;
+    if (namespace !== this.namespaceValue) {
+      this.namespaceValue = namespace;
+      this.forget();
+    }
+    await this.loadSchemas(deps);
+  }
+
   /** Read the schemas holding a table or a view, once; a later call keeps what was read. */
   async loadSchemas(deps: DataBrowserDeps): Promise<void> {
     if (this.schemasValue !== null || this.schemasLoadingValue || deps.schemas === null) return;
+    const tree = this.treeGeneration;
     this.schemasLoadingValue = true;
     this.notify();
     const read = createScreenRead(deps.api, deps.schemas, () => ({ system: 'no' }));
     const result = await read({ maxRows: TREE_MAX_ROWS });
+    if (tree !== this.treeGeneration) return;
     this.schemasLoadingValue = false;
     if (result.kind !== 'ok') {
       this.schemasFaultValue = STRINGS.connectivityRequestRefused;
@@ -292,7 +316,7 @@ export class DataBrowserState {
     this.notify();
   }
 
-  /** Expand `name`, reading its tables and then its views the first time, or collapse it. */
+  /** Expand `name`, reading its tables and then its views the first time or after a read failed, or collapse it. */
   async toggle(deps: DataBrowserDeps, name: string): Promise<void> {
     const node = this.schemasValue?.find((schema) => schema.name === name);
     if (node === undefined) return;
@@ -300,11 +324,12 @@ export class DataBrowserState {
       this.replace(name, { expanded: false });
       return;
     }
-    if (node.objects !== null || node.loading) {
+    if ((node.objects !== null && node.fault === '') || node.loading) {
       this.replace(name, { expanded: true });
       return;
     }
-    this.replace(name, { expanded: true, loading: true });
+    const tree = this.treeGeneration;
+    this.replace(name, { expanded: true, loading: true, fault: '' });
     const criteria = (): Readonly<Record<string, string>> => ({ system: 'no', schema: name });
     const objects: TreeObject[] = [];
     let truncated = false;
@@ -315,6 +340,7 @@ export class DataBrowserState {
     ] as const) {
       if (declaration === null) continue;
       const result = await createScreenRead(deps.api, declaration, criteria)({ maxRows: TREE_MAX_ROWS });
+      if (tree !== this.treeGeneration) return;
       if (result.kind !== 'ok') {
         fault = STRINGS.connectivityRequestRefused;
         continue;
@@ -349,7 +375,7 @@ export class DataBrowserState {
 
   /** Apply `column`'s typed filter -- an empty one removes it -- and return to the first page. */
   async applyFilter(deps: DataBrowserDeps, column: string): Promise<void> {
-    const value = (this.draftsValue[column] ?? '').trim();
+    const value = (Object.hasOwn(this.draftsValue, column) ? this.draftsValue[column] : '').trim();
     const filters: Record<string, string> = { ...this.filtersValue };
     if (value === '') delete filters[column];
     else filters[column] = value;
@@ -422,13 +448,19 @@ export class DataBrowserState {
     await this.read(deps);
   }
 
-  /** The request a page posts: the open object, its applied filters, its sort, the offset and the size. */
+  /**
+   * The request a page posts: the open object, its applied filters -- a BIT column's as the instance
+   * matches it (`filterValue`) -- its sort, the offset and the size.
+   */
   private body(): string {
     const open = this.openValue as TreeObject;
+    const kinds = new Map((this.answerValue?.columns ?? []).map((column) => [column.name, column.kind]));
+    const filters: Record<string, string> = {};
+    for (const [column, value] of Object.entries(this.filtersValue)) filters[column] = filterValue(kinds.get(column) ?? 'text', value);
     const body: Record<string, unknown> = {
       schema: open.schema,
       table: open.name,
-      filters: this.filtersValue,
+      filters,
       sort: this.sortValue,
       offset: this.offsetValue,
       size: this.sizeValue,
@@ -460,6 +492,26 @@ export class DataBrowserState {
       return;
     }
     this.answerValue = answerOf(result.body);
+    this.notify();
+  }
+
+  /** Drop the tree, the open object with its filters, sort, offset and answer, and every read on its way; the page size stays. */
+  private forget(): void {
+    this.generation += 1;
+    this.treeGeneration += 1;
+    this.schemasValue = null;
+    this.schemasLoadingValue = false;
+    this.schemasTruncatedValue = false;
+    this.schemasFaultValue = '';
+    this.openValue = null;
+    this.filtersValue = {};
+    this.draftsValue = {};
+    this.sortValue = null;
+    this.offsetValue = 0;
+    this.answerValue = null;
+    this.loadingValue = false;
+    this.refusalValue = '';
+    this.announcementValue = '';
     this.notify();
   }
 

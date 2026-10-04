@@ -1294,6 +1294,9 @@ ClassMethod BrowseRequest(pBody, Output pRequest As %DynamicObject) As %Boolean
 /// <p><code>pageValues</code> are each filter's <method>LikeValue</method> in order, then the offset
 /// and the page size plus one; <code>countValues</code> the filters' alone. Every identifier is the
 /// plan's catalog spelling, <method>Quoted</method>, and the direction is one of two words. Pure.</p>
+/// <p>The filter and sort rules here and in <method>Quoted</method> and <method>LikeValue</method> are
+/// ported from iris-table-editor v0.2.3 (MIT, <code>ui/licenses/iris-table-editor.txt</code>),
+/// <code>packages/core/src/utils/SqlBuilder.ts</code> :30-47 and :107-201.</p>
 ClassMethod Composed(pPlan As %DynamicObject) As %DynamicObject
 {
     Set tFrom = ..Quoted(pPlan.%Get("table").%Get("schema")) _ "." _ ..Quoted(pPlan.%Get("table").%Get("name"))

@@ -100,6 +100,7 @@ const FALLBACK_VISIBLE_ROWS = 10;
               type="text"
               autocomplete="off"
               spellcheck="false"
+              maxlength="1000"
               data-ocu-data="filter"
               [attr.aria-label]="filter.label"
               [attr.data-column]="filter.column"
@@ -259,7 +260,7 @@ export class DataBrowserGrid {
       column: column.name,
       filterable: isFilterable(column.kind),
       label: fillPlaceholders(STRINGS.explorerSqlDataFilterColumn, { column: column.name }),
-      value: drafts[column.name] ?? '',
+      value: Object.hasOwn(drafts, column.name) ? drafts[column.name] : '',
     }));
   });
 
