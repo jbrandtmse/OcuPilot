@@ -142,6 +142,13 @@ Parameter SQLPARAMETERS = "EXPLORER.SQL.PARAMETERS";
 
 Parameter REASONSQLPARAMETERS = "Give one value for each ? in the statement.";
 
+/// <p>Envelope code: a query or a DML statement the instance's statement index holds no row for once
+/// it is prepared, so the tables it uses cannot be checked before it runs and it is not run. Rendered
+/// on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SQLUNRECORDED = "EXPLORER.SQL.UNRECORDED";
+
+Parameter REASONSQLUNRECORDED = "The instance keeps no record of the tables this statement uses before it runs, so OcuPilot cannot check what it reads or changes and does not run it here; writing SELECT %NORUNTIME may let a query be checked.";
+
 /// <p>Envelope code: a statement of any kind but a query sent to the console's background run, which
 /// runs only a query (Story 19.15). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter>
 /// slug with 422.</p>

@@ -1,10 +1,10 @@
-/// <p><class>OcuPilot.Port.SqlPort</class> whose statement index answers no row for any statement it
-/// prepares, so a test drives the port's fail-closed refusal. Everything else is the production
-/// port's.</p>
+/// <p><class>OcuPilot.Port.SqlPort</class> whose statement index cannot be read for any statement it
+/// prepares, so a test drives the port's fail-closed internal refusal. Everything else is the
+/// production port's.</p>
 Class OcuPilot.Test.SqlPortUnindexed Extends OcuPilot.Port.SqlPort
 {
 
-/// <p>The production prepare, its answer marked as having no statement-index row.</p>
+/// <p>The production prepare, its answer marked as having a statement index it could not read.</p>
 ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = ##super(pNamespace, pText, .pRaw)
