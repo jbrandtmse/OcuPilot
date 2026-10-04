@@ -8337,6 +8337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T18:09:10Z occurrence=23-2-the-range-end-cleanup-part-2
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: protocolTimeout 600 s; red at 182 s under a 200 s font hold, 12/12 after; reopen_if a walk stalls past 600 s
+- 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=linked DW-2026: a11y-structural-invariants hung 730 s on run 37184530521 (a3f957b2) and on aaa2460d attempt 1 (2026-10-03)
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -9388,6 +9389,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: med | fix-risk: low | footprint: in-story
 - evidence: ocupilot-b-ci messages.log holds one severity-2 [OcuPilot.Log] 'ECP.DataServer failed with HTTP 500 ... ERROR #1454' line per refused SSL save and no vendor line; AD-2 logs every failure outside UNLOGGEDREFUSALS, whose entries match endpoint/type/status only, so none can scope to #1454; monitor state read 1 then 2 across this review's runs.
 - 2026-10-04T06:51:44Z status=decision-pending owner=burndown by=cr note=recommend amending AD-2: unlog the mapped ECP.DataServer PUT #1454 (code-scoped UNLOGGEDREFUSALS), as 18.6 did for its 400
+- 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -9474,3 +9476,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37181343435 (browser shard 1/3, head f63a048b) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: No element found for selector .ocu-detail-tab[data-route=system-explorer/sql-tables/fields] at :180, right after waitForFunction(location.pathname === document route); the same leg passed on Epic 19's own runs (13742bbb, 79273d02). Story 18.20 changes no shell or tab code (first sighting).
 - 2026-10-04T06:55:48Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; wait for the tab element before focusing it
+
+### DW-2026: a11y-structural-invariants.browser-spec.mjs failed all 12 legs on CI with 'Runtime.callFunctionOn timed out' (protocol timeout, 730 s)
+- source: ci run 37184530521 (browser shard 1/3, head a3f957b2) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
+- 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
+- 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
