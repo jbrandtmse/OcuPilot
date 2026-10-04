@@ -31,6 +31,8 @@ import { DatabaseEditor } from './areas/os-management/database-editor.store';
 import { DatabaseWizard } from './areas/os-management/database-wizard.store';
 import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.store';
 import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.store';
+import { LicenseServerForm } from './areas/os-management/license-server-form.store';
+import { EcpDataServerForm } from './areas/os-management/ecp-data-server-form.store';
 import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
@@ -1271,6 +1273,14 @@ describe('the shell frame', () => {
     const remoteDatabaseForm = TestBed.inject(RemoteDatabaseForm);
     remoteDatabaseForm.setValue('Name', 'AREMOTEDATABASETHISPRINCIPALTYPED');
     expect(remoteDatabaseForm.value('Name')).not.toBe('');
+    // And the license server and ECP data server forms (Stories 18.6 and 18.20): a name THIS principal
+    // typed for a new server. A create takes input before its form read is made.
+    const licenseServerForm = TestBed.inject(LicenseServerForm);
+    licenseServerForm.setValue('Name', 'ALICENSESERVERTHISPRINCIPALTYPED');
+    expect(licenseServerForm.value('Name')).not.toBe('');
+    const ecpDataServerForm = TestBed.inject(EcpDataServerForm);
+    ecpDataServerForm.setValue('Name', 'ADATASERVERTHISPRINCIPALTYPED');
+    expect(ecpDataServerForm.value('Name')).not.toBe('');
     // And Journal settings (Story 18.18): the settings THIS principal read and a size they typed.
     const journalSettingsForm = TestBed.inject(JournalSettingsForm);
     await journalSettingsForm.open();
@@ -1417,6 +1427,11 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.remoteDatabaseForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's remote database form holds the previous one's typed name.
     expect(remoteDatabaseForm.value('Name')).toBe('');
+    // Mutation (Rule 19): delete `this.licenseServerForm.reset()` or `this.ecpDataServerForm.reset()`
+    // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal's form holds the
+    // previous one's typed name.
+    expect(licenseServerForm.value('Name')).toBe('');
+    expect(ecpDataServerForm.value('Name')).toBe('');
     // Mutation (Rule 19): delete `this.journalSettingsForm.reset()` from `App.verifyWhenSignedIn` -> this
     // goes red, and the next principal's Journal settings hold the previous one's read and typed size.
     expect(journalSettingsForm.directory('primary')).toBe('');

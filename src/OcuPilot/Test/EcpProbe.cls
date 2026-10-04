@@ -169,27 +169,6 @@ ClassMethod ServerCount() As %Integer
     Quit tResult.%Size()
 }
 
-/// <p>How many admin API async task rows the account <var>pUser</var> queued, read in
-/// <code>%SYS</code>, or -1 when they cannot be read.</p>
-ClassMethod UserTaskRows(pUser As %String) As %Integer
-{
-    Set tCount = -1
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set tTaskClass = $Parameter(..#PORT, "ASYNCTASKCLASS")
-        Set tTable = ##class(%Dictionary.CompiledClass).%OpenId(tTaskClass).SqlQualifiedNameQ
-        Set $NAMESPACE = "%SYS"
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM " _ tTable _ " WHERE %EXACT(Username) = ?", pUser)
-        If tResult.%Next() Set tCount = +tResult.%Get("N")
-        Set tResult = ""
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-        Set tCount = -1
-    }
-    Quit tCount
-}
-
 /// <p>How many <code>%System/%System/ConfigurationChange</code> audit events reading
 /// <code>Create section ECPServer <var>pName</var></code> the instance recorded at or after the UTC time
 /// <var>pSince</var> (<code>YYYY-MM-DD HH:MM:SS</code>), read in <code>%SYS</code>, or -1 when they cannot

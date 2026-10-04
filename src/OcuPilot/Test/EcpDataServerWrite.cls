@@ -6,7 +6,9 @@
 /// <p>The vendor's writes are real; <class>OcuPilot.Test.EcpSeamPort</class> records every call and
 /// sends it, so a refusal shows as a recorded write or none.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, room for two data
-/// servers under the instance's data server limit, and both <parameter>ARMINGVARIABLE</parameter> and
+/// servers and no more under the instance's data server limit (two on a stock instance), auditing on
+/// with <code>%System/%System/ConfigurationChange</code> enabled, whose create event the limit leg
+/// reads, and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>DATABASEVARIABLE</parameter> reading <code>1</code>, because the class creates and deletes
 /// probe data servers and a probe remote database (<class>OcuPilot.Test.EcpProbe</class>) and sets the
 /// governance policy. Every probe object is removed by exact name before all, after each and after all;
@@ -353,7 +355,8 @@ Method TestACreatePastTheLimitIsRefusedBeforeAnyWrite()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with no PUT sent")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPL9"), 0, "nothing is stored")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "CreateEvents", "OCUPROBEECPL9", tSince), 0, "no create audit event is recorded")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "LineCount", "messages.log"), tLines, "and messages.log gains no line")
+    Set tAfter = $ClassMethod(..#PROBE, "LinesAfter", "messages.log", tLines)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "CountContaining", tAfter, "ECP") + $ClassMethod(..#PROBE, "CountContaining", tAfter, "#456"), 0, "and messages.log gains no data server line")
     If tRoom < 1 Quit
     Set tSC = $ClassMethod(..#SAVE, "Handle", "update", "OCUPROBEECPL1", {"Port": 1973}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus, 200, "an update at the limit is written: " _ $Extract(tAnswer, 1, 200))

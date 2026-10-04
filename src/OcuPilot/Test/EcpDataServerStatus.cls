@@ -241,7 +241,8 @@ Method TestACallerBodyIsRefusedBeforeAnyCall()
 }
 
 /// <p>B6: a status change of a server the instance does not define is refused on both callers with no
-/// action sent: the list's 404 and the mint's absence.</p>
+/// action sent: the list's 404, the mint's absence, and the confirm of a change whose server was
+/// deleted since its mint, refused as a changed target.</p>
 Method TestAnAbsentTargetIsRefused()
 {
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#SCREEN, {"action": "changestatus", "id": "OCUPROBEECPGONE", "values": {"Status": "disabled"}}, .tAnswer, .tStatus)
@@ -249,6 +250,12 @@ Method TestAnAbsentTargetIsRefused()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with nothing sent")
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, "OCUPROBEECPGONE", {"Name": "OCUPROBEECPGONE", "Status": "disabled"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ "not present"), "and the agent's is refused as absent: " _ tProblem)
+    Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, ..#SERVER, ..Args("disabled"), .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the agent's change is minted (" _ tProblem _ ")")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveServer", ..#SERVER), "and the server is deleted since")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "its confirm is refused as a changed target")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ "|" _ $ClassMethod(..#PROBE, "Holds", ..#SERVER), "|0", "with nothing sent and nothing re-created")
 }
 
 /// <p>The list's Change status of <parameter>SERVER</parameter> to <var>pValue</var>, through the

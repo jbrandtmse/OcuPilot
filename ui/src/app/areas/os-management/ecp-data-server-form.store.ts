@@ -437,6 +437,8 @@ export class EcpDataServerForm {
     const id = creating ? textAt(result.body, 'name') || this.value(NAME_FIELD).toUpperCase() : this.serverName;
     if (creating) this.createdIdValue = id;
     this.opened = this.buffer;
+    // The instance now holds a mirror connection it will not let this form turn off, as on a fresh read.
+    if (this.value(MIRROR_FIELD) === 'true') this.mirrorLockedValue = true;
     this.savedValue = true;
     this.readBackValue = readBackOf((result.body as Record<string, unknown> | null)?.['readBack']);
     this.formDirty.setDirty(false);

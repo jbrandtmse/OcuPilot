@@ -63,8 +63,8 @@ Parameter MIRROR = "ECP.DATASERVER.MIRROR";
 
 Parameter REASONMIRROR = "A data server's mirror connection cannot be turned off once it is set.";
 
-/// <p>Violation code: SSL/TLS chosen while the <code>%ECPClient</code> SSL/TLS configuration is absent
-/// or disabled, on <code>SSLConfig</code>; the vendor's own refusal (#1454) answered on the field.</p>
+/// <p>Violation code: SSL/TLS chosen while the instance holds no <code>%ECPClient</code> SSL/TLS
+/// configuration, on <code>SSLConfig</code>; the vendor's own refusal (#1454) answered on the field.</p>
 Parameter SSLCLIENT = "ECP.DATASERVER.SSLCLIENT";
 
 Parameter REASONSSLCLIENT = "Create and enable the %ECPClient SSL/TLS configuration before using SSL/TLS.";

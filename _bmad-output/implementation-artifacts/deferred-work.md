@@ -8801,6 +8801,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: monitor state 1->2 across NamespaceInterop runs on ocupilot-b-ci; the same as 18.14's copy-mappings started legs (AdminPort :2641)
 - 2026-10-01T13:37:15Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; the port should not log a bound it converts to started
+- 2026-10-04T06:51:59Z occurrence=18-20-ecp-data-servers
 
 ### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9382,3 +9383,94 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-20-ecp-data-servers.md (implement) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EcpPort maps only the vendor's #1454 (SSLECPClientNotExist), so a disabled %ECPClient is likely accepted (inference); AD-8 rules out the %ECPClient read, which needs %Admin_Secure:USE. Settle on a throwaway: seed a disabled %ECPClient, create a probe at 192.0.2.10 with SSLConfig 1, read whether it is stored, remove both.
 - 2026-10-04T05:57:45Z status=routed owner=18-21-ecp-settings-and-application-servers by=harvest note=18.21 owns the ECP SSL/TLS authorization surfaces; measure, then refuse or name the gap
+
+### DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVER.SSLCLIENT
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: ocupilot-b-ci messages.log holds one severity-2 [OcuPilot.Log] 'ECP.DataServer failed with HTTP 500 ... ERROR #1454' line per refused SSL save and no vendor line; AD-2 logs every failure outside UNLOGGEDREFUSALS, whose entries match endpoint/type/status only, so none can scope to #1454; monitor state read 1 then 2 across this review's runs.
+- 2026-10-04T06:51:44Z status=decision-pending owner=burndown by=cr note=recommend amending AD-2: unlog the mapped ECP.DataServer PUT #1454 (code-scoped UNLOGGEDREFUSALS), as 18.6 did for its 400
+
+### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Confirm.RenderRefusal renders ReasonFor(code) for every code, so EcpPort's Limit(n) reason is dropped: the form's Save answers 'at most 2 ECP data servers', the confirm 'allows no more ECP data servers'; both are true.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a user or the agent asks how many data servers the limit allows after a confirm's ECP.SERVER.LIMIT
+
+### DW-2009: EcpPort answers every HTTP 500 from a status change as ECP.STATUS.REFUSED, a poll or setup failure included, not only a task the vendor failed
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.ServerAction maps +pHttpStatus=500; AdminPort.AwaitTask's failed task and a PollTask or queue failure are each 500 INTERNAL, indistinguishable to EcpPort without an AdminPort marker; the vendor text is logged either way.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=messages.log shows an ECP.STATUS.REFUSED change whose logged cause is not a failed SERVERACTION task
+
+### DW-2010: The data server create Save answers only the name's violation for a malformed name, not every field's, though its doc promises every violation
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpDataServerSave.Create quits after NameViolation, as LicenseServerSave, DatabaseSave and DeviceSave do; the other fields' violations arrive on the next Save.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=any of the four Saves stops quitting on the name, or a user reports the second round trip
+
+### DW-2011: The data server form's licensed flag is only ever asserted equal to a 0 license, so a hard-coded 0 in EcpRules.HandleForm reddens no test
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpWriteGate asserts licensed = EcpPort.NetworkEnabled(), 0 on every Community instance; HandleForm takes its port from the update tool and no seam licenses it (spec Named limit 1).
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a test instance gains an ECP-enabled license, or a NetworkEnabled seam reaches EcpRules.HandleForm
+
+### DW-2012: ecp-data-servers.browser-spec.mjs's after() runs removeAll in any container but the live one, including one its before() refused
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: after() guards only LIVE_CONTAINER while before() also refuses ocupilot-slot-* and a non-throwaway; license-servers and remote-databases specs share the pattern; RemoveAll touches only OCUPROBEECP* objects.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a browser spec runs with OCUPILOT_BROWSER_CONTAINER naming an ocupilot-slot-* or non-throwaway container
+
+### DW-2013: AD-53's sixteenth named gap (ECP data servers' Change status) gives 'for the same reason' after the fourteenth's 'unmeasured', though ECP's missing vendor event was measured
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md:905 follows License key's 'unmeasured, because no instance here may activate a key'; AD-15's fourteenth case (:366) says measured on ocupilot-b-ci, 2026-10-03; the spine is the runner's (Rule 20) and contended add-only.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=the next edit of AD-53's named-gap list, which corrects it at origin to the measured reason
+- 2026-10-04T06:55:37Z status=resolved-by:18-20-ecp-data-servers by=adjudication note=corrected at origin: AD-53's sixteenth gap now gives the measured reason
+
+### DW-2014: EcpProbe.Child and EcpWriteGateProbe.Run run their steps even when the probe login fails, with the test process's own privileges
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: loggedIn is recorded, not checked, before the steps (RemoteDatabaseProbe's model); every RunAs caller asserts Ran() = '<user> 1', so the test fails loudly, and the probe-named writes are removed by RemoveAll.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a RunAs caller is added that does not assert the child's login
+
+### DW-2015: An ECP data server edit can re-create a server deleted between its fresh read and the vendor's upsert PUT, and a create can overwrite one created concurrently
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.Put knows whether the name is listed but not the caller's intent; the confirm's fingerprint re-read and the Save's fresh read close all but the milliseconds before the PUT, the residual AD-4 accepts for upserts.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a classic-portal delete or create of that name lands between OcuPilot's fresh read and its PUT
+
+### DW-2016: A #456 reaching a caller who holds %Admin_Secure:USE names the earlier listed count, not the limit EcpPort read
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpPort.Put's #456 branch answers Limit(tCount) even when tMaximum was read; that caller's pre-check refuses at the limit first, so #456 reaches it only after a concurrent create.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when another writer creates a data server between EcpPort's limit read and its PUT
+
+### DW-2017: A %Admin_Secure:USE holder's create fails 500 when ECP.Settings cannot be read, where a caller without that pair reaches the vendor
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Put returns MaxServers' error status; the read needs %Admin_Manage and %Admin_Secure, both held on that branch, and MaxServers is a Config integer.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when ECP.Settings GET fails for a caller holding %Admin_Manage:USE and %Admin_Secure:USE
+
+### DW-2018: A second status change can be queued while a first, answered started, still runs on the same data server
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.ServerAction checks the LIST row's status, not pending tasks; a status change took 0.06 s against the 30 s ASYNCTIMEOUT at Task 0.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a SERVERACTION outlasts ASYNCTIMEOUT and a second change is sent to that server
+
+### DW-2019: The update tool's mirror rule reads the server a second time at the mint, so a delete between the two reads answers 500, not 'not present'
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint reads fresh and refuses an absent server first; EcpDataServerUpdate.ArgumentProblem reads again through EcpRules.Present only when MirrorConnection is sent.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a data server is deleted between the mint's fresh read and its field rules
+
+### DW-2020: MirrorConnection or SSLConfig sent as true or a decimal string reaches the vendor unconverted
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpRules.Flag admits a boolean or a decimal string and Shape converts only Port; the form sends numbers, and the vendor stores 1 for true or '1' (inference).
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a caller sends a boolean or string flag and its read-back reads mismatched
+
+### DW-2021: The ECP data server name look-up answers 500 for a read failure other than 404
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpRules.HandleName renders any Taken error through RenderInternal; its gate already holds %Admin_Manage, ECP.DataServer GET's only resource (LicenseRules' model).
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when ECP.DataServer GET fails other than 404 for a caller past the form's gate
+
+### DW-2022: A RunAs probe child still running past its wait keeps writing after the test has cleaned up
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpWriteGate.RunAs (300 s) and EcpProbe.RunAs (180 s) return on WaitMsg timeout without stopping the child; each plan is seconds of seam or vendor calls.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a probe child's plan outlasts its parent's wait
+
+### DW-2023: EcpWriteGate's pair-less limit leg expects Limit(MaxServers) where the port names the defined count once servers exceed the limit
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: With more data servers defined than MaxServers the room is negative and EcpPort's #456 branch names the count; a stock instance defines none and MaxServers is 2.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a test instance defines more data servers than its MaxServers
+
+### DW-2024: system-explorer-sql-query.browser-spec.mjs AC2/AC9 focuses the SQL table's Fields tab as soon as the document path matches, before the tab strip renders
+- source: ci run 37181343435 (browser shard 1/3, head f63a048b) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: No element found for selector .ocu-detail-tab[data-route=system-explorer/sql-tables/fields] at :180, right after waitForFunction(location.pathname === document route); the same leg passed on Epic 19's own runs (13742bbb, 79273d02). Story 18.20 changes no shell or tab code (first sighting).
+- 2026-10-04T06:55:48Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; wait for the tab element before focusing it

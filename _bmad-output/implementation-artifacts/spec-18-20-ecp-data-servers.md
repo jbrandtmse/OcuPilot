@@ -101,12 +101,12 @@ deferred:
 | Field refusals | Name `1 a`, `ocuprobeecpa` (taken), 65 characters; Address empty or `my host`; Port 0, 65536 or `x`; `MirrorConnection` 2, or 0 over a stored 1 | Refused on the field before any vendor write, on both callers | `ECP.DATASERVER.NAME.SHAPE`, `.NAME.TAKEN`, `.ADDRESS`, `.PORT`, `.MIRROR` |
 | SSL without a client configuration | `SSLConfig` 1, with `%ECPClient` absent (stock) | Refused on `SSLConfig`; nothing is stored | `ECP.DATASERVER.SSLCLIENT` |
 | Server limit, caller holds `%Admin_Secure:USE` | The configured data servers reach `AppServerSettings.MaxServers`, read from `ECP.Settings` (2 on a stock instance, never hard-coded) | The create is refused before any vendor write, with a sentence naming the limit; no `PUT`, no audit event, no log line | 409 `ECP.SERVER.LIMIT` |
-| Server limit, caller without `%Admin_Secure:USE` | The same, for a caller holding exactly the create's declared pairs | The create reaches the vendor, whose 500 #456 maps to the same refusal and sentence; nothing is stored, and the vendor leaves its "Create section ECPServer" audit event and one severity-2 log line | 409 `ECP.SERVER.LIMIT` |
+| Server limit, caller without `%Admin_Secure:USE` | The same, for a caller holding exactly the create's declared pairs | The create reaches the vendor, whose 500 #456 maps to the same refusal and sentence; nothing is stored, and the vendor's "Create section ECPServer" audit event and two severity-2 log lines (the vendor's and the port's own, AD-2) are left | 409 `ECP.SERVER.LIMIT` |
 | Delete, unused | `OCUPROBEECPB`, through the typed-name dialog or a confirmed proposal | `DELETE /ecp/data-server` is sent, and the row leaves the list | none |
 | Delete, in use | Remote database `OCUPROBEECPR` (seeded) uses `OCUPROBEECPA` | The advisory names `OCUPROBEECPR` when the dialog opens or the proposal is minted. The vendor refuses the delete, and the server stays. | 409 `ECP.DATASERVER.INUSE` |
 | Disable, real | `OCUPROBEECPA` reads Not Connected; choose Disabled in the dialog, or confirm a proposal | `SERVERACTION {Action:2}` is queued and polled within the bound. The list shows Disabled, the read-back reads `nothingSent` (AD-58: the write sends no value), and `messages.log` gains no ERROR #7846. No ECP process starts. | none |
 | Back to Not connected, real | From Disabled | `{Action:1}`; the list shows Not Connected | none |
-| Same status | Not connected while it reads Not Connected | Refused at once. No `SERVERACTION` is sent, and no task row is written. | 422 `ECP.STATUS.SAME` on Status |
+| Same status | Not connected while it reads Not Connected | Refused at once. No `SERVERACTION` is sent. | 422 `ECP.STATUS.SAME` on Status |
 | Normal, unlicensed (real) | `ocupilot-b-ci` (`NetworkEnabled()` 0) | The dialog draws Normal `aria-disabled` with the license sentence. A screen action or a proposal sent anyway is refused at once, with nothing queued. | 422 `ECP.LICENSE` on Status |
 | Normal, licensed (seam) | `^||OcuPilotRemoteLicensed` 1, through `Test/EcpSeamPort` | It passes the pre-check, and the seam records one `SERVERACTION {Action:3}` that never reaches the vendor | none |
 | Past the bound (seam) | The seam answers `PORT.TIMEOUT` for the poll | The write answers "started" (202); the read-back is `unchecked` (`running`); the screen and the card say it is still running | none |
@@ -524,7 +524,7 @@ deferred:
 
 - **B0:** Given `ocupilot-b-ci`, when the implement stage starts, then Task 0 records the payloads, durations, effects, pairs and audit events of `ECP.DataServer` `LIST`, `GET`, `PUT`, `DELETE` and `SERVERACTION` (1, 2 and 4) before any descriptor, tool or page exists. No ECP process starts, no `Action` 3 is sent, the license reads as found throughout, and S2 equals S0 apart from the declared differences. A contradiction halts the story.
 - **B1:** Given probe data servers, when ECP data servers opens and `osmgmt.ecpdataservers.read` runs, then both answer the same rows through one read, and the page shows the caveat line.
-- **B2:** Given the form or a confirmed proposal, when a data server is created or edited, then `ECP.DataServer` `PUT` round-trips: the list shows it after the change event, and the read-back reads `matches`. A bad name, address, port, mirror change or SSL setting is refused on its field with nothing sent.
+- **B2:** Given the form or a confirmed proposal, when a data server is created or edited, then `ECP.DataServer` `PUT` round-trips: the list shows it after the change event, and the read-back reads `matches`. A bad name, address, port or mirror change is refused on its field with nothing sent; an SSL setting without an `%ECPClient` configuration is refused on its field after the vendor's own refusal (#1454), with nothing stored.
 - **B3:** Given a data server a remote database uses, when its delete opens or is confirmed, then the advisory names that remote database first and the delete is refused `ECP.DATASERVER.INUSE`, with the server kept. An unused one is deleted.
 - **B4:** Given a data server, when its status is changed to Disabled or Not connected by either caller, then the queued action is polled within the bound with no ERROR #7846, the list shows the new status, and no ECP process starts. Past the bound it answers "started", with the read-back `unchecked`.
 - **B5:** Given the Community license, when Normal is chosen, then the dialog draws it disabled with the license sentence, and a screen action or proposal is refused `ECP.LICENSE` at once with nothing queued. A seam stands in for a licensed instance and records an `Action` 3 that never reaches the vendor. A choice equal to the current status is refused `ECP.STATUS.SAME`.
@@ -536,6 +536,42 @@ deferred:
   - every roster and pinned side-bar list includes the screens;
   - the DW-1337 gate holds in both themes;
   - EXPERIENCE.md reads 1006 lines (Story 19.6's merge added one; this story adds none).
+
+### Review Findings
+
+Code review 2026-10-04 (`full-opus`; 42 rows, 34 entries: 1 medium, 25 low, 1 maybe-false, 7 false, by-design or spec-only; the DW-1898 occurrence is the reviewer's own sighting).
+
+- [x] [Review][Decision] A Save with SSL/TLS and no `%ECPClient` raises the instance alert state: `AdminPort` logs #1454 at severity 2 before `EcpPort` maps it [Port/AdminPort.cls:574] — decision-pending DW-2007 (an AD-2 amendment)
+- [x] [Review][Patch] The mirror connection box stays editable after a Save stores it set [ecp-data-server-form.store.ts:439]
+- [x] [Review][Patch] The dialog's status labels are a copy of `EcpPort.STATUSLABELS` with no equality test [ui/tools/self-protection.test.mjs]
+- [x] [Review][Patch] The ECP and license server form stores' sign-out resets have no pinning test [ui/src/app/app.spec.ts]
+- [x] [Review][Patch] The form read's `rules` and `requiredFields` contents are unasserted [Test/EcpWriteGate.cls:143]
+- [x] [Review][Patch] Untested absent targets: the form read of an unknown name, and a confirmed status change whose server was deleted [Test/EcpWriteGate.cls, Test/EcpDataServerStatus.cls:245]
+- [x] [Review][Patch] The limit leg's `messages.log` check counted every line, so a background line could fail it [Test/EcpDataServerWrite.cls:356]
+- [x] [Review][Patch] Two headers omit their environment needs: auditing, and no more than two servers' room [Test/EcpDataServerWrite.cls:8, Test/EcpWriteGate.cls:12]
+- [x] [Review][Patch] `EcpProbe.UserTaskRows` has no caller [Test/EcpProbe.cls:174]
+- [x] [Review][Patch] `EcpError.SSLCLIENT`'s doc claims a disabled `%ECPClient` is refused (DW-2006) [Api/EcpError.cls:66]
+- [x] [Review][Patch] `REASONSERVERLIMIT` and `REASONDATASERVERVALIDATION` were not pinned [Test/EcpDescriptor.cls:132]
+- [x] [Review][Defer] The confirm's limit refusal carries the generic sentence, not `Limit(n)` [Api/Confirm.cls:126] — wontfix-accepted DW-2008
+- [x] [Review][Defer] Every 500 from a status change answers `ECP.STATUS.REFUSED` [Port/EcpPort.cls:179] — wontfix-accepted DW-2009
+- [x] [Review][Defer] A malformed name stops the create Save's other field checks [Area/OsMgmt/EcpDataServerSave.cls:123] — wontfix-accepted DW-2010
+- [x] [Review][Defer] The form's `licensed` is asserted only against a 0 license [Area/OsMgmt/EcpRules.cls:227] — wontfix-accepted DW-2011
+- [x] [Review][Defer] The browser spec's `after()` guards only the live container [ui/browser/ecp-data-servers.browser-spec.mjs:158] — wontfix-accepted DW-2012
+- [x] [Review][Defer] AD-53's sixteenth gap reads "for the same reason" after an unmeasured case [ARCHITECTURE-SPINE.md:905] — wontfix-accepted DW-2013
+- [x] [Review][Defer] A probe child runs its steps after a failed login [Test/EcpProbe.cls:576] — wontfix-accepted DW-2014
+- [x] [Review][Defer] Theoretical, each wontfix-theoretical: upsert window (DW-2015), stale #456 count (DW-2016), unreadable limit (DW-2017), overlapping status changes (DW-2018), second mint read (DW-2019), unconverted flags (DW-2020), name look-up 500 (DW-2021), orphaned probe child (DW-2022), over-limit test room (DW-2023)
+- [x] [Review][Defer] `EcpPort`'s started path inherits `AwaitTask`'s logged bound — occurrence on DW-1898
+
+Rejected:
+
+- maybe-false: a form read or Save id outside the name pattern may answer 500, not 404 (inference); only low if real.
+- false: a Disabled server's delete misreported — Task 0 step i deleted one (200).
+- false: an empty-body Save writes an audit event — Task 0 step c: an unchanged `PUT` records none.
+- false: the agent's SSL/TLS update is unpinned — the `Put` #1454 branch is pinned on both creates and the form's update (run 5628).
+- false: B0 to B7 lack per-clause `mutation:` lines — Rule 19 asks one per AC; B0 is Task 0's measurement.
+- false: the caveat test pins a doc comment — Boundaries requires the caveat in both descriptors' doc comments.
+- by-design: translated status labels — Named limit 2.
+- spec edit, the runner's: the matrix's "one severity-2 log line" (AD-52 says two), B2's "nothing sent" for SSL/TLS, the "no task row" clause, and the Auto Run Result's 1005.
 
 ## Spec Change Log
 
@@ -754,6 +790,16 @@ deferred:
 - mutation: B2 `EcpRules.Validate` drops the `SSLConfig` and `BatchMode` shape checks → `EcpDataServerWrite.TestBadCreateFieldsAreRefusedBeforeAnyWrite` and `TestBadUpdateFieldsAreRefusedBeforeAnyWrite` red (run 5181)
 - mutation: `EcpPort` drops its caller-body refusal → `EcpDataServerStatus.TestACallerBodyIsRefusedBeforeAnyCall` red (run 5182; the three applied together, each red on its own legs)
 - mutation: B7 `ScreenRead` without the `EcpDataServerList` exemption → `ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow` red (run 5385, the sweep before the fix)
+- mutation: (QA) B2 `EcpPort.Put`'s #1454 branch disabled → `EcpDataServerWrite.TestSslWithoutTheClientConfigurationIsRefusedOnItsField` red, 500 `INTERNAL` on create and update (run 5628)
+- mutation: (QA) B4 `EcpPort`'s failed-task 500 branch disabled → `EcpDataServerStatus.TestAFailedChangeIsRefusedAndReportsNothingChanged` red (run 5629)
+- mutation: (QA) B5 `EcpPort`'s Normal pre-check always refuses → `EcpDataServerStatus.TestNormalPassesTheLicenseCheckThroughTheSeam` red (run 5632)
+- mutation: (QA) B1 the list page's `data-ecp="caveat"` hook renamed, bundle rebuilt and redeployed → `ecp-data-servers.browser-spec.mjs` B1/B7 test red; reverted and redeployed, 4/4 green
+- mutation: (CR) B5 `ECP_STATUS_LABELS`' `notconnected` label changed → `self-protection.test.mjs` "the status dialog draws the current status with the labels and statuses the port compares" red (local, 1 failed)
+- mutation: (CR) B2 the form store's mirror lock in `save` dropped → `ecp-data-server-form.store.spec.ts` "a stored mirror connection of 0 is offered, and sent as 1 when checked" red (local vitest)
+- mutation: (CR) `App.verifyWhenSignedIn` drops `ecpDataServerForm.reset()` → `app.spec.ts` "leaving the signed-in state drops this principal's namespace list" red; dropping `licenseServerForm.reset()` too reddens its line first (local vitest)
+- (QA) B6 absent target: `EcpPort.Row`'s and `EcpRules.Present`'s own 404 checks are second guards; removing either leaves `EcpDataServerStatus` and `EcpDataServerWrite` green (runs 5630, 5631), because the generic read of an absent server already answers 404 first. No test file was added.
+
+**Code review patches, verified on `ocupilot-b-ci`:** `EcpDescriptor` 7/7 (run 5633), `EcpDataServerStatus` 8/8 (5634), `EcpDataServerWrite` 11/11 (5635), `EcpWriteGate` 7/7 (5636); `test:tools` 1786/1786; `app.spec.ts` and the form store spec 48/48; `npm run build` initial 2,727,946 bytes under the unchanged 2728kB; `check-objectscript` clean.
 
 ## Auto Run Result
 

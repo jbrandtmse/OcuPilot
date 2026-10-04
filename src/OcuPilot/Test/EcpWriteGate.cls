@@ -10,7 +10,7 @@
 /// (<class>OcuPilot.Test.EcpWriteGateProbe</class>), which reports what
 /// <class>OcuPilot.Test.EcpSeamPort</class> was asked; the four routes run over the wire.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, room for two data
-/// servers under the instance's limit, and both <parameter>ARMINGVARIABLE</parameter> and
+/// servers and no more under the instance's limit (two on a stock instance), and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>ECPVARIABLE</parameter> reading <code>1</code>, because the class creates and deletes probe
 /// users, roles and data servers (<class>OcuPilot.Test.EcpProbe</class>) and sets the governance policy;
 /// and auditing on with <code>%System/%System/ConfigurationChange</code> enabled, whose create event the
@@ -141,9 +141,18 @@ Method TestTheScreensPairsReadTheScreenAndTheForm()
     Set tServer = $Select($IsObject(tAnswer): tAnswer.%Get("server"), 1: "")
     Do $$$AssertEquals($Select($IsObject(tServer): tServer.%ToJSON(), 1: ""), "{""Name"":""OCUPROBEECPGA"",""Address"":""192.0.2.10"",""Port"":1972,""MirrorConnection"":0,""SSLConfig"":false,""BatchMode"":false,""Status"":""Not Connected""}", "with the server as the instance stores it and its listed status")
     Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%GetTypeOf("requiredFields") _ " " _ tAnswer.%GetTypeOf("rules") _ " " _ tAnswer.%GetTypeOf("licensed") _ " " _ tAnswer.%Get("licensed"), 1: ""), "array array boolean " _ ##class(OcuPilot.Port.EcpPort).NetworkEnabled(), "and its required fields, its rules and whether the license enables ECP")
+    Set tRules = ""
+    If $IsObject(tAnswer) && (tAnswer.%GetTypeOf("rules") = "array") {
+        Set tIterator = tAnswer.%Get("rules").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRule) { Set tRules = tRules _ $Select(tRules = "": "", 1: ",") _ $Select($IsObject(tRule): tRule.%Get("field") _ ":" _ tRule.%Get("code"), 1: "?") }
+    }
+    Do $$$AssertEquals($Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("requiredFields") = "array"): tAnswer.%Get("requiredFields").%ToJSON(), 1: "") _ " " _ tRules, "[""Name"",""Address"",""Port""] Name:ECP.DATASERVER.NAME.SHAPE,Name:ECP.DATASERVER.NAME.TAKEN,Address:ECP.DATASERVER.ADDRESS,Port:ECP.DATASERVER.PORT,MirrorConnection:ECP.DATASERVER.MIRROR,SSLConfig:ECP.DATASERVER.SSLCLIENT", "the form's required fields, and each rule's field and code")
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#FORMPATH, tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Set tAnswer = ..Parsed(tBody)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("server")): tAnswer.%Get("server").%Get("Name") _ "|" _ tAnswer.%Get("server").%Get("Port"), 1: ""), "200 |1972", "a new server's form is empty, on port 1972: " _ $Extract(tBody, 1, 200))
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#FORMPATH _ "?name=ocuprobeecpgz", tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Set tAnswer = ..Parsed(tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404 " _ ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "the form of a server the instance does not hold is 404: " _ $Extract(tBody, 1, 200))
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#NAMEPATH _ "?name=ocuprobeecpga", tUser, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
     Set tAnswer = ..Parsed(tBody)
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("taken"), 1: ""), "200 1", "GET " _ ..#NAMEPATH _ " finds the server in any case: " _ $Extract(tBody, 1, 200))

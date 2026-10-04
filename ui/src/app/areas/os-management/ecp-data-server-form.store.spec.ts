@@ -144,6 +144,11 @@ describe('EcpDataServerForm', () => {
     store.setFlag('MirrorConnection', true);
     await store.save();
     expect(sent.filter((entry) => entry.method === 'PUT').map((entry) => entry.body)).toEqual([{ MirrorConnection: 1 }]);
+    // Mutation (Rule 19): drop the lock in `save`'s accepted branch -> these go red, and the box the
+    // instance now refuses to turn off takes input again.
+    expect(store.mirrorLocked()).toBe(true);
+    store.setFlag('MirrorConnection', false);
+    expect(store.checked('MirrorConnection')).toBe(true);
   });
 
   it('a name the instance already holds is marked taken on blur, with its own sentence', async () => {
