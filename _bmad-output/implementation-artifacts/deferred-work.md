@@ -8337,6 +8337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T18:09:10Z occurrence=23-2-the-range-end-cleanup-part-2
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: protocolTimeout 600 s; red at 182 s under a 200 s font hold, 12/12 after; reopen_if a walk stalls past 600 s
+- 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=linked DW-2026: a11y-structural-invariants hung 730 s on run 37184530521 (a3f957b2) and on aaa2460d attempt 1 (2026-10-03)
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -8693,6 +8694,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
 - 2026-10-01T05:41:07Z occurrence=16-14-the-ldap-and-kerberos-editor
 - 2026-10-02T12:43:22Z occurrence=18-16-remote-databases
+- 2026-10-03T22:14:52Z occurrence=18-6-licensing-and-ecp
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
@@ -8800,6 +8802,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: monitor state 1->2 across NamespaceInterop runs on ocupilot-b-ci; the same as 18.14's copy-mappings started legs (AdminPort :2641)
 - 2026-10-01T13:37:15Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; the port should not log a bound it converts to started
+- 2026-10-04T06:51:59Z occurrence=18-20-ecp-data-servers
 
 ### DW-1899: A gate-probe child that runs a screen action later fails an AsyncResult call with <FUNCTION>BeginCapture+4^%SYS.Capture, three alerts per run
 - source: spec-18-15-enable-interoperability-on-a-namespace.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9159,6 +9162,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
 - 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the console prepares caller SQL in process with privilege checks on (Port/SqlPort, %Prepare(text,1)), never action/query, privileges independent of the statement cache (DW-1986); 19.11's agent tool carries the same constraint in its epics.md block
 
 ### DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck
 - source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
@@ -9204,6 +9208,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
 - 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
+- 2026-10-04T00:14:03Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=Epic 19 sightings: runs 37127162301 (tests 2,3), 37129484494 attempt 1 (test 2), 37138831685 attempt 1 (tests 2,3), 37157693521 (test 4); priority raised to med, fix-risk low (by=merge_gate)
+- 2026-10-04T00:14:03Z status=resolved-by:19-14-the-sql-catalog-s-remaining-detail-tabs owner=19-14-the-sql-catalog-s-remaining-detail-tabs by=adjudication note=fixed by aaa2460d (released in 1.0.8): signedInAndMovedTo waits for the gate's own navigation to the Definition form, openScreen waits for the clicked entry's route; held-read reproduction red on the old spec and green on the new, mutation restoring the 100 ms settle red; 1.0.8's PR ran all checks green
 ### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
 - source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
@@ -9248,3 +9254,267 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
 - evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
+
+### DW-1982: IRIS defect candidate: merely preparing CREATE USER ... IDENTIFY BY '<password>' stores the password in plain text in the namespace's SQL statement index (INFORMATION_SCHEMA.STATEMENTS)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.6 plan on ocupilot-a2-ci: %Prepare("CREATE USER ... IDENTIFY BY '<fake>'",1) alone, no execute, left the literal in INFORMATION_SCHEMA.STATEMENTS.Statement; a DML literal is stored as ?; the console refuses password text before any prepare (AD-61)
+- 2026-10-03T17:00:28Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with DW-1905, DW-1926, DW-1957, DW-1958 and DW-1963; the strongest of the vendor items (orchestrator)
+
+### DW-1983: CI flake: toast.browser-spec DW-1405 test waits 30 s for two toasts after a second confirmed turn, and on a slow runner the second turn outlasts the wait; test 2's Confirm wait then fails behind it
+- source: ci-run-37138831685 | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: run 37138831685: attempt 1 toast 3/3 (80 s) on head 66bc52e6, attempt 2 same head 1/3 (100.8 s; test 1 50 s, :347 and :193 timeouts); local ocupilot-a2-ci 3/3 twice
+- 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27: CI flake; the spec should key its waits to the second turn's settled reply, not a fixed 30 s after the click
+
+### DW-1984: gate.browser-spec test 6 (FR-28) clicks Cancel once the form's banner appears, but the Cancel button renders only after the form loads, so a slow form read fails the lookup
+- source: gate-spec settle fix (DW-1975) | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: found by the DW-1975 fix's held-read reproduction: test 6 failed under the hook with the old and new spec when the whole file ran, passed alone; not yet seen in CI
+- 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=one-line fix: wait for .ocu-form-bar-actions before the Cancel lookup
+
+### DW-1986: IRIS defect candidate: a CREATE TABLE text another account has already prepared in the namespace is answered from its cached query without the next principal's privilege check, so a principal with no DDL privilege creates the table through %Prepare(text, 1)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_USER:RW, no grants ran CREATE TABLE after _SYSTEM prepared the same text and got -99 under a never-prepared name; DROP, TRUNCATE, SELECT, UPDATE stayed -99
+- 2026-10-03T22:13:40Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with DW-1963 and DW-1982; the classic SQL page prepares the same way (inference)
+- 2026-10-03T22:14:54Z owner=burndown by=merge_gate note=vendor candidate stays decision-pending; 19.6 must not be exposed: SqlPort enforces privileges independently of the statement cache (rework 1 of 19.6)
+- 2026-10-03T23:25:11Z by=adjudication note=corrected at origin: most of the measured bypass was SqlPort's own release of statements in another namespace (fixed, 19.6 rework e4ebd4c4); the vendor's own part is narrower: a DDL compile cached while another session holds the same text open is reused without the next principal's privilege check; candidate stays decision-pending on that narrower shape
+
+### DW-1987: An INSERT through a view over OcuPilot's tables by a principal granted the view but not its base tables is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for an INSERT and VIEW_TABLE_USAGE hides the base table from that principal
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_HSCUSTOM:RW and SELECT, INSERT, DELETE on a view over OcuPilot_Kernel_State.Proposal; the INSERT recorded only the view; whether the vendor then runs it is unmeasured
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review fails it closed (refuse DML over a view whose base tables the port cannot fully resolve as the instance sees them) or states why not
+- 2026-10-03T23:25:12Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=named limit recorded at AD-10 (view-only grant; the instance runs the INSERT on the view grant alone, measured)
+
+### DW-1988: Whether an IRIS SQL form other than IDENTIFY BY or IDENTIFIED BY sets a password, which the console's pre-prepare refusal would let reach the statement index (DW-1982)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: SqlPort PASSWORDPATTERN covers IDENTIFY BY / IDENTIFIED BY; a name probe of INFORMATION_SCHEMA.ROUTINES found no password-setting routine (inference: a name probe does not cover the population)
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review settles it from the IRIS SQL reference (statements that accept a password) and widens the refusal if needed
+- 2026-10-03T23:25:12Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the SQL reference's third form ([WITH] PASSWORD on CREATE/ALTER USER) is refused before prepare (rework e4ebd4c4, with a test)
+
+### DW-2003: Story 19.6's spine clauses claim more than the SQL guard enforces: AD-21's console case and AD-61 omit that a function or procedure a statement calls can name a server path or change state with the statement still typed a query or CALL; AD-61's named limit omits that a held compile can skip a DDL statement's object privileges (inference); AD-8 says the privileges are checked at prepare; AD-10's view limit names INSERT alone
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: SqlPort refuses by statementType only (TYPESSERVERFILES), so CALL %Library.File_FileSet('/durable','*') is type 45 and runs once confirmed for a caller holding EXECUTE (inference for non-%All); spec Design Notes carry the function limit and the held-compile consequence, the spine does not.
+- 2026-10-04T00:06:35Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11's spec gate names these limits in AD-8/10/21/61 and decides whether the agent may call path-taking or state-changing procedures
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=wording corrected at origin by the lead (AD-8 %CHECKPRIV, AD-21 named limit for called functions and procedures, AD-61 held-compile object privileges, AD-10 view limit covers INSERT, UPDATE, DELETE); whether 19.11's agent tool must close the called-routine gap is its plan's question (DW-2004's bullet names it)
+
+### DW-2004: explorer.sqlquery.run's fresh read carries no statement on a screen action (ScreenAction.Run reads with an empty payload), so the GUARD read answers the empty guard and StateDiff and the fingerprint's Kind, StatementType and Tables read empty; an agent proposal's card and fingerprint will need the statement's own guard
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ScreenAction.cls:274 calls Operation.Read(..., pId, "", .tFresh); ExplorerSqlRun.PortQuery quits on a non-object payload, so SqlPort.Invoke GUARD returns EmptyGuard; the real guard is read only inside Prohibited.SqlRun and Run.
+- 2026-10-04T00:06:36Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11 advertises the tool: compose the mint's fresh read from the proposed statement so the card names its kind and tables
+
+### DW-2005: SqlPort.PASSWORDPATTERN's IDENTIFY/IDENTIFIED half matches anywhere, so a read or a change whose text holds the word Identified (a literal or a column) is refused EXPLORER.SQL.PASSWORD
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The pattern's first alternative is unanchored (?is)\bIDENTIF(Y|IED)\b; UPDATE Cases SET Status = 'Identified' is refused before prepare. Fail-closed; a bound ? value is not read, so the word can be sent as a value.
+- 2026-10-04T00:06:36Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=cr note=spec names IDENTIFY/IDENTIFIED as the pattern's first half (Tasks, Refusals before prepare); reopen only by spec amendment
+### DW-1985: A one-row count reads '1 rows' (no singular form): seen on the SQL tables list as the demo account and in the agent panel's context line
+- source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
+- 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
+
+### DW-1989: License servers' screen Delete dialog never states the multi-server-key consequence the agent's proposal card carries
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: DESTRUCTIVE_CONSEQUENCES holds one static sentence (screen-action-handler.ts:399); LicenseServerDelete.Consequence is read only by Mint; every instance here is Single
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=an instance or CI reads $SYSTEM.License.KeyServer()=Multi, or a user reports a Multi-key server delete
+
+### DW-1990: GET /license-server/form and /license-server/name have no test that their own gate refuses a caller without the screen's pairs
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseWriteGate refuses validate, activate and the writes only; EndpointCoverage marks both GET routes without refusal; AdminPort's ResourcesOR (%Admin_Manage) backstops the read
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=either route answers 200 to a principal past the API floor without %Admin_Manage:USE
+
+### DW-1991: LicenseProbe.LicenseLines builds the whole Snapshot (processes, OcuPilot objects, both log line counts) before and after every license server test
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseLines (LicenseProbe.cls:572) filters Snapshot (:483); LicenseServerWrite and LicenseWriteGate call it twice per test; only the license facts and servers are compared
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=LicenseServerWrite or LicenseWriteGate exceeds 120 s in ui/tools/ci-timings.json
+
+### DW-1992: A successful activation's requiresRestart is computed by LicensePort.Activate and dropped; nothing states the restart after Activate
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LicensePort.Activate sets requiresRestart (:171-173); the screen action answers {action,target,readBack}; the dialog states the restart before Activate, from Validate
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a user report that an activated key did not take effect and no restart was stated after Activate
+
+### DW-1993: POST /license/key/validate answers a JSON body with an extra member or a non-string Key with the 'could not be read as JSON' reason
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseRules.HandleValidate refuses any body other than {Key: string} with REASONAGENTBADBODY (:191-193); the page never sends one
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a client or API consumer is seen sending {Key} with another member
+
+### DW-1994: EXPERIENCE.md:375 and strings.ts's Story 18.6 comment say 'thirteen field labels beyond License units'; there are twelve
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LICENSE_KEY_FIELDS holds 13 fields, License units reusing licenseUsageLicenseUnits; both files are contended (Epic 19), so the wording is not rewritten in review
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=the next in-place edit of EXPERIENCE.md :375 or strings.ts's Story 18.6 block (correct the count then)
+- 2026-10-03T22:17:52Z status=resolved-by:18-6-licensing-and-ecp by=adjudication note=the count is this story's own wording; corrected to twelve at origin in EXPERIENCE.md:375 and strings.ts's Story 18.6 comment
+
+### DW-1995: Story 18.6 rewrote existing doc and assertion-message lines in three contended rosters rather than only adding lines
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/ToolDispatch.cls:150-155, Test/GovernanceBaseline.cls:2-6 and :71, Test/Governance.cls:131 (Epic 19's 19.2 and 19.13 edited the same lines)
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a textual merge conflict on those lines when 18.6 or an Epic 19 story reaches the feature branch second
+
+### DW-1996: LicenseRules.Taken drops the look-up's HTTP status and fault, so a 403 or 503 there renders 500 internal on the name check and the form's create
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Taken (LicenseRules.cls:133-141) returns only a status; HandleName and LicenseServerSave render RenderInternal; the form gate equals the port's ResourcesOR
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when License.Server GET answers 403 or 503 to a caller past the form's gate
+
+### DW-1997: LicenseRules.Taken reads an OK look-up that returned no object as a free name
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Taken sets pTaken from $IsObject(tFresh); AdminPort fails a non-2xx and the vendor GET answers an object or 404
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when AdminPort answers License.Server GET OK with no object
+
+### DW-1998: AdminPort admits License.Key/PUT for any caller, so a later tool declaring AdminPort could skip LicensePort's VALIDATE guard
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: MUTATINGTYPES lists License.Key/PUT; the only tool reaching it today, LicenseKeyActivate, declares OcuPilot.Port.LicensePort
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a second tool or route names License.Key PUT without OcuPilot.Port.LicensePort
+
+### DW-1999: A key text beyond the maximum local string length raises <MAXSTRING> in HandleValidate and answers 500 instead of 422 on Key
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: HandleValidate reads tBody.%Get("Key") as a string; a key file is a few kilobytes; the catch renders 500
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a caller sends a multi-megabyte Key
+
+### DW-2000: license-key.page.ts onFile: a read finishing after the dialog closed and reopened fills the new dialog, and a failed read says nothing
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reader.onload checks only open(); no onerror; a .key file is a few kilobytes and reads in milliseconds
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a .key file read outlasts a dialog close and reopen
+
+### DW-2001: AdminPort.Sequence's refusal of a CHECKTYPES pair the vendor would queue has no test
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: License.Key VALIDATE runs in process on 2026.2 (ShouldRunAsync 0), so the branch never runs; deleting it reddens nothing
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when License.Key VALIDATE's ShouldRunAsync() answers 1 on a later build
+
+### DW-2002: POST /license/key/validate's 200 answer is asserted only in process; no over-the-wire test can send a valid key
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseSeamPort is process-private and no instance here holds a valid key to send (no activation, by decision)
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when CI gains a valid test license key
+
+### DW-2025: The SQL console refuses 500 INTERNAL ('no statement index row') a query whose string column carries LIKE ... ESCAPE, because SqlPort.Classify refuses any text the statement index does not record
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 19.7 plan on ocupilot-a2-ci: SqlPort.Run of SELECT Num FROM OcuProbe197.Pets WHERE Name LIKE 'n%' ESCAPE '\' answered 500; without ESCAPE it answered rows; the cached query class for ESCAPE on a VARCHAR column carries no statement index hash (SqlPort.cls:312)
+- 2026-10-04T07:19:07Z status=routed owner=19-7-the-data-browser-tree-grid-filter-and-sort by=spec_gate note=fix in 19.7 (same file): answer such a statement by name (a 422 the console explains), or classify it another way and run it; never a 500
+- 2026-10-04T08:34:51Z status=resolved-by:19-7-the-data-browser-tree-grid-filter-and-sort owner=19-7-the-data-browser-tree-grid-filter-and-sort by=merge_gate note=fixed on its own head f02883e2 (run 37186691967 green; merged forward at ca221d2e): Classify refuses a query or DML statement the statement index does not record 422 EXPLORER.SQL.UNRECORDED, AD-10 fail-closed; OcuPilot.Test.SqlUnrecordedStatement pins it, mutation run 4901 red
+
+### DW-2028: Data browser grid cells are cut to one line with no cut-cell tooltip, so a value wider than its column cannot be read in full, where the shared data-table shows one
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
+- 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+
+### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlPort.Composed emits no ORDER BY with no key and no sort, and no tie-breaker after a sort when the key is empty; the spec matrix accepts the instance's order for a keyless table
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec matrix row Sort fixes the instance's order for a keyless table; reopens only via spec amendment
+
+### DW-2030: Data browser refuses 403 PROHIBITED.OCUPILOTSQL any table whose schema, table or column name contains 'ocupilot', because the composed page text goes through SqlStatement's text scan
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlData.HandleBrowse passes the plan's page text to Prohibited.SqlStatement, whose rule (a) refuses a text containing an own-name stem; a column named IsOcuPilotUser makes a user table unbrowsable
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec Boundaries run the check on the composed text; eliding identifiers from the scan needs a spec amendment
+
+### DW-2031: Data browser's Ctrl+PageDown and Ctrl+PageUp page keys are the browser's tab-switch shortcuts in Chrome and Firefox on Windows and Linux, so the grid never receives them there (inference)
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: data-browser-model.ts pageKey and EXPERIENCE.md's data-browser paragraph bind Ctrl/Cmd+PageDown and PageUp; Chromium reserves Ctrl+PgDn/PgUp for tab switching (inference; puppeteer's keys bypass accelerators)
+- 2026-10-04T13:18:00Z status=by-design owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=spec grid task names the chord; pager buttons remain; a new chord for 19.8's keyboard help needs a spec amendment
+
+### DW-2032: Data browser's tree is read once per namespace, so a table or view created or dropped since, by SQL query in the same tab for one, shows or leaves only after a reload or a namespace switch
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.loadSchemas returns once schemas are held and toggle reuses a schema's read objects; the AC11 browser leg reloads the page to see its new table
+- 2026-10-04T13:18:00Z status=wontfix-accepted owner=19-7-the-data-browser-tree-grid-filter-and-sort by=cr note=reopen_if=a person reports a table missing from Data browser's tree after creating it in the same session
+### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
+- source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
+- 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
+### DW-2006: SSL/TLS over a disabled %ECPClient configuration may be stored for an ECP data server, where the classic dialog refuses it
+- source: spec-18-20-ecp-data-servers.md (implement) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: EcpPort maps only the vendor's #1454 (SSLECPClientNotExist), so a disabled %ECPClient is likely accepted (inference); AD-8 rules out the %ECPClient read, which needs %Admin_Secure:USE. Settle on a throwaway: seed a disabled %ECPClient, create a probe at 192.0.2.10 with SSLConfig 1, read whether it is stored, remove both.
+- 2026-10-04T05:57:45Z status=routed owner=18-21-ecp-settings-and-application-servers by=harvest note=18.21 owns the ECP SSL/TLS authorization surfaces; measure, then refuse or name the gap
+
+### DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVER.SSLCLIENT
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: ocupilot-b-ci messages.log holds one severity-2 [OcuPilot.Log] 'ECP.DataServer failed with HTTP 500 ... ERROR #1454' line per refused SSL save and no vendor line; AD-2 logs every failure outside UNLOGGEDREFUSALS, whose entries match endpoint/type/status only, so none can scope to #1454; monitor state read 1 then 2 across this review's runs.
+- 2026-10-04T06:51:44Z status=decision-pending owner=burndown by=cr note=recommend amending AD-2: unlog the mapped ECP.DataServer PUT #1454 (code-scoped UNLOGGEDREFUSALS), as 18.6 did for its 400
+- 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
+
+### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Confirm.RenderRefusal renders ReasonFor(code) for every code, so EcpPort's Limit(n) reason is dropped: the form's Save answers 'at most 2 ECP data servers', the confirm 'allows no more ECP data servers'; both are true.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a user or the agent asks how many data servers the limit allows after a confirm's ECP.SERVER.LIMIT
+
+### DW-2009: EcpPort answers every HTTP 500 from a status change as ECP.STATUS.REFUSED, a poll or setup failure included, not only a task the vendor failed
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.ServerAction maps +pHttpStatus=500; AdminPort.AwaitTask's failed task and a PollTask or queue failure are each 500 INTERNAL, indistinguishable to EcpPort without an AdminPort marker; the vendor text is logged either way.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=messages.log shows an ECP.STATUS.REFUSED change whose logged cause is not a failed SERVERACTION task
+
+### DW-2010: The data server create Save answers only the name's violation for a malformed name, not every field's, though its doc promises every violation
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpDataServerSave.Create quits after NameViolation, as LicenseServerSave, DatabaseSave and DeviceSave do; the other fields' violations arrive on the next Save.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=any of the four Saves stops quitting on the name, or a user reports the second round trip
+
+### DW-2011: The data server form's licensed flag is only ever asserted equal to a 0 license, so a hard-coded 0 in EcpRules.HandleForm reddens no test
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpWriteGate asserts licensed = EcpPort.NetworkEnabled(), 0 on every Community instance; HandleForm takes its port from the update tool and no seam licenses it (spec Named limit 1).
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a test instance gains an ECP-enabled license, or a NetworkEnabled seam reaches EcpRules.HandleForm
+
+### DW-2012: ecp-data-servers.browser-spec.mjs's after() runs removeAll in any container but the live one, including one its before() refused
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: after() guards only LIVE_CONTAINER while before() also refuses ocupilot-slot-* and a non-throwaway; license-servers and remote-databases specs share the pattern; RemoveAll touches only OCUPROBEECP* objects.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a browser spec runs with OCUPILOT_BROWSER_CONTAINER naming an ocupilot-slot-* or non-throwaway container
+
+### DW-2013: AD-53's sixteenth named gap (ECP data servers' Change status) gives 'for the same reason' after the fourteenth's 'unmeasured', though ECP's missing vendor event was measured
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ARCHITECTURE-SPINE.md:905 follows License key's 'unmeasured, because no instance here may activate a key'; AD-15's fourteenth case (:366) says measured on ocupilot-b-ci, 2026-10-03; the spine is the runner's (Rule 20) and contended add-only.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=the next edit of AD-53's named-gap list, which corrects it at origin to the measured reason
+- 2026-10-04T06:55:37Z status=resolved-by:18-20-ecp-data-servers by=adjudication note=corrected at origin: AD-53's sixteenth gap now gives the measured reason
+
+### DW-2014: EcpProbe.Child and EcpWriteGateProbe.Run run their steps even when the probe login fails, with the test process's own privileges
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: loggedIn is recorded, not checked, before the steps (RemoteDatabaseProbe's model); every RunAs caller asserts Ran() = '<user> 1', so the test fails loudly, and the probe-named writes are removed by RemoveAll.
+- 2026-10-04T06:51:44Z status=wontfix-accepted owner=18-20-ecp-data-servers by=cr note=reopen_if=a RunAs caller is added that does not assert the child's login
+
+### DW-2015: An ECP data server edit can re-create a server deleted between its fresh read and the vendor's upsert PUT, and a create can overwrite one created concurrently
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.Put knows whether the name is listed but not the caller's intent; the confirm's fingerprint re-read and the Save's fresh read close all but the milliseconds before the PUT, the residual AD-4 accepts for upserts.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a classic-portal delete or create of that name lands between OcuPilot's fresh read and its PUT
+
+### DW-2016: A #456 reaching a caller who holds %Admin_Secure:USE names the earlier listed count, not the limit EcpPort read
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpPort.Put's #456 branch answers Limit(tCount) even when tMaximum was read; that caller's pre-check refuses at the limit first, so #456 reaches it only after a concurrent create.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when another writer creates a data server between EcpPort's limit read and its PUT
+
+### DW-2017: A %Admin_Secure:USE holder's create fails 500 when ECP.Settings cannot be read, where a caller without that pair reaches the vendor
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Put returns MaxServers' error status; the read needs %Admin_Manage and %Admin_Secure, both held on that branch, and MaxServers is a Config integer.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when ECP.Settings GET fails for a caller holding %Admin_Manage:USE and %Admin_Secure:USE
+
+### DW-2018: A second status change can be queued while a first, answered started, still runs on the same data server
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpPort.ServerAction checks the LIST row's status, not pending tasks; a status change took 0.06 s against the 30 s ASYNCTIMEOUT at Task 0.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a SERVERACTION outlasts ASYNCTIMEOUT and a second change is sent to that server
+
+### DW-2019: The update tool's mirror rule reads the server a second time at the mint, so a delete between the two reads answers 500, not 'not present'
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint reads fresh and refuses an absent server first; EcpDataServerUpdate.ArgumentProblem reads again through EcpRules.Present only when MirrorConnection is sent.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a data server is deleted between the mint's fresh read and its field rules
+
+### DW-2020: MirrorConnection or SSLConfig sent as true or a decimal string reaches the vendor unconverted
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpRules.Flag admits a boolean or a decimal string and Shape converts only Port; the form sends numbers, and the vendor stores 1 for true or '1' (inference).
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a caller sends a boolean or string flag and its read-back reads mismatched
+
+### DW-2021: The ECP data server name look-up answers 500 for a read failure other than 404
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpRules.HandleName renders any Taken error through RenderInternal; its gate already holds %Admin_Manage, ECP.DataServer GET's only resource (LicenseRules' model).
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when ECP.DataServer GET fails other than 404 for a caller past the form's gate
+
+### DW-2022: A RunAs probe child still running past its wait keeps writing after the test has cleaned up
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpWriteGate.RunAs (300 s) and EcpProbe.RunAs (180 s) return on WaitMsg timeout without stopping the child; each plan is seconds of seam or vendor calls.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a probe child's plan outlasts its parent's wait
+
+### DW-2023: EcpWriteGate's pair-less limit leg expects Limit(MaxServers) where the port names the defined count once servers exceed the limit
+- source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: With more data servers defined than MaxServers the room is negative and EcpPort's #456 branch names the count; a stock instance defines none and MaxServers is 2.
+- 2026-10-04T06:51:59Z status=wontfix-theoretical owner=18-20-ecp-data-servers by=cr note=real when a test instance defines more data servers than its MaxServers
+
+### DW-2024: system-explorer-sql-query.browser-spec.mjs AC2/AC9 focuses the SQL table's Fields tab as soon as the document path matches, before the tab strip renders
+- source: ci run 37181343435 (browser shard 1/3, head f63a048b) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: No element found for selector .ocu-detail-tab[data-route=system-explorer/sql-tables/fields] at :180, right after waitForFunction(location.pathname === document route); the same leg passed on Epic 19's own runs (13742bbb, 79273d02). Story 18.20 changes no shell or tab code (first sighting).
+- 2026-10-04T06:55:48Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; wait for the tab element before focusing it
+- 2026-10-04T08:45:29Z occurrence=range-end-cleanup note=second sighting on OCU-1-epic18: run 37187414647 (76df3dc8) browser shard 1/3, same leg and selector; passes 2/2 on ocupilot-b-ci against 76df3dc8's bundle
+- 2026-10-04T13:25:50Z status=resolved-by:range-end-cleanup owner=range-end-cleanup by=merge_gate note=fixed on its own head 7fcacd04 (run 37201830892 green; fast-forwarded into feature): the spec waits for the Fields tab to be visible before focusing it; a 2 s hold on the page's timers and frames once the address bar reached the document route reddened the old spec with the CI error and left the new one green
+
+### DW-2026: a11y-structural-invariants.browser-spec.mjs failed all 12 legs on CI with 'Runtime.callFunctionOn timed out' (protocol timeout, 730 s)
+- source: ci run 37184530521 (browser shard 1/3, head a3f957b2) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
+- 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
+- 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822

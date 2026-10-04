@@ -5,6 +5,7 @@ import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { loadStrings } from './strings.mjs';
+import { harvestedNotices } from './licenses.mjs';
 
 // Pins the ACs that reading source files cannot reach -- everything here is a
 // property of the *shipped artifact*, observed after a real `npm run build`,
@@ -122,9 +123,10 @@ function cssBundlePath() {
 // - delete the `ngCspNonce` attribute from ui/src/index.html -> the placeholder
 //   assertion goes red.
 // DW-217. The npm licence notices ship inside the served root, byte-equal to what the build
-// extracted beside it. Mutation (Rule 19): delete the `postbuild` script from ui/package.json ->
+// extracted beside it followed by the notices of ported code under ui/licenses/ (Story 19.7).
+// Mutation (Rule 19): delete the `postbuild` script from ui/package.json ->
 // browser/3rdpartylicenses.txt is absent and this goes red.
-test('the npm licence notices ship inside the served root, byte-equal to the extracted file (DW-217)', () => {
+test('the npm licence notices ship inside the served root, byte-equal to the extracted file and the ported code\'s notices (DW-217)', () => {
   assertBuildSucceeded();
   const extracted = readFileSync(join(distDir, '3rdpartylicenses.txt'));
   assert.ok(extracted.length > 0, 'the build extracted licence notices');
@@ -134,7 +136,10 @@ test('the npm licence notices ship inside the served root, byte-equal to the ext
   } catch {
     assert.fail('dist/ocupilot-ui/browser/3rdpartylicenses.txt is absent, so neither FileCopy nor the start path ships the notices');
   }
-  assert.ok(shipped.equals(extracted), 'and the served copy is byte-equal to the extracted file');
+  assert.ok(
+    shipped.equals(Buffer.concat([extracted, Buffer.from(harvestedNotices(), 'utf8')])),
+    'and the served copy is byte-equal to the extracted file followed by the ported code\'s notices'
+  );
 });
 
 // AC2 (Story 4.6): the served licence notices are the artifact proof that the three vendored

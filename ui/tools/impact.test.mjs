@@ -214,6 +214,32 @@ test('Story 18.16: a remote database delete names the namespaces that use it and
   assert.equal(impactLine(read([], { code: 'PROHIBITED.OCUPILOTDATABASE', reason }), 'OCUPILOT'), reason, 'a refused delete states the refusal');
 });
 
+// Mutation (Rule 19): drop `ecp-data-server-delete` from IMPACT_PARTS -> every read below is null and this goes red.
+test('Story 18.20: an ECP data server delete names the remote databases that use it', () => {
+  assert.deepEqual(IMPACT_PARTS['ecp-data-server-delete'], ['remoteDatabases']);
+  const read = (parts, refused = null) => impactOf({ kind: 'ecp-data-server-delete', refused, parts });
+  assert.notEqual(read([part('remoteDatabases', 0)]), null, 'the kind and its one part are in the vocabulary');
+  assert.equal(read([part('namespaces', 0)]), null, 'a namespaces part is not');
+  assert.equal(
+    impactLine(read([part('remoteDatabases', 1, ['OCUPROBEECPR'])]), 'OCUPROBEECPA'),
+    'Impact: 1 remote database uses it and must be deleted or moved first: OCUPROBEECPR.'
+  );
+  assert.equal(
+    impactLine(read([part('remoteDatabases', 5, ['R1', 'R2', 'R3'])]), 'OCUPROBEECPA'),
+    'Impact: 5 remote databases use it and must be deleted or moved first: R1, R2, R3 and 2 more.'
+  );
+  assert.equal(impactLine(read([part('remoteDatabases', 0)]), 'OCUPROBEECPA'), 'Impact: no remote database uses it.');
+  assert.equal(
+    impactLine(read([part('remoteDatabases', 0, [], '%Admin_Manage:USE')]), 'OCUPROBEECPA'),
+    'Impact: which remote databases use it was not checked (requires %Admin_Manage:USE).',
+    'an unchecked part says so, never "no remote database"'
+  );
+  assert.equal(
+    impactLine(read([part('remoteDatabases', 0, [], 'truncated')]), 'OCUPROBEECPA'),
+    'Impact: which remote databases use it was not checked (too many to check).'
+  );
+});
+
 test('the proposal row carries the impact to the card view, and a row without one carries null', () => {
   const row = (impact) => ({
     proposalId: 'p1',

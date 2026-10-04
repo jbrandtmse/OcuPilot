@@ -9,8 +9,9 @@
 /// and only on a throwaway: it records every declared page's custom resource before all tests and
 /// restores each after every test and after all, and a page that does not read its recorded value
 /// afterwards fails the class. The child-process legs run as real principals through
-/// <class>OcuPilot.Test.NamespaceWriteGateProbe</class> and
-/// <class>OcuPilot.Test.MappingWriteGateProbe</class>.</p>
+/// <class>OcuPilot.Test.NamespaceWriteGateProbe</class>,
+/// <class>OcuPilot.Test.MappingWriteGateProbe</class> and, for SQL query's background run in
+/// <code>USER</code>, <method>OcuPilot.Test.SqlBackgroundJob.StartAs</method>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>NAMESPACEVARIABLE</parameter> reading
 /// <code>1</code>, because the class assigns custom resources to classic pages, creates and deletes a
@@ -71,10 +72,13 @@ Parameter ALLTOOL = "osmgmt.namespaces.enableinterop";
 /// and the database file edit, the truncate, the service update and the two document exports declare
 /// none of their own; Story 18.4's dismount, whose classic page performs it itself, declares no
 /// page.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE,explorer.classes.compile=%DB_HSCUSTOM:WRITE,explorer.routines.compile=%DB_HSCUSTOM:WRITE,osmgmt.remotedatabases.create=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.update=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.delete=%DB_IRISSYS:WRITE,explorer.classes.export=,explorer.routines.export=,explorer.classes.import=%DB_HSCUSTOM:WRITE,explorer.routines.import=%DB_HSCUSTOM:WRITE,osmgmt.journals.switchfile=,osmgmt.journals.switchdirectory=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.journals.integrity=";
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE,explorer.classes.compile=%DB_HSCUSTOM:WRITE,explorer.routines.compile=%DB_HSCUSTOM:WRITE,osmgmt.remotedatabases.create=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.update=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.delete=%DB_IRISSYS:WRITE,explorer.classes.export=,explorer.routines.export=,explorer.classes.import=%DB_HSCUSTOM:WRITE,explorer.routines.import=%DB_HSCUSTOM:WRITE,osmgmt.journals.switchfile=,osmgmt.journals.switchdirectory=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.journals.integrity=,osmgmt.licensekey.activate=,osmgmt.ecpdataservers.create=%DB_IRISSYS:WRITE,osmgmt.ecpdataservers.update=%DB_IRISSYS:WRITE,osmgmt.ecpdataservers.changestatus=%Admin_Operate:USE";
 
 /// <p>The agent's document import keys, which the baseline disables too (Story 19.13).</p>
 Parameter EXPLORERIMPORTKEYS = "explorer.classes.import,explorer.routines.import";
+
+/// <p>The agent's ECP data server status change key, which the baseline disables too (Story 18.20).</p>
+Parameter ECPSTATUSKEY = "osmgmt.ecpdataservers.changestatus";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -143,7 +147,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the forty-seven OWNPAIRS names")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the fifty-one OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -209,6 +213,15 @@ Method TestAnAssignedPageGatesEveryDeclaringToolOnTheAgentsCaller()
         For tI = 1:1:$ListLength(tTools) {
             Set tLeg = ##class(OcuPilot.Test.NamespaceWriteGate).Leg(tRun, tI)
             Set tSaid = $Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("failedPair"), 1: "absent")
+            ; Story 18.6: an unadvertised tool is no agent tool at all (AD-53), so its call is refused as
+            ; unknown whoever makes it; its page's resource is in its pairs, which the screen's caller asks.
+            Kill tListedTool
+            Do ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tTools, tI), .tListedTool, 1)
+            If $IsObject($Get(tListedTool)) && '$ClassMethod(tListedTool.class, "Advertised") {
+                Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLUNKNOWN, $List(tTools, tI) _ ": " _ tUser _ "'s call of an unadvertised tool is refused as unknown (" _ tSaid _ ")")
+                Do $$$AssertTrue($ListFind(##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tListedTool, .tListedResolved), $ListBuild(..#RESOURCE, "USE")), $List(tTools, tI) _ ": while its pairs carry the assigned page's resource")
+                Continue
+            }
             If $List(tTools, tI) = ..#ALLTOOL {
                 Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE %All:USE", $List(tTools, tI) _ ": " _ tUser _ "'s call is refused naming %All:USE")
                 Continue
@@ -348,6 +361,128 @@ Method TestAnAssignedPageGatesTheLdapRoutes()
     Do $$$AssertEquals(##class(OcuPilot.Test.ServiceLdapProbe).LdapExists("ocup99nosuchgate.invalid"), 0, "and nothing was created")
 }
 
+/// <p>Story 19.6 AC8: with the probe resource assigned to the classic SQL page, the principal lacking
+/// it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on SQL
+/// query's run route, its plan route and its confirmed run; the one holding it is answered a query's
+/// rows, its plan, and the confirmed run's SQL error for a table the namespace does not hold, so
+/// nothing changes.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.ExplorerSqlRun.PrivilegePairs</method> --
+/// the lacking principal's confirmed run is admitted and its leg goes red; drop the screen gate from
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Prepare</method> -- its run and plan legs go red.</p>
+Method TestAnAssignedPageGatesTheSqlConsole()
+{
+    Set tPage = "%CSP.UI.Portal.SQL.Home"
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tScope = "?ns=" _ $NAMESPACE
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tAction = {"action": "run", "id": "sql", "values": {"statement": "DELETE FROM OcuProbe1814NoSuch.Gate", "parameters": "[]", "maxRows": "10"}}.%ToJSON()
+    Set tLegs = $ListBuild($ListBuild(tBase _ "/explorer/sql/run" _ tScope, "{""statement"":""SELECT 1 AS One""}", "200 rows"), $ListBuild(tBase _ "/explorer/sql/plan" _ tScope, "{""statement"":""SELECT 1 AS One""}", "200 plan"), $ListBuild(tBase _ "/screens/explorer.sqlquery/action" _ tScope, tAction, "200 error"))
+    For tI = 1:1:$ListLength(tLegs) {
+        Set tLeg = $List(tLegs, tI)
+        For tCase = $ListBuild(..#LACKINGUSER, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"), $ListBuild(..#HOLDINGUSER, $List(tLeg, 3)) {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $List(tLeg, 1), $List(tCase, 1), ..PreparedPassword, .tStatus, .tText, .tHeaders, $List(tLeg, 2), "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            If '$IsObject(tAnswer) {
+                Set tSaid = $Get(tStatus) _ " " _ $Get(tText)
+            } ElseIf tAnswer.%GetTypeOf("code") = "string" {
+                Set tSaid = tStatus _ " " _ tAnswer.code _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: "")
+            } ElseIf tAnswer.%GetTypeOf("output") = "object" {
+                Set tSaid = tStatus _ " " _ tAnswer.output.%Get("outcome")
+            } Else {
+                Set tSaid = tStatus _ " " _ tAnswer.%Get("outcome")
+            }
+            Do $$$AssertEquals(tSaid, $List(tCase, 2), $List(tCase, 1) _ ": " _ $List(tLeg, 1) _ " with " _ tPage _ " assigned")
+        }
+    }
+}
+
+/// <p>Story 19.15 AC10: with the probe resource assigned to the classic SQL page, the principal lacking
+/// it is refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on SQL
+/// query's background start, poll and cancel, and a run reserved and spawned for it past the route
+/// ends <code>failed</code> with that refusal from the job's own gate; the one holding it starts a
+/// background query, polls it and cancels it, and its run ends <code>ended</code> or
+/// <code>canceled</code>.</p>
+/// <p>Mutation (Rule 19): drop the screen gate from
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Read</method>, which the background start reads its body
+/// through -- the lacking principal's start is answered 202 and its leg goes red. Drop the screen gate
+/// from <method>OcuPilot.Area.Explorer.SqlBackground.Run</method> -- the job's run past the route no
+/// longer names the page's resource and its leg goes red.</p>
+Method TestAnAssignedPageGatesTheBackgroundRun()
+{
+    Set tPage = "%CSP.UI.Portal.SQL.Home"
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/explorer/sql/background"
+    Set tScope = "?ns=" _ $NAMESPACE
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tAbsent = "0123456789abcdef0123456789abcdef"
+    Set tBody = "{""statement"":""SELECT 1 AS One""}"
+    For tLeg = $ListBuild("POST", tBase _ tScope, tBody), $ListBuild("GET", tBase _ "/" _ tAbsent _ tScope, ""), $ListBuild("POST", tBase _ "/" _ tAbsent _ "/cancel" _ tScope, "") {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tLeg, 1), $List(tLeg, 2), ..#LACKINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $List(tLeg, 3), "application/json")
+        Set tAnswer = ""
+        Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+        Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: $Get(tText))
+        Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", ..#LACKINGUSER _ ": " _ $List(tLeg, 1) _ " " _ $List(tLeg, 2) _ " with " _ tPage _ " assigned")
+    }
+    Set tStart = ##class(OcuPilot.Test.SqlBackgroundJob).StartAs(..#LACKINGUSER, "OcuPilot.Area.Explorer.SqlBackground", "SELECT 1 AS One")
+    Do $$$AssertEquals(tStart.%Get("http"), 202, ..#LACKINGUSER _ ": a run is reserved and spawned past the route: " _ tStart.%ToJSON())
+    Set tView = ##class(OcuPilot.Test.SqlBackgroundJob).AwaitInProcess(..#LACKINGUSER, tStart.%Get("key"))
+    Set tSaid = $Select($IsObject(tView) && (tView.%GetTypeOf("refusal") = "object"): tView.status _ " " _ tView.refusal.code _ " " _ $Select(tView.refusal.%GetTypeOf("detail") = "object": tView.refusal.detail.%Get("failedPair"), 1: ""), 1: ##class(OcuPilot.Test.SqlBackgroundJob).Said(tView))
+    Do $$$AssertEquals(tSaid, "failed AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", ..#LACKINGUSER _ ": the job's own gate refuses the run, naming the page's resource")
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#LACKINGUSER)
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ tScope, ..#HOLDINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody, "application/json")
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+    Do $$$AssertEquals($Get(tStatus), 202, ..#HOLDINGUSER _ ": the background start is answered: " _ $Get(tText))
+    Set tKey = $Select($IsObject(tAnswer): tAnswer.%Get("id"), 1: tAbsent)
+    For tLeg = $ListBuild("GET", tBase _ "/" _ tKey _ tScope), $ListBuild("POST", tBase _ "/" _ tKey _ "/cancel" _ tScope) {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tLeg, 1), $List(tLeg, 2), ..#HOLDINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, "", "application/json")
+        Do $$$AssertEquals($Get(tStatus), 200, ..#HOLDINGUSER _ ": " _ $List(tLeg, 1) _ " of its run is answered: " _ $Get(tText))
+    }
+    Set tDeadline = $ZHorolog + 10
+    For {
+        Do ##class(OcuPilot.Area.Explorer.SqlBackground).View(tKey, ..#HOLDINGUSER, .tFound, .tView)
+        If '$Get(tFound) || (tView.%Get("status") '= "running") || ($ZHorolog > tDeadline) Quit
+        Hang 0.25
+    }
+    Do $$$AssertTrue($Get(tFound) && ((tView.%Get("status") = "ended") || (tView.%Get("status") = "canceled")), "and its run ends, ended or canceled: " _ ##class(OcuPilot.Test.SqlBackgroundJob).Said($Get(tView)))
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#HOLDINGUSER)
+}
+
+/// <p>Story 19.7 AC9: with the probe resource assigned to either classic Open Table page alone -- the
+/// table page the screen declares, or the view page its route unions -- the principal lacking it is
+/// refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on Data
+/// browser's route, and the one holding it passes every gate and is answered 404
+/// <code>EXPLORER.DATA.NOTFOUND</code> for a table the namespace does not hold, so nothing is read.</p>
+/// <p>Mutation (Rule 19): drop the view page from <method>OcuPilot.Area.Explorer.SqlData.Gate</method>
+/// -- the lacking principal's leg with the view page assigned goes red.</p>
+Method TestAnAssignedPageGatesTheDataBrowser()
+{
+    Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/explorer/sql/data?ns=" _ $NAMESPACE
+    Set tBody = "{""schema"":""OcuProbe1814NoSuch"",""table"":""Gate""}"
+    For tPage = "%cspapp.exp.utilsqlopen", "%cspapp.exp.utilsqlopenview" {
+        Kill tOne
+        Set tOne(tPage) = ""
+        If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+        Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+        Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+        For tCase = $ListBuild(..#LACKINGUSER, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE"), $ListBuild(..#HOLDINGUSER, "404 EXPLORER.DATA.NOTFOUND ") {
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tPath, $List(tCase, 1), ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody, "application/json")
+            Set tAnswer = ""
+            Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+            Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: $Get(tText))
+            Do $$$AssertEquals(tSaid, $List(tCase, 2), $List(tCase, 1) _ ": POST /explorer/sql/data with " _ tPage _ " assigned")
+        }
+    }
+}
+
 /// <p>Mint the namespace create of <var>pName</var> for <var>pUser</var> over a completed turn seeded
 /// for that user.</p>
 Method MintFor(pUser As %String, pName As %String, Output pProposal As %DynamicObject) As %Status
@@ -440,6 +575,7 @@ Method EnableDelete() As %Status
     For tI = 1:1:$Length(..#EXPLORERIMPORTKEYS, ",") {
         Set tSettings($Piece(..#EXPLORERIMPORTKEYS, ",", tI)) = "enabled"
     }
+    Set tSettings(..#ECPSTATUSKEY) = "enabled"
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 

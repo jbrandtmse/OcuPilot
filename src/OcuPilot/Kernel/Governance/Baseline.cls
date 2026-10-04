@@ -27,6 +27,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.devices.create": true,
   "osmgmt.devices.delete": true,
   "osmgmt.devices.update": true,
+  "osmgmt.ecpdataservers.changestatus": false,
+  "osmgmt.ecpdataservers.create": true,
+  "osmgmt.ecpdataservers.delete": false,
+  "osmgmt.ecpdataservers.update": true,
   "osmgmt.globalmappings.create": true,
   "osmgmt.globalmappings.delete": true,
   "osmgmt.globalmappings.update": true,
@@ -34,6 +38,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.journals.switchdirectory": true,
   "osmgmt.journals.switchfile": true,
   "osmgmt.journalsettings.update": true,
+  "osmgmt.licensekey.activate": false,
+  "osmgmt.licenseservers.create": true,
+  "osmgmt.licenseservers.delete": false,
+  "osmgmt.licenseservers.update": true,
   "osmgmt.localdatabases.create": true,
   "osmgmt.localdatabases.delete": false,
   "osmgmt.localdatabases.expand": false,
@@ -156,6 +164,7 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.import": false,
   "explorer.classes.save": false,
   "explorer.routines.save": false,
+  "explorer.sqlquery.run": false,
   "explorer.routines.import": false
 }
 }

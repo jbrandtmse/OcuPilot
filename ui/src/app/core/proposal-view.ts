@@ -260,6 +260,16 @@ export const CONSEQUENCE_JOURNALINTEGRITY = 'JOURNAL.INTEGRITY';
 /** Story 18.18: a journal settings write that leaves Freeze on error on, stated as the form states it. */
 export const CONSEQUENCE_JOURNALSETTINGSFREEZE = 'JOURNAL.SETTINGS.FREEZE';
 
+/** Story 18.6: a license server delete while the instance's license key is a multi-server key. */
+export const CONSEQUENCE_LICENSEMULTIKEY = 'LICENSE.SERVER.MULTIKEY';
+
+/**
+ * Story 18.20: an ECP data server status change -- Not connected or Disabled, which disconnects it,
+ * and Normal, which connects this instance to it -- stated as the Change status dialog states it.
+ */
+export const CONSEQUENCE_ECPSTATUSDISCONNECT = 'ECP.STATUS.DISCONNECT';
+export const CONSEQUENCE_ECPSTATUSCONNECT = 'ECP.STATUS.CONNECT';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -324,6 +334,11 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_NAMESPACEINTEROP) return STRINGS.namespaceEnableInteropConsequence;
   // The form's own Freeze on error line, published once.
   if (code === CONSEQUENCE_JOURNALSETTINGSFREEZE) return STRINGS.journalSettingsFreezeConsequence;
+  // Story 18.6: removing a license server a multi-server key may use.
+  if (code === CONSEQUENCE_LICENSEMULTIKEY) return STRINGS.licenseServerMultiKeyConsequence;
+  // Story 18.20: the Change status dialog's own consequence sentences, published once.
+  if (code === CONSEQUENCE_ECPSTATUSDISCONNECT) return STRINGS.ecpDataServerDisconnectConsequence;
+  if (code === CONSEQUENCE_ECPSTATUSCONNECT) return STRINGS.ecpDataServerConnectConsequence;
   return '';
 }
 

@@ -7188,7 +7188,7 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 
 As an operator,
 I want the license key, license servers and the ECP configuration,
-So that a clustered or licensed instance is manageable here.
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split for size, Rule 5 -- 18.6 keeps the license key and the license servers; ECP data servers moved to Story 18.20 and ECP settings and application servers to Story 18.21]
 
 **Acceptance Criteria:**
 
@@ -7196,7 +7196,7 @@ So that a clustered or licensed instance is manageable here.
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
-- **Given** ECP settings, application servers and data servers
+- **Given** ECP settings, application servers and data servers [SPLIT to 18.20 / 18.21 2026-10-03: data servers to 18.20, ECP settings and application servers to 18.21; 18.6 keeps the license key and the license servers]
 - **When** each runs
 - **Then** it round-trips through the admin API
 - **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
@@ -7468,6 +7468,32 @@ So that the transaction record is inspectable from the portal. [AMENDED 2026-10-
 
 - `POST /v2/journal/file/records` returns half its `maxRows`: 10 gave 5 and 40 gave 20 (checked); the article reports they are the file's first records, contiguous. The vendor's counter steps twice per kept row (`ListTask.cls:88,93`, vendor source), so doubling is exact only when no row is skipped. Ask for twice the page and mark the list when the limit is reached. [AMENDED 2026-10-02 — see the story change log] It answers 202, so it runs through the port's async path.
 
+### Story 18.20: ECP data servers
+
+As an operator,
+I want the ECP data servers,
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split from 18.6 for size, Rule 5; planned as Part B of `spec-18-6-licensing-and-ecp.md` (commit fe080653); consumes Story 18.16's license pre-check and Remote databases' declared read]
+
+**Acceptance Criteria:**
+
+- **Given** data servers
+- **When** each runs
+- **Then** it round-trips through the admin API
+- **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
+
+### Story 18.21: ECP settings and application servers
+
+As an operator,
+I want the ECP configuration and its application servers,
+So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03, orchestrator merge gate: split from 18.6 for size, Rule 5; planned as Part C of `spec-18-6-licensing-and-ecp.md` (commit fe080653); reuses Story 18.20's ECP license sentence]
+
+**Acceptance Criteria:**
+
+- **Given** ECP settings and application servers
+- **When** each runs
+- **Then** it round-trips through the admin API
+- **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
@@ -7576,7 +7602,7 @@ So that the Explorer answers questions the catalog alone cannot.
 
 - **Given** the console
 - **When** a statement is submitted
-- **Then** it runs with parameters, a max-rows cap and a run-in-background option, and its plan can be explained.
+- **Then** it runs with parameters and a max-rows cap, and its plan can be explained. [SPLIT to 19.15 2026-10-03: the run-in-background option moved; parameters, the max-rows cap and the plan stay in 19.6]
 
 - **Given** `action/query` will execute **any** statement type unguarded
 - **When** a statement is submitted
@@ -7599,7 +7625,7 @@ So that the Explorer reaches the data and not only the schema.
 
 - **Given** the schema tree, the column metadata with primary-key detection, the paged grid, type-aware cell formatting, wildcard filtering, single-column sorting and pagination
 - **When** each renders
-- **Then** it works against the Atelier port.
+- **Then** it works against the SQL port (`Port/SqlPort`, AD-61's SQL case), the schema tree through the Atelier port's catalog reads [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 5: was 'against the Atelier port'; `action/query` cannot carry rows (AD-61 rule 7)].
 
 - **Given** the harvested grid
 - **When** it is ported
@@ -7624,6 +7650,8 @@ So that the grid is an editor rather than a viewer.
 - **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
 - **When** each is used
 - **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
+
+- **DW-2028:** Data browser's grid cuts each cell to one line with no tooltip, so a value wider than its column cannot be read in full; this story ports the shared data table's cut-cell tooltip (`shell/data-table.ts`, on pointer and on the active cell) to the grid. [ADDED 2026-10-04, Rule 17 (1b), routed by Story 19.7's code review]
 
 ### Story 19.9: Documatic and DocDB
 
@@ -7670,6 +7698,8 @@ So that the operations agent and the developer agent can differ.
 - **Then** it passes the same DML and DDL guard the console does, and any mutating statement is a confirmed proposal.
 
 - **Design constraint (as 19.6; DW-1964):** the agent's SQL tool enforces the caller's SQL privileges itself (prepare in process with privilege checks on) and never passes caller SQL through Atelier's `action/query`, which prepares with privilege checks off. [ADDED 2026-10-03, Rule 5 by=merge_gate]
+
+- **DW-2004:** `explorer.sqlquery.run`'s fresh read carries no statement on a screen action (`ScreenAction.Run` reads with an empty payload), so its `GUARD` read, `StateDiff` and the fingerprint's guard fields read empty; when this story advertises the tool, the agent's proposal card must show the real guard (kind, statement type, tables, consequence). The plan also decides whether the agent's tool closes AD-21's named limit for a called function or procedure (DW-2003). [ADDED 2026-10-03, Rule 17 (1b), routed by Story 19.6's code review]
 
 ### Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows
 
@@ -7736,6 +7766,21 @@ So that the catalog browser reaches the classic SQL page's detail tabs.
 - **Given** the reads
 - **When** they execute
 - **Then** they use the information schema and the catalog queries, binding every caller value.
+
+
+### Story 19.15: The query console runs a query in the background
+
+As a developer,
+I want to run a long query in the background,
+So that the console stays usable while it runs.
+
+[ADDED 2026-10-03, Rule 5 split of Story 19.6 by=merge_gate: 19.6's run-in-background option moved here; run right after 19.6. It runs queries only, never a mutating kind, in a job as the signed-in user under 19.6's alarm bound; it is a fourth AD-42 process spawn site, needs an AD-7 decision limiting it to queries, an owner-only result store in protected state with its sweep, and poll and cancel routes; a run is cancellable through `$SYSTEM.SQL.CancelQuery` on its own job (measured feasible at 19.6's plan).]
+
+**Acceptance Criteria:**
+
+- **Given** the console
+- **When** a query is submitted
+- **Then** it runs with a run-in-background option (moved verbatim from 19.6's first criterion).
 
 ---
 

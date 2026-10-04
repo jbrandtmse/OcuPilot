@@ -1,6 +1,7 @@
 /// <p>The retention sweep (Story 14.4, AD-37, DW-1122, DW-1240): an entry ages by its own
 /// definition's retention, an empty conversation and the ledger by the longest; a turn past its
-/// short retention takes its proposals with it while its conversation entry stays; and an account
+/// short retention takes its proposals with it while its conversation entry stays; a background SQL
+/// run past its retention is swept (Story 19.15); and an account
 /// deleted from the instance has its turns abandoned, its preferences and sharing removed and its
 /// turn start records aged out, while
 /// its transcripts and ledger rows survive and an administrator can still read them.</p>
@@ -94,6 +95,7 @@ Method OnAfterOneTest() As %Status
         Do ##class(OcuPilot.Kernel.State.Pref).GuardedDeleteForUser(tUser)
         Do ##class(OcuPilot.Kernel.State.Sharing).GuardedDeleteForUser(tUser)
         Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(tUser)
+        Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(tUser)
     }
     Kill ..Created
     Quit $$$OK
@@ -271,6 +273,24 @@ Method TestATurnPastRetentionTakesItsProposalsAndLeavesItsEntry()
     Do $$$AssertEquals($Data(tAfter(tTurn)), 0, "so a restore carries none for it")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Entry).GuardedRows(tKey, .tRows), "the conversation reads")
     Do $$$AssertEquals(tRows.%Size(), 1, "and its entry is intact")
+}
+
+/// <p>Story 19.15: a background SQL run that ended past its retention is swept, and one that ended
+/// inside it stays.</p>
+/// <p>Mutation (Rule 19): remove the background run step from
+/// <method>OcuPilot.Kernel.Retention.Sweep</method> -- the expired run stays and this goes red.</p>
+Method TestABackgroundRunPastRetentionIsSwept()
+{
+    Set tStore = "OcuPilot.Kernel.State.SqlRun"
+    Do $$$AssertStatusOK($ClassMethod(tStore, "GuardedReserve", ..#PROBEUSER, "USER", 1000, ..#LIMITS, .tOld, .tBusy, .tFull, .tSweep), "a run is reserved")
+    Do $$$AssertStatusOK($ClassMethod(tStore, "GuardedReserve", ..#GONEUSER, "USER", 1000, ..#LIMITS, .tNew, .tBusy, .tFull, .tSweep), "and another owner's")
+    Do $$$AssertStatusOK($ClassMethod(tStore, "GuardedFinish", tOld, "ended", "{""outcome"":""done""}"), "the first ends")
+    Do $$$AssertStatusOK($ClassMethod(tStore, "GuardedFinish", tNew, "ended", "{""outcome"":""done""}"), "and the second")
+    Set tEnded = ##class(OcuPilot.Kernel.Retention).Iso(##class(OcuPilot.Kernel.State.Turn).NowSeconds() - $Parameter(..#LIMITS, "RETENTIONSECONDS") - 60)
+    Do $$$AssertEquals(..Exec("UPDATE OcuPilot_Kernel_State.SqlRun SET EndedAt = ? WHERE %EXACT(RunKey) = ?", tEnded, tOld), 0, "the first ended before its retention")
+    If '..Sweep() Quit
+    Do $$$AssertEquals(..Count("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ?", tOld), 0, "the expired run is swept")
+    Do $$$AssertEquals(..Count("SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ?", tNew), 1, "and the one inside its retention stays")
 }
 
 /// <p>AC5 and the Deleted-user row: a user with a transcript, a ledger row, preferences, a sharing

@@ -56,6 +56,17 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// the two write-image journal keys are shown and never sent (AD-4). The vendor stores a directory with
 /// its trailing separator whatever was sent, so both compare <code>unslashed</code> (measured at the
 /// story's Task 0).</p>
+/// <p><b><code>osmgmt.licensekey.activate</code></b> (Story 18.6) classifies <code>License.Key</code>'s one
+/// row, the key's text, <code>secret</code>: its write sends that declared secret and nothing else
+/// (AD-56). <b><code>osmgmt.licenseservers.create</code></b> and <b><code>.update</code></b> classify
+/// <code>License.Server</code>'s three rows <code>ordinary</code>; each tool admits <code>Address</code>
+/// and <code>Port</code>, and <code>KeyDirectory</code> is shown and never set (AD-21). The vendor
+/// stores both as sent, so neither declares a <code>compare</code> (measured at the story's Task 0).</p>
+/// <p><b><code>osmgmt.ecpdataservers.create</code></b> and <b><code>.update</code></b> (Story 18.20)
+/// classify <code>ECP.DataServer</code>'s five rows <code>ordinary</code>. The vendor answers
+/// <code>SSLConfig</code> and <code>BatchMode</code> as booleans, and the read-back's default rule reads
+/// a sent 1 equal to a read <code>true</code>, so neither declares a <code>compare</code> (measured at
+/// the story's Task 0).</p>
 /// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
@@ -622,6 +633,48 @@ XData Entries
       "CompressFiles": "ordinary",
       "wijdir": "ordinary",
       "targwijsz": "ordinary"
+    }
+  },
+  "osmgmt.licensekey.activate": {
+    "fieldList": "License.Key",
+    "classification": {
+      "Key": "secret"
+    }
+  },
+  "osmgmt.licenseservers.create": {
+    "fieldList": "License.Server",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "KeyDirectory": "ordinary"
+    }
+  },
+  "osmgmt.licenseservers.update": {
+    "fieldList": "License.Server",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "KeyDirectory": "ordinary"
+    }
+  },
+  "osmgmt.ecpdataservers.create": {
+    "fieldList": "ECP.DataServer",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "MirrorConnection": "ordinary",
+      "SSLConfig": "ordinary",
+      "BatchMode": "ordinary"
+    }
+  },
+  "osmgmt.ecpdataservers.update": {
+    "fieldList": "ECP.DataServer",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "MirrorConnection": "ordinary",
+      "SSLConfig": "ordinary",
+      "BatchMode": "ordinary"
     }
   },
   "security.oauthserverdescriptions.create": {

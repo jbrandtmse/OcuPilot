@@ -137,6 +137,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 18.20: the unlisted ECP data server form, by descriptor class name.
+        {
+          route: 'os-management/ecp-data-servers/edit',
+          labelKey: 'aboutEcpDataServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/namespaces/global-mappings/edit',
           labelKey: 'globalMappingFormLabel',
@@ -192,6 +200,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 0,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/license-servers/edit',
+          labelKey: 'aboutLicenseServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
         },
         {
           route: 'os-management/license-usage/users',
@@ -351,6 +366,28 @@ const LIVE_PAYLOAD = {
           route: 'os-management/journal-settings',
           labelKey: 'journalSettingsLabel',
           sideBarPosition: 14,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-key',
+          labelKey: 'licenseKeyLabel',
+          sideBarPosition: 15,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/license-servers',
+          labelKey: 'licenseServerListLabel',
+          sideBarPosition: 16,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        // Story 18.20: ECP data servers, the seventeenth, refused on %Admin_Manage:USE.
+        {
+          route: 'os-management/ecp-data-servers',
+          labelKey: 'ecpDataServerListLabel',
+          sideBarPosition: 17,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -690,6 +727,16 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   }
   // Story 18.18: Journal settings declares %Admin_Manage:USE first, on which this principal is denied.
   assert.deepEqual(service.screenVerdict('os-management/journal-settings'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  // Story 18.6: License key, License servers and the license server form declare %Admin_Manage:USE
+  // first, on which this principal is denied.
+  for (const route of ['os-management/license-key', 'os-management/license-servers', 'os-management/license-servers/edit']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
+  // Story 18.20: ECP data servers and its form declare %Admin_Manage:USE first, on which this principal
+  // is denied.
+  for (const route of ['os-management/ecp-data-servers', 'os-management/ecp-data-servers/edit']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
   // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
   // holds, and is denied on the second.

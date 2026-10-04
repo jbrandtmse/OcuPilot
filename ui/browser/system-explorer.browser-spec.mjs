@@ -133,8 +133,8 @@ test('AC4: System Explorer is the eighth rail item with its own icon, Home draws
     assert.equal(tiles.length, 7, `seven tiles: ${JSON.stringify(tiles)}`);
     assert.equal(
       tiles[6],
-      `${STRINGS.navAreaSystemExplorer}${[STRINGS.explorerClassListLabel, STRINGS.explorerRoutineListLabel, STRINGS.auditCriteriaSearch, STRINGS.explorerCompareLabel, STRINGS.explorerMacroLabel, STRINGS.explorerSqlSchemasLabel, STRINGS.explorerSqlTablesLabel, STRINGS.explorerSqlViewsLabel, STRINGS.explorerSqlProceduresLabel].join('\u00b7')}`.replace(/\s+/g, ''),
-      'the seventh tile is System Explorer, captioned by its nine listed screens (Stories 19.4 and 19.5)'
+      `${STRINGS.navAreaSystemExplorer}${[STRINGS.explorerClassListLabel, STRINGS.explorerRoutineListLabel, STRINGS.auditCriteriaSearch, STRINGS.explorerCompareLabel, STRINGS.explorerMacroLabel, STRINGS.explorerSqlSchemasLabel, STRINGS.explorerSqlTablesLabel, STRINGS.explorerSqlViewsLabel, STRINGS.explorerSqlProceduresLabel, STRINGS.explorerSqlQueryLabel, STRINGS.explorerSqlDataLabel].join('\u00b7')}`.replace(/\s+/g, ''),
+      'the seventh tile is System Explorer, captioned by its eleven listed screens (Stories 19.4, 19.5, 19.6 and 19.7)'
     );
 
     // Words only an alias carries: neither list's label nor route holds them.

@@ -30,6 +30,20 @@ XData Tools
   {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.ecpdataservers.create": {"fieldList":"ECP.DataServer","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"MirrorConnection","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"osmgmt.ecpdataservers.update": {"fieldList":"ECP.DataServer","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"MirrorConnection","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "osmgmt.globalmappings.create": {"fieldList":"Namespace.GlobalMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -82,6 +96,19 @@ XData Tools
   {"path":"SSLConfigurationClient","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"VerifySSLHostName","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"Custom","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"members"}
+]},
+"osmgmt.licensekey.activate": {"fieldList":"License.Key","fields":[
+  {"path":"Key","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"osmgmt.licenseservers.create": {"fieldList":"License.Server","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"KeyDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.licenseservers.update": {"fieldList":"License.Server","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"KeyDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "osmgmt.localdatabases.create": {"fieldList":"Database.ConfigCRUD","fields":[
   {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

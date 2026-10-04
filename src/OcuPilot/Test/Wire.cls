@@ -708,6 +708,24 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
     ; here and taken off the end, so the roster below stays the one before it.
     ; Story 18.19's unlisted Journal records sorts after the journal file details, denied on
     ; %DB_IRISSYS:READ as they are.
+    ; Story 18.6 lists License key and License servers last, after Journal settings, and its unlisted
+    ; license server editor sorts between License usage's By process and By user tabs, each denied on
+    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
+    ; Story 18.20 lists ECP data servers last, after License servers, and its unlisted ECP data server
+    ; editor sorts between the device editor and the global mapping editor, each denied on
+    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
+    Set tEcp = ",{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcp)+1, *), tEcp, "ECP data servers is listed last, after License servers, denied on %Admin_Manage:USE")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcp)) _ "]"
+    Set tEcpEditor = ",{""route"":""os-management/ecp-data-servers/edit"",""labelKey"":""aboutEcpDataServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(($Find(tScreens, "os-management/devices/edit") < $Find(tScreens, tEcpEditor)) && ($Find(tScreens, tEcpEditor) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted ECP data server editor sorts between the device editor and the global mapping editor, denied on %Admin_Manage:USE")
+    Set tScreens = $Replace(tScreens, tEcpEditor, "")
+    Set tLicensing = ",{""route"":""os-management/license-key"",""labelKey"":""licenseKeyLabel"",""sideBarPosition"":15,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-servers"",""labelKey"":""licenseServerListLabel"",""sideBarPosition"":16,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tLicensing)+1, *), tLicensing, "License key and License servers are listed last, after Journal settings, denied on %Admin_Manage:USE")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tLicensing)) _ "]"
+    Set tEditor = ",{""route"":""os-management/license-servers/edit"",""labelKey"":""aboutLicenseServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(($Find(tScreens, "license-usage/processes") < $Find(tScreens, tEditor)) && ($Find(tScreens, tEditor) < $Find(tScreens, "license-usage/users")), "the unlisted license server editor sorts between By process and By user, denied on %Admin_Manage:USE")
+    Set tScreens = $Replace(tScreens, tEditor, "")
     Set tSettings = ",{""route"":""os-management/journal-settings"",""labelKey"":""journalSettingsLabel"",""sideBarPosition"":14,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
     Do $$$AssertEquals($Extract(tScreens, *-$Length(tSettings)+1, *), tSettings, "Journal settings is listed last, after Journals, denied on %Admin_Manage:USE")
     Set tScreens = $Extract(tScreens, 1, *-$Length(tSettings)) _ "]"

@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:637 */
+  /** EXPERIENCE.md:639 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -4980,6 +4980,329 @@ export const STRINGS = {
   journalRecordListPrompt2: 'Which globals changed in these records?',
   /** EXPERIENCE.md:378 */
   journalRecordListPrompt3: 'Are any of these records inside a transaction?',
+  /** EXPERIENCE.md:596 */
+  explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
+  // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
+  // beyond License usage's "License units", the authorization-key line, the activate dialog's
+  // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
+  // line, the license server form's hints, the multi-key consequence (the agent's card line) and
+  // the prompts. Name, Address, Port, Load from file, "(none)", Save, Cancel and Delete reuse
+  // earlier keys.
+  /** EXPERIENCE.md:375 */
+  licenseKeyLabel: 'License key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyLicenseCapacity: 'License capacity',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCustomerName: 'Customer name',
+  /** EXPERIENCE.md:375 */
+  licenseKeyOrderNumber: 'Order number',
+  /** EXPERIENCE.md:375 */
+  licenseKeyProduct: 'Product',
+  /** EXPERIENCE.md:375 */
+  licenseKeyLicenseType: 'License type',
+  /** EXPERIENCE.md:375 */
+  licenseKeyServer: 'Key server',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPlatform: 'Platform',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCoresLicensed: 'Cores licensed',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCoresEnforced: 'Cores enforced',
+  /** EXPERIENCE.md:375 */
+  licenseKeyExpirationDate: 'Expiration date',
+  /** EXPERIENCE.md:375 */
+  licenseKeyExtendedFeatures: 'Extended features',
+  /** EXPERIENCE.md:375 */
+  licenseKeyAuthorizedApplications: 'Authorized applications',
+  /** EXPERIENCE.md:375 */
+  licenseKeyAuthorizationHidden: 'The authorization key is not shown here.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyEmpty: 'The instance reports no license key.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyEmptyAgent: 'explain this instance\'s license',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateAction: 'Activate new key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateTitle: 'Activate a new license key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyText: 'License key text',
+  /** EXPERIENCE.md:375 */
+  licenseKeyValidate: 'Validate',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivate: 'Activate',
+  /** EXPERIENCE.md:375 */
+  actionPrint: 'Print',
+  /** EXPERIENCE.md:375 */
+  licenseKeyValid: 'This key is valid for this instance.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyRestart: 'Activating this key requires restarting the instance.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductions: 'Activating this key will:',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionCores: 'Lower the licensed cores from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionUsers: 'Lower the license units from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionServer: 'Change the key server type from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionLicenseType: 'Change the license type from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionProduct: 'Lower the product level from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionFeatures: 'Remove these features: <features>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateConsequence: 'Activating replaces this instance\'s license key. This cannot be undone here.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrintedBy: 'Printed by <user> on <time>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt1: 'When does this instance\'s license key expire?',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt2: 'How many cores and license units does this key allow?',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt3: 'Which features does this license key enable?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListLabel: 'License servers',
+  /** EXPERIENCE.md:375 */
+  licenseServerListEmpty: 'No license servers on this instance.',
+  /** EXPERIENCE.md:375 */
+  licenseServerListEmptyAgent: 'create a license server',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormRefusedAction: 'change this license server',
+  /** EXPERIENCE.md:375 */
+  licenseServerKeyDirectory: 'Key directory',
+  /** EXPERIENCE.md:375 */
+  licenseServerAddressHint: 'Host name or IP address',
+  /** EXPERIENCE.md:375 */
+  licenseServerKeyDirectoryHint: 'Set on the classic License Servers page.',
+  /** EXPERIENCE.md:375 */
+  licenseServerMultiKeyConsequence:
+    'This instance\'s license key is a multi-server key. Removing a license server it uses can leave it unable to obtain license units.',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt1: 'Which license servers is this instance configured to use?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt2: 'Does this instance\'s license key need a license server?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt3: 'Where does this instance ask for its license units?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt1: 'What address and port should this license server use?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt2: 'What does a license server do for this instance?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt3: 'What would deleting this license server change?',
+  /** EXPERIENCE.md:479 */
+  licenseServerDeleteConsequence:
+    'Deleting this license server removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryLabel: 'SQL query',
+  /** EXPERIENCE.md:597 */
+  explorerSqlExplainPlan: 'Explain plan',
+  /** EXPERIENCE.md:597 */
+  explorerSqlPlanHeading: 'Plan',
+  /** EXPERIENCE.md:597 */
+  explorerSqlValueLabel: 'Value <n>',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmTitle: 'Run this statement?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmDml: 'It changes rows in <tables>, and cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmDdl: 'It changes this namespace\'s schema, and cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmCall: 'It runs a stored procedure, which can change anything this account may change.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmOther: 'The instance does not say what this statement changes.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsCut: '<n> rows are shown; the answer holds more.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsChanged: '<n> rows changed',
+  /** EXPERIENCE.md:597 */
+  explorerSqlDone: 'Done',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStopped: 'Stopped after <s> seconds.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlTakesValues: 'This statement takes <n> values.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlNoPlan: 'This kind of statement has no plan.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlCode: 'SQLCODE <code>',
+  /** EXPERIENCE.md:597 */
+  explorerSqlEmpty: 'Write one SQL statement, then Run.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRolledBack: 'The statement left a transaction open, so its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlInputReason: 'Send one statement of up to 100,000 characters, at most 100 values of up to 32,767 characters each, and Max rows from 1 to 1,000.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlSessionReason: 'This statement controls a server process (a transaction, lock, option, cursor, namespace or running query) and is not run here.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlAdministrationReason: 'Users, roles, privileges and databases are changed on Permissions and OS management, where OcuPilot checks each change; this statement is not run here.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlServerFilesReason: 'This statement reads a server file or another server, which OcuPilot does not let a caller name.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlPasswordReason: 'A statement that sets a password is not prepared here, because the instance keeps a prepared statement\'s text; set passwords on the Users list in Permissions.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlReadsReason: 'This statement only reads, so it runs without confirming.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlParametersReason: 'Give one value for each ? in the statement.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlUnrecordedReason: 'The instance keeps no record of the tables this statement uses before it runs, so OcuPilot cannot check what it reads or changes and does not run it here; writing SELECT %NORUNTIME may let a query be checked.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRefusalOcuPilot: 'This statement reads or changes OcuPilot\'s own tables or code, which OcuPilot does not offer.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt1: 'What does this statement\'s plan say about the indices it uses?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt2: 'How do I pass a value to a ? in a statement?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt3: 'Why was my statement refused here?',
+  // Story 19.15: SQL query's Run in background, its section's heading and two status lines, and the
+  // background run's five refusals. Its ended status reuses 19.6's lines and its Cancel "Cancel".
+  /** EXPERIENCE.md:597 */
+  explorerSqlRunInBackground: 'Run in background',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundHeading: 'Background run',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundRunning: 'Running in the background.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundCanceled: 'Canceled.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundQueryOnlyReason: 'Only a query runs in the background; use Run for a statement that changes something.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundBusyReason: 'A query you started is already running in the background; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundFullReason: 'As many background queries as this instance allows are running; try again when one ends.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundNotFoundReason: 'No background run of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlBackgroundLostReason: 'The background run ended without an answer; run it again.',
+  // Story 19.7: Data browser's title, its tree, filter row, pager and grid labels, its status and
+  // empty lines, its two refusals and its prompts. Refresh, the yes and no words, the tree's "View"
+  // marker and the stopped and SQLCODE lines are reused.
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataLabel: 'Data browser',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataTree: 'Tables and views',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilters: 'Column filters',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilterColumn: 'Filter <column>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataClearFilters: 'Clear filters',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFirstPage: 'First page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPreviousPage: 'Previous page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNextPage: 'Next page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataLastPage: 'Last page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPage: 'Page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataOfPages: 'of <n>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRowsPerPage: 'Rows per page',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNull: 'NULL',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataKeyColumn: 'Key column',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPick: 'Pick a table or view in the tree to see its rows.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSchemaEmpty: 'This schema holds no table or view this account can see.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataTreeCut: 'Only the first 1,000 are listed.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataFilterHint: 'Filters match the whole value: * stands for any run of characters and ? for one character.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRowsOf: 'Rows <first>\u2013<last> of <total>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataRows: 'Rows <first>\u2013<last>',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNoRows: 'No rows.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNoMatch: 'No rows match the filters.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortedAscending: 'Sorted by <column>, ascending.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortedDescending: 'Sorted by <column>, descending.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataSortCleared: 'Sort cleared.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPageRange: 'Enter a page from 1 to <n>.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataInputReason: 'Name a table or view as the tree shows it; filters of up to 1,000 characters on its listed columns that are not streams or binary; a sort on one such column, ascending or descending; an offset from 0; and a page size of 50, 100, 250 or 500.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataNotFoundReason: 'This namespace holds no table or view by that name that this account can see.',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt1: 'How do I filter rows with * and ? here?',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt2: 'Why does this table show fewer columns than its class defines?',
+  /** EXPERIENCE.md:598 */
+  explorerSqlDataPrompt3: 'Which column is this table\'s key, and how is it found?',
+  // Story 18.20: ECP data servers, OS management's seventeenth entry, its form, its Change status
+  // dialog, its delete body and the delete's impact phrases.
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListLabel: 'ECP data servers',
+  /** EXPERIENCE.md:375 */
+  aboutEcpDataServer: 'ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListEmpty: 'No ECP data servers on this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListEmptyAgent: 'create an ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormRefusedAction: 'change this ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerMirrorConnection: 'Mirror connection',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerUseSsl: 'Use SSL/TLS',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerBatchMode: 'Batch mode',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerMirrorHint: 'Connects to the mirror\'s primary. Once set, it cannot be turned off here.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerSslHint: 'Uses the %ECPClient SSL/TLS configuration.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerChangeStatus: 'Change status',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerStatusTitle: 'Change the status of <name>',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerCurrentStatus: 'Current status: <status>',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerNotConnected: 'Not connected',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerCurrentReason: 'This is its current status.',
+  /** EXPERIENCE.md:375 */
+  ecpLicenseRefusal: 'This instance\'s license does not include ECP.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerDisconnectConsequence:
+    'Setting a data server to Not connected or Disabled sends an error to every application awaiting its replies, purges its cached blocks, releases its locks and rolls back its transactions.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerConnectConsequence: 'Setting this data server to Normal connects this instance to it.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerStatusCaveat: 'Each status is what the instance reported when this list was read.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt1: 'Which ECP data servers is this instance configured to connect to?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt2: 'What does each ECP data server\'s status mean?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt3: 'Which remote databases use each ECP data server?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt1: 'What address and port should this ECP data server use?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt2: 'When should an ECP data server use a mirror connection?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt3: 'What does batch mode change for an ECP data server?',
+  /** EXPERIENCE.md:479 */
+  ecpDataServerDeleteConsequence:
+    'Deleting this ECP data server removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUse: '<n> remote databases use it and must be deleted or moved first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseOne: '1 remote database uses it and must be deleted or moved first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseNone: 'no remote database uses it',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseUnchecked: 'which remote databases use it was not checked',
 } as const;
 
 /**

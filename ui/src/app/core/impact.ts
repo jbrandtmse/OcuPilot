@@ -18,7 +18,8 @@ export type ImpactKind =
   | 'namespace-delete'
   | 'database-delete'
   | 'database-dismount'
-  | 'remote-database-delete';
+  | 'remote-database-delete'
+  | 'ecp-data-server-delete';
 
 export type ImpactPartName =
   | 'holders'
@@ -31,7 +32,8 @@ export type ImpactPartName =
   | 'databases'
   | 'namespaces'
   | 'applications'
-  | 'sharedFile';
+  | 'sharedFile'
+  | 'remoteDatabases';
 
 /** The parts each kind carries, in the order the line states them. */
 export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]>> = {
@@ -46,6 +48,9 @@ export const IMPACT_PARTS: Readonly<Record<ImpactKind, readonly ImpactPartName[]
   // Story 18.16: a remote database's file is on its data server, so no configuration here shares it
   // and the instance answers no shared-file part; the two it answers render as a local delete's.
   'remote-database-delete': ['namespaces', 'applications'],
+  // Story 18.20: an ECP data server delete names the remote databases whose data server it is, which
+  // the instance refuses the delete over while any remains.
+  'ecp-data-server-delete': ['remoteDatabases'],
 };
 
 /** A part's `unchecked` when its read was cut at its cap. */
@@ -191,6 +196,12 @@ const PHRASES: Readonly<
     one: STRINGS.impactSharedFileOne,
     none: '',
     unchecked: STRINGS.impactSharedFileUnchecked,
+  },
+  remoteDatabases: {
+    many: STRINGS.impactRemoteDatabasesUse,
+    one: STRINGS.impactRemoteDatabasesUseOne,
+    none: STRINGS.impactRemoteDatabasesUseNone,
+    unchecked: STRINGS.impactRemoteDatabasesUseUnchecked,
   },
 };
 

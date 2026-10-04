@@ -154,6 +154,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/databases/integrity',
       'os-management/databases/volumes',
       'os-management/devices/edit',
+      // Story 18.20: the unlisted ECP data server form, reached from ECP data servers, by descriptor
+      // class name.
+      'os-management/ecp-data-servers/edit',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
@@ -170,6 +173,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 16.7: License usage's three unlisted tabs, by descriptor class name.
       'os-management/license-usage/distributed',
       'os-management/license-usage/processes',
+      // Story 18.6: the unlisted license server form, reached from License servers.
+      'os-management/license-servers/edit',
       'os-management/license-usage/users',
       // Story 18.3: the unlisted local database form -- the create wizard and, at its id route, the
       // properties editor -- reached from Local databases.
@@ -205,6 +210,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/journals',
       // Story 18.18: Journal settings, the fourteenth.
       'os-management/journal-settings',
+      // Story 18.6: License key and License servers, the fifteenth and sixteenth.
+      'os-management/license-key',
+      'os-management/license-servers',
+      // Story 18.20: ECP data servers, the seventeenth.
+      'os-management/ecp-data-servers',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -289,6 +299,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-tables',
       'system-explorer/sql-views',
       'system-explorer/sql-procedures',
+      // Story 19.6: SQL query, after the catalog's lists.
+      'system-explorer/sql-query',
+      // Story 19.7: Data browser, after SQL query.
+      'system-explorer/sql-data',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -298,7 +312,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/ledger',
       'agent/transcripts',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Check integrity flow, Volume files, device editor, the global mapping form and list, the unlisted Journal file databases, Journal file details and Journal records, the unlisted language server Activity log and editor, the three unlisted License usage tabs, the license server form, the local database form, the namespace editor, the package mapping form and list, process details, the remote database form, the routine mapping form and list, processes, Locks, System usage, Databases, Integrity log, Devices, Namespaces, License usage, Dashboard, External language servers, Local databases, Remote databases, Journals, License key, License servers, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, Background tasks, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, Web sessions, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, Auditing configuration and Allowed directories, System Explorer\'s two unlisted viewers, Classes and Routines, its SQL query and Data browser, and the Agent co-pilot area\'s Definition form, unlisted transcript page, Definitions list, Switches, Guardrails, Governance policy, Agent audit ledger and Transcripts list, in area rail order'
   );
 });
 
@@ -307,7 +321,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
 // External language servers, and its form takes none. Story 18.17 (AC5): the Integrity log is the
 // fifth, right after Databases. Story 18.16 (AC8): Remote databases is the twelfth, and its form takes
 // none. Story 18.5 (AC1): Journals is the thirteenth, under OS management rather than Logs, and its
-// details and databases screens take none.
+// details and databases screens take none. Story 18.6 (A7): License key and License servers are the
+// fifteenth and sixteenth, and the license server form takes none.
 //
 // Mutation (Rule 19): give NamespaceList `sideBarPosition` 0 and regenerate the mirror -> this and
 // the built-screens roster above go red; so does DatabaseIntegrityLog back at 0.
@@ -336,6 +351,11 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/journals',
       // Story 18.18: the fourteenth.
       'os-management/journal-settings',
+      // Story 18.6: the fifteenth and sixteenth.
+      'os-management/license-key',
+      'os-management/license-servers',
+      // Story 18.20: the seventeenth.
+      'os-management/ecp-data-servers',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -360,6 +380,14 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(editor?.route, 'os-management/namespaces/edit', "the list's Create opens its own form");
   assert.equal(isListedScreen(editor), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(screenForRoute('os-management/namespaces'))?.route, 'os-management/namespaces/edit', 'and a row name opens it at its id route');
+  // Story 18.20 (B7): ECP data servers is the seventeenth entry, and its form takes no position and
+  // opens from the list's Create and a row's name cell.
+  assert.equal(stringFor(screenForRoute('os-management/ecp-data-servers').labelKey), STRINGS.ecpDataServerListLabel);
+  assert.equal(screenForRoute('os-management/ecp-data-servers').sideBarPosition, 17);
+  const ecpForm = createFormFor(screenForRoute('os-management/ecp-data-servers'));
+  assert.equal(ecpForm?.route, 'os-management/ecp-data-servers/edit', "ECP data servers' Create opens its own form");
+  assert.equal(isListedScreen(ecpForm), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(screenForRoute('os-management/ecp-data-servers'))?.route, 'os-management/ecp-data-servers/edit', 'and a row name opens it at its id route');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

@@ -57,6 +57,9 @@ const {
   CONSEQUENCE_JOURNALSWITCHDIRECTORY,
   CONSEQUENCE_JOURNALINTEGRITY,
   CONSEQUENCE_JOURNALSETTINGSFREEZE,
+  CONSEQUENCE_LICENSEMULTIKEY,
+  CONSEQUENCE_ECPSTATUSDISCONNECT,
+  CONSEQUENCE_ECPSTATUSCONNECT,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -827,4 +830,29 @@ test('Story 18.18: a journal settings proposal that leaves Freeze on error on st
   const tool = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'JournalSettingsUpdate.cls');
   const declared = /Parameter FREEZECONSEQUENCE = "([^"]+)";/.exec(readFileSync(tool, 'utf8'))?.[1];
   assert.equal(declared, CONSEQUENCE_JOURNALSETTINGSFREEZE, 'JournalSettingsUpdate.cls declares the code the card reads');
+});
+
+// Story 18.6: a license server delete while the instance's license key is a multi-server key states,
+// on the card, the published sentence, under the code the delete tool declares.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_LICENSEMULTIKEY` line from `consequenceSentence` -> the
+// card-sentence assertion goes red on ''.
+test("Story 18.6: a license server delete under a multi-server key states its consequence on the card", () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_LICENSEMULTIKEY), STRINGS.licenseServerMultiKeyConsequence);
+  const tool = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'LicenseServerDelete.cls');
+  const declared = /Parameter CONSEQUENCEMULTIKEY = "([^"]+)";/.exec(readFileSync(tool, 'utf8'))?.[1];
+  assert.equal(declared, CONSEQUENCE_LICENSEMULTIKEY, 'LicenseServerDelete.cls declares the code the card reads');
+});
+
+// Story 18.20: a change status proposal states, on the card, the sentence the Change status dialog
+// states for the same choice, under the code the change status tool declares for it.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_ECPSTATUSDISCONNECT` line from `consequenceSentence` ->
+// the first assertion goes red on ''.
+test('Story 18.20: an ECP data server status change states its consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_ECPSTATUSDISCONNECT), STRINGS.ecpDataServerDisconnectConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_ECPSTATUSCONNECT), STRINGS.ecpDataServerConnectConsequence);
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'EcpDataServerChangeStatus.cls'), 'utf8');
+  assert.equal(/Parameter CONSEQUENCEDISCONNECT = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ECPSTATUSDISCONNECT, 'EcpDataServerChangeStatus.cls declares the disconnect code the card reads');
+  assert.equal(/Parameter CONSEQUENCECONNECT = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ECPSTATUSCONNECT, 'and the connect code');
 });

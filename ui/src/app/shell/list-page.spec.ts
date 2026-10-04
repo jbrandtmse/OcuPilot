@@ -927,4 +927,39 @@ describe('the list page', () => {
       expect(page.bodies).toEqual([]);
     });
   });
+
+  // Story 19.14 (DW-1977): a read's declared note is drawn above the table whatever the rows hold,
+  // through the string its key names, and a read that declares none draws nothing there.
+  //
+  // Mutation (Rule 19): drop the note paragraph from `ListPage`'s template -> the three statements
+  // legs go red.
+  describe('Story 19.14: the SQL statements tabs\u2019 note', () => {
+    const screenOf = (descriptor: string) => SCREENS.find((screen) => screen.descriptor === descriptor)!;
+    const statement = { Statement: 'SELECT 1', PlanState: 'Unfrozen', NewPlan: false, Executions: '', TotalTime: '', AverageTime: '', StdDevTime: '', RowCount: '', Commands: '', FirstSeen: '', Location: '' };
+
+    for (const descriptor of [
+      'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
+    ]) {
+      it(`${descriptor} draws the statistics note above its table, with rows and without`, async () => {
+        const screen = screenOf(descriptor);
+        const url = `/${screen.route}/OcuProbe195.Visible?ns=USER`;
+        for (const rows of [[statement], []]) {
+          const page = await mount(screen, rows, true, url);
+          const note = page.host().querySelector('.ocu-list-page-note') as HTMLElement | null;
+          expect(note?.textContent?.trim()).toBe(STRINGS.explorerSqlStatementsNote);
+          const table = page.host().querySelector('app-data-table') as HTMLElement;
+          expect(note!.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+          for (const element of planted.splice(0)) element.remove();
+        }
+      });
+    }
+
+    it('Table info declares no note and draws none', async () => {
+      const screen = screenOf('OcuPilot.Screen.Descriptor.ExplorerSqlTable');
+      const page = await mount(screen, [], true, `/${screen.route}/OcuProbe195.Visible?ns=USER`);
+      expect(page.host().querySelector('.ocu-list-page-note')).toBeNull();
+    });
+  });
 });

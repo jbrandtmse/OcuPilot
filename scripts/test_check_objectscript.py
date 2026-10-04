@@ -1051,6 +1051,26 @@ class TestAgentJobReachRule(FixtureTreeCase):
         co.check_agent_job_reach(problems)
         self.assertTrue(any("Port/AdminPort.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
 
+    def test_the_sql_consoles_background_run_may_spawn_its_job(self):
+        # Story 19.15: the background run's job is the fourth spawn site AD-42 names.
+        self.write(
+            "src/OcuPilot/Area/Explorer/SqlBackground.cls",
+            "Class OcuPilot.Area.Explorer.SqlBackground Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Area.Explorer.SqlBackground).Run(1)::5\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected the background run's spawn accepted, got {problems}")
+        # The allowance is that one file, not the slice: a sibling class's JOB is refused.
+        self.write(
+            "src/OcuPilot/Area/Explorer/SqlConsole.cls",
+            "Class OcuPilot.Area.Explorer.SqlConsole Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Area.Explorer.SqlConsole).Child(1)::5\n}\n\n}\n",
+        )
+        problems = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(any("Area/Explorer/SqlConsole.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
+
     def test_a_state_class_naming_the_agent_package_is_refused(self):
         # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter
         # a provider call from inside an escalated frame (AD-9).

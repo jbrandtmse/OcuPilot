@@ -219,6 +219,10 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     switchdirectory: STRINGS.journalSwitchDirectoryAction,
     integrity: STRINGS.databaseIntegrityLabel,
   },
+  // Story 18.6: License key's Activate new key, which opens the activate dialog.
+  'OcuPilot.Screen.Descriptor.LicenseKey': { activate: STRINGS.licenseKeyActivateAction },
+  // Story 18.20: ECP data servers' Change status, which opens its dialog.
+  'OcuPilot.Screen.Descriptor.EcpDataServerList': { changestatus: STRINGS.ecpDataServerChangeStatus },
 };
 
 export class ScreenActions {

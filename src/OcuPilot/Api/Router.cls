@@ -223,6 +223,21 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
   <Route Url="/journal/settings" Method="PUT" Call="JournalSettingsUpdate"/>
   <Route Url="/journal/record" Method="GET" Call="JournalRecord"/>
+  <Route Url="/license/key/validate" Method="POST" Call="LicenseKeyValidate"/>
+  <Route Url="/license-server/form" Method="GET" Call="LicenseServerFormRead"/>
+  <Route Url="/license-server/name" Method="GET" Call="LicenseServerNameCheck"/>
+  <Route Url="/license-server/:id" Method="PUT" Call="LicenseServerUpdate"/>
+  <Route Url="/license-server" Method="POST" Call="LicenseServerCreate"/>
+  <Route Url="/ecp-data-server/form" Method="GET" Call="EcpDataServerFormRead"/>
+  <Route Url="/ecp-data-server/name" Method="GET" Call="EcpDataServerNameCheck"/>
+  <Route Url="/ecp-data-server/:id" Method="PUT" Call="EcpDataServerUpdate"/>
+  <Route Url="/ecp-data-server" Method="POST" Call="EcpDataServerCreate"/>
+  <Route Url="/explorer/sql/run" Method="POST" Call="ExplorerSqlRun"/>
+  <Route Url="/explorer/sql/plan" Method="POST" Call="ExplorerSqlPlan"/>
+  <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
+  <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
+  <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
 </Routes>
 }
 
@@ -1649,6 +1664,110 @@ ClassMethod JournalSettingsUpdate() As %Status
 ClassMethod JournalRecord() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.JournalRecordDetail).HandleGet()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /license/key/validate</code> (Story 18.6): License
+/// key's screen-only check, delegating to <class>OcuPilot.Area.OsMgmt.LicenseRules</class>.</p>
+ClassMethod LicenseKeyValidate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleValidate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /license-server/form</code> (Story 18.6): the license
+/// server form's read. The two sub-resources precede <code>/license-server/:id</code>.</p>
+ClassMethod LicenseServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /license-server/name</code>: the name look-up.</p>
+ClassMethod LicenseServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /license-server/:id</code>: the form's edit,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LicenseServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /license-server</code>: the form's create, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LicenseServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-data-server/form</code> (Story 18.20): the ECP
+/// data server form's read. The two sub-resources precede <code>/ecp-data-server/:id</code>.</p>
+ClassMethod EcpDataServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-data-server/name</code>: the name look-up.</p>
+ClassMethod EcpDataServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ecp-data-server/:id</code>: the form's edit,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpDataServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpDataServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ecp-data-server</code>: the form's create, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpDataServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpDataServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/run</code> (Story 19.6): SQL query's
+/// run route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlRun() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandleRun()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/plan</code> (Story 19.6): SQL query's
+/// plan route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlPlan() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandlePlan()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/background/:id/cancel</code> (Story
+/// 19.15): a background run's cancel, delegating to <class>OcuPilot.Area.Explorer.SqlBackground</class>.
+/// The two <code>:id</code> routes precede <code>/explorer/sql/background</code>.</p>
+ClassMethod ExplorerSqlBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /explorer/sql/background/:id</code>: a background
+/// run's poll.</p>
+ClassMethod ExplorerSqlBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/background</code>: a background
+/// run's start.</p>
+ClassMethod ExplorerSqlBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data
+/// browser's page read, delegating to <class>OcuPilot.Area.Explorer.SqlData</class>.</p>
+ClassMethod ExplorerSqlData() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlData).HandleBrowse()
 }
 
 }

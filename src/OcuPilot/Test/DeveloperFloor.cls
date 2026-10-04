@@ -6,8 +6,8 @@
 /// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-two,
-/// whose writes are the two exports.</p>
+/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-three,
+/// whose writes are the two exports and the SQL console's run.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
 /// through <class>OcuPilot.Kernel.Shell.Effective</class>, and removes them in
@@ -29,16 +29,18 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>The screens the map opens to it: Home, the agent's own-data screens, System Explorer's four, its
 /// two editors (Story 19.3), its Search, Compare and Macros (Story 19.4) and its eighteen SQL catalog
-/// screens (Stories 19.5 and 19.14), and the analytics log (Story 19.12's audit).</p>
-Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
+/// screens (Stories 19.5 and 19.14), SQL query (Story 19.6), Data browser (Story 19.7), and the
+/// analytics log (Story 19.12's audit).</p>
+Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
 /// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
 /// every other System Explorer write also WRITE on the namespace's routines database, which the
-/// developer lacks in the install namespace.</p>
-Parameter HELDWRITES = "explorer.classes.export,explorer.routines.export";
+/// developer lacks in the install namespace, but SQL query's run, which declares no pair beyond its
+/// screen's (Story 19.6).</p>
+Parameter HELDWRITES = "explorer.classes.export,explorer.routines.export,explorer.sqlquery.run";
 
 /// <p>The second namespace System Explorer is read in, whose code database
 /// <code>%Developer</code> grants.</p>
@@ -55,8 +57,10 @@ Parameter ROUTINEDOCUMENT = "%occStatus.inc";
 /// <code>USE</code> inside the page instead, as <code>page:resource</code>, comma-separated:
 /// <code>%CSP.UI.System.ViewCode</code>'s <code>OnPreHTTP</code> checks
 /// <code>$$$DevelopmentResourceName</code>, which <file>%sySecurity.inc</file> defines as
-/// <code>%Development</code>.</p>
-Parameter INTERNALCHECKS = "%CSP.UI.System.ViewCode:%Development";
+/// <code>%Development</code>; and SQL Home's Open Table, <code>%cspapp.exp.utilsqlopen</code>, a
+/// Hidden <code>%CSP.Util.AutoPage</code>, is served by the <code>/csp/sys/exp</code> application,
+/// whose resource is <code>%Development</code> (read on the instance).</p>
+Parameter INTERNALCHECKS = "%CSP.UI.System.ViewCode:%Development,%cspapp.exp.utilsqlopen:%Development";
 
 /// <p>The five members Home's system information samples from the dashboard.</p>
 Parameter DASHBOARDMEMBERS = "uptime,databaseSpace,journalSpace,lockTable,writeDaemon";
@@ -274,6 +278,23 @@ Method TestSystemExplorerReadsInBothNamespaces()
     }
 }
 
+/// <p><b>SQL query (Story 19.6, AC8)</b> runs a query for the developer in <code>USER</code>, whose
+/// code database <code>%Developer</code> grants, and is refused it in <code>%SYS</code>, whose
+/// database it cannot read: the API's namespace gate answers 403 <code>NS.DENIED</code> naming the
+/// pair before the route runs.</p>
+Method TestSqlQueryRunsInUserAndIsRefusedWhereItCannotRead()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
+    Set tUser = $Parameter(..#FIXTURE, "DEVELOPERUSER")
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/explorer/sql/run?ns=" _ ..#OTHERNAMESPACE, tUser, ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""statement"":""SELECT 1 AS One""}")
+    Do $$$AssertEquals(tStatus _ " " _ tText, "200 {""kind"":""query"",""outcome"":""rows"",""columns"":[""One""],""rows"":[[""1""]],""truncated"":false}", "a query runs in USER")
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", "POST", "/explorer/sql/run?ns=%25SYS", tUser, ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""statement"":""SELECT 1 AS One""}")
+    Set tObject = ""
+    Try { Set tObject = ##class(%DynamicObject).%FromJSON(tText) } Catch {}
+    Set tPair = $Select($IsObject(tObject) && $IsObject(tObject.%Get("detail")): tObject.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tObject): tObject.%Get("code"), 1: "") _ " " _ tPair, "403 NS.DENIED %DB_IRISSYS:READ", "and is refused in %SYS, naming the pair: " _ tText)
+}
+
 /// <p><b>An administrative screen</b> is refused 403 <code>AUTH.NOPRIVILEGE</code>, naming
 /// <code>%Admin_Secure:USE</code>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set -> the
@@ -411,7 +432,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
         If (tPage = "") && ($List(tEntry, 3) = "system-explorer") Do $$$AssertTrue($ListFind($ClassMethod(tClass, "PrivilegePairs"), $ListBuild("%Development", "USE")), tKey _ ": replaces no classic page and still declares %Development:USE, the port's own pair")
         If tPage = "" Continue
         Set tChecked = tChecked + 1
-        Do $$$AssertTrue(##class(%Dictionary.CompiledClass).%ExistsId(tPage), tKey _ ": its classic page " _ tPage _ " is compiled")
+        Do $$$AssertTrue(..Compiled(tPage), tKey _ ": its classic page " _ tPage _ " is compiled")
         Set tResource = ..ClassicResource(tPage, .tHasResource)
         Do $$$AssertTrue(tHasResource || (tResource '= ""), tKey _ ": " _ tPage _ " declares no RESOURCE, and no check of its own is recorded in INTERNALCHECKS")
         Set tAdmitted = tHasResource && (tResource = "")
@@ -436,7 +457,7 @@ Method TestEveryOpenScreenMatchesItsClassicPage()
 /// <parameter>HELDWRITES</parameter>.</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.WebAppList</class> an empty pair set ->
 /// <code>webapp.list.read</code> joins the held set and this goes red.</p>
-Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyTwo()
+Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyThree()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
@@ -459,8 +480,18 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyTwo()
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-two")
-    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-three")
+    Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports and the SQL run")
+}
+
+/// <p>Whether the class dictionary holds a compiled class named exactly <var>pClass</var>, Hidden
+/// ones included: a Hidden CSP page's <code>%ExistsId</code> answers 0 although its compiled row is
+/// listed (read on the instance).</p>
+ClassMethod Compiled(pClass As %String) As %Boolean
+{
+    If ##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 1
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledClass WHERE %EXACT(Name) = ?", pClass)
+    Quit (tResult.%SQLCODE = 0) && tResult.%Next() && (tResult.%GetData(1) > 0)
 }
 
 /// <p>The compiled <code>RESOURCE</code> of the classic page <var>pPage</var>, with
