@@ -7205,19 +7205,19 @@ So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03
 
 As an operator,
 I want the four encryption pages,
-So that key management is not a reason to keep the classic portal open.
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split for size, Rule 5 -- 18.7 keeps the encryption key files, the reachable-subset check of all thirteen encryption routes and DW-1774; database and data-element key activation moved to Story 18.22, the startup settings to Story 18.23, and RSA and symmetric-key wallet secrets (DW-1555) to Story 18.24]
 
 **Acceptance Criteria:**
 
-- **Given** AD-26 records `Security.Encryption.Settings` as **excluded by the v2 pin**
+- **Given** AD-26 records that `Security.Encryption.Settings` touches `%request` only under API version 1, so under the v2 pin its administrator credentials travel in the body [AMENDED 2026-10-04, Story 18.7 spec gate, Rule 20] [SPLIT to 18.23 2026-10-04: 18.7 establishes the reachable subset of all thirteen routes; the startup-settings half is built by 18.23]
 - **When** this story is picked up
 - **Then** the reachable subset is established against the instance **first**, before any UI work, and the startup-settings half either ships behind an explicit version gate or is recorded as a classic-portal link-out - the story is not planned as though the endpoint were reachable.
 
-- **Given** create key file, manage key file, data-element encryption activate and deactivate, and the reachable part of database encryption
+- **Given** create key file, manage key file, data-element encryption activate and deactivate, and the reachable part of database encryption [SPLIT to 18.22 2026-10-04: data-element encryption and the reachable part of database encryption to 18.22; 18.7 keeps create and manage key file]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
-- **Given** the startup options - interactive, unattended and KMIP
+- **Given** the startup options - interactive, unattended and KMIP [SPLIT to 18.23 2026-10-04]
 - **When** they are configured
 - **Then** each is offered with its consequence stated.
 
@@ -7226,7 +7226,6 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
-- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7493,6 +7492,56 @@ So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03
 - **When** each runs
 - **Then** it round-trips through the admin API
 - **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
+
+### Story 18.22: Database and data-element encryption keys
+
+As an operator,
+I want to activate and deactivate database and data-element encryption keys,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part B of `spec-18-7-encryption.md` (commit 0a3dfe43); consumes Story 18.7's key files and `EncryptionPort`; if an activation leaves anything only a restart clears, its success paths run through a test seam; the reachable part of database encryption is key activation, and encrypting or decrypting an existing database, which has no admin API route and no classic page, is named unreachable]
+
+**Acceptance Criteria:**
+
+- **Given** data-element encryption activate and deactivate, and the reachable part of database encryption
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+### Story 18.23: Encryption startup settings
+
+As an operator,
+I want the database-encryption startup settings,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` deletes the audit database at once, so its treatment is the owner's product call, which the plan brings to the orchestrator with options and a recommendation]
+
+**Acceptance Criteria:**
+
+- **Given** AD-26 records that `Security.Encryption.Settings` touches `%request` only under API version 1, so under the v2 pin its administrator credentials travel in the body [AMENDED 2026-10-04, Story 18.7 spec gate, Rule 20]
+- **When** this story is picked up
+- **Then** the reachable subset is established against the instance **first**, before any UI work, and the startup-settings half either ships behind an explicit version gate or is recorded as a classic-portal link-out - the story is not planned as though the endpoint were reachable.
+
+- **Given** the startup options - interactive, unattended and KMIP
+- **When** they are configured
+- **Then** each is offered with its consequence stated.
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+### Story 18.24: RSA and symmetric-key wallet secrets
+
+As an operator,
+I want to create and edit RSA and symmetric-key wallet secrets,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part D of `spec-18-7-encryption.md` (commit 0a3dfe43); independent of Stories 18.22 and 18.23]
+
+**Acceptance Criteria:**
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

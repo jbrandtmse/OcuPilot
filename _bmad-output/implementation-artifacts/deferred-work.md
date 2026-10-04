@@ -6598,6 +6598,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T14:47:12Z status=routed owner=range-end-cleanup by=orchestrator note=Rule 27 range-end cleanup: a real capability, not floor-blocking
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=feature: RSA and symmetric-key wallet secret create/edit; no 14/16 story owns wallet secrets
 - 2026-09-30T03:32:47Z status=routed owner=18-7-encryption by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: RSA and symmetric-key wallet secrets belong with the key-material design
+- 2026-10-04T16:47:29Z status=routed owner=18-24-rsa-and-symmetric-key-wallet-secrets by=merge_gate note=re-owned at the Story 18.7 split (orchestrator merge gate 2026-10-04): Part D of spec-18-7-encryption.md (commit 0a3dfe43) is its own story
 
 ### DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint

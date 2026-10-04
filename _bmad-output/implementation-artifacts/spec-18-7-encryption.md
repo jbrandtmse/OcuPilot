@@ -2,12 +2,12 @@
 title: 'Story 18.7: Encryption'
 type: 'feature'
 created: '2026-10-04'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
-warnings: ['oversized', 'multiple-goals']
+warnings: ['oversized']
 deferred: []
 ---
 
@@ -17,7 +17,7 @@ deferred: []
 
 **Problem:** The classic portal is still the only place to manage encryption: its four Encryption pages (`%CSP.UI.Portal.EncryptionCreate`, `.EncryptionManage`, `.EncryptionDatabase`, `.EncryptionManaged`) create and manage key files, activate and deactivate database and data-element keys, and set the database-encryption startup options. The admin API carries all of it through five endpoint classes (`Security.Encryption.File`, `.AdminInFile`, `.KeyInFile`, `.Key`, `.Settings`, 13 routes). The story's ledger inbox adds DW-1555 (RSA and symmetric-key wallet secrets, which Story 8.6 shows read-only) and DW-1774 (area side bars pinned as literal lists in browser specs).
 
-**Approach:** The whole story is too large for one implement pass, so the plan recommends a four-part split by surface group (Design Notes › Recommended split): **Part A, Encryption key files (this story, 18.7)**, with DW-1774 and a Task 0 that establishes the reachable subset of all 13 routes before any UI; Part B, database and data-element encryption keys; Part C, the encryption startup settings; Part D, RSA and symmetric-key wallet secrets (DW-1555). This spec plans Part A in full and outlines B to D; the orchestrator decides. Every instance here runs a Community license; nothing in Part A activates a key, changes an encryption setting or needs a restart.
+**Approach:** Story 18.7 is Part A of a four-part split the orchestrator approved at the spec gate on 2026-10-04: **Encryption key files**, with DW-1774 and a Task 0 that establishes the reachable subset of all 13 routes before any UI. Database and data-element key activation is Story 18.22, the encryption startup settings Story 18.23, and RSA and symmetric-key wallet secrets (DW-1555) Story 18.24; their outlines are kept in this spec at commit `0a3dfe43`. Every instance here runs a Community license; nothing in this story activates a key, changes an encryption setting or needs a restart.
 
 ## Boundaries & Constraints
 
@@ -58,12 +58,12 @@ deferred: []
 
 **Never:**
 
-- No key activation or deactivation, no `Security.Encryption.Settings` write, no database encryption or conversion, no audit, journal, IRISTEMP or IRISSECURITY encryption change, no restart, no license change, on any instance (Parts B and C plan those, each behind its own Task 0).
+- No key activation or deactivation, no `Security.Encryption.Settings` write, no database encryption or conversion, no audit, journal, IRISTEMP or IRISSECURITY encryption change, no restart, no license change, on any instance (Stories 18.22 and 18.23 plan those, each behind its own Task 0).
 - No server path from a caller other than `root` + `path` through `PathPort`; no key file directly in `<ManagerDirectory>` or in OcuPilot's served directory (PathPort refuses both).
 - No `%Api.Admin.*` name outside `AdminPort` and its subclasses; no direct `^EncryptionKey`, `%SYSTEM.Security` or `Security.System` write in product code (test-only `%SYS` seeding of probe key files is allowed).
 - No spine or epics.md edit in the implement stage; Task 0 records each AD sentence in `## Spec Change Log` for the runner.
 - No auto-refresh on either screen (AD-43's roster is unchanged).
-- Database encryption, data-element encryption, the startup settings and wallet secrets are Parts B, C and D, not Part A.
+- Database encryption, data-element encryption, the startup settings and wallet secrets are Stories 18.22, 18.23 and 18.24, not this story.
 
 ## I/O & Edge-Case Matrix
 
@@ -93,7 +93,7 @@ deferred: []
 - `%Api.Admin.Endpoints.Security.Encryption.File`: `RunActivate` (`file` query must exist, else 404 before `ActivateDB^`/`ActivateMK^EncryptionKey`); `RunPost` (refuses a `KeyLen` other than 128/192/256 with 400; **creates the directory chain** when the directory is missing; `$$Create^EncryptionKey(File, AdminName, AdminPassword, KeyLen/8, .sc, "2.0", Description)`; 201 with the new key id only in a `Location` header); `ValidateRequest` (POST body `{File, AdminName, AdminPassword, KeyLen, Description}`, ACTIVATE `{Action, AdminName, AdminPassword}`, every key required).
 - `.AdminInFile`: `ValidateQueryParams` (`file` required and must exist, else 404 — an existence oracle for any path); `RunList` answers `[{Name}]`; `RunDelete` (`admin`; 404 on #1204, 409 on #1210 last administrator; no password); `RunPost` (`{OldAdminName, OldAdminPassword, NewAdminName, NewAdminPassword}`; 409 on #1205; any other error keeps the default status).
 - `.KeyInFile`: `RunList` answers `[{Id, KeyLen, Description}]`; `RunDelete` (`key`; 404 on #1221; "allows you to delete even if it is the last key in the file"; no password); `RunPost` (`{AdminName, AdminPassword, Description, KeyLen}`, 201 with no id).
-- `.Key` (`LIST` `[{Id, KeyLen, IsDefault}]`, `DATAELEMENTLIST` (type 10) `[{Id}]`, `DEACTIVATE` (type 11) through its own `Run`) and `.Settings` (`GET`, `PUT` through `ConfigStart^DATABASE1`; under API version 1 only, `RunPut` reads `AdminName`/`AdminPassword` from request headers, otherwise from the body, its only `%request` use) are Parts B and C's; Part A reaches them only in Task 0's reachability probes.
+- `.Key` (`LIST` `[{Id, KeyLen, IsDefault}]`, `DATAELEMENTLIST` (type 10) `[{Id}]`, `DEACTIVATE` (type 11) through its own `Run`) and `.Settings` (`GET`, `PUT` through `ConfigStart^DATABASE1`; under API version 1 only, `RunPut` reads `AdminName`/`AdminPassword` from request headers, otherwise from the body, its only `%request` use) are Stories 18.22 and 18.23's; Part A reaches them only in Task 0's reachability probes.
 - `^EncryptionKey` and `^DATABASE1` ship as object code only (`$D(^ROUTINE)` 0, `$D(^rOBJ)` 11, read on `ocupilot-b-ci`), so their own checks are measured, never read.
 - Classic pages (`irissys/%CSP/UI/Portal/`): `EncryptionCreate.cls` (Key File free text plus Browse, Administrator Name defaulting to `$USERNAME`, Password and Confirm, Cipher Security Level 16/24/32 shown as 128/192/256-bit default 256, Key Description; Save calls `$$Create^EncryptionKey` :212; the NOTE and WARNING texts :229-259); `EncryptionManage.cls` (`LoadFile` :282-301; the two tables :304-368; Delete admin drawn only with more than one administrator :313; Delete key on every row with its loss warning :175-176); `Dialog/EncAddAdmin.cls` (add administrator or add key; texts :46-62, :107-110; calls :135-136); `Application.cls:116-124` (the Encryption menu: four items, `%Admin_Secure` plus `%DB_IRISSYS` READ). All `RESOURCE` `%Admin_Secure`, none Hidden, each `NormalizePage` answers its class name, no custom resource assigned (read on `ocupilot-b-ci`).
 
@@ -136,7 +136,7 @@ deferred: []
 - `core/navigation.ts:133` `listedScreensForArea`; `ui/browser/gate.browser-spec.mjs:52-53` imports `STRINGS` and `SCREENS` from the TypeScript sources (the helper's model).
 - `ui/angular.json:54` `maximumWarning` 2805kB, pinned at `ui/tools/angular-json.test.mjs:489` (history :475-476).
 
-**EXPERIENCE.md** (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`, 1019 lines): :168 Security and secrets' side bar (`| Security and secrets | SSL/TLS · X.509 · LDAP / Kerberos · Wallet · OAuth 2.0 · Auditing | Allowed directories (Stage 2, Story 18.1); tests, details, copy/purge and the OAuth editors attach to existing screens |`); :173 Dialogs; :364 the Wallet and Allowed directories Fixed strings row; :490 the delete bodies for credential, secret, SSL and LDAP; :416 the wallet read-only sentences (Part D's).
+**EXPERIENCE.md** (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`, 1019 lines): :168 Security and secrets' side bar (`| Security and secrets | SSL/TLS · X.509 · LDAP / Kerberos · Wallet · OAuth 2.0 · Auditing | Allowed directories (Stage 2, Story 18.1); tests, details, copy/purge and the OAuth editors attach to existing screens |`); :173 Dialogs; :364 the Wallet and Allowed directories Fixed strings row; :490 the delete bodies for credential, secret, SSL and LDAP; :416 the wallet read-only sentences (Story 18.24's).
 
 **Rosters a listed screen, tool, route, type, key or classic page trips** (current counts; re-derive each change from its class's red, never by hand):
 
@@ -154,7 +154,7 @@ deferred: []
 **Task 0, the implement stage's first task, before any descriptor, tool or page.** Run it on `ocupilot-b-ci` only, loading with `/tmp/epic-18-d6/load-throwaway.sh` (no restart). Keep evidence under `/tmp/epic-18-d6/187/t0/`. Record each result under Design Notes › Measured at implement, and each AD sentence in `## Spec Change Log` for the runner.
 
 1. **Plumbing** (add-only):
-   - `Port/AdminPort.cls`: `MUTATINGTYPES` gains `Security.Encryption.File/POST`, `Security.Encryption.File/ACTIVATE`, `Security.Encryption.Key/DEACTIVATE`, `Security.Encryption.AdminInFile/POST`, `Security.Encryption.AdminInFile/DELETE`, `Security.Encryption.KeyInFile/POST`, `Security.Encryption.KeyInFile/DELETE` and `Security.Encryption.Settings/PUT`, with one doc paragraph (Parts B and C declare the tools for the third, fourth and last); `BODYLESSTYPES` gains the two `DELETE`s; `TYPESUFFIXES` gains `DATAELEMENTLIST`; `Parameter PATHRESOLVED = 0` and the guard: a `Security.Encryption.*` call carrying a `file` query parameter, a `File` body member or a non-empty `DBEncStartKeyFile` is refused 400 `PATH.NAME` before any vendor call unless `..#PATHRESOLVED`. `Test/PortFixture.cls:21` follows.
+   - `Port/AdminPort.cls`: `MUTATINGTYPES` gains `Security.Encryption.File/POST`, `Security.Encryption.File/ACTIVATE`, `Security.Encryption.Key/DEACTIVATE`, `Security.Encryption.AdminInFile/POST`, `Security.Encryption.AdminInFile/DELETE`, `Security.Encryption.KeyInFile/POST`, `Security.Encryption.KeyInFile/DELETE` and `Security.Encryption.Settings/PUT`, with one doc paragraph (Stories 18.22 and 18.23 declare the tools for the third, fourth and last); `BODYLESSTYPES` gains the two `DELETE`s; `TYPESUFFIXES` gains `DATAELEMENTLIST`; `Parameter PATHRESOLVED = 0` and the guard: a `Security.Encryption.*` call carrying a `file` query parameter, a `File` body member or a non-empty `DBEncStartKeyFile` is refused 400 `PATH.NAME` before any vendor call unless `..#PATHRESOLVED`. `Test/PortFixture.cls:21` follows.
    - `Port/EncryptionPort.cls` (new, extends `AdminPort`, `PATHRESOLVED` 1): `Call` (the one vendor call, the seam point), `Resolve` (`root` + `path` through `PathPort`, as a `file` with overwrite 0 or a `source`), and the `KEYFILE` and resolved `LIST` branches of Execution (server).
    - `Test/EncryptionProbe.cls` (new, the `LicenseProbe` model): `SeedDirectory` / `RemoveDirectory` (`<ManagerDirectory>ocuprobe187/`, created only when absent and marked), `SeedKeyFile` (test-only `%SYS` seeding through `$$Create^EncryptionKey`), `SeedTextFile`, `SeedPrincipal`, `RemoveAll`, `Run`, `RunAs`, `Snapshot`, `Diff`, `LineCount`, `LinesAfter`.
 2. **Take S0.** It holds: every `Security.System` encryption property (`DBEncStartMode`, `DBEncJournal`, `DBEncIRISSecurity`, `DBEncIRISTemp`, `AuditEncrypt`, `DBEncStartKMIPServer`, `DBEncStartKeyFile`, `DBEncDefaultKeyID`, `DBEncJournalKeyID`, and whether a startup username is stored); the activated database and data-element keys; `GetDBEncKeyID()` and the journal key; the encrypted-database count; `Config.CPF.PendingRestart` and its reasons (known: 1, with two `MaxServerConn` reasons); the audit event count; the `messages.log` and `alerts.log` line counts and the monitor state; the process count; whether the probe directory exists; OcuPilot's own objects.
@@ -274,6 +274,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-10-04, spec gate (runner, per the orchestrator merge gate): split approved (18.7 key files; 18.22 key activation; 18.23 startup settings; 18.24 wallet secrets, DW-1555 re-owned); Decisions 1 to 7 confirmed, Decision 3's keys built `false` pending the owner's AD-22 answer, Decision 6's grammar left to the burn-down; amendments 1 to 7 written to the spine and epics.md; the outlines of 18.22 to 18.24 removed (kept at `0a3dfe43`); status `blocked` to `ready-for-dev`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -290,22 +292,22 @@ deferred: []
 
 **Measured at plan** (read-only on `ocupilot-b-ci`, 2026-10-04; nothing written; no admin API write):
 
-- **The v2 pin is what makes `Security.Encryption.Settings` reachable, not what excludes it.** Its `RunPut` reads `AdminName`/`AdminPassword` from request headers only under API version 1 and from the body otherwise; the body template adds them from version 2; that is the class's only `%request` use, so it needs no CSP state under OcuPilot's pin (read in the vendor source). The inventory's `csp="request"` comes from a scan that matched the version-1 branch, and its `Key` `mutating="0"` misses `DEACTIVATE`, which runs through `Key`'s own `Run` (Part B corrects it).
+- **The v2 pin is what makes `Security.Encryption.Settings` reachable, not what excludes it.** Its `RunPut` reads `AdminName`/`AdminPassword` from request headers only under API version 1 and from the body otherwise; the body template adds them from version 2; that is the class's only `%request` use, so it needs no CSP state under OcuPilot's pin (read in the vendor source). The inventory's `csp="request"` comes from a scan that matched the version-1 branch, and its `Key` `mutating="0"` misses `DEACTIVATE`, which runs through `Key`'s own `Run` (Story 18.22 corrects it).
 - Through `AdminPort` as `irisowner` (`%All`): `Settings` `GET` 200 in 0.6 ms (`DBEncStartMode` "None"; `DBEncJournal`, `DBEncIRISSecurity`, `DBEncIRISTemp`, `AuditEncrypt` false; the KMIP server, key file and both key ids ""); `Key` `LIST` 200 `[]` in 2.0 ms; `Key` `DATAELEMENTLIST` 501 (not in `TYPESUFFIXES`); `Key` `GET` 200 `{}` (the base `RunGet`); `Database.SysCRUD` `LIST` 200 in 4.4 ms, each row carrying `Encrypted` and `EncryptionKeyID`. `messages.log` and the monitor state did not move.
 - State: every `Security.System` encryption property off or empty; no activated database or data-element key; 0 of 14 databases encrypted; 0 KMIP server configurations; `PendingRestart` 1 with the two known `MaxServerConn` reasons.
 - License: no readable source checks a license for encryption (the five endpoints, the four classic pages, the portal menu, `%SYSTEM.Encryption`); `$SYSTEM.License.GetFeature(0..29)` names no encryption feature; the Community limits page names mirroring, ECP, sharding and API Manager as excluded, so encryption is not license-gated (inference; Task 0 step 4a measures).
 - `^EncryptionKey` and `^DATABASE1` are object code only. The classic pages: `RESOURCE` `%Admin_Secure`, none Hidden, `NormalizePage` answers each class name, the `%SYS.Portal.Resources:List` query answered no row.
 
-**Decisions** (applied in this plan; the orchestrator confirms them with the split):
+**Decisions** (confirmed by the orchestrator at the spec gate, 2026-10-04, by=merge_gate):
 
-1. **Placement: Security and secrets, one listed entry.** The classic Encryption menu requires exactly Security's set (`%Admin_Secure` plus `%DB_IRISSYS` READ). The two key-file pages become one listed screen, Encryption key files (8), with the create as an unlisted form, as every OcuPilot create is reached from its list; Part B adds Database encryption (9) and Data element encryption (10) in the classic menu's order.
+1. **Placement: Security and secrets, one listed entry.** The classic Encryption menu requires exactly Security's set (`%Admin_Secure` plus `%DB_IRISSYS` READ). The two key-file pages become one listed screen, Encryption key files (8), with the create as an unlisted form, as every OcuPilot create is reached from its list; Story 18.22 adds Database encryption (9) and Data element encryption (10) in the classic menu's order.
 2. **The key-file screens declare `%Admin_FileSystemAccess:USE` as their own pair**, narrower than the classic page, because their read resolves a path through `PathPort` (AD-29: a screen that passes its gate must not then fail inside the port); Security's set is unchanged (AD-8's own-pair rule), as Allowed directories already does.
-3. **Every key-file tool is advertised and its governance key ships `false`.** Epic 18's preamble makes encryption changes default to disabled, so AD-22's after-2026-10-04 owner clause has nothing to decide here. The agent never holds key material (the vendor generates every key) and a password is typed by the person on the card, as for `permissions.users.password`.
+3. **Every key-file tool is advertised and its governance key ships `false`.** Epic 18's preamble makes encryption changes default to disabled. These keys merge after 2026-10-04, so under AD-22 the owner decides how new keys enter; the orchestrator has put that question to the owner and confirms or relays the answer before 18.7 merges. Build them `false`, the conservative default. The agent never holds key material (the vendor generates every key) and a password is typed by the person on the card, as for `permissions.users.password`.
 4. **A new AD-10 arm for key removal.** Removing a key from a key file cannot lose data at once (the key stays activated in memory), but if that file holds the last copy, OcuPilot's own database or a protected system database encrypted with it cannot mount after the next start, and journal files encrypted with it cannot be recovered. Which other files hold a copy is unknowable, so the arm refuses removal of any key that encrypts those databases or the journal (read at the write); every other removal stays permitted at the destructive treatment with the vendor's own loss sentence, as the owner's "developer tool first" direction asks. On a stock instance no database is encrypted, so the arm is pinned through the seam.
 5. **No password for the removes, as the vendor and the classic page require none.** OcuPilot's gate (Security's set plus the file-system pair) is the check, and the vendor refuses removing the last administrator.
-6. **Refusal logging.** A refusal the vendor answers with a distinct status OcuPilot maps to a field (409 taken and last administrator) joins `UNLOGGEDREFUSALS` by endpoint, type and status. A wrong password most likely arrives as a 500 shared with internal failures (inference; Task 0 step 4d measures), which today's list cannot name without silencing real faults; it stays logged, a named limit, until DW-2007's code-scoped entry (decided at the merge gate, built by Epic 18's burn-down) can name its vendor code. **For the orchestrator:** the alternative is to build that code-scoped grammar in this story and let DW-2007's own entry join it, resolving DW-2007 early.
+6. **Refusal logging.** A refusal the vendor answers with a distinct status OcuPilot maps to a field (409 taken and last administrator) joins `UNLOGGEDREFUSALS` by endpoint, type and status. A wrong password most likely arrives as a 500 shared with internal failures (inference; Task 0 step 4d measures), which today's list cannot name without silencing real faults; it stays logged, a named limit, until DW-2007's code-scoped entry (decided at the merge gate, built by Epic 18's burn-down) can name its vendor code. The orchestrator ruled the code-scoped grammar stays with the burn-down.
 7. **DW-1774 is fixed by derivation, with one literal kept where every story runs it.** Browser specs read an area's labels from the mirror, so a screen-adding story changes no spec it does not run; `navigation.test.mjs` keeps the literal per area, so a wrong `sideBarPosition` still fails a test every story runs (`test:tools`). The lighter variant (labels derived, verdicts asserted only for each leg's subject) avoids a second copy of AD-8's gate rule in the tests.
-8. **DW-1555 moves to Part D**, its own story: it changes about 30 to 38 files on an independent surface (the Wallet screens), and its product calls (replace versus delete and create; whether imports are advertised; whether public material may be read) are its own.
+8. **DW-1555 moves to Story 18.24**, its own story, and is re-owned there: it changes about 30 to 38 files on an independent surface (the Wallet screens), and its product calls (replace versus delete and create; whether imports are advertised; whether public material may be read) are its own.
 
 **Named limits:**
 
@@ -313,9 +315,9 @@ deferred: []
 2. Whether another key file holds a copy of a key is unknowable; `ENCRYPTION.KEYFILE.REMOVEKEY` states the consequence, and the AD-10 arm covers only the self-protection cases.
 3. A wrong password, and a chosen file that is not a key file, each log one line and raise the instance's alert state until the code-scoped unlogged entry lands (Decision 6; inference until Task 0 step 4d and 4h measure the statuses).
 
-**Proposed spine and planning amendments (Rule 20; the runner writes 1 to 7 at the spec gate, Task 0 confirms each `<measured>`; 8 and 9 come from Task 0):**
+**Spine and planning amendments (Rule 20; the runner wrote 1 to 7 at the spec gate on 2026-10-04; 8 and 9 come from Task 0, and Task 0 confirms each `<measured>`):**
 
-1. **AD-26, correcting at origin** the sentence "`Security.Encryption.Settings` is excluded by the v2 pin." to: "`Security.Encryption.Settings` touches `%request` only under API version 1, which reads its administrator credentials from request headers; under the v2 pin they travel in the body, so it needs no CSP state (read in the vendor source at Story 18.7's plan) [AMENDED <date>, Story 18.7 spec gate, Rule 20]." The same sentence is corrected in epics.md :237 (Additional Requirements).
+1. **AD-26, correcting at origin** the sentence "`Security.Encryption.Settings` is excluded by the v2 pin." to: "`Security.Encryption.Settings` touches `%request` only under API version 1, which reads its administrator credentials from request headers; under the v2 pin they travel in the body, so it needs no CSP state (read in the vendor source at Story 18.7's plan) [AMENDED <date>, Story 18.7 spec gate, Rule 20]." The same sentence is corrected in Story 18.7's first acceptance criterion in epics.md (:7212).
 2. **AD-21, after the license-key sentence:** "**An encryption key file is a sixth-case location** (Story 18.7): a create names a new file that never overwrites and whose directory must already exist, because the vendor would otherwise create the directory chain; every other key-file call names an existing file as a `source`. `AdminPort` refuses a caller's `file`, `File` or `DBEncStartKeyFile` on any `Security.Encryption.*` call unless it arrives through `EncryptionPort`, which resolves it through `PathPort` at the call [AMENDED <date>, Story 18.7 spec gate, Rule 20]."
 3. **AD-36, after the license sentence:** "**A declared read may name the encryption port** (Story 18.7): its `root` and `path` criteria name an existing key file, resolved by `EncryptionPort` through `PathPort` as a `source` at each read; a key file's administrators and its keys' identifiers, lengths and descriptions are row fields, and no read answers key material [AMENDED <date>, Story 18.7 spec gate, Rule 20]."
 4. **AD-51, after Story 18.20's case:** "Story 18.7's case: `EncryptionPort`, which builds `Security.Encryption.File`, `AdminInFile` and `KeyInFile` bodies and queries from the key-file tools' declared arguments and the resolved key file, and answers their fresh read through a port-composed `KEYFILE` type [AMENDED <date>, Story 18.7 spec gate, Rule 20]." **AD-56 (i)** gains: "A port-built body (AD-51) may carry the tool's declared secrets beside the arguments it is built from, kept exactly as a secret-only body's (Story 18.7's key-file passwords) [AMENDED <date>, Story 18.7 spec gate, Rule 20]."
@@ -331,49 +333,13 @@ deferred: []
 - The form consumes `POST /encryption-key-file` and the dialogs consume `POST /screens/:screen/action`, each against real probe files (A2 to A4; `EncryptionKeyFileWrite`, the browser spec).
 - Every converted browser spec consumes `side-bar-spec.mjs` (A6; `side-bar-pins.test.mjs` and CI's browser shards).
 
-**Consumes:** 18.1 (`PathPort` and its picker), 16.4 (`TaskTransferPort`'s file-consumer model), 18.6 (`LicensePort`'s secret body, the seam and probe shape), 18.3 (Prohibited's protected database set), 18.14 (composite targets), 19.4/19.5 (`list (server criteria)` over a criteria-carrying port), 16.17's read-back, 14.1's `Snippet`, 14.2's baseline. **Consumed-by:** Part B (activation names a key file as a `source` through `EncryptionPort`), Part C (the unattended startup key file), Stories 18.8 and 18.9 (the side-bar helper), 18.12 (the agent's grown tool set).
+**Consumes:** 18.1 (`PathPort` and its picker), 16.4 (`TaskTransferPort`'s file-consumer model), 18.6 (`LicensePort`'s secret body, the seam and probe shape), 18.3 (Prohibited's protected database set), 18.14 (composite targets), 19.4/19.5 (`list (server criteria)` over a criteria-carrying port), 16.17's read-back, 14.1's `Snippet`, 14.2's baseline. **Consumed-by:** Story 18.22 (activation names a key file as a `source` through `EncryptionPort`), Story 18.23 (the unattended startup key file), Stories 18.8 and 18.9 (the side-bar helper), 18.12 (the agent's grown tool set).
 
-**Ledger inbox (Rule 17):** DW-1774 is addressed in Part A (the helper, every conversion, the guard test). DW-1555 is declined from Part A and recommended as Part D (Decision 8); on approval the runner re-owns it to Part D's story key. `ledger.sh slice 18-7-encryption` holds these two alone.
+**Ledger inbox (Rule 17):** DW-1774 is addressed in Part A (the helper, every conversion, the guard test). DW-1555 was re-owned to `18-24-rsa-and-symmetric-key-wallet-secrets` at the spec gate (Decision 8). `ledger.sh slice 18-7-encryption` holds DW-1774 alone.
 
 **Footprint (Rule 11).** Every contended file is edited add-only (Boundaries). New or outside the listed set, for `footprint_extensions`: `Port/EncryptionPort.cls`, `Port/AdminPort.cls`, `Area/Security/EncryptionRules.cls`, `EncryptionKeyFileSave.cls`, `Api/EncryptionError.cls`, `Api/Error.cls` (two dispatch lines), `Screen/Read.cls`, `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `ui/browser/side-bar-spec.mjs`, `ui/tools/side-bar-pins.test.mjs`, and the seventeen converted browser specs.
 
 **Size (Part A).** Three descriptors (two sharing one page), five write tools and two read tools, one new port, one read source, two area classes, a form page and store, a page and store with two dialogs, the side-bar helper with seventeen spec conversions; about Story 18.6 Part A's size plus DW-1774 (inference).
-
-### Recommended split
-
-The four parts, in the recommended order. Story numbers follow Rule 17's `N.<M+1>` (M is 18.21); the orchestrator assigns them.
-
-| Part | Story | Surfaces | Routes | Size (inference) | Order |
-| --- | --- | --- | --- | --- | --- |
-| A | 18.7 | Encryption key files (create, manage) + DW-1774 + the 13-route reachability | `POST /security/encryption/file`; `GET /security/encryption/file/admins`; `POST`, `DELETE /security/encryption/file/admin`; `GET /security/encryption/file/keys`; `POST`, `DELETE /security/encryption/file/key` | 3 descriptors, 7 tools, a port, 17 spec conversions | 1 |
-| B | 18.22 | Database encryption and Data element encryption: activate and deactivate keys | `GET /security/encryption/keys`, `/data-element-keys`; `POST /security/encryption/file/activate`, `/key/deactivate` | 2 listed descriptors, 4 tools, seam modes; about Story 18.21's size | 2 (needs A's key files and port) |
-| C | 18.23 | Encryption startup settings (and the default and journal keys) | `GET`, `PUT /security/encryption/settings` | 1 form page, 1 merge tool with a secret and a key file; about Story 18.18's size | 3 (needs B's Database encryption screen) |
-| D | 18.24 | RSA and symmetric-key wallet secrets (DW-1555) | `PUT /security/wallet/secret` (existing) | 2 to 4 tools on `WalletPort`, the form's type choice; about 30 to 38 files | independent; any position |
-
-**Part B, Database and data-element encryption keys (outline).**
-
-- Screens (Security, the classic menu's set, no own pair): Database encryption (9, `list` over `Key` `LIST`: `Id`, `KeyLen`, `IsDefault`; `%CSP.UI.Portal.EncryptionDatabase`) and Data element encryption (10, `list` over `Key` `DATAELEMENTLIST`: `Id`; `%CSP.UI.Portal.EncryptionManaged`).
-- Tools on `EncryptionPort`, keys `false`: `security.databaseencryption.activate` (`File` `ACTIVATE`, `Action` `ActivateDB`, the key file as a `source`, `AdminName`, secret `AdminPassword`, PathPort's pair as an extra pair) and `.deactivate` (`Key` `DEACTIVATE`, `Action` `DeactivateDB`, `DESTRUCTIVE`; the vendor requires `AdminName`/`AdminPassword` it never uses, which the port sends empty if Task 0 shows that is accepted); `security.dataelementencryption.activate` (`ActivateMK`, which activates every key in the file) and `.deactivate` (`DeactivateMK`, `DESTRUCTIVE`).
-- Task 0's focus: activate a probe key file's key (database and data-element) on `ocupilot-b-ci` and deactivate it, comparing every `Security.System` property (the default and journal key ids, the startup mode), the `PendingRestart` reasons and the journal state with S0. **Halt** if an activation leaves anything a deactivate cannot clear without a restart (the vendor's documentation says a first database activation sets the default and journal keys persistently); the database-key success paths then run through a seam and the real legs pin the refusals. The vendor's #1208, #1214 and #1215 (a key in use by a mounted database or the journal) are mapped to refusals.
-- AD-10: the vendor refuses deactivating a key a mounted database or the journal uses; no arm unless Task 0 shows a gap. The inventory's `Key` `mutating="0"` is corrected at origin.
-- The reachable part of database encryption is key activation (B) and the startup settings (C): encrypting or decrypting an existing database (`SYS.Database.EncryptDatabase`, which needs it dismounted) has no admin API route and no classic page, so it is named as unreachable rather than built.
-- ACs: B0 Task 0 with nothing left activated; B1 both lists answer the same rows on screen and tool; B2 an activation from a key file round-trips with a write-only password; B3 a deactivation round-trips and is refused while in use; B4 rosters, Security 9 and 10, three prompts each.
-
-**Part C, Encryption startup settings (outline).**
-
-- Screen: an unlisted form page reached from Database encryption's "Configure startup settings", reading `Settings` `GET` (`%CSP.UI.Portal.EncryptionDatabase`).
-- Tool `security.databaseencryption.startup` (`Settings` `PUT`, a merge over the fresh `GET` sending the complete set): `DBEncStartMode` (None, Interactive, Unattended, and KMIP only while a KMIP server is configured), `DBEncJournal`, `DBEncIRISSecurity`, `DBEncIRISTemp`, `AuditEncrypt`, `DBEncStartKMIPServer`, `DBEncStartKeyFile` (a `source`), `DBEncDefaultKeyID`, `DBEncJournalKeyID`, `AdminName`, secret `AdminPassword`. **The explicit version gate:** `EncryptionPort` refuses the `PUT` unless the endpoint's derived template carries `AdminName` and `AdminPassword` (the v2 body shape), pinned by a test.
-- Each option states its consequence: Interactive (the next start waits for a person to activate a key; a container start has no console, inference), Unattended (stores the administrator's credentials and adds a hidden administrator to the key file; the classic page marks it not recommended), KMIP; IRISSECURITY and IRISTEMP (recreated at the next restart); the journal (switches the journal file now); the audit log (deletes the existing audit database now, the agent's markers with it).
-- Every value change runs through a seam, because each effect is restart-only or destructive; the real legs are the read, the refusals before the `PUT`, and an unchanged `PUT` only if its Task 0 shows it changes nothing (the vendor's own comment says `ConfigStart` answers OK even when it applied nothing).
-- Decisions for its plan: whether changing `AuditEncrypt` (it erases the agent's marker trail, AD-15) is prohibited or permitted at the destructive treatment with its key `false`, as the audit purge is; and whether Interactive with an encrypted IRISSECURITY or IRISTEMP on an instance that starts unattended needs an AD-10 arm or a consequence.
-- ACs: C0 Task 0 (reachability already measured in Part A); C1 the settings read; C2 each option offered with its consequence stated; C3 refusals before the `PUT`; C4 rosters.
-
-**Part D, RSA and symmetric-key wallet secrets (outline, DW-1555).**
-
-- Tools on `WalletPort` (keys `false`): `security.secrets.creatersa` (generate by `Length`, or import `Certificate`, `PublicKey`, `PrivateKey` and `Password`, all secret) and `security.secrets.createsymmetric` (generate by `Length` 16, 24 or 32 bytes, or import `Secret64`, secret); replace tools only if its plan's product call keeps them, since `security.secrets.delete` already removes any type.
-- The read widens to stored metadata, never a value (RSA `{Type, Length, HasPrivateKey, HasCertificate}`, symmetric `{Type, Length, KeyId}`), which amends AD-27's third case; the form gains a type choice and replaces Story 8.6's read-only view and its two sentences (EXPERIENCE.md :416).
-- Task 0's focus: the RSA import forms the vendor accepts (PKCS#1, PKCS#8, encrypted with `Password`), the generated lengths, the symmetric hazards read in the vendor source (a `Secret64` sent with `Length` replaced by a random key; `Length` left empty when not sent), and a type change on an existing name.
-- Product calls for its plan: replace versus delete and create; whether imports are advertised or only generation; whether public material may feed a read or a fingerprint under Story 18.7's "returned by no read"; whether `Certificate` and `PublicKey` travel as secrets.
 
 ## Verification
 
@@ -409,12 +375,9 @@ The four parts, in the recommended order. Story numbers follow Rule 17's `N.<M+1
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: Story 18.7 is too large for one implement pass; a split by surface group is recommended (Design Notes › Recommended split), and the orchestrator decides
+Status: ready-for-dev
+Blocking condition: none
 
-- **Planned:** Part A, Encryption key files with DW-1774 and the 13-route reachability Task 0, in full (Boundaries, matrix, Code Map, Task 0 with its halt conditions, server and client execution, rosters, tests, ACs A0-A6, Verification in Rule 29's shape, planned mutations); Parts B, C and D outlined with their surfaces, routes, size, order, Task 0 focus, ACs and open decisions. Part A was self-reviewed against the READY-FOR-DEVELOPMENT standard; on approval the runner trims the outlines and sets it `ready-for-dev`.
-- **For the orchestrator:**
-  1. The split and its order: A (18.7), B (18.22), C (18.23), D (18.24, independent); the numbers are proposed under Rule 17. DW-1555 is re-owned to Part D's key on approval.
-  2. Design Notes › Decisions 1-8, in particular: Security placement at 8 with `%Admin_FileSystemAccess:USE` as the key-file screens' own pair; every encryption key `false` per the epic's preamble; the new AD-10 arm `PROHIBITED.OCUPILOTKEY`; and Decision 6's choice whether Part A builds the code-scoped `UNLOGGEDREFUSALS` grammar that DW-2007 needs, resolving DW-2007 early.
-  3. AD-26's "`Security.Encryption.Settings` is excluded by the v2 pin" is wrong at origin: the v2 pin is what makes it reachable (vendor source). The correction is amendment 1, for the spine (:489) and epics.md (:237).
-- **Measured at plan:** read-only on `ocupilot-b-ci` (Design Notes › Measured at plan); no write to any instance, no admin API write, no activation, no restart. EXPERIENCE.md reads 1019 lines on this tree; the dispatch's 1006 is stale.
+- **Planned:** Part A, Encryption key files with DW-1774 and the 13-route reachability Task 0 (Boundaries, matrix, Code Map, Task 0 with its halt conditions, server and client execution, rosters, tests, ACs A0-A6, Verification in Rule 29's shape, planned mutations), self-reviewed against the READY-FOR-DEVELOPMENT standard.
+- **Spec gate:** the orchestrator approved the split and Decisions 1 to 7 on 2026-10-04; the runner wrote amendments 1 to 7 and trimmed the other parts' outlines.
+- **Measured at plan:** read-only on `ocupilot-b-ci` (Design Notes › Measured at plan); no write to any instance, no admin API write, no activation, no restart. EXPERIENCE.md reads 1019 lines on this tree.
