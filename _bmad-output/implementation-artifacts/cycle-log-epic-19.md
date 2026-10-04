@@ -325,3 +325,5 @@
 2026-10-04T22:59:04Z	Story 19.16	stage_spawned	stage=code-review spawn_at=2026-10-04T22:59:04Z model=opus agent_name=19-16-data-browser-export-code-review-1 cycle_iteration=1 review_tier=full-opus
 2026-10-04T23:42:33Z	Story 19.16	stage_result	stage=code-review agent=19-16-data-browser-export-code-review-1 status=done entries=high0_med8_low26 rows=54 patched=13 ledgered=DW-2061,DW-2062(by-design),DW-2063(wontfix-accepted) rejected=21 unresolved_high_med=0 bundle=2860kB
 2026-10-04T23:42:33Z	Story 19.16	adjudication	DW-2061_redispositioned_decision-pending(product-wide_csv_guard) DW-2062,DW-2063_confirmed spec_corrected(MAX_OFFSET+1,25_literals)
+2026-10-04T23:45:08Z	Story 19.16	forward_merge	feature=832949a9(bookkeeping_only) ledger_trailer_check=1521_entries_0_mismatches smoke=50/50 tools=1814
+2026-10-04T23:45:08Z	Story 19.16	committed	head=4bfdfc6b (f221b180 review patches + bookkeeping merge) run=37244851056(pending) pushed=yes
