@@ -2,8 +2,9 @@
 /// in a process signed in as a purpose-built principal runs as that principal, reading its granted
 /// table and refused SQLCODE -99 on its ungranted one, also while a <code>%All</code> account holds
 /// that text prepared, read back over the wire as the principal; a job of another process refuses to
-/// run; the job repeats the screen's gate; a query past the bound is stopped; the owner's cancel stops
-/// the query within three seconds, also when it is sent before the job runs its statement; a job that
+/// run; the job repeats the screen's gate and the query-only and self-protection checks; a query past
+/// the bound is stopped; the owner's cancel stops the query within three seconds, also when it is sent
+/// before the job runs its statement, and a cancel sent before the job begins ends it canceled; a job that
 /// dies reads lost; a start whose job is not accepted answers lost and leaves no live run; the instance
 /// cap refuses another owner's start; and the job's failure line carries nothing of the statement.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP, and a
@@ -253,6 +254,44 @@ Method TestTheJobRefusesACallerWithoutTheScreensPair()
     Do $$$AssertEquals(tStart.%Get("http"), 202, "the run is started past the route: " _ tStart.%ToJSON())
     Set tView = ..AwaitInProcess(tUser, tStart.%Get("key"))
     Do $$$AssertEquals(..Said(tView), "failed {""code"":""AUTH.NOPRIVILEGE"",""reason"":""" _ ##class(OcuPilot.Kernel.Denial).Reason() _ """,""detail"":{""failedPair"":""%Development:USE""}}", "the job's own gate refuses it, naming the pair")
+}
+
+/// <p>AC2: the job repeats the query-only and self-protection checks in its own process. A run of an
+/// UPDATE reserved and spawned past the start route ends failed with the query-only refusal and leaves
+/// the table as it was; a run of a query over OcuPilot's own table in the install namespace ends failed
+/// with the self-protection refusal.</p>
+/// <p>Mutation (Rule 19): skip the job's query-only check in
+/// <method>OcuPilot.Area.Explorer.SqlBackground.Run</method>, and let the job go on past a refusal of
+/// <method>OcuPilot.Area.Explorer.SqlConsole.Check</method> -- each leg goes red.</p>
+Method TestTheJobRepeatsTheQueryOnlyAndSelfProtectionChecks()
+{
+    For tCase = $ListBuild("USER", "UPDATE OcuProbe1915.Granted SET Num = 3", "EXPLORER.SQL.BACKGROUND.QUERYONLY"), $ListBuild($NAMESPACE, "SELECT ID FROM OcuPilot_Kernel_State.Proposal", "PROHIBITED.OCUPILOTSQL") {
+        Set tSC = $ClassMethod(..#STORE, "GuardedReserve", $Username, $List(tCase, 1), 1000, ..#LIMITS, .tKey, .tBusy, .tFull, .tSweep)
+        Do $$$AssertStatusOK(tSC, "a run of " _ $List(tCase, 2) _ " is reserved")
+        Do $$$AssertTrue($ClassMethod(..#FIXTURE, "Spawn", tKey, $Username, $List(tCase, 1), $ListBuild($List(tCase, 2), "", 10), .tChild), "and its job is spawned past the start route")
+        Set tView = ..AwaitInProcess($Username, tKey)
+        Do $$$AssertEquals($Select($IsObject(tView) && (tView.%GetTypeOf("refusal") = "object"): tView.status _ " " _ tView.refusal.code, 1: ..Said(tView)), "failed " _ $List(tCase, 3), "the job refuses " _ $List(tCase, 2))
+        Do $ClassMethod(..#STORE, "GuardedForgetUser", $Username)
+    }
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted"), "40 820", "the table is unchanged")
+}
+
+/// <p>AC5: a cancel sent while the run is still queued ends it canceled once its job begins, with no
+/// query cancel sent and its statement never run.</p>
+/// <p>Mutation (Rule 19): drop the begin's cancel branch from
+/// <method>OcuPilot.Area.Explorer.SqlBackground.Run</method> -- the count runs on and this goes red.</p>
+Method TestACancelBeforeTheJobBeginsEndsTheRunCanceled()
+{
+    Set tSC = $ClassMethod(..#STORE, "GuardedReserve", $Username, "USER", 1000, ..#LIMITS, .tKey, .tBusy, .tFull, .tSweep)
+    Do $$$AssertStatusOK(tSC, "a run is reserved")
+    Do $$$AssertStatusOK(##class(OcuPilot.Area.Explorer.SqlBackground).Cancel(tKey, $Username, .tFound), "its owner cancels it while it is queued")
+    Do $$$AssertEquals(tFound, 1, "and the cancel finds it")
+    Set tAsked = $ZHorolog
+    Do $$$AssertTrue($ClassMethod(..#PRODUCTION, "Spawn", tKey, $Username, "USER", $ListBuild(..#LONGERQUERY, "", 10), .tChild), "then its job is spawned")
+    Set tView = ..AwaitInProcess($Username, tKey, 10)
+    Set tTook = $ZHorolog - tAsked
+    Do $$$AssertEquals(..Said(tView), "canceled", "the run reads canceled, with no answer")
+    Do $$$AssertTrue(tTook < 3, "within three seconds of its job's spawn: " _ $FNumber(tTook, "", 2) _ " s")
 }
 
 /// <p>AC4: a query past the bound ends with the outcome <code>stopped</code> and the bound's seconds.</p>

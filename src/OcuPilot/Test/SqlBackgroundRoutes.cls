@@ -4,8 +4,8 @@
 /// the run polled to its end, every kind but a query refused and nothing spawned, the console's other
 /// refusals, value count and error outcome answered as the run route answers them, the screen's gate on
 /// all three routes, the same 404 for another user's run, an unknown id and a malformed one, a busy
-/// owner named its running run, a swept and a replaced run gone, and a <code>%Developer</code> running
-/// a background query in USER.</p>
+/// owner named its running run, a swept and a replaced run gone, a query with values run with them,
+/// and a <code>%Developer</code> running a background query in USER.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, and a <code>USER</code> namespace. It creates and
 /// removes <class>OcuPilot.Test.SqlBackgroundProbe</class>'s objects, data included, its principals and
@@ -204,6 +204,19 @@ Method TestTheStartAnswersARunIdAtOnce()
     Do $$$AssertEquals($Select($IsObject(tView): tView.status _ " " _ tView.result.%ToJSON(), 1: ""), "ended {""kind"":""query"",""outcome"":""rows"",""columns"":[""Name""],""rows"":[[""n1""],[""n2""],[""n3""],[""n4""],[""n5""]],""truncated"":true}", "polled to its end: five rows, the cut reported")
 }
 
+/// <p>A background query with values runs with them, in their order: they reach the job in its one
+/// argument and are bound to the statement's value positions.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Explorer.SqlBackground.Start</method> put no values in
+/// the job's argument -- the run ends failed and this goes red.</p>
+Method TestAQueryWithValuesRunsWithThemInOrder()
+{
+    Set tUser = $Parameter(..#PROBE, "USER")
+    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, .tType, {"statement": "SELECT Name FROM OcuProbe1915.Granted WHERE Num = ? AND Name = ?", "parameters": ["2", "n2"]})
+    Do $$$AssertEquals(tStatus, 202, "the start answers 202: " _ ..Line(tStatus, tAnswer))
+    Set tView = ..Await(tUser, $Select($IsObject(tAnswer): tAnswer.%Get("id"), 1: ""))
+    Do $$$AssertEquals($Select($IsObject(tView) && (tView.%GetTypeOf("result") = "object"): tView.status _ " " _ tView.result.%ToJSON(), 1: ..Line(0, tView)), "ended {""kind"":""query"",""outcome"":""rows"",""columns"":[""Name""],""rows"":[[""n2""]],""truncated"":false}", "it ends with the one row both values select")
+}
+
 /// <p>AC2: a DML, DDL or CALL statement the suite's account may prepare is refused 422
 /// <code>EXPLORER.SQL.BACKGROUND.QUERYONLY</code> and nothing is spawned or changed; the console's other refusals, the value count and the error
 /// outcome answer as the run route answers them, and none of them spawns a run.</p>
@@ -254,8 +267,8 @@ Method TestTheGateAndTheIdShapeOnEveryRoute()
     For tPath = ..Path(..#POLL, ..#ABSENTID), ..Path(..#CANCEL, ..#ABSENTID), ..Path(..#POLL, "nothex"), ..Path(..#CANCEL, "NOTHEX"), ..Path(..#POLL, $ZConvert(..#ABSENTID, "U")) {
         Do ..Send($Select($Extract(tPath, *-6, *) = "/cancel": "POST", 1: "GET"), tPath, tUser, .tStatus, .tAnswer, .tType)
         Do $$$AssertEquals(tStatus _ " " _ tType, "404 application/json", tPath _ " answers 404 as JSON")
+        If tSame '= "" Do $$$AssertEquals(..Line(tStatus, tAnswer), tSame, tPath _ " answers the first path's body")
         If tSame = "" Set tSame = ..Line(tStatus, tAnswer)
-        Do $$$AssertEquals(..Line(tStatus, tAnswer), tSame, tPath _ " answers the same body")
     }
     Do $$$AssertEquals($Piece(tSame, " ", 1) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404 EXPLORER.SQL.BACKGROUND.NOTFOUND", "which is EXPLORER.SQL.BACKGROUND.NOTFOUND")
 }
@@ -335,6 +348,24 @@ Method TestADeveloperRunsABackgroundQueryInUser()
     Do $$$AssertEquals(tStatus, 202, "the developer's start answers 202: " _ ..Line(tStatus, tAnswer))
     Set tView = ..Await(tDeveloper, $Select($IsObject(tAnswer): tAnswer.%Get("id"), 1: ""))
     Do $$$AssertEquals($Select($IsObject(tView) && (tView.%GetTypeOf("result") = "object"): tView.status _ " " _ tView.result.%ToJSON(), 1: ..Line(0, tView)), "ended {""kind"":""query"",""outcome"":""rows"",""columns"":[""One""],""rows"":[[""1""]],""truncated"":false}", "and reads its answer")
+}
+
+/// <p>AC5 (QA): a cancel of a run that ended with rows answers 200 with the run as it is, answer
+/// included, and a later poll reads the same run: the cancel does not turn an ended run canceled.</p>
+/// <p>Mutation (Rule 19): drop the terminal-state test from <method>OcuPilot.Kernel.State.SqlRun.GuardedCancel</method>
+/// -- the ended run's cancel flag is set, its body changes and both unchanged-body legs go red.</p>
+Method TestACancelOfAnEndedRunLeavesItUnchanged()
+{
+    Set tUser = $Parameter(..#PROBE, "USER")
+    Do ..Send("POST", ..#START, tUser, .tStatus, .tAnswer, .tType, {"statement": "SELECT 1 AS One"})
+    Do $$$AssertEquals(tStatus, 202, "the start answers 202: " _ ..Line(tStatus, tAnswer))
+    Set tKey = $Select($IsObject(tAnswer): tAnswer.%Get("id"), 1: "")
+    Set tEnded = ..Await(tUser, tKey)
+    Do $$$AssertEquals($Select($IsObject(tEnded): tEnded.%Get("status"), 1: ""), "ended", "the run ended with its rows")
+    Do ..Send("POST", ..Path(..#CANCEL, tKey), tUser, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals(..Line(tStatus, tAnswer), "200 " _ tEnded.%ToJSON(), "the cancel answers the ended run as it is")
+    Do ..Send("GET", ..Path(..#POLL, tKey), tUser, .tStatus, .tAnswer, .tType)
+    Do $$$AssertEquals(..Line(tStatus, tAnswer), "200 " _ tEnded.%ToJSON(), "and the next poll reads the same run")
 }
 
 }

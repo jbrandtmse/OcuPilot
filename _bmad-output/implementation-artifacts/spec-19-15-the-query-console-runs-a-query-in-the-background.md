@@ -286,6 +286,48 @@ deferred: []
 - **AC10:** Given classic parity (AD-44, Story 19.12), when the three routes are called, then a custom resource on `%CSP.UI.Portal.SQL.Home` gates each, and a `%Developer` runs a background query in USER.
 - **AC11 (Integration, Rule 1):** Given the console page on the real instance, when a person starts a background COUNT and then runs a foreground SELECT, then the foreground rows show at once, and the Background run section later shows the COUNT's row. Cancel on a second background COUNT shows Canceled.
 
+### Review Findings
+
+Code review 2026-10-03 (four layers, full-opus): 49 rows, 15 patch entries (0 high, 4 medium, 11 low), 0 decision, 0 defer, the rest rejected below.
+
+- [x] [Review][Patch] (med) The job's own query-only and self-protection checks had no test past the route [src/OcuPilot/Area/Explorer/SqlBackground.cls:287]
+- [x] [Review][Patch] (med) A background run with values never ran in a test, so the one-argument value packing was unpinned [src/OcuPilot/Area/Explorer/SqlBackground.cls:209]
+- [x] [Review][Patch] (med) No test held that a cancel sends nothing to a running row whose lock is free [src/OcuPilot/Kernel/State/SqlRun.cls:247]
+- [x] [Review][Patch] (med) A cancel sent before the job begins was pinned only in the store, not through the job [src/OcuPilot/Area/Explorer/SqlBackground.cls:266]
+- [x] [Review][Patch] (low) Reconcile ended a lost run `failed` even when its owner had asked it to stop [src/OcuPilot/Kernel/State/SqlRun.cls:362]
+- [x] [Review][Patch] (low) `GuardedFinish` ignored the answer stream's write status, so a failed write saved an ended run with no answer [src/OcuPilot/Kernel/State/SqlRun.cls:196]
+- [x] [Review][Patch] (low) A start still on its way when the page went attached its run and polled it with no page [ui/src/app/areas/system-explorer/sql-query.store.ts:407]
+- [x] [Review][Patch] (low) The early-cancel retry pin relied on the cancel landing within a 0.5 s delay [src/OcuPilot/Test/SqlPortDelayed.cls:8]
+- [x] [Review][Patch] (low) The section's SQL error message, its stopped line and Run in background's empty-statement rule were untested [ui/src/app/areas/system-explorer/sql-query.page.spec.ts]
+- [x] [Review][Patch] (low) The 1,000 ms poll interval was unpinned [ui/src/app/areas/system-explorer/sql-query.page.spec.ts:126]
+- [x] [Review][Patch] (low) The id-shape loop's first same-body assertion compared a value with itself [src/OcuPilot/Test/SqlBackgroundRoutes.cls:257]
+- [x] [Review][Patch] (low) The descriptor's doc still named two routes [src/OcuPilot/Screen/Descriptor/ExplorerSqlQuery.cls:3]
+- [x] [Review][Patch] (low) `SqlBackground`'s seam list left out `Spawn` [src/OcuPilot/Area/Explorer/SqlBackground.cls:19]
+- [x] [Review][Patch] (low) `core/poll-schedule.ts`'s doc read as if the turn store used it [ui/src/app/core/poll-schedule.ts:4]
+- [x] [Review][Patch] (low) `ClassicPageGate`'s header did not name the background leg's child process or USER [src/OcuPilot/Test/ClassicPageGate.cls:11]
+
+Rejected:
+
+- low: a cancel landing after begin can outlast the ~2 s retry window: the measured classify was at most 0.08 s on the throwaway, so this needs the job's gate and classify to take over 2 s, as under heavy load.
+- maybe-false: `CancelQuery` with no statement id might interrupt one of the job's own store statements. If it does, the error path ends the run `canceled`, since the flag is set and Reconcile now honors it.
+- low: the cancel route can block for up to about 32 s, but only if `CancelQuery` waited out its 3 s and failed ten times in a row; the measured stop took 1.5 s.
+- low: `GuardedFinish` checks neither owner nor lock. A run key reaches only its owner, and `Run`'s pre-begin refusals are spec'd.
+- low: running out of stale-save retries goes unreported, but each phase has at most one concurrent writer.
+- low: the section survives a namespace switch, as 19.6's foreground answer does, and `Namespace` is a spec'd property.
+- low: `cancelRequested` is ignored by the client. A second cancel is harmless, and the next poll comes within 1 s.
+- low: a start answer that lands after an edit is still adopted. 19.6's Run does the same, and the start answers `parameters` or an error only where Run would answer the same.
+- low: a persistent 5xx is polled forever. That is the turn store's own idiom (`turn.ts:1665`), and the run still ends at its alarm.
+- low: a row deleted between lookup and open answers 500. The window is microseconds; the client re-polls and reads 404.
+- spec-bound: the NOTFOUND sentence is never shown and says 15 minutes. The matrix has the page clear the section, and Design Notes fixes the sentence.
+- low: nothing bounds the job before the port's alarm. Classify was measured fast; this needs a prepare that blocks on a lock.
+- false: `Run`'s `pClass` doc is accurate. low: `Spawn`'s unused `pChild` causes no harm.
+- false: every log line carries the LOST code, but `pMessage` names each cause.
+- low: `ClassicPageGate`'s run rows are removed only on the happy path. Its jobs end by themselves, and the rows left are terminal.
+- low: the AC11 browser test depends on timing (about 5 s of margin), and a failure leaves a run that ends at its 50 s bound.
+- spec-bound: the section's Cancel is named only "Cancel", which reuses `actionCancel` under the section heading.
+- low: a "never a reused pid" claim and `LockHeld` not telling a prober apart. This needs an OS pid reused within the probe-to-cancel window.
+- false: AC3's and AC10's other clauses lack their own mutation lines, but Rule 19 asks for one per AC.
+
 ## Spec Change Log
 
 - 2026-10-03, lead (spec gate, by=merge_gate): caps ruled 1 running run per user and 5 per instance (409 BUSY, 503 FULL), subject to Task 0's license measurement; the spine carries the drafts (AD-42, AD-7, AD-31, AD-36, AD-39, AD-41, AD-61, the retention line). Contended edits: `Router.cls`, `strings.ts`, `_components.scss` add-only; EXPERIENCE.md :597 extended in place; the budget under the re-measure rule; `scripts/check-objectscript.py`'s JOB allow-list gains `Area/Explorer/SqlBackground.cls`.
@@ -505,6 +547,18 @@ Load into `ocupilot-a2-ci` and never restart it:
 - mutation: AC7 and AC8, `GuardedReserve` reading each live row's state in place of `Reconcile` → `SqlRunStore.TestAReserveEndsTheOwnersLostRunFirst` (run 4438); sweeping only after an insert → `SqlRunStore.TestARefusedReserveStillSweeps` (run 4438).
 - mutation: AC1, `readBackground`'s transient branch dropped → the page spec's "polls again after a transient poll failure"; the refusal branch leaving the status running → "ends the section running state when a poll is refused" (both red in one component run).
 - Each was reverted byte-identical (sha256) and recompiled or rerun; after a full `LoadDir`, `SqlRunStore` 9/9 (run 4432), `SqlBackgroundJob` 10/10 (4433), `SqlBackgroundRoutes` 7/7 (4434) and `ClassicPageGate` 7/7 (4435); System Explorer component specs 109/109; on the rebuilt, redeployed bundle the SQL query browser spec 3/3 and the structural walk 12/12.
+- (QA) `src/OcuPilot/Test/SqlBackgroundRoutes.cls` gains `TestACancelOfAnEndedRunLeavesItUnchanged` (cancel of an ended run with rows answers it unchanged, over HTTP); no new file.
+- mutation: AC5, the terminal-state test dropped from `SqlRun.GuardedCancel` (reloaded with `Load`, not `Compile`) -> `SqlBackgroundRoutes.TestACancelOfAnEndedRunLeavesItUnchanged` (run 4887); reverted byte-identical (sha256), reloaded, `SqlBackgroundRoutes` 8/8 (run 4888).
+- (CR) Code review added four ObjectScript tests and three page-spec cases, and raised `SqlPortDelayed.DELAYSECONDS` to 1. Server mutations were applied to the throwaway's copy only, loaded with `Load`, and the four `SqlBackground` subclasses recompiled.
+- mutation: AC2, the job's query-only check skipped and a `SqlConsole.Check` refusal ignored in `SqlBackground.Run` -> `SqlBackgroundJob.TestTheJobRepeatsTheQueryOnlyAndSelfProtectionChecks`, both legs red (run 4894), with the table unchanged.
+- mutation: AC5, the begin's cancel branch dropped from `SqlBackground.Run` -> `SqlBackgroundJob.TestACancelBeforeTheJobBeginsEndsTheRunCanceled`, still running 10.04 s after the spawn; `CANCELTRIES` set to 1 -> `TestAnEarlyCancelIsSentAgainUntilTheQueryRuns`, still running 10.26 s after the cancel (both run 4894).
+- mutation: `SqlBackground.Start` putting no values in the job's argument -> `SqlBackgroundRoutes.TestAQueryWithValuesRunsWithThemInOrder` (run 4893).
+- mutation: AC5 and AC8, `SqlRun.GuardedCancel` reporting a row live without `LockHeld`, and `SqlRun.Reconcile` ending a lost run `failed` whatever its flag -> `SqlRunStore.TestACancelOfALostRunSendsNothingAndEndsItCanceled`, both legs (run 4892).
+- mutation: client:
+  - `attach` polling even after polling stopped -> "attaches a run whose start answers after the page went".
+  - `BACKGROUND_POLL_MS` at 10000 -> "runs a query in the background" (delays `[1000]`).
+  - The empty-statement clause dropped from `backgroundBlocked`, and alone, `backgroundMessage` answering `''` -> "keeps Run in background unavailable on an empty console".
+- Every mutation was reverted: server files byte-identical to the worktree, client files by sha256. After a clean reload: `SqlRunStore` 10/10 (run 4897), `SqlBackgroundJob` 12/12 (4895), `SqlBackgroundRoutes` 9/9 (4896), `Retention` green but the DW-1929 residue (4898). System Explorer component specs 111/111 and `test:tools` 1,782/1,782; on the rebuilt, redeployed bundle the SQL query browser spec 3/3.
 
 ## Auto Run Result
 

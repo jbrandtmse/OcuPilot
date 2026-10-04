@@ -6,7 +6,7 @@
 /// <p><b>Writers.</b> <method>GuardedReserve</method> inserts the row <code>queued</code>. After
 /// <method>GuardedBegin</method> the job that began it writes its terminal state through
 /// <method>GuardedFinish</method>; meanwhile <method>GuardedCancel</method> may set the cancel flag,
-/// and a reconcile may end a row <code>failed</code>, but only while the row's run lock is free.</p>
+/// and a reconcile may end a lost row, but only while the row's run lock is free.</p>
 /// <p><b>Concurrency is a process lock.</b> <code>^OcuPilotSqlRun(key)</code> is held by the run's job
 /// from begin to finish, so a job that dies frees it by exiting, and a <code>running</code> row whose
 /// lock is free, or a <code>queued</code> row past the queued limit whose lock is free, is lost.
@@ -193,7 +193,8 @@ ClassMethod GuardedFinish(pKey As %String, pState As %String, pAnswerJson As %St
                 Set tRow.State = ..#STATECANCELED
             } Else {
                 Set tRow.State = pState
-                If pAnswerJson '= "" Do tRow.Answer.Write(pAnswerJson)
+                If pAnswerJson '= "" Set tSC = tRow.Answer.Write(pAnswerJson)
+                If $$$ISERR(tSC) Quit
             }
             Set tRow.EndedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
             Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
@@ -330,9 +331,10 @@ ClassMethod GuardedForgetUser(pUser As %String) As %Status
     Quit ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ? AND State IN ('ended', 'canceled', 'failed')", pUser)
 }
 
-/// <p>End row <var>pId</var> <parameter>STATEFAILED</parameter>, with no answer, when it is lost: a
-/// <code>running</code> row whose run lock is free, or a <code>queued</code> row older than the
-/// queued seconds of <var>pLimitsClass</var> whose run lock is free. A row another writer changed
+/// <p>End row <var>pId</var>, with no answer, when it is lost: a <code>running</code> row whose run
+/// lock is free, or a <code>queued</code> row older than the queued seconds of <var>pLimitsClass</var>
+/// whose run lock is free. It ends <parameter>STATECANCELED</parameter> when its owner asked it to
+/// stop, as <method>GuardedFinish</method> ends it, and <parameter>STATEFAILED</parameter> otherwise. A row another writer changed
 /// meanwhile is left as that writer left it. <var>pState</var>, <var>pOwner</var> and
 /// <var>pRunKey</var> are the row's state, owner and key as this call leaves them; <var>pState</var> is
 /// <code>""</code> when the row is gone.</p>
@@ -359,7 +361,8 @@ ClassMethod Reconcile(pId As %String, pLimitsClass As %String, Output pState As 
         Set tRow = ""
         Quit tSC
     }
-    Set tRow.State = ..#STATEFAILED
+    Set tEnded = $Select(tRow.CancelRequested: ..#STATECANCELED, 1: ..#STATEFAILED)
+    Set tRow.State = tEnded
     Set tRow.EndedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""
@@ -369,7 +372,7 @@ ClassMethod Reconcile(pId As %String, pLimitsClass As %String, Output pState As 
         Set tRow = ""
         Quit $$$OK
     }
-    If $$$ISOK(tSC) Set pState = ..#STATEFAILED
+    If $$$ISOK(tSC) Set pState = tEnded
     Quit tSC
 }
 

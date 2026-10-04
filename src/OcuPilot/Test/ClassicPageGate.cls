@@ -9,8 +9,9 @@
 /// and only on a throwaway: it records every declared page's custom resource before all tests and
 /// restores each after every test and after all, and a page that does not read its recorded value
 /// afterwards fails the class. The child-process legs run as real principals through
-/// <class>OcuPilot.Test.NamespaceWriteGateProbe</class> and
-/// <class>OcuPilot.Test.MappingWriteGateProbe</class>.</p>
+/// <class>OcuPilot.Test.NamespaceWriteGateProbe</class>,
+/// <class>OcuPilot.Test.MappingWriteGateProbe</class> and, for SQL query's background run in
+/// <code>USER</code>, <method>OcuPilot.Test.SqlBackgroundJob.StartAs</method>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>NAMESPACEVARIABLE</parameter> reading
 /// <code>1</code>, because the class assigns custom resources to classic pages, creates and deletes a

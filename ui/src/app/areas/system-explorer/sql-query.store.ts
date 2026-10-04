@@ -409,6 +409,7 @@ export class SqlQueryState {
     this.startingValue = true;
     this.refusalValue = '';
     this.notify();
+    const polling = this.backgroundGeneration;
     const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(SQL_BACKGROUND_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -416,11 +417,14 @@ export class SqlQueryState {
       scope: deps.scope(),
     });
     this.startingValue = false;
+    // Polling stopped while the start was on its way (the page went): the run is attached unpolled,
+    // and followed again when the page returns.
+    const follow = polling === this.backgroundGeneration;
     if (result.kind === 'ok') {
       const body = result.body as Readonly<Record<string, unknown>> | null;
       const id = body !== null && typeof body === 'object' ? body['id'] : undefined;
       if (typeof id === 'string' && id !== '') {
-        this.attach(deps, id);
+        this.attach(deps, id, follow);
         return;
       }
       this.adopt(answerOf(result.body));
@@ -430,7 +434,7 @@ export class SqlQueryState {
       (result.kind === 'error' ? refusalText(result.code, result.reason, result.detail) : '') || STRINGS.connectivityRequestRefused;
     const running = result.kind === 'error' && result.code === BACKGROUND_BUSY_CODE ? result.detail?.['runId'] : undefined;
     if (typeof running === 'string' && running !== '') {
-      this.attach(deps, running);
+      this.attach(deps, running, follow);
       return;
     }
     this.notify();
@@ -515,14 +519,14 @@ export class SqlQueryState {
     this.notify();
   }
 
-  /** Show the background run `id` as running and poll it. */
-  private attach(deps: SqlQueryDeps, id: string): void {
+  /** Show the background run `id` as running, and poll it when `follow`. */
+  private attach(deps: SqlQueryDeps, id: string, follow: boolean): void {
     this.backgroundIdValue = id;
     this.backgroundStatusValue = 'running';
     this.backgroundAnswerValue = null;
     this.backgroundRefusalValue = '';
     this.notify();
-    void this.pollBackground(deps);
+    if (follow) void this.pollBackground(deps);
   }
 
   /** Read one poll or cancel answer of the background run, and schedule the next poll while it runs. */

@@ -16,8 +16,8 @@
 /// <p><b>A run belongs to its owner.</b> Another user's run, an unknown id and a swept run each
 /// answer the same 404. The answer is kept in OcuPilot's protected state for the owner's poll alone
 /// until it is swept; nothing of the statement, its values, its rows or its SQL error is logged.</p>
-/// <p>Seams a fixture subclass overrides: <method>PortClass</method>, <method>MaxRunning</method> and
-/// <method>LimitsClass</method>. Production overrides none.</p>
+/// <p>Seams a fixture subclass overrides: <method>PortClass</method>, <method>MaxRunning</method>,
+/// <method>LimitsClass</method> and <method>Spawn</method>. Production overrides none.</p>
 Class OcuPilot.Area.Explorer.SqlBackground Extends %RegisteredObject
 {
 

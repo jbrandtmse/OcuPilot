@@ -72,6 +72,8 @@ interface Mounted {
   readonly routes: Map<string, Answer[]>;
   /** The background polls the page scheduled and has not yet been sent. */
   readonly scheduled: (() => void)[];
+  /** The delay, in milliseconds, each background poll was scheduled with. */
+  readonly delays: number[];
   /** What the next confirmed run answers: applied with output, or refused. */
   sendAnswer: { applied: true; output: unknown } | { applied: false; reason: string; code: string; detail?: Record<string, unknown> };
 }
@@ -86,6 +88,7 @@ async function mount(): Promise<Mounted> {
     sendAnswer: { applied: true, output: null } as Mounted['sendAnswer'],
     routes: new Map<string, Answer[]>(),
     scheduled: [] as (() => void)[],
+    delays: [] as number[],
   };
   let lastRefusal: ActionRefusal | null = null;
   let lastOutput: unknown = null;
@@ -123,7 +126,13 @@ async function mount(): Promise<Mounted> {
       { provide: ScreenStores, useValue: stores },
       { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'USER', subscribe: () => () => undefined } as unknown as ScopeService },
-      { provide: SQL_BACKGROUND_SCHEDULE, useValue: (run: () => void) => mounted.scheduled.push(run) },
+      {
+        provide: SQL_BACKGROUND_SCHEDULE,
+        useValue: (run: () => void, delayMs: number) => {
+          mounted.scheduled.push(run);
+          mounted.delays.push(delayMs);
+        },
+      },
     ],
   });
   await TestBed.inject(Router).navigateByUrl(`/${SCREEN.route}?ns=USER`);
@@ -398,6 +407,7 @@ describe('SQL query', () => {
     expect(el(mounted.host, 'run').getAttribute('aria-disabled')).toBe('false');
     expect(el(mounted.host, 'explain').getAttribute('aria-disabled')).toBe('false');
     expect(mounted.scheduled.length).toBe(1);
+    expect(mounted.delays).toEqual([1000]);
 
     mounted.answer = { ok: { outcome: 'plan', kind: 'query', plan: '<plans><plan>Read master map</plan></plans>', truncated: false } };
     el<HTMLButtonElement>(mounted.host, 'explain').click();
@@ -512,6 +522,51 @@ describe('SQL query', () => {
     expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.explorerSqlBackgroundBusyReason);
     expect(mounted.posts.at(-1)?.path).toBe(backgroundPath(RUN_ID));
     expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlBackgroundRunning);
+  });
+
+  it("keeps Run in background unavailable on an empty console, and shows a background run's SQL error and its stopped line", async () => {
+    const mounted = await mount();
+    expect(el(mounted.host, 'background').getAttribute('aria-disabled')).toBe('true');
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } }, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'error', kind: 'query', sqlcode: -99, message: ' User OcuProbe1915User is not privileged' } }));
+    await type(mounted, 'SELECT Name FROM OcuProbe1915.Hidden');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlCode.replace('<code>', '-99'));
+    expect(el(mounted.host, 'background-message').textContent).toBe(' User OcuProbe1915User is not privileged');
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'stopped', kind: 'query', seconds: 50 } }));
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    expect(backgroundStatus(mounted.host)).toBe(STRINGS.explorerSqlStopped.replace('<s>', '50'));
+    expect(el(mounted.host, 'background-message')).toBeNull();
+  });
+
+  // Mutation (Rule 19): attach the run polled whether or not polling stopped meanwhile -> the run is
+  // polled with no page and this goes red.
+  it('attaches a run whose start answers after the page went without polling it, and follows it on the return', async () => {
+    const mounted = await mount();
+    let answerStart: (() => void) | null = null;
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    const answer = api.requestJson;
+    api.requestJson = async (path, init) => {
+      if (path === SQL_BACKGROUND_PATH) await new Promise<void>((resolve) => (answerStart = resolve));
+      return answer(path, init);
+    };
+    route(mounted, SQL_BACKGROUND_PATH, { ok: { id: RUN_ID, status: 'running' } });
+    route(mounted, backgroundPath(RUN_ID), view('ended', { result: { outcome: 'rows', kind: 'query', columns: ['One'], rows: [['1']], truncated: false } }));
+    await type(mounted, 'SELECT 1');
+    el<HTMLButtonElement>(mounted.host, 'background').click();
+    await settle(mounted.fixture);
+    mounted.fixture.destroy();
+    (answerStart as (() => void) | null)?.();
+    await settle(mounted.fixture);
+    expect(mounted.posts.map((post) => post.path)).toEqual([SQL_BACKGROUND_PATH]);
+    const again = TestBed.createComponent(SqlQueryPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    expect(mounted.posts.map((post) => post.path)).toEqual([SQL_BACKGROUND_PATH, backgroundPath(RUN_ID)]);
+    expect(backgroundStatus(again.nativeElement)).toBe(STRINGS.tableRowCount.replace('<n>', '1'));
   });
 
   it('stops polling when the page goes, and follows a run still running again on its return', async () => {

@@ -2,7 +2,8 @@
 /// <code>queued</code> row, refuses a second for an owner whose run is live and a run past the
 /// instance cap, ends the owner's lost run before it counts, replaces the owner's ended run and sweeps
 /// even when it refuses; begin, finish and the cancel flag; the owner's view and nobody else's; a lost
-/// run ended <code>failed</code> while a held one stays live; and the sweep, through its clock seam
+/// run ended <code>failed</code> while a held one stays live; a cancel of a lost run reported not live,
+/// naming no job, and the run ended <code>canceled</code>; and the sweep, through its clock seam
 /// and never ahead of the instance's clock, deleting only a run past retention.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed. It writes rows for three owner
 /// names no account holds (<parameter>USERA</parameter>, <parameter>USERB</parameter>,
@@ -230,6 +231,22 @@ Method TestALostRunEndsFailedAndAHeldRunStaysLive()
     Set tMessage = $System.Event.WaitMsg("", 15)
     Do $$$AssertEquals($ListGet(tMessage, 2), "finished", "the child ends the run")
     Do $$$AssertEquals(..Seen(tHeld, ..#USERC), "1 canceled true", "canceled, as its owner asked")
+}
+
+/// <p>The owner's cancel of a running row whose lock no process holds finds it but reports it not live
+/// and names no job, so no query cancel is sent to a process id that may since have been reused; the
+/// lost run then ends canceled, as its owner asked.</p>
+/// <p>Mutation (Rule 19): report the row live in <method>OcuPilot.Kernel.State.SqlRun.GuardedCancel</method>
+/// without asking <method>OcuPilot.Kernel.State.SqlRun.LockHeld</method> -- the not-live leg goes red;
+/// end a lost run failed whatever its flag in <method>OcuPilot.Kernel.State.SqlRun.Reconcile</method> --
+/// the canceled leg goes red.</p>
+Method TestACancelOfALostRunSendsNothingAndEndsItCanceled()
+{
+    Do ..Reserve(..#USERA, 1000, .tKey)
+    Do $$$AssertEquals(..Exec("UPDATE OcuPilot_Kernel_State.SqlRun SET State = 'running', JobId = '1' WHERE %EXACT(RunKey) = ?", tKey), 0, "a run reads running with no job holding it")
+    Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedCancel", tKey, ..#USERA, .tFound, .tJob, .tLive), "the owner's cancel answers")
+    Do $$$AssertEquals(tFound _ " " _ tLive _ " " _ tJob, "1 0 ", "found, not live and naming no job")
+    Do $$$AssertEquals(..Seen(tKey, ..#USERA), "1 canceled true", "the lost run ends canceled, as its owner asked")
 }
 
 /// <p>The child process <method>TestALostRunEndsFailedAndAHeldRunStaysLive</method> starts: begin
