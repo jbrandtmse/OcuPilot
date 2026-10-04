@@ -310,3 +310,5 @@
 2026-10-04T19:24:34Z	Story 19.8	adjudication	ledger=DW-2028_resolved,DW-2053..2057_dispositions_confirmed
 2026-10-04T19:36:22Z	Story 19.8	forward_merge	feature=d29c1c23(18.21_ECP_settings_and_app_servers) conflicts=sprint-status,EXPERIENCE_173(union),GovernanceBaseline,ReadTool(259/154),ToolRoundTrip,angular.json,angular-json.test,strings.ts(union) bundle=2838kB(2,837,977) rosters_run=21_classes_green(5956-5968+) browser=edit_3/3 smoke=50/50 tools=1808 components=2406 ad53_gap16=no_collision
 2026-10-04T19:37:57Z	Story 19.8	committed	head=f3c01129 (737452c6 review patches + forward merge) run=37228982542(pending) pushed=yes
+2026-10-04T19:38:27Z	Epic 19	stage_spawned	stage=epic-context spawn_at=2026-10-04T19:38:27Z model=opus agent_name=19-16-epic-context-1 reason=planning_artifacts_newer(spine_19.8_gate,epics.md_19.8_split+19.16)
+2026-10-04T19:45:47Z	Epic 19	epic_context_compiled	model=opus agent=a05edec24315796e0 path=_bmad-output/implementation-artifacts/epic-19-context.md lines=72 header_ok=true
