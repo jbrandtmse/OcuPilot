@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "24a8571a889ded0f106196ccae3f3ac26d28126bf80f2c9df7cf6fd74d541d33"
+epics_md_hash: "b4af3f1a066db6e5bfa38dac929ec53284e7f188327bcfaed3fb811dfa06a3dd"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -264,7 +264,7 @@ epics:
     depends_on: [epic-11, epic-12]
     submodules: []
     in_run: all   # owner 2026-09-29 ("Yeah let's plan epic 19 if it can be done in parallel." / "Yes add it to the graph"): the whole epic, in epics.md story order
-    story_order: ["19-1", "19-12 (owner 2026-10-01, DW-1903: a %Development holder reaches System Explorer; Rule 5 split by=merge_gate, run right after 19.1)", "19-2", "19-13 (Rule 5 split of 19.2 by=merge_gate 2026-10-02: XML export and import, run right after 19.2)", "19-3", "19-4", "19-5", "19-14 (Rule 5 split of 19.5 by=merge_gate 2026-10-03: the SQL catalog's remaining detail tabs, run right after 19.5)", "19-6 (the DML and DDL guard ships with the query console, never after it)", "19-15 (Rule 5 split of 19.6 by=merge_gate 2026-10-03: the query console runs a query in the background, run right after 19.6)", "19-7", "19-8", "19-9", "19-10", "19-11"]
+    story_order: ["19-1", "19-12 (owner 2026-10-01, DW-1903: a %Development holder reaches System Explorer; Rule 5 split by=merge_gate, run right after 19.1)", "19-2", "19-13 (Rule 5 split of 19.2 by=merge_gate 2026-10-02: XML export and import, run right after 19.2)", "19-3", "19-4", "19-5", "19-14 (Rule 5 split of 19.5 by=merge_gate 2026-10-03: the SQL catalog's remaining detail tabs, run right after 19.5)", "19-6 (the DML and DDL guard ships with the query console, never after it)", "19-15 (Rule 5 split of 19.6 by=merge_gate 2026-10-03: the query console runs a query in the background, run right after 19.6)", "19-7", "19-8", "19-16 (Rule 5 split of 19.8 by=merge_gate 2026-10-04: export, shortcuts, go-to-row and tabs, run right after 19.8)", "19-9", "19-10", "19-11"]
     slot: "A after Epic 16 (its owner fixes DW-1838, DW-1836, DW-1837 first, then 16.25 and 16.11-16.15), in parallel with Epic 18 on slot B"
     gate: "Stage 3 gate: the Atelier port's authentication DECIDED by the owner 2026-09-29 - through the OcuPilot API, calling the Atelier implementation in process as the signed-in user, the pattern AdminPort uses for the admin API; the explicit Basic header is rejected; no vendor web application is changed (spine deferred-decisions row and the Epic 19 preamble amended at origin). Every write a confirmed proposal; every new destructive key defaults to disabled (14.2 baseline rule); Atelier v7 routes carry a version gate; the ETag conflict path is observed, not assumed; DocDB needs its service enabled."
     paths_hint: ["src/OcuPilot/Port/**", "src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]
