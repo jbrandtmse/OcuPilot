@@ -9377,3 +9377,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: LicenseSeamPort is process-private and no instance here holds a valid key to send (no activation, by decision)
 - 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when CI gains a valid test license key
+
+### DW-2025: The SQL console refuses 500 INTERNAL ('no statement index row') a query whose string column carries LIKE ... ESCAPE, because SqlPort.Classify refuses any text the statement index does not record
+- source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 19.7 plan on ocupilot-a2-ci: SqlPort.Run of SELECT Num FROM OcuProbe197.Pets WHERE Name LIKE 'n%' ESCAPE '\' answered 500; without ESCAPE it answered rows; the cached query class for ESCAPE on a VARCHAR column carries no statement index hash (SqlPort.cls:312)
+- 2026-10-04T07:19:07Z status=routed owner=19-7-the-data-browser-tree-grid-filter-and-sort by=spec_gate note=fix in 19.7 (same file): answer such a statement by name (a 422 the console explains), or classify it another way and run it; never a 500

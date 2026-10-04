@@ -7625,7 +7625,7 @@ So that the Explorer reaches the data and not only the schema.
 
 - **Given** the schema tree, the column metadata with primary-key detection, the paged grid, type-aware cell formatting, wildcard filtering, single-column sorting and pagination
 - **When** each renders
-- **Then** it works against the Atelier port.
+- **Then** it works against the SQL port (`Port/SqlPort`, AD-61's SQL case), the schema tree through the Atelier port's catalog reads [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 5: was 'against the Atelier port'; `action/query` cannot carry rows (AD-61 rule 7)].
 
 - **Given** the harvested grid
 - **When** it is ported
