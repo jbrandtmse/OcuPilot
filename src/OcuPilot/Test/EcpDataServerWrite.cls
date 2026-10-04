@@ -182,8 +182,9 @@ Method TestAnUpdateSendsTheCompleteSetAndKeepsAStoredMirror()
 }
 
 /// <p>B2: on both callers' create, a name of the wrong shape, an address that is empty or one
-/// <class>Config.Host</class> refuses, a port of 0, above 65535 or not a number, and a mirror connection
-/// of 2 are each refused on their field before any vendor write.</p>
+/// <class>Config.Host</class> refuses, a port of 0, above 65535 or not a number, a mirror connection of
+/// 2, an SSL/TLS of 2 and a batch mode that is not a boolean are each refused on their field before any
+/// vendor write.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.OsMgmt.EcpRules.Validate</method> admits port 0 -- the
 /// port 0 create is written and this goes red.</p>
 Method TestBadCreateFieldsAreRefusedBeforeAnyWrite()
@@ -204,12 +205,24 @@ Method TestBadCreateFieldsAreRefusedBeforeAnyWrite()
         Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.Error).ReasonForViolation($Piece($List(tCase, 5), ":", 2))), tLabel _ ": and the agent's is refused with the same sentence: " _ tProblem)
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", tLabel _ ": with nothing written")
     }
+    For tCase = $ListBuild("SSLConfig", 2, "number"), $ListBuild("BatchMode", "x", "string") {
+        Do $ClassMethod(..#SEAM, "Clear")
+        Set tLabel = $ListToString(tCase, " ")
+        Set tBody = {"Name": "ocuprobeecpr", "Address": "192.0.2.10", "Port": 1972}
+        Do tBody.%Set($List(tCase, 1), $List(tCase, 2), $List(tCase, 3))
+        Set tSC = $ClassMethod(..#SAVE, "Handle", "create", "", tBody, .tAnswer, .tStatus)
+        Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 " _ $List(tCase, 1) _ ":" _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE, tLabel _ ": the form's create is refused on its field")
+        Set tSC = $ClassMethod(..#AGENT, "Mint", ..#CREATETOOL, "ocuprobeecpr", tBody, .tProposal, .tHttp, .tProblem)
+        Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ("'" _ $List(tCase, 1) _ "'")), tLabel _ ": and the agent's is refused naming the field: " _ tProblem)
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", tLabel _ ": with nothing written")
+    }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "no probe server was created")
 }
 
 /// <p>B2: on both callers' update, a port of 0, above 65535 or not a number, an empty address or one
-/// <class>Config.Host</class> refuses, a mirror connection of 2, and 0 over a stored 1, are each refused
-/// on their field before any vendor write, and the servers stay as seeded.</p>
+/// <class>Config.Host</class> refuses, a mirror connection of 2, and 0 over a stored 1, an SSL/TLS of 2
+/// and a batch mode that is not a boolean, are each refused on their field before any vendor write, and
+/// the servers stay as seeded.</p>
 /// <p>Mutation (Rule 19): drop the <code>MIRROR</code> check from
 /// <method>OcuPilot.Area.OsMgmt.EcpRules.Validate</method> -- the stored mirror connection is turned off
 /// and this goes red.</p>
@@ -217,7 +230,7 @@ Method TestBadUpdateFieldsAreRefusedBeforeAnyWrite()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBEECPW"), "a probe data server to update")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBEECPM", "192.0.2.10", 1972, 1), "and one with its mirror connection set")
-    For tCase = $ListBuild("OCUPROBEECPW", "Port", 0, "number", "Port:ECP.DATASERVER.PORT"), $ListBuild("OCUPROBEECPW", "Port", 65536, "number", "Port:ECP.DATASERVER.PORT"), $ListBuild("OCUPROBEECPW", "Port", "x", "string", "Port:ECP.DATASERVER.PORT", "'Port' is number on this instance"), $ListBuild("OCUPROBEECPW", "Address", "", "string", "Address:ECP.DATASERVER.ADDRESS"), $ListBuild("OCUPROBEECPW", "Address", "my host", "string", "Address:ECP.DATASERVER.ADDRESS"), $ListBuild("OCUPROBEECPW", "MirrorConnection", 2, "number", "MirrorConnection:ECP.DATASERVER.MIRROR"), $ListBuild("OCUPROBEECPM", "MirrorConnection", 0, "number", "MirrorConnection:ECP.DATASERVER.MIRROR") {
+    For tCase = $ListBuild("OCUPROBEECPW", "Port", 0, "number", "Port:ECP.DATASERVER.PORT"), $ListBuild("OCUPROBEECPW", "Port", 65536, "number", "Port:ECP.DATASERVER.PORT"), $ListBuild("OCUPROBEECPW", "Port", "x", "string", "Port:ECP.DATASERVER.PORT", "'Port' is number on this instance"), $ListBuild("OCUPROBEECPW", "Address", "", "string", "Address:ECP.DATASERVER.ADDRESS"), $ListBuild("OCUPROBEECPW", "Address", "my host", "string", "Address:ECP.DATASERVER.ADDRESS"), $ListBuild("OCUPROBEECPW", "MirrorConnection", 2, "number", "MirrorConnection:ECP.DATASERVER.MIRROR"), $ListBuild("OCUPROBEECPM", "MirrorConnection", 0, "number", "MirrorConnection:ECP.DATASERVER.MIRROR"), $ListBuild("OCUPROBEECPW", "SSLConfig", 2, "number", "SSLConfig:PORT.FIELD.SHAPE", "'SSLConfig' is boolean on this instance"), $ListBuild("OCUPROBEECPW", "BatchMode", "x", "string", "BatchMode:PORT.FIELD.SHAPE", "'BatchMode' is boolean on this instance") {
         Do $ClassMethod(..#SEAM, "Clear")
         Set tLabel = $ListToString(tCase, " ")
         Set tBody = {}
@@ -305,12 +318,16 @@ Method TestADataServerInUseNamesItsRemoteDatabaseAndIsRefused()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPA"), 1, "and the server is kept")
 }
 
-/// <p>The data server limit: with the configured data servers at <code>AppServerSettings.MaxServers</code>
-/// read from the instance, a create is refused 409 <code>ECP.SERVER.LIMIT</code> on both callers with a
-/// sentence naming the limit, no <code>PUT</code> sent and no log line; an update at the limit is
-/// written.</p>
+/// <p>The data server limit for a caller holding <code>%Admin_Secure:USE</code> (AD-52), as the test's
+/// own account does: with the configured data servers at <code>AppServerSettings.MaxServers</code> read
+/// from the instance, a create is refused 409 <code>ECP.SERVER.LIMIT</code> on both callers with a
+/// sentence naming the limit, no <code>PUT</code> sent, no audit event and no log line; an update at the
+/// limit is written.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.EcpPort.Put</method> skips its check -- the
+/// <code>PUT</code> is sent and this goes red.</p>
 Method TestACreatePastTheLimitIsRefusedBeforeAnyWrite()
 {
+    Do $$$AssertTrue(##class(OcuPilot.Port.EcpPort).HoldsPair($Parameter("OcuPilot.Port.EcpPort", "LIMITPAIR")), "the test's account holds %Admin_Secure:USE, so the port reads the limit itself")
     Set tSC = ##class(OcuPilot.Port.EcpPort).MaxServers(.tMaximum, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the instance's data server limit is read")
     Set tHave = $ClassMethod(..#PROBE, "ServerCount")
@@ -320,6 +337,7 @@ Method TestACreatePastTheLimitIsRefusedBeforeAnyWrite()
         Quit
     }
     For tI = 1:1:tRoom Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBEECPL" _ tI), "probe data server " _ tI _ " fills the limit")
+    Set tSince = $ZDateTime($ZTimeStamp, 3, 1)
     Set tLines = $ClassMethod(..#PROBE, "LineCount", "messages.log")
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "create", "", {"Name": "ocuprobeecpl9", "Address": "192.0.2.10", "Port": 1972}, .tAnswer, .tStatus)
@@ -334,10 +352,34 @@ Method TestACreatePastTheLimitIsRefusedBeforeAnyWrite()
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "409 " _ ##class(OcuPilot.Api.EcpError).#SERVERLIMIT, "and its confirm is refused at the limit")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with no PUT sent")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPL9"), 0, "nothing is stored")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "CreateEvents", "OCUPROBEECPL9", tSince), 0, "no create audit event is recorded")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LineCount", "messages.log"), tLines, "and messages.log gains no line")
     If tRoom < 1 Quit
     Set tSC = $ClassMethod(..#SAVE, "Handle", "update", "OCUPROBEECPL1", {"Port": 1973}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus, 200, "an update at the limit is written: " _ $Extract(tAnswer, 1, 200))
+}
+
+/// <p>B2: a body key the tools do not admit is refused on both callers before anything is sent: the Save
+/// 400 <code>PORT.FIELD.UNEXPECTED</code>, the agent's arguments by the tool's closed schema at
+/// dispatch.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Area.OsMgmt.EcpDataServerSave.Unexpected</method> call
+/// from the Save's create and update -- the update is written and this goes red.</p>
+Method TestAKeyTheToolsDoNotAdmitIsNeverSent()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBEECPK"), "a probe data server")
+    For tCase = $ListBuild("create", "", {"Name": "ocuprobeecpn", "Address": "192.0.2.10", "Port": 1972, "Status": "Disabled"}.%ToJSON()), $ListBuild("update", "OCUPROBEECPK", {"Port": 1973, "Status": "Disabled"}.%ToJSON()) {
+        Do $ClassMethod(..#SEAM, "Clear")
+        Set tSC = $ClassMethod(..#SAVE, "Handle", $List(tCase, 1), $List(tCase, 2), ##class(%DynamicObject).%FromJSON($List(tCase, 3)), .tAnswer, .tStatus)
+        Set tParsed = ..Parsed(tAnswer)
+        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tParsed): tParsed.%Get("code"), 1: ""), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED, "the form's " _ $List(tCase, 1) _ " carrying Status is refused: " _ $Extract(tAnswer, 1, 200))
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "the form's " _ $List(tCase, 1) _ ": with nothing sent")
+    }
+    For tCase = $ListBuild(..#CREATETOOL, {"Name": "ocuprobeecpn", "Address": "192.0.2.10", "Port": 1972, "Status": "Disabled"}.%ToJSON()), $ListBuild(..#UPDATETOOL, {"Name": "OCUPROBEECPK", "Port": 1973, "Status": "Disabled"}.%ToJSON()) {
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments($ClassMethod($List(tCase, 1), "InputSchema"), ##class(%DynamicObject).%FromJSON($List(tCase, 2)), .tProblem)
+        Do $$$AssertTrue($$$ISERR(tSC) && (tProblem [ "Status"), $List(tCase, 1) _ ": the agent's arguments carrying Status are refused at dispatch: " _ tProblem)
+    }
+    Set tStored = $ClassMethod(..#PROBE, "Stored", "OCUPROBEECPK")
+    Do $$$AssertEquals($Select($IsObject(tStored): tStored.%Get("Port"), 1: "") _ " " _ $ClassMethod(..#PROBE, "Holds", "OCUPROBEECPN"), "1972 0", "the server is as seeded and nothing was created")
 }
 
 /// <p>B6: an update or delete of a server the instance no longer defines sends nothing: the Save and the

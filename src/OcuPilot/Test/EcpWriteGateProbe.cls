@@ -18,7 +18,7 @@ Parameter SCREEN = "osmgmt.ecpdataservers";
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A
 /// step is <code>{kind: "create"|"update"|"delete"|"changestatus"|"confirm", name, body, status,
 /// proposalId, mode}</code>, <code>mode</code> the seam's armed mode for that step; its answer is
-/// <code>{http, code, failedPair, calls, writes}</code>, where <code>calls</code> is how many vendor
+/// <code>{http, code, reason, failedPair, calls, writes}</code>, where <code>calls</code> is how many vendor
 /// calls the seam was asked during that step alone and <code>writes</code> the ones other than
 /// reads.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
@@ -47,6 +47,7 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
     Set tHttp = 0
     Set tCode = ""
     Set tPair = ""
+    Set tReason = ""
     Set tBody = ""
     Do $ClassMethod(..#SEAM, "Clear")
     If pStep.%Get("mode") '= "" Do $ClassMethod(..#SEAM, "Arm", pStep.%Get("mode"))
@@ -73,11 +74,13 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody) } Catch {}
         If $IsObject(tAnswer) {
             Set tCode = tAnswer.%Get("code")
+            Set tReason = tAnswer.%Get("reason")
             If $IsObject(tAnswer.%Get("detail")) Set tPair = tAnswer.%Get("detail").%Get("failedPair")
         }
     }
     Do tLeg.%Set("http", +tHttp, "number")
     Do tLeg.%Set("code", tCode, "string")
+    Do tLeg.%Set("reason", tReason, "string")
     Do tLeg.%Set("failedPair", tPair, "string")
     Set tCalls = $ClassMethod(..#SEAM, "Calls")
     Do tLeg.%Set("calls", $Select(tCalls = "": 0, 1: $Length(tCalls, ",")), "number")

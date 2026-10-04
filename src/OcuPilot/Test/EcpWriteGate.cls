@@ -3,15 +3,18 @@
 /// <code>%DB_IRISSYS:WRITE</code> is refused 403 naming it on both callers of the create, update and
 /// delete, and one without <code>%Admin_Operate:USE</code> on both callers of the status change, each
 /// with zero port calls; a principal without <code>%Admin_Manage:USE</code> is refused every write and
-/// both form routes naming it; and principals holding exactly each tool's declared pairs write on both
-/// callers.</p>
+/// both form routes naming it; principals holding exactly each tool's declared pairs write on both
+/// callers; and such a create past the data server limit is the vendor's refusal, answered
+/// <code>ECP.SERVER.LIMIT</code>.</p>
 /// <p>The write legs run in a child process logged in as the principal
 /// (<class>OcuPilot.Test.EcpWriteGateProbe</class>), which reports what
 /// <class>OcuPilot.Test.EcpSeamPort</class> was asked; the four routes run over the wire.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, room for two data
 /// servers under the instance's limit, and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>ECPVARIABLE</parameter> reading <code>1</code>, because the class creates and deletes probe
-/// users, roles and data servers (<class>OcuPilot.Test.EcpProbe</class>) and sets the governance policy.
+/// users, roles and data servers (<class>OcuPilot.Test.EcpProbe</class>) and sets the governance policy;
+/// and auditing on with <code>%System/%System/ConfigurationChange</code> enabled, whose create event the
+/// limit leg reads.
 /// Every probe object, the principals' task rows included, is removed by exact name; after each test no
 /// ECP process runs and the license reads as that test found it.</p>
 Class OcuPilot.Test.EcpWriteGate Extends %UnitTest.TestCase
@@ -241,7 +244,10 @@ Method TestEveryCallNeedsTheScreensPairs()
 }
 
 /// <p>A principal holding exactly the create's declared pairs creates a data server over the wire, through
-/// the form and through the agent's confirm.</p>
+/// the form and through the agent's confirm, the port leaving the data server limit, which that principal
+/// cannot read, to the vendor (AD-52).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.EcpPort.Put</method> reads the limit whatever the caller
+/// holds -- each create answers 500 <code>PORT.ACCESSDENIED</code> and this goes red.</p>
 Method TestExactlyTheDeclaredPairsCreateOnBothCallers()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
@@ -264,6 +270,45 @@ Method TestExactlyTheDeclaredPairsCreateOnBothCallers()
         Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("writes"), 1: ""), $List(tCase, 2) _ " ECP.DataServer/PUT", $List(tCase, 3) _ " succeeds (" _ ..LegText(tRun, $List(tCase, 1)) _ ")")
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPGF") _ $ClassMethod(..#PROBE, "Holds", "OCUPROBEECPGA"), "11", "both creates are on the instance")
+}
+
+/// <p>The data server limit for a caller without <code>%Admin_Secure:USE</code> (AD-52): with the
+/// configured data servers at <code>AppServerSettings.MaxServers</code>, a principal holding exactly the
+/// create's declared pairs is refused 409 <code>ECP.SERVER.LIMIT</code> through the form, with the
+/// sentence naming the limit, and through the agent's confirm. Each create reaches the vendor, which
+/// refuses it (#456) with nothing stored, records its create audit event and writes its own log line.</p>
+/// <p>Mutation (Rule 19): drop the #456 branch from <method>OcuPilot.Port.EcpPort.Put</method> -- each
+/// create answers 500 and this goes red.</p>
+Method TestACreatePastTheLimitWithoutAdminSecureIsTheVendorsRefusal()
+{
+    Set tSC = ##class(OcuPilot.Port.EcpPort).MaxServers(.tMaximum, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the instance's data server limit is read")
+    Set tRoom = tMaximum - $ClassMethod(..#PROBE, "ServerCount")
+    If tRoom > 2 {
+        Do $$$AssertTrue(0, "this instance allows " _ tRoom _ " more data servers, and a test holds at most two probe servers, so the limit cannot be reached here (a stock instance's MaxServers is 2)")
+        Quit
+    }
+    For tI = 1:1:tRoom Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedServer", "OCUPROBEECPGL" _ tI), "probe data server " _ tI _ " fills the limit")
+    Set tUser = ..User(2)
+    Set tSC = $ClassMethod(..#AGENT, "Mint", ..#CREATETOOL, "OCUPROBEECPGM", {"Name": "OCUPROBEECPGM", "Address": "192.0.2.10", "Port": 1972}, .tProposal, .tHttp, .tProblem, tUser)
+    Do $$$AssertStatusOK(tSC, "the agent's create is minted for the principal (" _ tProblem _ ")")
+    Set tSince = $ZDateTime($ZTimeStamp, 3, 1)
+    Set tLines = $ClassMethod(..#PROBE, "LineCount", "messages.log")
+    Set tPlan = []
+    Do tPlan.%Push({"kind": "create", "name": "", "body": {"Name": "OCUPROBEECPGK", "Address": "192.0.2.10", "Port": 1972}})
+    Do tPlan.%Push({"kind": "confirm", "proposalId": ($Select($IsObject(tProposal): tProposal.%Get("proposalId"), 1: ""))})
+    Set tRun = ..RunAs(tUser, tPlan)
+    Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
+    For tCase = $ListBuild(1, "the form's create"), $ListBuild(2, "the agent's create confirm") {
+        Set tLeg = ..Leg(tRun, $List(tCase, 1))
+        Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("code") _ " " _ tLeg.%Get("writes"), 1: ""), "409 " _ ##class(OcuPilot.Api.EcpError).#SERVERLIMIT _ " ECP.DataServer/PUT", $List(tCase, 2) _ " reaches the vendor and is refused at the limit (" _ ..LegText(tRun, $List(tCase, 1)) _ ")")
+    }
+    Set tLeg = ..Leg(tRun, 1)
+    Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("reason"), 1: ""), ##class(OcuPilot.Api.EcpError).Limit(tMaximum), "with the sentence the check gives, naming the limit")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPGK") _ $ClassMethod(..#PROBE, "Holds", "OCUPROBEECPGM"), "00", "nothing is stored")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "CreateEvents", "OCUPROBEECPGK", tSince) _ " " _ $ClassMethod(..#PROBE, "CreateEvents", "OCUPROBEECPGM", tSince), "1 1", "the vendor records a create audit event for each")
+    Set tAfter = $ClassMethod(..#PROBE, "LinesAfter", "messages.log", tLines)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "CountContaining", tAfter, "Error: ERROR #456"), 2, "and writes its own log line for each")
 }
 
 /// <p>A principal holding exactly the update and delete's pairs writes through the form and the list's

@@ -75,9 +75,10 @@ Parameter INUSE = "ECP.DATASERVER.INUSE";
 
 Parameter REASONINUSE = "Remote databases use this data server. Delete them or move them to another data server first.";
 
-/// <p>Envelope code: a create refused with 409 before any vendor write because the configured data
-/// servers already reach <code>ECP.Settings</code>' <code>AppServerSettings.MaxServers</code>, read from
-/// the instance. The sentence names the limit (<method>Limit</method>).</p>
+/// <p>Envelope code: a create refused with 409 because the configured data servers already reach
+/// <code>ECP.Settings</code>' <code>AppServerSettings.MaxServers</code>, by
+/// <class>OcuPilot.Port.EcpPort</class>'s check or by the vendor's own refusal (#456). The sentence
+/// names the limit (<method>Limit</method>).</p>
 Parameter SERVERLIMIT = "ECP.SERVER.LIMIT";
 
 Parameter REASONSERVERLIMIT = "This instance allows no more ECP data servers. Delete one, or raise the limit in ECP settings, first.";
@@ -126,8 +127,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
     Quit ""
 }
 
-/// <p><parameter>REASONSERVERLIMIT</parameter>'s refusal naming the limit <var>pMaximum</var>, the
-/// instance's own <code>AppServerSettings.MaxServers</code>.</p>
+/// <p><parameter>REASONSERVERLIMIT</parameter>'s refusal naming the limit <var>pMaximum</var>: the
+/// instance's own <code>AppServerSettings.MaxServers</code>, or, for a caller who cannot read it, the
+/// number of data servers the instance defines.</p>
 ClassMethod Limit(pMaximum As %Integer) As %String
 {
     Quit "This instance allows at most " _ (+pMaximum) _ " ECP data server" _ $Select(+pMaximum = 1: "", 1: "s") _ ". Delete one, or raise the limit in ECP settings, first."

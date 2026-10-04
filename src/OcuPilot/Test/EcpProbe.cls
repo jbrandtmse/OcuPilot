@@ -190,6 +190,35 @@ ClassMethod UserTaskRows(pUser As %String) As %Integer
     Quit tCount
 }
 
+/// <p>How many <code>%System/%System/ConfigurationChange</code> audit events reading
+/// <code>Create section ECPServer <var>pName</var></code> the instance recorded at or after the UTC time
+/// <var>pSince</var> (<code>YYYY-MM-DD HH:MM:SS</code>), read in <code>%SYS</code>, or -1 when they cannot
+/// be read. Bounded by <code>UTCTimeStamp</code> with <code>%NOINDEX</code> on the event predicates,
+/// because the table's event indexes are brought up to date by a background pass
+/// (<class>OcuPilot.Test.AuditMarker</class>, DW-85).</p>
+ClassMethod CreateEvents(pName As %String, pSince As %String) As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tWanted = "Create section ECPServer " _ $ZConvert(pName, "U")
+        Set $NAMESPACE = "%SYS"
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT Description FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, "%System", "%System", "ConfigurationChange")
+        If tResult.%SQLCODE >= 0 {
+            Set tCount = 0
+            While tResult.%Next() {
+                If tResult.%Get("Description") = tWanted Set tCount = tCount + 1
+            }
+        }
+        Set tResult = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
 /// <p>The stored impact of the proposal <var>pProposalId</var>, as an object, or <code>""</code>.</p>
 ClassMethod ProposalImpact(pProposalId As %String) As %DynamicObject
 {

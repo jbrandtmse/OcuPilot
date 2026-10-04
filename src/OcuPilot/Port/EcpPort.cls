@@ -13,13 +13,16 @@
 /// <parameter>STARTEDHTTP</parameter> and no answer. A task the vendor fails is 409
 /// <parameter>OcuPilot.Api.EcpError.STATUSREFUSED</parameter>; its reason reaches the log alone. So no
 /// instance whose license lacks ECP is ever sent <code>Action</code> 3.</p>
-/// <p><b>A <code>PUT</code></b> that creates (its name is not on the <code>LIST</code>) is refused 409
-/// <parameter>OcuPilot.Api.EcpError.SERVERLIMIT</parameter> before any vendor write once the configured
-/// data servers reach <code>ECP.Settings</code>' <code>AppServerSettings.MaxServers</code>, read from
-/// the instance at the call, because the vendor answers such a create 500 #456 and records a create
-/// event with nothing stored. The vendor's refusal of SSL/TLS without an <code>%ECPClient</code>
-/// configuration (#1454) is 422 <parameter>OcuPilot.Api.EcpError.SSLCLIENT</parameter> on
-/// <code>SSLConfig</code>.</p>
+/// <p><b>A <code>PUT</code></b> that creates (its name is not on the <code>LIST</code>) past the data
+/// server limit, <code>ECP.Settings</code>' <code>AppServerSettings.MaxServers</code>, answers 409
+/// <parameter>OcuPilot.Api.EcpError.SERVERLIMIT</parameter> (AD-52). A caller holding
+/// <parameter>LIMITPAIR</parameter>, which that read needs, is refused before any vendor write once the
+/// configured data servers reach the limit read at the call. Any other caller's create reaches the
+/// vendor, whose 500 #456 is answered with the same refusal, naming as the limit the number of data
+/// servers the instance defines, which is the limit unless it was lowered below them (inference); at
+/// the limit that caller leaves the vendor's create audit event and log line, with nothing stored. The
+/// vendor's refusal of SSL/TLS without an <code>%ECPClient</code> configuration (#1454) is 422
+/// <parameter>OcuPilot.Api.EcpError.SSLCLIENT</parameter> on <code>SSLConfig</code>.</p>
 /// <p><b>A <code>DELETE</code></b> the vendor refuses 409 (#423, a remote database uses the server) is
 /// 409 <parameter>OcuPilot.Api.EcpError.INUSE</parameter>.</p>
 /// <p><b>Caller contract:</b> every vendor call goes through <method>Call</method>, so a test port
@@ -70,6 +73,10 @@ Parameter STATUSFIELD = "Status";
 Parameter LIMITGROUP = "AppServerSettings";
 
 Parameter LIMITFIELD = "MaxServers";
+
+/// <p>The pair <code>ECP.Settings</code>' <code>GET</code> needs (the vendor reads
+/// <code>Security.System</code>), held for the limit to be read before a create.</p>
+Parameter LIMITPAIR = "%Admin_Secure:USE";
 
 /// <p>The field the vendor's SSL/TLS refusal names.</p>
 Parameter SSLFIELD = "SSLConfig";
@@ -242,8 +249,10 @@ ClassMethod MaxServers(Output pMaximum As %Integer, Output pHttpStatus As %Integ
     Quit tSC
 }
 
-/// <p>A data server's <code>PUT</code>: a create past the limit refused, then the vendor's
-/// <code>PUT</code>, whose SSL/TLS refusal is answered on its field.</p>
+/// <p>A data server's <code>PUT</code>: a create past the limit refused before the vendor's
+/// <code>PUT</code> for a caller holding <parameter>LIMITPAIR</parameter>, then the vendor's
+/// <code>PUT</code>, whose SSL/TLS refusal is answered on its field and whose limit refusal (#456) is
+/// the same 409 as the check's.</p>
 ClassMethod Put(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -260,7 +269,7 @@ ClassMethod Put(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, O
         Set tCount = tCount + 1
         If $ZConvert(..Text(tRow, ..#NAMEFIELD), "U") = tWanted Set tHeld = 1
     }
-    If 'tHeld {
+    If 'tHeld && ..HoldsPair(..#LIMITPAIR) {
         Set tSC = ..MaxServers(.tMaximum, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
         If tCount >= tMaximum {
@@ -276,6 +285,10 @@ ClassMethod Put(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, O
     If ..Violates(pFault, ##class(OcuPilot.Api.EcpError).#SSLCLIENT) {
         Set pResult = ""
         Quit ..Refused(..#SSLFIELD, ##class(OcuPilot.Api.EcpError).#SSLCLIENT, .pHttpStatus, .pFault)
+    }
+    If 'tHeld && ..Violates(pFault, ##class(OcuPilot.Api.EcpError).#SERVERLIMIT) {
+        Set pResult = ""
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.EcpError).#SERVERLIMIT, ##class(OcuPilot.Api.EcpError).Limit(tCount), .pHttpStatus, .pFault)
     }
     Quit tSC
 }

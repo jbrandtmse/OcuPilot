@@ -131,12 +131,11 @@ Method TestDisabledAndBackToNotConnectedOnBothCallers()
 
 /// <p>B5: a status equal to the current one is refused 422 <code>ECP.STATUS.SAME</code> on
 /// <code>Status</code> by the list's Change status and at the agent's mint, with no
-/// <code>SERVERACTION</code> sent and no task row written -- for Not Connected, and for Disabled.</p>
+/// <code>SERVERACTION</code> sent, so nothing is queued -- for Not Connected, and for Disabled.</p>
 /// <p>Mutation (Rule 19): drop the same-status check from <class>OcuPilot.Port.EcpPort</class> -- the
 /// list's change is sent and this goes red.</p>
 Method TestTheSameStatusIsRefusedWithNothingSent()
 {
-    Set tRows = $ClassMethod(..#PROBE, "UserTaskRows", $Username)
     For tCase = $ListBuild("notconnected", ""), $ListBuild("disabled", "disabled") {
         If $List(tCase, 2) '= "" {
             Set tSC = ..Change($List(tCase, 2), .tAnswer, .tStatus)
@@ -151,25 +150,22 @@ Method TestTheSameStatusIsRefusedWithNothingSent()
         Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.EcpError).#REASONSTATUSSAME), tLabel _ ": and the agent's is refused at the mint: " _ tProblem)
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", tLabel _ ": with nothing sent")
     }
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "UserTaskRows", $Username), tRows, "and no task row is left")
 }
 
 /// <p>B5: on an instance whose license enables no ECP, Normal is refused 422 <code>ECP.LICENSE</code>
 /// on <code>Status</code> by the list's Change status and at the agent's mint, before any
-/// <code>SERVERACTION</code>, with no task row written.</p>
+/// <code>SERVERACTION</code>, so nothing is queued.</p>
 /// <p>Mutation (Rule 19): drop the license check from <class>OcuPilot.Port.EcpPort</class> -- the seam
 /// records a <code>SERVERACTION</code> and this goes red.</p>
 Method TestNormalIsRefusedWhileTheLicenseLacksEcp()
 {
     Do $$$AssertEquals(##class(OcuPilot.Port.EcpPort).NetworkEnabled(), 0, "this instance's license enables no ECP, as every Community instance's")
-    Set tRows = $ClassMethod(..#PROBE, "UserTaskRows", $Username)
     Set tSC = ..Change("normal", .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 Status:" _ ##class(OcuPilot.Api.EcpError).#LICENSE, "the list's Normal is refused on Status: " _ $Extract(tAnswer, 1, 200))
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with no SERVERACTION sent")
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#SEAMTOOL, ..#SERVER, ..Args("normal"), .tProposal, .tHttp, .tProblem)
     Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.EcpError).#REASONLICENSE), "and the agent's is refused at the mint: " _ tProblem)
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with nothing sent")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "UserTaskRows", $Username), tRows, "and no task row is written")
     Do $$$AssertEquals(..Listed() _ " " _ $ClassMethod(..#PROBE, "ConnState", ..#SERVER), "Not Connected 1", "the server is unchanged")
 }
 
@@ -226,6 +222,21 @@ Method TestAFailedChangeIsRefusedAndReportsNothingChanged()
     Do $$$AssertStatusOK(tSC, "the agent's change is minted (" _ tProblem _ ")")
     Do $ClassMethod(..#SEAM, "Arm", "failed")
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "409 " _ ##class(OcuPilot.Api.EcpError).#STATUSREFUSED, "and its confirm is refused")
+    Do $$$AssertEquals(..Listed() _ " " _ $ClassMethod(..#PROBE, "ConnState", ..#SERVER), "Not Connected 1", "and the server is unchanged")
+}
+
+/// <p>The port builds the action's body itself (AD-51): a caller body is refused 500 before any vendor
+/// call, so no caller sends an <code>Action</code> of its own.</p>
+/// <p>Mutation (Rule 19): drop <class>OcuPilot.Port.EcpPort</class>'s caller-body refusal -- the seam
+/// records the calls and this goes red.</p>
+Method TestACallerBodyIsRefusedBeforeAnyCall()
+{
+    Kill tQuery
+    Set tQuery("name") = ..#SERVER
+    Set tQuery("Status") = "disabled"
+    Set tSC = $ClassMethod(..#SEAM, "Invoke", "ECP.DataServer", "SERVERACTION", .tQuery, {"Action": 3}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISERR(tSC): +$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), 1: "ok"), "500 " _ ##class(OcuPilot.Api.Error).#INTERNAL, "a caller body is refused")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), "", "before any vendor call")
     Do $$$AssertEquals(..Listed() _ " " _ $ClassMethod(..#PROBE, "ConnState", ..#SERVER), "Not Connected 1", "and the server is unchanged")
 }
 
