@@ -9483,3 +9483,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
 - 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
+### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
+- source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
+- 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
