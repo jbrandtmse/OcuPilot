@@ -4,16 +4,16 @@
 
 ## Goal
 
-Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API and on in-process ports. Done so far: classes and routines (listed, viewed, compiled, deleted, exported and imported as XML, edited with ETag-checked saves); search, compare and macro lookup; the full SQL catalog; the SQL query console with its DML and DDL guard; and background query runs. What remains is a data browser harvested from iris-table-editor (a read-only grid in 19.7, then editing, staging and export in 19.8), Documatic and DocDB, SQL activity, and an agent picker with guarded agent SQL. Everything reaches the instance through a port, in process, as the signed-in user. Nothing handles the user's password, and nothing modifies a vendor web application. As in the classic portal, a `%Development` holder with no administrative resource gets in.
+Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API and on in-process ports. Already built: code browsing, editing and compiling; search, compare and macros; the SQL catalog; the query console with its DML and DDL guard and background runs; and a read-only data browser, a grid ported from iris-table-editor. Still to build: grid editing, staging and export (19.8), Documatic and DocDB (19.9), SQL activity (19.10), and an agent picker with guarded agent SQL (19.11). Everything reaches the instance through a port, in process, as the signed-in user. Nothing handles the user's password, and nothing modifies a vendor web application. As in the classic portal, a `%Development` holder with no administrative resource gets in.
 
 ## Stories
 
 - Story 19.1: Classes and routines, listed and viewed
-- Story 19.2: Compile, delete, export and import (export and import split to 19.13)
+- Story 19.2: Compile, delete, export and import
 - Story 19.3: The source editor, with ETag conflict detection
 - Story 19.4: Search, compare and macro lookup
-- Story 19.5: The SQL catalog browser (remaining detail tabs split to 19.14)
-- Story 19.6: The query console and its DML and DDL guard (run-in-background split to 19.15)
+- Story 19.5: The SQL catalog browser
+- Story 19.6: The query console and its DML and DDL guard
 - Story 19.7: The data browser - tree, grid, filter and sort
 - Story 19.8: The data browser - editing, staging and export
 - Story 19.9: Documatic and DocDB
@@ -27,149 +27,109 @@ Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API
 ## Requirements & Constraints
 
 - **One contract (FR-80).**
-  - One descriptor declares each screen. A screen reaches the outside only through a port, and its tools' field lists derive from the descriptor.
-  - Every agent write is a server-minted, fingerprinted proposal, with an instance-computed diff, an explicit confirmation and an agent marker.
-  - Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time.
-  - Acceptance is this contract plus each row's backing route.
-- **No caller-shaped SQL through `action/query` (AD-61 rule 7, DW-1963, DW-1964).** That route prepares with SQL privilege checks off: a principal with no SQL grant read and updated a table through it. Catalog reads use it only for port-owned fixed statements over the privilege-filtered `INFORMATION_SCHEMA`, with values bound. Caller SQL goes through `Port/SqlPort`, which prepares with the checks on.
-- **19.7's read path is the binding question.** The grid reads a table's rows through a statement shaped by the person's choices: the table, its columns, a wildcard filter and a sort.
-  - Rows come through a path that checks the caller's SQL privileges: `SqlPort`'s prepare with checks on. Never `AtelierPort` or `action/query`.
-  - Caller text never reaches the statement. The table and every column the filter or sort names resolve against the caller's privilege-filtered catalog rows first, as the catalog tabs do. Every filter value is bound.
-  - iris-table-editor's `SqlBuilder` builds its SQL in the browser for `action/query`. Here the client sends choices and the instance composes the statement from the resolved catalog row, keeping `SqlBuilder`'s rules: `*` becomes `%`, `?` becomes `_`, `LIKE ? ESCAPE '\'`, conditions joined with AND, unknown columns dropped (inference).
-- **Open at 19.7's spec gate (each an inference from the spine as it stands).**
-  - Are grid rows a declared read (the tool's view and screen context, under AD-24's bounds), or a screen-only payload like the console's (AD-36, AD-39's sixth exception)? Table rows can hold patient data, which is why journal record values are screen-only (AD-36, AD-48).
-  - AD-61 says a later call Atelier cannot carry "names itself here", and a grid read run through `SqlPort` is such a call. AD-7's fifth shape covers only the port's fixed statements and the console, while a grid statement varies by table, columns, filter and sort.
-  - `PROHIBITED.OCUPILOTSQL` is worded for console statements. Is a grid read of an `OcuPilot` schema refused the same way? It belongs to the same self-protection family.
-  - Paging conflicts with the spine. AD-36 and the Operational Envelope cap rows rather than paginate, and the shared data-table has no page-size control. The harvest pages with a `%VID` offset plus a `COUNT(*)` per page, and every page read runs under `SqlPort`'s 50 s alarm.
-  - Which classic page does it replace? The classic counterpart is SQL Home's Open Table, `/csp/sys/exp/UtilSqlOpen.csp`. Read its normalized class name and its `RESOURCE` on the instance (AD-44).
-- **The iris-table-editor harvest.**
-  - Keep its call sites, never its names.
-  - **Lift:** the builders and formatters (`SqlBuilder`, `DataTypeFormatter`), the model types, the CSV helpers, and `grid-styles.css`. That stylesheet's `--ite-*` token contract is bridged to OcuPilot's tokens.
-  - **Port three `grid.js` algorithms:** keyboard navigation, the filter row with tri-state sort, and staging with primary-key reconciliation, including stale-index recovery after pagination. Delete `grid.js`'s nine drifted formatter clones.
-  - **Do not carry:** its Atelier services (hardcoded Basic auth, `Buffer.from`, raw `fetch`), or its plaintext-password-in-server-memory session.
-  - **Limits carried knowingly:**
-    - Primary keys are single-column only: `IS_IDENTITY`, falling back to a column named `ID`.
-    - The identifier regex refuses delimited names.
-    - `rowsAffected` always reads 1.
-    - `%VID` paging re-reads the preceding rows on every page.
-    - A failed count shows zero rows.
-    - Undo works in edit mode only.
+  - One descriptor per screen, and the outside is reached only through a port.
+  - Every agent write is a server-minted, fingerprinted, confirmed proposal.
+  - Every read is bounded and reports truncation.
+  - Every gate checks the caller's own privileges at call time.
+- **No caller-shaped SQL through Atelier's `action/query`.** It prepares with SQL privilege checks off (DW-1963), so caller SQL and any statement shaped by a person's choices go through `Port/SqlPort`, which prepares with the checks on.
+- **Table rows are screen-only.** Grid pages and console rows, with their SQLCODE and messages, never reach a declared read, a tool's view, screen context, the ledger, an audit payload or a log line. An arbitrary table's columns carry no reviewed classification (AD-3), and they can hold patient data.
+- **19.8, the grid editor** (catalog rows EX-25 to EX-31 and EX-33).
+  - **Editing.** Type-specific editors use the harvest's `DataTypeFormatter` parsers, never its display functions (they shift dates to UTC and lose precision past 2^53). Undo works in edit mode. Rows can be inserted, duplicated and deleted.
+  - **Saving.** Every save is a confirmed write, applied optimistically and rolled back on failure. Staged saves reconcile by primary key, which recovers a stale index after paging. The harvest hard-coded `rowsAffected` as 1, so read the instance's real count (inference).
+  - **Around the grid.** CSV export of the page; keyboard shortcuts with a help dialog; a go-to-row dialog; ARIA announcements that match the portal, not the original; and multi-table tabs.
+  - **DW-2028.** Port the shared data-table's cut-cell tooltip (`shell/data-table.ts`, on pointer and on the active cell).
+- **Open at 19.8's spec gate.** Each is an inference from a spine with no grid-write case yet, and each answer is named in the spine:
+  - an agent tool, or only a person's own Save, as 19.6 did with an unadvertised tool whose key ships disabled;
+  - how the diff, fingerprint, ledger and read-back treat row values;
+  - a row's target identity (AD-13: a composite key is still one segment) and entity type (AD-14's closed enum);
+  - its `Snippet` (AD-59);
+  - its audit gap: no vendor event records SQL DML with the stock event set, as measured for console runs.
 - **Who gets in.**
-  - Any `%Admin_*` resource or `%Development:USE` passes the floor. A `%Development`-only caller is refused wherever a classic `%Developer` is.
-  - The SQL screens declare `%CSP.UI.Portal.SQL.Home` (`%Development`). Read any other classic page's `RESOURCE` in `irissys/` or on the instance, never from memory.
+  - The API floor is any `%Admin_*` resource or `%Development:USE`.
+  - The SQL screens declare `%CSP.UI.Portal.SQL.Home`.
+  - The data browser declares `%cspapp.exp.utilsqlopen`, and its route unions `%cspapp.exp.utilsqlopenview`'s custom resource.
+  - Read any other classic page's `RESOURCE` in `irissys/` or on the instance.
 - **Other backing routes.**
-  - 19.9: Documatic is at `/csp/documatic/%25CSP.Documatic.cls`, and DocDB at `/api/docdb/v1/:ns`. DocDB needs `%Service_DocDB` enabled: report whether it is, never assume.
-  - 19.10: `INFORMATION_SCHEMA.CURRENT_STATEMENTS`. Canceling another session's query is a separate, later catalog row.
-- **Governance (AD-22).**
-  - A new write key gets its line in `Kernel/Governance/Baseline.cls` in the same change, and a new destructive key ships disabled. Read tools add no key.
-  - After 2026-10-04, the owner decides how new keys enter the baseline.
-- **New dependencies are ask-first.** A dependency must be vendored with no CDN, must run under the content-security policy, and counts toward the bundle.
+  - 19.9: Documatic at `/csp/documatic/%25CSP.Documatic.cls`, and DocDB at `/api/docdb/v1/:ns`. DocDB needs `%Service_DocDB`: report whether it is enabled, never assume.
+  - 19.10: `INFORMATION_SCHEMA.CURRENT_STATEMENTS`, whose classic page is `%CSP.UI.Portal.SQL.CurrentStatements`. Canceling another session's query is a later catalog row.
+- **Governance (AD-22).** A new write key joins `Kernel/Governance/Baseline.cls` in the same change. After 2026-10-04 the owner decides how it enters the baseline, so ask.
 - **Budgets.**
-  - **Bundle.** The warning is 2704kB, and Epic 18's literal (2712kB) meets it at merge. A UI addition that crosses the warning re-bases `ui/angular.json` and `angular-json.test.mjs` to the new measured size (DW-1166). Stop and ask above 3800kB.
-  - **Fixed strings.** `strings.test.mjs` bounds them at 2500. Measure before adding a row. Raising the bound needs the lead.
-- **Measure, never assume.** Take pair sets from the handler's checks, then confirm them with a purpose-built least-privileged principal on the throwaway, never `%Operator`.
-- **DW-1001.** A new read tool records an occurrence. The fix lands in Epic 19's close burn-down.
+  - Bundle: the warning is 2780kB. Crossing it re-bases `ui/angular.json` and `angular-json.test.mjs` to the measured size (DW-1166). Stop and ask above 3800kB.
+  - Fixed strings: `strings.test.mjs` caps them at 2,500. 19.7 measured 2,382 before its own row, so measure first. Raising the cap needs the lead.
+- **Measure, never assume.**
+  - Confirm pair sets with a purpose-built least-privileged principal on the throwaway, never `%Operator`.
+  - A new dependency is ask-first, vendored with no CDN, and must run under the content-security policy.
 
 ## Technical Decisions
 
-- **`Port/SqlPort` (AD-61's SQL case): reuse it, never fork it.**
-  - **Gate.** AtelierPort's read pairs (`PAIRS`, `NamespacePairs(ns)`), plus the screen's gate with its classic page. It names no `%Api.Atelier.*` class and uses no capture.
-  - **Prepare.** The statement is prepared whole with `%SQL.Statement.%Prepare(text, 1)`, in the target namespace (explicit save and restore, AD-16), in the request's own process, as the signed-in user. No escalated frame is open, and values are bound positionally.
-  - **Privileges do not rest on the statement cache (DW-1986).** Each statement is released in the namespace it was prepared in. A DDL statement whose type ties to a system privilege is refused -99 unless `%CHECKPRIV` says the caller holds that privilege.
-  - **Classify.** It classifies by the prepared `statementType` through a closed table. The `query` kind is types 1, 28, 32 and 79. It refuses:
-    - session and process control;
-    - administration of users, roles, privileges and databases;
-    - server-file and other-server statements;
-    - text that sets a password, before any prepare.
-  - **Bounds.**
-    - Inputs: a statement of 1 to 100,000 characters, at most 100 values of up to 32,767 characters each, and Max rows from 1 to 1,000.
-    - Cuts: a cell at 1,000 characters and an answer at 1,000,000, by whole rows. `truncated` reports either cut.
-    - Queries and DML run under `$System.Alarm` at `BoundSeconds()`, 50 s against a 60 s gateway. Past it, the answer is `stopped`.
-    - A transaction a run leaves open is rolled back. `Explain` executes nothing.
-  - **Entry points.** `Gate`, `Classify` and `Run(ns, text, values, maxRows, mode, …)`. A grid statement is composed by the port, not taken from caller text, so 19.7 decides whether it enters through `Run` or a new `SqlPort` method (inference).
-- **The catalog family (19.5, 19.14), through `AtelierPort`.**
-  - **Endpoints.** `Catalog.*` endpoints over `action/query` (v6). Each sends a fixed statement, with validated values in `parameters`.
-  - **Resolve first.** A table's tab resolves through the caller's privilege-filtered `INFORMATION_SCHEMA.TABLES` row first: none answers 404, two answer 400. Views resolve through `VIEWS` and procedures through `ROUTINES`.
-  - **Tree.** SQL tables' read takes `system` and `schema` criteria. HSCUSTOM holds 2,066 tables, past the 1,000 row cap, so a schema tree reads one schema at a time (inference).
-  - **Keys.** The Fields read carries no identity or primary-key field. Primary-key detection needs a catalog addition (inference): the harvest reads `INFORMATION_SCHEMA.COLUMNS` `IS_IDENTITY`, falls back to a column named `ID`, and treats `IS_GENERATED` columns as read-only.
-  - **Reuse.** A page may issue another built screen's declared read through the read route, under that screen's gate, cap and fields (AD-5).
-  - **AtelierPort's rules.**
-    - It is the only class that names `%Api.Atelier.*`.
-    - It gates first: `%Development:USE`, then READ on the routines, globals and mapped code databases, per namespace. A write also needs WRITE on the routines database.
-    - Below an endpoint's version it answers `PORT.NOTIMPLEMENTED`. Vendor text is logged, never sent.
-    - It never uses `docnames`' `filter`, `POST modified`, the `work` routes, search's `regex`, `word` or `wild`, a catalog `pFilter`, or `%SQL_Manager.StatementIndex`. No statement read selects a user name, client or call stack.
-- **Reads (AD-36, AD-24, AD-60).**
-  - One declared read serves both the screen and its tool. It is bounded by the row cap (1 to 1,000), 1,000 characters a field and 65,536 in all, and it reports `rowsSent`, `rowsAvailable` and `truncated`.
-  - Row text is untrusted, and it is sanitized before it reaches the model. `read.note` is one fixed sentence.
-  - A console run's rows and plan are a screen-only payload. They never become a declared read, a tool's view, screen context, a log line, a ledger row or an audit payload, and they are never stored except in 19.15's owner-only run row.
-- **SQL text (AD-21).** Every caller value is bound, and shape validation never substitutes for binding. The console prepares the caller's own statement whole. Named limit: a function or procedure that a statement calls can reach a server path or change state while the statement is typed as a query (DW-2003).
-- **Self-protection (AD-10).**
-  - `PROHIBITED.OCUPILOTSQL` refuses a console statement on every path, reads included, when:
-    - its text names `ocupilot`;
-    - its recorded tables, a view's base tables included, lie in an `OcuPilot` schema;
-    - it records no tables while the instance's default schema is an `OcuPilot` one.
-  - It is one predicate in `Kernel/Proposal/Prohibited.cls`. Documents fall under `PROHIBITED.OCUPILOTCODE`.
-- **Background runs (19.15, done).**
-  - `Area/Explorer/SqlBackground` is AD-42's fourth spawn site. The job runs only the `query` kind and checks the gates once (AD-31).
-  - `Kernel/State/SqlRun` keeps each run owner-only, for 900 s, and is swept at every start and by retention. Anyone else's run answers 404.
-  - Caps are 1 per user and 5 per instance. Task 0 found five runs holding 7 of 8 Community license units.
-- **The write pattern, for 19.8 and 19.9.**
-  - One tool has two callers (AD-53, AD-55), and the screen mints no proposal.
-  - Each write answers for its target (AD-34's lock, AD-6's fingerprint), the server-computed diff, the read-back (AD-58), the change event (AD-14), the `Snippet` form (AD-59), `CLASSICPAGES` (AD-44), new error codes, and its audit (AD-15).
-  - A grid write cannot use `action/query`. It runs port-owned statements through `SqlPort` (inference).
-  - `explorer.sqlquery.run` is AD-53's third unadvertised tool, and its key stays disabled until 19.11 advertises it. AD-53's fifteenth gap: no vendor event records a console run.
-- **Documatic and agent definitions.** Documatic loads under the browser-level session, and no token enters a frame (AD-28). The content-security policy names only the instance's origin (AD-47). Moving the default definition is a security change (AD-42).
+- **`Port/SqlPort`: reuse, never fork.**
+  - **Gate.** AtelierPort's read pairs plus the screen's gate.
+  - **Prepare.** `Executed` prepares with `%Prepare(text, 1)` in the target namespace (explicit save and restore), as the user, with values bound positionally.
+  - **Bounds.** Each run is bounded by `$System.Alarm` at `BoundSeconds()` (50 s), and past it the answer is `stopped`. An open transaction is rolled back.
+  - **Statement cache.** Each statement is released in its own namespace, so privileges never rest on the cache (DW-1986).
+  - **Caller SQL** (the console, and 19.11's agent tool) goes through `Run` and `Classify`. They use a closed `statementType` table and refuse session control, administration, server files and password text. An unrecorded query or DML is refused 422 `EXPLORER.SQL.UNRECORDED`.
+- **The grid reads through `BrowsePlan` and `BrowseRun`, never `Classify`.**
+  - The table and columns resolve against the caller's privilege-filtered `INFORMATION_SCHEMA.TABLES` and `COLUMNS` rows.
+  - The key is the primary-key constraint's columns (composite allowed), else `IS_IDENTITY`, else a column named `ID`.
+  - Pages use `OFFSET`/`FETCH` plus a `COUNT(*)`, 50 to 500 rows, with cells cut at 1,000 characters.
+  - Grid writes run port-composed statements through `SqlPort`, a rule 19.7 hands to 19.8.
+  - Identifiers come from the catalog rows, delimited with `"` doubled, and every value is bound (AD-21). Each distinct composed statement records one statement-index row (AD-7).
+- **Self-protection (AD-10).** `PROHIBITED.OCUPILOTSQL` lives in `Kernel/Proposal/Prohibited.cls`.
+  - It refuses a console statement that names `ocupilot` or touches an `OcuPilot` schema.
+  - It refuses a grid read of such a table before any statement, and a read of a view over one before any row.
+  - Named limit: DW-1987, a view grant whose base tables the caller cannot read.
+- **The write pattern.**
+  - One tool has two callers (AD-53, AD-55). The screen mints no proposal; the confirm dialog is its review.
+  - Each write answers for:
+    - the per-target lock (AD-34; a Save does not hold it yet, DW-1882);
+    - the fingerprint (AD-6) and the server-computed diff;
+    - the read-back (AD-58);
+    - the change event (AD-14);
+    - the port's `Snippet` (AD-59);
+    - `CLASSICPAGES` (AD-44);
+    - the audit marker, or a named gap (AD-15).
+  - 19.11 advertises `explorer.sqlquery.run`, whose key stays disabled until then.
+- **`AtelierPort`** (19.10's fixed statements) is the only class that names `%Api.Atelier.*`.
+  - It gates first, then checks versions, and it never sends vendor text.
+  - It never uses `docnames`' `filter`, `POST modified`, the `work` routes, search's `regex`, a catalog `pFilter` or `%SQL_Manager.StatementIndex`.
+  - No statement read selects a user name, client or call stack.
+- **Reads (AD-36, AD-24, AD-60).** One declared read serves a screen and its tool. It is capped by the row cap, 1,000 characters a field and 65,536 in all. Its row text is sanitized before it reaches the model.
+- **Documatic and agents.** Documatic loads under the browser-level session, and no token enters a frame (AD-28). The content-security policy names only the instance's origin (AD-47). Moving the default agent definition is a security change (AD-42).
 
 ## UX & Interaction Patterns
 
-- **The area.**
-  - System Explorer is rail position 8. Its side bar (EXPERIENCE.md :159) reads Classes · Routines · Search · Compare · Macros · SQL schemas · SQL tables · SQL views · SQL procedures · SQL query.
-  - Viewers, editors and tabs are unlisted (`sideBarPosition` 0). Prompts use the group `webAppPromptGroupCode`.
-  - Every screen registers the 10-item contract, at least three prompts, its aliases and its Fixed strings.
 - **EXPERIENCE.md.**
-  - System Explorer's Fixed-strings rows are :586 to :597. SQL query, at :597, is the table's last row, so new rows go after it.
-  - Edit the side-bar line :159 and the dialog set :173 in place.
+  - Edit the side-bar line (:159) and the closed dialog set (:173) in place. Dialogs never stack.
+  - System Explorer's Fixed-strings rows run from :586 to :598, the table's last row, so new rows go after :598.
   - Move every citation the suites hold (`npm run test:tools`).
-- **Lists and the grid.**
-  - The shared data-table uses CDK virtual scroll up to the max-rows cap, with client-side sort and filter, a "N rows · Max rows" footer, no page-size control, and Download CSV. The CSV keeps a formula prefix `'`, a UTF-8 byte-order mark and CRLF line ends.
-  - Tables follow the APG grid pattern: `role="grid"`, one Tab stop and `aria-activedescendant`.
-  - The data browser's grid is the ported harvest. It draws OcuPilot's design tokens, never its own palette, with no hardcoded colors (enforced by lint). 19.8 requires its accessibility to match the portal's rather than the original's.
-- **Rendering.** Code renders as text on `code-surface`. Output panes carry a polite live status line. A diff reuses `line-diff.ts`.
-- **Dialogs.**
-  - Dialogs are a closed set, and they never stack.
-  - Destructive actions use `typed-name-dialog`.
-  - The console's "Run this statement?" dialog opens only on a server `confirm`.
-- **Known shared-UI gaps, routed to range-end cleanup.** A long cell clips, and its tooltip cannot show text taller than the window (DW-1976). A nine-tab strip hides tabs (DW-1978).
+- **Every screen** registers the ten-item contract, at least three Code-group prompts, its aliases and its Fixed strings. Viewers, editors and tabs are unlisted (`sideBarPosition` 0).
+- **The data browser.**
+  - Tree on the leading side, grid on the rest; below the narrow breakpoint they stack.
+  - The grid follows the APG pattern: `role="grid"`, one Tab stop, `aria-activedescendant`.
+  - It uses `--ocu-*` tokens only, with no hardcoded colors (enforced by lint).
+- **CSV (the data-table's rule).** Cells are written as displayed. A leading `=`, `+`, `-`, `@`, tab or carriage return is prefixed with `'`. UTF-8 with a byte-order mark, CRLF, named `<screen>-<YYYYMMDD>-<HHMMSS>.csv`.
+- **Confirmations.** A destructive action uses `typed-name-dialog`. A data change confirms with "Run this statement?".
+- **Known gaps, routed to range-end cleanup.** A tooltip cannot show text taller than the window (DW-1976). A nine-tab strip hides tabs (DW-1978).
 
 ## Cross-Story Dependencies
 
-- **Done:** 19.1, 19.12, 19.2, 19.13, 19.3, 19.4, 19.5, 19.14, 19.6 and 19.15.
-- **Next: 19.7.**
-  - It takes the schema tree from the SQL schemas and SQL tables reads, and the column metadata from Fields.
-  - It reads rows through `SqlPort`'s prepare with privilege checks on.
-- **19.8** builds on 19.7's grid:
-  - editing, staged saves, CSV export, the keyboard help, go-to-row, ARIA and multi-table tabs;
-  - every save is confirmed;
-  - it may reuse `extraActions` and the data-table's Download CSV rules (inference).
+- **Done:** 19.1 to 19.7, and 19.12 to 19.15.
+- **19.8 consumes 19.7's work:** the grid, the store's filter, sort and offset state, the `columns` and `key` shapes, and the writes-through-`SqlPort` rule.
 - **19.11.**
-  - It advertises `explorer.sqlquery.run` behind the same guard.
-  - DW-2004: on a screen action, the fresh read carries no statement. So the agent's card must compose the guard from the proposed statement.
-  - It decides DW-2003's limit on functions and procedures.
-  - It adds the picker and 16.15's egress line, and reuses governance (14.2), the copy-out draft (14.1), the sanitizer (14.3), the read-back (16.17) and Download CSV (16.23).
-- **19.10.** The rule against identifying columns binds the statements tabs. 19.10 lists other sessions' statements, so its spec decides its own columns and gate (inference).
-- **Rosters a new screen, route or tool trips.**
-  - `ExplorerDescriptor`, `ReadTool` (its counts need the lead), `ToolRoundTrip` `REFUSEEMPTY`, `SurfaceCoverage` and `Descriptor` `ReadShapes`.
-  - `DeveloperFloor`: `SCREENS`, `TOOLS` and the count word "thirty-three".
-  - For a new route: `EndpointCoverage` and `DeveloperFloorRoutes`. For a new untrusted channel: `InjectionChannels`.
-  - The client's navigation, mirror, rail-wire and self-protection tests, and a regenerated `screens.generated.ts`.
-  - For a write tool: `GovernanceBaseline` and `DraftRegistry`.
+  - It advertises `explorer.sqlquery.run` behind the console's guard.
+  - It shows the real guard on the agent's card (DW-2004).
+  - It decides the limit on called functions and procedures (DW-2003), and whether grid rows ever reach the model.
+  - It reuses governance, the copy-out draft, the sanitizer, the read-back and Download CSV.
+- **19.10** lists other sessions' statements, so its spec decides its columns and gate (inference).
+- **Rosters a change trips.**
+  - Always: `ExplorerDescriptor`, `ReadTool` (its counts need the lead), `ToolRoundTrip` `REFUSEEMPTY`, `SurfaceCoverage`, `Descriptor` `ReadShapes`, and `DeveloperFloor`'s `SCREENS`, `TOOLS`, `HELDWRITES` and count word "thirty-three".
+  - A route: `EndpointCoverage` and `DeveloperFloorRoutes`. A write: `GovernanceBaseline` and `DraftRegistry`. An untrusted channel: `InjectionChannels`.
+  - The client's mirror, navigation and self-protection tests, and a regenerated `screens.generated.ts`.
 - **Slot A.**
-  - Use the profile `ocupilot-slot-a`. The throwaway is `ocupilot-a2-ci` (52780/1979), and it is never restarted.
-  - Load source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then run `$System.OBJ.LoadDir`.
-  - Run one test class per call.
-  - Probes create and remove only their own `OcuProbe*` objects.
+  - Use the profile `ocupilot-slot-a` and this epic's throwaway, `ocupilot-a2-ci` (52780/1979), which is never restarted.
+  - Load by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir`.
+  - Run one test class per call. Probes touch only their own `OcuProbe*` objects.
 - **Concurrency.**
-  - Epic 18 runs in parallel, and 18.20 is in implement.
-  - Shared files are edited add-only and unioned by whichever epic reaches the feature branch second. They include `Router.cls`, `strings.ts`, `_components.scss`, `Baseline.cls`, `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `ToolDispatch`, `ClassicPageGate`, `SurfaceCoverage`, `EndpointCoverage`, `screen-outlet.ts`, EXPERIENCE.md, the spine and the bundle budget.
-  - Check `.worktrees/epic-18`'s diff before editing a shared file.
+  - Epic 18 runs in parallel, with 18.21 open.
+  - Edit shared files add-only: `Router.cls`, `strings.ts`, `_components.scss`, `Baseline.cls`, the roster tests, `screen-outlet.ts`, EXPERIENCE.md, the spine and the bundle budget. Check `.worktrees/epic-18`'s diff first.
   - Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
