@@ -9667,6 +9667,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: high | fix-risk: low | footprint: in-footprint
 - evidence: maybe-false: no encrypted database exists on these instances and activating a key is out of 18.7's scope; settled by Story 18.22's Task 0, which activates a probe key: compare Database.SysCRUD LIST EncryptionKeyID for a database encrypted with it against KeyInFile LIST Id (src/OcuPilot/Kernel/Proposal/Prohibited.cls DependsOnKey)
 - 2026-10-04T22:45:55Z status=routed owner=18-22-database-and-data-element-encryption-keys by=harvest note=18.22's Task 0 activates a probe key and can measure both formats; fix the comparison there if they differ
+- 2026-10-04T23:23:47Z status=routed owner=18-22-database-and-data-element-encryption-keys by=merge_gate note=18.7 now fails closed (orchestrator ruling 2026-10-04): DependsOnKey compares key ids normalized (uppercase, hex digits only) and refuses an encrypted own database whose key id cannot be read, pinned by EncryptionKeyMatch; 18.22's Task 0 measures the real formats and confirms or narrows the comparison
 
 ### DW-2060: Kernel/Proposal/Prohibited.cls's Codes doc comment still reads twenty-six codes; PROHIBITED.OCUPILOTKEY makes 27
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
