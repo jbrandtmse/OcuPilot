@@ -162,12 +162,12 @@ Method TestTheAreaHoldsTwentyFourReadsAndEightWrites()
     While tIterator.%GetNext(.tKey, .tValue) {
         If $Extract(tKey, 1, 9) = "explorer." Set tBaselined = tBaselined _ $Select(tBaselined = "": "", 1: ",") _ tKey _ "=" _ $Select(tValue: "true", 1: "false")
     }
-    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.sqlquery.run=false,explorer.routines.import=false", "the compile and export keys ship enabled and the delete, import, save and SQL run keys disabled")
+    Do $$$AssertEquals(tBaselined, "explorer.classes.compile=true,explorer.classes.delete=false,explorer.routines.compile=true,explorer.routines.delete=false,explorer.classes.export=true,explorer.routines.export=true,explorer.classes.import=false,explorer.classes.save=false,explorer.routines.save=false,explorer.sqlquery.run=false,explorer.routines.import=false,explorer.sqldata.save=false", "the compile and export keys ship enabled and the delete, import, save, SQL run and data browser save keys disabled")
     For tI = 1:1:$Length(..#DESCRIPTORS, ",") {
         Set tClass = $Piece(..#DESCRIPTORS, ",", tI)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Set tMulti = $Select($$$ISOK(tSC) && (tDeclaration.%GetTypeOf("multiSelect") = "object"): tDeclaration.multiSelect.%ToJSON(), 1: "")
-        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local,save|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", tClass = "OcuPilot.Screen.Descriptor.ExplorerSqlQuery": "|run|", 1: "||")
+        Set tWant = $Select(tI <= 2: "|compile,delete,export,export-browser,import,import-local,save|{""action"":""compile"",""max"":100,""extraActions"":[""delete"",""export""]}", tClass = "OcuPilot.Screen.Descriptor.ExplorerSqlQuery": "|run|", tClass = "OcuPilot.Screen.Descriptor.ExplorerSqlData": "|save|", 1: "||")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId") _ "|" _ $ListToString($ClassMethod(tClass, "RowActionIds")) _ "|" _ tMulti, tWant, tClass _ ": its actions")
     }
 }
@@ -290,7 +290,7 @@ Method TestSqlQueryKeysTheClassicSqlPage()
 }
 
 /// <p>Story 19.7 AC9: Data browser is a listed form page at side-bar position 11 with no read, no
-/// table, no action and no context field, keyed by nothing, gated on <code>%Development:USE</code> and
+/// table and no context field, whose one action is Story 19.8's save, keyed by nothing, gated on <code>%Development:USE</code> and
 /// keyed to the classic Open Table page, which the portal's own resolver answers for
 /// <code>/csp/sys/exp/UtilSqlOpen.csp</code>; a custom resource an operator assigns to that page gates
 /// it; its tool identifier resolves to it and its context names no tool.</p>
@@ -305,7 +305,7 @@ Method TestDataBrowserKeysTheClassicOpenTablePage()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind _ "|" _ tDeclaration.labelKey, "system-explorer/sql-data|11|form-page|class|namespace|none|explorerSqlDataLabel", "a listed form page over classes, keyed by nothing")
-    Do $$$AssertEquals(tDeclaration.%GetTypeOf("read") _ "|" _ tDeclaration.%GetTypeOf("table") _ "|" _ tDeclaration.rowActions.%ToJSON() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.context.%ToJSON() _ "|" _ tDeclaration.refreshes, "unassigned|unassigned|[]||{""fields"":[],""secretFields"":[]}|0", "no read, no table, no action, no context field and no refresh")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("read") _ "|" _ tDeclaration.%GetTypeOf("table") _ "|" _ tDeclaration.rowActions.%ToJSON() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.context.%ToJSON() _ "|" _ tDeclaration.refreshes, "unassigned|unassigned|[{""id"":""save"",""selfProtection"":""""}]||{""fields"":[],""secretFields"":[]}|0", "no read, no table, the save as its one action, no context field and no refresh")
     Do $$$AssertEquals(tDeclaration.commandAliases.%ToJSON(), "[""data browser"",""open table"",""browse table"",""table rows""]", "its four aliases")
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), ..#PAIRS, "gated on %Development:USE")
     Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage") _ "|" _ tDeclaration.classicLinkExemption.exempt, tPage _ "|0", "keyed to the classic Open Table page, with no exemption")

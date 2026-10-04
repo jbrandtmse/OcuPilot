@@ -9391,6 +9391,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
 - 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+- 2026-10-04T19:24:34Z status=resolved-by:19-8-the-data-browser-editing-staging-and-export owner=19-8-the-data-browser-editing-staging-and-export by=adjudication note=the data table's cut-cell tooltip is ported into data-browser-grid.ts (data-table.ts untouched): on pointer rest and on the active cell, hidden by Escape, scroll, a press or an open editor; pinned by AC13's grid spec and browser leg
 
 ### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
@@ -9521,7 +9522,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
 - 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
+- 2026-10-04T21:10:24Z status=routed owner=range-end-cleanup by=merge_gate note=restoring the 16:23:18Z raise (med p1; the 19.8 forward merge f3c01129 displaced it under DW-2057): recurring Chrome DevTools-protocol hangs across specs and heads (aaa2460d a11y 729 s, a3f957b2 a11y 730 s, 1.0.9 PR run 37212622481 messages-log-files Network.enable 181 s); fix in the browser harness (fresh page or browser and one retry on a protocol timeout, per call), not per spec
+
+### DW-2053: Data browser counts an untouched new row in Save changes (n) and the save dialog but never sends it, so a Proceed with only such rows does nothing and says nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: StagedChanges.count() and counts() include every insert while toWire() skips one with no values (data-browser-model.ts); DataBrowserState.save() then returns false with no announcement
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a Save that sent nothing, or Story 19.16 changes how staged rows count
+
+### DW-2054: Data browser edits of a row whose key cell is cut at 1,000 characters or shown as binary hex send the shown text as the key, so the save answers changed or gone and writes nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.pageRow takes key values from the page's displayed cells; SqlPort.BrowseRun cuts a cell at MAXCELL and renders binary as 0x hex
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a table with a binary or over-1,000-character primary key is edited in Data browser
+
+### DW-2055: Data browser checks no value against the save's 32,767-character and 1,000,000-character bounds before sending, and the 400 it gets back names no row
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: parseCellInput takes text as typed; refusalText (sql-query.store.ts) shows only the envelope reason and drops detail.problem
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a whole save refused with TOOL.ARGUMENTS after pasting a long value
+
+### DW-2056: A data browser row answered error with no SQLCODE and no message (a trigger's open transaction rolled back, an insert counting no row, a run that raised) leaves its Change cell blank
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SaveOutcome answers RowResult(index, error, "", "", "") on four paths and outcomeText joins two empty parts to ''; a fallback sentence needs a new strings.ts key
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=such a row is answered on a real table; strings.ts is contended with Epic 18 now
+
+### DW-2057: explorer.sqldata.save's AD-59 script composes every guard as %EXACT where the port compares a non-text column with =, because the pure snippet reads no catalog
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SnippetPlan marks every column kind text, so SaveComposed renders %EXACT for a number or date guard; SaveSnippet's doc comment says so; no proposal for this tool can be drafted
+- 2026-10-04T19:18:05Z status=wontfix-theoretical owner=19-8-the-data-browser-editing-staging-and-export by=cr note=real only if Story 19.11 lets the agent propose a row change, so a person could take this script
 - 2026-10-04T16:23:18Z status=routed owner=range-end-cleanup by=merge_gate note=recurring, raised to med p1: Chrome DevTools-protocol hangs across specs and heads - aaa2460d run 37143273820 attempt 1 (a11y, Runtime.callFunctionOn 729 s), a3f957b2 run 37184530521 (a11y, 730 s), release/1.0.9 PR #12 run 37212622481 (messages-log-files AC1, Network.enable timed out at 181 s in CdpPage._create); DW-1822's 600 s protocolTimeout raised the ceiling but does not stop the hang; fix in the browser harness (fresh page or browser and one retry on a protocol timeout, per call), not per spec
+- 2026-10-04T21:10:24Z status=wontfix-theoretical owner=19-8-the-data-browser-editing-staging-and-export by=merge_gate note=restoring the 19:18:05Z disposition: the 16:23:18Z routed line above belongs to DW-2026, displaced here by the forward merge f3c01129
 ### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
 - source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
@@ -9628,3 +9656,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: DW-2033 investigation 2026-10-04 (ocupilot-c-ci; launchd com.apple.tmp_cleaner log; /tmp/ocupilot-b-ci mtimes 00:00:02-04) | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: find -dx /tmp -type f -atime +3 -mtime +3 -ctime +3 -delete at 00:00 daily; reproduced by deleting the files by hand; no IRIS configuration step deleted anything; explains ocupilot-ci's IRISTEMP and missing compose.yml
 - 2026-10-04T15:12:09Z status=routed owner=range-end-cleanup by=merge_gate note=priority p1: move the local throwaway root out of /tmp (keep CI's Linux path), make ci-throwaway.sh down fall back to docker compose -p when compose.yml is missing, and add a check that every mounted local database still has its IRIS.DAT; until then the orchestrator refreshes the running throwaways' timestamps
+
+### DW-2058: CI flake: system-explorer-transfer.browser-spec AC1's structural walk of the import dialog fails 'Protocol error (DOM.getAttributes): Could not find node with given id' when a marked field is replaced between DOM.querySelectorAll and DOM.getAttributes
+- source: ci run 37228982542 (browser shard 1/3, head f3c01129) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: structural-walk.mjs fieldNames :526 reads each [data-ocu-walk-field] node by id after one querySelectorAll; the transfer spec :222 walks right after typing into the path picker, whose listing re-renders the dialog's fields (inference); 19.8 changes neither file
+- 2026-10-04T20:34:37Z status=routed owner=range-end-cleanup by=runner note=first sighting; the fix is fieldNames tolerating a node replaced mid-walk (re-query once) or the spec waiting for the picker's listing before the walk

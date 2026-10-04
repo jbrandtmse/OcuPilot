@@ -309,7 +309,7 @@ development_status:
   19-5-the-sql-catalog-browser: done
   19-6-the-query-console-and-its-dml-and-ddl-guard: done
   19-7-the-data-browser-tree-grid-filter-and-sort: done
-  19-8-the-data-browser-editing-staging-and-export: in-progress
+  19-8-the-data-browser-editing-staging-and-export: done
   19-9-documatic-and-docdb: backlog
   19-10-sql-activity: backlog
   19-11-the-agent-gains-guarded-sql-and-a-picker: backlog
@@ -317,7 +317,7 @@ development_status:
   19-13-xml-export-and-import: done
   19-14-the-sql-catalog-s-remaining-detail-tabs: done
   19-15-the-query-console-runs-a-query-in-the-background: done
-  19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs: backlog
+  19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs: in-progress
   epic-19-retrospective: optional
 
   epic-20: backlog

@@ -6603,7 +6603,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "save",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [],
       "secretFields": []
