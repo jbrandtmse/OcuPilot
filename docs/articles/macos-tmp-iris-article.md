@@ -1,10 +1,9 @@
 # What I learned building OcuPilot: macOS quietly deletes IRIS databases kept in /tmp
 
 <!-- Draft for the InterSystems Developer Community, "What I learned building OcuPilot" series.
-Facts checked on 2026-10-04 on macOS 26.6 with the intersystems/iris-community:2026.2 image.
-Add the Open Exchange link before publishing. -->
+Facts checked on 2026-10-04 on macOS 26.6 with the intersystems/iris-community:2026.2 image. -->
 
-While building [OcuPilot](OPEN_EXCHANGE_LINK), an AI co-pilot for the IRIS Management Portal, I ran a
+While building [OcuPilot](https://openexchange.intersystems.com/package/OcuPilot), an AI co-pilot for the IRIS Management Portal, I ran a
 lot of short-lived IRIS containers for testing. They kept their data in folders under `/tmp` on my
 Mac, because that is where scratch files go. Three days in, one of them started failing in ways that
 made no sense: a temporary database that still showed as mounted had no file behind it, and writes
