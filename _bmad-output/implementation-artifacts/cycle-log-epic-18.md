@@ -643,3 +643,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-04T09:42:52Z	Story 18.20	ci_resolved	story=18.20 run=37190183552 head=a82a7261 result=success resolved_at=boundary(next_implement)
 2026-10-04T09:42:52Z	Story 18.20	boundary_reported	to=main code_head=a82a7261 ci=success run=37190183552 branch_head=pending(skip-ci_bookkeeping_only)
 2026-10-04T09:43:16Z	Story 18.21	stage_spawned	stage=implement spawn_at=2026-10-04T09:43:16Z model=opus agent_name=18-21-ecp-settings-and-application-servers-implement-1 cycle_iteration=1 prompt=/tmp/epic-18-d6/implement-18-21.md ci_gate=18.20_run_37190183552_green(Rule_28)
+2026-10-04T09:44:20Z	Story 18.20	committed	sha=77c8c909(log-only_forward_merge_of_e0e34baa;code-equal_a82a7261) ci=pending run=37193094496 pushed=alone note=for_fast-forward
