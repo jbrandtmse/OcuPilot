@@ -280,3 +280,5 @@
 2026-10-04T07:19:47Z	Story 19.7	spec_validated	service_introducing=true(BrowsePlan/BrowseRun) integration_ac=present owned_ledger=DW-2025(task) decision_dependency=none(rows_screen-only_settled_from_AD-3/AD-36) harvest=iris-table-editor_MIT(attribution) footprint=EXPERIENCE.md_159_in_place,angular_budget,spine(contended),Router/strings/styles/screen-outlet/rosters(add-only)
 2026-10-04T07:20:31Z	Story 19.15	ci_resolved	story=19.15 run=37182979085 head=16b50ec8 result=success merged=feature_d7239837(orchestrator)
 2026-10-04T07:20:31Z	Story 19.7	stage_spawned	stage=implement spawn_at=2026-10-04T07:20:31Z model=opus agent_name=19-7-data-browser-implement-1 cycle_iteration=1 head=1f3fb9a9 throwaway=ocupilot-a2-ci ci_prev_story=19.15_success(rule28)
+2026-10-04T07:21:15Z	Story 19.7	stage_superseded	stage=implement(logged_not_spawned) reason=merge_gate_DW-2025_first
+2026-10-04T07:21:15Z	Epic 19	stage_spawned	stage=fix-head spawn_at=2026-10-04T07:21:15Z model=opus agent_name=19-dw2025-fix-1 branch=OCU-1-epic19-dw2025(from_feature_7ff01a67) entry=DW-2025 approved_by=merge_gate
