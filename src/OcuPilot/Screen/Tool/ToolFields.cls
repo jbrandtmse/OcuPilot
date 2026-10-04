@@ -83,6 +83,19 @@ XData Tools
   {"path":"VerifySSLHostName","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"Custom","shape":"object","templateType":"object","itemType":"","class":"opaque","compare":"members"}
 ]},
+"osmgmt.licensekey.activate": {"fieldList":"License.Key","fields":[
+  {"path":"Key","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
+"osmgmt.licenseservers.create": {"fieldList":"License.Server","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"KeyDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.licenseservers.update": {"fieldList":"License.Server","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"KeyDirectory","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "osmgmt.localdatabases.create": {"fieldList":"Database.ConfigCRUD","fields":[
   {"path":"Server","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Directory","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unslashed"},

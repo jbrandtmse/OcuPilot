@@ -3,7 +3,7 @@
  *
  * What it pins, each on rendered DOM or on the instance itself:
  *
- * 1. **The form** (AC1, AC9): OS management's fourteenth and last side-bar entry reads "Journal
+ * 1. **The form** (AC1, AC9): OS management's fourteenth side-bar entry reads "Journal
  *    settings", and the form shows the instance's thirteen settings, the archive target and the
  *    write image journal's two read-only with the shown-only hint.
  * 2. **A Save** (AC2): a changed file size is sent alone, the instance holds it and the form reads
@@ -224,7 +224,8 @@ test('AC1, AC9: Journal settings is the fourteenth OS management entry and shows
     await formDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 14, `fourteen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.6: License key and License servers follow it.
+    assert.equal(bar.entries.length, 16, `sixteen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
     assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
     for (const id of FIELD_IDS) assert.notEqual(await page.$(id), null, `${id} is drawn`);

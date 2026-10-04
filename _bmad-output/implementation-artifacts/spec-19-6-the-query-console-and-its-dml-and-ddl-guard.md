@@ -434,7 +434,7 @@ Rule (a) is the fail-closed backstop where the instance records no target, and i
 
 - **AD-53:**
   - The unadvertised named case's third: `explorer.sqlquery.run`.
-  - Named gap fourteen: SQL query's runs (no vendor event with the stock event set; every `%System/%SQL` event and `%SMPExplorer/ExecuteQuery` disabled, measured).
+  - Named gap fifteen (after Story 18.6's fourteenth): SQL query's runs (no vendor event with the stock event set; every `%System/%SQL` event and `%SMPExplorer/ExecuteQuery` disabled, measured).
 - **AD-51** (Story 19.6's case):
 
   > `SqlPort` builds the run from the tool's declared screen values and answers its fresh read through a port-composed `GUARD` type.

@@ -250,6 +250,9 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['routine', 'documentset'],
     // Story 18.18: the instance's journal settings are one object.
     ['journal-settings', 'singleton'],
+    // Story 18.6: the instance's license key is one object, and a license server's name folds case.
+    ['license-key', 'singleton'],
+    ['license-server', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares

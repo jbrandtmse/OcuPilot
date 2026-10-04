@@ -417,7 +417,16 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <class>OcuPilot.Port.JournalPort</class>. Read on this build: it copies only the keys its body
 /// carries, <code>wijdir</code> and <code>targwijsz</code> to <code>Config.config.Modify</code> and the
 /// rest to <code>Config.Journal.Modify</code>, and checks no type, range or directory.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT";
+/// <p>The three <code>License.*</code> pairs are Story 18.6's. Read on this build:
+/// <code>License.Key/PUT</code> takes <code>{Key}</code>, the license key's text, which it copies to a
+/// temporary file, checks with <code>IsValidKey</code> and deletes, answering 400 for an invalid key;
+/// for a valid one it writes the manager directory's <code>iris.key</code> and calls
+/// <code>Upgrade()</code>. It is issued only by <class>OcuPilot.Port.LicensePort</class>, after a
+/// <code>VALIDATE</code> of the same text answered valid. <code>License.Server/PUT</code> is an upsert
+/// that sets only the keys its body carries and answers 201 on a create, which requires
+/// <code>Address</code> and <code>Port</code>; <code>License.Server/DELETE</code> reads no body and
+/// answers 404 for an absent name. All three need <code>%Admin_Manage</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/PUT,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/PUT,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/PUT,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/PUT,Namespace.PackageMappings/DELETE,Namespace.Namespace/MAPPINGS,Process/BROADCAST,Database.SysCRUD/POST,Database.SysCRUD/PUT,Database.SysCRUD/DELETE,Database.ConfigCRUD/PUT,Database.ConfigCRUD/DELETE,Database.Actions/MOUNT,Database.Actions/DISMOUNT,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,TaskTransfer/EXPORT,TaskTransfer/IMPORT,LanguageServer/START,LanguageServer/STOP,LanguageServer/PUT,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/REMOVE,Lock/REMOVEOWNER,Lock/DELETE,Security.LDAP/CHANGEPWD,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,Journal.File/INTEGRITYCHECK,Journal.Settings/PUT,License.Key/PUT,License.Server/PUT,License.Server/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -433,7 +442,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS,Namespace.Namespace/DELETE,WebSession/DELETE,AsyncResult/CANCEL,AsyncResult/PAUSE,AsyncResult/RESUME,BackgroundTask/CANCEL,BackgroundTask/PAUSE,BackgroundTask/RESUME,Namespace.GlobalMappings/DELETE,Namespace.RoutineMappings/DELETE,Namespace.PackageMappings/DELETE,Database.SysCRUD/DELETE,Database.ConfigCRUD/DELETE,Database.Actions/DISMOUNT,Database.Actions/DEFRAGMENT,LanguageServer/START,LanguageServer/STOP,LanguageServer/DELETE,Task.Manager/SUSPEND,Task.Manager/RESUME,Task.Manager/RUN,Lock/DELETE,Security.LDAP/DELETE,Namespace.Namespace/INTEROP,Journal.Settings/SWITCHFILE,Journal.Settings/SWITCHDIR,License.Server/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -493,6 +502,26 @@ ClassMethod IsConnectionRead(pEndpoint As %String, pSuffix As %String) As %Boole
     Quit ''$ListFind($ListFromString(..#CONNECTIONREADTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>The non-mutating <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method> admits
+/// that take a body, change nothing and store nothing, answered as reads. A pair listed here is keyed
+/// by its pair, carries its suffix as the request method, runs in process and is never queued: a
+/// check whose vendor <code>ShouldRunAsync()</code> answered true is refused before <code>Run()</code>,
+/// because its body can carry a secret the vendor's queue would write to its task row (AD-26,
+/// AD-35).</p>
+/// <p><code>License.Key/VALIDATE</code> (Story 18.6) is the one entry. Read on this build: its
+/// <code>TYPEVALIDATE</code> is 10, its body is <code>{Key}</code>, and its <code>RunValidate</code>
+/// copies the text to a temporary file, answers
+/// <code>{IsValid, InvalidReason, RequiresRestart, RestartReason, HasReductions, Reductions}</code> and
+/// deletes the file. Its one caller is <class>OcuPilot.Port.LicensePort</class>.</p>
+Parameter CHECKTYPES = "License.Key/VALIDATE";
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CHECKTYPES</parameter> admits, keyed by the pair as <method>IsMutating</method> is.</p>
+ClassMethod IsCheckType(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CHECKTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
 /// <p>The <parameter>CONNECTIONTESTTYPES</parameter> pairs whose vendor answer carries no verdict,
 /// comma-separated. Their outcome is the console lines <method>Sequence</method> captured while
 /// <code>Run()</code> ran: <code>{lines}</code> at 200, with no <code>passed</code>, because the
@@ -534,7 +563,9 @@ Parameter UNLOGGEDQUERY = "WebSession/DELETE=id";
 /// nothing for a listed one, and the caller still gets its fault (AD-2 as amended 2026-09-30).
 /// <code>Lock/DELETE/409</code> has found the lock's owner in an open transaction, which is the answer
 /// Story 16.12's warning is taken from.</p>
-Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409";
+/// <p><code>License.Key/PUT/400</code> is a key the vendor's own check refused (Story 18.6): its text is
+/// that check's reason, which no log line carries (AD-39).</p>
+Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409,License.Key/PUT/400";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
 /// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
@@ -1163,6 +1194,16 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
         If tTest {
             Set tSC = ..TestOutcome(pEndpoint, pType, tSeqSC, tHttp, $Get(tAnswer), $Get(tLines), .pResult, .pHttpStatus, .pFault)
             Set tLines = ""
+            Quit
+        }
+        ; CHECKTYPES: a check the vendor answered with its negative verdict under an error status -- a
+        ; 500 carrying the answer object it built, IsValid false -- has answered. The answer goes to the
+        ; caller alone and nothing of it is logged, because its text can be a key check's own reason
+        ; (AD-39). Any other error status, a positive verdict's included, stays a fault.
+        If ..IsCheckType(pEndpoint, pType) && $$$ISERR(tSeqSC) && (tHttp = 500) && $IsObject($Get(tAnswer)) && tAnswer.%IsA("%Library.DynamicObject") && (tAnswer.%GetTypeOf("IsValid") = "boolean") && 'tAnswer.%Get("IsValid") {
+            Set pResult = tAnswer
+            Set pHttpStatus = 200
+            Set tSC = $$$OK
             Quit
         }
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
@@ -2677,6 +2718,7 @@ ClassMethod JournalRecordRules(pEndpoint As %String, pType As %String, ByRef pQu
 ClassMethod HttpMethodFor(pEndpoint As %String, pSuffix As %String) As %String [ Private ]
 {
     If ..IsMutating(pEndpoint, pSuffix) Quit pSuffix
+    If ..IsCheckType(pEndpoint, pSuffix) Quit pSuffix
     Quit "GET"
 }
 
@@ -2699,6 +2741,12 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
     }
     ; CONNECTIONREADTYPES: a pair-keyed read, admitted on its own endpoint alone.
     If ..IsConnectionRead(pEndpoint, pSuffix) {
+        Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
+        If (tType = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
+        Quit tType
+    }
+    ; CHECKTYPES: a pair-keyed check that takes a body, admitted on its own endpoint alone.
+    If ..IsCheckType(pEndpoint, pSuffix) {
         Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
         If (tType = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tType
@@ -2856,6 +2904,12 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
         }
         If $$$ISERR(tSC) Quit
 
+        ; CHECKTYPES (Story 18.6): a check's body can carry a secret, so a check the vendor would
+        ; queue is refused here rather than queued.
+        If ..IsCheckType(pName, %request.Method) && pEndpoint.ShouldRunAsync() {
+            Set tSC = $$$ERROR($$$GeneralError, "the admin API would queue this " _ %request.Method _ " check, and a check's body is never written to the vendor's task row (AD-35)")
+            Quit
+        }
         ; AD-26 (Story 16.14): a connection test runs in process and is never queued, because its
         ; body can carry a password the vendor's queue would write into its task row and the journal.
         If 'pConnectionTest && pEndpoint.ShouldRunAsync() {

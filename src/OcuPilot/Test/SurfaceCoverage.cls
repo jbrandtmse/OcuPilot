@@ -182,6 +182,9 @@ XData Coverage
 <screen name="JournalFileDatabaseList" class="OcuPilot.Test.JournalDescriptor" method="TestDetailsAndDatabasesAreUnlistedChildrenOfJournals" corpus="the two unlisted journal screens are asserted together in one loop"/>
 <screen name="JournalSettings" class="OcuPilot.Test.JournalDescriptor" method="TestJournalSettingsIsOsManagementsFourteenthEntry"/>
 <screen name="JournalRecordList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalRecordsIsAnUnlistedServerCriteriaList"/>
+<screen name="LicenseKey" class="OcuPilot.Test.LicenseDescriptor" method="TestLicenseKeyIsOsManagementsFifteenthEntry"/>
+<screen name="LicenseServerList" class="OcuPilot.Test.LicenseDescriptor" method="TestLicenseServersIsOsManagementsSixteenthEntry"/>
+<screen name="LicenseServerForm" class="OcuPilot.Test.LicenseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -323,6 +326,10 @@ XData Coverage
 <tool name="osmgmt.journals.switchdirectory" class="OcuPilot.Test.JournalDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three journal tools are asserted together in one loop"/>
 <tool name="osmgmt.journals.integrity" class="OcuPilot.Test.JournalDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the three journal tools are asserted together in one loop"/>
 <tool name="osmgmt.journalsettings.update" class="OcuPilot.Test.JournalDescriptor" method="TestTheSettingsToolDeclaresItsFieldsKindAndPairs"/>
+<tool name="osmgmt.licensekey.activate" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
+<tool name="osmgmt.licenseservers.create" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
+<tool name="osmgmt.licenseservers.update" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
+<tool name="osmgmt.licenseservers.delete" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

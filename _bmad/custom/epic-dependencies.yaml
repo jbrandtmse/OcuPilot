@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "45604cec083d2244cbbdcdb57ab4cc2f49c4d2a39d306f452cc1e71ccf0ab15e"
+epics_md_hash: "ad1b6a728e289195f00bf5024e95e9dcf49494a16e4ad3bd0d8263d5d3ebcfed"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -256,7 +256,7 @@ epics:
     depends_on: [epic-11, epic-12]
     submodules: []
     in_run: all   # owner 2026-09-26 (c242eac4): the whole epic, in epics.md story order
-    story_order: ["18-1 (slot A ahead of 16-4, unless slot B reaches Epic 18 first)", "18-2", "18-14 (orchestrator merge gate 2026-09-28: split from 18.2 for size, Rule 5; runs after 18-2)", "18-3", "18-4 (destructive keys default DISABLED under 14.2's baseline rule)", "18-15 (orchestrator merge gate 2026-09-28: split from 18.14 for risk, Rule 5; runs after 18-4)", "18-16 (orchestrator merge gate 2026-09-28: split from 18.3, Rule 5; runs after 18-15)", "18-17 (orchestrator merge gate 2026-10-01: split from 18.15 for scope, Rule 5; runs first, then 18-16, then 18-15 after release 1.0.5)", "18-5 (Part A: journal files, summary, integrity, switches, the journal-file guard, DW-1797)", "18-18 (orchestrator merge gate 2026-10-02: Journal settings, split from 18.5 for size, Rule 5; runs right after 18-5)", "18-19 (orchestrator merge gate 2026-10-02: Journal record browser, split from 18.5 for size, Rule 5; consumes 18-5's guard; runs after 18-18)", "18-6", "18-7", "18-8", "18-9", "18-10", "18-11", "18-12", "18-13"]
+    story_order: ["18-1 (slot A ahead of 16-4, unless slot B reaches Epic 18 first)", "18-2", "18-14 (orchestrator merge gate 2026-09-28: split from 18.2 for size, Rule 5; runs after 18-2)", "18-3", "18-4 (destructive keys default DISABLED under 14.2's baseline rule)", "18-15 (orchestrator merge gate 2026-09-28: split from 18.14 for risk, Rule 5; runs after 18-4)", "18-16 (orchestrator merge gate 2026-09-28: split from 18.3, Rule 5; runs after 18-15)", "18-17 (orchestrator merge gate 2026-10-01: split from 18.15 for scope, Rule 5; runs first, then 18-16, then 18-15 after release 1.0.5)", "18-5 (Part A: journal files, summary, integrity, switches, the journal-file guard, DW-1797)", "18-18 (orchestrator merge gate 2026-10-02: Journal settings, split from 18.5 for size, Rule 5; runs right after 18-5)", "18-19 (orchestrator merge gate 2026-10-02: Journal record browser, split from 18.5 for size, Rule 5; consumes 18-5's guard; runs after 18-18)", "18-6 (Part A: the license key and license servers)", "18-20 (orchestrator merge gate 2026-10-03: ECP data servers, split from 18.6 for size, Rule 5; runs right after 18-6)", "18-21 (orchestrator merge gate 2026-10-03: ECP settings and application servers, split from 18.6 for size, Rule 5; runs after 18-20)", "18-7", "18-8", "18-9", "18-10", "18-11", "18-12", "18-13"]
     slot: "B after Epic 14 (14.1, 14.8, 14.3, 14.5, 14.4, 14.2, 14.6)"
     gate: "Stage 2 gate amended at source (c242eac4): build against the pinned 2026.2 image; re-derive the inventory fixture when 2027.1 ships"
     paths_hint: ["src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Port/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]

@@ -8693,6 +8693,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T00:05:06Z status=routed owner=range-end-cleanup by=merge_gate note=Rule 27 (restated 2026-09-29): not a flake and blocks neither 1.0.5 nor a downstream story; queued for the standing cleanup after the next release (23.3 or later), priority p3 as the sibling of DW-1497: put the 21 per-entity Saves under the same per-target hold
 - 2026-10-01T05:41:07Z occurrence=16-14-the-ldap-and-kerberos-editor
 - 2026-10-02T12:43:22Z occurrence=18-16-remote-databases
+- 2026-10-03T22:14:52Z occurrence=18-6-licensing-and-ecp
 ### DW-1879: Logs side bar: the gated 'Interoperability event log' entry renders its 'Requires %Ens_EventLog:USE' hint as a second column, squeezing the label onto two lines
 - source: Planner on the 1.0.4 candidate (demo a6e4b217), 2026-09-30 | severity: low | fix-risk: low | footprint: the side-bar gated-entry layout
 - evidence: UX-DR22 puts a gated entry's reason inline after the name; on the Logs area the hint takes its own column and wraps the label
@@ -9305,3 +9306,74 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
 - 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
+
+### DW-1989: License servers' screen Delete dialog never states the multi-server-key consequence the agent's proposal card carries
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: DESTRUCTIVE_CONSEQUENCES holds one static sentence (screen-action-handler.ts:399); LicenseServerDelete.Consequence is read only by Mint; every instance here is Single
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=an instance or CI reads $SYSTEM.License.KeyServer()=Multi, or a user reports a Multi-key server delete
+
+### DW-1990: GET /license-server/form and /license-server/name have no test that their own gate refuses a caller without the screen's pairs
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseWriteGate refuses validate, activate and the writes only; EndpointCoverage marks both GET routes without refusal; AdminPort's ResourcesOR (%Admin_Manage) backstops the read
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=either route answers 200 to a principal past the API floor without %Admin_Manage:USE
+
+### DW-1991: LicenseProbe.LicenseLines builds the whole Snapshot (processes, OcuPilot objects, both log line counts) before and after every license server test
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseLines (LicenseProbe.cls:572) filters Snapshot (:483); LicenseServerWrite and LicenseWriteGate call it twice per test; only the license facts and servers are compared
+- 2026-10-03T22:14:51Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=LicenseServerWrite or LicenseWriteGate exceeds 120 s in ui/tools/ci-timings.json
+
+### DW-1992: A successful activation's requiresRestart is computed by LicensePort.Activate and dropped; nothing states the restart after Activate
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: LicensePort.Activate sets requiresRestart (:171-173); the screen action answers {action,target,readBack}; the dialog states the restart before Activate, from Validate
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a user report that an activated key did not take effect and no restart was stated after Activate
+
+### DW-1993: POST /license/key/validate answers a JSON body with an extra member or a non-string Key with the 'could not be read as JSON' reason
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseRules.HandleValidate refuses any body other than {Key: string} with REASONAGENTBADBODY (:191-193); the page never sends one
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a client or API consumer is seen sending {Key} with another member
+
+### DW-1994: EXPERIENCE.md:375 and strings.ts's Story 18.6 comment say 'thirteen field labels beyond License units'; there are twelve
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LICENSE_KEY_FIELDS holds 13 fields, License units reusing licenseUsageLicenseUnits; both files are contended (Epic 19), so the wording is not rewritten in review
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=the next in-place edit of EXPERIENCE.md :375 or strings.ts's Story 18.6 block (correct the count then)
+- 2026-10-03T22:17:52Z status=resolved-by:18-6-licensing-and-ecp by=adjudication note=the count is this story's own wording; corrected to twelve at origin in EXPERIENCE.md:375 and strings.ts's Story 18.6 comment
+
+### DW-1995: Story 18.6 rewrote existing doc and assertion-message lines in three contended rosters rather than only adding lines
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/ToolDispatch.cls:150-155, Test/GovernanceBaseline.cls:2-6 and :71, Test/Governance.cls:131 (Epic 19's 19.2 and 19.13 edited the same lines)
+- 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a textual merge conflict on those lines when 18.6 or an Epic 19 story reaches the feature branch second
+
+### DW-1996: LicenseRules.Taken drops the look-up's HTTP status and fault, so a 403 or 503 there renders 500 internal on the name check and the form's create
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Taken (LicenseRules.cls:133-141) returns only a status; HandleName and LicenseServerSave render RenderInternal; the form gate equals the port's ResourcesOR
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when License.Server GET answers 403 or 503 to a caller past the form's gate
+
+### DW-1997: LicenseRules.Taken reads an OK look-up that returned no object as a free name
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Taken sets pTaken from $IsObject(tFresh); AdminPort fails a non-2xx and the vendor GET answers an object or 404
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when AdminPort answers License.Server GET OK with no object
+
+### DW-1998: AdminPort admits License.Key/PUT for any caller, so a later tool declaring AdminPort could skip LicensePort's VALIDATE guard
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: MUTATINGTYPES lists License.Key/PUT; the only tool reaching it today, LicenseKeyActivate, declares OcuPilot.Port.LicensePort
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a second tool or route names License.Key PUT without OcuPilot.Port.LicensePort
+
+### DW-1999: A key text beyond the maximum local string length raises <MAXSTRING> in HandleValidate and answers 500 instead of 422 on Key
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: HandleValidate reads tBody.%Get("Key") as a string; a key file is a few kilobytes; the catch renders 500
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a caller sends a multi-megabyte Key
+
+### DW-2000: license-key.page.ts onFile: a read finishing after the dialog closed and reopened fills the new dialog, and a failed read says nothing
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: reader.onload checks only open(); no onerror; a .key file is a few kilobytes and reads in milliseconds
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when a .key file read outlasts a dialog close and reopen
+
+### DW-2001: AdminPort.Sequence's refusal of a CHECKTYPES pair the vendor would queue has no test
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: License.Key VALIDATE runs in process on 2026.2 (ShouldRunAsync 0), so the branch never runs; deleting it reddens nothing
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when License.Key VALIDATE's ShouldRunAsync() answers 1 on a later build
+
+### DW-2002: POST /license/key/validate's 200 answer is asserted only in process; no over-the-wire test can send a valid key
+- source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LicenseSeamPort is process-private and no instance here holds a valid key to send (no activation, by decision)
+- 2026-10-03T22:14:52Z status=wontfix-theoretical owner=18-6-licensing-and-ecp by=cr note=real when CI gains a valid test license key

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -507,7 +507,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "journal-file",
   "journal-file-database",
   "journal-settings",
-  "journal-record"
+  "journal-record",
+  "license-key",
+  "license-server"
 ];
 
 /**
@@ -547,7 +549,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "database": "directoryset",
   "class": "documentset",
   "routine": "documentset",
-  "journal-settings": "singleton"
+  "journal-settings": "singleton",
+  "license-key": "singleton",
+  "license-server": "foldcase"
 };
 
 /**
@@ -10214,6 +10218,162 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseKey",
+    "route": "os-management/license-key",
+    "area": "os-management",
+    "labelKey": "licenseKeyLabel",
+    "sideBarPosition": 15,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "license-key",
+    "entityLabelKey": "licenseKeyLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "activate",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "activate",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "LicenseCapacity",
+        "CustomerName",
+        "OrderNumber",
+        "Product",
+        "LicenseType",
+        "Server",
+        "Platform",
+        "LicenseUnits",
+        "CoresLicensed",
+        "CoresEnforced",
+        "ExpirationDate",
+        "ExtendedFeaturesList",
+        "AuthorizedApplications"
+      ],
+      "secretFields": [
+        "AuthorizationKey"
+      ]
+    },
+    "secretArguments": [
+      "Key"
+    ],
+    "emptyStateKey": "licenseKeyEmpty",
+    "commandAliases": [
+      "license key",
+      "activate license key"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseKeyPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseKeyPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseKeyPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.License.Key",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "License.Key",
+        "type": "GET"
+      },
+      "fields": [
+        "LicenseCapacity",
+        "CustomerName",
+        "OrderNumber",
+        "AuthorizationKey",
+        "Product",
+        "LicenseType",
+        "Server",
+        "Platform",
+        "LicenseUnits",
+        "CoresLicensed",
+        "CoresEnforced",
+        "ExpirationDate",
+        "ExtendedFeaturesList",
+        "AuthorizedApplications"
+      ],
+      "filter": [
+        "CustomerName"
+      ],
+      "sort": {
+        "fields": [
+          "CustomerName"
+        ],
+        "default": "CustomerName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "CustomerName",
+          "labelKey": "licenseKeyCustomerName",
+          "kind": "name"
+        },
+        {
+          "field": "LicenseCapacity",
+          "labelKey": "licenseKeyLicenseCapacity",
+          "kind": "text"
+        },
+        {
+          "field": "OrderNumber",
+          "labelKey": "licenseKeyOrderNumber",
+          "kind": "number"
+        },
+        {
+          "field": "ExpirationDate",
+          "labelKey": "licenseKeyExpirationDate",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "licenseKeyEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.licensekey",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.LicenseProcessTab",
     "route": "os-management/license-usage/processes",
     "area": "os-management",
@@ -10387,6 +10547,217 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseServerForm",
+    "route": "os-management/license-servers/edit",
+    "area": "os-management",
+    "labelKey": "aboutLicenseServer",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "license-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.licenseserverform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LicenseServerList",
+    "route": "os-management/license-servers",
+    "area": "os-management",
+    "labelKey": "licenseServerListLabel",
+    "sideBarPosition": 16,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "license-server",
+    "entityLabelKey": "aboutLicenseServer",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Address",
+        "Port",
+        "KeyDirectory"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "licenseServerListEmpty",
+    "commandAliases": [
+      "license servers",
+      "create license server"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "licenseServerListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LicenseServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "License.Server",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Address",
+        "Port",
+        "KeyDirectory"
+      ],
+      "filter": [
+        "Name",
+        "Address",
+        "Port",
+        "KeyDirectory"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Address",
+          "Port",
+          "KeyDirectory"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Address",
+          "labelKey": "languageServerFieldAddress",
+          "kind": "identifier"
+        },
+        {
+          "field": "Port",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        },
+        {
+          "field": "KeyDirectory",
+          "labelKey": "licenseServerKeyDirectory",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "licenseServerListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.licenseservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LicenseSummaryTab",

@@ -223,6 +223,11 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/language-server" Method="POST" Call="LanguageServerCreate"/>
   <Route Url="/journal/settings" Method="PUT" Call="JournalSettingsUpdate"/>
   <Route Url="/journal/record" Method="GET" Call="JournalRecord"/>
+  <Route Url="/license/key/validate" Method="POST" Call="LicenseKeyValidate"/>
+  <Route Url="/license-server/form" Method="GET" Call="LicenseServerFormRead"/>
+  <Route Url="/license-server/name" Method="GET" Call="LicenseServerNameCheck"/>
+  <Route Url="/license-server/:id" Method="PUT" Call="LicenseServerUpdate"/>
+  <Route Url="/license-server" Method="POST" Call="LicenseServerCreate"/>
   <Route Url="/explorer/sql/run" Method="POST" Call="ExplorerSqlRun"/>
   <Route Url="/explorer/sql/plan" Method="POST" Call="ExplorerSqlPlan"/>
 </Routes>
@@ -1651,6 +1656,40 @@ ClassMethod JournalSettingsUpdate() As %Status
 ClassMethod JournalRecord() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.JournalRecordDetail).HandleGet()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /license/key/validate</code> (Story 18.6): License
+/// key's screen-only check, delegating to <class>OcuPilot.Area.OsMgmt.LicenseRules</class>.</p>
+ClassMethod LicenseKeyValidate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleValidate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /license-server/form</code> (Story 18.6): the license
+/// server form's read. The two sub-resources precede <code>/license-server/:id</code>.</p>
+ClassMethod LicenseServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /license-server/name</code>: the name look-up.</p>
+ClassMethod LicenseServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /license-server/:id</code>: the form's edit,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LicenseServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /license-server</code>: the form's create, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LicenseServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.LicenseServerSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/run</code> (Story 19.6): SQL query's

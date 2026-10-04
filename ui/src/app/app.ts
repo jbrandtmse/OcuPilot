@@ -42,6 +42,8 @@ import { DatabaseIntegrityFlow } from './areas/os-management/database-integrity.
 import { RemoteDatabaseActions } from './areas/os-management/remote-database-actions';
 import { RemoteDatabaseForm } from './areas/os-management/remote-database-form.store';
 import { JournalSettingsForm } from './areas/os-management/journal-settings.store';
+import { LicenseServerActions } from './areas/os-management/license-server-actions';
+import { LicenseServerForm } from './areas/os-management/license-server-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -334,6 +336,10 @@ export class App {
   private readonly remoteDatabaseForm = inject(RemoteDatabaseForm);
   // Journal settings' form store (Story 18.18).
   private readonly journalSettingsForm = inject(JournalSettingsForm);
+  // License servers' declared Create, the same way (`areas/os-management/license-server-actions.ts`),
+  // with the license server form's store (Story 18.6).
+  private readonly licenseServerActions = inject(LicenseServerActions);
+  private readonly licenseServerForm = inject(LicenseServerForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -657,6 +663,8 @@ export class App {
       this.remoteDatabaseForm.reset();
       // The journal settings form holds settings THIS principal was changing and has not saved.
       this.journalSettingsForm.reset();
+      // The license server form holds a license server THIS principal was creating or editing and has not saved.
+      this.licenseServerForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

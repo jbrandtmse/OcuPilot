@@ -4982,6 +4982,116 @@ export const STRINGS = {
   journalRecordListPrompt3: 'Are any of these records inside a transaction?',
   /** EXPERIENCE.md:596 */
   explorerSqlStatementsNote: 'Statistics are as of the instance\'s last aggregation, so a recently run statement can read blank.',
+  // Story 18.6: License key and License servers -- their titles, License key's twelve field labels
+  // beyond License usage's "License units", the authorization-key line, the activate dialog's
+  // labels, validity, restart and reduction sentences and consequence, Print and its printed-by
+  // line, the license server form's hints, the multi-key consequence (the agent's card line) and
+  // the prompts. Name, Address, Port, Load from file, "(none)", Save, Cancel and Delete reuse
+  // earlier keys.
+  /** EXPERIENCE.md:375 */
+  licenseKeyLabel: 'License key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyLicenseCapacity: 'License capacity',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCustomerName: 'Customer name',
+  /** EXPERIENCE.md:375 */
+  licenseKeyOrderNumber: 'Order number',
+  /** EXPERIENCE.md:375 */
+  licenseKeyProduct: 'Product',
+  /** EXPERIENCE.md:375 */
+  licenseKeyLicenseType: 'License type',
+  /** EXPERIENCE.md:375 */
+  licenseKeyServer: 'Key server',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPlatform: 'Platform',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCoresLicensed: 'Cores licensed',
+  /** EXPERIENCE.md:375 */
+  licenseKeyCoresEnforced: 'Cores enforced',
+  /** EXPERIENCE.md:375 */
+  licenseKeyExpirationDate: 'Expiration date',
+  /** EXPERIENCE.md:375 */
+  licenseKeyExtendedFeatures: 'Extended features',
+  /** EXPERIENCE.md:375 */
+  licenseKeyAuthorizedApplications: 'Authorized applications',
+  /** EXPERIENCE.md:375 */
+  licenseKeyAuthorizationHidden: 'The authorization key is not shown here.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyEmpty: 'The instance reports no license key.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyEmptyAgent: 'explain this instance\'s license',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateAction: 'Activate new key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateTitle: 'Activate a new license key',
+  /** EXPERIENCE.md:375 */
+  licenseKeyText: 'License key text',
+  /** EXPERIENCE.md:375 */
+  licenseKeyValidate: 'Validate',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivate: 'Activate',
+  /** EXPERIENCE.md:375 */
+  actionPrint: 'Print',
+  /** EXPERIENCE.md:375 */
+  licenseKeyValid: 'This key is valid for this instance.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyRestart: 'Activating this key requires restarting the instance.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductions: 'Activating this key will:',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionCores: 'Lower the licensed cores from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionUsers: 'Lower the license units from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionServer: 'Change the key server type from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionLicenseType: 'Change the license type from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionProduct: 'Lower the product level from <from> to <to>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyReductionFeatures: 'Remove these features: <features>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyActivateConsequence: 'Activating replaces this instance\'s license key. This cannot be undone here.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrintedBy: 'Printed by <user> on <time>.',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt1: 'When does this instance\'s license key expire?',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt2: 'How many cores and license units does this key allow?',
+  /** EXPERIENCE.md:375 */
+  licenseKeyPrompt3: 'Which features does this license key enable?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListLabel: 'License servers',
+  /** EXPERIENCE.md:375 */
+  licenseServerListEmpty: 'No license servers on this instance.',
+  /** EXPERIENCE.md:375 */
+  licenseServerListEmptyAgent: 'create a license server',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormRefusedAction: 'change this license server',
+  /** EXPERIENCE.md:375 */
+  licenseServerKeyDirectory: 'Key directory',
+  /** EXPERIENCE.md:375 */
+  licenseServerAddressHint: 'Host name or IP address',
+  /** EXPERIENCE.md:375 */
+  licenseServerKeyDirectoryHint: 'Set on the classic License Servers page.',
+  /** EXPERIENCE.md:375 */
+  licenseServerMultiKeyConsequence:
+    'This instance\'s license key is a multi-server key. Removing a license server it uses can leave it unable to obtain license units.',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt1: 'Which license servers is this instance configured to use?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt2: 'Does this instance\'s license key need a license server?',
+  /** EXPERIENCE.md:375 */
+  licenseServerListPrompt3: 'Where does this instance ask for its license units?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt1: 'What address and port should this license server use?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt2: 'What does a license server do for this instance?',
+  /** EXPERIENCE.md:375 */
+  licenseServerFormPrompt3: 'What would deleting this license server change?',
+  /** EXPERIENCE.md:479 */
+  licenseServerDeleteConsequence:
+    'Deleting this license server removes it from this instance\'s configuration. This cannot be undone.',
   /** EXPERIENCE.md:597 */
   explorerSqlQueryLabel: 'SQL query',
   /** EXPERIENCE.md:597 */

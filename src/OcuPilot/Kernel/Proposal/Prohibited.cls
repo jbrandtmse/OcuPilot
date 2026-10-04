@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -443,6 +443,15 @@ Parameter TYPEJOURNALFILE = "journal-file";
 /// reviewed-few sweep alone judges (<method>JournalSettingsFields</method>): AD-10 names no effect on
 /// them.</p>
 Parameter TYPEJOURNALSETTINGS = "journal-settings";
+
+/// <p>The instance's license key (Story 18.6), a singleton whose one write sends only its secret text,
+/// <code>Key</code>, its one reviewed field: the reviewed-few sweep alone judges it, and AD-10 names no
+/// effect on it.</p>
+Parameter TYPELICENSEKEY = "license-key";
+
+/// <p>A license server (Story 18.6), whose create, change and delete the reviewed-few sweep alone
+/// judges (<method>LicenseServerFields</method>): AD-10 names no effect on one.</p>
+Parameter TYPELICENSESERVER = "license-server";
 
 /// <p>The write type of a class or routine export (Story 19.13), which only reads and which the code
 /// arm does not judge.</p>
@@ -855,6 +864,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     ; A journal switch or integrity check moves no field (Story 18.5).
     If pType = ..#TYPEJOURNALFILE Quit ""
     If pType = ..#TYPEJOURNALSETTINGS Quit ..JournalSettingsFields()
+    If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
+    If pType = ..#TYPELICENSEKEY Quit $ListBuild("Key")
     Quit ""
 }
 
@@ -968,6 +979,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEDATABASECONFIG Quit ..DatabaseCreateFields()
     If pType = ..#TYPELANGUAGESERVER Quit ..LanguageServerFields() _ $ListBuild("Type")
     If pType = ..#TYPELDAP Quit ..LdapFields()
+    If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
     Quit ""
 }
 
@@ -1048,7 +1060,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1225,6 +1237,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; The journal settings (Story 18.18): AD-10 names no effect on them either.
         If tType = ..#TYPEJOURNALSETTINGS {
             Set tSC = ..ReviewedFewOnly(..#TYPEJOURNALSETTINGS, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; The license key and a license server (Story 18.6): AD-10 names no effect on either.
+        If (tType = ..#TYPELICENSEKEY) || (tType = ..#TYPELICENSESERVER) {
+            Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -2373,6 +2390,13 @@ ClassMethod OwnDatabaseDirectories(pPort As %String, pOwn As %List, Output pDire
 ClassMethod JournalSettingsFields() As %List [ Private ]
 {
     Quit $ListBuild("BackupsBeforePurge", "DaysBeforePurge", "FileSizeLimit", "FreezeOnError", "JournalFilePrefix", "JournalcspSession", "PurgeArchived", "CompressFiles", "primaryRoot", "primaryPath", "alternateRoot", "alternatePath")
+}
+
+/// <p>A license server's fields a create or a change may set (Story 18.6): its address and its port.
+/// Its key directory is shown and never set (AD-21).</p>
+ClassMethod LicenseServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("Address", "Port")
 }
 
 /// <p>Whether <var>pFault</var>, the refusal of a fresh read of <var>pToolClass</var>'s target, carries
