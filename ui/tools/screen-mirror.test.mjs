@@ -253,6 +253,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.6: the instance's license key is one object, and a license server's name folds case.
     ['license-key', 'singleton'],
     ['license-server', 'foldcase'],
+    // Story 18.20: an ECP data server's name folds case, as the instance stores it upper-cased.
+    ['ecp-data-server', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares

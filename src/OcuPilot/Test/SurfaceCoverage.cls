@@ -186,6 +186,8 @@ XData Coverage
 <screen name="LicenseKey" class="OcuPilot.Test.LicenseDescriptor" method="TestLicenseKeyIsOsManagementsFifteenthEntry"/>
 <screen name="LicenseServerList" class="OcuPilot.Test.LicenseDescriptor" method="TestLicenseServersIsOsManagementsSixteenthEntry"/>
 <screen name="LicenseServerForm" class="OcuPilot.Test.LicenseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
+<screen name="EcpDataServerList" class="OcuPilot.Test.EcpDescriptor" method="TestEcpDataServersIsOsManagementsSeventeenthEntry"/>
+<screen name="EcpDataServerForm" class="OcuPilot.Test.EcpDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -331,6 +333,10 @@ XData Coverage
 <tool name="osmgmt.licenseservers.create" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
 <tool name="osmgmt.licenseservers.update" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
 <tool name="osmgmt.licenseservers.delete" class="OcuPilot.Test.LicenseDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four licensing tools are asserted together in one loop"/>
+<tool name="osmgmt.ecpdataservers.create" class="OcuPilot.Test.EcpDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four ECP data server tools are asserted together in one loop"/>
+<tool name="osmgmt.ecpdataservers.update" class="OcuPilot.Test.EcpDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four ECP data server tools are asserted together in one loop"/>
+<tool name="osmgmt.ecpdataservers.delete" class="OcuPilot.Test.EcpDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four ECP data server tools are asserted together in one loop"/>
+<tool name="osmgmt.ecpdataservers.changestatus" class="OcuPilot.Test.EcpDescriptor" method="TestTheToolsDeclareTheirKindsPortsAndPairs" corpus="the four ECP data server tools are asserted together in one loop"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

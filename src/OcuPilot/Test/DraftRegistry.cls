@@ -61,6 +61,12 @@ Parameter TYPEDTARGETIDS = "process=812,907;lock=313131008,13,P905,";
 /// it).</p>
 Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 
+/// <p>The value a tool's one enum argument takes in its stored payload, where a probe string would name
+/// no member and its port would render no step, as <code>tool=field:value</code> entries,
+/// comma-separated (Story 18.20's status change: the port builds <code>{Action}</code> from
+/// <code>Status</code>).</p>
+Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -248,6 +254,10 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     For tI = 1:1:$Length(..#PORTREADFIELDS, ",") {
         Set tEntry = $Piece(..#PORTREADFIELDS, ",", tI)
         If ($Piece(tEntry, "=", 1) = pTool.%Get("name")) && (tPayload.%GetTypeOf($Piece(tEntry, "=", 2)) = "unassigned") Do ..SetProbe(tPayload, $Piece(tEntry, "=", 2), "string", 0, .tN)
+    }
+    For tI = 1:1:$Length(..#ARGUMENTVALUES, ",") {
+        Set tEntry = $Piece(..#ARGUMENTVALUES, ",", tI)
+        If $Piece(tEntry, "=", 1) = pTool.%Get("name") Do tPayload.%Set($Piece($Piece(tEntry, "=", 2), ":", 1), $Piece($Piece(tEntry, "=", 2), ":", 2), "string")
     }
     ; A composed secret is never stored: the mint names it in the diff with both sides empty, and
     ; the confirm is supplied it (Mint.AppendComposedSecrets).

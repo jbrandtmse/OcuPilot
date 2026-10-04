@@ -99,6 +99,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.JournalList',
   // Story 18.6: License servers, whose Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList',
+  // Story 18.20: ECP data servers, whose Delete types the server's name and states its impact, and
+  // whose Change status its own page runs.
+  'OcuPilot.Screen.Descriptor.EcpDataServerList',
 ];
 
 /**
@@ -169,6 +172,15 @@ export const LOCAL_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.LocalDatabaseList
  * offers no file option: the database's file is on its data server.
  */
 export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseList';
+
+/**
+ * ECP data servers' descriptor (Story 18.20), whose Delete states the remote databases that use the
+ * server, and whose Change status is registered by its own page
+ * (`areas/os-management/ecp-data-server-list.page.ts`), which opens its dialog and sends the chosen
+ * status as the action's one declared value.
+ */
+export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
+export const ECP_CHANGE_STATUS = 'changestatus';
 
 /**
  * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
@@ -292,6 +304,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [LOCK_LIST]: [LOCK_REMOVE, LOCK_REMOVE_PROCESS, LOCK_REMOVE_CLIENT],
   // Journals' page registers its two switches at screen level itself (Story 18.5).
   [JOURNAL_LIST]: [JOURNAL_SWITCH_FILE, JOURNAL_SWITCH_DIRECTORY],
+  // ECP data servers' page registers Change status itself, whose dialog sends the status (Story 18.20).
+  [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
 };
 
 /**
@@ -355,6 +369,8 @@ const IMPACT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   // Story 18.4: a warning, not a removal -- the read answers only the prohibited set's refusal of a
   // protected database, which the Dismount dialog draws as its advisory.
   [DATABASE_DETAILS]: ['dismount'],
+  // Story 18.20: a data server's Delete names the remote databases that use it.
+  [ECP_DATA_SERVER_LIST]: ['delete'],
 };
 
 /**
@@ -397,6 +413,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [REMOTE_DATABASE_LIST]: { delete: STRINGS.remoteDatabaseDeleteConsequence },
   // Story 18.6: the license server's Delete types the server's name.
   'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
+  // Story 18.20: the ECP data server's Delete types the server's name.
+  [ECP_DATA_SERVER_LIST]: { delete: STRINGS.ecpDataServerDeleteConsequence },
 };
 
 /**

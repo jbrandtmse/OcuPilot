@@ -135,6 +135,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 18.20: the unlisted ECP data server form, by descriptor class name.
+        {
+          route: 'os-management/ecp-data-servers/edit',
+          labelKey: 'aboutEcpDataServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/namespaces/global-mappings/edit',
           labelKey: 'globalMappingFormLabel',
@@ -377,6 +385,14 @@ const LIVE_PAYLOAD = {
           route: 'os-management/license-servers',
           labelKey: 'licenseServerListLabel',
           sideBarPosition: 16,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        // Story 18.20: ECP data servers, the seventeenth, refused on %Admin_Manage:USE.
+        {
+          route: 'os-management/ecp-data-servers',
+          labelKey: 'ecpDataServerListLabel',
+          sideBarPosition: 17,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -788,6 +804,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     // Each declares `%Admin_Manage:USE` first, which this principal does not hold.
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['os-management/license-key', 'os-management/license-servers', 'os-management/license-servers/edit']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+    }
+  });
+
+  it('Story 18.20: reads the ECP data servers and data server form verdicts the live payload carries', () => {
+    // Each declares `%Admin_Manage:USE` first, which this principal does not hold.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/ecp-data-servers', 'os-management/ecp-data-servers/edit']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
   });

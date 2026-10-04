@@ -452,14 +452,23 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 18.6's forward merge of Story 19.14's statistics note raised it to 2679kB, the measured
 // 2,678,101-byte initial total rounded up to the next kB (both branches' additions together), under the
 // 4000kB hard stop.
+// Story 18.20 raised it to 2712kB, the measured 2,711,418-byte initial total rounded up to the next kB
+// (ECP data servers' page, its Change status dialog, the data server form and its store, the two
+// descriptors' mirror and their strings), under the 4000kB hard stop.
 // Story 19.6's forward merge of Story 18.6 raised it to 2695kB, the measured 2,694,618-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 18.20's forward merge of Story 19.6 raised it to 2728kB, the measured 2,727,893-byte initial total
 // rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 19.15 raised it to 2704kB, the measured 2,703,008-byte initial total rounded up to the next kB
 // (SQL query's Run in background, its Background run section, the store's poll and its strings), under
 // the 4000kB hard stop.
+// Story 18.20's forward merge of Story 19.15 raised it to 2737kB, the measured 2,736,473-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 // Story 19.7 raised it to 2746kB, the measured 2,745,839-byte initial total rounded up to the next kB
 // (Data browser's page, its tree, grid and store, the pure model, its descriptor's mirror and its
 // strings), under the 4000kB hard stop.
+// Story 19.7's forward merge of Story 18.20 raised it to 2780kB, the measured 2,779,186-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -472,7 +481,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2746kB', 'DW-1166, Story 19.7: the measured 2,745,839 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2780kB', 'DW-1166, Story 19.7 forward merge of Story 18.20: the measured 2,779,186 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
