@@ -216,7 +216,10 @@ test('AC2, AC9: a confirmed CREATE TABLE runs only at Proceed, and SQL tables th
     await clickRowCentre(page, { text: MADE, link: true });
     const id = encodeEntityId(MADE);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABLES_ROUTE}/document/${id}`);
-    await page.focus(`.ocu-detail-tab[data-route="${TABLES_ROUTE}/fields"]`);
+    // The address bar moves before the detail page renders its tab strip, so wait for the tab itself.
+    const fieldsTab = `.ocu-detail-tab[data-route="${TABLES_ROUTE}/fields"]`;
+    await page.waitForSelector(fieldsTab, { visible: true, timeout: config.navigationTimeoutMs });
+    await page.focus(fieldsTab);
     await page.keyboard.press('Enter');
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABLES_ROUTE}/fields/${id}`);
     await page.waitForFunction(
