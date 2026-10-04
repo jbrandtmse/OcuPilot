@@ -15,31 +15,54 @@
  * **The answer is screen-only** (AD-36, AD-39's sixth exception): rows, an SQLCODE and its message
  * live in this state and are rendered as text; none of it enters the screen's store, so none of it
  * reaches screen context.
+ *
+ * **Edits are staged here** (Story 19.8): one `StagedChanges`, keyed by each row's key, survives
+ * paging, sorting, filtering and Refresh, and is dropped when another table opens or the namespace
+ * changes, which says so. `FormDirty` reads dirty while anything is staged. A save is the screen
+ * action `save` of `explorer.sqldata.save`, sent through the action handler (AD-53); its answer is
+ * applied by key and the page is read again.
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZES,
+  StagedChanges,
   filterValue,
+  isCut,
   lastOffset,
   nextOffset,
   nextSort,
   previousOffset,
+  rowKey,
   sortLine,
   type DataKind,
+  type NewRow,
+  type OverlayRow,
+  type RowOutcome,
+  type SaveResult,
   type SortState,
 } from '../../core/data-browser-model';
+import type { FormDirty } from '../../core/form-dirty';
 import { createScreenRead } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { refusalText } from './sql-query.store';
+import type { ActionSink, ActionValues } from '../../shell/screen-action-handler';
+import { fillPlaceholders } from './code-list.store';
+import { refusalText, type RunSender } from './sql-query.store';
 
 /** The screen's own route. */
 export const DATA_PATH = '/api/ocupilot/explorer/sql/data';
 
 /** The rows each tree read asks for: the read cap's ceiling. */
 export const TREE_MAX_ROWS = 1000;
+
+/** The screen action a save sends, its one target, and its three values (Story 19.8). */
+export const SAVE_ACTION = 'save';
+export const SAVE_TARGET = 'sql';
+export const SCHEMA_VALUE = 'schema';
+export const TABLE_VALUE = 'table';
+export const CHANGES_VALUE = 'changes';
 
 /** A table or a view the tree lists under its schema. */
 export interface TreeObject {
@@ -58,13 +81,15 @@ export interface TreeSchema {
   readonly fault: string;
 }
 
-/** A column as the instance answers it. */
+/** A column as the instance answers it, with whether it is an identity or a generated column. */
 export interface BrowseColumn {
   readonly name: string;
   readonly type: string;
   readonly kind: DataKind;
   readonly nullable: boolean;
   readonly key: boolean;
+  readonly identity?: boolean;
+  readonly generated?: boolean;
 }
 
 /** The table or view an answer is about. */
@@ -90,6 +115,8 @@ export type BrowseAnswer =
       readonly more: boolean;
       readonly total: number | null;
       readonly truncated: boolean;
+      /** The cells the instance cut, as `[row, column]` pairs. */
+      readonly cuts: readonly (readonly number[])[];
     })
   | (AnswerFrame & { readonly outcome: 'stopped'; readonly seconds: number })
   | (AnswerFrame & { readonly outcome: 'error'; readonly sqlcode: number | null; readonly message: string });
@@ -102,6 +129,66 @@ export interface DataBrowserDeps {
   readonly schemas: ScreenDeclaration | null;
   readonly tables: ScreenDeclaration | null;
   readonly views: ScreenDeclaration | null;
+  /** What a save is sent through (Story 19.8), and the screen it is sent for. */
+  readonly sender: RunSender;
+  readonly descriptor: string;
+  /** Marked dirty while anything is staged, so leaving the route asks first. */
+  readonly formDirty: Pick<FormDirty, 'setDirty'>;
+}
+
+/** A row of the grid as staged: a page row with its staged values shown, or a new row. */
+export interface StagedRow {
+  /** `p<index>` for the page's row at that index, or a new row's id. */
+  readonly id: string;
+  /** The page row's index, or `null` for a new row. */
+  readonly page: number | null;
+  readonly cells: readonly (string | null)[];
+  readonly staged: readonly boolean[];
+  /** Whether each cell is one the instance cut. */
+  readonly cut: readonly boolean[];
+  readonly deleted: boolean;
+  readonly isNew: boolean;
+  /** What the row's Change cell reads, or `''`. */
+  readonly status: string;
+}
+
+/** The Change cell's words for a kept outcome. */
+export function outcomeText(outcome: RowOutcome, sqlcode: number | null, message: string): string {
+  switch (outcome) {
+    case 'saved':
+      return STRINGS.formSaved;
+    case 'changed':
+      return STRINGS.explorerSqlDataOutcomeChanged;
+    case 'gone':
+      return STRINGS.explorerSqlDataOutcomeGone;
+    case 'refused':
+      return STRINGS.explorerSqlDataOutcomeRefused;
+    case 'stopped':
+    case 'skipped':
+      return STRINGS.explorerSqlDataOutcomeSkipped;
+    default: {
+      const code = sqlcode === null ? '' : fillPlaceholders(STRINGS.explorerSqlCode, { code: sqlcode });
+      return [code, message].filter((part) => part !== '').join(': ');
+    }
+  }
+}
+
+const OUTCOMES: ReadonlySet<string> = new Set(['saved', 'changed', 'gone', 'refused', 'error', 'stopped', 'skipped']);
+
+/** The per-row results of a save's `output`, or `[]` for any other shape. */
+export function resultsOf(output: unknown): SaveResult[] {
+  if (output === null || typeof output !== 'object') return [];
+  const results = (output as Readonly<Record<string, unknown>>)['results'];
+  if (!Array.isArray(results)) return [];
+  return results
+    .filter((result): result is Readonly<Record<string, unknown>> => result !== null && typeof result === 'object')
+    .filter((result) => typeof result['index'] === 'number' && OUTCOMES.has(String(result['outcome'])))
+    .map((result) => ({
+      index: result['index'] as number,
+      outcome: result['outcome'] as RowOutcome,
+      sqlcode: typeof result['sqlcode'] === 'number' ? result['sqlcode'] : null,
+      message: typeof result['message'] === 'string' ? result['message'] : '',
+    }));
 }
 
 const KINDS: ReadonlySet<string> = new Set(['number', 'boolean', 'date', 'time', 'timestamp', 'stream', 'binary', 'text']);
@@ -128,6 +215,8 @@ function frameOf(record: Readonly<Record<string, unknown>>): AnswerFrame {
         kind: (KINDS.has(text(column['kind'])) ? text(column['kind']) : 'text') as DataKind,
         nullable: column['nullable'] === true,
         key: column['key'] === true,
+        identity: column['identity'] === true,
+        generated: column['generated'] === true,
       })),
     key: Array.isArray(record['key']) ? record['key'].filter((name): name is string => typeof name === 'string') : [],
   };
@@ -153,6 +242,9 @@ export function answerOf(body: unknown): BrowseAnswer | null {
         more: record['more'] === true,
         total: typeof record['total'] === 'number' ? record['total'] : null,
         truncated: record['truncated'] === true,
+        cuts: Array.isArray(record['cuts'])
+          ? record['cuts'].filter((pair): pair is number[] => Array.isArray(pair) && pair.length === 2 && pair.every((at) => typeof at === 'number'))
+          : [],
       };
     }
     case 'stopped':
@@ -206,6 +298,14 @@ export class DataBrowserState {
 
   /** Which tree is current; a tree read answering after a namespace switch is dropped. */
   private treeGeneration = 0;
+
+  /** The rows changed and not saved (Story 19.8). */
+  private readonly staged = new StagedChanges();
+
+  /** Which staging is current; a save answering after another table opened is not applied. */
+  private stagingGeneration = 0;
+
+  private savingValue = false;
 
   /** The namespace the tree and the open object were read in, `''` before the first. */
   private namespaceValue = '';
@@ -272,9 +372,210 @@ export class DataBrowserState {
     return this.refusalValue;
   }
 
-  /** The last sort announcement, read by the page's polite status line. */
+  /** The last announcement, read by the page's polite status line. */
   announcement(): string {
     return this.announcementValue;
+  }
+
+  /** Put `text` on the status line until the next one. */
+  announce(text: string): void {
+    this.announcementValue = text;
+    this.notify();
+  }
+
+  /** Whether a save is on its way. */
+  saving(): boolean {
+    return this.savingValue;
+  }
+
+  /** How many rows are staged. */
+  stagedCount(): number {
+    return this.staged.count();
+  }
+
+  /** How many rows a save would change, add and delete. */
+  stagedCounts(): { readonly update: number; readonly insert: number; readonly delete: number } {
+    return this.staged.counts();
+  }
+
+  /** Whether the open table's rows may change here: a table, not a view, whose key this account can list. */
+  writable(): boolean {
+    const answer = this.answerValue;
+    return answer !== null && answer.table.type === 'table' && answer.key.length > 0;
+  }
+
+  /**
+   * The grid's rows: each new row, the newest first, then the page's rows with their staged values
+   * shown, each with the instance's cut cells and what its Change cell reads.
+   */
+  rows(): readonly StagedRow[] {
+    const answer = this.answerValue;
+    if (answer === null || answer.outcome !== 'rows') return [];
+    const columns = answer.columns;
+    const fresh: StagedRow[] = this.writable()
+      ? this.staged.newRows().map((row: NewRow) => ({
+          id: row.id,
+          page: null,
+          cells: columns.map((column) => (Object.hasOwn(row.values, column.name) ? row.values[column.name] : null)),
+          staged: columns.map((column) => Object.hasOwn(row.values, column.name)),
+          cut: columns.map(() => false),
+          deleted: false,
+          isNew: true,
+          status: STRINGS.explorerSqlDataNew,
+        }))
+      : [];
+    const overlaid: OverlayRow[] = this.writable() ? this.staged.overlay(answer.key, columns, answer.rows) : this.staged.overlay([], columns, answer.rows);
+    const page: StagedRow[] = overlaid.map((row, index) => ({
+      id: `p${index}`,
+      page: index,
+      cells: row.cells,
+      staged: row.staged,
+      cut: columns.map((_, at) => isCut(answer.cuts, index, at)),
+      deleted: row.deleted,
+      isNew: false,
+      status: row.deleted
+        ? STRINGS.explorerSqlDataDeleted
+        : row.staged.some((flag) => flag)
+          ? STRINGS.tableChangedTag
+          : row.outcome !== null
+            ? outcomeText(row.outcome.outcome, row.outcome.sqlcode, row.outcome.message)
+            : '',
+    }));
+    return [...fresh, ...page];
+  }
+
+  /**
+   * Stage `value` for column `column` of grid row `id`: a new row's cell, or a page row's, compared
+   * with the value the page read so the value read unstages it. Refused at the cap, which says so.
+   */
+  edit(deps: DataBrowserDeps, id: string, column: number, value: string | null): void {
+    const answer = this.answerValue;
+    if (answer === null || answer.outcome !== 'rows' || !this.writable()) return;
+    const name = answer.columns[column]?.name;
+    if (name === undefined) return;
+    if (!id.startsWith('p')) {
+      this.staged.setNew(id, name, value);
+      this.afterStaging(deps, true);
+      return;
+    }
+    const target = this.pageRow(id);
+    if (target === null) return;
+    this.afterStaging(deps, this.staged.stage(target.identity, target.key, name, target.values[name] ?? null, value));
+  }
+
+  /** Stage a new, empty row at the top; its id, or `null` at the cap, which says so. */
+  addRow(deps: DataBrowserDeps): string | null {
+    if (!this.writable()) return null;
+    const id = this.staged.addRow();
+    this.afterStaging(deps, id !== null);
+    return id;
+  }
+
+  /** Stage a copy of grid row `id` as a new row, its key, identity, generated, stream, binary and cut cells left out. */
+  duplicate(deps: DataBrowserDeps, id: string): string | null {
+    const answer = this.answerValue;
+    if (answer === null || answer.outcome !== 'rows' || !this.writable()) return null;
+    const row = this.rows().find((entry) => entry.id === id);
+    if (row === undefined) return null;
+    const values: Record<string, string | null> = {};
+    answer.columns.forEach((column, at) => (values[column.name] = row.cells[at] ?? null));
+    const copy = this.staged.duplicate(answer.columns, values, (name) => row.cut[answer.columns.findIndex((column) => column.name === name)] === true);
+    this.afterStaging(deps, copy !== null);
+    return copy;
+  }
+
+  /** Mark grid row `id` deleted or restore it; a new row is removed instead. */
+  toggleDelete(deps: DataBrowserDeps, id: string): void {
+    if (!this.writable()) return;
+    if (!id.startsWith('p')) {
+      this.staged.removeNew(id);
+      this.afterStaging(deps, true);
+      return;
+    }
+    const target = this.pageRow(id);
+    if (target === null) return;
+    this.afterStaging(deps, this.staged.toggleDelete(target.identity, target.key));
+  }
+
+  /** Whether grid row `id` is marked deleted. */
+  deleted(id: string): boolean {
+    const target = id.startsWith('p') ? this.pageRow(id) : null;
+    return target !== null && this.staged.isDeleted(target.identity);
+  }
+
+  /** Drop every staged row, saying how many; a save still on its way is no longer applied. */
+  discard(deps: DataBrowserDeps): void {
+    const count = this.staged.discard();
+    this.stagingGeneration += 1;
+    this.savingValue = false;
+    deps.formDirty.setDirty(false);
+    this.announcementValue = count === 0 ? '' : fillPlaceholders(STRINGS.explorerSqlDataDiscarded, { n: count });
+    this.notify();
+  }
+
+  /**
+   * Save every staged row as one screen action. Applied, the answer marks each row by its key -- a
+   * saved row leaves staging, a failed one rolls back -- the status line summarizes, and the page is
+   * read again. Refused, nothing is applied, the staged rows stay, and the refusal shows. `false`
+   * when nothing was sent or it was refused.
+   */
+  async save(deps: DataBrowserDeps): Promise<boolean> {
+    const open = this.openValue;
+    if (open === null || this.savingValue || !this.writable()) return false;
+    const changes = this.staged.toWire();
+    if (changes.length === 0) return false;
+    const staging = this.stagingGeneration;
+    const key = this.answerValue?.key ?? [];
+    this.savingValue = true;
+    this.refusalValue = '';
+    this.notify();
+    let refused = '';
+    const sink: ActionSink = { setRefusal: (reason) => (refused = reason) };
+    const values: ActionValues = {
+      [SCHEMA_VALUE]: open.schema,
+      [TABLE_VALUE]: open.name,
+      [CHANGES_VALUE]: JSON.stringify(changes),
+    };
+    const applied = await deps.sender.sendFor(deps.descriptor, SAVE_ACTION, SAVE_TARGET, values, sink, deps.scope());
+    if (staging !== this.stagingGeneration) return applied;
+    this.savingValue = false;
+    if (!applied) {
+      const last = deps.sender.lastRefusal();
+      this.refusalValue = (last === null ? '' : refusalText(last.code, last.reason, last.detail)) || refused || STRINGS.connectivityRequestRefused;
+      this.notify();
+      return false;
+    }
+    const results = resultsOf(deps.sender.lastOutput());
+    const { saved, failed } = this.staged.applyResults(results, key);
+    deps.formDirty.setDirty(this.staged.count() > 0);
+    await this.read(deps, fillPlaceholders(STRINGS.explorerSqlDataSavedSummary, { a: saved, n: results.length, b: failed }));
+    return true;
+  }
+
+  /** Page row `id`'s identity, key values and every value read, or `null` when it holds a key value that is NULL. */
+  private pageRow(id: string): { readonly identity: string; readonly key: Readonly<Record<string, string>>; readonly values: Readonly<Record<string, string | null>> } | null {
+    const answer = this.answerValue;
+    const index = Number(id.slice(1));
+    if (answer === null || answer.outcome !== 'rows' || !Number.isInteger(index)) return null;
+    const cells = answer.rows[index];
+    if (cells === undefined) return null;
+    const values: Record<string, string | null> = {};
+    answer.columns.forEach((column, at) => (values[column.name] = cells[at] ?? null));
+    const key: Record<string, string> = {};
+    for (const name of answer.key) {
+      const value = values[name];
+      if (typeof value !== 'string') return null;
+      key[name] = value;
+    }
+    return { identity: rowKey(answer.key, values), key, values };
+  }
+
+  /** After a staging change: the dirty flag, and the staged count, or the cap's sentence when it refused. */
+  private afterStaging(deps: DataBrowserDeps, accepted: boolean): void {
+    const count = this.staged.count();
+    deps.formDirty.setDirty(count > 0);
+    this.announcementValue = !accepted ? STRINGS.explorerSqlDataCap : count === 0 ? '' : fillPlaceholders(STRINGS.explorerSqlDataWaiting, { n: count });
+    this.notify();
   }
 
   /**
@@ -286,7 +587,7 @@ export class DataBrowserState {
     if (namespace === '') return;
     if (namespace !== this.namespaceValue) {
       this.namespaceValue = namespace;
-      this.forget();
+      this.forget(deps);
     }
     await this.loadSchemas(deps);
   }
@@ -351,8 +652,15 @@ export class DataBrowserState {
     this.replace(name, { loading: false, objects, truncated, fault });
   }
 
-  /** Open `object`: its filters, sort and offset start over, the page size is kept, and its first page is read. */
+  /**
+   * Open `object`: its filters, sort and offset start over, anything staged is dropped, the page size
+   * is kept, and its first page is read. The page asks before it opens another table over staged rows.
+   */
   async openObject(deps: DataBrowserDeps, object: TreeObject): Promise<void> {
+    this.staged.discard();
+    this.stagingGeneration += 1;
+    this.savingValue = false;
+    deps.formDirty.setDirty(false);
     this.openValue = object;
     this.filtersValue = {};
     this.draftsValue = {};
@@ -495,8 +803,15 @@ export class DataBrowserState {
     this.notify();
   }
 
-  /** Drop the tree, the open object with its filters, sort, offset and answer, and every read on its way; the page size stays. */
-  private forget(): void {
+  /**
+   * Drop the tree, the open object with its filters, sort, offset and answer, anything staged, which
+   * the status line says, and every read on its way; the page size stays.
+   */
+  private forget(deps: DataBrowserDeps): void {
+    const discarded = this.staged.discard();
+    this.stagingGeneration += 1;
+    this.savingValue = false;
+    deps.formDirty.setDirty(false);
     this.generation += 1;
     this.treeGeneration += 1;
     this.schemasValue = null;
@@ -511,7 +826,7 @@ export class DataBrowserState {
     this.answerValue = null;
     this.loadingValue = false;
     this.refusalValue = '';
-    this.announcementValue = '';
+    this.announcementValue = discarded > 0 ? STRINGS.explorerSqlDataScopeDiscarded : '';
     this.notify();
   }
 

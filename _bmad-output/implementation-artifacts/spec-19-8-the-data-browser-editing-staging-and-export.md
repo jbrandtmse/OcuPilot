@@ -2,9 +2,10 @@
 title: 'Story 19.8: The data browser - editing, staging and export'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: 'bd62b225557c7b23289f3e23c3ceb2ad58974d50'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -179,10 +180,10 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
 
 **Execution:**
 
-- [ ] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe198`, removed after). Record the results in Design Notes.
+- [x] **Task 0** (`ocupilot-a2-ci`, before code; probe schema `OcuProbe198`, removed after). Record the results in Design Notes.
   - (a) A class-defined `%Persistent` table with no declared key: confirm that `COLUMNS` lists `ID`, read its `IS_IDENTITY`/`IS_GENERATED`, and check that `UPDATE … WHERE "ID" = ?` saves.
   - (b) A `HANG 1` trigger table under `SqlPortFixture`: confirm the `stopped`/`skipped` split, and that the interrupted row reads unchanged.
-- [ ] `src/OcuPilot/Port/SqlPort.cls`. Add-only, except for the four in-place edits listed.
+- [x] `src/OcuPilot/Port/SqlPort.cls`. Add-only, except for the four in-place edits listed.
   - `ENDPOINTDATA` `SqlData` and `TYPEPLAN` `PLAN`. `COMPOSEDTYPES` becomes `Sql/RUN,SqlData/RUN`.
   - Query keys `schema`, `table` and `changes`. Bounds `MAXCHANGES` 100 and `MAXCHANGESTEXT` 1,000,000.
   - In place:
@@ -204,7 +205,7 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
     5. each change through `Executed` with what remains of the budget, its outcome mapped per Boundaries.
   - It answers `{outcome: "saved", results: [{index, outcome, rowCount?, sqlcode?, message?, seconds?}], saved, failed}`.
   - It logs nothing of a value, a key, a SQLCODE or a message. A per-row failure is an answer, never a `Fail`.
-- [ ] `src/OcuPilot/Screen/Tool/ExplorerSqlDataSave.cls` (new), modeled on `ExplorerSqlRun.cls`:
+- [x] `src/OcuPilot/Screen/Tool/ExplorerSqlDataSave.cls` (new), modeled on `ExplorerSqlRun.cls`:
   - `TOOLNAME` `explorer.sqldata.save`, `DESCRIPTORCLASS` `ExplorerSqlData`, `ADVERTISED` 0, `PORTCLASS` `SqlPort`.
   - `SCREENACTIONS` `save` and `SCREENVALUES` `save=schema:table:changes`.
   - `READTYPE` `PLAN`, `WRITETYPE` `RUN`, `SENDSBODY` 0, `DESTRUCTIVE` 1, `CHANGEACTION` `updated`.
@@ -214,13 +215,13 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
   - `SettableFields`: statement, schema, table and changes.
   - `ScreenActionDelta`: the schema and table checked as `BrowseRequest` checks them, then `SaveChanges`. It sets `statement` to `Quoted(schema)_"."_Quoted(table)`, the text the prohibited set judges first.
   - `PortQuery`, `StateDiff` (Kind and Tables) and `WriteOutput` (passes `{outcome…}` through).
-- [ ] `src/OcuPilot/Screen/Descriptor/ExplorerSqlData.cls`, in place: `rowActions` `[{"id":"save","selfProtection":""}]`. Regenerate `ui/src/app/core/screens.generated.ts` with `node tools/screen-mirror.mjs`.
-- [ ] `src/OcuPilot/Api/AtelierError.cls`, add-only:
+- [x] `src/OcuPilot/Screen/Descriptor/ExplorerSqlData.cls`, in place: `rowActions` `[{"id":"save","selfProtection":""}]`. Regenerate `ui/src/app/core/screens.generated.ts` with `node tools/screen-mirror.mjs`.
+- [x] `src/OcuPilot/Api/AtelierError.cls`, add-only:
   - `DATACHANGES` (`EXPLORER.DATA.CHANGES`, 400);
   - `DATAREADONLY` (`EXPLORER.DATA.READONLY`, 409);
   - reasons in Design Notes › Strings.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`, add-only after :168: `explorer.sqldata.save` false (approved by=merge_gate: it stands under AD-22's "through 2026-10-04" if 19.8 merges to feature on 2026-10-04 PDT, and otherwise waits for the owner's ruling on keys after that date).
-- [ ] `ui/src/app/core/data-browser-model.ts`, add-only. Pure rules, ported with call sites kept and names changed:
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls`, add-only after :168: `explorer.sqldata.save` false (approved by=merge_gate: it stands under AD-22's "through 2026-10-04" if 19.8 merges to feature on 2026-10-04 PDT, and otherwise waits for the owner's ruling on keys after that date).
+- [x] `ui/src/app/core/data-browser-model.ts`, add-only. Pure rules, ported with call sites kept and names changed:
   - `parseCellInput(column, text)` answers `{value}` or `{problem}`:
     - integer types: digits with an optional sign;
     - numeric and double: a decimal, with an exponent only for double. The text is sent as typed, never through `Number()`.
@@ -238,11 +239,11 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
     - `overlay(page)`, which shows staged values on rows that match by key;
     - `toWire()`, which records each sent index's key;
     - `applyResults(results)`, which drops saved rows, rolls failed rows back to the values read and keeps each outcome by key.
-- [ ] `ui/src/app/areas/system-explorer/data-browser.store.ts`:
+- [x] `ui/src/app/areas/system-explorer/data-browser.store.ts`:
   - Hold one `StagedChanges`. It survives paging, sort, filter and refresh, and is cleared on `openObject` and `forget`; `forget` announces the discard.
   - Mark `FormDirty` while anything is staged.
   - `save()` calls `sendFor(descriptor, 'save', 'sql', {schema, table, changes}, sink, scope)`. On success it applies `lastOutput()` by key and then re-reads the page. A refusal goes to `refusal` and nothing is applied.
-- [ ] `ui/src/app/areas/system-explorer/data-browser-grid.ts`:
+- [x] `ui/src/app/areas/system-explorer/data-browser-grid.ts`:
   - **Editor keys:** F2 or Enter opens the editor at the end of the value; a printable key opens it with that character; Backspace opens it empty. Delete stages NULL on a nullable column.
   - **BIT:** Enter, Space and F2 toggle the value instead of opening an editor.
   - **In the editor:**
@@ -253,22 +254,22 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
     - An invalid value keeps the editor open with `aria-invalid` and its hint linked by `aria-describedby`.
   - **Rows:** staged values marked, new rows at the top, and a leading status cell when the table is editable.
   - **DW-2028:** the cut-cell tooltip on pointer and on the active cell, hidden while an editor is open.
-- [ ] `ui/src/app/areas/system-explorer/data-browser.page.ts`:
+- [x] `ui/src/app/areas/system-explorer/data-browser.page.ts`:
   - Actions: Add row, Duplicate row, Delete row / Restore row, Save changes (n) and Discard changes.
   - The read-only line.
   - The warning dialog, whose verb and consequence carry the counts and the table.
   - The leave dialog when opening another table while changes are staged.
   - Announcements on the status line.
-- [ ] `ui/src/app/core/strings.ts` (end) and `ui/src/styles/_components.scss` (end): add-only keys, and `ocu-data-browser-*` rules for the editor, the staged and deleted marks and the status cell, on tokens.
-- [ ] EXPERIENCE.md:
+- [x] `ui/src/app/core/strings.ts` (end) and `ui/src/styles/_components.scss` (end): add-only keys, and `ocu-data-browser-*` rules for the editor, the staged and deleted marks and the status cell, on tokens.
+- [x] EXPERIENCE.md:
   - :159 in place: add 19.8, and "and edits a table's rows".
   - :173 in place: add "save the data browser's staged changes (Data browser, Story 19.8)".
   - A Fixed-strings row after :598.
   - Paragraphs in `### data-browser`: editing keys, staging and its cap, the save and its outcomes, and rollback.
   - Move the citations (`npm run test:tools`).
-- [ ] `ui/tools/strings.test.mjs` :581-584: raise the bound to 2,600 (approved by=merge_gate, under the second-to-land rule; Design Notes › Strings).
-- [ ] **DW-2028 (owned):** port `data-table.ts`'s cut-cell tooltip into `data-browser-grid.ts`, call sites kept. `data-table.ts` is untouched. Pinned by the AC13 grid spec and browser leg.
-- [ ] **Server tests (new):**
+- [x] `ui/tools/strings.test.mjs` :581-584: raise the bound to 2,600 (approved by=merge_gate, under the second-to-land rule; Design Notes › Strings).
+- [x] **DW-2028 (owned):** port `data-table.ts`'s cut-cell tooltip into `data-browser-grid.ts`, call sites kept. `data-table.ts` is untouched. Pinned by the AC13 grid spec and browser leg.
+- [x] **Server tests (new):**
   - `src/OcuPilot/Test/SqlSave.cls` (pure): every `SaveChanges` refusal, every `ChangeProblem` rule, `SaveComposed` (texts, the guard per kind, NULL as `IS NULL`, `null`/`""` binding, value order), `Editable`/`Insertable`, and the outcome mapping.
   - `src/OcuPilot/Test/SqlSaveProbe.cls` (fixture, `OcuProbe198` in `USER`):
     - tables: `Edit` (PK `Code`, every kind), `Pair` (composite PK), `Ident` (identity), `Comp` (generated and rowversion, keyless), `Slow` (a `HANG 1` trigger), and a view;
@@ -281,7 +282,7 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
     - own tables, including the unknown `OcuPilot` table answering 403;
     - a success answer `{action: updated, target {class, USER, sql}, readBack verdict action, output}`;
     - a custom resource on the Open Table page.
-- [ ] **Server rosters** (Code Map anchors):
+- [x] **Server rosters** (Code Map anchors):
   - `ExplorerDescriptor`: the baseline row, the actions arm `ExplorerSqlData:"|save|"`, :308 and its doc.
   - `DeveloperFloor`: append to `TOOLS` and `HELDWRITES`; thirty-three becomes thirty-four, the method renamed.
   - `GovernanceBaseline` `DISABLED` and its message; `Governance` `EXPLORERDISABLED`.
@@ -289,13 +290,13 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
   - `ToolRoundTrip` `REFUSEEMPTY` `explorer.sqldata.save:TOOL.ARGUMENTS`.
   - `SurfaceCoverage`: a tool row → `SqlSave.TestTheToolDeclaresItsWritePath`.
   - `ToolEmit`: the same-shape case. `Prohibited` :428: `"explorer.sqldata.save": 4`.
-- [ ] **Client tests:**
+- [x] **Client tests:**
   - `ui/tools/data-browser-model.test.mjs`: the parsers (each accepted and refused form, 2^53+1 kept as typed, `2026-02-31` refused, fractions kept) and `StagedChanges` (key reconciliation after a page change, the cap, `applyResults` by key after the page moved).
   - `data-browser-grid.spec.ts`: the editor keys, undo, cut cells closed, and the tooltip.
   - `data-browser.page.spec.ts`: the actions, the dialog's Proceed and Cancel, a mixed answer's rollback, the re-read, `FormDirty`, the leave dialog and the namespace discard.
   - A new `ui/browser/system-explorer-data-browser-edit.browser-spec.mjs`: real-instance edit, save and reconcile; the tooltip's geometry; AC14.
-- [ ] **Client rosters:** `ui/tools/self-protection.test.mjs` `ATELIER_REFUSALS` gains the two reasons.
-- [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
+- [x] **Client rosters:** `ui/tools/self-protection.test.mjs` `ATELIER_REFUSALS` gains the two reasons.
+- [x] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
 **Acceptance Criteria:**
 
@@ -352,6 +353,30 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
 
 ## Review Triage Log
 
+### 2026-10-04 — Review pass
+
+- verdicts: 19 findings — high 0, medium 8, low 6, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A failed insert's removal is untested on the client (AC5's duplicate key) — added page spec "a failed insert is removed…": an insert answered `error` -119 leaves no New row; mutation recorded.
+  - `[medium]` `[patch]` The error, stopped and skipped Change-cell texts are unasserted — the same case asserts "SQLCODE -105: <message>" and "Not run: the save stopped first." twice; mutation recorded.
+  - `[medium]` `[patch]` `identity`, `generated` and `cuts` from the wire are untested through the store — added page spec "a generated, an identity or a cut cell opens no editor…" on an answer carrying them; two mutations recorded.
+  - `[medium]` `[patch]` A keyless table's read-only state is untested on the client (AC9) — added a keyless leg to the view case; mutation recorded.
+  - `[medium]` `[patch]` The tooltip's uncut cell and scroll dismissal are untested (AC13) — extended the edit browser spec's AC13 leg; two mutations recorded, each rebuilt and copied in.
+  - `[medium]` `[patch]` The cap's sentence is unasserted (AC3) — added page spec "the 101st staged row is refused with its sentence"; mutation recorded.
+  - `[low]` `[reject]` A save whose plan runs out of budget is untested — the catalog plan rarely exhausts `BoundSeconds()`, and pinning it needs a new port seam, more than a direct correction.
+  - `[low]` `[reject]` AC10's no-ledger and no-marker assertions have no positive control — `Ledger.Name` holds the canonical tool name, so the count can fail; AC10 carries its demonstrated mutation, and minting nothing for a screen action is the kernel's contract.
+  - `[medium]` `[reject]` A failed insert disappears with its reason, only the summary counting it, and "Already removed." cannot show after the re-read — AC5 says a failed insert is removed and a delete restored; showing the reason needs an AC5 amendment (Auto Run Result, for the lead).
+  - `[low]` `[patch]` `discard` left `savingValue` set, so leaving the page during a save left editing off when it opened again — `discard` clears it; page-spec case and mutation recorded.
+  - `[low]` `[reject]` An empty new row is counted but never sent — uncommon, and the fix needs a design choice for the cap, the dirty flag and the label, more than a direct correction (Auto Run Result).
+  - `[medium]` `[reject]` A failed insert has no Status cell, though the matrix's Instance refusal and Insert grant rows name one — same root as the failed-insert row above: AC5's "(an insert removed …)" settles inserts.
+  - `[low]` `[reject]` The matrix reads SQLCODE -120 for a duplicate insert; the tests pin -119 — the instance reads -119 "uniqueness check upon INSERT" and -120 "upon UPDATE" (`$SYSTEM.SQL.Functions.SQLCODE` on `ocupilot-a2-ci`); the code carries the instance's code, and the matrix row is the lead's to amend.
+  - `[false]` `[reject]` Most matrix rows are tested at the port, not on the route — the route reaches the same `SqlPort.Invoke("SqlData","RUN")` through `Operation.Apply`, `SqlDataSaveRoutes` pins the route's gates and a mixed save, and the Tasks assign the split.
+  - `[false]` `[reject]` The Bound test cannot prove the stopped row's rollback — `SqlPortLive` pins `Executed` undoing a DML statement stopped at the bound, and the save's observable, the row unchanged, holds.
+  - `[false]` `[reject]` Cut cells are blocked only in the grid — a cut text value carries its truncation, so the `%EXACT` guard on it matches no row and nothing is written.
+  - `[low]` `[reject]` Empty new rows are counted but never sent — same root as the empty-row row above.
+  - `[false]` `[reject]` The key fallback could key a table whose primary key is hidden by a visible identity column — an identity column is unique, so no row is mis-targeted, and the resolution is `BrowsePlan`'s, reused as the intent requires.
+  - `[false]` `[reject]` Additions the intent does not name — each is the spec's: DW-2028 with AC13, AC11's leave dialog, `cuts` and `IS_GENERATED` (Tasks), the EXPERIENCE.md edits and the two budgets (approved by=merge_gate); the snippet renders a script no proposal shows.
+
 ## Design Notes
 
 **Intent gap: split (approved by=merge_gate 2026-10-04; epics.md carries Story 19.16).** The story is three criteria wide. Criteria 1 and 2 alone are larger than Story 19.7: a write tool, two port entry points, editors, staging with key reconciliation, rollback, a confirm path and the unsaved-work handling. Criterion 3 needs:
@@ -404,9 +429,14 @@ Rows were measured on `ocupilot-a2-ci` probe tables in `USER` (Design Notes › 
   - An empty string bound as `$Char(0)` and NULL bound as `""`.
   - After `abc` → `ABC`, a plain `=` guard matched and wrote (a lost update), while `%EXACT` matched nothing.
   - A guard on a value another session had changed matched nothing (SQLCODE 100).
-- **Refusals:** a NUMERIC past its precision answered -105, `2026-02-31` -146, a 61-character value in VARCHAR(50) -105, and a duplicate key -120. The messages quote the values, so they stay screen-only.
+- **Refusals:** a NUMERIC past its precision answered -105, `2026-02-31` -146, a 61-character value in VARCHAR(50) -105, and a duplicate key on INSERT -119 (the instance's -120 is the same check upon UPDATE). The messages quote the values, so they stay screen-only.
 - **Types and catalog:** statement types are INSERT 2, UPDATE 3 and DELETE 4. `COLUMNS` reads `IS_GENERATED` YES for a computed and a ROWVERSION column and `IS_IDENTITY` YES for an identity column. `IS_UPDATABLE` reads YES for every column and decides nothing.
 - **Cost:** 100 guarded UPDATEs, each prepared and run, took 0.014 to 0.017 s.
+
+**Task 0, measured on `ocupilot-a2-ci`, 2026-10-04.** Probe class `OcuProbe198.Plain` and table `OcuProbe198.Slow` were created, removed and checked gone.
+
+- (a) A `%Persistent` class with no declared key: `COLUMNS` lists `ID` (BIGINT, not nullable, `IS_IDENTITY` YES, `IS_GENERATED` NO), and the key query answers `ID` (`RowIDField_As_PKey`). `UPDATE … SET "Name" = ? WHERE "ID" = ? AND %EXACT("Name") = ?` prepared with `%Prepare(text, 1)` as statement type 3 and saved with rowCount 1. Run again with the old guard, it answered SQLCODE 100 and rowCount 0. So such a table is keyed by `ID` and saves, and `ID` is never a value.
+- (b) A `BEFORE UPDATE` trigger that runs `HANG 1`, four UPDATEs under one 2 s budget, as the save loop runs them: row 1 saved in 1.0 s. Row 2 ran on the 1 s left and answered SQLCODE -415 with `$ZE` `<ALARM>` at `$TLEVEL` 0, so it is `stopped`. Rows 3 and 4 were `skipped`, and row 2 read its old value afterwards.
 
 **Harvest** (iris-table-editor; MIT notice already shipped by 19.7):
 
@@ -550,9 +580,50 @@ Load source into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - AC13: the grid drops its tooltip → the browser spec's tooltip leg and the grid spec's pointer case.
 - AC14: `Save` answers `saved` without running → the browser spec's AC14 leg.
 
+**Mutations run (Rule 19)**, each reverted and the tree checked byte-identical; server ones recompiled on `ocupilot-a2-ci`, the client tooltip one rebuilt and copied in:
+
+- mutation: AC1, `parseCellInput` passes a whole number through `Number()` -> `data-browser-model.test.mjs` "a number is staged exactly as typed" red.
+- mutation: AC2, the editor's Ctrl/Cmd+Z restores `''` -> `data-browser-grid.spec.ts` "in the editor Ctrl/Cmd+Z restores the value it opened with" red.
+- mutation: AC3, `duplicate` copies key columns -> the model's duplicate case red.
+- mutation: AC4, `SaveOutcome` answers `saved` whenever SQLCODE >= 0 -> `SqlSaveLive.TestAnUpdateSavesAndAChangedValueIsNot`, `TestAnInsertAndADeleteTwice` and `TestNullIsGuardedAndStoredBesideEmpty` red (run 5452), and the edit browser spec's AC1/AC4/AC5/AC12 leg red; `saved` at row count 0 -> `SqlSave.TestTheOutcomeIsTheInstances` red (run 5462).
+- mutation: AC5, `applyResults` drops only saved rows from staging -> `data-browser.page.spec.ts` mixed-answer case red.
+- mutation: AC6, `overlay` takes staged values by place on the page -> the model's "a staged value shows on the row with the same key" red; `overlay` takes outcomes by place -> "its answer applies by key after the page moved" red.
+- mutation: AC7, `Executed`'s `%Prepare(pText, 1)` becomes 0 -> `SqlSaveLive.TestAHeldTextIsStillRefused` and `TestEachGrantDecidesItsRows` red (run 5454).
+- mutation: AC8, `SaveComposed` guards text with `=` -> `SqlSaveLive.TestAnUpdateSavesAndAChangedValueIsNot` red (run 5453), `SqlSave.TestSaveComposedTheThreeStatements` and `TestTheScriptRendersNoValue` red (run 5461).
+- mutation: AC9, `ScreenActionDelta` leaves `statement` out -> `SqlDataSaveRoutes.TestOcuPilotsOwnTablesAreRefused`'s unknown-table leg red (run 5457); `ScreenActionDelta` ignores `SaveChanges`' refusal -> `TestThePairsComeBeforeTheValuesAndTheValuesBeforeTheSet` red (run 5464); `Save` drops the key check -> `SqlSaveLive.TestATableThatCannotBeWrittenIsRefused` red (run 5463); `Insertable` admits a generated column -> `SqlSave.TestChangeProblemHoldsTheColumnRules` and `TestEditableAndInsertable` red (run 5459).
+- mutation: AC10, `Save` passes bound 0 -> `SqlSaveLive.TestTheBudgetStopsARowAndSkipsTheRest` red (run 5455); `SaveOutcome` calls `Fail` with a row's message -> `TestAFailedSaveLogsNothingOfTheRequest` red (run 5456); `SaveChanges` accepts 101 changes -> `SqlSave.TestSaveChangesRefusesEachShape` red (run 5458); `ADVERTISED` 1 -> `SqlSave.TestTheToolDeclaresItsWritePath` red (run 5460).
+- mutation: AC11, the store's `forget` drops nothing -> the page spec's "a namespace switch discards what is staged and says so" red.
+- mutation: AC12, `commit` leaves focus in the editor -> the grid spec's editor case red.
+- mutation: AC13, `tooltipShown` answers false -> the grid spec's tooltip case and the edit browser spec's AC13 leg red.
+- mutation: AC14, `Save` answers `saved` without running -> the edit browser spec's AC14 (and AC1) leg red.
+- mutation: AC1, AC3 (the wire), `frameOf` drops `generated` -> page spec "a generated, an identity or a cut cell opens no editor" red; `answerOf` drops `cuts` -> the same case red.
+- mutation: AC3, `afterStaging` ignores a refused staging -> page spec "the 101st staged row is refused with its sentence" red.
+- mutation: AC5, AC10, `applyResults` removes a sent insert only when it saved -> page spec "a failed insert is removed" red; `outcomeText` drops an error's message -> the same case red.
+- mutation: AC9 (client), `writable` drops its key check -> page spec's view and keyless case red.
+- mutation: AC13, `cutText` answers every cell's text -> the edit browser spec's AC13 leg red at the uncut cell; both scroll hides dropped -> the same leg red at the scroll (each rebuilt and copied in).
+- mutation: `discard` leaves `savingValue` set -> page spec "leaving the page while a save is on its way" red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the split recommended at plan is approved by=merge_gate 2026-10-04)
+Status: done
+Blocking condition: none
 
 **Plan pass.** Read the spine, the epic context, specs 19.6 and 19.7, the harvest (through a subagent) and the server and client code. Probed `ocupilot-a2-ci` (Design Notes › Measured), then removed the probe class, tables and principal and checked them gone. The tree held only the lead's write-ahead lines for this spawn (`cycle-log-epic-19.md`, `sprint-status.yaml`). This pass wrote nothing else and committed nothing.
+
+**Implement pass.** Data browser edits a table's rows: type-specific editors with edit-mode undo, Add, Duplicate and Delete row, staging keyed by each row's key across paging, sort, filter and refresh, one confirmed Save through the unadvertised `explorer.sqldata.save`, one guarded statement per row composed by `SqlPort.Save` and prepared as the signed-in user, each outcome from the instance's row count, failed rows rolled back on screen, the leave and namespace-discard handling, and DW-2028's cut-cell tooltip.
+
+- Files:
+  - `src/OcuPilot/Port/SqlPort.cls`: the save's endpoint, plan, shape and column rules, composition and outcomes; `IS_GENERATED`, `identity`/`generated` columns and `cuts` on the page answer.
+  - `src/OcuPilot/Screen/Tool/ExplorerSqlDataSave.cls` (new): the unadvertised action-style write.
+  - `ExplorerSqlData.cls` (the `save` row action), `AtelierError.cls` (two codes), `Baseline.cls` (key `false`), `screens.generated.ts`.
+  - Tests (new): `SqlSave`, `SqlSaveProbe`, `SqlSaveLive`, `SqlDataSaveRoutes`; rosters: `ExplorerDescriptor`, `DeveloperFloor`, `Governance`, `GovernanceBaseline`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `ToolEmit`, `Prohibited`, `ToolWrite`, and `SqlBrowseLive`/`SqlDataRoutes` for the new answer fields.
+  - Client: `data-browser-model.ts` (parsers, `StagedChanges`), the store, grid and page, `core/tooltip-timing.ts` (new: an area screen arms no timer, refresh.test.mjs's AD-43 scan), strings and styles at their ends, and the specs and `system-explorer-data-browser-edit.browser-spec.mjs` (new).
+  - EXPERIENCE.md (:159, :173, the Fixed-strings row, the editing paragraphs), `strings.test.mjs` (2,600), `angular.json` with `angular-json.test.mjs` (2812kB, measured 2,811,686 bytes).
+- Review: verification-gap and intent-alignment (no other layer is configured); 19 findings, 7 patched (6 medium test gaps, 1 low `discard` fix), 12 rejected with their reasons in the triage log, 0 deferred. The full sweep then reddened `ToolWrite`'s count of writes behind another port, now thirteen (run 5941 green).
+- Verification on `ocupilot-a2-ci`: `check-objectscript` 0 problems and its harness 146 OK; the 18 targeted classes green one at a time (runs 5468-5485); `npm run test:tools` 1803 pass; `npm test` 1803 and 2373 pass; `lint-docs` 0 issues; the edit, data-browser and a11y structural browser specs 3/3, 2/2 and 12/12 on the rebuilt bundle. Full sweep, 453 classes and 3,667 tests: red only for the classes this throwaway is not armed for (`EcpDataServerStatus`, `EcpDataServerWrite`, `EcpWriteGate`, `Journal*` four, `License*` two, `PathPortInstance`), `MappingCodeGlobals` and `WireSecurityRead` (DW-1554), `Retention` (its one-day probe definition finds entries other suites wrote on this two-day-old throwaway before this story ran, oldest 2026-10-03T18:12Z; red again alone, run 5939) and `ToolWrite` (fixed above). Probe objects, principals and the page resource checked gone.
+- For the lead:
+  - The matrix's Instance refusal row reads -120; the instance answers -119 for a duplicate INSERT and -120 upon UPDATE. Design Notes › Measured is corrected; the intent row is yours to amend.
+  - AC5 removes a failed insert, so its SQLCODE and message reach only the summary count; keeping the row with its reason would amend AC5.
+  - An untouched new row counts in Save changes (<n>) and the dialog but is never sent (low).
+  - The baseline key's `false` stands under AD-22's dating only if 19.8 merges on 2026-10-04 PDT.
+- Follow-up review recommended: true (6 medium patched, 0 high). The unverified risk: the six tests this review added were mutation-checked but not reviewed by an independent layer, and AC13's scroll leg dispatches a synthetic `scroll` event.

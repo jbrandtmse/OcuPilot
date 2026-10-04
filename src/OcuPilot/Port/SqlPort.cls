@@ -27,6 +27,12 @@
 /// <method>BrowseRun</method> runs them. Both pass the gate first, prepare with privilege checks on
 /// through <method>Executed</method> under one alarm budget, bind every value, and never pass through
 /// <method>Classify</method>. Their rows, SQLCODE and message reach the caller's answer alone.</p>
+/// <p><b>The data browser saves a table's staged rows here too</b> (AD-61's Story 19.8 case):
+/// <method>SavePlan</method> answers the save's fresh read, and <method>Save</method> resolves the
+/// table as <method>BrowsePlan</method> does and runs one port-composed statement per staged row
+/// (<method>SaveComposed</method>) through <method>Executed</method> under one alarm budget, each row's
+/// outcome the instance's own row count. Its keys, values, SQLCODEs and messages reach the caller's
+/// answer alone.</p>
 /// <p>Seams a fixture subclass overrides: <method>GateClass</method> and
 /// <method>BoundSeconds</method>. Production overrides neither.</p>
 Class OcuPilot.Port.SqlPort Extends %RegisteredObject
@@ -42,9 +48,17 @@ Parameter TYPEGUARD = "GUARD";
 /// <p>The confirmed run of a statement that changes something (<method>Run</method>).</p>
 Parameter TYPERUN = "RUN";
 
-/// <p>The write this port composes from the caller's declared values, as <code>endpoint/type</code>
-/// (AD-51): the run, from its statement, values and Max rows.</p>
-Parameter COMPOSEDTYPES = "Sql/RUN";
+/// <p>The writes this port composes from the caller's declared values, as <code>endpoint/type</code>
+/// (AD-51): the run, from its statement, values and Max rows; and the data browser's save, from its
+/// schema, table and staged changes.</p>
+Parameter COMPOSEDTYPES = "Sql/RUN,SqlData/RUN";
+
+/// <p>The data browser's save (Story 19.8): its endpoint, and its fresh read, the plan of the table
+/// it writes (<method>SavePlan</method>); its write is <parameter>TYPERUN</parameter>
+/// (<method>Save</method>).</p>
+Parameter ENDPOINTDATA = "SqlData";
+
+Parameter TYPEPLAN = "PLAN";
 
 /// <p>The query keys: the namespace, the target id (always <parameter>IDVALUE</parameter>), the
 /// statement, its values as JSON array text, and the row cap.</p>
@@ -60,6 +74,14 @@ Parameter PARAMETERSKEY = "parameters";
 
 Parameter MAXROWSKEY = "maxRows";
 
+/// <p>The save's query keys: the table's schema and name, and its staged changes as JSON array
+/// text.</p>
+Parameter SCHEMAKEY = "schema";
+
+Parameter TABLEKEY = "table";
+
+Parameter CHANGESKEY = "changes";
+
 /// <p>The class the gate evaluates through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
@@ -71,6 +93,12 @@ Parameter MAXVALUES As INTEGER = 100;
 Parameter MAXVALUE As INTEGER = 32767;
 
 Parameter MAXROWS As INTEGER = 1000;
+
+/// <p>The bounds a save is held to: the staged rows it carries, and the characters of its changes'
+/// JSON text. Each value is held to <parameter>MAXVALUE</parameter>.</p>
+Parameter MAXCHANGES As INTEGER = 100;
+
+Parameter MAXCHANGESTEXT As INTEGER = 1000000;
 
 /// <p>The bounds an answer is held to: a cell, and the whole answer measured as each kept row's JSON
 /// text, cut by whole rows from the end.</p>
@@ -211,7 +239,7 @@ Parameter MAXCOLUMNS As INTEGER = 1000;
 /// primary key's columns. Each reads the caller's own privilege-filtered catalog.</p>
 Parameter BROWSETABLEQUERY = "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
-Parameter BROWSECOLUMNSQUERY = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, IS_IDENTITY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION";
+Parameter BROWSECOLUMNSQUERY = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, IS_IDENTITY, IS_GENERATED FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION";
 
 Parameter BROWSEKEYQUERY = "SELECT k.COLUMN_NAME, c.CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS c JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA AND k.CONSTRAINT_NAME = c.CONSTRAINT_NAME AND k.TABLE_SCHEMA = c.TABLE_SCHEMA AND k.TABLE_NAME = c.TABLE_NAME WHERE c.TABLE_SCHEMA = ? AND c.TABLE_NAME = ? AND c.CONSTRAINT_TYPE = 'PRIMARY KEY' ORDER BY c.CONSTRAINT_NAME, k.ORDINAL_POSITION";
 
@@ -221,6 +249,41 @@ Parameter VIEWTYPES = "VIEW,SYSTEM VIEW";
 /// <p>The column a table without a declared key or an identity column is keyed by, when it lists
 /// one.</p>
 Parameter ROWIDCOLUMN = "ID";
+
+/// <p>A staged change's three operations (Story 19.8).</p>
+Parameter OPUPDATE = "update";
+
+Parameter OPINSERT = "insert";
+
+Parameter OPDELETE = "delete";
+
+/// <p>The statement type each operation prepares as, which <method>Executed</method> checks again
+/// before it runs.</p>
+Parameter STATEMENTINSERT As INTEGER = 2;
+
+Parameter STATEMENTUPDATE As INTEGER = 3;
+
+Parameter STATEMENTDELETE As INTEGER = 4;
+
+/// <p>A staged row's outcomes: the instance changed it; an update or a delete matched no row; the
+/// instance refused the caller the statement (<parameter>PRIVILEGESQLCODE</parameter>); any other
+/// SQL error; the row the budget interrupted; and every row after it.</p>
+Parameter ROWSAVED = "saved";
+
+Parameter ROWCHANGED = "changed";
+
+Parameter ROWGONE = "gone";
+
+Parameter ROWREFUSED = "refused";
+
+Parameter ROWERROR = "error";
+
+Parameter ROWSTOPPED = "stopped";
+
+Parameter ROWSKIPPED = "skipped";
+
+/// <p>The outcome a save answers once its rows ran, whatever each row's own.</p>
+Parameter OUTCOMESAVED = "saved";
 
 /// <p>The class the gate evaluates through. Overridable so a fixture can drive a denial in process;
 /// production never overrides it.</p>
@@ -533,18 +596,20 @@ ClassMethod Plan(pNamespace As %String, pText As %String, Output pAnswer As %Dyn
     Quit tSC
 }
 
-/// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter>) for request type
-/// <var>pType</var>, the write path's way in (AD-51, AD-52). <var>pQuery</var> carries
-/// <code>id</code>, which must be <parameter>IDVALUE</parameter>; <code>namespace</code>, or the
-/// request's resolved scope where it is absent; and <code>statement</code>,
-/// <code>parameters</code> (JSON array text) and <code>maxRows</code>. <var>pBody</var> is not
-/// read.</p>
-/// <p><parameter>TYPEGUARD</parameter> answers <method>Classify</method>'s guard with
+/// <p>Serve <var>pEndpoint</var> (<parameter>ENDPOINTSQL</parameter> or
+/// <parameter>ENDPOINTDATA</parameter>) for request type <var>pType</var>, the write path's way in
+/// (AD-51, AD-52). <var>pQuery</var> carries <code>id</code>, which must be
+/// <parameter>IDVALUE</parameter>; <code>namespace</code>, or the request's resolved scope where it is
+/// absent; for the console, <code>statement</code>, <code>parameters</code> (JSON array text) and
+/// <code>maxRows</code>; for the data browser's save, <code>schema</code>, <code>table</code> and
+/// <code>changes</code> (JSON array text). <var>pBody</var> is not read.</p>
+/// <p>For the console, <parameter>TYPEGUARD</parameter> answers <method>Classify</method>'s guard with
 /// <code>statement</code>, <code>parameters</code> and <code>maxRows</code> <code>null</code> beside
-/// it, or, with no statement, the empty guard after the gate alone. <parameter>TYPERUN</parameter>
-/// answers <method>Run</method>'s answer in <code>write</code> mode. Any other endpoint or type is 501
-/// <code>PORT.NOTIMPLEMENTED</code>, and any other id 404 <code>PORT.NOTFOUND</code>, before any
-/// call.</p>
+/// it, or, with no statement, the empty guard after the gate alone; <parameter>TYPERUN</parameter>
+/// answers <method>Run</method>'s answer in <code>write</code> mode. For the save,
+/// <parameter>TYPEPLAN</parameter> answers <method>SavePlan</method> and <parameter>TYPERUN</parameter>
+/// <method>Save</method>. Any other endpoint or type is 501 <code>PORT.NOTIMPLEMENTED</code>, and any
+/// other id 404 <code>PORT.NOTFOUND</code>, before any call.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pResult = ""
@@ -552,7 +617,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pFault = ""
     Set tSC = $$$OK
     Try {
-        If (pEndpoint '= ..#ENDPOINTSQL) || ((pType '= ..#TYPEGUARD) && (pType '= ..#TYPERUN)) {
+        Set tServed = ((pEndpoint = ..#ENDPOINTSQL) && ((pType = ..#TYPEGUARD) || (pType = ..#TYPERUN))) || ((pEndpoint = ..#ENDPOINTDATA) && ((pType = ..#TYPEPLAN) || (pType = ..#TYPERUN)))
+        If 'tServed {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ##class(OcuPilot.Port.AtelierPort).#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
@@ -562,6 +628,15 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+        If pEndpoint = ..#ENDPOINTDATA {
+            If pType = ..#TYPEPLAN {
+                Set tSC = ..SavePlan(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..Save(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+            }
+            If $$$ISOK(tSC) Set pHttpStatus = 200
+            Quit
+        }
         Set tText = $Get(pQuery(..#STATEMENTKEY))
         If pType = ..#TYPEGUARD {
             If tText = "" {
@@ -611,11 +686,11 @@ ClassMethod ValuesFrom(pText As %String, Output pReadable As %Boolean) As %Dynam
     Quit []
 }
 
-/// <p><code>objectscript</code> for <parameter>TYPERUN</parameter>, the one write this port carries;
-/// <code>""</code> for the read, which has no script form (AD-59).</p>
+/// <p><code>objectscript</code> for <parameter>TYPERUN</parameter> of either endpoint, the two writes
+/// this port carries; <code>""</code> for the reads, which have no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#ENDPOINTSQL) && (pType = ..#TYPERUN) Quit "objectscript"
+    If ((pEndpoint = ..#ENDPOINTSQL) || (pEndpoint = ..#ENDPOINTDATA)) && (pType = ..#TYPERUN) Quit "objectscript"
     Quit ""
 }
 
@@ -623,10 +698,12 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>namespace</code> names: the statement prepared with privilege checks on in ODBC select mode,
 /// each value bound at the next position that takes one, as <method>Executed</method> binds it, then
 /// executed, and its SQLCODE, message and row count shown. Every value is rendered as a string
-/// literal, so nothing the query carries runs as code.</p>
+/// literal, so nothing the query carries runs as code. The data browser's save renders as
+/// <method>SaveSnippet</method> does.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    If pEndpoint = ..#ENDPOINTDATA Quit ..SaveSnippet(.pQuery)
     Set tValues = ..ValuesFrom($Get(pQuery(..#PARAMETERSKEY)), .tReadable)
     Set tList = ""
     Set tIterator = tValues.%GetIterator()
@@ -1403,7 +1480,7 @@ ClassMethod CellOf(pKind As %String, pValue As %String, Output pNull As %Boolean
 /// keeps the instance's answer as the plan's <code>error</code>.</li>
 /// </ul>
 /// <p><var>pPlan</var> is <code>{namespace, start, bound, table: {schema, name, type}, columns:
-/// [{name, type, kind, nullable, key}], key, filters: [{column, kind, value}], sort, offset, size,
+/// [{name, type, kind, nullable, key, identity, generated}], key, filters: [{column, kind, value}], sort, offset, size,
 /// tables, page, pageValues, count, countValues}</code> (<method>Composed</method>), with
 /// <code>stopped</code> when the budget ran out first and <code>error</code> as above.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9). No statement here is
@@ -1474,6 +1551,8 @@ ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output
             Do tColumn.%Set("kind", ..KindOfType(tRow.%Get(1)), "string")
             Do tColumn.%Set("nullable", ($ZConvert(tRow.%Get(2), "U") = "YES"), "boolean")
             Do tColumn.%Set("key", 0, "boolean")
+            Do tColumn.%Set("identity", ($ZConvert(tRow.%Get(3), "U") = "YES"), "boolean")
+            Do tColumn.%Set("generated", ($ZConvert(tRow.%Get(4), "U") = "YES"), "boolean")
             Do tColumns.%Push(tColumn)
             Set tKindOf(tName) = tColumn.%Get("kind")
             If (tIdentity = "") && ($ZConvert(tRow.%Get(3), "U") = "YES") Set tIdentity = tName
@@ -1585,11 +1664,13 @@ ClassMethod BrowsePlan(pNamespace As %String, pRequest As %DynamicObject, Output
 /// count, each through <method>Executed</method> with its values bound. Every answer carries
 /// <code>table</code>, <code>columns</code> and <code>key</code>, and is one of:</p>
 /// <ul>
-/// <li><code>{outcome: rows, rows, offset, size, more, total, truncated}</code>: at most the page
-/// size of rows, each a cell per column (<method>CellOf</method>, <code>null</code> for SQL NULL),
-/// cut by whole rows at <parameter>MAXANSWER</parameter> characters; <code>more</code> when a row was
-/// fetched and not kept; <code>truncated</code> when a cell was cut; <code>total</code> the count, or
-/// <code>null</code> when it ran out of budget, was refused or failed;</li>
+/// <li><code>{outcome: rows, rows, offset, size, more, total, truncated, cuts}</code>: at most the
+/// page size of rows, each a cell per column (<method>CellOf</method>, <code>null</code> for SQL
+/// NULL), cut by whole rows at <parameter>MAXANSWER</parameter> characters; <code>more</code> when a
+/// row was fetched and not kept; <code>truncated</code> when a cell was cut; <code>total</code> the
+/// count, or <code>null</code> when it ran out of budget, was refused or failed; <code>cuts</code>
+/// each cut cell as a <code>[row, column]</code> pair of indexes into <code>rows</code> (Story
+/// 19.8);</li>
 /// <li><code>{outcome: stopped, seconds}</code> when the page, or the plan, ran out of the
 /// budget;</li>
 /// <li><code>{outcome: error, sqlcode, message}</code> when the instance refused or failed the
@@ -1654,12 +1735,18 @@ ClassMethod BrowseRun(pNamespace As %String, pPlan As %DynamicObject, Output pAn
         Set tTotal = 0
         Set tMore = ''tRaw.%Get("more")
         Set tTruncated = ''tRaw.%Get("cut")
+        Set tCuts = []
         Set tIterator = tRaw.%Get("rows").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tFetched) {
             Set tRow = []
+            Set tRowCuts = ""
             For tI = 0:1:tWidth - 1 {
-                Set tCell = ..CellOf(tColumns.%Get(tI).%Get("kind"), tFetched.%Get(tI), .tNull, .tCut)
+                Set tKind = tColumns.%Get(tI).%Get("kind")
+                Set tCell = ..CellOf(tKind, tFetched.%Get(tI), .tNull, .tCut)
                 If tCut Set tTruncated = 1
+                ; Executed cuts a long cell to MAXCELL characters ending in U+2026; a value already of
+                ; that shape is marked cut too, so it is never offered for editing.
+                If tCut || ('tNull && (tKind '= "binary") && ($Length(tCell) = ..#MAXCELL) && ($Extract(tCell, *) = $Char(8230))) Set tRowCuts = tRowCuts _ $ListBuild(tI)
                 If tNull {
                     Do tRow.%Push("", "null")
                 } Else {
@@ -1672,6 +1759,9 @@ ClassMethod BrowseRun(pNamespace As %String, pPlan As %DynamicObject, Output pAn
                 Quit
             }
             Set tTotal = tTotal + tLength
+            For tI = 1:1:$ListLength(tRowCuts) {
+                Do tCuts.%Push([(tRows.%Size()), ($List(tRowCuts, tI))])
+            }
             Do tRows.%Push(tRow)
         }
         Do tAnswer.%Set("outcome", ..#OUTCOMEROWS, "string")
@@ -1694,6 +1784,7 @@ ClassMethod BrowseRun(pNamespace As %String, pPlan As %DynamicObject, Output pAn
             Do tAnswer.%Set("total", +tCount, "number")
         }
         Do tAnswer.%Set("truncated", tTruncated, "boolean")
+        Do tAnswer.%Set("cuts", tCuts)
         Set pAnswer = tAnswer
     } Catch ex {
         Set pAnswer = ""
@@ -1804,6 +1895,548 @@ ClassMethod ErrorBrowse(pAnswer As %DynamicObject, pCode As %String, pMessage As
     }
     Do pAnswer.%Set("message", pMessage, "string")
     Quit pAnswer
+}
+
+/// <p>The data browser save's changes (Story 19.8) from <var>pText</var>, their JSON array text,
+/// into <var>pChanges</var>, answering 0 with <var>pProblem</var> a sentence for any shape outside
+/// its bounds. The text is at most <parameter>MAXCHANGESTEXT</parameter> characters and holds 1 to
+/// <parameter>MAXCHANGES</parameter> members, each one of:</p>
+/// <ul>
+/// <li><code>{op: "update", key, original, values}</code>;</li>
+/// <li><code>{op: "insert", values}</code>;</li>
+/// <li><code>{op: "delete", key}</code>.</li>
+/// </ul>
+/// <p><code>key</code> maps each key column to a string; <code>values</code> maps each column it sets
+/// to a string or <code>null</code>; <code>original</code> maps each column to the string or
+/// <code>null</code> the page read. Each is a non-empty object whose names are column names
+/// (<method>BrowseName</method>), named once each ignoring case, and each string is at most
+/// <parameter>MAXVALUE</parameter> characters. No sentence carries a value. Pure.</p>
+ClassMethod SaveChanges(pText, Output pChanges As %DynamicArray, Output pProblem As %String) As %Boolean
+{
+    Set pChanges = ""
+    Set pProblem = "'" _ ..#CHANGESKEY _ "' is JSON array text of 1 to 100 changes, at most 1,000,000 characters"
+    If $IsObject($Get(pText)) || ($Length($Get(pText)) < 1) || ($Length(pText) > ..#MAXCHANGESTEXT) Quit 0
+    Set tChanges = ""
+    Try {
+        Set tChanges = ##class(%DynamicAbstractObject).%FromJSON(pText)
+    } Catch {
+        Set tChanges = ""
+    }
+    If '$IsObject(tChanges) || 'tChanges.%IsA("%Library.DynamicArray") Quit 0
+    If (tChanges.%Size() < 1) || (tChanges.%Size() > ..#MAXCHANGES) Quit 0
+    Set tProblem = ""
+    Set tIterator = tChanges.%GetIterator()
+    While (tProblem = "") && tIterator.%GetNext(.tIndex, .tChange) {
+        Set tWhere = "change " _ (tIndex + 1) _ ": "
+        If (tChanges.%GetTypeOf(tIndex) '= "object") || (tChange.%GetTypeOf("op") '= "string") {
+            Set tProblem = tWhere _ "'op' is update, insert or delete"
+            Quit
+        }
+        Set tOp = tChange.%Get("op")
+        Set tShape = $Case(tOp, ..#OPUPDATE: $ListBuild("op", "key", "original", "values"), ..#OPINSERT: $ListBuild("op", "values"), ..#OPDELETE: $ListBuild("op", "key"), : "")
+        If tShape = "" {
+            Set tProblem = tWhere _ "'op' is update, insert or delete"
+            Quit
+        }
+        Set tKeyIterator = tChange.%GetIterator()
+        While tKeyIterator.%GetNext(.tMember, .tValue) {
+            If '$ListFind(tShape, tMember) Set tProblem = tWhere _ "an update carries op, key, original and values; an insert op and values; a delete op and key"
+        }
+        For tI = 2:1:$ListLength(tShape) {
+            If tProblem '= "" Quit
+            Set tMember = $List(tShape, tI)
+            If '..SaveMember(tChange, tMember, (tMember '= "key")) Set tProblem = tWhere _ $Case(tMember, "key": "'key' maps each key column to its value, a string", "values": "'values' maps each column to a string of at most 32,767 characters, or null", : "'original' maps each changed column to the value read, a string or null") _ ", each column named once"
+        }
+    }
+    If tProblem '= "" {
+        Set pProblem = tProblem
+        Quit 0
+    }
+    Set pChanges = tChanges
+    Set pProblem = ""
+    Quit 1
+}
+
+/// <p>Whether <var>pChange</var>'s member <var>pMember</var> is a non-empty object of column names
+/// (<method>BrowseName</method>), each named once ignoring case, mapped to strings of at most
+/// <parameter>MAXVALUE</parameter> characters, or to <code>null</code> where <var>pNullable</var>.</p>
+ClassMethod SaveMember(pChange As %DynamicObject, pMember As %String, pNullable As %Boolean) As %Boolean [ Private ]
+{
+    If pChange.%GetTypeOf(pMember) '= "object" Quit 0
+    Set tObject = pChange.%Get(pMember)
+    If tObject.%Size() < 1 Quit 0
+    Set tGood = 1
+    Kill tSeen
+    Set tIterator = tObject.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Set tType = tObject.%GetTypeOf(tName)
+        If '..BrowseName(tName) || $Data(tSeen($ZConvert(tName, "U"))) || '((tType = "string") || (pNullable && (tType = "null"))) || ((tType = "string") && ($Length(tValue) > ..#MAXVALUE)) {
+            Set tGood = 0
+            Quit
+        }
+        Set tSeen($ZConvert(tName, "U")) = ""
+    }
+    Quit tGood
+}
+
+/// <p>Whether a save may change <var>pColumn</var>, a plan's column, on an existing row: it is not a
+/// key column, neither an identity nor a generated column, and neither a stream nor a binary one.
+/// Pure.</p>
+ClassMethod Editable(pColumn As %DynamicObject) As %Boolean
+{
+    If '$IsObject($Get(pColumn)) Quit 0
+    If pColumn.%Get("key") Quit 0
+    Quit ..Insertable(pColumn)
+}
+
+/// <p>Whether a save may set <var>pColumn</var>, a plan's column, on a new row: as
+/// <method>Editable</method>, except that a key column may be set. Pure.</p>
+ClassMethod Insertable(pColumn As %DynamicObject) As %Boolean
+{
+    If '$IsObject($Get(pColumn)) Quit 0
+    If pColumn.%Get("identity") || pColumn.%Get("generated") Quit 0
+    Quit (pColumn.%Get("kind") '= "stream") && (pColumn.%Get("kind") '= "binary")
+}
+
+/// <p>What is wrong with <var>pChanges</var> (<method>SaveChanges</method>'s answer) against
+/// <var>pPlan</var>, a plan <method>BrowsePlan</method> resolved, as a sentence, or <code>""</code>.
+/// An update and a delete name exactly the plan's key columns in <code>key</code>; an update's
+/// <code>values</code> name only columns <method>Editable</method> admits, and its
+/// <code>original</code> exactly those; an insert's <code>values</code> name only columns
+/// <method>Insertable</method> admits. A name must equal a listed column exactly. No sentence carries
+/// a value. Pure.</p>
+ClassMethod ChangeProblem(pPlan As %DynamicObject, pChanges As %DynamicArray) As %String
+{
+    Kill tColumn
+    Set tIterator = pPlan.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        Set tColumn(tEntry.%Get("name")) = tEntry
+    }
+    Set tKey = ""
+    Set tIterator = pPlan.%Get("key").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        Set tKey = tKey _ $ListBuild(tName)
+    }
+    Set tProblem = ""
+    Set tIterator = pChanges.%GetIterator()
+    While (tProblem = "") && tIterator.%GetNext(.tIndex, .tChange) {
+        Set tWhere = "change " _ (tIndex + 1) _ ": "
+        Set tOp = tChange.%Get("op")
+        If (tOp = ..#OPUPDATE) || (tOp = ..#OPDELETE) {
+            Set tGiven = tChange.%Get("key")
+            Set tExact = (tGiven.%Size() = $ListLength(tKey))
+            For tI = 1:1:$ListLength(tKey) {
+                If tGiven.%GetTypeOf($List(tKey, tI)) '= "string" Set tExact = 0
+            }
+            If 'tExact {
+                Set tProblem = tWhere _ "'key' names exactly the table's key columns, " _ $ListToString(tKey, ", ")
+                Quit
+            }
+        }
+        If tOp = ..#OPDELETE Continue
+        Set tValues = tChange.%Get("values")
+        Set tNames = tValues.%GetIterator()
+        While tNames.%GetNext(.tName, .tValue) {
+            If '$Data(tColumn(tName)) || '$Select(tOp = ..#OPINSERT: ..Insertable(tColumn(tName)), 1: ..Editable(tColumn(tName))) {
+                Set tProblem = tWhere _ "'" _ tName _ "' is not a column " _ $Select(tOp = ..#OPINSERT: "a new row may set", 1: "a save may change")
+                Quit
+            }
+        }
+        If (tProblem '= "") || (tOp '= ..#OPUPDATE) Continue
+        Set tOriginal = tChange.%Get("original")
+        Set tSame = (tOriginal.%Size() = tValues.%Size())
+        Set tNames = tValues.%GetIterator()
+        While tNames.%GetNext(.tName, .tValue) {
+            If tOriginal.%GetTypeOf(tName) = "unassigned" Set tSame = 0
+        }
+        If 'tSame Set tProblem = tWhere _ "'original' names exactly the columns 'values' changes"
+    }
+    Quit tProblem
+}
+
+/// <p>The one statement a save runs for <var>pChange</var>, a change <method>ChangeProblem</method>
+/// passed, against <var>pPlan</var>: <code>{text, type, values, columns}</code>, the text with a
+/// <code>?</code> for each value, its statement type, the values bound in order, and the column each
+/// value is bound for.</p>
+/// <ul>
+/// <li>An update is <code>UPDATE "S"."T" SET "c" = ?, ... WHERE "k" = ? AND ...</code>, then one guard
+/// term per changed column: <code>"c" IS NULL</code> where the value read was <code>null</code>,
+/// <code>%EXACT("c") = ?</code> for a column of kind <code>text</code>, and <code>"c" = ?</code>
+/// otherwise. Its values are the new values, the keys, then the values read the guard compares.</li>
+/// <li>An insert is <code>INSERT INTO "S"."T" ("c", ...) VALUES (?, ...)</code>.</li>
+/// <li>A delete is <code>DELETE FROM "S"."T" WHERE "k" = ? AND ...</code>.</li>
+/// </ul>
+/// <p>Columns follow the plan's order and keys its key's. Every identifier is the plan's catalog
+/// spelling, <method>Quoted</method>; a <code>null</code> binds <code>""</code>, SQL NULL, and an empty
+/// string binds <code>$Char(0)</code>. Pure.</p>
+ClassMethod SaveComposed(pPlan As %DynamicObject, pChange As %DynamicObject) As %DynamicObject
+{
+    Set tTable = ..Quoted(pPlan.%Get("table").%Get("schema")) _ "." _ ..Quoted(pPlan.%Get("table").%Get("name"))
+    Set tOp = pChange.%Get("op")
+    Set tKeyText = ""
+    Set tKeyValues = []
+    Set tKeyColumns = []
+    If tOp '= ..#OPINSERT {
+        Set tGiven = pChange.%Get("key")
+        Set tIterator = pPlan.%Get("key").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName) {
+            Set tKeyText = tKeyText _ $Select(tKeyText = "": "", 1: " AND ") _ ..Quoted(tName) _ " = ?"
+            Do tKeyValues.%Push(..Bound(tGiven, tName), "string")
+            Do tKeyColumns.%Push(tName, "string")
+        }
+    }
+    Set tComposed = {}
+    Set tBound = []
+    Set tColumns = []
+    If tOp = ..#OPDELETE {
+        Do tComposed.%Set("text", "DELETE FROM " _ tTable _ " WHERE " _ tKeyText, "string")
+        Do tComposed.%Set("type", ..#STATEMENTDELETE, "number")
+        Do ..Append(tBound, tKeyValues)
+        Do ..Append(tColumns, tKeyColumns)
+    } Else {
+        Set tValues = pChange.%Get("values")
+        Set tOriginal = $Select(pChange.%GetTypeOf("original") = "object": pChange.%Get("original"), 1: {})
+        Set tNames = ""
+        Set tMarks = ""
+        Set tSet = ""
+        Set tGuard = ""
+        Set tGuardValues = []
+        Set tGuardColumns = []
+        Set tIterator = pPlan.%Get("columns").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tColumn) {
+            Set tName = tColumn.%Get("name")
+            If tValues.%GetTypeOf(tName) = "unassigned" Continue
+            Do tBound.%Push(..Bound(tValues, tName), "string")
+            Do tColumns.%Push(tName, "string")
+            Set tNames = tNames _ $Select(tNames = "": "", 1: ", ") _ ..Quoted(tName)
+            Set tMarks = tMarks _ $Select(tMarks = "": "", 1: ", ") _ "?"
+            Set tSet = tSet _ $Select(tSet = "": "", 1: ", ") _ ..Quoted(tName) _ " = ?"
+            If tOp '= ..#OPUPDATE Continue
+            If tOriginal.%GetTypeOf(tName) = "null" {
+                Set tGuard = tGuard _ " AND " _ ..Quoted(tName) _ " IS NULL"
+                Continue
+            }
+            Set tGuard = tGuard _ " AND " _ $Select(tColumn.%Get("kind") = "text": "%EXACT(" _ ..Quoted(tName) _ ")", 1: ..Quoted(tName)) _ " = ?"
+            Do tGuardValues.%Push(..Bound(tOriginal, tName), "string")
+            Do tGuardColumns.%Push(tName, "string")
+        }
+        If tOp = ..#OPINSERT {
+            Do tComposed.%Set("text", "INSERT INTO " _ tTable _ " (" _ tNames _ ") VALUES (" _ tMarks _ ")", "string")
+            Do tComposed.%Set("type", ..#STATEMENTINSERT, "number")
+        } Else {
+            Do tComposed.%Set("text", "UPDATE " _ tTable _ " SET " _ tSet _ " WHERE " _ tKeyText _ tGuard, "string")
+            Do tComposed.%Set("type", ..#STATEMENTUPDATE, "number")
+            Do ..Append(tBound, tKeyValues)
+            Do ..Append(tColumns, tKeyColumns)
+            Do ..Append(tBound, tGuardValues)
+            Do ..Append(tColumns, tGuardColumns)
+        }
+    }
+    Do tComposed.%Set("values", tBound)
+    Do tComposed.%Set("columns", tColumns)
+    Quit tComposed
+}
+
+/// <p>The value <var>pObject</var> holds under <var>pName</var> as a save binds it: <code>null</code>
+/// or absent as <code>""</code>, SQL NULL; an empty string as <code>$Char(0)</code>; any other string
+/// as itself.</p>
+ClassMethod Bound(pObject As %DynamicObject, pName As %String) As %String [ Private ]
+{
+    Set tType = pObject.%GetTypeOf(pName)
+    If (tType = "null") || (tType = "unassigned") Quit ""
+    Set tValue = pObject.%Get(pName)
+    If tValue = "" Quit $Char(0)
+    Quit tValue
+}
+
+/// <p>Push each string of <var>pFrom</var> onto <var>pTo</var>.</p>
+ClassMethod Append(pTo As %DynamicArray, pFrom As %DynamicArray) [ Private ]
+{
+    Set tIterator = pFrom.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue) {
+        Do pTo.%Push(tValue, "string")
+    }
+}
+
+/// <p>The save's fresh read (Story 19.8, AD-51) in <var>pNamespace</var>: the gate, then, for the
+/// table <var>pQuery</var>'s <code>schema</code> and <code>table</code> name, its plan
+/// (<method>BrowsePlan</method>). <var>pAnswer</var> is <code>{Namespace, Kind, Tables, RecordsTables,
+/// DefaultSchema, statement, schema, table, changes}</code>: <code>Kind</code> <code>table</code> or
+/// <code>view</code>, <code>Tables</code> the table and a view's base tables, which the self-protection
+/// check judges, <code>RecordsTables</code> true, <code>DefaultSchema</code> the namespace's, and the
+/// last four <code>null</code>. With no schema it answers the empty plan, <code>Kind</code>
+/// <code>""</code> and no table, after the gate alone. Every refusal is <method>BrowsePlan</method>'s;
+/// a name outside its shape is 400 <code>TOOL.ARGUMENTS</code>.</p>
+/// <p>Caller contract: must not be called from an escalated frame (AD-9). Nothing of the request is
+/// logged.</p>
+ClassMethod SavePlan(pNamespace As %String, ByRef pQuery, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSchema = $Get(pQuery(..#SCHEMAKEY))
+        Set tTables = []
+        Set tKind = ""
+        If tSchema = "" {
+            Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+        } Else {
+            Set tSC = ..SaveTable(pNamespace, tSchema, $Get(pQuery(..#TABLEKEY)), .tPlan, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            If tPlan.%Get("stopped") {
+                Set tSC = ..Fail("a data browser save's plan ran out of its budget", $$$ERROR($$$GeneralError, "stopped"), .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tKind = tPlan.%Get("table").%Get("type")
+            Set tTables = tPlan.%Get("tables")
+        }
+        Set tSC = ..DefaultSchemaOf(pNamespace, .tDefault)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Fail("a data browser save's default schema could not be read", tSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAnswer = {}
+        Do tAnswer.%Set("Namespace", pNamespace, "string")
+        Do tAnswer.%Set("Kind", tKind, "string")
+        Do tAnswer.%Set("Tables", tTables)
+        Do tAnswer.%Set("RecordsTables", 1, "boolean")
+        Do tAnswer.%Set("DefaultSchema", tDefault, "string")
+        For tKey = ..#STATEMENTKEY, ..#SCHEMAKEY, ..#TABLEKEY, ..#CHANGESKEY {
+            Do tAnswer.%Set(tKey, "", "null")
+        }
+        Set pAnswer = tAnswer
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("a data browser save could not be planned", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Save <var>pQuery</var>'s staged <code>changes</code> to the table its <code>schema</code> and
+/// <code>table</code> name, in <var>pNamespace</var> (Story 19.8), in this order:</p>
+/// <ol>
+/// <li>the gate (<method>Gate</method>);</li>
+/// <li>the changes' shape (<method>SaveChanges</method>) and the names', else 400
+/// <code>TOOL.ARGUMENTS</code>;</li>
+/// <li>the plan (<method>BrowsePlan</method>): 404 <code>EXPLORER.DATA.NOTFOUND</code>, and 409
+/// <code>EXPLORER.DATA.READONLY</code> for a view or a table with no key the caller can list;</li>
+/// <li>the column rules (<method>ChangeProblem</method>), else 400
+/// <code>EXPLORER.DATA.CHANGES</code>;</li>
+/// <li>each change in order, one statement each (<method>SaveComposed</method>) through
+/// <method>Executed</method> with what remains of the plan's budget, with no surrounding
+/// transaction.</li>
+/// </ol>
+/// <p><var>pAnswer</var> is <code>{outcome: saved, results: [{index, outcome, rowCount?, sqlcode?,
+/// message?, seconds?}], saved, failed}</code>. A row is <code>saved</code> when the instance's row
+/// count is at least 1; an update matching no row is <code>changed</code> and a delete
+/// <code>gone</code>; <code>refused</code> answers the instance's privilege violation; any other SQL
+/// error is <code>error</code> with its SQLCODE and message; the row the budget interrupts is
+/// <code>stopped</code>, which <method>Executed</method> rolls back, and every row after it
+/// <code>skipped</code>.</p>
+/// <p>A row's outcome is an answer, never a fault. Nothing of a key, a value, a SQLCODE or a message is
+/// logged.</p>
+ClassMethod Save(pNamespace As %String, ByRef pQuery, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Set tSchema = $Get(pQuery(..#SCHEMAKEY))
+        Set tName = $Get(pQuery(..#TABLEKEY))
+        If '..SaveChanges($Get(pQuery(..#CHANGESKEY)), .tChanges, .tProblem) || '..BrowseName(tSchema) || '..BrowseName(tName) {
+            If tProblem = "" Set tProblem = "'" _ ..#SCHEMAKEY _ "' and '" _ ..#TABLEKEY _ "' name the table as the tree shows it"
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS, .pHttpStatus, .pFault, {"problem": (tProblem)})
+            Quit
+        }
+        Set tSC = ..SaveTable(pNamespace, tSchema, tName, .tPlan, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If 'tPlan.%Get("stopped") && ((tPlan.%Get("table").%Get("type") '= "table") || (tPlan.%Get("key").%Size() = 0)) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DATAREADONLY, ##class(OcuPilot.Api.AtelierError).#REASONDATAREADONLY, .pHttpStatus, .pFault)
+            Quit
+        }
+        If 'tPlan.%Get("stopped") {
+            Set tProblem = ..ChangeProblem(tPlan, tChanges)
+            If tProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AtelierError).#DATACHANGES, ##class(OcuPilot.Api.AtelierError).#REASONDATACHANGES, .pHttpStatus, .pFault, {"problem": (tProblem)})
+                Quit
+            }
+        }
+        Set tHalted = ''tPlan.%Get("stopped")
+        Set tResults = []
+        Set tSaved = 0
+        Set tIterator = tChanges.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tChange) {
+            Set tRemaining = $Select(tHalted: 0, 1: ..Remaining(tPlan.%Get("start"), tPlan.%Get("bound")))
+            If tRemaining < 1 {
+                Set tHalted = 1
+                Do tResults.%Push(..RowResult(tIndex, ..#ROWSKIPPED))
+                Continue
+            }
+            Set tComposed = ..SaveComposed(tPlan, tChange)
+            Set tRunSC = ..Executed(pNamespace, tComposed.%Get("text"), tComposed.%Get("type"), tComposed.%Get("values"), tRemaining, 0, 1, .tRaw)
+            Set tResult = ..SaveOutcome(pNamespace, tIndex, tChange.%Get("op"), tComposed.%Get("text"), +tPlan.%Get("bound"), tRunSC, $Get(tRaw))
+            If tResult.%Get("outcome") = ..#ROWSTOPPED Set tHalted = 1
+            If tResult.%Get("outcome") = ..#ROWSAVED Set tSaved = tSaved + 1
+            Do tResults.%Push(tResult)
+        }
+        Set tAnswer = {}
+        Do tAnswer.%Set("outcome", ..#OUTCOMESAVED, "string")
+        Do tAnswer.%Set("results", tResults)
+        Do tAnswer.%Set("saved", tSaved, "number")
+        Do tAnswer.%Set("failed", tResults.%Size() - tSaved, "number")
+        Set pAnswer = tAnswer
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail("a data browser save could not be run", $$$ERROR($$$GeneralError, ex.Name), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The plan of the table <var>pSchema</var>.<var>pName</var> in <var>pNamespace</var> a save
+/// writes, as <method>BrowsePlan</method> resolves it, in <var>pPlan</var>. A name outside its shape
+/// is 400 <code>TOOL.ARGUMENTS</code> once the gate has passed.</p>
+ClassMethod SaveTable(pNamespace As %String, pSchema As %String, pName As %String, Output pPlan As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pPlan = ""
+    Set tBody = {}
+    Do tBody.%Set(..#BROWSESCHEMAKEY, pSchema, "string")
+    Do tBody.%Set(..#BROWSETABLEKEY, pName, "string")
+    If '..BrowseRequest(tBody, .tRequest) {
+        Set tSC = ..Gate(pNamespace, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS, .pHttpStatus, .pFault, {"problem": ("'" _ ..#SCHEMAKEY _ "' and '" _ ..#TABLEKEY _ "' name the table as the tree shows it")})
+    }
+    Quit ..BrowsePlan(pNamespace, tRequest, .pPlan, .pHttpStatus, .pFault)
+}
+
+/// <p>The result of the staged change at <var>pIndex</var>, an operation <var>pOp</var> whose text
+/// <var>pText</var> <method>Executed</method> ran with status <var>pRunSC</var> and raw answer
+/// <var>pRaw</var>, under a budget of <var>pBound</var> seconds. A failed prepare is asked again for
+/// its SQLCODE in <var>pNamespace</var> (<method>PrepareProblem</method>); every other branch reads
+/// <var>pRaw</var> alone. A status that is an error logs only that the row could not be run.</p>
+ClassMethod SaveOutcome(pNamespace As %String, pIndex As %Integer, pOp As %String, pText As %String, pBound As %Integer, pRunSC As %Status, pRaw) As %DynamicObject
+{
+    If $$$ISERR(pRunSC) || '$IsObject(pRaw) {
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "a data browser save's row could not be run", pRunSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+        Quit ..RowResult(pIndex, ..#ROWERROR, "", "", "")
+    }
+    If pRaw.%Get("stopped") {
+        Set tResult = ..RowResult(pIndex, ..#ROWSTOPPED)
+        Do tResult.%Set("seconds", pBound, "number")
+        Quit tResult
+    }
+    If pRaw.%Get("changed") {
+        Set tProblemSC = ..PrepareProblem(pNamespace, pText, .tCode, .tMessage)
+        If $$$ISERR(tProblemSC) || (tCode = "") Quit ..RowResult(pIndex, ..#ROWERROR, "", "", "")
+        If +tCode = ..#PRIVILEGESQLCODE Quit ..RowResult(pIndex, ..#ROWREFUSED, "", tCode)
+        Quit ..RowResult(pIndex, ..#ROWERROR, "", tCode, tMessage)
+    }
+    If +pRaw.%Get("sqlcode") = ..#PRIVILEGESQLCODE Quit ..RowResult(pIndex, ..#ROWREFUSED, "", ..#PRIVILEGESQLCODE)
+    If pRaw.%Get("sqlcode") < 0 Quit ..RowResult(pIndex, ..#ROWERROR, "", pRaw.%Get("sqlcode"), pRaw.%Get("message"))
+    If pRaw.%Get("rolledBack") Quit ..RowResult(pIndex, ..#ROWERROR, "", "", "")
+    Set tCount = +pRaw.%Get("rowCount")
+    If tCount >= 1 Quit ..RowResult(pIndex, ..#ROWSAVED, tCount)
+    If pOp = ..#OPUPDATE Quit ..RowResult(pIndex, ..#ROWCHANGED, 0)
+    If pOp = ..#OPDELETE Quit ..RowResult(pIndex, ..#ROWGONE, 0)
+    Quit ..RowResult(pIndex, ..#ROWERROR, "", "", "")
+}
+
+/// <p>One row's result: <code>{index, outcome}</code>, with <code>rowCount</code> where
+/// <var>pRowCount</var> is given, and <code>sqlcode</code> (an empty one <code>null</code>) and
+/// <code>message</code> where <var>pCode</var> is passed.</p>
+ClassMethod RowResult(pIndex As %Integer, pOutcome As %String, pRowCount As %String = "", pCode As %String, pMessage As %String) As %DynamicObject [ Private ]
+{
+    Set tResult = {}
+    Do tResult.%Set("index", +pIndex, "number")
+    Do tResult.%Set("outcome", pOutcome, "string")
+    If pRowCount '= "" Do tResult.%Set("rowCount", +pRowCount, "number")
+    If $Data(pCode) {
+        If pCode = "" {
+            Do tResult.%Set("sqlcode", "", "null")
+        } Else {
+            Do tResult.%Set("sqlcode", +pCode, "number")
+        }
+    }
+    If $Data(pMessage) Do tResult.%Set("message", pMessage, "string")
+    Quit tResult
+}
+
+/// <p><var>pNamespace</var>'s default SQL schema, read there, in <var>pDefault</var>. The switched
+/// region calls vendor classes only.</p>
+ClassMethod DefaultSchemaOf(pNamespace As %String, Output pDefault As %String) As %Status [ Private ]
+{
+    Set pDefault = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pDefault = $SYSTEM.SQL.Schema.Default()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pDefault = ""
+        Set tSC = $$$ERROR($$$GeneralError, "the default schema read raised " _ ex.Name)
+    }
+    Quit tSC
+}
+
+/// <p>The data browser's save (<parameter>ENDPOINTDATA</parameter>, <parameter>TYPERUN</parameter>) as
+/// a script (AD-59), in the namespace <code>namespace</code> names: each change of
+/// <code>changes</code> composed as <method>SaveComposed</method> composes it, prepared with privilege
+/// checks on in ODBC select mode and executed, its SQLCODE, message and row count shown. Every bound
+/// value is rendered as its column's <code>"&lt;column&gt;"</code> placeholder, never a row value. The
+/// script reads no catalog, so each column is composed as kind <code>text</code>, which renders every
+/// guard on a value read as <code>%EXACT</code>; the port compares a column of another kind with
+/// <code>=</code>. Changes that do not read render the namespace line alone.</p>
+ClassMethod SaveSnippet(ByRef pQuery) As %DynamicArray [ Private ]
+{
+    Set tChanges = ..ValuesFrom($Get(pQuery(..#CHANGESKEY)), .tReadable)
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    Set tIterator = tChanges.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tChange) {
+        If '$IsObject(tChange) || 'tChange.%IsA("%Library.DynamicObject") Continue
+        If '$ListFind($ListBuild(..#OPUPDATE, ..#OPINSERT, ..#OPDELETE), tChange.%Get("op")) Continue
+        Set tComposed = ..SaveComposed(..SnippetPlan($Get(pQuery(..#SCHEMAKEY)), $Get(pQuery(..#TABLEKEY)), tChange), tChange)
+        Set tList = ""
+        Set tNames = tComposed.%Get("columns").%GetIterator()
+        While tNames.%GetNext(.tAt, .tName) {
+            Set tList = tList _ $Select(tList = "": "", 1: ", ") _ ..Literal("<" _ tName _ ">")
+        }
+        Set tText = tText _ $Char(10) _ " Set tStatement = ##class(%SQL.Statement).%New(), tStatement.%SelectMode = " _ ..#SELECTMODE
+        Set tText = tText _ $Char(10) _ " Set tSC = tStatement.%Prepare(" _ ..Literal(tComposed.%Get("text")) _ ", 1)"
+        Set tText = tText _ $Char(10) _ " If $System.Status.IsError(tSC) { Do $System.Status.DisplayError(tSC) } Else { Set tResult = tStatement.%Execute(" _ tList _ ") ZWrite tResult.%SQLCODE, tResult.%Message, tResult.%ROWCOUNT }"
+    }
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p>The plan <method>SaveSnippet</method> composes <var>pChange</var> against: the table
+/// <var>pSchema</var>.<var>pName</var>, the change's own key names in order as its key, and each name
+/// it carries as a column of kind <code>text</code>.</p>
+ClassMethod SnippetPlan(pSchema As %String, pName As %String, pChange As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tPlan = {"table": {}, "key": [], "columns": []}
+    Do tPlan.%Get("table").%Set("schema", pSchema, "string")
+    Do tPlan.%Get("table").%Set("name", pName, "string")
+    Kill tSeen
+    For tMember = "key", "values" {
+        If pChange.%GetTypeOf(tMember) '= "object" Continue
+        Set tIterator = pChange.%Get(tMember).%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) {
+            If tMember = "key" Do tPlan.%Get("key").%Push(tName, "string")
+            If $Data(tSeen(tName)) Continue
+            Set tSeen(tName) = ""
+            Do tPlan.%Get("columns").%Push({"name": (tName), "kind": "text"})
+        }
+    }
+    Quit tPlan
 }
 
 }

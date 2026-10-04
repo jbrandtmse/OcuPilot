@@ -578,9 +578,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Story 18.19's Journal records literals, merged after Story 19.5's, stay under 2300.
   // Story 19.14's eighty-two literals, merged with Story 18.19's row, take the table toward 2300; the
   // bound moves to 2500 under the same protocol.
+  // Story 19.8's literals, beside Epic 18's rows at merge, take the table toward 2500; the bound moves
+  // to 2600 under the same protocol.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 2500,
-    `expected between 150 and 2500 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 2600,
+    `expected between 150 and 2600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:640 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5303,6 +5303,73 @@ export const STRINGS = {
   impactRemoteDatabasesUseNone: 'no remote database uses it',
   /** EXPERIENCE.md:577 */
   impactRemoteDatabasesUseUnchecked: 'which remote databases use it was not checked',
+  // Story 19.8: Data browser's row actions, the staged and deleted marks and the status column, the
+  // save dialog, the editing, staging, undo, discard and save lines, the read-only line, the cap and
+  // the namespace discard, the editors' refusals and hints, each row's outcome, and the save's two
+  // refusals. "Changed", "Saved", "Change", the SQLCODE and stopped lines, the yes and no words,
+  // "NULL" and "Leave without saving?" are reused.
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataAddRow: 'Add row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDuplicateRow: 'Duplicate row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDeleteRow: 'Delete row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataRestoreRow: 'Restore row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveChanges: 'Save changes (<n>)',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscard: 'Discard changes',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNew: 'New',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDeleted: 'Deleted',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveTitle: 'Save changes to <table>?',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveConsequence: '<u> rows change, <i> are added and <d> are deleted in <table>, and this cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataEditing: 'Editing <column>.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataWaiting: '<n> changes waiting to be saved.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataUndone: 'Change undone.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscarded: '<n> changes discarded.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSavedSummary: 'Saved <a> of <n> changes; <b> rolled back.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataReadOnly: 'Rows here are read-only: a view, or a table without a key this account can see, is not changed here.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataCap: 'A save carries at most 100 rows; save or discard some first.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataScopeDiscarded: 'Changes were discarded because the namespace changed.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNotNull: 'This column cannot be NULL.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNotEditable: 'This cell cannot be edited here.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeChanged: 'Not saved: the row changed or was removed after it was read.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeRefused: 'Not saved: this account may not make this change.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeGone: 'Already removed.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeSkipped: 'Not run: the save stopped first.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintInteger: 'Enter a whole number.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintNumber: 'Enter a number.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintDate: 'Enter a date such as 2026-10-04.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintTime: 'Enter a time such as 14:30:00.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintTimestamp: 'Enter a date and time such as 2026-10-04 14:30:00.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataChangesReason: 'Name each row\'s key, and change only listed columns that are not keys, identities, computed, streams or binary.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataReadOnlyReason: 'This is a view, or a table without a key this account can see, so its rows are not changed here.',
 } as const;
 
 /**

@@ -539,6 +539,9 @@ const ATELIER_REFUSALS = [
   // Story 19.7: Data browser's input and not-found refusals.
   ['REASONDATAINPUT', 'explorerSqlDataInputReason'],
   ['REASONDATANOTFOUND', 'explorerSqlDataNotFoundReason'],
+  // Story 19.8: its save's column-rule and read-only refusals.
+  ['REASONDATACHANGES', 'explorerSqlDataChangesReason'],
+  ['REASONDATAREADONLY', 'explorerSqlDataReadOnlyReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

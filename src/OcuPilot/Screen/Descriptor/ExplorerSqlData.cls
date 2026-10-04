@@ -4,8 +4,11 @@
 /// SQL views screens' declared reads (<code>explorer.sqlschemas</code>, <code>explorer.sqltables</code>,
 /// <code>explorer.sqlviews</code>), each under that screen's own gate, and its grid posts to its own
 /// route, <code>POST /explorer/sql/data</code>, which answers this screen only. So it has no read
-/// tool, no action and no context field, and a page's rows never reach screen context (AD-39's sixth
+/// tool and no context field, and a page's rows never reach screen context (AD-39's sixth
 /// exception).</p>
+/// <p><b>Its one action, <code>save</code>, sends the grid's staged rows</b> through
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlDataSave</class>, an unadvertised write a person's
+/// confirmed Save alone reaches (AD-53, Story 19.8).</p>
 /// <p><b>Its privilege set is <parameter>OcuPilot.Port.AtelierPort.PAIRS</parameter></b>, as SQL
 /// Home's; the port also requires READ on the namespace's code databases, resolved at call time, and
 /// the instance checks the caller's SQL privileges at each prepare (AD-29, AD-61). It replaces SQL
@@ -33,7 +36,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "none", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "save", "selfProtection": ""}],
   "context": {"fields": [], "secretFields": []},
   "emptyStateKey": "",
   "commandAliases": ["data browser", "open table", "browse table", "table rows"],

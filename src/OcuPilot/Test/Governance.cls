@@ -29,8 +29,8 @@ Parameter TASKIMPORT = "tasks.schedule.import";
 Parameter ENABLEINTEROP = "osmgmt.namespaces.enableinterop";
 
 /// <p>Story 19.2's two document deletes, Story 19.13's two document imports, Story 19.3's two
-/// saves and Story 19.6's SQL run, which the baseline disables.</p>
-Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.classes.save,explorer.routines.save,explorer.sqlquery.run";
+/// saves, Story 19.6's SQL run and Story 19.8's data browser save, which the baseline disables.</p>
+Parameter EXPLORERDISABLED = "explorer.classes.delete,explorer.routines.delete,explorer.classes.import,explorer.routines.import,explorer.classes.save,explorer.routines.save,explorer.sqlquery.run,explorer.sqldata.save";
 
 /// <p>The remote database delete, which the baseline also disables (Story 18.16).</p>
 Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";

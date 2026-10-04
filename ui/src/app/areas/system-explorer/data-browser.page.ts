@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { FormDirty } from '../../core/form-dirty';
 import {
   MAX_OFFSET,
   PAGE_SIZES,
@@ -19,10 +20,21 @@ import { ScopeService, onScopeChange } from '../../core/scope';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { Dialog } from '../../shell/dialog';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { WarningDialog } from '../../shell/warning-dialog';
 import { fillPlaceholders } from './code-list.store';
-import { DataBrowserGrid, type PageRequest } from './data-browser-grid';
+import { DataBrowserGrid, type CellEdit, type PageRequest } from './data-browser-grid';
 import { DataBrowserTree } from './data-browser-tree';
-import { DataBrowserState, type BrowseAnswer, type BrowseColumn, type DataBrowserDeps, type TreeObject, type TreeSchema } from './data-browser.store';
+import {
+  DataBrowserState,
+  type BrowseAnswer,
+  type BrowseColumn,
+  type DataBrowserDeps,
+  type StagedRow,
+  type TreeObject,
+  type TreeSchema,
+} from './data-browser.store';
 
 /** The three screens whose declared reads fill the tree (AD-5). */
 export const TREE_DESCRIPTORS = {
@@ -52,6 +64,13 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
  * and a refusal as an alert banner. A control that cannot act is drawn `aria-disabled` and answers
  * nothing.
  *
+ * **Editing** (Story 19.8). On a table whose key this account can list, the head adds Add row,
+ * Duplicate row, Delete row (Restore row on a deleted row), Save changes (<n>) and Discard changes,
+ * acting on the grid's active row; a view or a keyless table reads the read-only line instead. Save
+ * opens the warning dialog naming the table and how many rows change, are added and are deleted;
+ * Proceed sends the save, Cancel nothing. Opening another table over staged rows, like leaving the
+ * route, asks "Leave without saving?" through `FormDirty`; a namespace switch discards them.
+ *
  * **Everything shown is text** (AD-11), and the page lives in `DataBrowserState`, never in the
  * screen's store, so it never reaches screen context (AD-36, AD-39's sixth exception).
  *
@@ -61,7 +80,7 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
 @Component({
   selector: 'app-data-browser-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataBrowserTree, DataBrowserGrid],
+  imports: [DataBrowserTree, DataBrowserGrid, WarningDialog, Dialog],
   template: `<section class="ocu-form-page ocu-data-browser" [attr.aria-busy]="loading">
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-data="refusal">{{ refusal }}</p>
@@ -92,6 +111,18 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
               <button type="button" class="ocu-button-text" data-ocu-data="clear-filters" [attr.aria-disabled]="noFilters" (click)="onClearFilters()">{{ STRINGS.explorerSqlDataClearFilters }}</button>
             </div>
           </div>
+          @if (writable) {
+            <div class="ocu-data-browser-edit-actions" data-ocu-data="edit-actions">
+              <button type="button" class="ocu-button-text" data-ocu-data="add-row" [attr.aria-disabled]="editBlocked" (click)="onAddRow()">{{ STRINGS.explorerSqlDataAddRow }}</button>
+              <button type="button" class="ocu-button-text" data-ocu-data="duplicate-row" [attr.aria-disabled]="rowBlocked" (click)="onDuplicateRow()">{{ STRINGS.explorerSqlDataDuplicateRow }}</button>
+              <button type="button" class="ocu-button-text" data-ocu-data="delete-row" [attr.aria-disabled]="rowBlocked" (click)="onDeleteRow()">{{ deleteLabel }}</button>
+              <button type="button" class="ocu-button-primary" data-ocu-data="save" [attr.aria-disabled]="saveBlocked" (click)="onSave()">{{ saveLabel }}</button>
+              <button type="button" class="ocu-button-text" data-ocu-data="discard" [attr.aria-disabled]="discardBlocked" (click)="onDiscard()">{{ STRINGS.explorerSqlDataDiscard }}</button>
+            </div>
+          }
+          @if (readOnly) {
+            <p class="ocu-data-browser-hint" data-ocu-data="read-only">{{ STRINGS.explorerSqlDataReadOnly }}</p>
+          }
           <p class="ocu-data-browser-hint" data-ocu-data="hint">{{ STRINGS.explorerSqlDataFilterHint }}</p>
           <app-data-browser-grid
             [label]="heading"
@@ -101,11 +132,15 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
             [total]="total"
             [sort]="sort"
             [drafts]="drafts"
+            [editable]="editing"
             (sorted)="onSort($event)"
             (drafted)="onDraft($event)"
             (applied)="onApply($event)"
             (cleared)="onClear($event)"
             (paged)="onPaged($event)"
+            (edited)="onEdited($event)"
+            (announced)="onAnnounced($event)"
+            (activeRow)="onActiveRow($event)"
           />
           <div class="ocu-data-browser-pager" data-ocu-data="pager">
             <button type="button" class="ocu-button-text" data-ocu-data="first" [attr.aria-disabled]="atStart" (click)="onFirst()">{{ STRINGS.explorerSqlDataFirstPage }}</button>
@@ -144,12 +179,23 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
             <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-data="message" [attr.aria-label]="statusLine">{{ message }}</pre>
           }
         } @else {
+          <p class="ocu-explorer-status" role="status" data-ocu-data="status">{{ announcement }}</p>
           <div class="ocu-data-browser-empty" data-ocu-data="empty">
             <p class="ocu-data-browser-empty-text">{{ STRINGS.explorerSqlDataPick }}</p>
           </div>
         }
       </div>
     </div>
+    @if (confirming) {
+      <app-warning-dialog [verb]="saveTitle" [consequence]="saveConsequence" (confirmed)="onProceed()" (cancelled)="onCancelSave()" />
+    }
+    @if (leavePending) {
+      <app-dialog [heading]="STRINGS.formLeaveWithoutSaving" [closeLabel]="STRINGS.actionCancel" (closed)="answerLeave(false)">
+        <button dialogAction type="button" class="ocu-button-primary" data-ocu-data="leave" (click)="answerLeave(true)">
+          {{ STRINGS.actionConfirm }}
+        </button>
+      </app-dialog>
+    }
   </section>`,
 })
 export class DataBrowserPage {
@@ -157,10 +203,13 @@ export class DataBrowserPage {
   private readonly router = inject(Router);
   private readonly stores = inject(ScreenStores);
   private readonly scope = inject(ScopeService);
+  private readonly formDirty = inject(FormDirty);
 
   protected readonly STRINGS = STRINGS;
 
   protected readonly sizes = PAGE_SIZES;
+
+  private readonly grid = viewChild(DataBrowserGrid);
 
   protected readonly screen: ScreenDeclaration | null;
 
@@ -177,6 +226,12 @@ export class DataBrowserPage {
   /** The Page field's range line after a page outside it, or `''`. */
   private readonly pageProblemText = signal('');
 
+  /** The grid row the active cell is on, which Duplicate and Delete act on. */
+  private readonly activeRowId = signal<string | null>(null);
+
+  /** Whether the save dialog is open. */
+  private readonly confirmOpen = signal(false);
+
   constructor() {
     this.screen = this.navigation.screenForUrl(this.router.url);
     this.state = heldFor(this.screen === null ? null : this.stores.for(this.screen.descriptor, this.screen.refreshRates));
@@ -186,8 +241,12 @@ export class DataBrowserPage {
       schemas: screenForDescriptor(TREE_DESCRIPTORS.schemas),
       tables: screenForDescriptor(TREE_DESCRIPTORS.tables),
       views: screenForDescriptor(TREE_DESCRIPTORS.views),
+      sender: inject(ScreenActionHandler),
+      descriptor: this.screen?.descriptor ?? '',
+      formDirty: this.formDirty,
     };
     const stop = this.state.subscribe(() => this.bump());
+    const stopDirty = this.formDirty.subscribe(() => this.bump());
     // The tree is read once the scope has resolved, and a namespace switch reads it again (AD-44):
     // the old namespace's tree, open table and page leave now.
     const stopScope = onScopeChange(this.scope, () => {
@@ -195,9 +254,13 @@ export class DataBrowserPage {
       void this.state.scopeTo(this.deps, this.scope.namespace());
     });
     if (this.scope.loaded()) void this.state.scopeTo(this.deps, this.scope.namespace());
+    // Leaving the route asked first (the form-page guard), so what is staged goes with the page.
     inject(DestroyRef).onDestroy(() => {
       stop();
+      stopDirty();
       stopScope();
+      if (this.state.stagedCount() > 0) this.state.discard(this.deps);
+      this.formDirty.setDirty(false);
     });
   }
 
@@ -258,9 +321,79 @@ export class DataBrowserPage {
     return this.answer?.columns ?? [];
   }
 
-  protected get rows(): readonly (readonly (string | null)[])[] {
-    const answer = this.answer;
-    return answer !== null && answer.outcome === 'rows' ? answer.rows : [];
+  /** The grid's rows: each new row, then the page's, with what is staged on them. */
+  protected get rows(): readonly StagedRow[] {
+    this.generation();
+    return this.state.rows();
+  }
+
+  /** An answer is on screen for a view or a keyless table, whose rows do not change here. */
+  protected get readOnly(): boolean {
+    return this.answer !== null && !this.writable;
+  }
+
+  /** Whether the open table's rows may change here (Story 19.8). */
+  protected get writable(): boolean {
+    this.generation();
+    return this.state.writable();
+  }
+
+  /** Whether the grid offers its editors: a writable table, with no save on its way. */
+  protected get editing(): boolean {
+    this.generation();
+    return this.state.writable() && !this.state.saving();
+  }
+
+  protected get editBlocked(): boolean {
+    return !this.editing;
+  }
+
+  /** No row to act on: none active, or editing is off. */
+  protected get rowBlocked(): boolean {
+    return !this.editing || this.activeRowId() === null;
+  }
+
+  protected get deleteLabel(): string {
+    this.generation();
+    const id = this.activeRowId();
+    return id !== null && this.state.deleted(id) ? STRINGS.explorerSqlDataRestoreRow : STRINGS.explorerSqlDataDeleteRow;
+  }
+
+  protected get stagedCount(): number {
+    this.generation();
+    return this.state.stagedCount();
+  }
+
+  protected get saveLabel(): string {
+    return fillPlaceholders(STRINGS.explorerSqlDataSaveChanges, { n: this.stagedCount });
+  }
+
+  protected get saveBlocked(): boolean {
+    return !this.editing || this.stagedCount === 0;
+  }
+
+  protected get discardBlocked(): boolean {
+    return this.state.saving() || this.stagedCount === 0;
+  }
+
+  protected get confirming(): boolean {
+    return this.confirmOpen();
+  }
+
+  protected get saveTitle(): string {
+    return fillPlaceholders(STRINGS.explorerSqlDataSaveTitle, { table: this.heading });
+  }
+
+  protected get saveConsequence(): string {
+    this.generation();
+    const counts = this.state.stagedCounts();
+    return fillPlaceholders(STRINGS.explorerSqlDataSaveConsequence, { u: counts.update, i: counts.insert, d: counts.delete, table: this.heading });
+  }
+
+  /** Whether "Leave without saving?" waits on an answer. */
+  protected get leavePending(): boolean {
+    this.generation();
+    return this.formDirty.pending();
   }
 
   protected get pageOffset(): number {
@@ -354,6 +487,11 @@ export class DataBrowserPage {
     return announcement === '' ? line : `${announcement} ${line}`.trim();
   }
 
+  /** What the status line says while no object is open, such as why staged rows went. */
+  protected get announcement(): string {
+    return this.state.announcement();
+  }
+
   /** An SQL error's message, shown as text below its code. */
   protected get message(): string {
     const answer = this.answer;
@@ -368,9 +506,66 @@ export class DataBrowserPage {
     void this.state.toggle(this.deps, name);
   }
 
-  protected onOpen(object: TreeObject): void {
+  /** Open `object`, asking first when rows are staged; a declined answer keeps the open table. */
+  protected async onOpen(object: TreeObject): Promise<void> {
+    if (this.state.stagedCount() > 0 && !(await this.formDirty.requestLeave())) return;
     this.resetPageField();
+    this.activeRowId.set(null);
     void this.state.openObject(this.deps, object);
+  }
+
+  protected answerLeave(leave: boolean): void {
+    this.formDirty.answer(leave);
+  }
+
+  protected onEdited(edit: CellEdit): void {
+    this.state.edit(this.deps, edit.row, edit.column, edit.value);
+  }
+
+  protected onAnnounced(text: string): void {
+    this.state.announce(text);
+  }
+
+  protected onActiveRow(id: string | null): void {
+    this.activeRowId.set(id);
+  }
+
+  protected onAddRow(): void {
+    if (this.editBlocked) return;
+    const id = this.state.addRow(this.deps);
+    if (id !== null) this.grid()?.activate(id);
+  }
+
+  protected onDuplicateRow(): void {
+    const id = this.activeRowId();
+    if (this.rowBlocked || id === null) return;
+    const copy = this.state.duplicate(this.deps, id);
+    if (copy !== null) this.grid()?.activate(copy);
+  }
+
+  protected onDeleteRow(): void {
+    const id = this.activeRowId();
+    if (this.rowBlocked || id === null) return;
+    this.state.toggleDelete(this.deps, id);
+  }
+
+  protected onSave(): void {
+    if (this.saveBlocked) return;
+    this.confirmOpen.set(true);
+  }
+
+  protected onProceed(): void {
+    this.confirmOpen.set(false);
+    void this.state.save(this.deps);
+  }
+
+  protected onCancelSave(): void {
+    this.confirmOpen.set(false);
+  }
+
+  protected onDiscard(): void {
+    if (this.discardBlocked) return;
+    this.state.discard(this.deps);
   }
 
   protected onRefresh(): void {

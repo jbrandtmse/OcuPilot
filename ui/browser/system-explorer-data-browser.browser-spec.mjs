@@ -126,9 +126,9 @@ async function clickNode(page, slot, text) {
   );
 }
 
-/** The first column's cells, in order. */
+/** The first data column's cells, in order, past a writable table's Change column (Story 19.8). */
 function firstColumn(page) {
-  return page.$$eval('[data-ocu-data="row"]', (rows) => rows.map((row) => row.querySelector('[role="gridcell"]')?.textContent.trim() ?? ''));
+  return page.$$eval('[data-ocu-data="row"]', (rows) => rows.map((row) => row.querySelector('[data-ocu-data="cell"]')?.textContent.trim() ?? ''));
 }
 
 test('AC1-AC5, AC10: the tree opens the probe table, its filter, its sort and its key marker, and the page passes the walk', async () => {

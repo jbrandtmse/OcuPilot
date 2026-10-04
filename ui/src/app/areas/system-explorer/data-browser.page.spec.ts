@@ -3,11 +3,14 @@ import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
+import { FormDirty } from '../../core/form-dirty';
 import { NavigationService } from '../../core/navigation';
+import { OverlayStack } from '../../core/overlay-stack';
 import { ScopeService } from '../../core/scope';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { ScreenActionHandler, type ActionRefusal, type ActionSink, type ActionValues } from '../../shell/screen-action-handler';
 import { ARCHETYPE_PAGES, DESCRIPTOR_PAGES, resolveScreenPage } from '../../shell/screen-outlet';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DataBrowserPage } from './data-browser.page';
@@ -23,7 +26,11 @@ import { DATA_PATH } from './data-browser.store';
  * the status line with and without a total, Last drawn unavailable while the total is unknown, the
  * paging buttons, the Page field, Rows per page and Ctrl/Cmd+PageDown and PageUp each posting their
  * offset, no page past the route's furthest offset, a BIT filter's yes and no words, a stopped page
- * and an SQL error, a refusal as an alert, and no page entering the screen's store.
+ * and an SQL error, a refusal as an alert, and no page entering the screen's store. Story 19.8 adds,
+ * over a stub of the action handler: the row actions on a table and the read-only line on a view;
+ * Add, Duplicate, Delete and Restore; the save dialog's Proceed and Cancel; a mixed answer rolled back
+ * by key and the page read again; staged rows surviving paging; `FormDirty`; the leave dialog over
+ * another table; a refused save; and a namespace switch discarding what is staged.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlData') as ScreenDeclaration;
@@ -46,6 +53,16 @@ interface Request {
   readonly scope: string | null | undefined;
 }
 
+interface Send {
+  readonly descriptor: string;
+  readonly actionId: string;
+  readonly target: string;
+  readonly values: ActionValues | undefined;
+  readonly scope: string | undefined;
+}
+
+type SendAnswer = { readonly applied: true; readonly output: unknown } | { readonly applied: false; readonly code: string; readonly reason: string };
+
 interface Mounted {
   readonly fixture: ComponentFixture<DataBrowserPage>;
   readonly host: HTMLElement;
@@ -59,6 +76,13 @@ interface Mounted {
   readonly held: ((answer: Answer) => void)[];
   /** Resolve the scope to `namespace` and tell its subscribers, as a namespace switch does. */
   switchTo(namespace: string): Promise<void>;
+  readonly sends: Send[];
+  /** What the next save is answered. */
+  sendAnswer: SendAnswer;
+  /** While set, each save waits in `heldSends` until the test lets it go. */
+  holdSend: boolean;
+  readonly heldSends: (() => void)[];
+  readonly formDirty: FormDirty;
 }
 
 interface MountOptions {
@@ -117,6 +141,31 @@ async function mount(options: MountOptions = {}): Promise<Mounted> {
     page: pageAnswer([]),
     hold: false,
     held: [] as ((answer: Answer) => void)[],
+    sends: [] as Send[],
+    sendAnswer: { applied: true, output: null } as SendAnswer,
+    holdSend: false,
+    heldSends: [] as (() => void)[],
+    formDirty: new FormDirty(),
+  };
+  let lastRefusal: ActionRefusal | null = null;
+  let lastOutput: unknown = null;
+  const handler = {
+    sendFor: async (descriptor: string, actionId: string, target: string, values?: ActionValues, sink?: ActionSink, scope?: string) => {
+      mounted.sends.push({ descriptor, actionId, target, values, scope });
+      if (mounted.holdSend) await new Promise<void>((resolve) => mounted.heldSends.push(resolve));
+      const outcome = mounted.sendAnswer;
+      if (!outcome.applied) {
+        lastRefusal = { reason: outcome.reason, code: outcome.code, violations: [], detail: null };
+        lastOutput = null;
+        sink?.setRefusal(outcome.reason);
+        return false;
+      }
+      lastRefusal = null;
+      lastOutput = outcome.output;
+      return true;
+    },
+    lastRefusal: () => lastRefusal,
+    lastOutput: () => lastOutput,
   };
   mounted.routes.set(SCHEMAS_PATH, [
     readAnswer([
@@ -145,6 +194,9 @@ async function mount(options: MountOptions = {}): Promise<Mounted> {
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
+      { provide: ScreenActionHandler, useValue: handler as unknown as ScreenActionHandler },
+      { provide: FormDirty, useValue: mounted.formDirty },
+      { provide: OverlayStack, useValue: new OverlayStack() },
       { provide: NavigationService, useValue: { screenForUrl: () => SCREEN } as unknown as NavigationService },
       { provide: ScreenStores, useValue: stores },
       {
@@ -549,4 +601,345 @@ describe('Data browser', () => {
     await click(mounted, el(mounted.host, 'refresh'));
     expect(el(mounted.host, 'refusal').textContent?.trim()).toBe('Requires %Development:USE');
   });
+
+  // --- Story 19.8: editing, staging and saving -----------------------------------------------------
+
+  // AC9. Mutation (Rule 19): `writable` drops its key check -> the keyless table offers the row actions
+  // and this goes red.
+  it('a table whose key this account lists offers the row actions; a view and a keyless table read the read-only line and offer none', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    expect(texts(mounted.host, 'edit-actions')[0]).toContain(STRINGS.explorerSqlDataAddRow);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(el(mounted.host, 'save').getAttribute('aria-disabled')).toBe('true');
+    expect(el(mounted.host, 'read-only')).toBeNull();
+    expect(all(mounted.host, 'status-cell')).toHaveLength(1);
+    mounted.page = { ok: { ...(pageAnswer([['v1', '31', '1', '']]) as { ok: Record<string, unknown> }).ok, table: { schema: 'OcuProbe197', name: 'Over30', type: 'view' } } };
+    await click(mounted, all(mounted.host, 'tree-object')[1]);
+    expect(el(mounted.host, 'edit-actions')).toBeNull();
+    expect(el(mounted.host, 'read-only').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnly);
+    expect(all(mounted.host, 'status-cell')).toHaveLength(0);
+    mounted.page = pageAnswer([['k1', '1', '1', '']], { key: [] });
+    await click(mounted, all(mounted.host, 'tree-object')[0]);
+    expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    expect(el(mounted.host, 'edit-actions')).toBeNull();
+    expect(el(mounted.host, 'read-only').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnly);
+    expect(all(mounted.host, 'status-cell')).toHaveLength(0);
+  });
+
+  // AC1, AC3. Mutation (Rule 19): `frameOf` drops `generated` -> the computed cell opens an editor and
+  // this goes red; `answerOf` drops `cuts` -> the cut cell opens one.
+  it('a generated, an identity or a cut cell opens no editor, and Duplicate leaves each out, as the answer says', async () => {
+    const mounted = await mount();
+    const columns = [
+      ...COLUMNS,
+      { name: 'Calc', type: 'varchar', kind: 'text', nullable: true, key: false, generated: true },
+      { name: 'Seq', type: 'integer', kind: 'number', nullable: false, key: false, identity: true },
+    ];
+    mounted.page = pageAnswer(
+      [
+        ['cut', '1', '1', 'note1', 'c1', '7'],
+        ['n2', '2', '0', 'note2', 'c2', '8'],
+      ],
+      { columns, cuts: [[0, 0]] }
+    );
+    await expandAndOpen(mounted);
+    for (const column of [1, 5, 6]) {
+      await click(mounted, cellAt(mounted, 0, column));
+      el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+      await settle(mounted.fixture);
+      expect(el(mounted.host, 'editor'), `grid column ${column}`).toBeNull();
+      expect(el(mounted.host, 'status').textContent).toContain(STRINGS.explorerSqlDataNotEditable);
+    }
+    await click(mounted, cellAt(mounted, 1, 1));
+    el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'editor')).not.toBeNull();
+    el(mounted.host, 'editor').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle(mounted.fixture);
+    await click(mounted, cellAt(mounted, 0, 3));
+    await click(mounted, el(mounted.host, 'duplicate-row'));
+    const NULL = STRINGS.explorerSqlDataNull;
+    expect(texts(mounted.host, 'cell').slice(0, 6)).toEqual([NULL, NULL, STRINGS.tableStatusYes, NULL, NULL, NULL]);
+  });
+
+  // AC3. Mutation (Rule 19): `afterStaging` ignores a refused staging -> the status line keeps the count
+  // and this goes red.
+  it('the 101st staged row is refused with its sentence', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    const add = el(mounted.host, 'add-row');
+    for (let at = 0; at < 100; at += 1) add.click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'status').textContent).toContain('100 changes waiting to be saved.');
+    el(mounted.host, 'add-row').click();
+    await settle(mounted.fixture);
+    expect(el(mounted.host, 'status').textContent).toContain(STRINGS.explorerSqlDataCap);
+    expect(texts(mounted.host, 'status-cell').filter((text) => text === STRINGS.explorerSqlDataNew)).toHaveLength(100);
+  });
+
+  // AC3.
+  it('Add row puts a new row at the top; Duplicate copies the active row but its key and stream; Delete marks a row, Restore unmarks it, and removes a new row', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1'], ['n2', '2', '0', 'note2']]);
+    await expandAndOpen(mounted);
+    await click(mounted, el(mounted.host, 'add-row'));
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.explorerSqlDataNew, '', '']);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 changes waiting to be saved.');
+    await click(mounted, cellAt(mounted, 1, 1));
+    await click(mounted, el(mounted.host, 'duplicate-row'));
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.explorerSqlDataNew, STRINGS.explorerSqlDataNew, '', '']);
+    expect(texts(mounted.host, 'cell').slice(0, 4)).toEqual(['n1', STRINGS.explorerSqlDataNull, STRINGS.tableStatusYes, STRINGS.explorerSqlDataNull]);
+    await click(mounted, cellAt(mounted, 3, 1));
+    expect(el(mounted.host, 'delete-row').textContent?.trim()).toBe(STRINGS.explorerSqlDataDeleteRow);
+    await click(mounted, el(mounted.host, 'delete-row'));
+    expect(texts(mounted.host, 'status-cell')[3]).toBe(STRINGS.explorerSqlDataDeleted);
+    expect(el(mounted.host, 'delete-row').textContent?.trim()).toBe(STRINGS.explorerSqlDataRestoreRow);
+    await click(mounted, el(mounted.host, 'delete-row'));
+    expect(texts(mounted.host, 'status-cell')[3]).toBe('');
+    await click(mounted, cellAt(mounted, 0, 1));
+    await click(mounted, el(mounted.host, 'delete-row'));
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.explorerSqlDataNew, '', '']);
+  });
+
+  // AC4.
+  it('Save opens the dialog naming the table and the counts; Cancel sends nothing; Proceed sends one save action with the staged rows', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1'], ['n2', '2', '0', 'note2']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'renamed');
+    await click(mounted, cellAt(mounted, 1, 1));
+    await click(mounted, el(mounted.host, 'delete-row'));
+    await click(mounted, el(mounted.host, 'add-row'));
+    await edit(mounted, 0, 1, 'fresh');
+    expect(mounted.formDirty.dirty()).toBe(true);
+    await click(mounted, el(mounted.host, 'save'));
+    const dialog = mounted.host.querySelector('app-warning-dialog') as HTMLElement;
+    expect(dialog.textContent).toContain('Save changes to OcuProbe197.Plain?');
+    expect(dialog.textContent).toContain('1 rows change, 1 are added and 1 are deleted in OcuProbe197.Plain, and this cannot be undone from OcuPilot.');
+    await click(mounted, [...dialog.querySelectorAll('button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLElement);
+    expect(mounted.sends).toEqual([]);
+    expect(mounted.host.querySelector('app-warning-dialog')).toBeNull();
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [], saved: 0, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(mounted.sends).toHaveLength(1);
+    const sent = mounted.sends[0];
+    expect([sent.descriptor, sent.actionId, sent.target, sent.scope]).toEqual([SCREEN.descriptor, 'save', 'sql', 'USER']);
+    expect(sent.values?.['schema']).toBe('OcuProbe197');
+    expect(sent.values?.['table']).toBe('Plain');
+    expect(JSON.parse(sent.values?.['changes'] ?? '[]')).toEqual([
+      { op: 'delete', key: { Num: '2' } },
+      { op: 'update', key: { Num: '1' }, original: { Name: 'n1' }, values: { Name: 'renamed' } },
+      { op: 'insert', values: { Name: 'fresh' } },
+    ]);
+  });
+
+  // AC5. Mutation (Rule 19): `applyResults` keeps failed rows staged -> the changed row still reads its
+  // staged value and this goes red.
+  it('a mixed answer: the saved row leaves staging and the page reads again; a failed row rolls back and its Change cell names why; the status line summarizes', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1'], ['n2', '2', '0', 'note2'], ['n3', '3', '1', 'note3']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'one');
+    await edit(mounted, 1, 1, 'two');
+    await edit(mounted, 2, 1, 'three');
+    mounted.sendAnswer = {
+      applied: true,
+      output: {
+        outcome: 'saved',
+        results: [
+          { index: 0, outcome: 'saved', rowCount: 1 },
+          { index: 1, outcome: 'changed', rowCount: 0 },
+          { index: 2, outcome: 'refused', sqlcode: -99 },
+        ],
+        saved: 1,
+        failed: 2,
+      },
+    };
+    mounted.page = pageAnswer([['one', '1', '1', 'note1'], ['n2', '2', '0', 'note2'], ['n3', '3', '1', 'note3']]);
+    const before = dataPosts(mounted).length;
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(dataPosts(mounted)).toHaveLength(before + 1);
+    expect(texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0)).toEqual(['one', 'n2', 'n3']);
+    expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.formSaved, STRINGS.explorerSqlDataOutcomeChanged, STRINGS.explorerSqlDataOutcomeRefused]);
+    expect(el(mounted.host, 'status').textContent?.trim().startsWith('Saved 1 of 3 changes; 2 rolled back.')).toBe(true);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(mounted.formDirty.dirty()).toBe(false);
+  });
+
+  // AC5, AC10. Mutation (Rule 19): `applyResults` removes a sent insert only when it saved -> the failed
+  // new row stays and this goes red; `outcomeText` drops an error's message -> its Change cell goes red.
+  it("a failed insert is removed; an error row names its SQLCODE and message; the stopped row and those after it read Not run", async () => {
+    const mounted = await mount();
+    const rows = [
+      ['n1', '1', '1', 'note1'],
+      ['n2', '2', '0', 'note2'],
+      ['n3', '3', '1', 'note3'],
+    ];
+    mounted.page = pageAnswer(rows);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'one');
+    await edit(mounted, 1, 1, 'two');
+    await edit(mounted, 2, 1, 'three');
+    await click(mounted, el(mounted.host, 'add-row'));
+    await edit(mounted, 0, 1, 'fresh');
+    mounted.sendAnswer = {
+      applied: true,
+      output: {
+        outcome: 'saved',
+        results: [
+          { index: 0, outcome: 'error', sqlcode: -105, message: 'Value out of range' },
+          { index: 1, outcome: 'stopped', seconds: 2 },
+          { index: 2, outcome: 'skipped' },
+          { index: 3, outcome: 'error', sqlcode: -119, message: 'Duplicate key' },
+        ],
+        saved: 0,
+        failed: 4,
+      },
+    };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(JSON.parse(mounted.sends[0].values?.['changes'] ?? '[]').map((change: { op: string }) => change.op)).toEqual(['update', 'update', 'update', 'insert']);
+    expect(texts(mounted.host, 'status-cell')).toEqual([
+      `${STRINGS.explorerSqlCode.replace('<code>', '-105')}: Value out of range`,
+      STRINGS.explorerSqlDataOutcomeSkipped,
+      STRINGS.explorerSqlDataOutcomeSkipped,
+    ]);
+    expect(texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0)).toEqual(['n1', 'n2', 'n3']);
+    expect(el(mounted.host, 'status').textContent?.trim().startsWith('Saved 0 of 4 changes; 4 rolled back.')).toBe(true);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+  });
+
+  // Mutation (Rule 19): `discard` leaves a save on its way marked as saving -> the page opened again
+  // offers no row action and this goes red.
+  it('leaving the page while a save is on its way does not leave editing off when it opens again', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'pending');
+    mounted.holdSend = true;
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(el(mounted.host, 'add-row').getAttribute('aria-disabled')).toBe('true');
+    mounted.fixture.destroy();
+    for (const release of mounted.heldSends.splice(0)) release();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const again = TestBed.createComponent(DataBrowserPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    expect(el(again.nativeElement as HTMLElement, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    expect(el(again.nativeElement as HTMLElement, 'add-row').getAttribute('aria-disabled')).toBe('false');
+  });
+
+  // AC6, AC11.
+  it('staged rows survive paging and Refresh, shown on the row with the same key; FormDirty reads dirty meanwhile', async () => {
+    const mounted = await mount();
+    const rows = Array.from({ length: 100 }, (_, at) => [`n${at + 1}`, String(at + 1), '1', '']);
+    mounted.page = pageAnswer(rows, { more: true, total: 250 });
+    await expandAndOpen(mounted);
+    await edit(mounted, 1, 1, 'second');
+    expect(mounted.formDirty.dirty()).toBe(true);
+    mounted.page = pageAnswer(rows.slice(0, 50).map((row, at) => [`m${at}`, String(at + 101), '1', '']), { offset: 100, more: true, total: 250 });
+    await click(mounted, el(mounted.host, 'next'));
+    expect(texts(mounted.host, 'cell')).not.toContain('second');
+    mounted.page = pageAnswer([...rows].reverse(), { more: true, total: 250 });
+    await click(mounted, el(mounted.host, 'first'));
+    const names = texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0);
+    expect(names[98]).toBe('second');
+    expect(texts(mounted.host, 'status-cell')[98]).toBe(STRINGS.tableChangedTag);
+    await click(mounted, el(mounted.host, 'refresh'));
+    expect(texts(mounted.host, 'cell').filter((_, at) => at % 4 === 0)[98]).toBe('second');
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+  });
+
+  // AC11.
+  it('opening another table over staged rows asks Leave without saving?: Cancel keeps them, Confirm opens the other table and drops them', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'kept');
+    const posts = dataPosts(mounted).length;
+    void (all(mounted.host, 'tree-object')[1] as HTMLElement).click();
+    await settle(mounted.fixture);
+    const leave = mounted.host.querySelector('app-dialog') as HTMLElement;
+    expect(leave.textContent).toContain(STRINGS.formLeaveWithoutSaving);
+    mounted.formDirty.answer(false);
+    await settle(mounted.fixture);
+    expect(dataPosts(mounted)).toHaveLength(posts);
+    expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    void (all(mounted.host, 'tree-object')[1] as HTMLElement).click();
+    await settle(mounted.fixture);
+    await click(mounted, el(mounted.host, 'leave'));
+    expect(dataPosts(mounted)).toHaveLength(posts + 1);
+    expect(dataPosts(mounted).at(-1)?.['table']).toBe('Over30');
+    expect(mounted.formDirty.dirty()).toBe(false);
+  });
+
+  it('a refused save keeps the staged rows and shows the refusal; Discard drops them and says how many', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'kept');
+    mounted.sendAnswer = { applied: false, code: 'EXPLORER.DATA.READONLY', reason: STRINGS.explorerSqlDataReadOnlyReason };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    expect(el(mounted.host, 'refusal').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnlyReason);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    await click(mounted, el(mounted.host, 'discard'));
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(el(mounted.host, 'status').textContent?.trim()).toContain('1 changes discarded.');
+    expect(texts(mounted.host, 'cell')[0]).toBe('n1');
+  });
+
+  // AC11. Mutation (Rule 19): the store's `forget` drops nothing -> the status line never says why the
+  // row went and this goes red.
+  it('a namespace switch discards what is staged and says so', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'lost');
+    expect(mounted.formDirty.dirty()).toBe(true);
+    mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'OcuProbe197', Tables: true, Views: true, Procedures: false }])]);
+    mounted.routes.set(tablesPath('OcuProbe197'), [readAnswer([{ Schema: 'OcuProbe197', Name: 'Plain' }])]);
+    mounted.routes.set(viewsPath('OcuProbe197'), [readAnswer([])]);
+    await mounted.switchTo('SAMPLES');
+    expect(mounted.formDirty.dirty()).toBe(false);
+    expect(el(mounted.host, 'status').textContent?.trim()).toBe(STRINGS.explorerSqlDataScopeDiscarded);
+    await expandAndOpen(mounted);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
+    expect(texts(mounted.host, 'cell')[0]).toBe('n1');
+  });
 });
+
+/** The body cell at grid row `row` and grid column `column` (column 0 is the Change column). */
+function cellAt(mounted: Mounted, row: number, column: number): HTMLElement {
+  return mounted.host.querySelector(`#ocu-data-cell-r${row}-c${column}`) as HTMLElement;
+}
+
+/** Edit grid row `row`'s grid column `column` to `text`: activate it, F2, type, Enter. */
+async function edit(mounted: Mounted, row: number, column: number, text: string): Promise<void> {
+  await click(mounted, cellAt(mounted, row, column));
+  el(mounted.host, 'grid').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+  await settle(mounted.fixture);
+  const editor = el<HTMLInputElement>(mounted.host, 'editor');
+  editor.value = text;
+  editor.dispatchEvent(new Event('input'));
+  editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await settle(mounted.fixture);
+}
+
+/** Press the save dialog's Proceed. */
+async function proceed(mounted: Mounted): Promise<void> {
+  const dialog = mounted.host.querySelector('app-warning-dialog') as HTMLElement;
+  const button = [...dialog.querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === STRINGS.actionProceed) as HTMLElement;
+  button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await settle(mounted.fixture);
+}

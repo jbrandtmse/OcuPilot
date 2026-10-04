@@ -198,4 +198,19 @@ Parameter DATANOTFOUND = "EXPLORER.DATA.NOTFOUND";
 
 Parameter REASONDATANOTFOUND = "This namespace holds no table or view by that name that this account can see.";
 
+/// <p>Envelope code: a data browser save whose changes break the table's column rules (Story 19.8): a
+/// key member missing or extra, a key, identity, generated, stream, binary or unlisted column among
+/// the values, or the values read naming other columns than the values set. Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter DATACHANGES = "EXPLORER.DATA.CHANGES";
+
+Parameter REASONDATACHANGES = "Name each row's key, and change only listed columns that are not keys, identities, computed, streams or binary.";
+
+/// <p>Envelope code: a data browser save to a view, or to a table without a key the caller can list
+/// (Story 19.8), refused before any statement. Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409.</p>
+Parameter DATAREADONLY = "EXPLORER.DATA.READONLY";
+
+Parameter REASONDATAREADONLY = "This is a view, or a table without a key this account can see, so its rows are not changed here.";
+
 }
