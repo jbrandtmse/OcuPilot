@@ -229,6 +229,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.6: the license key's activation declares its screen's set and no write pair of its
             ; own (AD-8 as amended 2026-10-03).
             If tTool.name = "osmgmt.licensekey.activate" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 18.20: the ECP data server status change declares its screen's set and its poll's
+            ; %Admin_Operate:USE, and no write pair of its own (AD-8, measured at the story's Task 0).
+            If tTool.name = "osmgmt.ecpdataservers.changestatus" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved) _ $ListBuild($ListBuild("%Admin_Operate", "USE"))
             ; Story 16.25: the language server writes declare %Admin_Manage:USE after the write's own,
             ; which the vendor answered #921 without (AD-8 as amended 2026-09-29).
             If $Parameter(tTool.class, "MANAGERESOURCE") '= "" Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "MANAGERESOURCE"), $Parameter(tTool.class, "MANAGEPERMISSION")))

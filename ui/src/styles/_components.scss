@@ -7959,3 +7959,41 @@ app-ldap-editor-page .ocu-field-checkbox input[type='radio'] {
   padding-inline-start: var(--ocu-space-6);
   color: var(--ocu-on-surface);
 }
+
+// ECP data servers (Story 18.20): the Change status dialog's current-status line, its three choices,
+// a refused choice drawn unavailable with its reason under it, and the refusal line, on the Remove
+// locks dialog's model.
+.ocu-ecp-status-current {
+  @include typo.ocu-type('body');
+
+  margin: 0 0 var(--ocu-space-4);
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-ecp-status-choices {
+  margin: 0 0 var(--ocu-space-4);
+}
+
+.ocu-ecp-status-choice input[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.ocu-ecp-status-choice-reason {
+  margin: 0 0 var(--ocu-space-2) calc(var(--ocu-space-6) + var(--ocu-space-2));
+}
+
+.ocu-ecp-status-refusal {
+  @include typo.ocu-type('body');
+
+  margin: var(--ocu-space-3) 0 0;
+  color: var(--ocu-error);
+  overflow-wrap: anywhere;
+}
+
+// The data server form's Mirror connection, drawn unavailable while the instance keeps a stored one.
+app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.38;
+}

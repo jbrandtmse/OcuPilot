@@ -86,7 +86,8 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 /// admits are exactly <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>,
 /// <code>Namespace.Namespace</code> <code>MAPPINGS</code>, Story 18.4's six
 /// <code>Database.Actions</code> operations, <code>Namespace.Namespace</code> <code>INTEROP</code> and
-/// Story 18.5's <code>Journal.File</code> <code>INTEGRITYCHECK</code>, each a mutating pair, and the probe pair the refusal above
+/// Story 18.5's <code>Journal.File</code> <code>INTEGRITYCHECK</code> and Story 18.20's <code>ECP.DataServer</code>
+/// <code>SERVERACTION</code>, each a mutating pair, and the probe pair the refusal above
 /// is driven with is not one of them, so the refusal is still what every other mutating request that
 /// would queue meets.</p>
 /// <p>Mutation (Rule 19): add <code>OcuPilotProbeAsyncWrite/PUT</code> to
@@ -95,7 +96,7 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 Method TestOnlyTheNamedQueuedWritesAreAdmitted()
 {
     Set tQueued = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
-    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP,Journal.File/INTEGRITYCHECK", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings, the six disk operations, the enable of interoperability and the journal integrity check")
+    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Namespace.Namespace/MAPPINGS,Database.Actions/TRUNCATE,Database.Actions/COMPACT,Database.Actions/DEFRAGMENT,Database.Actions/EXPANDVOL,Database.Actions/MODIFYSIZE,Database.Actions/INTEGRITYCHECK,Namespace.Namespace/INTEROP,Journal.File/INTEGRITYCHECK,ECP.DataServer/SERVERACTION", "the admitted queued writes are exactly the audit copy and purge, the copy of mappings, the six disk operations, the enable of interoperability, the journal integrity check and the ECP data server status change")
     For tI = 1:1:$ListLength(tQueued) {
         Set tPair = $List(tQueued, tI)
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), tPair _ " is a mutating pair")

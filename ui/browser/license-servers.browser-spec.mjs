@@ -246,7 +246,8 @@ test('A7: License servers is the sixteenth OS management entry, lists its four c
     await page.waitForSelector('.ocu-data-table-header-label', { visible: true, timeout: config.navigationTimeoutMs });
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 16, `sixteen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.20: ECP data servers follows it.
+    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[15], STRINGS.licenseServerListLabel, 'License servers is the sixteenth');
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.languageServerFieldAddress, STRINGS.sslTestPort, STRINGS.licenseServerKeyDirectory]);

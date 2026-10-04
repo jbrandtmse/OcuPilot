@@ -169,6 +169,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         Set tExpected = $Select((tTool.name = "security.auditing.purge") || (tTool.name = "osmgmt.namespaces.delete") || (tTool.name = "osmgmt.localdatabases.delete") || (tTool.name = "tasks.schedule.import") || (tTool.name = $Parameter("OcuPilot.Test.Governance", "ENABLEINTEROP")) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "DISKOPERATIONS")), tTool.name) || $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "EXPLORERDISABLED")), tTool.name): "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED, 1: "1|")
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "REMOTEDATABASEDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "LICENSEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ECPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
     }
 }

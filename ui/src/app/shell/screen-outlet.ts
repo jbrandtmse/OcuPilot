@@ -65,6 +65,8 @@ import { JournalSettingsPage } from '../areas/os-management/journal-settings.pag
 import { JournalRecordsPage } from '../areas/os-management/journal-records.page';
 import { LicenseKeyPage } from '../areas/os-management/license-key.page';
 import { LicenseServerFormPage } from '../areas/os-management/license-server-form.page';
+import { EcpDataServerListPage } from '../areas/os-management/ecp-data-server-list.page';
+import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -201,6 +203,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // and edit alike.
   'OcuPilot.Screen.Descriptor.LicenseKey': LicenseKeyPage,
   'OcuPilot.Screen.Descriptor.LicenseServerForm': LicenseServerFormPage,
+  // Story 18.20: ECP data servers with its status line and Change status dialog, and the data server
+  // form, create and edit alike.
+  'OcuPilot.Screen.Descriptor.EcpDataServerList': EcpDataServerListPage,
+  'OcuPilot.Screen.Descriptor.EcpDataServerForm': EcpDataServerFormPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

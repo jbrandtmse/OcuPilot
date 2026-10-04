@@ -228,6 +228,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/license-server/name" Method="GET" Call="LicenseServerNameCheck"/>
   <Route Url="/license-server/:id" Method="PUT" Call="LicenseServerUpdate"/>
   <Route Url="/license-server" Method="POST" Call="LicenseServerCreate"/>
+  <Route Url="/ecp-data-server/form" Method="GET" Call="EcpDataServerFormRead"/>
+  <Route Url="/ecp-data-server/name" Method="GET" Call="EcpDataServerNameCheck"/>
+  <Route Url="/ecp-data-server/:id" Method="PUT" Call="EcpDataServerUpdate"/>
+  <Route Url="/ecp-data-server" Method="POST" Call="EcpDataServerCreate"/>
 </Routes>
 }
 
@@ -1688,6 +1692,33 @@ ClassMethod LicenseServerUpdate(pId As %String) As %Status
 ClassMethod LicenseServerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.LicenseServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-data-server/form</code> (Story 18.20): the ECP
+/// data server form's read. The two sub-resources precede <code>/ecp-data-server/:id</code>.</p>
+ClassMethod EcpDataServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-data-server/name</code>: the name look-up.</p>
+ClassMethod EcpDataServerNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ecp-data-server/:id</code>: the form's edit,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpDataServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpDataServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ecp-data-server</code>: the form's create, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpDataServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpDataServerSave).HandleCreate()
 }
 
 }

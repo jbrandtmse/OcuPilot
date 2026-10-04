@@ -54,6 +54,16 @@ Parameter KINDREMOTEDATABASEDELETE = "remote-database-delete";
 /// <p>The tool whose write is <parameter>KINDREMOTEDATABASEDELETE</parameter>.</p>
 Parameter REMOTEDATABASEDELETETOOL = "osmgmt.remotedatabases.delete";
 
+/// <p>An ECP data server delete (Story 18.20): the remote databases whose <code>Server</code> is the
+/// target, which the vendor refuses the delete while any remains.</p>
+Parameter KINDECPDATASERVERDELETE = "ecp-data-server-delete";
+
+/// <p>The tool whose write is <parameter>KINDECPDATASERVERDELETE</parameter>.</p>
+Parameter ECPDATASERVERDELETETOOL = "osmgmt.ecpdataservers.delete";
+
+/// <p>A data server delete's one part.</p>
+Parameter PARTREMOTEDATABASES = "remoteDatabases";
+
 Parameter PARTHOLDERS = "holders";
 
 Parameter PARTGRANTINGAPPLICATIONS = "grantingApplications";
@@ -101,6 +111,9 @@ Parameter NAMESPACEDESCRIPTOR = "OcuPilot.Screen.Descriptor.NamespaceList";
 Parameter MAPPINGDESCRIPTORS = "OcuPilot.Screen.Descriptor.GlobalMappingList,OcuPilot.Screen.Descriptor.RoutineMappingList,OcuPilot.Screen.Descriptor.PackageMappingList";
 
 Parameter LOCALDATABASEDESCRIPTOR = "OcuPilot.Screen.Descriptor.LocalDatabaseList";
+
+/// <p>The list a data server delete's remote databases part reads.</p>
+Parameter REMOTEDATABASEDESCRIPTOR = "OcuPilot.Screen.Descriptor.RemoteDatabaseList";
 
 /// <p>A namespace's database fields a database delete's namespaces part matches, comma-separated.</p>
 Parameter NAMESPACEUSEFIELDS = "Globals,Routines,TempGlobals";
@@ -212,6 +225,10 @@ ClassMethod Of(pToolName As %String, pTargetRef As %String, pFreshJson As %Strin
                 If $$$ISERR(tSC) Quit
                 Do tParts.%Push(tPart)
             }
+        } ElseIf tKind = ..#KINDECPDATASERVERDELETE {
+            Set tSC = ..Guarded(..#REMOTEDATABASEDESCRIPTOR, ..#PARTREMOTEDATABASES, "Name", tId, .tPart, "Server")
+            If $$$ISERR(tSC) Quit
+            Do tParts.%Push(tPart)
         } Else {
             Set tSC = ..Loses(tFresh, tPayload, .tPart)
             If $$$ISERR(tSC) Quit
@@ -241,6 +258,7 @@ ClassMethod KindOf(pToolName As %String, pFresh As %DynamicObject, pPayload As %
     If pToolName = ..#DATABASEDELETETOOL Quit ..#KINDDATABASEDELETE
     If pToolName = ..#DATABASEDISMOUNTTOOL Quit ..#KINDDATABASEDISMOUNT
     If pToolName = ..#REMOTEDATABASEDELETETOOL Quit ..#KINDREMOTEDATABASEDELETE
+    If pToolName = ..#ECPDATASERVERDELETETOOL Quit ..#KINDECPDATASERVERDELETE
     If pToolName '= ..#USERUPDATETOOL Quit ""
     If '$IsObject(pPayload) || (pPayload.%GetTypeOf(..#ROLESFIELD) '= "array") Quit ""
     Kill tSent

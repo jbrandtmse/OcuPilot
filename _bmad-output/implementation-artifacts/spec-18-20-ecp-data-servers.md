@@ -2,9 +2,9 @@
 title: 'Story 18.20: ECP data servers'
 type: 'feature'
 created: '2026-10-03'
-status: 'in-progress'
+status: 'blocked'
 review_loop_iteration: 0
-baseline_revision: '31b13332f0ce11d7f2a73235bf96fa380306e855'
+baseline_revision: '9acde1e7a17f5eefb529e401d95d4ca519999fc5'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -536,6 +536,8 @@ deferred: []
 - 2026-10-03, orchestrator (merge gate): Decision 1 accepted -- the create and update declare `%Admin_Secure:USE` only while `SSLConfig` is 1, refused by name before any port call; Task 0 measures both paths, and if the `%ECPClient` read needs no pair, the pair is dropped and the measurement recorded. Decisions 2 to 7 confirmed.
 - 2026-10-03, implement (Task 0, halted): measured AD sentences for the runner. AD-8: `osmgmt.ecpdataservers.create`, `.update` and `.delete` declare `%DB_IRISSYS:WRITE`; `.changestatus` declares `%Admin_Operate:USE` alone; no SSL argument pair, because the vendor refuses `SSLConfig` 1 without `%ECPClient` (#1454) and `EcpPort` maps that, so Decision 1's `%Admin_Secure:USE` is dropped (the `%ECPClient` read needs it: 403 without, 404 with). AD-13: `ecp-data-server` keeps `foldcase`. AD-15 and AD-53: `SERVERACTION` records no vendor event with auditing on. Step 10: `ECP.STATUS.REFUSED` is a 500 from `SERVERACTION`; no value-type change. Open for the ruling: the port-70000 connection line, and `MaxServers` 2, which caps the probe servers a test may hold at two and answers a third create 500 #456 with no refusal code.
 
+- 2026-10-03, implement (step 10, intent gap): measured for the runner. AD-8 and AD-52: the data server limit's `ECP.Settings` `GET` needs `%Admin_Secure:USE` (`Security.System.Get`), so a create caller holding only its declared pairs is answered 500 `PORT.ACCESSDENIED`; open for the orchestrator's ruling.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -592,6 +594,7 @@ deferred: []
 - 6. With auditing on, b, c and e wrote the events above; f, g, h and i wrote no vendor event.
 - 7. A principal holding `%Admin_Manage:USE`, `%DB_IRISSYS:READ` and the code read: `LIST` and `GET` answered; `PUT` and `DELETE` answered 500 `<PROTECT>` on `^SYS("CONFIG","IRIS","ECPServers",…)`, nothing changed; `SERVERACTION` answered 403 at the `AsyncResult` poll while the queued action ran (state 4). Adding `%DB_IRISSYS:WRITE`: create 201, update 200, delete 200, action still 403 and applied. Adding `%Admin_Operate:USE`: action 200 twice, configuration writes still `<PROTECT>`. Adding `%Admin_Secure:USE`: neither; `Security.SSLConfig GET name=%ECPClient` answers 404 with it and 403 without. `%DB_IRISSYS:WRITE` with `%Admin_Operate:USE`: action 200. The probe user's ten finished task rows stayed until `RemoveAll` deleted them as objects.
 - 8. `RemoveAll` left nothing. S2 equals S0 apart from `messages.log` (8,493 to 8,575 lines), `alerts.log` (310 to 319), job type 59's count (84 to 89) and the monitor state (0 to 2, from the severity-2 refusal lines of d, e and 7), cleared with `$SYSTEM.Monitor.Clear()`. After the halt the same held, with the monitor state 0.
+- Step 10 (2026-10-04 00:30 UTC): `ECP.Settings` `GET` answers `AppServerSettings.MaxServers` 2. A principal holding the create's declared pairs (`%Admin_Manage:USE`, `%DB_IRISSYS:READ`, `%DB_IRISSYS:WRITE`) is answered 500 `PORT.ACCESSDENIED` on it, because the vendor's `GetECPSettings` calls `Security.System.Get`; with `%Admin_Secure:USE` added it answers 200.
 - **Halt (step 9, first condition).** Re-measuring d's port 70000 with no other data server defined, because the first run met #456 first: the vendor stored nothing and answered 500 #456, and `messages.log` gained at severity 1 `<WIDE CHAR>Init+20^ECPClient` and `ECP connection OCUPROBEECPG - 127.0.0.1:70000 failed`. `EcpJobs()` stayed 0, and no line recurred. `EcpRules` refuses that port before any vendor write.
 
 **Decisions.** Each is applied in this plan. The runner confirms them at the spec gate.
@@ -692,10 +695,27 @@ deferred: []
   - `osmgmt.ecpdataservers.changestatus` is dropped from the baseline → `GovernanceBaseline` red.
   - `sideBarPosition` is set to 0 → `Navigation` and `navigation.test.mjs` red.
 
+**Mutations applied (Rule 19)**, each reverted byte-identical and reloaded:
+
+- mutation: B1 `EcpDataServerList` read drops `Status` → `EcpDescriptor.TestEcpDataServersIsOsManagementsSeventeenthEntry` red (run 5069)
+- mutation: B2 `EcpDataServerUpdate.MergeUpdate` sends only the changed fields → `EcpDataServerWrite.TestAnUpdateSendsTheCompleteSetAndKeepsAStoredMirror` red (run 5070)
+- mutation: B2 `EcpRules.Validate` admits port 0 → `EcpDataServerWrite.TestBadCreateFieldsAreRefusedBeforeAnyWrite` and `TestBadUpdateFieldsAreRefusedBeforeAnyWrite` red (run 5071)
+- mutation: B2 `EcpRules.Validate`'s `MIRROR` check dropped → `EcpDataServerWrite.TestBadUpdateFieldsAreRefusedBeforeAnyWrite` red (run 5072)
+- mutation: B3 `Impact.KindOf` drops `osmgmt.ecpdataservers.delete` → `EcpDataServerWrite.TestADataServerInUseNamesItsRemoteDatabaseAndIsRefused` red (run 5073), `EcpDescriptor.TestTheDeleteHasItsImpactKind` red (run 5074)
+- mutation: B4 `EcpPort.STATUSACTIONS` maps `disabled` to 1 → `EcpDataServerStatus.TestDisabledAndBackToNotConnectedOnBothCallers` red (run 5075)
+- mutation: B4 `EcpPort`'s `PORT.TIMEOUT` to 202 branch dropped → `EcpDataServerStatus.TestAChangePastTheBoundHasStarted` red (run 5076)
+- mutation: B5 `EcpPort`'s license check removed → `EcpDataServerStatus.TestNormalIsRefusedWhileTheLicenseLacksEcp` red, the seam recording the `SERVERACTION` (run 5077)
+- mutation: B5 `EcpPort`'s same-status check removed → `EcpDataServerStatus.TestTheSameStatusIsRefusedWithNothingSent` red (run 5078)
+- mutation: B5 the status dialog's unlicensed-Normal gating dropped → `ecp-data-server-status-dialog.spec.ts` (B5 legs) and `ecp-data-server-list.page.spec.ts` red (local vitest, 3 failed)
+- mutation: B6 `EcpDataServerChangeStatus.PrivilegePairs` drops `%Admin_Operate:USE` → `EcpWriteGate.TestTheMissingToolPairsAreRefusedBeforeAnyPortCall` red (run 5079)
+- mutation: B6 `EcpDataServerCreate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `EcpWriteGate.TestTheMissingToolPairsAreRefusedBeforeAnyPortCall` red (run 5080)
+- mutation: B7 the baseline drops `osmgmt.ecpdataservers.changestatus` → `GovernanceBaseline` red (run 5081), `EcpDescriptor.TestTheBaselineListsTheFourKeys` red (run 5082)
+- mutation: B7 `EcpDataServerList` `sideBarPosition` 0 → `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 5083); in the regenerated mirror → `navigation.test.mjs` red (local, 2 failed)
+
 ## Auto Run Result
 
 Status: blocked
-Blocking condition: intent gap: observation contradicts the plan: Task 0 step d's port-70000 PUT made `messages.log` gain an ECP connection line (step 9, first condition), and `MaxServers` 2 caps the data servers a test may hold and answers a third create 500 #456 with no refusal code; the orchestrator rules both, and whether the severity-0 `Activating Network` / `ECP-<n> sys <m>` lines every configuration write logs count as connection lines
+Blocking condition: intent gap: AD conflict: the `ECP.SERVER.LIMIT` pre-check AD-52 requires (read `ECP.Settings`' `AppServerSettings.MaxServers` before any vendor write) needs `%Admin_Secure:USE`, because the vendor's `GetECPSettings` calls `Security.System.Get`, while AD-8 and Task 0 step 10 give the create `%DB_IRISSYS:WRITE` and no tool `%Admin_Secure:USE`; a caller holding exactly the create's declared pairs is answered 500 `PORT.ACCESSDENIED` on every create, by the form and the agent's confirm (`EcpWriteGate.TestExactlyTheDeclaredPairsCreateOnBothCallers`, runs 5092 and 5116, 5/6). Recommended: (a) the create also declares `%Admin_Secure:USE`, refused by name before any port call, with an AD-8 sentence; alternative (b) `EcpPort` runs the pre-check only when the caller holds `%Admin_Secure:USE` and otherwise maps the vendor's 500 #456 to 409 `ECP.SERVER.LIMIT`, declaring the vendor's create event and severity-2 line for that caller. Also for the runner: the matrix row "Disable, real" says the read-back reads `matches`, but AD-58 makes an action-style write, which sends no value, read `nothingSent`, which the tests pin; the row needs amending
 
 - **Planned:** Story 18.20 from Part B of `spec-18-6-licensing-and-ecp.md` at commit `fe080653`, re-validated against the current tree (18.6 and 18.16 built).
   - It covers: the Task 0 with its halt conditions; the server and client execution; the rosters (with the position-0 order); the tests; ACs B0-B7; Verification; seven decisions; and six proposed spine amendments (1 to 4 at the spec gate, 5 and 6 after Task 0).
@@ -707,3 +727,6 @@ Blocking condition: intent gap: observation contradicts the plan: Task 0 step d'
   - The throwaway was checked after the halt: no `OCUPROBEECP*` data server, remote database, user, role or task row; 0 ECP jobs; `NetworkEnabled` 0, `%Service_ECP` off, `MaxServers` 2; the monitor state 0. The handoff cleared the monitor state with `$SYSTEM.Monitor.Clear()` three times (2 before S0, left by an earlier sweep; 2 after step 8; 1 after the re-measure). The audit database was not purged.
   - The shim `/tmp/epic-18-d6/1820/sweep-bin/docker` arms `OCUPILOT_ALLOW_ECP_CONFIG` and `OCUPILOT_ALLOW_DATABASE_CONFIG` with the 18.6 shim's three variables. The Task 0 evidence is in `/tmp/epic-18-d6/1820/t0/`.
   - The tree is left uncommitted for the runner: this spec, `src/OcuPilot/Port/AdminPort.cls`, `src/OcuPilot/Test/AdminPortAsync.cls`, `src/OcuPilot/Test/PortFixture.cls` and the new `src/OcuPilot/Test/EcpProbe.cls`. Their diff is saved at `/tmp/epic-18-d6/1820/task0-plumbing.patch`.
+- **Implement pass 2 (2026-10-04, halted at Verify):** the plumbing patch applied and every server, client, test and roster task built (handoff report; `## Verification` holds 14 `mutation:` lines). Loop verification on `ocupilot-b-ci`: the story's and roster classes green apart from the create-pair leg above and `WireSecurityRead`'s 1,000-row cap (instance age, inference); the seven browser specs, `test:tools` 1785/1785, `test:components` 2308/2308, `check-objectscript`, `lint-docs` clean; EXPERIENCE.md 1005 lines; `maximumWarning` re-based 2679kB to 2712kB (measured 2,711,418 bytes). Review layers and the `(once)` set did not run.
+  - The tree is left uncommitted for the runner; its full diff, untracked files included, is `/tmp/epic-18-d6/1820/implement-pass2.patch`.
+  - Throwaway after the halt: no `OCUPROBEECP*` object, `EcpJobs()` 0, 0 policy rows, license and ECP settings as found; `$SYSTEM.Monitor.Clear()` ran three times this pass (twice in the handoff, once by the stage after the confirming `EcpWriteGate` run 5116 raised it to 2).

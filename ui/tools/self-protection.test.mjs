@@ -568,3 +568,15 @@ test("Stories 19.4, 19.5 and 19.14: each of Search's, Macros' and the SQL catalo
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
   }
 });
+
+/** Story 18.20's error class, which declares the ECP screens' refusals. */
+const ECP_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EcpError.cls');
+
+test("Story 18.20: the license's ECP refusal is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONLICENSE in EcpError.cls -> this goes red naming both.
+  const server = /Parameter REASONLICENSE = "([^"]+)";/.exec(readFileSync(ECP_ERROR, 'utf8'));
+  assert.notEqual(server, null, 'EcpError.cls declares REASONLICENSE');
+  assert.equal(server[1], stringValue('ecpLicenseRefusal'), 'REASONLICENSE and ecpLicenseRefusal are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "REASONLICENSE's sentence is published in EXPERIENCE.md's Fixed strings");
+  assert.ok(!server[1].toLowerCase().includes('agent'), `REASONLICENSE names no caller: ${server[1]}`);
+});

@@ -12,7 +12,7 @@ Class OcuPilot.Test.GovernanceBaseline Extends %UnitTest.TestCase
 
 /// <p>The lines some story's criteria ship disabled, in the baseline's own line order,
 /// comma-separated.</p>
-Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.licensekey.activate, osmgmt.licenseservers.delete, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, osmgmt.remotedatabases.delete, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete, explorer.classes.import, explorer.classes.save, explorer.routines.save, explorer.routines.import";
+Parameter DISABLED = "osmgmt.databasedetails.compact, osmgmt.databasedetails.defragment, osmgmt.databasedetails.dismount, osmgmt.databasedetails.mount, osmgmt.databasedetails.truncate, osmgmt.databases.integrity, osmgmt.ecpdataservers.changestatus, osmgmt.ecpdataservers.delete, osmgmt.licensekey.activate, osmgmt.licenseservers.delete, osmgmt.localdatabases.delete, osmgmt.localdatabases.expand, osmgmt.localdatabases.grow, osmgmt.namespaces.delete, osmgmt.namespaces.enableinterop, osmgmt.remotedatabases.delete, security.auditing.purge, tasks.schedule.import, explorer.classes.delete, explorer.routines.delete, explorer.classes.import, explorer.classes.save, explorer.routines.save, explorer.routines.import";
 
 /// <p>AC2: a registered write key with no baseline line fails here, naming the key. The count is
 /// asserted too, so an empty registry cannot pass by looping zero times.</p>
@@ -68,7 +68,7 @@ Method TestThePurgeIsTheOneDisabledLine()
         Do $$$AssertEquals(tList.%GetTypeOf(tKey), "boolean", tKey _ ": the line is a JSON boolean")
         If 'tValue Set tDisabled = tDisabled _ $ListBuild(tKey)
     }
-    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the remote database delete, the two document deletes, the two document imports, the license key's activation and the license server delete are the lines listed false")
+    Do $$$AssertEquals($ListToString(tDisabled, ", "), ..#DISABLED, "the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the remote database delete, the two document deletes, the two document imports, the license key's activation, the license server delete, and the ECP data server status change and delete are the lines listed false")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("probe.not.listed", .tListed) _ "|" _ tListed, "0|0", "an unlisted key reads disabled and unlisted")
 }
 

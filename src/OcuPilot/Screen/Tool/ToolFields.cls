@@ -30,6 +30,20 @@ XData Tools
   {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.ecpdataservers.create": {"fieldList":"ECP.DataServer","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"MirrorConnection","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"osmgmt.ecpdataservers.update": {"fieldList":"ECP.DataServer","fields":[
+  {"path":"Address","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Port","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"MirrorConnection","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
+  {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "osmgmt.globalmappings.create": {"fieldList":"Namespace.GlobalMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

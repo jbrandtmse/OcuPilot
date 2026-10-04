@@ -154,6 +154,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/databases/integrity',
       'os-management/databases/volumes',
       'os-management/devices/edit',
+      // Story 18.20: the unlisted ECP data server form, reached from ECP data servers, by descriptor
+      // class name.
+      'os-management/ecp-data-servers/edit',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
@@ -210,6 +213,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.6: License key and License servers, the fifteenth and sixteenth.
       'os-management/license-key',
       'os-management/license-servers',
+      // Story 18.20: ECP data servers, the seventeenth.
+      'os-management/ecp-data-servers',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -345,6 +350,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       // Story 18.6: the fifteenth and sixteenth.
       'os-management/license-key',
       'os-management/license-servers',
+      // Story 18.20: the seventeenth.
+      'os-management/ecp-data-servers',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -369,6 +376,14 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(editor?.route, 'os-management/namespaces/edit', "the list's Create opens its own form");
   assert.equal(isListedScreen(editor), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(screenForRoute('os-management/namespaces'))?.route, 'os-management/namespaces/edit', 'and a row name opens it at its id route');
+  // Story 18.20 (B7): ECP data servers is the seventeenth entry, and its form takes no position and
+  // opens from the list's Create and a row's name cell.
+  assert.equal(stringFor(screenForRoute('os-management/ecp-data-servers').labelKey), STRINGS.ecpDataServerListLabel);
+  assert.equal(screenForRoute('os-management/ecp-data-servers').sideBarPosition, 17);
+  const ecpForm = createFormFor(screenForRoute('os-management/ecp-data-servers'));
+  assert.equal(ecpForm?.route, 'os-management/ecp-data-servers/edit', "ECP data servers' Create opens its own form");
+  assert.equal(isListedScreen(ecpForm), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(screenForRoute('os-management/ecp-data-servers'))?.route, 'os-management/ecp-data-servers/edit', 'and a row name opens it at its id route');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
