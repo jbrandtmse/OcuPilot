@@ -248,7 +248,7 @@ Rows are measured on probe tables in `USER` (Design Notes › Measured). The req
   - `ui/tools/self-protection.test.mjs`: `ATELIER_REFUSALS` :508-537 gains the two reasons.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
-- [ ] DW-2025 (routed to this story at its spec gate): a console statement the statement index does not record (`LIKE ... ESCAPE` on a string column) is answered by name, a 422 the console explains, or classified another way and run; never a 500 (`SqlPort.cls:312`). Pin it with a test and a `mutation:` line.
+- [x] DW-2025 (routed to this story at its spec gate; fixed on its own head f02883e2, merged forward at ca221d2e, before implement): a console statement the statement index does not record (`LIKE ... ESCAPE` on a string column) is answered by name, a 422 the console explains, or classified another way and run; never a 500 (`SqlPort.cls:312`). Pin it with a test and a `mutation:` line.
 
 **Acceptance Criteria:**
 
