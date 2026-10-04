@@ -44,6 +44,22 @@ database:
 - **The container still showed as running.** Docker reported the container up the whole time, even
   though IRIS inside it had not started.
 
+If you have landed here from a search, these are the messages I saw. The path is my test database's;
+yours will name your own. While IRIS was still running, `messages.log` recorded:
+
+```text
+Error opening volume to write block 652 of /durable/iris/mgr/userdb/
+```
+
+and on the next start, IRIS stopped with:
+
+```text
+Failed to open /durable/iris/mgr/userdb/IRIS.DAT: errno=2
+We failed to fully restore the WIJ.
+** Startup aborted **
+Recovery failure. Startup aborted.
+```
+
 Getting back means restoring the database from a backup. IRIS does offer a way to start anyway, but it
 warns that other databases may be damaged if you take it.
 
