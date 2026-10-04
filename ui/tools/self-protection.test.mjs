@@ -280,6 +280,9 @@ const KERNEL_REFUSALS = [
   ['OCUPILOTLOCK', 'lockRefusalOcuPilot'],
   // Story 19.2: OcuPilot's own code, whose compile or delete either caller is answered with.
   ['OCUPILOTCODE', 'explorerRefusalOcuPilot'],
+  // Story 19.6: a SQL console statement over OcuPilot's own tables or code, on the run route, the
+  // plan route and the write path.
+  ['OCUPILOTSQL', 'explorerSqlRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -517,6 +520,14 @@ const ATELIER_REFUSALS = [
   ['DELETELOCKED', 'explorerDeleteLocked'],
   ['DELETEABSENT', 'explorerDeleteAbsent'],
   ['DELETEFAILED', 'explorerDeleteFailed'],
+  // Story 19.6: SQL query's input, kind, password, read and value-count refusals.
+  ['REASONSQLINPUT', 'explorerSqlInputReason'],
+  ['REASONSQLSESSION', 'explorerSqlSessionReason'],
+  ['REASONSQLADMINISTRATION', 'explorerSqlAdministrationReason'],
+  ['REASONSQLSERVERFILES', 'explorerSqlServerFilesReason'],
+  ['REASONSQLPASSWORD', 'explorerSqlPasswordReason'],
+  ['REASONSQLREADS', 'explorerSqlReadsReason'],
+  ['REASONSQLPARAMETERS', 'explorerSqlParametersReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {

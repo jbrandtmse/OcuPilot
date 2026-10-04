@@ -7627,6 +7627,45 @@ app-log-hub-page {
   opacity: 0.7;
 }
 
+// System Explorer's SQL query (Story 19.6): a form page as wide as its column, whose statement is a
+// monospaced text area on the code surface; Max rows sits beside Run and Explain plan. An SQL error's
+// message and a plan are text on the code surface, and the result grid is page-owned, its cells text
+// in the code face, cut to their track.
+.ocu-sql-query {
+  max-width: none;
+}
+
+.ocu-sql-query-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-sql-query-statement {
+  width: 100%;
+  min-height: 10rem;
+  border: 1px solid var(--ocu-outline-variant);
+  resize: vertical;
+  tab-size: 4;
+}
+
+.ocu-sql-query-max .ocu-criteria-input {
+  width: 6rem;
+}
+
+.ocu-sql-query-message,
+.ocu-sql-query-plan {
+  max-height: 40vh;
+}
+
+.ocu-sql-query-cell {
+  @include typo.ocu-type('code');
+}
+
+.ocu-sql-query-results .ocu-data-table-viewport {
+  overflow: auto;
+}
+
 // A confirmed compile's console lines on the proposal card, held to the page pane's height and
 // scrolled from the keyboard inside their focusable block.
 .ocu-proposal-card-output .ocu-code-block-pre {

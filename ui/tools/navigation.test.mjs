@@ -299,6 +299,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-tables',
       'system-explorer/sql-views',
       'system-explorer/sql-procedures',
+      // Story 19.6: SQL query, after the catalog's lists.
+      'system-explorer/sql-query',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

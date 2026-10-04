@@ -97,4 +97,49 @@ Parameter DELETEABSENT = "This namespace no longer holds this document.";
 /// <p>A deleted document's per-document reason for any other refusal.</p>
 Parameter DELETEFAILED = "The source code API could not delete this document.";
 
+/// <p>Envelope code: a SQL console request's statement, values or Max rows are outside their bounds,
+/// so nothing was prepared (Story 19.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.BADREQUEST</parameter> slug with 400.</p>
+Parameter SQLINPUT = "EXPLORER.SQL.INPUT";
+
+/// <p>The sentence <parameter>SQLINPUT</parameter> carries.</p>
+Parameter REASONSQLINPUT = "Send one statement of up to 100,000 characters, at most 100 values of up to 32,767 characters each, and Max rows from 1 to 1,000.";
+
+/// <p>Envelope codes for the statements the SQL console refuses by kind after preparing them (Story
+/// 19.6), each rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with
+/// 422: a statement that controls a server process, one that administers accounts, roles,
+/// privileges or databases, and one that names a server file or another server.</p>
+Parameter SQLSESSION = "EXPLORER.SQL.SESSION";
+
+Parameter REASONSQLSESSION = "This statement controls a server process (a transaction, lock, option, cursor, namespace or running query) and is not run here.";
+
+Parameter SQLADMINISTRATION = "EXPLORER.SQL.ADMINISTRATION";
+
+Parameter REASONSQLADMINISTRATION = "Users, roles, privileges and databases are changed on Permissions and OS management, where OcuPilot checks each change; this statement is not run here.";
+
+Parameter SQLSERVERFILES = "EXPLORER.SQL.SERVERFILES";
+
+Parameter REASONSQLSERVERFILES = "This statement reads a server file or another server, which OcuPilot does not let a caller name.";
+
+/// <p>Envelope code: a statement that sets a password, refused before it is prepared because the
+/// instance keeps a prepared statement's text (Story 19.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SQLPASSWORD = "EXPLORER.SQL.PASSWORD";
+
+Parameter REASONSQLPASSWORD = "A statement that sets a password is not prepared here, because the instance keeps a prepared statement's text; set passwords on the Users list in Permissions.";
+
+/// <p>Envelope code: a statement that only reads, sent to the console's confirmed run, which runs only
+/// a statement that changes something (Story 19.6). Rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
+Parameter SQLREADS = "EXPLORER.SQL.READS";
+
+Parameter REASONSQLREADS = "This statement only reads, so it runs without confirming.";
+
+/// <p>Envelope code: a confirmed run whose values do not number the statement's value positions
+/// (Story 19.6). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with
+/// 422.</p>
+Parameter SQLPARAMETERS = "EXPLORER.SQL.PARAMETERS";
+
+Parameter REASONSQLPARAMETERS = "Give one value for each ? in the statement.";
+
 }

@@ -7697,6 +7697,8 @@ So that the operations agent and the developer agent can differ.
 
 - **Design constraint (as 19.6; DW-1964):** the agent's SQL tool enforces the caller's SQL privileges itself (prepare in process with privilege checks on) and never passes caller SQL through Atelier's `action/query`, which prepares with privilege checks off. [ADDED 2026-10-03, Rule 5 by=merge_gate]
 
+- **DW-2004:** `explorer.sqlquery.run`'s fresh read carries no statement on a screen action (`ScreenAction.Run` reads with an empty payload), so its `GUARD` read, `StateDiff` and the fingerprint's guard fields read empty; when this story advertises the tool, the agent's proposal card must show the real guard (kind, statement type, tables, consequence). The plan also decides whether the agent's tool closes AD-21's named limit for a called function or procedure (DW-2003). [ADDED 2026-10-03, Rule 17 (1b), routed by Story 19.6's code review]
+
 ### Story 19.12: A %Development holder reaches System Explorer, as the classic portal allows
 
 As a developer whose account holds `%Development` and no administrative resource,

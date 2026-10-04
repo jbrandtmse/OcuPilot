@@ -2,7 +2,8 @@
 /// sent as a real <code>%Developer</code> principal, is refused 403 unless
 /// <method>Roster</method> names it, and every <code>GET</code> the roster names answers neither 403
 /// nor a server error. The roster's other routes are writes the principal makes on its own
-/// account, conversation or turn, and are not sent.</p>
+/// account, conversation or turn, and SQL query's two routes, whose run route
+/// <class>OcuPilot.Test.DeveloperFloor</class> sends, and are not sent.</p>
 /// <p>Placeholders reach each route's gate rather than a 404 before it: <code>:screen</code> is
 /// <parameter>SCREENKEY</parameter>, a screen the principal may not read, and its action and impact
 /// routes name that screen's <parameter>SCREENACTION</parameter>; <code>:kind</code> is
@@ -74,12 +75,13 @@ Method OnAfterAllTests() As %Status
 /// <p>The routes the principal passes, as <code>$ListBuild(method, url)</code> spelled as the map
 /// declares them: the caller-own agent reads and choices, its turns, proposals, conversations and
 /// transcripts, the shell reads, its own account, Home's reads and the analytics log (Story 19.12's
-/// audit). Each is owner-scoped, or its classic page carries no <code>RESOURCE</code> or one the
-/// principal holds (the analytics log's public <code>%DeepSee_Portal</code>).</p>
+/// audit), and SQL query's two routes (Story 19.6). Each is owner-scoped, or its classic page carries
+/// no <code>RESOURCE</code> or one the principal holds (the analytics log's public
+/// <code>%DeepSee_Portal</code>, the classic SQL page's <code>%Development</code>).</p>
 ClassMethod Roster() As %List
 {
     Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics"
-    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences"
+    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences,POST /explorer/sql/run,POST /explorer/sql/plan"
     Set tRoster = ""
     For tI = 1:1:$Length(tGets, ",") Set tRoster = tRoster _ $ListBuild($ListBuild("GET", $Piece(tGets, ",", tI)))
     For tI = 1:1:$Length(tOthers, ",") Set tRoster = tRoster _ $ListBuild($ListBuild($Piece($Piece(tOthers, ",", tI), " ", 1), $Piece($Piece(tOthers, ",", tI), " ", 2)))

@@ -293,6 +293,9 @@ services:
       # alone and reads the catalog as it (Story 19.5).
       # classes: AtelierPortCatalogLive
       # classes: AtelierPortCatalogTabsLive
+      # The SQL console's probe signs in as principals granted SQL SELECT on one probe table alone,
+      # without %Development:USE, and without READ on USER's database (Story 19.6).
+      # classes: SqlConsoleProbe
       # The remote database gate class signs in as probe principals holding the Remote databases
       # screens' pairs, with and without the system database's write (Story 18.16).
       # classes: RemoteDatabaseWriteGate

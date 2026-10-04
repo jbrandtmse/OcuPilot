@@ -9160,6 +9160,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
 - 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the console prepares caller SQL in process with privilege checks on (Port/SqlPort, %Prepare(text,1)), never action/query, privileges independent of the statement cache (DW-1986); 19.11's agent tool carries the same constraint in its epics.md block
 
 ### DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck
 - source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
@@ -9205,6 +9206,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37091469927 (8fe230e5, browser shard 2/3) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Run 37091469927: openScreen waitForFunction 30000ms exceeded at gate.browser-spec.mjs:294 in two legs; passed 6/6 locally on ocupilot-b-ci and in the next run 37097045800 on e2dbe6e1
 - 2026-10-03T09:57:28Z status=routed owner=range-end-cleanup by=merge_gate note=first sighting; append occurrence= on the next
+- 2026-10-04T00:14:03Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=Epic 19 sightings: runs 37127162301 (tests 2,3), 37129484494 attempt 1 (test 2), 37138831685 attempt 1 (tests 2,3), 37157693521 (test 4); priority raised to med, fix-risk low (by=merge_gate)
+- 2026-10-04T00:14:03Z status=resolved-by:19-14-the-sql-catalog-s-remaining-detail-tabs owner=19-14-the-sql-catalog-s-remaining-detail-tabs by=adjudication note=fixed by aaa2460d (released in 1.0.8): signedInAndMovedTo waits for the gate's own navigation to the Definition form, openScreen waits for the clicked entry's route; held-read reproduction red on the old spec and green on the new, mutation restoring the 100 ms settle red; 1.0.8's PR ran all checks green
 ### DW-1973: Catalog.Table sends the read's max to TablesOnly, which lists the whole schema, so a table past the first maxRows rows of its schema reads no Table info row (the agent's default cap is 201)
 - source: spec-19-5-the-sql-catalog-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AtelierPort CatalogRows: TablesOnly(schema) answers the schema's rows and the read keeps the resolved table's; the largest measured schema holds 195 tables
@@ -9264,6 +9267,41 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: gate-spec settle fix (DW-1975) | severity: low | fix-risk: low | footprint: cross-epic
 - evidence: found by the DW-1975 fix's held-read reproduction: test 6 failed under the hook with the old and new spec when the whole file ran, passed alone; not yet seen in CI
 - 2026-10-03T18:14:48Z status=routed owner=range-end-cleanup by=merge_gate note=one-line fix: wait for .ocu-form-bar-actions before the Cancel lookup
+
+### DW-1986: IRIS defect candidate: a CREATE TABLE text another account has already prepared in the namespace is answered from its cached query without the next principal's privilege check, so a principal with no DDL privilege creates the table through %Prepare(text, 1)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_USER:RW, no grants ran CREATE TABLE after _SYSTEM prepared the same text and got -99 under a never-prepared name; DROP, TRUNCATE, SELECT, UPDATE stayed -99
+- 2026-10-03T22:13:40Z status=decision-pending owner=burndown by=harvest note=human=decide whether to report it to InterSystems, with DW-1963 and DW-1982; the classic SQL page prepares the same way (inference)
+- 2026-10-03T22:14:54Z owner=burndown by=merge_gate note=vendor candidate stays decision-pending; 19.6 must not be exposed: SqlPort enforces privileges independently of the statement cache (rework 1 of 19.6)
+- 2026-10-03T23:25:11Z by=adjudication note=corrected at origin: most of the measured bypass was SqlPort's own release of statements in another namespace (fixed, 19.6 rework e4ebd4c4); the vendor's own part is narrower: a DDL compile cached while another session holds the same text open is reused without the next principal's privilege check; candidate stays decision-pending on that narrower shape
+
+### DW-1987: An INSERT through a view over OcuPilot's tables by a principal granted the view but not its base tables is not refused PROHIBITED.OCUPILOTSQL: the statement index records only the view for an INSERT and VIEW_TABLE_USAGE hides the base table from that principal
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Story 19.6 implement on ocupilot-a2-ci: principal with %Development:USE, %DB_HSCUSTOM:RW and SELECT, INSERT, DELETE on a view over OcuPilot_Kernel_State.Proposal; the INSERT recorded only the view; whether the vendor then runs it is unmeasured
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review fails it closed (refuse DML over a view whose base tables the port cannot fully resolve as the instance sees them) or states why not
+- 2026-10-03T23:25:12Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=named limit recorded at AD-10 (view-only grant; the instance runs the INSERT on the view grant alone, measured)
+
+### DW-1988: Whether an IRIS SQL form other than IDENTIFY BY or IDENTIFIED BY sets a password, which the console's pre-prepare refusal would let reach the statement index (DW-1982)
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: SqlPort PASSWORDPATTERN covers IDENTIFY BY / IDENTIFIED BY; a name probe of INFORMATION_SCHEMA.ROUTINES found no password-setting routine (inference: a name probe does not cover the population)
+- 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review settles it from the IRIS SQL reference (statements that accept a password) and widens the refusal if needed
+- 2026-10-03T23:25:12Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the SQL reference's third form ([WITH] PASSWORD on CREATE/ALTER USER) is refused before prepare (rework e4ebd4c4, with a test)
+
+### DW-2003: Story 19.6's spine clauses claim more than the SQL guard enforces: AD-21's console case and AD-61 omit that a function or procedure a statement calls can name a server path or change state with the statement still typed a query or CALL; AD-61's named limit omits that a held compile can skip a DDL statement's object privileges (inference); AD-8 says the privileges are checked at prepare; AD-10's view limit names INSERT alone
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: SqlPort refuses by statementType only (TYPESSERVERFILES), so CALL %Library.File_FileSet('/durable','*') is type 45 and runs once confirmed for a caller holding EXECUTE (inference for non-%All); spec Design Notes carry the function limit and the held-compile consequence, the spine does not.
+- 2026-10-04T00:06:35Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11's spec gate names these limits in AD-8/10/21/61 and decides whether the agent may call path-taking or state-changing procedures
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=wording corrected at origin by the lead (AD-8 %CHECKPRIV, AD-21 named limit for called functions and procedures, AD-61 held-compile object privileges, AD-10 view limit covers INSERT, UPDATE, DELETE); whether 19.11's agent tool must close the called-routine gap is its plan's question (DW-2004's bullet names it)
+
+### DW-2004: explorer.sqlquery.run's fresh read carries no statement on a screen action (ScreenAction.Run reads with an empty payload), so the GUARD read answers the empty guard and StateDiff and the fingerprint's Kind, StatementType and Tables read empty; an agent proposal's card and fingerprint will need the statement's own guard
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ScreenAction.cls:274 calls Operation.Read(..., pId, "", .tFresh); ExplorerSqlRun.PortQuery quits on a non-object payload, so SqlPort.Invoke GUARD returns EmptyGuard; the real guard is read only inside Prohibited.SqlRun and Run.
+- 2026-10-04T00:06:36Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11 advertises the tool: compose the mint's fresh read from the proposed statement so the card names its kind and tables
+
+### DW-2005: SqlPort.PASSWORDPATTERN's IDENTIFY/IDENTIFIED half matches anywhere, so a read or a change whose text holds the word Identified (a literal or a column) is refused EXPLORER.SQL.PASSWORD
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The pattern's first alternative is unanchored (?is)\bIDENTIF(Y|IED)\b; UPDATE Cases SET Status = 'Identified' is refused before prepare. Fail-closed; a bound ? value is not read, so the word can be sent as a value.
+- 2026-10-04T00:06:36Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=cr note=spec names IDENTIFY/IDENTIFIED as the pattern's first half (Tasks, Refusals before prepare); reopen only by spec amendment
 ### DW-1985: A one-row count reads '1 rows' (no singular form): seen on the SQL tables list as the demo account and in the agent panel's context line
 - source: Planner observation on the 1.0.8 demo (9c8c1336) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular

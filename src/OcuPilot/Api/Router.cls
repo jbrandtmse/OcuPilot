@@ -232,6 +232,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ecp-data-server/name" Method="GET" Call="EcpDataServerNameCheck"/>
   <Route Url="/ecp-data-server/:id" Method="PUT" Call="EcpDataServerUpdate"/>
   <Route Url="/ecp-data-server" Method="POST" Call="EcpDataServerCreate"/>
+  <Route Url="/explorer/sql/run" Method="POST" Call="ExplorerSqlRun"/>
+  <Route Url="/explorer/sql/plan" Method="POST" Call="ExplorerSqlPlan"/>
 </Routes>
 }
 
@@ -1719,6 +1721,20 @@ ClassMethod EcpDataServerUpdate(pId As %String) As %Status
 ClassMethod EcpDataServerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.EcpDataServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/run</code> (Story 19.6): SQL query's
+/// run route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlRun() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandleRun()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/plan</code> (Story 19.6): SQL query's
+/// plan route, delegating to <class>OcuPilot.Area.Explorer.SqlConsole</class>.</p>
+ClassMethod ExplorerSqlPlan() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.SqlConsole).HandlePlan()
 }
 
 }

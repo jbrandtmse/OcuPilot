@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:637 */
+  /** EXPERIENCE.md:638 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5092,6 +5092,66 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   licenseServerDeleteConsequence:
     'Deleting this license server removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryLabel: 'SQL query',
+  /** EXPERIENCE.md:597 */
+  explorerSqlExplainPlan: 'Explain plan',
+  /** EXPERIENCE.md:597 */
+  explorerSqlPlanHeading: 'Plan',
+  /** EXPERIENCE.md:597 */
+  explorerSqlValueLabel: 'Value <n>',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmTitle: 'Run this statement?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmDml: 'It changes rows in <tables>, and cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmDdl: 'It changes this namespace\'s schema, and cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmCall: 'It runs a stored procedure, which can change anything this account may change.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlConfirmOther: 'The instance does not say what this statement changes.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsCut: '<n> rows are shown; the answer holds more.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRowsChanged: '<n> rows changed',
+  /** EXPERIENCE.md:597 */
+  explorerSqlDone: 'Done',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStopped: 'Stopped after <s> seconds.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlTakesValues: 'This statement takes <n> values.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlNoPlan: 'This kind of statement has no plan.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlCode: 'SQLCODE <code>',
+  /** EXPERIENCE.md:597 */
+  explorerSqlEmpty: 'Write one SQL statement, then Run.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRolledBack: 'The statement left a transaction open, so its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlInputReason: 'Send one statement of up to 100,000 characters, at most 100 values of up to 32,767 characters each, and Max rows from 1 to 1,000.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlSessionReason: 'This statement controls a server process (a transaction, lock, option, cursor, namespace or running query) and is not run here.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlAdministrationReason: 'Users, roles, privileges and databases are changed on Permissions and OS management, where OcuPilot checks each change; this statement is not run here.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlServerFilesReason: 'This statement reads a server file or another server, which OcuPilot does not let a caller name.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlPasswordReason: 'A statement that sets a password is not prepared here, because the instance keeps a prepared statement\'s text; set passwords on the Users list in Permissions.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlReadsReason: 'This statement only reads, so it runs without confirming.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlParametersReason: 'Give one value for each ? in the statement.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlRefusalOcuPilot: 'This statement reads or changes OcuPilot\'s own tables or code, which OcuPilot does not offer.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt1: 'What does this statement\'s plan say about the indices it uses?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt2: 'How do I pass a value to a ? in a statement?',
+  /** EXPERIENCE.md:597 */
+  explorerSqlQueryPrompt3: 'Why was my statement refused here?',
   // Story 18.20: ECP data servers, OS management's seventeenth entry, its form, its Change status
   // dialog, its delete body and the delete's impact phrases.
   /** EXPERIENCE.md:375 */
