@@ -11,8 +11,8 @@
 /// anything is sent, with <parameter>NOTPENDINGREASON</parameter>. Its
 /// fingerprint covers the row's <code>Status</code>.</p>
 /// <p><b>Its pairs</b> are the tab's and <code>%DB_IRISSYS:WRITE</code>: the vendor writes
-/// <code>^SYS("ECPSSL")</code>, measured for the delete and inferred for this action from the same
-/// structure (AD-8). It is not destructive; the screen confirms it with a warning stating
+/// <code>^SYS("ECPSSL")</code>, measured for the delete and, for this action, from the same structure
+/// (inference; AD-8). It is not destructive; the screen confirms it with a warning stating
 /// <parameter>CONSEQUENCECODE</parameter>'s sentence. No vendor event records it
 /// (AD-15, AD-53).</p>
 Class OcuPilot.Screen.Tool.EcpSslConnectionAuthorize Extends OcuPilot.Screen.Tool.Write

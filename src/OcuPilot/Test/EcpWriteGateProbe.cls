@@ -22,7 +22,8 @@ Parameter SSLSCREEN = "osmgmt.ecpsslconnections";
 
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A
-/// step is <code>{kind: "create"|"update"|"delete"|"changestatus"|"confirm", name, body, status,
+/// step is <code>{kind: "create"|"update"|"delete"|"changestatus"|"confirm"|"settings"|"sslauthorize"|
+/// "sslreject"|"ssldelete", name, body, status,
 /// proposalId, mode}</code>, <code>mode</code> the seam's armed mode for that step; its answer is
 /// <code>{http, code, reason, failedPair, calls, writes}</code>, where <code>calls</code> is how many vendor
 /// calls the seam was asked during that step alone and <code>writes</code> the ones other than

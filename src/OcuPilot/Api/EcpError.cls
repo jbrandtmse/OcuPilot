@@ -64,8 +64,10 @@ Parameter MIRROR = "ECP.DATASERVER.MIRROR";
 
 Parameter REASONMIRROR = "A data server's mirror connection cannot be turned off once it is set.";
 
-/// <p>Violation code: SSL/TLS chosen while the instance holds no <code>%ECPClient</code> SSL/TLS
-/// configuration, on <code>SSLConfig</code>; the vendor's own refusal (#1454) answered on the field.</p>
+/// <p>Violation code: SSL/TLS chosen while the instance holds no enabled <code>%ECPClient</code> SSL/TLS
+/// configuration, on <code>SSLConfig</code>; the vendor's own refusal (#1454) answered on the field. The
+/// vendor refuses an absent and a disabled configuration alike (measured at Story 18.21's Task 0), so
+/// DW-2006 needs no check of OcuPilot's own.</p>
 Parameter SSLCLIENT = "ECP.DATASERVER.SSLCLIENT";
 
 Parameter REASONSSLCLIENT = "Create and enable the %ECPClient SSL/TLS configuration before using SSL/TLS.";
@@ -131,8 +133,8 @@ Parameter REASONSETTINGSSSLSERVER = "Create and enable the %ECPServer SSL/TLS co
 
 /// <p>Violation code: a maximum number of data servers below the number of data servers the instance
 /// defines, on <code>AppServerSettings.MaxServers</code>, refused by <class>OcuPilot.Port.EcpPort</class>
-/// before the settings <code>PUT</code>, where the vendor would refuse it (#456) after storing the other
-/// members.</p>
+/// before the settings <code>PUT</code>, where the vendor would refuse it (#456) after storing the
+/// members it writes first (inference).</p>
 Parameter SETTINGSSERVERS = "ECP.SETTINGS.SERVERS";
 
 Parameter REASONSETTINGSSERVERS = "This instance defines more ECP data servers than that. Delete one first, or enter a larger number.";

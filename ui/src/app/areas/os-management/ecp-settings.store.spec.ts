@@ -107,6 +107,14 @@ describe('the ECP settings store', () => {
     expect(JSON.parse(writes(calls)[0].body)).toEqual({ AppServerSettings: { MaxServers: '2.5' } });
   });
 
+  it('a whole number typed with spaces around it is sent as a number', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    store.setText('AppServerSettings.ClientReconnectInterval', ' 6 ');
+    await store.save();
+    expect(JSON.parse(writes(calls)[0].body)).toEqual({ AppServerSettings: { ClientReconnectInterval: 6 } });
+  });
+
   it('C2: the restart sentence shows only after a Save the server answers with its consequence, and the next change clears it', async () => {
     const { store } = mount({ save: { kind: 'ok', status: 200, body: { consequence: RESTART_CONSEQUENCE, readBack: { verdict: 'matches', fields: [], written: [] } } } });
     await store.open();

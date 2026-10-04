@@ -183,6 +183,7 @@ Method TestARestartSettingIsStatedAndNeverSentForReal()
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tParsed): tParsed.%Get("consequence"), 1: ""), "200 " _ ##class(OcuPilot.Api.EcpError).#SETTINGSRESTART, "the form's Save states the restart consequence: " _ $Extract(tAnswer, 1, 300))
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ ..Member(..Parsed($ClassMethod(..#SEAM, "BodyOf", ..#PUT)), "DataServerSettings", "MaxServerConn"), ..#PUT _ " " _ tConn, "its one PUT carries the new number, recorded by the seam")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Settings").MaxServerConn, tBefore.MaxServerConn, "and never reaches the vendor")
+    Do $$$AssertEquals(..Verdict(tParsed), "differs", "so its read-back, re-reading the instance, says the number did not hold")
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, "SYSTEM", {"Name": "SYSTEM", "DataServerSettings": {"MaxServerConn": (tConn)}}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's change is minted (" _ tProblem _ ")")
     Do $$$AssertEquals(..Rows(tProposal) _ "|" _ ..Consequence(tProposal), "DataServerSettings.MaxServerConn " _ tBefore.MaxServerConn _ " " _ tConn _ "|" _ ##class(OcuPilot.Api.EcpError).#SETTINGSRESTART, "its card names the member and states the restart consequence")
@@ -190,6 +191,7 @@ Method TestARestartSettingIsStatedAndNeverSentForReal()
     Do $ClassMethod(..#SEAM, "Arm", "ecpserver")
     Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", "its confirm, through the seam, answers")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#PROBE, "Settings").MaxServerConn, ..#PUT _ " " _ tBefore.MaxServerConn, "one PUT, recorded and never sent")
+    Do $$$AssertEquals(..Verdict($Get(tResult)), "differs", "and its read-back says the number did not hold")
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", {"DataServerSettings": {"MaxServerConn": (tConn)}}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "RefusedMaxServerConn") _ " " _ $ClassMethod(..#PROBE, "Settings").MaxServerConn, "409 1 " _ tBefore.MaxServerConn, "unarmed, the seam's guard refuses it and the instance keeps its value")
@@ -269,10 +271,12 @@ Method TestSslNeedsAnEnabledServerConfiguration()
 
 /// <p>A maximum number of data servers below the data servers the instance defines is refused on
 /// <code>AppServerSettings.MaxServers</code> on both callers before any vendor call, so a change sent
-/// beside it is not stored either, where the vendor would store it and then refuse the number (#456,
-/// measured at Task 0).</p>
+/// beside it is not stored either, where the vendor would store it and then refuse the number (#456
+/// measured at Task 0; the store before it, inference); a maximum equal to the data servers defined is
+/// sent.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.EcpPort.SettingsRefusal</method> skips its data server
-/// count -- the <code>PUT</code> is sent and this goes red.</p>
+/// count -- the <code>PUT</code> is sent and this goes red; or refuses a maximum equal to the count -- the
+/// equal leg is refused and this goes red.</p>
 Method TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite()
 {
     Set tBefore = $ClassMethod(..#PROBE, "Settings")
@@ -290,6 +294,9 @@ Method TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Settings").ClientReconnectInterval, tBefore.ClientReconnectInterval, "and the change beside it is not stored")
     Set tSC = $ClassMethod(..#AGENT, "Mint", ..#TOOL, "SYSTEM", {"Name": "SYSTEM", "AppServerSettings": {"MaxServers": (tDefined - 1)}}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertTrue('$IsObject(tProposal) && (tProblem [ ##class(OcuPilot.Api.EcpError).#REASONSETTINGSSERVERS), "the agent's is refused with its sentence: " _ tProblem)
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", {"AppServerSettings": {"MaxServers": (tDefined), "ClientReconnectInterval": (tInterval)}}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 " _ ..#PUT, "a maximum equal to the data servers defined is sent: " _ $Extract(tAnswer, 1, 300))
 }
 
 /// <p>The nested body <var>pBody</var>'s shape, as <parameter>SHAPE</parameter> spells it.</p>

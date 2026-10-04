@@ -265,6 +265,49 @@ deferred:
 - **C7 (DW-2006):** Given a disabled `%ECPClient`, when a data server is saved with SSL/TLS, then Task 0's measurement decides: it is refused `ECP.DATASERVER.SSLCLIENT` with nothing stored (for every caller the vendor refuses, or for a caller holding `%Admin_Secure:USE`), and any remaining gap is named in the spec and the spine.
 - **C8:** Given the rosters, when the story lands, then ECP settings is OS management's eighteenth entry and ECP application servers its nineteenth; each screen carries three prompts; the four keys are in the baseline with the delete disabled; every roster and pinned side-bar list includes the screens; the DW-1337 gate holds in both themes; EXPERIENCE.md reads 1006 lines.
 
+### Review Findings
+
+Code review 2026-10-04 (`full-opus`, four layers; 53 rows, 43 entries: 0 high, 0 medium, 30 low, 1 maybe-false, 7 false, 5 by-design or spec-only). Points (a) to (h) hold; the `MaxServerConn` text guard's residual gap is judged low (DW-2035).
+
+- [x] [Review][Patch] `EcpError.SSLCLIENT` and `EcpPort`'s header said #1454 means an absent `%ECPClient`; Task 0 measured a disabled one too (the Execution item) [Api/EcpError.cls:67, Port/EcpPort.cls:24]
+- [x] [Review][Patch] The vendor storing members before #456 was labeled measured [Api/EcpError.cls:136, Test/EcpSettingsWrite.cls:275]
+- [x] [Review][Patch] `SslState`'s enabled branch never met a real answer; the seam answers under the same constant [Test/EcpSslConnectionWrite.cls:251]
+- [x] [Review][Patch] No client test drew a refusal on the SSL/TLS radio group [ecp-settings.page.spec.ts]
+- [x] [Review][Patch] The read-back was shown only to match; the two seam-recorded `MaxServerConn` legs now read `differs` [Test/EcpSettingsWrite.cls:186, :194]
+- [x] [Review][Patch] A maximum equal to the defined data servers was unpinned (`>` against `>=`) [Test/EcpSettingsWrite.cls:299]
+- [x] [Review][Patch] The pending confirm leg checked the write type, not the name sent [Test/EcpSslConnectionWrite.cls:203]
+- [x] [Review][Patch] `EcpSettingsGate`'s header claimed the authorize and reject confirms [Test/EcpSettingsGate.cls:5]
+- [x] [Review][Patch] `EcpWriteGateProbe.Run`'s step contract omitted the four new kinds [Test/EcpWriteGateProbe.cls:25]
+- [x] [Review][Patch] `EcpDescriptor`'s header omitted the settings script's environment needs (its every-branch claim is false: the comment branch runs) [Test/EcpDescriptor.cls:10]
+- [x] [Review][Patch] The authorize and reject pairs' inference lacked its label [Screen/Tool/EcpSslConnectionAuthorize.cls:14, EcpSslConnectionReject.cls:14]
+- [x] [Review][Patch] A whole number typed with spaces was sent as text [ecp-settings.store.ts:59]
+- [x] [Review][Defer] The `MaxServerConn` guard matches text — wontfix-accepted DW-2035
+- [x] [Review][Defer] The restart test's unarmed leg rests on the seam guard — wontfix-theoretical DW-2036
+- [x] [Review][Defer] `SettingsRefusal` answers its first refusal only — wontfix-accepted DW-2037
+- [x] [Review][Defer] A large `MaxServers` may need a restart (inference) — wontfix-accepted DW-2038
+- [x] [Review][Defer] `Consequence` answers restart when its read fails — wontfix-theoretical DW-2039
+- [x] [Review][Defer] `EcpProbe` lookups swallow failures — wontfix-theoretical DW-2040
+- [x] [Review][Defer] Authorize and reject's real post-action state is unobserved (Named limit 1) — wontfix-accepted DW-2041
+- [x] [Review][Defer] C7 pinned for a privileged caller only — wontfix-accepted DW-2042
+- [x] [Review][Defer] The `%ECPServer` caption is drawn twice — wontfix-accepted DW-2043
+- [x] [Review][Defer] The authorize and reject card shows no `ClientIP` — wontfix-accepted DW-2044
+- [x] [Review][Defer] The warning dialog never runs in a browser spec — wontfix-accepted DW-2045
+- [x] [Review][Defer] The form stays interactive during a Save — wontfix-accepted DW-2046
+- [x] [Review][Defer] Theoretical, each wontfix-theoretical: a `{}` Save's change event (DW-2047), a partial fresh read (DW-2048), an unreadable class in the guard (DW-2049), `FieldOf`'s two fields (DW-2050)
+- [x] [Review][Defer] `open()` keeps only the form read's refusal — wontfix-accepted DW-2051
+- [x] [Review][Defer] No agent settings confirm for the half-apply principal — wontfix-accepted DW-2052
+
+Rejected:
+
+- false: the tools, the Save and the browser helpers duplicate siblings — each follows the spec's named model and the suites' convention.
+- false: `HandleForm` couples to `LicenseRules.RenderRead` — `EcpRules` and two Saves render through it.
+- false: `MergeUpdate`'s "each member a number" — the vendor answers six numbers (Task 0) and supplied members are coerced.
+- false: `MappedClientColumns` reads 32,000 characters — a longer `Run` fails loudly; the vendor's is nine lines.
+- false: C1 to C8 lack a mutation per clause — Rule 19 asks one per AC, and each carries one.
+- maybe-false: a multi-RDN distinguished name breaks a path — the query is in-process, the match exact and the draft URL-encoded; low if real.
+- by-design: the settings schema's objects are prose (Registry emits no `properties`); a DN both pending and authorized (Named limit 3); Connections' empty parity (Named limit 1).
+- spec-only: the Auto Run Result's medium count and "rules before any vendor call" for the mint's first read — each fix edits the spec.
+
 ## Spec Change Log
 
 - 2026-10-04, orchestrator (merge gate, Task 0 halt): option (b) -- `MaxServerConn` stays editable with its restart sentence; every test that changes it runs through the seam's `ecpserver` mode; the "after the restore no restart is pending" row is dropped; one test pins the restart sentence and a guard keeps any test from sending `MaxServerConn` to `AdminPort` for real; `ocupilot-b-ci`'s `PendingRestart` 1 is a known throwaway state, never cleared by a restart. The measured pairs, the complete body, every refusal before the call, the exact-case SSL/TLS ids and the AD-15/AD-53 cases stand; DW-2006 closes against 18.20's #1454 mapping. The runner wrote AD-4, AD-8, AD-13, AD-15, AD-52 and AD-53; the spec is re-opened at Task 0 step 11.
@@ -439,6 +482,10 @@ deferred:
 - mutation: both `ecpserver` arms removed from `EcpSettingsWrite.TestARestartSettingIsStatedAndNeverSentForReal` (loaded, never run) → `EcpDescriptor.TestNoTestSendsMaxServerConnToTheVendor` red (run 5709)
 - mutation: an unarmed `%Set("MaxServerConn", 2)` added to `EcpSettingsWrite.TestAChangeSendsTheNestedBodyOnBothCallers` (loaded, never run) → `EcpDescriptor.TestNoTestSendsMaxServerConnToTheVendor` red (run 5729)
 - mutation: the `RESTART` refusal deleted from `retype` in `ecp-settings.browser-spec.mjs` → `ci.test.mjs` "Story 18.21: no browser spec types into or saves the maximum number of application servers" red; `MaxServerConn` named in `ecp-data-servers.browser-spec.mjs` → its roster assertion red (node --test)
+- mutation: `EcpPort.SSLENABLEDFIELD` misnamed `Enable` (tree reloaded, `EcpSeamPort`'s compiled copy checked) → `EcpSslConnectionWrite.TestSslOverADisabledClientConfigurationIsRefusedOnItsField` red on its enabled leg (run 6198; reverted, green 6200)
+- mutation: `EcpPort.SettingsRefusal` counts with `>=` → `EcpSettingsWrite.TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite` red on its equal-count leg (run 6199; reverted, green 6201)
+- mutation: the page's `@if (sslInvalid)` error line removed → `ecp-settings.page.spec.ts` "AD-39: a refusal on SSL/TLS support is drawn on the radio group" red (vitest)
+- mutation: `numberValue` stops trimming → `ecp-settings.store.spec.ts` "a whole number typed with spaces around it is sent as a number" red (vitest)
 
 ## Auto Run Result
 

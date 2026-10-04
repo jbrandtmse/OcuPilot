@@ -55,9 +55,10 @@ function textOf(value: unknown): string {
   return '';
 }
 
-/** A whole number as a JSON number, anything else as the text typed, so the server's rule answers it. */
+/** A whole number, spaces around it dropped, as a JSON number; anything else as the text typed, so the server's rule answers it. */
 function numberValue(text: string): number | string {
-  return /^[0-9]{1,9}$/.test(text) ? Number(text) : text;
+  const trimmed = text.trim();
+  return /^[0-9]{1,9}$/.test(trimmed) ? Number(trimmed) : text;
 }
 
 /** The object and member a `<Object>.<member>` field names. */

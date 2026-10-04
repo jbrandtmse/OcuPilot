@@ -21,7 +21,8 @@
 /// vendor, whose 500 #456 is answered with the same refusal, naming as the limit the number of data
 /// servers the instance defines, which is the limit unless it was lowered below them (inference); at
 /// the limit that caller leaves the vendor's create audit event and log line, with nothing stored. The
-/// vendor's refusal of SSL/TLS without an <code>%ECPClient</code> configuration (#1454) is 422
+/// vendor's refusal of SSL/TLS without an enabled <code>%ECPClient</code> configuration, absent or
+/// disabled (#1454, both measured at Story 18.21's Task 0, which closes DW-2006), is 422
 /// <parameter>OcuPilot.Api.EcpError.SSLCLIENT</parameter> on <code>SSLConfig</code>.</p>
 /// <p><b>A <code>DELETE</code></b> the vendor refuses 409 (#423, a remote database uses the server) is
 /// 409 <parameter>OcuPilot.Api.EcpError.INUSE</parameter>.</p>

@@ -8,7 +8,8 @@
 /// the settings script, the tools' copies of their sentences, and the guard that no test sends a
 /// <code>MaxServerConn</code> change to the vendor.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and no custom resource assigned to
-/// the replaced classic pages. It writes nothing.</p>
+/// the replaced classic pages; for the settings script, no enabled <code>%ECPServer</code> and at most two
+/// ECP data servers (a stock instance has neither). It writes nothing.</p>
 Class OcuPilot.Test.EcpDescriptor Extends %UnitTest.TestCase
 {
 

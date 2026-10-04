@@ -186,6 +186,28 @@ describe('EcpSettingsPage', () => {
     expect(host.querySelector('.ocu-form-summary-list')?.textContent?.trim()).toBe(STRINGS.ecpSettingsIntervalRange);
   });
 
+  it('AD-39: a refusal on SSL/TLS support is drawn on the radio group and described by each choice', async () => {
+    const { fixture, host } = await mount({
+      form: { licensed: true, serverSsl: 'enabled' },
+      save: {
+        kind: 'error',
+        status: 422,
+        code: 'ECP.SETTINGS.VALIDATION',
+        reason: 'The ECP settings were refused.',
+        detail: { violations: [{ field: 'DataServerSettings.SSLECPServer', code: 'ECP.SETTINGS.SSLSERVER', reason: STRINGS.ecpSettingsServerSsl }] },
+      },
+    });
+    input(host, 'ocu-ecp-settings-DataServerSettings-SSLECPServer-1').click();
+    await settle(fixture);
+    save(host);
+    await settle(fixture);
+    const reasonId = 'ocu-ecp-settings-DataServerSettings-SSLECPServer-reason';
+    expect(host.querySelector(`#${reasonId}`)?.textContent?.trim()).toBe(STRINGS.ecpSettingsServerSsl);
+    for (const value of [0, 1, 2]) {
+      expect(input(host, `ocu-ecp-settings-DataServerSettings-SSLECPServer-${value}`).getAttribute('aria-describedby')).toBe(reasonId);
+    }
+  });
+
   it('AD-8: a Save refused for a missing pair names the pair and the form\u2019s action', async () => {
     const { fixture, host } = await mount({
       save: { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'Forbidden', detail: { failedPair: '%DB_IRISSYS:WRITE' } },

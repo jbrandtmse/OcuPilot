@@ -200,7 +200,7 @@ Method TestAPendingRequestIsAuthorizedAndRejectedOnBothCallers()
         Do $ClassMethod(..#SEAM, "Clear")
         Do $ClassMethod(..#SEAM, "Arm", "pending")
         Do $$$AssertEquals($ClassMethod(..#AGENT, "Confirm", tProposal, .tResult), "200 ", $List(tCase, 1) _ ": and its confirm answers")
-        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), ..#ENDPOINT _ "/" _ $List(tCase, 2), $List(tCase, 1) _ ": with one call recorded")
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "NameOf", ..#ENDPOINT _ "/" _ $List(tCase, 2)), ..#ENDPOINT _ "/" _ $List(tCase, 2) _ " " _ ..#PENDING, $List(tCase, 1) _ ": with one call recorded, naming the request")
     }
     Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "PendingNames")) _ " " _ $ListLength($ClassMethod(..#PROBE, "ProbeDns")), "0 0", "and the instance holds no pending request and no probe name")
 }
@@ -231,9 +231,13 @@ Method TestAnAbsentNameIsRefusedAndNothingIsSent()
 
 /// <p>C7 (DW-2006): with a disabled <code>%ECPClient</code> SSL/TLS configuration, a data server create
 /// with SSL/TLS is refused <code>ECP.DATASERVER.SSLCLIENT</code> on <code>SSLConfig</code>, the vendor's
-/// #1454 mapped by <class>OcuPilot.Port.EcpPort</class>, with nothing stored (measured at Task 0).</p>
+/// #1454 mapped by <class>OcuPilot.Port.EcpPort</class>, with nothing stored (measured at Task 0); and
+/// enabled, the configuration reads <code>enabled</code> through <method>OcuPilot.Port.EcpPort.SslState</method>
+/// from the instance's own answer.</p>
 /// <p>Mutation (Rule 19): drop the <code>SSLCLIENT</code> branch from
-/// <method>OcuPilot.Port.EcpPort.Put</method> -- the create answers 500 and this goes red.</p>
+/// <method>OcuPilot.Port.EcpPort.Put</method> -- the create answers 500 and this goes red; or misname
+/// <parameter>OcuPilot.Port.EcpPort.SSLENABLEDFIELD</parameter> -- the enabled leg reads disabled and this
+/// goes red.</p>
 Method TestSslOverADisabledClientConfigurationIsRefusedOnItsField()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedSsl", "%ECPClient", 0, 0), "a disabled %ECPClient SSL/TLS configuration is seeded")
@@ -242,6 +246,9 @@ Method TestSslOverADisabledClientConfigurationIsRefusedOnItsField()
     Set tSC = ##class(OcuPilot.Test.EcpSaveFixture).Handle("create", "", {"Name": "ocuprobeecpsslc", "Address": "192.0.2.10", "Port": 1972, "SSLConfig": 1}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 SSLConfig:" _ ##class(OcuPilot.Api.EcpError).#SSLCLIENT, "the form's create is refused on SSLConfig: " _ $Extract(tAnswer, 1, 300))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPSSLC"), 0, "and nothing is stored")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnableSsl", "%ECPClient", 1), "the probe %ECPClient configuration is enabled")
+    Set tSC = ##class(OcuPilot.Port.EcpPort).SslState("%ECPClient", .tState, .tHttp, .tFault)
+    Do $$$AssertEquals($$$ISOK(tSC) _ " " _ tState, "1 enabled", "and reads enabled from the instance's own answer")
 }
 
 /// <p>The rows of <var>pRows</var> whose <code>SSLComputerName</code> is a probe name, each as JSON,

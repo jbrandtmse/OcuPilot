@@ -9529,3 +9529,95 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: runner investigation, Story 18.21 implement sweep (2026-10-04) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Audit: 11:32:11.720 Create section ECPServer OCUPROBEECPA and .864 Create section Database OCUPROBEECPR (EcpDataServerWrite's in-use leg, pid 1204757); at .999 the stream dirs of mgr, HSCUSTOM, hssys, hssyslocaltemp and user were recreated and hssyslocaltemp/IRIS.DAT is gone, SYS.Database still Mounted 1. Cause inference: the vendor's configuration activation; unreproduced; the same seeding ran many times before without it.
 - 2026-10-04T14:41:54Z status=routed owner=burndown by=runner note=investigate on a fresh throwaway (seed a data server, then a remote database on it, watch mgr/*/IRIS.DAT); IRIS defect candidate if reproduced; never restart ocupilot-b-ci to repair it
+- 2026-10-04T14:54:40Z status=routed owner=burndown by=merge_gate note=raised to HIGH-candidate (shape matches the old ocupilot-ci IRISTEMP break); the orchestrator's investigation agent reproduces it on ocupilot-c-ci; ocupilot-b-ci left exactly as is
+- 2026-10-04T15:35:39Z status=wontfix-accepted by=merge_gate note=root cause macOS tmp_cleaner, not IRIS; fix tracked as DW-2034; evidence cycle-log-parallel.md dw2033_root_cause 2026-10-04T15:11:33Z
+
+### DW-2035: EcpDescriptor's MaxServerConn guard matches text: a constructed member name, a property-chain set, or a helper class outside %UnitTest.TestCase passes it
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Guard scans roster TestCase method bodies for three literal body-key spellings and an "ecpserver" string; EcpSettingsWrite already sends MaxServerConn 255 through $List-built keys (refused by the rules). Behind it: the roster of naming classes and EcpSeamPort's runtime refusal.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a test class outside MAXSERVERCONNCLASSES builds the member name, or PendingRestart names MaxServerConn after a test run
+
+### DW-2036: EcpSettingsWrite's restart test ends with an unarmed MaxServerConn Save whose safety rests on EcpSeamPort.ChangesMaxServerConn alone
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: The last leg of TestARestartSettingIsStatedAndNeverSentForReal pins the seam's 409 guard by sending a change unarmed; the guard fails closed when the stored settings cannot be read.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if ChangesMaxServerConn answers 0 for a changed MaxServerConn
+
+### DW-2037: EcpPort.SettingsRefusal answers only the first port refusal, so SSL/TLS without %ECPServer hides a MaxServers below the data servers until the next Save
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: SettingsRefusal quits after the SSL/TLS refusal; EcpSettingsSave.HandleUpdate's doc promises every violation for rule refusals, which Validate keeps.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user reports a second ECP settings refusal after fixing the first in one Save
+
+### DW-2038: A large MaxServers increase may need a restart when the shared memory heap is short, and the tool states a restart only for MaxServerConn (inference)
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: irissys/Config/config.cls:348-351 says MaxServers applies without a restart only if heap memory is available; Task 0 measured 2 to 3 alone (PendingRestart 0).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=Config.CPF.PendingRestart lists MaxServers after an ECP settings write
+
+### DW-2039: EcpSettingsUpdate.Consequence answers the restart code whenever its own settings read fails, though no MaxServerConn change is sent
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Consequence re-reads ECP.Settings to compare MaxServerConn and returns ECP.SETTINGS.RESTART on any read failure; the Save and the mint read the same endpoint just before.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when ECP.Settings GET fails between the fresh read and Consequence for a caller holding the screen's pairs
+
+### DW-2040: EcpProbe.QueryNames and MarkedSsl swallow every failure, so Remaining can undercount probe SSL/TLS names and configurations
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: An empty Catch or failed Execute answers an empty list or 0, which RemoveAll reads as nothing left (EcpProbe.cls QueryNames, MarkedSsl).
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when SYS.ECP's SSL/TLS queries or Security.SSLConfigs.Exists error in %SYS
+
+### DW-2041: Authorize and reject are observed only through EcpSeamPort, whose pending list never changes after an action; a real reject removes the row (read-back notFound, change action updated)
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpSeamPort pending mode re-adds CN=OCUPROBEECPP on every LIST, so the asserted nothingSent is the seam's; ReadBack answers notFound for an absent action target (inference for the real reject). Named limit 1.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a licensed instance or a real pending request reaches a test, or a user reports a Reject reading not found
+
+### DW-2042: C7 (DW-2006) is pinned for the test process's privileged caller only, not for a principal without %Admin_Secure:USE
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: TestSslOverADisabledClientConfigurationIsRefusedOnItsField runs EcpSaveFixture in-process; no EcpWriteGate leg creates SSL/TLS over a disabled %ECPClient as a least-privileged principal (vendor check is system code, inference).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a least-privileged create with SSLConfig 1 over a disabled %ECPClient stores the server
+
+### DW-2043: ECP settings draws the %ECPServer sentence twice, once under Enabled and once under Required
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: ecp-settings.page.ts renders one ocu-field-caption per refused radio, so a Community instance always shows two identical captions.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=an accessibility review or reader flags the repeated caption under the SSL/TLS radios
+
+### DW-2044: The authorize and reject card shows no request details: StateDiff answers no row, so the pending request's ClientIP is not on the card
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpSslConnectionAuthorize/Reject.StateDiff return no rows and the fingerprint covers Status only; the tab shows ClientIP before Authorize.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user asks on a card which host a pending SSL/TLS request came from
+
+### DW-2045: The Authorize and Reject warning dialog is never rendered in a browser spec, so the DW-1337 walk never reaches it
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: No pending row exists on Community; the handler's warning entries are pinned in screen-action-handler.spec.ts only (vitest).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a request-interception harness or a licensed instance lets a browser spec reach the tab's Authorize
+
+### DW-2046: ECP settings stays interactive while a Save is in flight: Cancel drops the change event and edits typed during the Save are reset
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: save() returns before publish when the generation moved (Cancel calls open()); setText ignores savingValue and open(true) resets the fields; journal-settings.store.ts has the same shape.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user reports a lost edit or a screen not refreshing after Cancel during an ECP settings Save
+
+### DW-2047: An ECP settings Save the server answers {} (nothing changed) still publishes an updated change event
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: save() publishes on any ok answer; a concurrent identical change makes the server merge empty; screens re-fetch on the event (AD-14).
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if a consumer treats an ecp-settings change event as proof of a write
+
+### DW-2048: EcpSettingsUpdate.MergeUpdate sends a partial object when the fresh read lacks a settings group or answers a member null
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: MergeUpdate substitutes {} for an absent group and CopyMember skips a null member; the vendor's GET answered both groups' six numbers at Task 0.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if the vendor's ECP.Settings GET omits a settings group or answers a member null
+
+### DW-2049: EcpDescriptor's MaxServerConn guard skips a test class whose source GetTextAsString cannot read
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestNoTestSendsMaxServerConnToTheVendor continues past a failed GetTextAsString; a roster class read failure still reddens the roster equality.
+- 2026-10-04T15:31:16Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if GetTextAsString fails for an OcuPilot.Test class that names the member
+
+### DW-2050: EcpError.FieldOf answers two comma-joined fields for ECP.SETTINGS.COUNT where every sibling answers one
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Only EcpDescriptor reads EcpError.FieldOf today; its doc states the two-field answer.
+- 2026-10-04T15:31:16Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when a product caller builds a violation row from EcpError.FieldOf(SETTINGSCOUNT)
+
+### DW-2051: ECP settings' open() keeps only the form read's refusal, so a fault on the screen's own read renders the generic fault
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: open() calls rememberRefusal(form); a privilege refusal hits both reads alike (one descriptor's pairs), so only a vendor fault on the declared read loses its code.
+- 2026-10-04T15:31:16Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user sees ECP settings' generic fault for a refusal that names a code or a pair
+
+### DW-2052: No test confirms an agent settings change for a principal holding %DB_IRISSYS:WRITE without %Admin_Secure:USE, the half-apply combination Task 0 measured
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpSettingsGate's OCUPROBEECPHSSL runs only the Save; the confirm's pair gate is the kernel's shared path and the tool's pairs are pinned in EcpDescriptor.
+- 2026-10-04T15:31:16Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=the confirm's pair gate stops reading the tool's PrivilegePairs, or a settings confirm half-applies

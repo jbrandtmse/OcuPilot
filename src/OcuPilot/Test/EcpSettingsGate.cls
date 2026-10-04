@@ -3,8 +3,9 @@
 /// refused its read, its form route and its Save naming it, while ECP application servers opens; a holder
 /// of the screen's three pairs reads the settings and the form; a principal without
 /// <code>%DB_IRISSYS:WRITE</code> is refused the Save, the three SSL/TLS actions and the agent's confirm
-/// of each naming it, and one without <code>%Admin_Manage:USE</code> every call naming it, each with zero
-/// port calls; and principals holding exactly each tool's declared pairs write on both callers.</p>
+/// of a settings change and of an SSL/TLS delete naming it, and one without <code>%Admin_Manage:USE</code>
+/// every call naming it, each with zero port calls; and principals holding exactly each tool's declared
+/// pairs write on both callers.</p>
 /// <p>The write legs run in a child process logged in as the principal
 /// (<class>OcuPilot.Test.EcpWriteGateProbe</class>), which reports what
 /// <class>OcuPilot.Test.EcpSeamPort</class> was asked; the reads and both routes run over the wire.</p>
