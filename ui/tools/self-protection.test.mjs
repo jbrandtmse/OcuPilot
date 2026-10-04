@@ -528,6 +528,8 @@ const ATELIER_REFUSALS = [
   ['REASONSQLPASSWORD', 'explorerSqlPasswordReason'],
   ['REASONSQLREADS', 'explorerSqlReadsReason'],
   ['REASONSQLPARAMETERS', 'explorerSqlParametersReason'],
+  // DW-2025: a query or DML statement the statement index does not record once prepared.
+  ['REASONSQLUNRECORDED', 'explorerSqlUnrecordedReason'],
   // Story 19.15: the background run's query-only, busy, full, not-found and lost refusals.
   ['REASONSQLBACKGROUNDQUERYONLY', 'explorerSqlBackgroundQueryOnlyReason'],
   ['REASONSQLBACKGROUNDBUSY', 'explorerSqlBackgroundBusyReason'],

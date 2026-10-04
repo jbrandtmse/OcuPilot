@@ -5145,6 +5145,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:597 */
   explorerSqlParametersReason: 'Give one value for each ? in the statement.',
   /** EXPERIENCE.md:597 */
+  explorerSqlUnrecordedReason: 'The instance keeps no record of the tables this statement uses before it runs, so OcuPilot cannot check what it reads or changes and does not run it here; writing SELECT %NORUNTIME may let a query be checked.',
+  /** EXPERIENCE.md:597 */
   explorerSqlRefusalOcuPilot: 'This statement reads or changes OcuPilot\'s own tables or code, which OcuPilot does not offer.',
   /** EXPERIENCE.md:597 */
   explorerSqlQueryPrompt1: 'What does this statement\'s plan say about the indices it uses?',

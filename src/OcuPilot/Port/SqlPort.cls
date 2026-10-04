@@ -8,7 +8,8 @@
 /// namespace's code databases, through <code>EvaluateRequired</code>); then the bounds
 /// (<method>InputProblem</method>); then the password refusal, before any prepare
 /// (<parameter>PASSWORDPATTERN</parameter>); then the prepare, whose statement type decides the kind
-/// through the closed table <method>KindOf</method>; then the refusal of the session, administration
+/// through the closed table <method>KindOf</method>; then the refusal of a query or a DML statement
+/// the statement index does not record; then the refusal of the session, administration
 /// and server-file kinds; then, for a DDL statement, the system privilege its type requires
 /// (<parameter>DDLPRIVILEGES</parameter>), asked of the instance. Nothing is prepared before the gate,
 /// the bounds and the password check have answered.</p>
@@ -265,9 +266,11 @@ ClassMethod SetsPassword(pText As %String) As %Boolean
 /// <p>Otherwise an error status, with <var>pHttpStatus</var> and <var>pFault</var>: 403
 /// <code>AUTH.NOPRIVILEGE</code> naming the pair; 400 <code>PORT.VALIDATION</code> for a namespace
 /// whose code databases cannot be named; 400 <code>EXPLORER.SQL.INPUT</code>; 422
-/// <code>EXPLORER.SQL.PASSWORD</code>; 422 <code>EXPLORER.SQL.SESSION</code>,
-/// <code>.ADMINISTRATION</code> or <code>.SERVERFILES</code>; and 500 <code>INTERNAL</code> when the
-/// statement index cannot be read for a query or a DML statement.</p>
+/// <code>EXPLORER.SQL.PASSWORD</code>; 422 <code>EXPLORER.SQL.UNRECORDED</code> for a query or a DML
+/// statement the statement index holds no row for once prepared, whose tables the self-protection
+/// check therefore cannot read; 422 <code>EXPLORER.SQL.SESSION</code>, <code>.ADMINISTRATION</code> or
+/// <code>.SERVERFILES</code>; and 500 <code>INTERNAL</code> when the statement index cannot be read
+/// for a query or a DML statement.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9). The prepare records the
 /// statement in the namespace's statement index (AD-7's fifth shape).</p>
 ClassMethod Classify(pNamespace As %String, pText As %String, Output pGuard As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -307,11 +310,17 @@ ClassMethod Classify(pNamespace As %String, pText As %String, Output pGuard As %
         Do tGuard.%Set("Parameters", ..ValuePositions(tRaw.%Get("positions")), "number")
         Do tGuard.%Set("Columns", tRaw.%Get("columns"))
         Do tGuard.%Set("DefaultSchema", tRaw.%Get("defaultSchema"), "string")
-        ; Fail closed: a query or a DML statement whose statement-index row cannot be found has tables
-        ; nobody can read, which the self-protection check needs.
-        If ((tKind = ..#KINDQUERY) || (tKind = ..#KINDDML)) && 'tRaw.%Get("indexed") {
-            Set tSC = ..Fail("the statement index answered no row for a prepared statement", $$$ERROR($$$GeneralError, "no statement index row"), .pHttpStatus, .pFault)
-            Quit
+        ; Fail closed: a query or a DML statement whose statement-index row is absent or unreadable has
+        ; tables nobody can read, which the self-protection check needs, so it never runs.
+        If (tKind = ..#KINDQUERY) || (tKind = ..#KINDDML) {
+            If tRaw.%Get("unrecorded") {
+                Set tSC = ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AtelierError).#SQLUNRECORDED, ##class(OcuPilot.Api.AtelierError).#REASONSQLUNRECORDED, .pHttpStatus, .pFault)
+                Quit
+            }
+            If 'tRaw.%Get("indexed") {
+                Set tSC = ..Fail("the statement index could not be read for a prepared statement", $$$ERROR($$$GeneralError, "statement index unreadable"), .pHttpStatus, .pFault)
+                Quit
+            }
         }
         Set tSC = ..RefuseKind(tKind, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
@@ -682,13 +691,15 @@ ClassMethod ErrorAnswer(pKind As %String, pCode As %String, pMessage As %String)
 }
 
 /// <p>Prepare <var>pText</var> in <var>pNamespace</var> and answer in <var>pRaw</var> what the
-/// instance says of it: <code>{type, positions, columns, indexed, tables, defaultSchema}</code>, or
-/// <code>{error: {sqlcode, message}}</code> when the prepare failed. <code>tables</code> is the
-/// statement index's relations for the statement, keyed by the cached query's
-/// <code>%StatementIndexHash</code>, else by its <code>STATEMENT_LOCATIONS</code> row
+/// instance says of it: <code>{type, positions, columns, unrecorded, indexed, tables,
+/// defaultSchema}</code>, or <code>{error: {sqlcode, message}}</code> when the prepare failed.
+/// <code>tables</code> is the statement index's relations for the statement, keyed by the cached
+/// query's <code>%StatementIndexHash</code>, else by its <code>STATEMENT_LOCATIONS</code> row
 /// <code>&lt;class&gt;.1</code>, then each view's base tables from
-/// <code>INFORMATION_SCHEMA.VIEW_TABLE_USAGE</code>; <code>indexed</code> is 0 when either cannot be
-/// read.</p>
+/// <code>INFORMATION_SCHEMA.VIEW_TABLE_USAGE</code>. <code>unrecorded</code> is 1 when the index was
+/// read and holds no row for the statement, as for a query the instance compiles with runtime plan
+/// choice, whose row it writes only when the query runs (measured); <code>indexed</code> is 0 when the
+/// row is absent or it or its relations cannot be read.</p>
 /// <p><b>The switched region calls vendor classes only</b> (AD-16): nothing in it reaches an
 /// OcuPilot class, and the restore is the first line of the <code>Catch</code>. The statement is
 /// released in <var>pNamespace</var> (<method>Closed</method>). An error status names the exception
@@ -726,10 +737,12 @@ ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %Dy
             Set tClass = ""
             Do tStatement.%GetImplementationDetails(.tClass)
             Set tHash = ""
+            Set tUnrecorded = 0
             If tClass '= "" Set tHash = $Parameter(tClass, "%StatementIndexHash")
             If (tHash = "") && (tClass '= "") {
                 Set tLocation = ##class(%SQL.Statement).%ExecDirect(, "SELECT Statement FROM INFORMATION_SCHEMA.STATEMENT_LOCATIONS WHERE Location = ?", tClass _ ".1")
                 If (tLocation.%SQLCODE >= 0) && tLocation.%Next() Set tHash = tLocation.%GetData(1)
+                Set tUnrecorded = (tHash = "") && (tLocation.%SQLCODE >= 0)
             }
             Set tTables = []
             Set tIndexed = (tHash '= "")
@@ -764,6 +777,7 @@ ClassMethod Prepared(pNamespace As %String, pText As %String, Output pRaw As %Dy
                     If tUsed.%SQLCODE < 0 Set tIndexed = 0
                 }
             }
+            Do pRaw.%Set("unrecorded", tUnrecorded, "boolean")
             Do pRaw.%Set("indexed", tIndexed, "boolean")
             Do pRaw.%Set("tables", tTables)
             Do pRaw.%Set("defaultSchema", $SYSTEM.SQL.Schema.Default(), "string")
