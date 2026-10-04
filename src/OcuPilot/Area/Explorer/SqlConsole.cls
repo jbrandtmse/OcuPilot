@@ -3,10 +3,11 @@
 /// exception). Each gates on the screen (<method>Gate</method>), reads the body, checks its bounds,
 /// classifies the statement through <class>OcuPilot.Port.SqlPort</class>, asks
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.SqlStatement</method>, and only then answers.</p>
-/// <p><b>Nothing that changes state runs here.</b> A statement of a kind that changes something is
-/// answered <code>confirm</code> before any execution; the confirmed run is the screen action of
-/// <class>OcuPilot.Screen.Tool.ExplorerSqlRun</class>, which classifies it again (AD-11, AD-53). Only a
-/// query runs from the run route.</p>
+/// <p><b>Only a statement the instance types as a query runs here.</b> A statement of any other kind
+/// is answered <code>confirm</code> before any execution; the confirmed run is the screen action of
+/// <class>OcuPilot.Screen.Tool.ExplorerSqlRun</class>, which classifies it again (AD-11, AD-53). A
+/// function a query calls can still change state, which its statement type does not show (named
+/// limit).</p>
 /// <p>The body is <code>{statement, parameters?, maxRows?}</code>: a string, an array of strings
 /// (none when absent) and a whole number from 1 to 1,000 (1,000 when absent); any other key or shape
 /// is refused 400 <code>EXPLORER.SQL.INPUT</code> before anything is prepared. Nothing of the
@@ -108,9 +109,7 @@ ClassMethod Prepare(Output pRefused As %Boolean, Output pNamespace As %String, O
     Set tSC = ..Gate(.tGateRefused)
     If tGateRefused || $$$ISERR(tSC) Quit tSC
     Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
-    If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
-        Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
-    }
+    If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") Quit ..RenderInput()
     If '..Body(tBody, .pText, .pValues, .pMaxRows) Quit ..RenderInput()
     If ##class(OcuPilot.Port.SqlPort).InputProblem(pText, pValues, pMaxRows) '= "" Quit ..RenderInput()
     Set pNamespace = ##class(OcuPilot.Kernel.Scope).Current()

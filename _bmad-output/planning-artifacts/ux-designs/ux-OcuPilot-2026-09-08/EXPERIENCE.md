@@ -156,7 +156,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 
 ### Side-bar screen lists
 
-Entries in daily-use order. A screen that is not yet built does not appear in the side-bar — no dead entries `[ASSUMPTION: P1 entries appear only once shipped]`. System Explorer (Stage 3, Stories 19.1, 19.4, 19.5 and 19.14): Classes · Routines · Search · Compare · Macros · SQL schemas · SQL tables · SQL views · SQL procedures · SQL query; each list's documents open in its unlisted viewer, a table opens to its catalog tabs, and a view and a stored procedure to theirs.
+Entries in daily-use order. A screen that is not yet built does not appear in the side-bar — no dead entries `[ASSUMPTION: P1 entries appear only once shipped]`. System Explorer (Stage 3, Stories 19.1, 19.4, 19.5, 19.6 and 19.14): Classes · Routines · Search · Compare · Macros · SQL schemas · SQL tables · SQL views · SQL procedures · SQL query; each list's documents open in its unlisted viewer, a table opens to its catalog tabs, and a view and a stored procedure to theirs.
 
 | Area | Release 1 entries | Polish-week entries |
 |---|---|---|

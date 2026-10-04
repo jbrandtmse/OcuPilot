@@ -287,10 +287,12 @@ export class SqlQueryState {
     this.notify();
     let refused = '';
     const sink: ActionSink = { setRefusal: (reason) => (refused = reason) };
+    const maxRows = this.maxRowsValue.trim();
     const values: ActionValues = {
       [STATEMENT_VALUE]: this.textValue,
       [PARAMETERS_VALUE]: JSON.stringify(this.valuesValue),
-      [MAX_ROWS_VALUE]: this.maxRowsValue.trim(),
+      // Digits as the run route's number reads them, so a leading zero confirmed there is not refused here.
+      [MAX_ROWS_VALUE]: /^[0-9]+$/.test(maxRows) ? String(Number(maxRows)) : maxRows,
     };
     const applied = await deps.sender.sendFor(deps.descriptor, RUN_ACTION, RUN_TARGET, values, sink, deps.scope());
     if (generation !== this.generation) return applied;

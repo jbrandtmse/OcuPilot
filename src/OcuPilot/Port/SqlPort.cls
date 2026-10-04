@@ -15,8 +15,8 @@
 /// <p><b>The namespace is switched by explicit save and restore</b> (AD-16) around a region that calls
 /// only vendor classes (<method>Prepared</method>, <method>Executed</method>,
 /// <method>Explained</method>, <method>HoldsPrivilege</method>, <method>Closed</method>), and the
-/// restore is the first line of each <code>Catch</code>. Each statement is released before the
-/// namespace is restored (<method>Closed</method>).</p>
+/// restore is the first line of each <code>Catch</code>. The caller's statement is released before
+/// the namespace is restored (<method>Closed</method>).</p>
 /// <p><b>A statement's text, values, rows, SQL error text and plan reach the caller's answer and
 /// nothing else</b> (AD-39's sixth exception): no log line here carries any of them. A prepare or
 /// execute error is the <code>error</code> outcome, never a fault.</p>
@@ -79,14 +79,18 @@ Parameter SELECTMODE As INTEGER = 1;
 /// one after <code>IDENTIFY BY</code>, <code>IDENTIFIED BY</code> or <code>[WITH] PASSWORD</code>, so
 /// the pattern matches <code>IDENTIFY</code> or <code>IDENTIFIED</code> anywhere, or the words
 /// <code>CREATE</code> or <code>ALTER</code>, <code>USER</code> and <code>PASSWORD</code> in that
-/// order, comments and literals included; a column named <code>Password</code> in any other statement
-/// passes. Each atomic group commits to the first occurrence, which keeps the match linear in the
-/// text's length.</p>
+/// order, comments and literals included. It is fail-closed: it also refuses a statement that only
+/// names such a word, as a literal, a column or a table, such as a <code>CREATE TABLE</code> naming a
+/// table <code>User</code> and a column <code>Password</code>. Each atomic group commits to the first
+/// occurrence, which keeps the match linear in the text's length.</p>
 Parameter PASSWORDPATTERN = "(?is)\bIDENTIF(Y|IED)\b|^(?>.*?\b(?:CREATE|ALTER)\b)(?>.*?\bUSER\b).*\bPASSWORD\b";
 
 /// <p>The system privilege the SQL reference names for a DDL statement type, as
 /// <code>type:privilege</code> pairs: a statement of a listed type runs only for a caller who holds
-/// it (<method>HoldsPrivilege</method>). An unlisted type is left to the instance's own check.</p>
+/// it (<method>HoldsPrivilege</method>). An unlisted type is left to the instance's own check.
+/// <code>DROP VIEW</code> (14) is unlisted because the reference accepts <code>%DROP_VIEW</code> or
+/// DELETE on the view, so a check for the system privilege alone would refuse a caller the instance
+/// admits.</p>
 Parameter DDLPRIVILEGES = "9:%CREATE_TABLE,10:%ALTER_TABLE,11:%DROP_TABLE,12:%CREATE_VIEW,13:%ALTER_VIEW,15:%ALTER_TABLE,17:%ALTER_TABLE,35:%CREATE_FUNCTION,36:%CREATE_METHOD,37:%CREATE_PROCEDURE,38:%CREATE_QUERY,39:%DROP_FUNCTION,40:%DROP_METHOD,41:%DROP_PROCEDURE,42:%DROP_QUERY,43:%CREATE_TRIGGER,44:%DROP_TRIGGER,52:%ALTER_TABLE,54:%MANAGE_MODEL,55:%MANAGE_MODEL,56:%MANAGE_MODEL,57:%MANAGE_MODEL,58:%USE_MODEL,60:%CREATE_ML_CONFIGURATION,61:%ALTER_ML_CONFIGURATION,62:%DROP_ML_CONFIGURATION,66:%BUILD_INDEX";
 
 /// <p>The SQLCODE the instance answers a privilege violation with.</p>

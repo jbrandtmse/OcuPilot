@@ -2,7 +2,7 @@
 /// sent as a real <code>%Developer</code> principal, is refused 403 unless
 /// <method>Roster</method> names it, and every <code>GET</code> the roster names answers neither 403
 /// nor a server error. The roster's other routes are writes the principal makes on its own
-/// account, conversation or turn, and SQL query's routes, which
+/// account, conversation or turn, and SQL query's two routes, whose run route
 /// <class>OcuPilot.Test.DeveloperFloor</class> sends, and are not sent.</p>
 /// <p>Placeholders reach each route's gate rather than a 404 before it: <code>:screen</code> is
 /// <parameter>SCREENKEY</parameter>, a screen the principal may not read, and its action and impact

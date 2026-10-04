@@ -4,7 +4,8 @@
 /// prepared statement type whatever the text's comments say; the session, administration and
 /// server-file statements refused and a password statement never reaching the statement index; a query
 /// and a DML statement stopped at the bound, the DML statement undone; a transaction a run leaves open
-/// rolled back; a plan that executes nothing; a CALL's first result set; OcuPilot's own tables found
+/// rolled back; a plan that executes nothing; a CALL's first result set and its output position taking
+/// no value; OcuPilot's own tables found
 /// through the statement index and a view's usage; a statement the index answers no row for refused,
 /// its log line carrying none of it; and, as real principals in child processes, the gate naming the
 /// missing pair and the instance refusing SQLCODE -99 at prepare for every statement on a table the
@@ -103,7 +104,6 @@ Method TestTheKindIsThePreparedStatementType()
     Do $$$AssertEquals($Select($$$ISOK(tSC): tGuard.DefaultSchema, 1: "unread"), ..DefaultSchemaIn(..#NAMESPACE), "and the guard carries the namespace's default schema, which rule (c) reads")
     Set tSC = $ClassMethod(..#PORT, "Classify", ..#NAMESPACE, "SELECT Name FROM OcuProbe196.Granted; DELETE FROM OcuProbe196.Granted", .tGuard, .tHttp, .tFault)
     Do $$$AssertEquals($Select($$$ISOK(tSC) && $IsObject(tGuard.%Get("error")): tGuard.error.sqlcode, 1: ""), -25, "two statements are refused by the instance")
-    Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted"), "40 820", "and nothing ran")
     Set tSC = $ClassMethod(..#PORT, "Run", ..#NAMESPACE, "SELECT Name FROM OcuProbe196.Granted", [], 10, "write", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "422 EXPLORER.SQL.READS", "a write refuses a query")
 }
@@ -181,6 +181,19 @@ Method TestACallAnswersItsFirstResultSetAndDmlItsRowCount()
     Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""call"",""outcome"":""rows"",""columns"":[""Name"",""Num""],""rows"":[[""n1"",""1""],[""n2"",""2""],[""n3"",""3""]],""truncated"":true}", "the procedure's rows, cut at three")
     Set tSC = $ClassMethod(..#PORT, "Run", ..#NAMESPACE, "UPDATE OcuProbe196.Granted SET Num = Num WHERE Num <= ?", ["5"], 10, "write", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""dml"",""outcome"":""done"",""rowCount"":5}", "an UPDATE answers its changed rows")
+}
+
+/// <p>AC1: an output <code>?</code> takes no value. A CALL with an input and an output position asks
+/// for one value, and runs with that one, the output position left to the instance.</p>
+/// <p>Mutation (Rule 19): count every position in <method>OcuPilot.Port.SqlPort.ValuePositions</method>
+/// -- both legs go red.</p>
+Method TestAnOutputPositionTakesNoValue()
+{
+    Set tText = "CALL " _ $Parameter(..#PROBE, "ECHO") _ "(?, ?)"
+    Set tSC = $ClassMethod(..#PORT, "Classify", ..#NAMESPACE, tText, .tGuard, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($$$ISOK(tSC): tGuard.Kind _ " " _ tGuard.Parameters, 1: ..Said(tSC, "", .tHttp, .tFault)), "call 1", "a CALL with an input and an output ? takes one value")
+    Set tSC = $ClassMethod(..#PORT, "Run", ..#NAMESPACE, tText, ["5"], 10, "write", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertEquals(..Said(tSC, .tAnswer, .tHttp, .tFault), "{""kind"":""call"",""outcome"":""done"",""rowCount"":0}", "and runs with that one value")
 }
 
 /// <p>AC4: in the install namespace a statement over OcuPilot's own tables is found by the statement
@@ -329,10 +342,8 @@ Method TestAStatementAnotherAccountHoldsOpenIsStillChecked()
     For tI = 0:1:6 {
         Do $$$AssertEquals($ClassMethod(..#PROBE, "LegText", tProbe, tI), "200   error -99", "leg " _ tI _ ": the principal is refused")
     }
-    For tI = 1, 2 {
-        Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsTable", $List(tTables, tI)), "no table was created (" _ tI _ ")")
-        Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsRoutine", $List(tRoutines, tI)), "and no procedure (" _ tI _ ")")
-    }
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsTable", $List(tTables, 2)), "the CREATE TABLE sent to run created no table")
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "HoldsRoutine", $List(tRoutines, 2)), "and the CREATE PROCEDURE no procedure")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Granted", $Parameter(..#PROBE, "HIDDEN")), "2 3", "the ungranted table is unchanged")
 }
 

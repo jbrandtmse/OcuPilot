@@ -193,7 +193,11 @@ export class SqlQueryPage {
       scope: () => this.scope.namespace(),
     };
     const stop = this.state.subscribe(() => this.bump());
-    inject(DestroyRef).onDestroy(() => stop());
+    // A confirmation answers the namespace and statement it was asked for, so leaving the page cancels it.
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      this.state.cancelConfirm();
+    });
   }
 
   protected get text(): string {

@@ -9159,6 +9159,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-5-the-sql-catalog-browser.md | severity: high | fix-risk: med | footprint: in-epic
 - evidence: Story 19.5 plan measurement (DW-1963): an ungranted principal read and updated a table through action/query; 19.5 sends only port-owned statements with bound parameters, so it is unaffected
 - 2026-10-03T01:39:20Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=spec_gate note=design constraint named in epics.md 19.6 and 19.11 (by=merge_gate): prepare in process with privilege checks on
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the console prepares caller SQL in process with privilege checks on (Port/SqlPort, %Prepare(text,1)), never action/query, privileges independent of the statement cache (DW-1986); 19.11's agent tool carries the same constraint in its epics.md block
 
 ### DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck
 - source: spec-18-18-journal-settings.md | severity: med | fix-risk: med | footprint: in-story
@@ -9282,3 +9283,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: SqlPort PASSWORDPATTERN covers IDENTIFY BY / IDENTIFIED BY; a name probe of INFORMATION_SCHEMA.ROUTINES found no password-setting routine (inference: a name probe does not cover the population)
 - 2026-10-03T22:13:40Z status=routed owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=harvest note=lead: the code review settles it from the IRIS SQL reference (statements that accept a password) and widens the refusal if needed
 - 2026-10-03T23:25:12Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=the SQL reference's third form ([WITH] PASSWORD on CREATE/ALTER USER) is refused before prepare (rework e4ebd4c4, with a test)
+
+### DW-2003: Story 19.6's spine clauses claim more than the SQL guard enforces: AD-21's console case and AD-61 omit that a function or procedure a statement calls can name a server path or change state with the statement still typed a query or CALL; AD-61's named limit omits that a held compile can skip a DDL statement's object privileges (inference); AD-8 says the privileges are checked at prepare; AD-10's view limit names INSERT alone
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: SqlPort refuses by statementType only (TYPESSERVERFILES), so CALL %Library.File_FileSet('/durable','*') is type 45 and runs once confirmed for a caller holding EXECUTE (inference for non-%All); spec Design Notes carry the function limit and the held-compile consequence, the spine does not.
+- 2026-10-04T00:06:35Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11's spec gate names these limits in AD-8/10/21/61 and decides whether the agent may call path-taking or state-changing procedures
+- 2026-10-04T00:09:57Z status=resolved-by:19-6-the-query-console-and-its-dml-and-ddl-guard owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=adjudication note=wording corrected at origin by the lead (AD-8 %CHECKPRIV, AD-21 named limit for called functions and procedures, AD-61 held-compile object privileges, AD-10 view limit covers INSERT, UPDATE, DELETE); whether 19.11's agent tool must close the called-routine gap is its plan's question (DW-2004's bullet names it)
+
+### DW-2004: explorer.sqlquery.run's fresh read carries no statement on a screen action (ScreenAction.Run reads with an empty payload), so the GUARD read answers the empty guard and StateDiff and the fingerprint's Kind, StatementType and Tables read empty; an agent proposal's card and fingerprint will need the statement's own guard
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ScreenAction.cls:274 calls Operation.Read(..., pId, "", .tFresh); ExplorerSqlRun.PortQuery quits on a non-object payload, so SqlPort.Invoke GUARD returns EmptyGuard; the real guard is read only inside Prohibited.SqlRun and Run.
+- 2026-10-04T00:06:36Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11 advertises the tool: compose the mint's fresh read from the proposed statement so the card names its kind and tables
+
+### DW-2005: SqlPort.PASSWORDPATTERN's IDENTIFY/IDENTIFIED half matches anywhere, so a read or a change whose text holds the word Identified (a literal or a column) is refused EXPLORER.SQL.PASSWORD
+- source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The pattern's first alternative is unanchored (?is)\bIDENTIF(Y|IED)\b; UPDATE Cases SET Status = 'Identified' is refused before prepare. Fail-closed; a bound ? value is not read, so the word can be sent as a value.
+- 2026-10-04T00:06:36Z status=by-design owner=19-6-the-query-console-and-its-dml-and-ddl-guard by=cr note=spec names IDENTIFY/IDENTIFIED as the pattern's first half (Tasks, Refusals before prepare); reopen only by spec amendment

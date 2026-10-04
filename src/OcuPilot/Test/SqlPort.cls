@@ -1,7 +1,7 @@
 /// <p>Pins <class>OcuPilot.Port.SqlPort</class>'s pure parts and its tool (Story 19.6): the closed kind
 /// table over every statement type number, the DDL privilege table and the instance's knowledge of
 /// each name in it, the bounds and the password refusal held before anything
-/// is prepared, the endpoint and id it serves, the script form, the self-protection rules of
+/// is prepared, the production alarm bound, the endpoint and id it serves, the script form, the self-protection rules of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.SqlStatement</method>,
 /// <class>OcuPilot.Screen.Tool.ExplorerSqlRun</class>'s declarations and value parsing, and a source
 /// pin that the port names no class of the source code API and calls no other port's
@@ -115,6 +115,18 @@ Method TestTheBoundsAreHeldBeforeAnyPrepare()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "400 EXPLORER.SQL.INPUT", "the port refuses an empty statement")
     Set tSC = $ClassMethod(tPort, "Run", "USER", "SELECT 1", tMany, 10, "query", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "400 EXPLORER.SQL.INPUT", "and a run with 101 values")
+}
+
+/// <p>AC6's production bound: the port's own seam answers a number of seconds above 0 and below the
+/// gateway's timeout, read at the call, so a query or a DML statement is stopped before the gateway
+/// gives up on its request.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.SqlPort.BoundSeconds</method> answering 0 -- this goes
+/// red.</p>
+Method TestTheProductionBoundStopsARunBeforeTheGateway()
+{
+    Set tBound = $ClassMethod(..#PORT, "BoundSeconds")
+    Set tGateway = ##class(OcuPilot.Kernel.Provider.TestCall).GatewaySeconds()
+    Do $$$AssertTrue((tBound > 0) && (tBound < tGateway), "the bound, " _ tBound _ " s, lies above 0 and below the gateway's " _ tGateway _ " s")
 }
 
 /// <p>Text that sets a password is read as text and refused 422 <code>EXPLORER.SQL.PASSWORD</code>, in

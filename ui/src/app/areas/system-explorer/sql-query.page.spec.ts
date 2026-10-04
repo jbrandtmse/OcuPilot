@@ -235,6 +235,29 @@ describe('SQL query', () => {
     expect(status(mounted.host)).toBe(STRINGS.explorerSqlRowsChanged.replace('<n>', '40'));
   });
 
+  it('sends Max rows as the run route read it, and a confirmation open when the page goes is gone on return', async () => {
+    const mounted = await mount();
+    mounted.answer = { ok: { outcome: 'confirm', kind: 'dml', statementType: 3, tables: ['OCUPROBE196.GRANTED'] } };
+    const max = el<HTMLInputElement>(mounted.host, 'max-rows');
+    max.value = '0100';
+    max.dispatchEvent(new Event('input'));
+    await type(mounted, 'UPDATE OcuProbe196.Granted SET Num = 3');
+    await run(mounted);
+    expect(mounted.posts[0].body['maxRows']).toBe(100);
+    (dialog()?.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    expect(mounted.sends[0].values?.['maxRows']).toBe('100');
+    await run(mounted);
+    expect(dialog()).not.toBeNull();
+    mounted.fixture.destroy();
+    const again = TestBed.createComponent(SqlQueryPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    expect(dialog()).toBeNull();
+    expect(el<HTMLTextAreaElement>(again.nativeElement, 'statement').value).toBe('UPDATE OcuProbe196.Granted SET Num = 3');
+  });
+
   it('names the consequence of DDL, a CALL and an unclassified statement, and Cancel runs nothing', async () => {
     const mounted = await mount();
     for (const [kind, sentence] of [

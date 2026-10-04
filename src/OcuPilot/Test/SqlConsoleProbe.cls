@@ -4,6 +4,7 @@
 /// (2 rows), the function <parameter>SLOW</parameter> that waits 0.1 s a call, the procedure
 /// <parameter>LEAVEOPEN</parameter> that starts a transaction and leaves it open, the procedure
 /// <parameter>LISTING</parameter> that answers <parameter>GRANTED</parameter>'s rows as a result set,
+/// the procedure <parameter>ECHO</parameter> that copies its input parameter to its output parameter,
 /// and the function <parameter>HIDDENCOUNT</parameter>, which no principal may execute -- and, in
 /// the install namespace, the view <parameter>OWNVIEW</parameter> over OcuPilot's own proposal
 /// table.</p>
@@ -39,6 +40,8 @@ Parameter LISTING = "OcuProbe196.Listing";
 
 Parameter HIDDENCOUNT = "OcuProbe196.HiddenCount";
 
+Parameter ECHO = "OcuProbe196.Echo";
+
 /// <p>The view over OcuPilot's own proposal table, made in the install namespace.</p>
 Parameter OWNVIEW = "OcuProbe196.OwnView";
 
@@ -71,7 +74,8 @@ ClassMethod Make() As %Status
         "CREATE FUNCTION " _ ..#SLOW _ "(IN p INT) RETURNS INT LANGUAGE OBJECTSCRIPT { Hang 0.1 Quit p }",
         "CREATE PROCEDURE " _ ..#LEAVEOPEN _ "() LANGUAGE OBJECTSCRIPT { TSTART }",
         "CREATE PROCEDURE " _ ..#LISTING _ "() DYNAMIC RESULT SETS 1 LANGUAGE OBJECTSCRIPT { Set tRows = ##class(%SQL.Statement).%ExecDirect(, ""SELECT Name, Num FROM " _ ..#GRANTED _ " ORDER BY Num"") Do %sqlcontext.AddResultSet(tRows) }",
-        "CREATE FUNCTION " _ ..#HIDDENCOUNT _ "() RETURNS INT LANGUAGE OBJECTSCRIPT { Quit 0 }"
+        "CREATE FUNCTION " _ ..#HIDDENCOUNT _ "() RETURNS INT LANGUAGE OBJECTSCRIPT { Quit 0 }",
+        "CREATE PROCEDURE " _ ..#ECHO _ "(IN pIn INT, OUT pOut INT) LANGUAGE OBJECTSCRIPT { Set pOut = pIn }"
     )
     Set tOrigNS = $NAMESPACE
     Try {
@@ -121,7 +125,7 @@ ClassMethod Remove() As %Status
     Try {
         For tNamespace = tHome, ..#NAMESPACE {
             Set $NAMESPACE = tNamespace
-            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP FUNCTION " _ ..#SLOW, "DROP FUNCTION " _ ..#HIDDENCOUNT, "DROP PROCEDURE " _ ..#LEAVEOPEN, "DROP PROCEDURE " _ ..#LISTING, "DROP TABLE " _ ..#GRANTED _ " CASCADE", "DROP TABLE " _ ..#HIDDEN _ " CASCADE" {
+            For tDrop = "DROP VIEW " _ ..#OWNVIEW, "DROP FUNCTION " _ ..#SLOW, "DROP FUNCTION " _ ..#HIDDENCOUNT, "DROP PROCEDURE " _ ..#LEAVEOPEN, "DROP PROCEDURE " _ ..#LISTING, "DROP PROCEDURE " _ ..#ECHO, "DROP TABLE " _ ..#GRANTED _ " CASCADE", "DROP TABLE " _ ..#HIDDEN _ " CASCADE" {
                 Do ##class(%SQL.Statement).%ExecDirect(, tDrop)
             }
             Do $System.OBJ.DeletePackage(..#SCHEMA, "-d")

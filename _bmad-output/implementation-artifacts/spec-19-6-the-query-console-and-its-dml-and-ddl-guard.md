@@ -218,6 +218,34 @@ deferred: []
 - **AC9 (Integration, Rule 1):** Given the console in USER on the real instance, when the person confirms `CREATE TABLE OcuProbe196.Made (X INTEGER)`, then SQL tables (Story 19.5) lists `OcuProbe196.Made` and its Fields tab reads `X`.
 - **DW-1964:** Given a principal with `%Development:USE` and `%DB_USER:RW` granted SELECT on one probe table only, when it runs SELECT, UPDATE, TRUNCATE, CREATE TABLE and CALL against the other through the console's run route and its write path, then each answers SQLCODE -99 and the table is unchanged. No console path calls `action/query` (the `SqlPort` source pin).
 
+### Review Findings
+
+Code review 2026-10-03 (full-opus, four layers): 57 rows, 15 entries (high 0, medium 5, low 10); 12 patched, 2 routed, 1 by-design.
+
+- [x] [Review][Patch] (medium) The Home tile roster still names nine System Explorer screens; CI run 37157693521 shard 3 red [ui/browser/system-explorer.browser-spec.mjs:136]
+- [x] [Review][Patch] (medium) The production alarm bound is pinned by no test, only the fixture's [src/OcuPilot/Test/SqlPort.cls:125]
+- [x] [Review][Patch] (medium) An output or return-value `?` taking no value is untested [src/OcuPilot/Test/SqlPortLive.cls:190]
+- [x] [Review][Patch] (low) Three summary assertions cannot fail ("nothing ran", "nothing changed", the classified table and procedure) [src/OcuPilot/Test/SqlPortLive.cls:345]
+- [x] [Review][Patch] (low) `PASSWORDPATTERN`'s doc says a `Password` column elsewhere passes; a CREATE or ALTER naming USER is refused [src/OcuPilot/Port/SqlPort.cls:86]
+- [x] [Review][Patch] (low) `DDLPRIVILEGES` leaves DROP VIEW out without saying why (`%DROP_VIEW` or DELETE) [src/OcuPilot/Port/SqlPort.cls:94]
+- [x] [Review][Patch] (low) The class doc says each statement is released before the restore; only the caller's is [src/OcuPilot/Port/SqlPort.cls:18]
+- [x] [Review][Patch] (low) An unreadable or absent body answered `AGENT.BADBODY` ("or no body at all"), not `EXPLORER.SQL.INPUT` [src/OcuPilot/Area/Explorer/SqlConsole.cls:112]
+- [x] [Review][Patch] (low) `DeveloperFloorRoutes` says `DeveloperFloor` sends both console routes; it sends the run route [src/OcuPilot/Test/DeveloperFloorRoutes.cls:5]
+- [x] [Review][Patch] (low) EXPERIENCE.md :159's story list omits 19.6 [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:159]
+- [x] [Review][Patch] (low) A confirmation open when the page is destroyed is redrawn on return, and Proceed then runs in the current namespace [ui/src/app/areas/system-explorer/sql-query.page.ts:199]
+- [x] [Review][Patch] (low) Max rows `0100` passes the run route and is refused after Proceed [ui/src/app/areas/system-explorer/sql-query.store.ts:295]
+- [x] [Review][Defer] (medium) Spine clauses claim more than the guard enforces: a called function or procedure can name a server path or change state; a held compile can skip DDL object privileges (inference); "checked at prepare"; AD-10's view limit names INSERT alone [src/OcuPilot/Port/SqlPort.cls:111] — deferred: DW-2003 routed to 19.11 (the spine names the limits at its gate); the code docs in `SqlConsole` and `ExplorerSqlRun` were corrected here
+- [x] [Review][Defer] (medium) A screen action's fresh read carries no statement, so the guard, `StateDiff` and the fingerprint's guard fields read empty [src/OcuPilot/Screen/Tool/ExplorerSqlRun.cls:43] — deferred: DW-2004 routed to 19.11 (the agent's card and fingerprint); the docs were corrected here
+- [x] [Review][Defer] (low) The `IDENTIFY`/`IDENTIFIED` half matches anywhere, refusing text holding "Identified" [src/OcuPilot/Port/SqlPort.cls:86] — deferred: DW-2005 by-design (the spec names that half; a bound value is not read)
+
+Rejected:
+
+- false: DROP VIEW reuses a held compile (measured -99 held, Design Notes); a held compile skips `%NOTRIGGER` (measured on a2-ci 2026-10-03: a DELETE holder lacking it was -99 fresh and held, prepare and run, no row deleted); CREATE TABLE AS SELECT through a view records no relation (measured: it records the view and its base table); Explain runs an `EXPLAIN STAT` text (measured: refused -481).
+- spec-bound: the port's -99 names no privilege; unnamed types confirm; dialog and singular-count wording; DDL, CALL and other run unbounded; a CALL's output values unshown; the Design Notes strings are stale (a spec edit).
+- closed in the triage log, reason holds: a stopped DML statement reads undone; the `changed` outcome is blank.
+- theoretical: the alarm firing between a DML statement's return and the clear; a view redefined between classification and run; a class- or routine-typed `RUN` tool reaching `SqlRun` (today's other `RUN` tools are task-typed); maximum inputs past the string limit; rule (c) with an `OcuPilot` default schema (unqualified DDL target, error guards); a `Snippet` with no namespace.
+- low: a bound value reaching OcuPilot's globals through a procedure (the named gap; AD-9 protects them); an empty DML table list; a fifth prepare at read-back; an empty value binding NULL; the bad-input test's "before any prepare" unpinned; an alarm as an `%Exception.SQL`; an over-long body answering 500; per-store state untested; CREATE TABLE and CALL pinned at the port, not the run route.
+
 ## Spec Change Log
 
 - 2026-10-03, lead (rework 1, merge-gate rulings): re-opened for three `[Follow-up]` items (DW-1986 cache-independent privileges, DW-1987 view-only grant, DW-1988 password syntax) before dev_complete closes.
@@ -549,6 +577,11 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: DW-1986, `%CREATE_FUNCTION` misspelt in `SqlPort.DDLPRIVILEGES` → `SqlPort.TestEveryDdlPrivilegeIsNamedAndKnown`, its roster and known-name legs (run 4350).
 - mutation: DW-1986, the statement released after the namespace is restored in `SqlPort.Prepared` → `SqlPortLive.TestTheConsoleLeavesNoCachedDdlCompileBehind`, the classified leg alone (run 4340); in `SqlPort.Executed` → its run leg alone (run 4341).
 - mutation: DW-1988, the `PASSWORD` alternative dropped from `SqlPort.PASSWORDPATTERN` → `SqlPort.TestAPasswordStatementIsRefusedByItsText`, its three `PASSWORD` legs (run 4351); reduced to the bare word `PASSWORD` → its two column legs (run 4352).
+- (QA) gap review: every AC and DW row has a real-runtime pin and a recorded red mutation; no test added. Re-ran on a2-ci after a clean reload: SqlPortLive 13/13 (run 4357), SqlConsoleRoutes 7/7 (run 4358).
+- mutation: AC6's production bound, `SqlPort.BoundSeconds` answering 0 → `SqlPort.TestTheProductionBoundStopsARunBeforeTheGateway` (run 4360).
+- mutation: AC1's output position, `SqlPort.ValuePositions` counting every position → `SqlPortLive.TestAnOutputPositionTakesNoValue`, both legs (run 4362).
+- mutation: the page's cancel-on-destroy removed → `sql-query.page.spec.ts`, "sends Max rows as the run route read it, and a confirmation open when the page goes is gone on return", its dialog leg; Proceed's Max rows normalisation removed → its Max rows leg (vitest).
+- (CR) after the review's patches, on a2-ci one class per call: SqlPort 11/11 (4365), SqlPortLive 14/14 (4366), SqlConsoleWrite 6/6 (4363), SqlConsoleRoutes 7/7 (4364); `sql-query.page.spec.ts` 11/11; `test:tools` 1781/1781; on the redeployed bundle `system-explorer.browser-spec.mjs` 4/4 and `system-explorer-sql-query.browser-spec.mjs` 2/2.
 
 ## Auto Run Result
 

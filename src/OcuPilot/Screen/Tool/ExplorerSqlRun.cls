@@ -12,8 +12,10 @@
 /// (<code>EXPLORER.SQL.READS</code>), and the kernel judges it by
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.SqlStatement</method> inside the target's hold.</p>
 /// <p><b>It is destructive</b>: a change made by SQL cannot be undone from OcuPilot. It declares no
-/// pair beyond its screen's own (AD-8): the statement's SQL privileges are checked at its prepare, and
-/// the databases it writes are the instance's to refuse. Its answer -- rows, a row count, an SQL error
+/// pair beyond its screen's own (AD-8): the statement's SQL privileges are the instance's at its
+/// prepare, with the system privilege of a DDL type the port lists asked of the instance by the port
+/// (<method>OcuPilot.Port.SqlPort.Classify</method>), and the databases it writes are the instance's to
+/// refuse. Its answer -- rows, a row count, an SQL error
 /// -- reaches the screen only (<method>WriteOutput</method>, AD-39's sixth exception). It declares no
 /// <parameter>CLASSICPAGES</parameter>: the descriptor's own classic page performs it (AD-44).</p>
 Class OcuPilot.Screen.Tool.ExplorerSqlRun Extends OcuPilot.Screen.Tool.Write
@@ -35,7 +37,9 @@ Parameter SCREENACTIONS = "run";
 
 Parameter SCREENVALUES = "run=statement:parameters:maxRows";
 
-/// <p>The fresh read: the statement's guard, with the three declared values empty beside it.</p>
+/// <p>The fresh read: the guard of the statement the payload carries, with the three declared values
+/// empty beside it. A screen action's fresh read carries no payload, so it answers the empty guard
+/// after the gate; the statement is classified inside the prohibited check and again by the run.</p>
 Parameter READTYPE = "GUARD";
 
 Parameter WRITETYPE = "RUN";
@@ -82,7 +86,7 @@ ClassMethod IdParam() As %String
 }
 
 /// <p>The screen's own pairs, the classic SQL page's custom resource among them, and nothing beyond
-/// them (AD-8, AD-44): the statement's SQL privileges are checked at its prepare.
+/// them (AD-8, AD-44): the statement's SQL privileges are the port's and the instance's to check.
 /// <var>pResolved</var> is 0 when the screen's pairs cannot be read.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
@@ -168,8 +172,9 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     If pPayload.%GetTypeOf($Parameter(tPort, "MAXROWSKEY")) = "number" Set pQuery($Parameter(tPort, "MAXROWSKEY")) = pPayload.%Get($Parameter(tPort, "MAXROWSKEY"))
 }
 
-/// <p>The state the run moves: the statement's kind and the tables the instance records for it, read
-/// by the guard.</p>
+/// <p>The state the run moves: the statement's kind and the tables the instance records for it, as
+/// the fresh read's guard answers them, which are empty for a screen action's fresh read
+/// (<parameter>READTYPE</parameter>).</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pRows = []
