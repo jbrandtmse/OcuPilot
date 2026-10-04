@@ -312,6 +312,10 @@ services:
       # with and without the system database's write, and writes probe license servers as them
       # (Story 18.6).
       # classes: LicenseWriteGate
+      # The ECP data server gate class signs in as probe principals holding ECP data servers' pairs,
+      # with and without the system database's write and %Admin_Operate, and writes probe data servers
+      # and changes their status as them (Story 18.20).
+      # classes: EcpWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -477,6 +481,9 @@ services:
       # It also creates and removes the OCUPROBE185D database, with its %DB_OCUPROBE185D resource and
       # <mgr>ocuprobe185d directory, and writes journaled records into it (Story 18.19).
       # classes: JournalRecordDetail, JournalRecords
+      # It also creates and removes the OCUPROBEECPR remote database configuration on an OCUPROBEECP*
+      # ECP data server, configuration only and never contacted (Story 18.20).
+      # classes: EcpDataServerWrite
       OCUPILOT_ALLOW_DATABASE_CONFIG: "1"
       # Switches this instance's journal file and journal directory through the shipped screen and
       # confirm paths, and seeds an alternate journal directory to switch into. Its own variable
@@ -499,6 +506,14 @@ services:
       # key: the activation reaches only a seam port that sends nothing (Story 18.6).
       # classes: LicenseServerWrite, LicenseWriteGate
       OCUPILOT_ALLOW_LICENSE_CONFIG: "1"
+      # Creates, edits and deletes ECP data servers in this instance's own configuration, and changes
+      # their status to Disabled and back to Not Connected, through the shipped Save, row-action and
+      # confirm paths. Its own variable because no narrower one names that effect: a data server entry
+      # tells the instance where to connect as an ECP application server. The classes touch only
+      # OCUPROBEECP* servers at a TEST-NET-1 address, each by exact name, open no ECP connection, and
+      # never send Action 3: Normal reaches only a seam port that sends nothing (Story 18.20).
+      # classes: EcpDataServerStatus, EcpDataServerWrite, EcpWriteGate
+      OCUPILOT_ALLOW_ECP_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

@@ -62,6 +62,11 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>License.Server</code>'s three rows <code>ordinary</code>; each tool admits <code>Address</code>
 /// and <code>Port</code>, and <code>KeyDirectory</code> is shown and never set (AD-21). The vendor
 /// stores both as sent, so neither declares a <code>compare</code> (measured at the story's Task 0).</p>
+/// <p><b><code>osmgmt.ecpdataservers.create</code></b> and <b><code>.update</code></b> (Story 18.20)
+/// classify <code>ECP.DataServer</code>'s five rows <code>ordinary</code>. The vendor answers
+/// <code>SSLConfig</code> and <code>BatchMode</code> as booleans, and the read-back's default rule reads
+/// a sent 1 equal to a read <code>true</code>, so neither declares a <code>compare</code> (measured at
+/// the story's Task 0).</p>
 /// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
@@ -650,6 +655,26 @@ XData Entries
       "Address": "ordinary",
       "Port": "ordinary",
       "KeyDirectory": "ordinary"
+    }
+  },
+  "osmgmt.ecpdataservers.create": {
+    "fieldList": "ECP.DataServer",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "MirrorConnection": "ordinary",
+      "SSLConfig": "ordinary",
+      "BatchMode": "ordinary"
+    }
+  },
+  "osmgmt.ecpdataservers.update": {
+    "fieldList": "ECP.DataServer",
+    "classification": {
+      "Address": "ordinary",
+      "Port": "ordinary",
+      "MirrorConnection": "ordinary",
+      "SSLConfig": "ordinary",
+      "BatchMode": "ordinary"
     }
   },
   "security.oauthserverdescriptions.create": {

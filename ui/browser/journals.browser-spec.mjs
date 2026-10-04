@@ -274,8 +274,8 @@ test('AC1, AC11: Journals is the thirteenth OS management entry, Logs lists no j
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    // Story 18.6: License key and License servers follow Journal settings.
-    assert.equal(bar.entries.length, 16, `sixteen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.6: License key and License servers follow Journal settings; Story 18.20: ECP data servers follows them.
+    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
     // Story 18.18: Journal settings follows it.
     assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');

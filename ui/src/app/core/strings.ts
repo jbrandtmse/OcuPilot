@@ -5174,6 +5174,70 @@ export const STRINGS = {
   explorerSqlBackgroundNotFoundReason: 'No background run of yours has this id; an ended run is kept for 15 minutes.',
   /** EXPERIENCE.md:597 */
   explorerSqlBackgroundLostReason: 'The background run ended without an answer; run it again.',
+  // Story 18.20: ECP data servers, OS management's seventeenth entry, its form, its Change status
+  // dialog, its delete body and the delete's impact phrases.
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListLabel: 'ECP data servers',
+  /** EXPERIENCE.md:375 */
+  aboutEcpDataServer: 'ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListEmpty: 'No ECP data servers on this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListEmptyAgent: 'create an ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormRefusedAction: 'change this ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerMirrorConnection: 'Mirror connection',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerUseSsl: 'Use SSL/TLS',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerBatchMode: 'Batch mode',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerMirrorHint: 'Connects to the mirror\'s primary. Once set, it cannot be turned off here.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerSslHint: 'Uses the %ECPClient SSL/TLS configuration.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerChangeStatus: 'Change status',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerStatusTitle: 'Change the status of <name>',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerCurrentStatus: 'Current status: <status>',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerNotConnected: 'Not connected',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerCurrentReason: 'This is its current status.',
+  /** EXPERIENCE.md:375 */
+  ecpLicenseRefusal: 'This instance\'s license does not include ECP.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerDisconnectConsequence:
+    'Setting a data server to Not connected or Disabled sends an error to every application awaiting its replies, purges its cached blocks, releases its locks and rolls back its transactions.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerConnectConsequence: 'Setting this data server to Normal connects this instance to it.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerStatusCaveat: 'Each status is what the instance reported when this list was read.',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt1: 'Which ECP data servers is this instance configured to connect to?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt2: 'What does each ECP data server\'s status mean?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerListPrompt3: 'Which remote databases use each ECP data server?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt1: 'What address and port should this ECP data server use?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt2: 'When should an ECP data server use a mirror connection?',
+  /** EXPERIENCE.md:375 */
+  ecpDataServerFormPrompt3: 'What does batch mode change for an ECP data server?',
+  /** EXPERIENCE.md:479 */
+  ecpDataServerDeleteConsequence:
+    'Deleting this ECP data server removes it from this instance\'s configuration. This cannot be undone.',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUse: '<n> remote databases use it and must be deleted or moved first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseOne: '1 remote database uses it and must be deleted or moved first: <names>',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseNone: 'no remote database uses it',
+  /** EXPERIENCE.md:577 */
+  impactRemoteDatabasesUseUnchecked: 'which remote databases use it was not checked',
 } as const;
 
 /**

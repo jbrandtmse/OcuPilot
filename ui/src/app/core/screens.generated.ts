@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -509,7 +509,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "journal-settings",
   "journal-record",
   "license-key",
-  "license-server"
+  "license-server",
+  "ecp-data-server"
 ];
 
 /**
@@ -551,7 +552,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "routine": "documentset",
   "journal-settings": "singleton",
   "license-key": "singleton",
-  "license-server": "foldcase"
+  "license-server": "foldcase",
+  "ecp-data-server": "foldcase"
 };
 
 /**
@@ -4002,6 +4004,242 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpDataServerForm",
+    "route": "os-management/ecp-data-servers/edit",
+    "area": "os-management",
+    "labelKey": "aboutEcpDataServer",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ecp-data-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.ECPDataServer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.ecpdataserverform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpDataServerList",
+    "route": "os-management/ecp-data-servers",
+    "area": "os-management",
+    "labelKey": "ecpDataServerListLabel",
+    "sideBarPosition": 17,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ecp-data-server",
+    "entityLabelKey": "aboutEcpDataServer",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "changestatus",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "RemoteAddress",
+        "RemotePort",
+        "Status",
+        "MirrorConnection",
+        "SSLConfig",
+        "BatchMode"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ecpDataServerListEmpty",
+    "commandAliases": [
+      "ecp data servers",
+      "create ecp data server"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerListPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerListPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpDataServerListPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECPDataServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.DataServer",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "RemoteAddress",
+        "RemotePort",
+        "Status",
+        "MirrorConnection",
+        "SSLConfig",
+        "BatchMode"
+      ],
+      "filter": [
+        "Name",
+        "RemoteAddress",
+        "RemotePort",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "RemoteAddress",
+          "RemotePort",
+          "Status"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "RemoteAddress",
+          "labelKey": "languageServerFieldAddress",
+          "kind": "identifier"
+        },
+        {
+          "field": "RemotePort",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "MirrorConnection",
+          "labelKey": "ecpDataServerMirrorConnection",
+          "kind": "status"
+        },
+        {
+          "field": "SSLConfig",
+          "labelKey": "sslListLabel",
+          "kind": "status"
+        },
+        {
+          "field": "BatchMode",
+          "labelKey": "ecpDataServerBatchMode",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "ecpDataServerListEmptyAgent"
+    },
+    "toolIdentifier": "osmgmt.ecpdataservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",

@@ -215,7 +215,8 @@ test('A1, A7: License key is the fifteenth OS management entry, shows the thirte
     await fieldsDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 16, `sixteen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.20: ECP data servers follows License servers.
+    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
     assert.equal(bar.entries[14], STRINGS.licenseKeyLabel, 'License key is the fifteenth');
     const labels = await page.$$eval('[data-license="fields"] .ocu-details-field-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [

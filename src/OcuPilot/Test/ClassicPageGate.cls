@@ -72,10 +72,13 @@ Parameter ALLTOOL = "osmgmt.namespaces.enableinterop";
 /// and the database file edit, the truncate, the service update and the two document exports declare
 /// none of their own; Story 18.4's dismount, whose classic page performs it itself, declares no
 /// page.</p>
-Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE,explorer.classes.compile=%DB_HSCUSTOM:WRITE,explorer.routines.compile=%DB_HSCUSTOM:WRITE,osmgmt.remotedatabases.create=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.update=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.delete=%DB_IRISSYS:WRITE,explorer.classes.export=,explorer.routines.export=,explorer.classes.import=%DB_HSCUSTOM:WRITE,explorer.routines.import=%DB_HSCUSTOM:WRITE,osmgmt.journals.switchfile=,osmgmt.journals.switchdirectory=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.journals.integrity=,osmgmt.licensekey.activate=";
+Parameter OWNPAIRS = "osmgmt.localdatabases.create=%DB_IRISSYS:WRITE|%Admin_Secure:USE|%Admin_FileSystemAccess:USE,osmgmt.localdatabases.updatemount=%DB_IRISSYS:WRITE,osmgmt.localdatabases.update=,osmgmt.localdatabases.delete=%DB_IRISSYS:WRITE,osmgmt.namespaces.create=%DB_IRISSYS:WRITE,osmgmt.namespaces.update=%DB_IRISSYS:WRITE,osmgmt.namespaces.delete=%DB_IRISSYS:WRITE|%Admin_Secure:USE,osmgmt.namespaces.copymappings=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.globalmappings.create=%DB_IRISSYS:WRITE,osmgmt.globalmappings.update=%DB_IRISSYS:WRITE,osmgmt.routinemappings.create=%DB_IRISSYS:WRITE,osmgmt.routinemappings.update=%DB_IRISSYS:WRITE,osmgmt.packagemappings.create=%DB_IRISSYS:WRITE,osmgmt.packagemappings.update=%DB_IRISSYS:WRITE,osmgmt.databasedetails.mount=%Admin_Secure:USE,osmgmt.databasedetails.truncate=,osmgmt.databasedetails.compact=%DB_IRISSYS:WRITE,osmgmt.databasedetails.defragment=%DB_IRISSYS:WRITE,osmgmt.databases.integrity=%Admin_Operate:USE|%DB_IRISSYS:WRITE,osmgmt.localdatabases.grow=%Admin_Operate:USE,osmgmt.localdatabases.expand=%Admin_Operate:USE,tasks.schedule.export=%Admin_FileSystemAccess:USE,tasks.schedule.import=%Admin_FileSystemAccess:USE,osmgmt.languageservers.start=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.stop=%Admin_ExternalLanguageServerEdit:USE,osmgmt.languageservers.create=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.languageservers.update=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.locks.remove=%DB_IRISSYS:WRITE,osmgmt.locks.removeprocess=%DB_IRISSYS:WRITE,osmgmt.locks.removeclient=%DB_IRISSYS:WRITE,permissions.services.update=,security.ldap.update=,security.ldap.create=,security.ldap.password=,osmgmt.namespaces.enableinterop=%All:USE|%Admin_Operate:USE,explorer.classes.compile=%DB_HSCUSTOM:WRITE,explorer.routines.compile=%DB_HSCUSTOM:WRITE,osmgmt.remotedatabases.create=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.update=%DB_IRISSYS:WRITE,osmgmt.remotedatabases.delete=%DB_IRISSYS:WRITE,explorer.classes.export=,explorer.routines.export=,explorer.classes.import=%DB_HSCUSTOM:WRITE,explorer.routines.import=%DB_HSCUSTOM:WRITE,osmgmt.journals.switchfile=,osmgmt.journals.switchdirectory=%DB_IRISSYS:WRITE|%Admin_Manage:USE,osmgmt.journals.integrity=,osmgmt.licensekey.activate=,osmgmt.ecpdataservers.create=%DB_IRISSYS:WRITE,osmgmt.ecpdataservers.update=%DB_IRISSYS:WRITE,osmgmt.ecpdataservers.changestatus=%Admin_Operate:USE";
 
 /// <p>The agent's document import keys, which the baseline disables too (Story 19.13).</p>
 Parameter EXPLORERIMPORTKEYS = "explorer.classes.import,explorer.routines.import";
+
+/// <p>The agent's ECP data server status change key, which the baseline disables too (Story 18.20).</p>
+Parameter ECPSTATUSKEY = "osmgmt.ecpdataservers.changestatus";
 
 /// <p>The throwaway principals' password, generated for the run.</p>
 Property PreparedPassword As %String;
@@ -144,7 +147,7 @@ Method TestWithNoAssignmentEachToolsPairsAreItsDeclaredSet()
 {
     Set tSC = ..Roster(.tRoster, .tTools)
     Do $$$AssertStatusOK(tSC, "the declaring tools are read from the registry")
-    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the forty-eight OWNPAIRS names")
+    Do $$$AssertEquals($ListToString(tTools), $ListToString(..Declared()), "the tools declaring a replaced classic page are the fifty-one OWNPAIRS names")
     For tI = 1:1:$ListLength(tTools) {
         Set tName = $List(tTools, tI)
         Kill tTool
@@ -545,6 +548,7 @@ Method EnableDelete() As %Status
     For tI = 1:1:$Length(..#EXPLORERIMPORTKEYS, ",") {
         Set tSettings($Piece(..#EXPLORERIMPORTKEYS, ",", tI)) = "enabled"
     }
+    Set tSettings(..#ECPSTATUSKEY) = "enabled"
     Quit ##class(OcuPilot.Test.GovernanceFixture).Apply("", .tSettings)
 }
 

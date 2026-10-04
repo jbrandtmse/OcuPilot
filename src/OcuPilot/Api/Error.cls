@@ -1223,6 +1223,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If tReason '= "" Quit tReason
     If $Extract(pCode, 1, 8) = "JOURNAL." Set tReason = ##class(OcuPilot.Api.JournalError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "LICENSE." Set tReason = ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "ECP." Set tReason = ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1421,6 +1422,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 15) = "LANGUAGESERVER." Quit ..ReasonForLanguageServer(pCode)
     If $Extract(pCode, 1, 8) = "JOURNAL." Quit ##class(OcuPilot.Api.JournalError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "LICENSE." Quit ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 4) = "ECP." Quit ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     Quit ""
 }
 
