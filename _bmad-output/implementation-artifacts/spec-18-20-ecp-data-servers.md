@@ -2,7 +2,7 @@
 title: 'Story 18.20: ECP data servers'
 type: 'feature'
 created: '2026-10-03'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '9acde1e7a17f5eefb529e401d95d4ca519999fc5'
 followup_review_recommended: false
@@ -92,10 +92,11 @@ deferred: []
 | Update | `OCUPROBEECPA`, Port 1973, BatchMode on | The complete set read fresh is sent, with two diff rows. A stored non-zero `MirrorConnection` is sent unchanged. | none |
 | Field refusals | Name `1 a`, `ocuprobeecpa` (taken), 65 characters; Address empty or `my host`; Port 0, 65536 or `x`; `MirrorConnection` 2, or 0 over a stored 1 | Refused on the field before any vendor write, on both callers | `ECP.DATASERVER.NAME.SHAPE`, `.NAME.TAKEN`, `.ADDRESS`, `.PORT`, `.MIRROR` |
 | SSL without a client configuration | `SSLConfig` 1, with `%ECPClient` absent (stock) | Refused on `SSLConfig`; nothing is stored | `ECP.DATASERVER.SSLCLIENT` |
-| Server limit | The configured data servers reach `AppServerSettings.MaxServers`, read from `ECP.Settings` (2 on a stock instance, never hard-coded) | The create is refused before any vendor write, with a sentence naming the limit; no `PUT`, no audit event, no log line | 409 `ECP.SERVER.LIMIT` |
+| Server limit, caller holds `%Admin_Secure:USE` | The configured data servers reach `AppServerSettings.MaxServers`, read from `ECP.Settings` (2 on a stock instance, never hard-coded) | The create is refused before any vendor write, with a sentence naming the limit; no `PUT`, no audit event, no log line | 409 `ECP.SERVER.LIMIT` |
+| Server limit, caller without `%Admin_Secure:USE` | The same, for a caller holding exactly the create's declared pairs | The create reaches the vendor, whose 500 #456 maps to the same refusal and sentence; nothing is stored, and the vendor leaves its "Create section ECPServer" audit event and one severity-2 log line | 409 `ECP.SERVER.LIMIT` |
 | Delete, unused | `OCUPROBEECPB`, through the typed-name dialog or a confirmed proposal | `DELETE /ecp/data-server` is sent, and the row leaves the list | none |
 | Delete, in use | Remote database `OCUPROBEECPR` (seeded) uses `OCUPROBEECPA` | The advisory names `OCUPROBEECPR` when the dialog opens or the proposal is minted. The vendor refuses the delete, and the server stays. | 409 `ECP.DATASERVER.INUSE` |
-| Disable, real | `OCUPROBEECPA` reads Not Connected; choose Disabled in the dialog, or confirm a proposal | `SERVERACTION {Action:2}` is queued and polled within the bound. The list shows Disabled, the read-back reads `matches`, and `messages.log` gains no ERROR #7846. No ECP process starts. | none |
+| Disable, real | `OCUPROBEECPA` reads Not Connected; choose Disabled in the dialog, or confirm a proposal | `SERVERACTION {Action:2}` is queued and polled within the bound. The list shows Disabled, the read-back reads `nothingSent` (AD-58: the write sends no value), and `messages.log` gains no ERROR #7846. No ECP process starts. | none |
 | Back to Not connected, real | From Disabled | `{Action:1}`; the list shows Not Connected | none |
 | Same status | Not connected while it reads Not Connected | Refused at once. No `SERVERACTION` is sent, and no task row is written. | 422 `ECP.STATUS.SAME` on Status |
 | Normal, unlicensed (real) | `ocupilot-b-ci` (`NetworkEnabled()` 0) | The dialog draws Normal `aria-disabled` with the license sentence. A screen action or a proposal sent anyway is refused at once, with nothing queued. | 422 `ECP.LICENSE` on Status |
@@ -529,6 +530,8 @@ deferred: []
   - EXPERIENCE.md reads 1005 lines.
 
 ## Spec Change Log
+
+- 2026-10-03, orchestrator (merge gate, second halt): ruling 2 amended to option (b) -- `EcpPort` runs the `MaxServers` pre-check only when the caller holds `%Admin_Secure:USE`, which the `ECP.Settings` read needs; otherwise the create reaches the vendor and its 500 #456 maps to 409 `ECP.SERVER.LIMIT` with the same sentence; the create's declared pairs stay `%DB_IRISSYS:WRITE`; both paths are pinned, each with a fill-to-limit test, and `EcpWriteGate`'s create-pair test passes for a caller holding exactly the declared pairs. The runner amended AD-52 and corrected the "Disable, real" row to `nothingSent` (AD-58). Pass 2's work is the local commit `05af2074`.
 
 - 2026-10-03, orchestrator (merge gate, Task 0 halt): the port-70000 connection line is a Task 0 probe artifact; probe data servers use TEST-NET-1 (`192.0.2.0/24`) with an in-range port; `ECP.SERVER.LIMIT` (409) refuses a create past `AppServerSettings.MaxServers` before any vendor write; each write's two severity-0 `messages.log` lines are declared; the measured pairs stand, Decision 1's `%Admin_Secure:USE` is dropped and #1454 maps to a refusal. The runner wrote AD-8, AD-13, AD-15, AD-52 and AD-53; the spec is re-opened at Task 0 step 10.
 
