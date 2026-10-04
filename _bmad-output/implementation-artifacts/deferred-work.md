@@ -9476,6 +9476,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ci run 37181343435 (browser shard 1/3, head f63a048b) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: No element found for selector .ocu-detail-tab[data-route=system-explorer/sql-tables/fields] at :180, right after waitForFunction(location.pathname === document route); the same leg passed on Epic 19's own runs (13742bbb, 79273d02). Story 18.20 changes no shell or tab code (first sighting).
 - 2026-10-04T06:55:48Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; wait for the tab element before focusing it
+- 2026-10-04T08:45:29Z occurrence=range-end-cleanup note=second sighting on OCU-1-epic18: run 37187414647 (76df3dc8) browser shard 1/3, same leg and selector; passes 2/2 on ocupilot-b-ci against 76df3dc8's bundle
 
 ### DW-2026: a11y-structural-invariants.browser-spec.mjs failed all 12 legs on CI with 'Runtime.callFunctionOn timed out' (protocol timeout, 730 s)
 - source: ci run 37184530521 (browser shard 1/3, head a3f957b2) | severity: low | fix-risk: low | footprint: in-epic
