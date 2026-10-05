@@ -105,6 +105,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 18.21: the SSL/TLS authorizations tab, whose Authorize and Reject each warn first and whose
   // Delete types the SSL computer name.
   'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
+  // Story 19.17: Document databases, whose Drop types the database's name.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
 ];
 
 /**
@@ -455,6 +457,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 18.22: a key's Deactivate types its identifier and states what deactivating it costs.
   [DATABASE_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateConsequence },
   [DATA_ELEMENT_ENCRYPTION_KEYS]: { [ENCRYPTION_DEACTIVATE]: STRINGS.encryptionKeyDeactivateDataElementConsequence },
+  // Story 19.17: a document database's Drop types its name.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
 };
 
 /**

@@ -205,6 +205,17 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tCodePair = $ListBuild(##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), "WRITE")
             If '$ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerExport") && '$ListFind(tExpected, tCodePair) Set tExpected = tExpected _ $ListBuild(tCodePair)
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDocDbWrite") {
+            ; Story 19.17: Document databases' create and drop declare WRITE on the routines and
+            ; globals databases of the request's namespace, here this one's, after their screen's
+            ; pairs, each once (AD-8 as amended 2026-10-05).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tResource = ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), tGlobalResource {
+                Set tWritePair = $ListBuild(tResource, "WRITE")
+                If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
             ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
             ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one

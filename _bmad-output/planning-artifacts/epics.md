@@ -7734,6 +7734,7 @@ So that a slow instance can be diagnosed.
 - **Given** the SQL activity screen
 - **When** it loads
 - **Then** currently executing statements list with their text, statistics and application metadata.
+- DW-2093: `ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites` keeps its name while it asserts twenty-five reads and ten writes; rename it to its counts, with its `SurfaceCoverage` rows, when this story changes them (ledger; routed by harvest 2026-10-05)
 
 ### Story 19.11: The agent gains guarded SQL and a picker
 

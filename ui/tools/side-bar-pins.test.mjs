@@ -48,6 +48,7 @@ const SIDE_BAR_SPECS = [
   'remote-databases.browser-spec.mjs',
   'security.browser-spec.mjs',
   'ssl.browser-spec.mjs',
+  'system-explorer-docdb.browser-spec.mjs',
   'tasks.browser-spec.mjs',
   'web-sessions.browser-spec.mjs',
 ];

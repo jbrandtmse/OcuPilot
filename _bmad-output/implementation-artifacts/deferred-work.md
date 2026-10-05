@@ -9809,6 +9809,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 19.9 plan on ocupilot-a2-ci: %SYSTEM.DocDB.CreateDatabase(name) with no resource, then the REST drop as _SYSTEM answered 822; irissys %SYS/DOCDB.int CheckAccess reads Security.DocDBs; in-process DropDatabase dropped it
 - 2026-10-05T00:40:46Z status=decision-pending owner=burndown by=runner note=human=decide whether to report upstream (as DW-1527/DW-1640); OcuPilot's own drop (Story 19.17) runs in process and is unaffected
 
+### DW-2092: Data browser copy has no singular forms: the save dialog reads '1 rows change, 0 are added and 0 are deleted' and the tab and status read '1 changes waiting to be saved'
+- source: Planner demo check 2026-10-05 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Found by the Planner checking the 1.0.10 demo; Story 19.8's data browser save dialog, tab and status sentences interpolate a count into a plural-only string
+- 2026-10-05T11:38:55Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-05: route to Epic 19 (owns the data browser); fold into 19.10 or 19.11 if it fits, else the close burn-down; neither fits (SQL activity; agent picker), so the burn-down: singular and plural forms for both sentences
+
+### DW-2093: ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites keeps its name while it asserts twenty-five reads and ten writes
+- source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: src/OcuPilot/Test/ExplorerDescriptor.cls:141; renaming edits the eight method attributes SurfaceCoverage.cls:321-328 holds, rows Epic 18 also edits
+- 2026-10-05T11:38:55Z status=routed owner=19-10-sql-activity by=harvest note=19.10 adds a System Explorer read and so changes this test's counts again: rename the method to its counts then, with its SurfaceCoverage rows
+- 2026-10-05T13:24:58Z status=routed owner=burndown by=spec_gate note=19.10 lands in OS management (ExplorerDescriptor's counts unchanged, decline accepted); fold into Epic 19's close burn-down with DW-2092: rename the method to its counts with its SurfaceCoverage rows (now :323-330)
+
+### DW-2094: Document databases' Create stays available while the strip says the DocDB service is disabled; the dialog then shows the 409 sentence
+- source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: docdb-list.page.ts:102 onOpen ignores the strip's state; the create dialog draws the DOCDB.SERVICE.DISABLED reason as its alert (docdb-create-dialog.ts:25)
+- 2026-10-05T12:16:56Z status=wontfix-accepted owner=19-17-the-docdb-browser by=cr note=reopen_if=EXPERIENCE.md rules Create aria-disabled while the strip shows, or a user reports it confusing
 ### DW-2086: An encryption key activation's card lists the key file's keys, but its confirm activates whatever the file holds then: FileKeys is neither fingerprinted nor compared at the write
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: EncryptionKeyActivateMint adds FileKeys to the card; FINGERPRINTSUBJECT is Keys,root,path,AdminName; EncryptionPort.Activate reruns FileKeys only for the all-active check (TaskImport's reviewed tasks is the model)

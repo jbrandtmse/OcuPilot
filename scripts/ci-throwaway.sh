@@ -331,6 +331,9 @@ services:
       # without the file-system pair and Security's resource, and activates and deactivates keys as
       # them through a seam port that sends neither (Story 18.22).
       # classes: EncryptionKeyGate
+      # The document database gate class signs in as probe principals each missing one pair the DocDB
+      # port requires, and lists, creates and drops a probe database as them (Story 19.17).
+      # classes: DocDbGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -432,6 +435,10 @@ services:
       # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
       # Since Story 16.14 the LDAP classes also create configurations through the editor's Save and the agent's create, set and clear their search password, delete them, and test authentication against 127.0.0.1:1.
       # classes: LdapCreate, LdapPassword, LdapTest
+      # Since Story 19.17 the document database classes enable %Service_DocDB, which a stock instance
+      # keeps disabled, and put it back as they found it after every test; they create and drop probe
+      # databases named OcuProbe1917* in USER and remove each by name.
+      # classes: DocDbProbe, DocDbPort, DocDbGate, DocDbWrite
       OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's

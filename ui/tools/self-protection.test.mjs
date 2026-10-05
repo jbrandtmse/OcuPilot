@@ -718,3 +718,26 @@ test('Story 18.7: each key file refusal, state refusal and consequence is one se
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
   }
 });
+
+/** Story 19.17's error class, which declares the DocDB port's published refusals. */
+const DOCDB_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'DocDbError.cls');
+
+/** Story 19.17's published sentences: `[file, parameter, strings.ts key]`. */
+const DOCDB_SENTENCES = [
+  [DOCDB_ERROR, 'REASONSERVICEDISABLED', 'explorerDocDbServiceDisabled'],
+  [DOCDB_ERROR, 'REASONNAMEINVALID', 'explorerDocDbNameInvalid'],
+  [DOCDB_ERROR, 'REASONNAMEMAPPED', 'explorerDocDbNameMapped'],
+  [DOCDB_ERROR, 'REASONNAMETAKEN', 'explorerDocDbNameTaken'],
+  [DOCDB_ERROR, 'REASONCLASSTAKEN', 'explorerDocDbClassTaken'],
+];
+
+test('Story 19.17: each DocDB refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONSERVICEDISABLED in DocDbError.cls -> this goes red naming both.
+  for (const [file, parameter, key] of DOCDB_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
