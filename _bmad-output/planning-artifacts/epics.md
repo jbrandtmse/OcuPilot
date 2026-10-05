@@ -7509,6 +7509,9 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
 
+- DW-2059: Prohibited.DependsOnKey compares key ids normalized and fails closed (Story 18.7); this story's Task 0 compares a database's EncryptionKeyID with the key file's Id for a probe key and confirms or narrows the comparison (ledger; routed by merge_gate 2026-10-04)
+- DW-2066: DependsOnKey reads only the journal's configured key; journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks (ledger; routed by cr 2026-10-05)
+
 ### Story 18.23: Encryption startup settings
 
 As an operator,
@@ -7528,6 +7531,8 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 - **Given** any key material
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
+
+- DW-2065: Removing a key file's startup administrator is not refused, while unattended activation opens DBEncStartKeyFile as DBEncStartUsername; whether AD-10's key arm extends to it is a product call (ledger; decision-pending by cr 2026-10-05)
 
 ### Story 18.24: RSA and symmetric-key wallet secrets
 
