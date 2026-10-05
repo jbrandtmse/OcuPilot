@@ -421,3 +421,5 @@
 2026-10-05T23:38:04Z	Story 19.11	ledger_adjudicated	owned=1 resolved=1(DW-2004,READSVALUES) reowned=0 terminal=0 model=claude-opus-5-5
 2026-10-05T23:38:04Z	Story 19.11	smoke_complete	method=api+browser result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-a2-ci_50/50(src_reloaded),agent-picker_2/2,agent-sql_2/2(bundle_main-NRXV3DLI),tools_1836 model=claude-opus-5-5
 2026-10-05T23:38:04Z	Epic 19	spine_updated	ad=AD-7(19.11_called-function_limit_now_measured_by_Task0,corrected_at_origin) reason=cr_note by=runner lint=1(pre-existing_{id})
+2026-10-05T23:39:37Z	Story 19.11	forward_merge	feature=392c6965(19.10_merged+bookkeeping,docs_only) merge=924c59b0 conflicts=1(sprint-status->ours+generate_valid) ledger_trailer_check=deferred-work_untouched_by_merge
+2026-10-05T23:39:37Z	Story 19.11	committed	head=924c59b0 (bbb06922 QA+review patches + forward merge) run=37389702149(pending) pushed=yes amendments=none footprint_extensions=EXPERIENCE.md,scripts/ci-throwaway.sh
