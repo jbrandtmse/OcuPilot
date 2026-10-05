@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-05-2026 19:02'
+last_updated: '10-05-2026 22:50'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -312,7 +312,7 @@ development_status:
   19-8-the-data-browser-editing-staging-and-export: done
   19-9-documatic-and-docdb: done
   19-10-sql-activity: done
-  19-11-the-agent-gains-guarded-sql-and-a-picker: in-progress
+  19-11-the-agent-gains-guarded-sql-and-a-picker: review
   19-12-a-development-holder-reaches-system-explorer-as-the-classic: done
   19-13-xml-export-and-import: done
   19-14-the-sql-catalog-s-remaining-detail-tabs: done
