@@ -14,7 +14,8 @@
 /// this class declares reads 1. The turns run as the suite's own account, which holds every
 /// read's pairs. After every method no probe turn, proposal, conversation, stub node, probe
 /// definition, task, role, user, class, table, view, probe job or application error it planted remains; the failed-login audit
-/// row, the messages.log line and the probe statement's statement-index row are append-only.</p>
+/// row, the messages.log line, the probe statement's statement-index row, and the running probe
+/// statement's statement-index row and cached query in <code>USER</code> remain.</p>
 Class OcuPilot.Test.InjectionChannels Extends %UnitTest.TestCase
 {
 

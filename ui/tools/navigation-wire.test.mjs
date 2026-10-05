@@ -415,6 +415,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 19.10: SQL activity, the twentieth, refused on %DB_IRISSYS:READ.
+        {
+          route: 'os-management/sql-activity',
+          labelKey: 'sqlActivityLabel',
+          sideBarPosition: 20,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
@@ -766,6 +774,9 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   for (const route of ['os-management/ecp-settings', 'os-management/ecp-application-servers', 'os-management/ecp-application-servers/ssl']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
+  // Story 19.10: SQL activity declares %Admin_Operate:USE, which this principal holds, and
+  // %DB_IRISSYS:READ, on which it is denied.
+  assert.deepEqual(service.screenVerdict('os-management/sql-activity'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   // Story 18.4: Check integrity declares the Databases list's pairs, so this Operate-only principal is
   // denied on `%Admin_Manage:USE`; the Integrity log declares `%Admin_Operate:USE` first, which it
   // holds, and is denied on the second.

@@ -11,12 +11,19 @@ Class OcuPilot.Test.SqlActivitySeam Extends OcuPilot.Port.SqlActivityPort
 /// <p>Arm node <var>pKey</var> with <var>pValue</var>: <code>gate</code> 1 evaluates the pairs through
 /// <class>OcuPilot.Test.ScreenGate</class>; <code>local</code> is the server
 /// <method>LocalServer</method> answers; <code>resources</code> is the <code>routine,global</code>
-/// pair <method>Resources</method> answers; <code>text</code> is the text <method>Text</method>
-/// answers, <code>status</code> the status it answers with, and <code>throw</code> 1 makes it
-/// throw.</p>
+/// pair <method>Resources</method> answers for every namespace not armed by <method>ArmFor</method>;
+/// <code>text</code> is the text <method>Text</method> answers, <code>status</code> the status it
+/// answers with, and <code>throw</code> 1 makes it throw.</p>
 ClassMethod Arm(pKey As %String, pValue As %String)
 {
     Set ^||OcuPilotSqlActivitySeam(pKey) = pValue
+}
+
+/// <p>Arm node <var>pKey</var> for <var>pSubscript</var> alone: <code>resources</code> for one
+/// namespace.</p>
+ClassMethod ArmFor(pKey As %String, pSubscript As %String, pValue As %String)
+{
+    Set ^||OcuPilotSqlActivitySeam(pKey, pSubscript) = pValue
 }
 
 /// <p>Forget every armed node and count.</p>
@@ -64,9 +71,16 @@ ClassMethod LocalServer() As %String
 
 ClassMethod Resources(pNamespace As %String, Output pRoutine As %String, Output pGlobal As %String) [ Private ]
 {
-    If '$Data(^||OcuPilotSqlActivitySeam("resources")) Do ##super(pNamespace, .pRoutine, .pGlobal) Quit
-    Set pRoutine = $Piece(^||OcuPilotSqlActivitySeam("resources"), ",", 1)
-    Set pGlobal = $Piece(^||OcuPilotSqlActivitySeam("resources"), ",", 2)
+    If $Data(^||OcuPilotSqlActivitySeam("resources", pNamespace)) # 2 {
+        Set tArmed = ^||OcuPilotSqlActivitySeam("resources", pNamespace)
+    } ElseIf $Data(^||OcuPilotSqlActivitySeam("resources")) # 2 {
+        Set tArmed = ^||OcuPilotSqlActivitySeam("resources")
+    } Else {
+        Do ##super(pNamespace, .pRoutine, .pGlobal)
+        Quit
+    }
+    Set pRoutine = $Piece(tArmed, ",", 1)
+    Set pGlobal = $Piece(tArmed, ",", 2)
 }
 
 ClassMethod Rows(pMax As %Integer, Output pRows As %DynamicArray) As %Status [ Private ]

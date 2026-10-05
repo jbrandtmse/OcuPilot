@@ -90,7 +90,8 @@ Method TestTheSqlActivitySourceRefusals()
 /// 5, 10, 30 or 60 seconds and off by default, with no action, its Process ID cell opening Process
 /// details unless the row is remote, and three prompts in the Troubleshooting group.</p>
 /// <p>Mutation (Rule 19): set <code>refreshes</code> false -- the refresh leg goes red; remove the third
-/// prompt -- the prompts leg goes red.</p>
+/// prompt -- the prompts leg goes red; drop a pair from
+/// <parameter>OcuPilot.Port.SqlActivityPort.PAIRS</parameter> -- the pairs leg goes red.</p>
 Method TestTheDescriptorShape()
 {
     Set tSC = $ClassMethod(..#DESCRIPTOR, "DeclarationJson", .tDeclaration)
@@ -99,6 +100,7 @@ Method TestTheDescriptorShape()
     Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.area _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.entityType, "os-management/sql-activity|os-management|20|list|instance|sql-statement", "its route, area, position, archetype, scope and entity type")
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""Server"",""ProcessID"",""StatementHash""]}", "its id is the vendor's IdKey")
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "its pairs are the port's")
+    Do $$$AssertEquals(..Spelled($ClassMethod(..#DESCRIPTOR, "PrivilegePairs")), $Parameter(..#PORT, "PAIRS"), "and equal the port's PAIRS, in order, so the side bar refuses whom the port refuses")
     Do $$$AssertEquals($Select($IsObject(tDeclaration.%Get("ownPrivileges")): tDeclaration.ownPrivileges.%Size(), 1: 0), 0, "and none is its own")
     Do $$$AssertEquals(tDeclaration.refreshes _ "|" _ tDeclaration.refreshRates.%ToJSON() _ "|" _ tDeclaration.%Get("refreshDefault"), "1|[5,10,30,60]|", "it refreshes at 5, 10, 30 or 60 seconds, off by default")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(tDeclaration.refreshes, $ListBuild(5, 10, 30, 60), ""), "", "a refresh the registry admits")
@@ -115,6 +117,17 @@ Method TestTheDescriptorShape()
     Do $$$AssertEquals(tDeclaration.emptyStateKey _ "|" _ tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey _ "|" _ tDeclaration.table.columns.%Get(5).field _ "|" _ tDeclaration.table.columns.%Get(5).emptyKey, "sqlActivityEmpty|tableReadOnlyEmptyNext||Statement|sqlActivityTextWithheld", "its own read-only empty state, and a withheld text reads its own word")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read passes the registry")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("sql-statement"), "its entity type is in the vocabulary")
+}
+
+/// <p><var>pPairs</var>, a pair list as the gate evaluates it, spelled
+/// <code>resource:permission</code> and comma-separated, as a port's <code>PAIRS</code> is.</p>
+ClassMethod Spelled(pPairs As %List) As %String
+{
+    Set tText = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tText = tText _ $Select(tI > 1: ",", 1: "") _ $ListToString($List(pPairs, tI), ":")
+    }
+    Quit tText
 }
 
 /// <p>The port carries no write, so it has no script form (AD-59).</p>

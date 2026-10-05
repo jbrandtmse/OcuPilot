@@ -212,6 +212,39 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
 - **AC7 (injection).** Given a running statement whose text keeps the seed, when a turn reads it through `osmgmt.sqlactivity.read`, then the seed arrives inside a `tool_result` only, and the turn mints no proposal, announces no navigation and posts nowhere but the endpoint.
 - **AC8 (structure).** Given both themes, when the structural walk and the screen's spec run, then the gate passes and the screen keeps three suggested prompts.
 
+### Review Findings
+
+Code review 2026-10-05 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Patch] (medium) QA's `armedIris` runs `docker` without the spec first refusing the live container, so `angular-json.test.mjs`'s DW-159 gate is red (found while verifying patches) [ui/browser/sql-activity.browser-spec.mjs:78]
+- [x] [Review][Patch] (medium) The descriptor's pairs are checked against a literal, never against the port's `PAIRS`, so the side bar's verdict and the port's gate can drift [src/OcuPilot/Test/SqlActivityDescriptor.cls:101]
+- [x] [Review][Patch] (medium) `Remote`'s JSON type is unpinned: the client drops the link only for `=== true`, and dropping `"boolean"` in `Rows` leaves every test green [src/OcuPilot/Test/SqlActivityPort.cls:204]
+- [x] [Review][Patch] (medium) The per-namespace text verdict is only ever read with one namespace: keying it on nothing leaves every test green [src/OcuPilot/Port/SqlActivityPort.cls:242]
+- [x] [Review][Patch] (low) The AC2 leg's comment and QA line blame a cached declaration. The leg reads the descriptor's screen verdict (`GET /navigation`), and the descriptor mutation reddens it once recompiled; `PAIRS` and the mirror are not on its path [ui/browser/sql-activity.browser-spec.mjs:254]
+- [x] [Review][Patch] (low) The AC3 leg's title and comment blame `%Development:USE`, but the principal lacks `USER`'s database READ, so the pre-check withholds the text [ui/browser/sql-activity.browser-spec.mjs:235]
+- [x] [Review][Patch] (low) The "ignoring case" legs of `TestIsRemote` cannot fail: no leg differs only in case [src/OcuPilot/Test/SqlActivityPort.cls:197]
+- [x] [Review][Patch] (low) The Read and Dev legs never assert the login identity, so a failed login would read as the suite's `%All` account [src/OcuPilot/Test/SqlActivityGate.cls:133]
+- [x] [Review][Patch] (low) The two copies of the navigation payload, which move with `Wire`, lack SQL activity [ui/tools/navigation-wire.test.mjs:412]
+- [x] [Review][Patch] (low) The browser spec's `after` removes the principals before stopping the probe, so a throw there leaves the probe running [ui/browser/sql-activity.browser-spec.mjs:94]
+- [x] [Review][Patch] (low) "It creates nothing else" is wrong: each fresh literal leaves a statement-index row and a cached query (145 such rows in `USER` on `ocupilot-a2-ci`) [src/OcuPilot/Test/SqlActivityPort.cls:9]
+- [x] [Review][Patch] (low) `ACTIVITYVALUE`'s doc promises a check `InjectionChannels` does not make [src/OcuPilot/Test/InjectionSeed.cls:84]
+- [x] [Review][Patch] (low) The browser spec's header says the empty state is a leg the suite's account cannot reach, and omits the principals it creates [ui/browser/sql-activity.browser-spec.mjs:3]
+- [x] [Review][Patch] (low) `IsRemote` is documented "Pure", but its default argument reads the instance [src/OcuPilot/Port/SqlActivityPort.cls:95]
+- [x] [Review][Defer] (low) `Routine` and `Workers` are compared only at their default values, and the child-statement `RunType` branch never runs [src/OcuPilot/Test/SqlActivityPort.cls:96] — deferred: needs a nested or parallel probe; ledgered `wontfix-accepted`
+
+**Rejected:**
+
+- `false`: `IsRemote` differs from the classic page's cluster-only test — the vendor's AMS writes `Server` as `$ZU(110)_":"_$g(^%SYS("SSPort"))` (`%SYS.AppMetadataStack.SQL` :142, :552), which is `LocalServer`, so no local row reads remote.
+- `false`: a mapped database could make `GetSQLStatement` raise `<PROTECT>` past the pre-check — `^rINDEXSQL` resolves to the routines database in HSCUSTOM, USER, %SYS, HSLIB and HSSYS (measured).
+- `false`: a remote row's hash looked up locally fails the read — an unknown hash answers `""` with OK (measured at implement).
+- `false`: `TestIsRemote`'s `LocalServer` assertion cannot fail — a `LocalServer` mutation reddens it.
+- `low`, spec-bound: no Server column; `Started` is local time; the note's own-statement wording; one row's fault fails the read; the pre-check resolves through `DatabaseResources`; a prompt about open transactions with no transaction column; `Routine` (`CallerName`) blank for a top-level statement.
+- `low`: the own-statement matrix case has no principal-run leg (vendor behavior; needs a probe run as the principal).
+- `low`: `ProtectCount` has no positive control — the event and auditing are both on (`ocupilot-a2-ci`), and the read's 500 reddens the pre-check mutation too.
+- `low`: `Stop` could terminate a reused pid — only after an aborted run leaves a record and its pid is reused before a restart.
+- `low`, maybe-false: the empty-state leg may flake if another process runs SQL during its one read — reopen if CI reds it on a row that is not the probe's.
+- `low`: `maxRows` shapes other than `0` untested — the pattern is a one-line anchored regex.
+
 ## Spec Change Log
 
 - 2026-10-05, lead (spec gate): the five decisions are ruled tier-1 and written into the spine (Design Paradigm, AD-7's fifth shape, AD-29 `SqlActivityPort` with the FR-80 deviation, AD-36, AD-43 roster ten, AD-61 rule 7 narrowed at origin). Two claims corrected here: SQL activity's pair set is not Processes' (Processes also requires `%Admin_Manage:USE`), and the classic page hides `CallerName`; `Routine` stays as the AC's application metadata. `DatabaseFreeSpace` stays off AD-43's roster by design (Databases' entry covers both views). DW-2093's decline is accepted; it moves to the epic's burn-down.
@@ -346,16 +379,19 @@ The stateful classes run one at a time: one test-runner call per message, wait f
 - AC2: `PAIRS` without `%DB_IRISSYS:READ` → SqlActivityGate's NoSys leg.
   - mutation: `PAIRS` = `%Admin_Operate:USE` → `SqlActivityGate.TestEachMissingPairIsRefusedByName` red on OcuP1910NoSys's refusal (run 1030).
   - mutation: the port's `EvaluateRequired` block removed → `PortGate.TestEveryPortEvaluatesItsDeclaredGate` red on the SqlActivityPort leg (run 1040); a `Rows` call placed before the gate → `SqlActivityPort.TestTheGateRefusesBeforeAnyStatement` red on the prepared count (run 1039).
+  - mutation (code review): `PAIRS` = `%Admin_Operate:USE` → `SqlActivityDescriptor.TestTheDescriptorShape` red on its pairs-equal-`PAIRS` leg (run 1537).
 - AC3: the pre-check removed → SqlActivityGate's `ProtectCount` leg; #921 mapped to a failure → its Read leg; the cut removed → SqlActivityPort's length leg.
   - mutation: `StatementText`'s `If 'pAllowed(pNamespace)` line removed → `SqlActivityGate.TestTheExactPairsListWithTheTextWithheld` red: the read answers 500 and the Protect count moves (run 1031).
   - mutation: the #921 line removed from `StatementText` → `SqlActivityGate.TestTheTextNeedsDevelopmentAndTheDatabase` red on the Read principal (run 1032) and `SqlActivityPort.TestAVendorFaultFailsTheRead` red on its withheld leg (run 1033).
   - mutation: the cut removed from `Shape` → `SqlActivityPort.TestTheTextIsCutAbove1024` red on both length legs (run 1034).
   - mutation: the globals database's pair dropped from `MayReadText` → `SqlActivityPort.TestTheTextPreCheckNeedsBothDatabases` red on its routines-only leg (run 1056); a throw from `Text` answered as `""` → `TestAVendorFaultFailsTheRead` red on its throw legs (run 1057).
+  - mutation (code review): `StatementText`'s verdict keyed on nothing in place of `pNamespace` → `SqlActivityPort.TestTheTextVerdictIsPerNamespace` red on its unreadable-namespace leg (run 1536).
 - AC4: `Parameters` added to `CURRENTSTATEMENTS` and the row → SqlActivityPort's Parameters leg.
   - mutation: `Parameters` selected and set on the row → `SqlActivityPort.TestTheBoundValueIsInNoAnswer` and `TestTheVendorSurface` red (run 1035).
 - AC5: `rowTarget` removed → the browser link leg.
   - mutation: `rowTarget` removed, the mirror regenerated, rebuilt and deployed → the browser link leg red (no link to click).
   - mutation: `Rows` sets every row's `Remote` to 0 → `SqlActivityPort.TestIsRemote` red on its row leg, a probe read with the seam's `LocalServer` naming another server (run 1055).
+  - mutation (code review): `Remote` set without its `boolean` type → `TestIsRemote` and `TestTheProbeIsARowAndTheReaderIsNot` red on their JSON-type legs; `IsRemote` without `$ZConvert` → `TestIsRemote` red on its case-only leg (both run 1536).
 - AC6: `refreshes` false → the browser chip leg and SqlActivityDescriptor's shape leg.
   - mutation: `refreshes` false with no rates → `SqlActivityDescriptor.TestTheDescriptorShape` red on its two refresh legs (run 1043); rebuilt and deployed, the browser chip leg red (no `.ocu-command-bar-refresh`).
 - AC7: `Loop.Run` appends the last `tool_result` to the system prompt → source (n)'s leg, as source (a)'s does.
@@ -366,6 +402,17 @@ The stateful classes run one at a time: one test-runner call per message, wait f
   - mutation: the sqlactivity arm removed from `Registry.ReadProblem` → `SqlActivityDescriptor.TestTheSqlActivitySourceRefusals` red on the endpoint, type and four key cases (run 1041); the arm removed from `screen-mirror.mjs`'s `readProblem` → the Story 19.10 mirror test red.
   - mutation: `ASC` order → `SqlActivityPort.TestRowsComeSlowestFirstAndCutAtTheCap` red on both order legs (run 1036); the cut removed from `Rows` → red on the cap leg (run 1037); `IsRemote` answering 0 → `TestIsRemote` red (run 1038).
   - mutation: the `CASE` tests `ParentType` in place of `Parent` → `SqlActivityPort.TestTheVendorSurface` red on its whole-word leg (run 1058); the descriptor's `emptyStateKey` set to `sqlActivityLabel` → `SqlActivityDescriptor.TestTheDescriptorShape` red (run 1059), the Nothing running row's empty state.
+
+**QA pass.** (QA) `ui/browser/sql-activity.browser-spec.mjs` gains three legs the suite's `_SYSTEM` account could not reach, run as throwaway principals `OcuP1910BrExact` and `OcuP1910BrNoSys` (created and removed through `SqlActivityProbe`):
+
+- AC3 text withheld: the probe is a row whose Statement cell reads "Not shown", its literal and bound value on no part of the page.
+  - mutation: the generated mirror's Statement `emptyKey` set to `sqlActivityLabel`, rebuilt and deployed → the AC3 leg red.
+- AC2 refusal: the screen shows "You need %DB_IRISSYS:READ to open SQL activity." and no row.
+  - mutation: `%DB_IRISSYS:R` granted to the NoSys principal → the AC2 leg red (sentence wait times out).
+  - mutation (code review): `%DB_IRISSYS:READ` dropped from `SqlActivityList.cls`'s `privileges`, recompiled on `ocupilot-a2-ci` → the AC2 leg red (sentence wait timed out). The leg reads the descriptor's verdict from `GET /navigation`; the page never mounts, so the port's `PAIRS` and the mirror are not on its path.
+- Nothing running: with the probe stopped the empty-state sentence shows, no row.
+  - mutation: the mirror's `emptyStateKey` set to `sqlActivityLabel`, rebuilt and deployed → the empty-state leg red.
+- Not pinned in a browser: a remote row's text Process ID cell (no second instance); `SqlActivityPort.TestIsRemote` pins it.
 
 ## Auto Run Result
 

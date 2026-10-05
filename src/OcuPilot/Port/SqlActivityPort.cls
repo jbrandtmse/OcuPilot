@@ -93,7 +93,8 @@ ClassMethod LocalServer() As %String
 }
 
 /// <p>Whether a row's <var>pServer</var> names another instance than <var>pLocal</var>, ignoring case,
-/// as the classic page tests it. Pure.</p>
+/// as the classic page compares them. Pure when <var>pLocal</var> is given; it defaults to
+/// <method>LocalServer</method>.</p>
 ClassMethod IsRemote(pServer As %String, pLocal As %String = {..LocalServer()}) As %Boolean
 {
     Quit ($ZConvert(pServer, "U") '= $ZConvert(pLocal, "U"))

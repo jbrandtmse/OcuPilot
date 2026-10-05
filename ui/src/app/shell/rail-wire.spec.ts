@@ -420,6 +420,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 19.10: SQL activity, the twentieth, refused on %DB_IRISSYS:READ.
+        {
+          route: 'os-management/sql-activity',
+          labelKey: 'sqlActivityLabel',
+          sideBarPosition: 20,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
@@ -846,6 +854,12 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     for (const route of ['os-management/ecp-settings', 'os-management/ecp-application-servers', 'os-management/ecp-application-servers/ssl']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
+  });
+
+  it('Story 19.10: reads the SQL activity verdict the live payload carries', () => {
+    // It declares `%Admin_Operate:USE`, which this principal holds, and `%DB_IRISSYS:READ`, which it does not.
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('os-management/sql-activity')).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
   });
 
   it('Story 18.4: reads the Check integrity and Integrity log verdicts the live payload carries', () => {

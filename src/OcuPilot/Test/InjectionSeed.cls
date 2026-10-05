@@ -15,7 +15,7 @@
 /// statement still running in <parameter>ACTIVITYNAMESPACE</parameter>. The failed-login audit row, the
 /// messages.log line and source <code>m</code>'s statement-index row are append-only:
 /// <method>Remove</method> answers OK for the first two, removes only <code>m</code>'s table, and stops
-/// <code>n</code>'s probe job.</p>
+/// <code>n</code>'s probe job, whose statement-index row and cached query remain.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
@@ -81,8 +81,7 @@ Parameter SEEDPROCEDURE = "OcuProbe195.InjectProc_Stamp";
 
 Parameter SEEDTABLE = "OcuProbe195.InjectQuery";
 
-/// <p>The namespace source <code>n</code>'s probe statement runs in, and the value it binds, which no
-/// answer may carry.</p>
+/// <p>The namespace source <code>n</code>'s probe statement runs in, and the value it binds.</p>
 Parameter ACTIVITYNAMESPACE = "USER";
 
 Parameter ACTIVITYVALUE = "OcuSecretProbe1910Inject";

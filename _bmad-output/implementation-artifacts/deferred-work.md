@@ -9858,3 +9858,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator note 2026-10-05 (19.10 rulings) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: SqlPort.PASSWORDPATTERN refuses password text before the console's prepare (19.6), but no display path redacts it: AtelierPort's statement tabs (19.14) and SqlActivityPort (19.10) return the text as the instance holds it; DW-1982 measured a prepared CREATE USER's literal stored in INFORMATION_SCHEMA.STATEMENTS
 - 2026-10-05T17:16:04Z status=decision-pending owner=burndown by=merge_gate note=owner's decision sheet, next to DW-1982: whether (and how) to mask a credential literal in displayed and agent-bound statement text; 19.10 gives its text the same treatment as 19.14's (none), by the orchestrator's instruction
+
+### DW-2097: SQL activity's Routine and Workers columns are pinned only at their default values, and the child-statement RunType branch never runs in a test
+- source: spec-19-10-sql-activity.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestTheProbeIsARowAndTheReaderIsNot compares Routine (CallerName, '' for a top-level statement) and Workers (0 serial) to the vendor's columns; no probe has a Parent, so CURRENTSTATEMENTS' ELSE (ParentType || ' Query') never executes
+- 2026-10-05T17:48:27Z status=wontfix-accepted owner=19-10-sql-activity by=cr note=needs a nested or %PARALLEL probe; reopen_if=a row's Routine, Workers or child RunType differs from INFORMATION_SCHEMA.CURRENT_STATEMENTS

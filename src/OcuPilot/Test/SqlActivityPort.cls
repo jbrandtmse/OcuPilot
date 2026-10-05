@@ -6,7 +6,8 @@
 /// gate refuses before any statement is prepared; and the vendor surface the port names is pinned.</p>
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace. It starts probe jobs
 /// through <class>OcuPilot.Test.SqlActivityProbe</class>, each a read-only statement it stops and reads
-/// back stopped after every method; it creates nothing else.</p>
+/// back stopped after every method, in <code>USER</code> and, for one method, the install namespace.
+/// Each probe's fresh literal leaves a statement-index row and a cached query in its namespace.</p>
 Class OcuPilot.Test.SqlActivityPort Extends %UnitTest.TestCase
 {
 
@@ -100,6 +101,7 @@ Method TestTheProbeIsARowAndTheReaderIsNot()
     Do $$$AssertEquals($Get(tHttp), 200, "the screen's read answers")
     Set tScreenRow = ..RowOf($Select($IsObject($Get(tAnswer)): tAnswer.rows, 1: ""), tPid)
     Do $$$AssertTrue($IsObject(tScreenRow) && (tScreenRow.Namespace = ..#NAMESPACE) && (tScreenRow.Statement [ tLiteral), "the screen's read answers the probe row")
+    Do $$$AssertEquals($Select($IsObject(tScreenRow): tScreenRow.%GetTypeOf("Remote"), 1: ""), "boolean", "its Remote is a JSON boolean, which the client's rowTarget unless reads")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("osmgmt.sqlactivity.read", .tTool, 1)
     Do $$$AssertStatusOK(tSC, "the read tool resolves")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {}, 200, .tResult, .tHttp, .tFault)
@@ -187,7 +189,9 @@ Method TestTheTextIsCutAbove1024()
 /// from another server reads <code>Remote</code> true.</p>
 /// <p>Mutation (Rule 19): answer 0 from <method>OcuPilot.Port.SqlActivityPort.IsRemote</method> -- the
 /// remote legs go red; set the row's <code>Remote</code> to 0 in
-/// <method>OcuPilot.Port.SqlActivityPort.Rows</method> -- the row leg goes red.</p>
+/// <method>OcuPilot.Port.SqlActivityPort.Rows</method> -- the row leg goes red; compare without
+/// <code>$ZConvert</code> -- the case leg goes red; set <code>Remote</code> without its
+/// <code>boolean</code> type -- the type leg goes red.</p>
 Method TestIsRemote()
 {
     Set tPort = ..#PORT
@@ -195,6 +199,7 @@ Method TestIsRemote()
     Do $$$AssertEquals(tLocal, $ZU(110) _ ":" _ $Get(^%SYS("SSPort")), "this instance's server is its host and superserver port")
     Do $$$AssertEquals($ClassMethod(tPort, "IsRemote", tLocal), 0, "this instance's own server is local")
     Do $$$AssertEquals($ClassMethod(tPort, "IsRemote", $ZConvert(tLocal, "L")), 0, "in any case")
+    Do $$$AssertEquals($ClassMethod(tPort, "IsRemote", "THISHOST:1972", "thishost:1972"), 0, "a server differing from this one only in case is local")
     Do $$$AssertEquals($ClassMethod(tPort, "IsRemote", "otherhost:1972", "thishost:1972"), 1, "another host is remote")
     Do $$$AssertEquals($ClassMethod(tPort, "IsRemote", "thishost:1973", "THISHOST:1972"), 1, "and so is another port")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start", ..#NAMESPACE, ..Fresh("OcuSeedRemote1910"), ..Fresh("OcuSecretProbe1910"), .tPid), "a probe runs")
@@ -202,6 +207,33 @@ Method TestIsRemote()
     Do $$$AssertEquals(..Call(.tRows, 100, ..#SEAM), "200 ", "the port answers as though this instance were another")
     Set tRow = ..RowOf(.tRows, tPid)
     Do $$$AssertTrue($IsObject(tRow) && (tRow.%Get("Remote") = 1), "and the probe's row, served from another server, reads remote")
+    Do $$$AssertEquals($Select($IsObject(tRow): tRow.%GetTypeOf("Remote"), 1: ""), "boolean", "as a JSON boolean")
+}
+
+/// <p>AC3: one read answers the text pre-check per namespace: of two probes, the one in a namespace
+/// whose databases the caller may read carries its text, and the one in a namespace whose databases it
+/// may not carries none.</p>
+/// <p>Mutation (Rule 19): key <method>OcuPilot.Port.SqlActivityPort.StatementText</method>'s verdict on
+/// nothing in place of the namespace -- one of the two legs goes red.</p>
+Method TestTheTextVerdictIsPerNamespace()
+{
+    Set tSeam = ..#SEAM
+    Set tOther = $Namespace
+    Do $$$AssertNotEquals(tOther, ..#NAMESPACE, "the install namespace is not USER")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start", ..#NAMESPACE, ..Fresh("OcuSeedReadable1910"), ..Fresh("OcuSecretProbe1910"), .tReadable), "a probe runs in USER")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Start", tOther, ..Fresh("OcuSeedUnreadable1910"), ..Fresh("OcuSecretProbe1910"), .tUnreadable), "and one in the install namespace")
+    Do $ClassMethod(tSeam, "Arm", "gate", 1)
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Operate", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_OCUREADABLE1910", "READ")
+    Do $ClassMethod(tSeam, "ArmFor", "resources", ..#NAMESPACE, "%DB_OCUREADABLE1910,%DB_OCUREADABLE1910")
+    Do $ClassMethod(tSeam, "ArmFor", "resources", tOther, "%DB_OCUUNREADABLE1910,%DB_OCUUNREADABLE1910")
+    Do $ClassMethod(tSeam, "Arm", "text", "SELECT OcuArmedText1910")
+    Do $$$AssertEquals(..Call(.tRows, 100, tSeam), "200 ", "the port answers")
+    Set tRow = ..RowOf(.tRows, tReadable)
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.Statement = "SELECT OcuArmedText1910"), "the statement in the readable namespace carries its text")
+    Set tRow = ..RowOf(.tRows, tUnreadable)
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.Statement = ""), "and the one in the unreadable namespace carries none")
 }
 
 /// <p>AC3: the text pre-check requires READ on both of a namespace's databases where they differ, and a
