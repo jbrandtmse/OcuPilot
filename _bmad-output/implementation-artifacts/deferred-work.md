@@ -9796,3 +9796,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Closing the last tab swaps the page's @if (open) branch for the @else branch, whose own <p role=status> is created holding the line (inference on screen-reader behavior, as DW-1372 and DW-154); Story 19.8's namespace-discard line has the same shape. The fix moves one status element across both branches and the tab panel.
 - 2026-10-04T23:39:06Z status=wontfix-accepted owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=reopen_if=an NVDA or VoiceOver check on Chrome closing the last open tab does not speak the closed line
+
+### DW-2085: The database create omits the classic wizard's Encrypt database? (Encrypted and EncryptionKeyID on POST /database-dir, offered while a database key is active); Story 18.3 deferred it to 18.7 and 18.7's split assigned it to no story
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: classic DatabaseWizard.cls:137 offers it; spec-18-3 :93 and :750 defer it to 18.7; spec-18-22 Never and Named limit 3 exclude it
+- 2026-10-05T05:05:22Z status=routed owner=burndown by=spec_gate note=build once 18.22's key activation has landed: the create offers Encrypt database only while a database key is active and sends the default key's id; parity row of FR-80
