@@ -9677,3 +9677,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Closing the last tab swaps the page's @if (open) branch for the @else branch, whose own <p role=status> is created holding the line (inference on screen-reader behavior, as DW-1372 and DW-154); Story 19.8's namespace-discard line has the same shape. The fix moves one status element across both branches and the tab panel.
 - 2026-10-04T23:39:06Z status=wontfix-accepted owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=reopen_if=an NVDA or VoiceOver check on Chrome closing the last open tab does not speak the closed line
+
+### DW-2084: Vendor defect candidate: the DocDB REST drop (DELETE /api/docdb/v1/<ns>/db/<name>) of a database created without a resource answers 822 even for _SYSTEM, because its CheckAccess W needs a Security.DocDBs record neither create path makes
+- source: spec-19-9-documatic-and-docdb.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 19.9 plan on ocupilot-a2-ci: %SYSTEM.DocDB.CreateDatabase(name) with no resource, then the REST drop as _SYSTEM answered 822; irissys %SYS/DOCDB.int CheckAccess reads Security.DocDBs; in-process DropDatabase dropped it
+- 2026-10-05T00:40:46Z status=decision-pending owner=burndown by=runner note=human=decide whether to report upstream (as DW-1527/DW-1640); OcuPilot's own drop (Story 19.17) runs in process and is unaffected

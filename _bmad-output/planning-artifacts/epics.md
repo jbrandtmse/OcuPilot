@@ -7667,7 +7667,7 @@ So that the Explorer covers both code and documents.
 
 - **Given** the DocDB browser
 - **When** it opens
-- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
+- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed. [SPLIT to 19.17 2026-10-04: this criterion moved verbatim]
 
 ### Story 19.10: SQL activity
 
@@ -7795,6 +7795,20 @@ So that the data browser covers the classic Open Table page's remaining convenie
 - **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
 - **When** each is used
 - **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
+
+### Story 19.17: The DocDB browser
+
+As a developer,
+I want the document databases listed, created and dropped,
+So that the Explorer covers documents as well as code.
+
+[ADDED 2026-10-04, Rule 5 split of Story 19.9 by=merge_gate: 19.9's DocDB criterion moved here verbatim; run right after 19.9. 19.9 keeps the Documatic class reference.]
+
+**Acceptance Criteria:**
+
+- **Given** the DocDB browser
+- **When** it opens
+- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
 
 ---
 
