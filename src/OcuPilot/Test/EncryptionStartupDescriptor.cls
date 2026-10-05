@@ -144,10 +144,12 @@ Method TestTheInteractiveRefusalIsItsParameterAndNamesNoCaller()
 /// where it carries one and from the instance otherwise, in both orders: Interactive chosen while the audit
 /// log, IRISSECURITY or IRISTEMP is encrypted or being encrypted, or by a write that also turns it off, and
 /// one of them encrypted under Interactive; turning one off under Interactive, and any other mode, is not
-/// refused.</p>
+/// refused. While one of their databases is still encrypted on disk, every write that leaves Interactive is
+/// refused, with every flag off, and one that leaves it is not.</p>
 /// <p>Mutation (Rule 19): drop <code>DBEncIRISTemp</code> from
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.STARTUPREQUIREDFLAGS</parameter> -- the IRISTEMP legs go
-/// red.</p>
+/// red; ignore <method>OcuPilot.Kernel.Proposal.Prohibited.LeavesInteractiveRequired</method>'s
+/// <var>pEncryptedOnDisk</var> -- the on-disk legs go red.</p>
 Method TestTheStartupArmJudgesTheSettingsTheWriteLeaves()
 {
     Set tP = ..#PROHIBITED
@@ -178,6 +180,12 @@ Method TestTheStartupArmJudgesTheSettingsTheWriteLeaves()
     }
     Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncJournal": true}, tInteractive), "journal encryption under Interactive is not refused")
     Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Interactive"}, tNone), "Interactive with nothing encrypted is not refused")
+    Set tUnattended = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tUnattended.%Set("DBEncStartMode", "Unattended", "string")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Interactive"}, tUnattended, 1), "Interactive chosen with every flag off while a database is still encrypted on disk is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncJournal": true}, tInteractive, 1), "a write that keeps Interactive while a database is still encrypted on disk is refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Unattended"}, tInteractive, 1), "leaving Interactive while a database is still encrypted on disk is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Interactive"}, tUnattended, 0), "Interactive chosen with every flag off and nothing encrypted on disk is not refused")
 }
 
 /// <p>C3, Decision 1: the merge leaves out the startup key file, an <code>AuditEncrypt</code> it does not

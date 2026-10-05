@@ -1,11 +1,11 @@
 /// <p>Pins Story 18.23's reads (C1; AD-2, AD-36): the form's declared read, <code>security.encryptionstartup.read</code>
 /// and the write's fresh read answer the same nine settings, over the wire as in process; the form read
-/// answers the configured KMIP servers; and no answer carries a password, an administrator or key
-/// material.</p>
+/// answers the configured KMIP servers and the startup databases encrypted on disk; and no answer carries a
+/// password, an administrator or key material.</p>
 /// <p><b>What it needs from the environment:</b> a stock instance with OcuPilot installed and serving. It
-/// reads only; its KMIP leg answers the configured servers through
-/// <class>OcuPilot.Test.EncryptionSeamPort</class>. After each test the encryption state and the audit
-/// database's identity read as that test found them.</p>
+/// reads only; its KMIP and on-disk legs answer through <class>OcuPilot.Test.EncryptionSeamPort</class> and <class>OcuPilot.Test.EncryptionOnDiskPort</class>.
+/// After each test the encryption state and the audit database's identity read as that test found
+/// them.</p>
 Class OcuPilot.Test.EncryptionStartupRead Extends %UnitTest.TestCase
 {
 
@@ -71,7 +71,8 @@ Method TestTheFormAndTheToolReadTheSameNineSettings()
 }
 
 /// <p>C1: over the wire, the screen's read and the form read answer 200 as JSON; the form read answers the
-/// configured KMIP servers, none on this instance; no answer carries a password or an administrator.</p>
+/// configured KMIP servers and the startup databases encrypted on disk, as the port reads them; no answer
+/// carries a password or an administrator.</p>
 Method TestTheWireReadsAnswerWithNoCredential()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
@@ -87,7 +88,9 @@ Method TestTheWireReadsAnswerWithNoCredential()
     Kill tQuery
     Set tSC = $ClassMethod(..#PORT, "KmipNames", .tNames, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the configured KMIP servers are read")
-    Do $$$AssertEquals($Select($IsObject(tForm): tForm.%ToJSON(), 1: ""), "{""kmipServers"":" _ tNames.%ToJSON() _ "}", "the form read answers them alone")
+    Set tSC = $ClassMethod(..#PORT, "EncryptedOnDisk", .tEncrypted, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the startup databases' encryption on disk is read")
+    Do $$$AssertEquals($Select($IsObject(tForm): tForm.%ToJSON(), 1: ""), "{""kmipServers"":" _ tNames.%ToJSON() _ ",""encryptedDatabases"":" _ tEncrypted.%ToJSON() _ "}", "the form read answers them alone")
 }
 
 /// <p>C2: the form read answers the KMIP servers the instance has configured, through the port's own read:
@@ -101,7 +104,51 @@ Method TestTheFormReadAnswersTheConfiguredKmipServers()
     Do $ClassMethod(tSeam, "ArmKmip", "OCUPROBESTARTKMSA,OCUPROBESTARTKMSB")
     Set tSC = ##class(OcuPilot.Test.EncryptionStartupSaveFixture).Form(.tAnswer, .tStatus)
     Do $$$AssertStatusOK(tSC, "the form read runs")
-    Do $$$AssertEquals(tStatus _ " " _ tAnswer, "200 {""kmipServers"":[""OCUPROBESTARTKMSA"",""OCUPROBESTARTKMSB""]}", "it answers the two configured servers")
+    Do $$$AssertEquals(tStatus _ " " _ tAnswer, "200 {""kmipServers"":[""OCUPROBESTARTKMSA"",""OCUPROBESTARTKMSB""],""encryptedDatabases"":[]}", "it answers the two configured servers")
+}
+
+/// <p>AD-10, AD-27: the form read answers which startup databases are encrypted on disk, through the port's
+/// own read: two armed on the seam are answered in order, and a read that fails fails the form read. The
+/// instance's own read names a database exactly when its directory is among the encrypted databases
+/// <code>SYS.Database:List</code> answers, none on a stock instance; and the port's own read, with two
+/// databases' directories reported encrypted (<class>OcuPilot.Test.EncryptionOnDiskPort</class>), names those
+/// two in its own order.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.EncryptionStartupSave.HandleForm</method> answers
+/// <code>[]</code> in place of the port's names -- this goes red; drop the push from
+/// <method>OcuPilot.Port.EncryptionPort.EncryptedOnDisk</method> -- the last leg goes red.</p>
+Method TestTheFormReadAnswersTheDatabasesEncryptedOnDisk()
+{
+    Set tSeam = "OcuPilot.Test.EncryptionSeamPort"
+    Do $ClassMethod(tSeam, "Arm", "startup")
+    Do $ClassMethod(tSeam, "ArmOnDisk", "IRISAUDIT,IRISTEMP")
+    Set tSC = ##class(OcuPilot.Test.EncryptionStartupSaveFixture).Form(.tAnswer, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the form read runs")
+    Set tForm = ##class(OcuPilot.Test.EncryptionProbe).Parsed(tAnswer)
+    Set tAnswered = $Select($IsObject(tForm) && (tForm.%GetTypeOf("encryptedDatabases") = "array"): tForm.%Get("encryptedDatabases").%ToJSON(), 1: tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ tAnswered, "200 [""IRISAUDIT"",""IRISTEMP""]", "it answers the two encrypted on disk")
+    Do $ClassMethod(tSeam, "Arm", "ondiskfails")
+    Set tSC = ##class(OcuPilot.Test.EncryptionStartupSaveFixture).Form(.tAnswer, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the form read runs again")
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.EncryptionProbe).Refusal(tAnswer), "500 INTERNAL", "a read that fails fails the form read")
+    Do $ClassMethod(tSeam, "Clear")
+    Set tSC = $ClassMethod(..#PORT, "EncryptedOnDisk", .tEncrypted, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the instance's own read answers")
+    Set tDirectories = ##class(OcuPilot.Test.EncryptionProbe).EncryptionFacts().%Get("encryptedDatabases").%ToJSON()
+    Set tNames = $Parameter(..#PORT, "STARTUPDATABASES")
+    For tI = 1:1:$Length(tNames, ",") {
+        Set tName = $Piece(tNames, ",", tI)
+        Set tDirectory = ##class(OcuPilot.Test.EncryptionSeamPort).DirectoryOf(tName)
+        Do $$$AssertTrue(tDirectory '= "", tName _ " has a configured directory")
+        Set tNamed = (tEncrypted.%ToJSON() [ ($Char(34) _ tName _ $Char(34)))
+        Set tListed = (tDirectories [ ($Char(34) _ tDirectory _ "|"))
+        Do $$$AssertEquals(tNamed, tListed, tName _ " is named exactly when SYS.Database:List lists it encrypted")
+    }
+    Set tOnDisk = "OcuPilot.Test.EncryptionOnDiskPort"
+    Do $ClassMethod(tOnDisk, "ArmDirectories", $ListBuild(##class(OcuPilot.Test.EncryptionSeamPort).DirectoryOf("IRISTEMP"), ##class(OcuPilot.Test.EncryptionSeamPort).DirectoryOf("IRISAUDIT")))
+    Set tSC = $ClassMethod(tOnDisk, "EncryptedOnDisk", .tEncrypted, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the port's own read runs with two databases reported encrypted")
+    Do $$$AssertEquals($Select($IsObject($Get(tEncrypted)): tEncrypted.%ToJSON(), 1: ""), "[""IRISAUDIT"",""IRISTEMP""]", "the port's own read names each database reported encrypted, in its own order")
+    Do $ClassMethod(tSeam, "Clear")
 }
 
 /// <p>C1: the form's context declares the nine settings and no secret, and the read tool's schema admits

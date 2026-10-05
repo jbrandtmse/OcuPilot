@@ -1,8 +1,10 @@
 /// <p>Encryption startup settings' Save and form read (AD-55, Story 18.23). <code>PUT
 /// /encryption-startup</code> changes the settings through
 /// <class>OcuPilot.Screen.Tool.EncryptionStartupUpdate</class>, the tool the agent's mint and confirm read;
-/// <code>GET /encryption-startup/form</code> answers <code>{kmipServers}</code>, the configured KMIP
-/// servers' names (<method>OcuPilot.Port.EncryptionPort.KmipNames</method>).</p>
+/// <code>GET /encryption-startup/form</code> answers <code>{kmipServers, encryptedDatabases}</code>, the
+/// configured KMIP servers' names (<method>OcuPilot.Port.EncryptionPort.KmipNames</method>) and which of the
+/// audit log's, IRISSECURITY's and IRISTEMP's databases are encrypted on disk
+/// (<method>OcuPilot.Port.EncryptionPort.EncryptedOnDisk</method>).</p>
 /// <p><b>It resolves everything about the write from the tool class</b>: the endpoint, the request types,
 /// the port, the settable fields, the merge, the consequence and the pairs, each asked before anything is
 /// sent. It mints no proposal, takes no confirm token and is not governed. The version gate comes first,
@@ -46,8 +48,8 @@ ClassMethod TargetId() As %String
     Quit ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID
 }
 
-/// <p>Answer <code>GET /encryption-startup/form</code>: <code>{kmipServers}</code>, after the screen's
-/// pairs.</p>
+/// <p>Answer <code>GET /encryption-startup/form</code>: <code>{kmipServers, encryptedDatabases}</code>, after
+/// the screen's pairs; either read failing fails the answer.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -62,8 +64,14 @@ ClassMethod HandleForm() As %Status
             Set tSC = ..RenderFault(tReadSC, $Get(tHttp), $Get(tFault))
             Quit
         }
+        Set tDiskSC = $ClassMethod(..PortClass(), "EncryptedOnDisk", .tEncrypted, .tHttp, .tFault)
+        If $$$ISERR(tDiskSC) {
+            Set tSC = ..RenderFault(tDiskSC, $Get(tHttp), $Get(tFault))
+            Quit
+        }
         Set tBody = {}
         Do tBody.%Set("kmipServers", tNames)
+        Do tBody.%Set("encryptedDatabases", tEncrypted)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

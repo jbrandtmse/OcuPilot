@@ -489,7 +489,8 @@ Parameter TYPEENCRYPTIONSTARTUP = "encryption-startup";
 /// nobody answers on the console then aborts into single-user mode, taking down the path that serves
 /// OcuPilot (measured for each of the three). Judged over the resolved settings, the payload's values
 /// over the target's, so both orders are refused: Interactive chosen while one is set, now or by the same
-/// write, and one set under Interactive.</p>
+/// write, and one set under Interactive; and over whether one of their databases is still encrypted on
+/// disk, read at the write.</p>
 Parameter STARTUPINTERACTIVE = "PROHIBITED.STARTUPINTERACTIVE";
 
 /// <p>The one sentence <parameter>STARTUPINTERACTIVE</parameter> carries, caller-neutral, published in
@@ -1349,7 +1350,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         ; The encryption startup settings (Story 18.23): a start that cannot finish is not chosen.
         If tType = ..#TYPEENCRYPTIONSTARTUP {
-            Set tSC = ..EncryptionStartup(tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -2539,15 +2540,20 @@ ClassMethod EncryptionStartupFields() As %List [ Private ]
 
 /// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23): when the settings
 /// the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation with the
-/// audit log, IRISSECURITY or IRISTEMP encrypted, it is refused <parameter>STARTUPINTERACTIVE</parameter>;
-/// every write then passes the reviewed-few sweep.</p>
-ClassMethod EncryptionStartup(pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
+/// <parameter>STARTUPINTERACTIVE</parameter>; every write then passes the reviewed-few sweep. A write that
+/// leaves Interactive also reads, through <var>pToolClass</var>'s port as the caller, whether one of their
+/// databases is still encrypted on disk (<method>StartupDatabasesEncrypted</method>); a read that fails
+/// refuses.</p>
+ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If ..LeavesInteractiveRequired(pPayload, pTarget) {
+        Set tOnDisk = 0
+        If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) = "Interactive" Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
+        If ..LeavesInteractiveRequired(pPayload, pTarget, tOnDisk) {
             Do ..Refuse(..#STARTUPINTERACTIVE, .pProhibits, .pCode)
             Quit
         }
@@ -2565,10 +2571,13 @@ ClassMethod EncryptionStartup(pPayload As %DynamicObject, pTarget As %DynamicObj
 /// <parameter>STARTUPREQUIREDFLAGS</parameter> read from <var>pPayload</var> where it carries one and from
 /// <var>pTarget</var>, the instance's settings at the write, otherwise; and, when the write changes the mode
 /// to Interactive, each flag as <var>pTarget</var> holds it, so a write that chooses Interactive and turns
-/// the flag off together is refused too.</p>
-ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+/// the flag off together is refused too. Whatever the flags, a write that leaves Interactive is refused while
+/// <var>pEncryptedOnDisk</var> says one of their databases is still encrypted on disk, which a flag turned
+/// off leaves until the next start converts it.</p>
+ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
 {
     If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    If pEncryptedOnDisk Quit 1
     Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= "Interactive")
     Set tRequired = 0
     For tI = 1:1:$Length(..#STARTUPREQUIREDFLAGS, ",") {
@@ -2577,6 +2586,23 @@ ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %Dy
         If tChoosing && (..StartupSetting("", pTarget, tFlag) = "true") Set tRequired = 1 Quit
     }
     Quit tRequired
+}
+
+/// <p>Whether the audit log's, IRISSECURITY's or IRISTEMP's database is encrypted on disk, read through
+/// <var>pPort</var> as the caller (<code>Security.Encryption.Settings</code> <code>ENCRYPTEDDATABASES</code>,
+/// AD-27's named case). A read that fails, or answers anything but a list, answers 1.</p>
+ClassMethod StartupDatabasesEncrypted(pPort As %String) As %Boolean [ Private ]
+{
+    Set tEncrypted = 1
+    Try {
+        Kill tQuery
+        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "ENCRYPTEDDATABASES", .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Encrypted") '= "array") Quit
+        Set tEncrypted = (tRead.%Get("Encrypted").%Size() > 0)
+    } Catch {
+        Set tEncrypted = 1
+    }
+    Quit tEncrypted
 }
 
 /// <p>Whether <var>pPayload</var> carries an <code>AuditEncrypt</code> other than <var>pTarget</var>'s.</p>

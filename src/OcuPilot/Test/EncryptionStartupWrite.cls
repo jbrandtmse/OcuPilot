@@ -3,9 +3,9 @@
 /// (<class>OcuPilot.Test.DatabaseConfirm</class>). Each change sends one <code>Settings</code>
 /// <code>PUT</code> with the body the vendor requires; <code>AuditEncrypt</code> is read at the write unless
 /// the change sets it, and a change that sets it is destructive and refused once the value it reviewed
-/// moves; every rule, the Interactive arm in both orders, and the version gate refuse with no
-/// <code>PUT</code>; the vendor's refusals arrive in OcuPilot's sentences; and the password reaches no
-/// record.</p>
+/// moves; every rule, the Interactive arm in both orders and while a database is still encrypted on disk,
+/// and the version gate refuse with no <code>PUT</code>; the vendor's refusals arrive in OcuPilot's
+/// sentences; and the password reaches no record.</p>
 /// <p><b>No test changes a real startup setting.</b> Every value change runs through
 /// <class>OcuPilot.Test.EncryptionSeamPort</class> armed <code>startup</code>, <code>startupfails</code>,
 /// <code>kmip</code> or <code>settingsv1</code>, which never sends a settings <code>PUT</code>, and AD-10's
@@ -289,6 +289,51 @@ Method TestInteractiveIsRefusedInBothOrdersOnBothCallers()
             Do $$$AssertEquals(..Puts(), 0, $List(tOrder, 3) _ ": no PUT from the confirm")
         }
     }
+}
+
+/// <p>C5, AD-10, AD-27: with every flag off, Interactive is refused while the audit log's, IRISSECURITY's or
+/// IRISTEMP's database is still encrypted on disk, and while that read fails, on the Save and at the
+/// confirm, with no <code>PUT</code>; under Interactive a write that keeps it is refused too, on both
+/// callers, while leaving it is not; with nothing encrypted on disk Interactive is written.</p>
+/// <p>Mutation (Rule 19): answer 0 for the on-disk read in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.EncryptionStartup</method> -- every refused leg goes red; let
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.StartupDatabasesEncrypted</method> answer a failed read as
+/// nothing encrypted -- the failed-read legs alone.</p>
+Method TestInteractiveIsRefusedWhileADatabaseIsStillEncryptedOnDisk()
+{
+    Set tP = ..#PROBE
+    Set tCode = "PROHIBITED.STARTUPINTERACTIVE"
+    Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": (..#KEYONE), "KeyLen": 256, "IsDefault": true}])
+    Set tHeld = {"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key"}
+    For tCase = $ListBuild("startup", "IRISAUDIT", "while IRISAUDIT is still encrypted on disk"), $ListBuild("startup", "IRISSECURITY", "while IRISSECURITY is still encrypted on disk"), $ListBuild("startup", "IRISTEMP", "while IRISTEMP is still encrypted on disk"), $ListBuild("ondiskfails", "", "while the on-disk read fails") {
+        Do $ClassMethod(..#SEAM, "Arm", $List(tCase, 1))
+        Do $ClassMethod(..#SEAM, "ArmOnDisk", $List(tCase, 2))
+        Do ..Hold(tHeld)
+        Do $ClassMethod(..#SEAM, "ClearCalls")
+        Do $$$AssertEquals(..Save({"DBEncStartMode": "Interactive"}, .tAnswer), "403 " _ tCode, "Interactive " _ $List(tCase, 3) _ " is refused on the Save")
+        Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "STARTUPINTERACTIVEREASON"), "with its sentence")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 3) _ ": no PUT from the Save")
+        Do ..Hold(tHeld)
+        Do $$$AssertEquals(..Propose({"DBEncStartMode": "Interactive"}, .tProposal), "", "Interactive " _ $List(tCase, 3) _ " is minted")
+        Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "403 " _ tCode, "Interactive " _ $List(tCase, 3) _ " is refused at the confirm")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 3) _ ": no PUT from the confirm")
+    }
+    Do $ClassMethod(..#SEAM, "Arm", "startup")
+    Do $ClassMethod(..#SEAM, "ArmOnDisk", "IRISAUDIT")
+    Set tUnder = {"DBEncStartMode": "Interactive", "DBEncStartKeyFile": "/ocuprobestart/held.key"}
+    Do ..Hold(tUnder)
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals(..Save({"DBEncJournal": true}, .tAnswer) _ " " _ ..Puts(), "403 " _ tCode _ " 0", "under Interactive, a write that keeps it while IRISAUDIT is still encrypted on disk is refused with no PUT")
+    Do ..Hold(tUnder)
+    Do $$$AssertEquals(..Propose({"DBEncJournal": true}, .tProposal), "", "under Interactive, a write that keeps it while IRISAUDIT is still encrypted on disk is minted")
+    Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult) _ " " _ ..Puts(), "403 " _ tCode _ " 0", "and refused at the confirm with no PUT")
+    Do ..Hold(tUnder)
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals(..Save({"DBEncStartMode": "Unattended"}, .tAnswer) _ " " _ ..Puts(), "200  1", "leaving Interactive for Unattended is written: " _ $Extract(tAnswer, 1, 200))
+    Do $ClassMethod(..#SEAM, "ArmOnDisk", "")
+    Do ..Hold(tHeld)
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals(..Save({"DBEncStartMode": "Interactive"}, .tAnswer) _ " " _ ..Puts(), "200  1", "with nothing encrypted on disk, Interactive is written: " _ $Extract(tAnswer, 1, 200))
 }
 
 /// <p>C6, AD-26: with a settings template that carries no administrator and password, the Save, the mint and

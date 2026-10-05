@@ -50,6 +50,10 @@
 /// any other mode, armed or not, a settings <code>PUT</code> reaches the vendor only when it carries the
 /// instance's current settings unchanged and no key id or credential; any other is answered 500 without
 /// the vendor.</p>
+/// <p>Under those modes the read of which startup databases are encrypted on disk
+/// (<method>EncryptedOnDisk</method>) answers the names <method>ArmOnDisk</method> armed, none unless armed,
+/// and <code>ondiskfails</code>, a further Story 18.23 mode, fails it; outside them it is the instance's own
+/// read, which changes nothing.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -362,7 +366,7 @@ ClassMethod Held(pKind As %String) As %DynamicArray
 /// <p>Whether a Story 18.23 mode is armed.</p>
 ClassMethod StartupArmed() As %Boolean
 {
-    Quit ''$ListFind($ListBuild("startup", "startupfails", "kmip", "settingsv1"), $Get(^||OcuPilotEncryptionSeam("mode")))
+    Quit ''$ListFind($ListBuild("startup", "startupfails", "kmip", "settingsv1", "ondiskfails"), $Get(^||OcuPilotEncryptionSeam("mode")))
 }
 
 /// <p>The answer <method>Call</method> gives without the vendor for a settings read or write, or for an
@@ -499,6 +503,34 @@ ClassMethod KmipNames(Output pNames As %DynamicArray, Output pHttpStatus As %Int
     Set pHttpStatus = 200
     Set pFault = ""
     Set tNames = $Get(^||OcuPilotEncryptionSeam("kmipnames"))
+    For tI = 1:1:$Length(tNames, ",") {
+        If $Piece(tNames, ",", tI) '= "" Do pNames.%Push($Piece(tNames, ",", tI))
+    }
+    Quit $$$OK
+}
+
+/// <p>Arm the startup databases the Story 18.23 modes answer as encrypted on disk, comma-separated.
+/// <method>Clear</method> forgets them and <method>ClearCalls</method> keeps them.</p>
+ClassMethod ArmOnDisk(pNames As %String)
+{
+    Set ^||OcuPilotEncryptionSeam("ondisk") = pNames
+}
+
+/// <p>Which startup databases are encrypted on disk: under a Story 18.23 mode the names
+/// <method>ArmOnDisk</method> armed, a failed read under <code>ondiskfails</code>; the instance's own read
+/// otherwise.</p>
+ClassMethod EncryptedOnDisk(Output pNames As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    If '..StartupArmed() Quit ##super(.pNames, .pHttpStatus, .pFault)
+    Set pNames = []
+    If $Get(^||OcuPilotEncryptionSeam("mode")) = "ondiskfails" {
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Quit $$$ERROR($$$GeneralError, "the startup databases' encryption on disk cannot be read, as the seam was armed")
+    }
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Set tNames = $Get(^||OcuPilotEncryptionSeam("ondisk"))
     For tI = 1:1:$Length(tNames, ",") {
         If $Piece(tNames, ",", tI) '= "" Do pNames.%Push($Piece(tNames, ",", tI))
     }

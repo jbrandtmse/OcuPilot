@@ -43,6 +43,7 @@ interface Sent {
 interface Options {
   readonly row?: Record<string, unknown>;
   readonly kmip?: readonly string[];
+  readonly encrypted?: readonly string[];
   readonly keys?: readonly unknown[];
   readonly save?: () => JsonResult<unknown>;
 }
@@ -74,7 +75,7 @@ async function mount(options: Options = {}) {
         return { kind: 'ok', status: 200, body: { rows: options.keys ?? [{ Id: 'K1', KeyLen: 256, IsDefault: true }], truncated: false } } as unknown as JsonResult<T>;
       }
       if (path === ENCRYPTION_STARTUP_FORM_PATH) {
-        return { kind: 'ok', status: 200, body: { kmipServers: options.kmip ?? [] } } as unknown as JsonResult<T>;
+        return { kind: 'ok', status: 200, body: { kmipServers: options.kmip ?? [], encryptedDatabases: options.encrypted ?? [] } } as unknown as JsonResult<T>;
       }
       if (path === ENCRYPTION_STARTUP_PATH && method === 'PUT') {
         if (options.save !== undefined) return options.save() as JsonResult<T>;
@@ -207,6 +208,20 @@ describe('EncryptionStartupPage', () => {
       await click(mounted, modeRadio(mounted, 'Interactive'));
       expect(modeRadio(mounted, 'Unattended').checked).toBe(true);
     }
+  });
+
+  it('AD-10: while a database is still encrypted on disk, Interactive is aria-disabled with its reason though every setting is off', async () => {
+    const mounted = await mount({ row: { DBEncStartMode: 'Unattended', DBEncStartKeyFile: '/k/start.key' }, encrypted: ['IRISAUDIT'] });
+    const interactive = modeRadio(mounted, 'Interactive');
+    // Mutation (Rule 19): drop the on-disk check from the store's `modeRefusal` -> Interactive is offered and this goes red.
+    expect(interactive.getAttribute('aria-disabled')).toBe('true');
+    const reasonId = `${encryptionStartupControlId('DBEncStartMode')}-Interactive-reason`;
+    expect(interactive.getAttribute('aria-describedby')).toContain(reasonId);
+    expect(mounted.host.querySelector(`#${reasonId}`)?.textContent?.trim()).toBe(STRINGS.encryptionStartupInteractiveNotOffered);
+    await click(mounted, interactive);
+    expect(modeRadio(mounted, 'Unattended').checked).toBe(true);
+    await save(mounted);
+    expect(puts(mounted.sent)).toEqual([]);
   });
 
   it('under Interactive, journal encryption stays offered, and Interactive is offered while nothing requires a start', async () => {

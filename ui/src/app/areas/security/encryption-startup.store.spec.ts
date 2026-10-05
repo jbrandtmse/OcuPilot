@@ -41,7 +41,7 @@ interface Call {
   readonly body: string;
 }
 
-function mount(options: { row?: Record<string, unknown>; kmip?: readonly string[]; keys?: readonly unknown[]; save?: JsonResult<unknown> } = {}) {
+function mount(options: { row?: Record<string, unknown>; kmip?: readonly string[]; encrypted?: readonly string[]; keys?: readonly unknown[]; save?: JsonResult<unknown> } = {}) {
   TestBed.resetTestingModule();
   const calls: Call[] = [];
   const api = {
@@ -54,7 +54,9 @@ function mount(options: { row?: Record<string, unknown>; kmip?: readonly string[
       if (path.startsWith('/api/ocupilot/screens/security.databaseencryption/read')) {
         return { kind: 'ok', status: 200, body: { rows: options.keys ?? [{ Id: 'K1', KeyLen: 256, IsDefault: true }, { Id: 'K2', KeyLen: 256, IsDefault: false }], truncated: false } } as unknown as JsonResult<T>;
       }
-      if (path === ENCRYPTION_STARTUP_FORM_PATH) return { kind: 'ok', status: 200, body: { kmipServers: options.kmip ?? [] } } as unknown as JsonResult<T>;
+      if (path === ENCRYPTION_STARTUP_FORM_PATH) {
+        return { kind: 'ok', status: 200, body: { kmipServers: options.kmip ?? [], encryptedDatabases: options.encrypted ?? [] } } as unknown as JsonResult<T>;
+      }
       return (options.save ?? ACCEPTED) as JsonResult<T>;
     },
   };
@@ -168,6 +170,22 @@ describe('the encryption startup settings store', () => {
     await under.store.open();
     under.store.setFlag('AuditEncrypt', false);
     expect(under.store.flag('AuditEncrypt')).toBe(false);
+  });
+
+  it('AD-10: a database still encrypted on disk refuses Interactive with every setting off, and none encrypted offers it', async () => {
+    const { store } = mount({ encrypted: ['IRISAUDIT'] });
+    await store.open();
+    expect(store.encryptedDatabases()).toEqual(['IRISAUDIT']);
+    // Mutation (Rule 19): drop the on-disk check from `modeRefusal` -> Interactive is offered and this goes red.
+    expect(store.modeRefusal('Interactive')).toBe('interactive');
+    store.setMode('Interactive');
+    expect(store.mode()).toBe('Unattended');
+    expect(store.modeRefusal('None')).toBe('');
+    const clear = mount({ encrypted: [] });
+    await clear.store.open();
+    expect(clear.store.modeRefusal('Interactive')).toBe('');
+    store.reset();
+    expect(store.encryptedDatabases()).toEqual([]);
   });
 
   it('refuses KMIP with no server configured, a setting under None, and every key with none active', async () => {

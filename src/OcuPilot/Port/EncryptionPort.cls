@@ -37,6 +37,8 @@
 /// <method>StartupProblems</method>, with <code>DBEncStartKeyFile</code> composed here alone.</li>
 /// <li><parameter>KMIPSERVERSTYPE</parameter>, AD-27's named case: the configured KMIP servers'
 /// names.</li>
+/// <li><parameter>ENCRYPTEDDATABASESTYPE</parameter>, AD-27's named case: which of
+/// <parameter>STARTUPDATABASES</parameter> are encrypted on disk.</li>
 /// </ul>
 /// <p>Every body is built here from the declared arguments in the query and the declared secrets in
 /// the body, and a password is held in a local cleared right after the call (AD-35, AD-56 (i)). Any
@@ -120,6 +122,14 @@ Parameter SETTINGSENDPOINT = "Security.Encryption.Settings";
 /// named case): <code>{Names}</code>, the configured KMIP servers.</p>
 Parameter KMIPSERVERSTYPE = "KMIPSERVERS";
 
+/// <p>The port-composed read of which of <parameter>STARTUPDATABASES</parameter> are encrypted on disk
+/// (AD-27's named case), which AD-10's start arm reads: <code>{Encrypted}</code>.</p>
+Parameter ENCRYPTEDDATABASESTYPE = "ENCRYPTEDDATABASES";
+
+/// <p>The databases whose encryption makes every start activate its key, comma-separated: the audit log's,
+/// IRISSECURITY and IRISTEMP.</p>
+Parameter STARTUPDATABASES = "IRISAUDIT,IRISSECURITY,IRISTEMP";
+
 /// <p>The start modes, in the vendor's order (0 to 3).</p>
 Parameter STARTMODES = "None,Interactive,Unattended,KMIP";
 
@@ -192,6 +202,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..Call(..#SETTINGSENDPOINT, "GET", .tQuery, "", .pResult, .pHttpStatus, .pFault)
             } ElseIf pType = ..#KMIPSERVERSTYPE {
                 Set tSC = ..KmipServers(.pResult, .pHttpStatus, .pFault)
+            } ElseIf pType = ..#ENCRYPTEDDATABASESTYPE {
+                Set tSC = ..EncryptedDatabases(.pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tStartup = 0
             }
@@ -1098,6 +1110,87 @@ ClassMethod KmipServers(Output pResult, Output pHttpStatus As %Integer, Output p
     If $$$ISERR(tSC) Quit tSC
     Set pResult = {}
     Do pResult.%Set("Names", tNames)
+    Quit $$$OK
+}
+
+/// <p>Which of <parameter>STARTUPDATABASES</parameter> are encrypted on disk, by name in that order, in
+/// <var>pNames</var>: each database read by <method>DatabaseEncryption</method>, after the endpoint's
+/// <code>%Admin_Secure:USE</code> gate (AD-27's named case, Story 18.23). A setting turned off leaves its
+/// database encrypted until the next start converts it, so this answers what the next start needs where the
+/// settings cannot. A refusal, a database that cannot be found or opened, or a throw fails the read.</p>
+ClassMethod EncryptedOnDisk(Output pNames As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pNames = []
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '$System.Security.Check("%Admin_Secure", "USE") {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tDetail)
+        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, {"failedPair": "%Admin_Secure:USE"})
+    }
+    Set tError = $$$OK
+    Try {
+        For tI = 1:1:$Length(..#STARTUPDATABASES, ",") {
+            Set tName = $Piece(..#STARTUPDATABASES, ",", tI)
+            Set tError = ..DatabaseEncryption(tName, .tDirectory, .tEncrypted)
+            If $$$ISERR(tError) Quit
+            If tEncrypted Do pNames.%Push(tName)
+        }
+    } Catch ex {
+        Set tError = ex.AsStatus()
+    }
+    If $$$ISERR(tError) {
+        Set pNames = []
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault("the startup databases' encryption on disk could not be read", tError, pFault.code)
+        Quit tSC
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Whether database <var>pName</var> is encrypted on disk, in <var>pEncrypted</var>, and its configured
+/// directory, in <var>pDirectory</var>: the directory <code>Config.Databases</code> holds, opened through the
+/// vendor's own <code>SYS.Database</code> and its <code>EncryptedDB</code> read, in <code>%SYS</code> (AD-16).
+/// A database that cannot be found or opened, or a throw, answers an error. Called by
+/// <method>EncryptedOnDisk</method> after its gate, never by a caller of the port.</p>
+ClassMethod DatabaseEncryption(pName As %String, Output pDirectory As %String, Output pEncrypted As %Boolean) As %Status
+{
+    Set pDirectory = ""
+    Set pEncrypted = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Config.Databases).Get(pName, .tProps)
+        If $$$ISOK(tSC) {
+            Set pDirectory = $Get(tProps("Directory"))
+            Set tOpenSC = $$$OK
+            Set tDatabase = ##class(SYS.Database).%OpenId(pDirectory, , .tOpenSC)
+            If $IsObject(tDatabase) {
+                Set pEncrypted = ''tDatabase.EncryptedDB
+            } Else {
+                Set tSC = $Select($$$ISERR(tOpenSC): tOpenSC, 1: $$$ERROR($$$GeneralError, pName _ " could not be opened"))
+            }
+            Set tDatabase = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><parameter>ENCRYPTEDDATABASESTYPE</parameter>: <code>{Encrypted}</code>, <method>EncryptedOnDisk</method>'s
+/// answer.</p>
+ClassMethod EncryptedDatabases(Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..EncryptedOnDisk(.tNames, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pResult = {}
+    Do pResult.%Set("Encrypted", tNames)
     Quit $$$OK
 }
 

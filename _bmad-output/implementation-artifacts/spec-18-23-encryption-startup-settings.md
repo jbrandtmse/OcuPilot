@@ -2,10 +2,10 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '452352dbbef8dfb1e040d13e8ac584697ea99312'
-followup_review_recommended: true
+baseline_revision: 'b389a30be6cc8264b503acfc3ef56c68009dcbf0'
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
@@ -18,6 +18,14 @@ deferred:
     location: >-
       src/OcuPilot/Kernel/Proposal/Prohibited.cls LeavesInteractiveRequired
     severity: medium (unverified)
+  - summary: >-
+      Start mode None is not refused while the audit log's, IRISSECURITY's or IRISTEMP's database is still encrypted on disk after its setting was turned off.
+    evidence: |-
+      The vendor refused None with #1217, whose text names the encrypted directory, only with AuditEncrypt still on (r10); with the setting off and the database still encrypted it is unmeasured (inference: the vendor reads the on-disk state).
+      To settle: on a throwaway, a None PUT with AuditEncrypt off and IRISAUDIT still encrypted; if the vendor accepts it and the next start aborts, widen AD-10's start arm to None.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls LeavesInteractiveRequired
+    severity: high (unverified)
 ---
 
 <intent-contract>
@@ -233,7 +241,7 @@ Steps, in order:
 - **C8 (DW-2065, only if R1 does not activate):** Given the key file the instance activates its keys from in Unattended mode, when either caller removes one of its administrators or the startup read fails, then the removal is refused `PROHIBITED.STARTUPADMIN` with nothing sent, while another key file's administrator is removed.
 - **C9:** Given the rosters, when the story lands, then the form is unlisted and reached from Database encryption's link with three prompts, its key is in the baseline `false`, every roster includes the screen and tool, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1036 lines.
 
-- [ ] [Smoke] DW-2098: `PROHIBITED.STARTUPINTERACTIVE` judges only the three flags, so Interactive chosen after `AuditEncrypt` is turned off but before a restart has decrypted `IRISAUDIT` leaves a start that aborts (measured by the runner, `/tmp/epic-18-d7/1823/t0m` m5-m6: `EncryptedDB` 1 after the flag went off, Interactive accepted, the restart aborted into single-user mode) -- `Kernel/Proposal/Prohibited.cls` `LeavesInteractiveRequired` and `Port/EncryptionPort.cls` -- read whether `IRISAUDIT`, `IRISSECURITY` and `IRISTEMP` are encrypted on disk (`SYS.Database` `EncryptedDB`, by each database's configured directory) through an `EncryptionPort` read under `%Admin_Secure:USE` in `%SYS` (AD-27's 18.23 case, as the spine now words it), and refuse Interactive while any of them is encrypted on disk or its flag is set, in both orders and on both callers; a failed read refuses. The form draws Interactive `aria-disabled` on the same answer (the form read carries it). Pin it through the seam (an on-disk-encrypted answer with every flag off refuses Interactive; a failed read refuses), with a `mutation:` line.
+- [x] [Smoke] DW-2098: `PROHIBITED.STARTUPINTERACTIVE` judges only the three flags, so Interactive chosen after `AuditEncrypt` is turned off but before a restart has decrypted `IRISAUDIT` leaves a start that aborts (measured by the runner, `/tmp/epic-18-d7/1823/t0m` m5-m6: `EncryptedDB` 1 after the flag went off, Interactive accepted, the restart aborted into single-user mode) -- `Kernel/Proposal/Prohibited.cls` `LeavesInteractiveRequired` and `Port/EncryptionPort.cls` -- read whether `IRISAUDIT`, `IRISSECURITY` and `IRISTEMP` are encrypted on disk (`SYS.Database` `EncryptedDB`, by each database's configured directory) through an `EncryptionPort` read under `%Admin_Secure:USE` in `%SYS` (AD-27's 18.23 case, as the spine now words it), and refuse Interactive while any of them is encrypted on disk or its flag is set, in both orders and on both callers; a failed read refuses. The form draws Interactive `aria-disabled` on the same answer (the form read carries it). Pin it through the seam (an on-disk-encrypted answer with every flag off refuses Interactive; a failed read refuses), with a `mutation:` line.
 
 ## Spec Change Log
 
@@ -276,6 +284,25 @@ Steps, in order:
   - `[low]` `[patch]` (intent-alignment) Only `EncryptionStartupWrite` ended with the audit facts as found — `Read`, `Gate` and `Descriptor` now compare `EncryptionStartupWrite.Facts()` before and after each test.
   - `[low]` `[reject]` (intent-alignment) The diff's baseline leaves `f268a30e`'s port code out — same root cause and route as the verification-gap baseline row.
   - `[low]` `[reject]` (intent-alignment) `AuditEncryptReviewed` is pinned only by the payload-shape test — same root cause and route as the verification-gap row on it.
+
+### 2026-10-05 — Review pass
+
+- verdicts: 14 findings — high 0, medium 2, low 7, false 3, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` (verification-gap) The port's own on-disk read was never shown to name an encrypted database: on a stock instance its only check compared empty with empty, and every encrypted leg went through the seam's override — the per-database read moved to `EncryptionPort.DatabaseEncryption`; `Test/EncryptionOnDiskPort` reports two configured directories encrypted, and `EncryptionStartupRead` asserts the shipped loop names `["IRISAUDIT","IRISTEMP"]` in its own order; mutation recorded (run 23).
+  - `[low]` `[patch]` (verification-gap) The keep-Interactive order of the on-disk refusal had a Save leg and no confirm leg — confirm leg added; red under the on-disk-0 mutation (run 24).
+  - `[low]` `[patch]` (verification-gap) The tool class the on-disk read resolves its port from had no mutation line — `""` in its place turned `EncryptionStartupGate.TestTheDeclaredPairsReadAndWrite` red (run 25); line recorded.
+  - `[low]` `[reject]` (verification-gap) The Auto Run Result described the previous pass — its fix edits this spec; finalize rewrites the section.
+  - `[false]` `[reject]` (intent-alignment) Every write that keeps Interactive is refused while a database is still encrypted on disk, turning a setting off included, and the descriptor's "turning X off under Interactive is not refused" passes only at on-disk 0 — AD-10 as amended refuses a change that leaves Interactive while a database is "still encrypted on disk"; a setting turned off under Interactive leaves the next start needing the key to convert it (the measured `t0m` m5-m6 abort), and the descriptor leg holds for a database not yet encrypted.
+  - `[low]` `[reject]` (intent-alignment) Under Interactive with a database encrypted on disk the form takes other changes until the server's 403, and once moved off Interactive unsaved it cannot be chosen again — `modeRefusal` matches the server's verdict; reaching that state needs a start someone answered on the console, and showing it elsewhere would add branches.
+  - `[medium]` `[patch]` (intent-alignment) The real read was tested only for "nothing encrypted" — same root cause and fix as the first row.
+  - `[low]` `[reject]` (intent-alignment) A failed on-disk read fails the whole form read while the server refuses only Interactive writes — the form read already fails closed on a failed KMIP read; a partial form would add a degraded state for an internal fault, and the Save and confirm still refuse.
+  - `[low]` `[reject]` (intent-alignment) The refusal sentence does not name the restart that clears the on-disk case, and the page does not show the on-disk state — the sentence is the intent's fixed text and EXPERIENCE.md's pinned string; the window is between turning a setting off and the next start, the refusal is safe, and each setting's own sentence says it takes effect at the next start.
+  - `[false]` `[reject]` (intent-alignment) The agent cannot see the on-disk state, so an Interactive proposal is minted and refused only at the confirm — carried: every `PROHIBITED.*` arm is evaluated at the write (AD-10, AD-40); the confirm refuses 403 with zero `PUT`.
+  - `[maybe-false]` `[defer]` (intent-alignment) Start mode None while a database is still encrypted on disk with its setting off is not refused — #1217's text names the encrypted directory (inference: the vendor refuses it on the on-disk state), measured only with `AuditEncrypt` on (`r10`); settle by a None `PUT` with `AuditEncrypt` off and `IRISAUDIT` still encrypted on a throwaway; deferred, high (unverified).
+  - `[maybe-false]` `[reject]` (intent-alignment) IRISTEMP on disk is judged like IRISAUDIT though IRISTEMP is recreated at every start (inference) — if true, only a safe-side refusal until the next start (low); settle by an Interactive start with `DBEncIRISTemp` off and IRISTEMP still encrypted; AD-10 names all three.
+  - `[false]` `[reject]` (intent-alignment) Product code now calls `Config.Databases` and `SYS.Database` — AD-27's 18.23 case names this read; the intent's Never list excludes `Security.System`, `^EncryptionKey` and `%SYS.Audit.Erase` only.
+  - `[low]` `[reject]` (intent-alignment) `StartupDatabasesEncrypted` names the endpoint and read type as literals — the file's other port reads (`Settings` `GET`, `JOURNALUSE`, `Database.SysCRUD`) do the same; a rename fails closed and the Gate's confirm leg goes red.
 
 ## Design Notes
 
@@ -422,20 +449,42 @@ Steps, in order:
 - mutation: `EncryptionProbe.LinesAfter` answers `[]` → `EncryptionStartupWrite.TestThePasswordReachesNoRecord` red on the log scan's control line (run 93)
 - mutation: the store's `modeRefusal` judges Interactive on the form's flags alone → `encryption-startup.store.spec.ts` "turning an encryption setting off" and `encryption-startup.page.spec.ts` "turning a setting off does not offer Interactive" red
 - mutation: `flagViews` gives IRISTEMP the journal sentence → `encryption-startup.page.spec.ts` C2 red; `AUDIT_DATABASE_NAME` set to `IRISSYS` → C4 red, no `PUT`; the store keeps the password in a field in `save` → the store spec's AD-35 test red; `this.encryptionStartupForm.reset()` removed from `app.ts` → `app.spec.ts` "AD-8: leaving the signed-in state" red
+- mutation: `Prohibited.LeavesInteractiveRequired` ignores `pEncryptedOnDisk` → `EncryptionStartupDescriptor.TestTheStartupArmJudgesTheSettingsTheWriteLeaves` red on the two on-disk refusal legs (run 6, on the throwaway rebuilt at 17:58Z)
+- mutation: `Prohibited.EncryptionStartup` answers 0 for the on-disk read → `EncryptionStartupWrite.TestInteractiveIsRefusedWhileADatabaseIsStillEncryptedOnDisk` red on every refused leg, Save and confirm, the keep-Interactive confirm leg included, a `PUT` recorded (runs 7, 24)
+- mutation: `Prohibited.StartupDatabasesEncrypted` answers a failed read as nothing encrypted → the same test red on the `ondiskfails` legs alone (run 9)
+- mutation: `HandleForm` answers `encryptedDatabases` `[]` → `EncryptionStartupRead.TestTheFormReadAnswersTheDatabasesEncryptedOnDisk` red (run 10)
+- mutation: `EncryptionPort.STARTUPDATABASES` names a database the instance lacks → `EncryptionStartupRead.TestTheWireReadsAnswerWithNoCredential` (the form read 500) and `TestTheFormReadAnswersTheDatabasesEncryptedOnDisk` (the instance's own read) red (run 11)
+- mutation: the store's `modeRefusal` drops the on-disk check → `encryption-startup.store.spec.ts` and `encryption-startup.page.spec.ts` "AD-10 ... still encrypted on disk" tests red
+- mutation: the push dropped from `EncryptionPort.EncryptedOnDisk` → `EncryptionStartupRead.TestTheFormReadAnswersTheDatabasesEncryptedOnDisk` red on its last leg, the shipped loop over two directories `Test/EncryptionOnDiskPort` reports encrypted (run 23)
+- mutation: `Prohibits` passes `""` for the tool class to `EncryptionStartup`, so the on-disk read asks the base port → `EncryptionStartupGate.TestTheDeclaredPairsReadAndWrite` red on the confirm leg (403 `PROHIBITED.STARTUPINTERACTIVE`), its Save leg with it (run 25)
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-- **Change:** Encryption startup settings, the unlisted form reached from Database encryption's "Configure startup settings" link, and `security.encryptionstartup.update`, one merge write on `EncryptionPort` behind the explicit version gate, reached by the agent's confirmed proposal and the form's Save (AD-55). `AuditEncrypt` is read at the write; a change to it is destructive (`AUDIT.ENCRYPTIONCHANGE`) and asks for `IRISAUDIT` on the Save. Interactive is refused `PROHIBITED.STARTUPINTERACTIVE` in both orders, also when one write chooses it and turns the flag off. DW-2065's `STARTUPADMIN` plumbing from `f268a30e` is deleted and `KMIPSERVERS` kept. Built by the handoff subagent; this stage reviewed, patched and verified it. No real key was activated, no real startup setting changed, and `ocupilot-b-ci` was never restarted (S0 re-read after the mutations and after the sweep).
-- **Files (62):**
-  - Server, new: `Area/Security/EncryptionStartupSave.cls` (Save and form read), `Screen/Descriptor/EncryptionStartup.cls`, `Screen/Tool/EncryptionStartupUpdate.cls` (merge, consequence, pairs), `Screen/Tool/EncryptionStartupMint.cls` (version gate and rules before the mint).
-  - Server, changed: `Port/EncryptionPort.cls` (`STARTUPADMIN` removed; credentials mapping; `StartupSnippet`), `Port/AdminPort.cls` (`PROPERTYFAULTS` #1217, #1212, #1213, #5001), `Api/EncryptionError.cls` (codes, consequences), `Kernel/Proposal/Prohibited.cls` (type, `STARTUPINTERACTIVE`, `AUDIT.ENCRYPTIONCHANGE`), `Kernel/Governance/Baseline.cls` (`false`), `Api/Router.cls`, `Kernel/EntityType.cls`, `Kernel/EntityRef.cls`, `Screen/Tool/Classification.cls`, `ToolFields.cls` (regenerated).
-  - Server tests, new: `EncryptionStartupDescriptor`, `Read`, `Write`, `Gate`, `Prohibited`, `SaveFixture`, `SeamEncryptionStartupUpdate`; changed: `EncryptionSeamPort` (startup modes; `Writes` skips reads), `EncryptionWriteGateProbe`, and the rosters `Descriptor`, `ReadTool`, `SurfaceCoverage`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolRoundTrip`, `ToolWrite` (`AHEADTYPES` emptied), `DraftRegistry`, `EncryptionDescriptor`, `EndpointCoverage`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `AuditingUpdate` (28 codes), `ToolEmit` (the tool's pairs); `scripts/ci-throwaway.sh` (arming rosters).
-  - Client: `areas/security/encryption-startup.page.ts` and `.store.ts` with specs, `encryption-keys.page.ts` (the link) and its spec, `core/proposal-view.ts`, `core/strings.ts`, `core/screens.generated.ts` (regenerated), `shell/screen-outlet.ts`, `app.ts` and `app.spec.ts` (sign-out reset), `ui/angular.json` (2962kB, measured 2,961,623 bytes), `ui/browser/encryption-startup.browser-spec.mjs`, and the tools tests `angular-json`, `field-lists`, `navigation`, `proposal-view`, `screen-mirror`, `self-protection`.
-  - Docs: EXPERIENCE.md :168, :173, :364, :516 in place (1036 lines); this spec.
-- **Review (two layers, 14 findings):** patched 9 (high 1, medium 5, low 3), rejected 5 (low 4, false 1), deferred 1 residual; each is a row of the Review Triage Log. The Matrix Test Audit also moved the journal legs to Interactive, the matrix's mode.
-- **Follow-up review:** recommended (`true`): a high was patched. The risk to check is the widened Interactive predicate: it now reads the instance's flags when a write chooses Interactive, on the server (`LeavesInteractiveRequired`) and in the store (`modeRefusal`), and both copies must stay equal.
-- **Verification:** each story class, roster class and loop browser spec green on `ocupilot-b-ci`; this pass's patches re-run (`EncryptionStartupDescriptor` 10, `Read` 4, `Write` 10, `Gate` 4, 0 failed, runs 87-90); 8 mutations demonstrated red and reverted byte-identical (Verification); loop browser specs 11/11 on the rebuilt, redeployed bundle; `test:tools` 1825/1825; `test:components` 2503/2503; `npm run build` clean; `check-objectscript` 0; `lint-docs` 0; full ObjectScript sweep 469 classes, 3842 tests, 4 failed in 3 classes, each this story's: `AuditingUpdate` and `ToolEmit` pinned rosters the story moved (fixed), and `EncryptionKeyFileWrite` counted the startup settings `GET` that `f268a30e` routes through `EncryptionPort.Call` as a write (the seam's `Writes` now skips reads; product behavior unchanged); after the fixes `AuditingUpdate` 11, `EncryptionKeyFileWrite` 11, `ToolEmit` 11, `EncryptionKeyWrite` 8, `EncryptionKeyGate` 3, `EncryptionStartupGate` 4 and `EncryptionStartupWrite` 10 green (runs 563-569); `smoke.sh --container ocupilot-b-ci` 49/49 (agentswitches skipped); no `OCUPROBESTART` file or principal remains and every encryption and audit fact reads as at S0 (another suite's `OcuPilotProbeProhibitedRouteRole` was left by `ProhibitedRoute`, which this story does not touch); the staged-diff secret scan reads 0.
-- **Residual risks:** the deferred two-write Interactive case (unverified, needs a measured start); the count pins in `Test/Descriptor.cls` and `Test/ReadTool.cls`, `ui/angular.json`'s budget, `screens.generated.ts`, `EntityType.cls`'s list and EXPERIENCE.md :364 are lines Epic 19 also changes, so the boundary merge re-derives them; named limit (4) stands: the audit dialog renders only in the component spec.
+This pass (rework iteration 1) worked only the `[Smoke]` item, DW-2098; the earlier pass's account is in commit `82f6373a`.
+
+- **Change:** `PROHIBITED.STARTUPINTERACTIVE` also refuses a write that leaves Interactive while `IRISAUDIT`, `IRISSECURITY` or `IRISTEMP` is still encrypted on disk, whatever the flags, on the Save and at the confirm; a failed read refuses. The read is `EncryptionPort`'s `ENCRYPTEDDATABASES` (`EncryptedOnDisk` over `DatabaseEncryption`: `Config.Databases`'s directory, `SYS.Database` `EncryptedDB` in `%SYS`, after `%Admin_Secure:USE`; AD-27's 18.23 case), asked only when the write leaves Interactive. The form read answers it as `encryptedDatabases`, and the store draws Interactive `aria-disabled` while it is non-empty. The frontmatter's first `deferred:` entry is this case, DW-2098, closed here.
+- **Files:**
+  - `Port/EncryptionPort.cls`: `ENCRYPTEDDATABASESTYPE`, `STARTUPDATABASES`, `EncryptedOnDisk`, `DatabaseEncryption`, `EncryptedDatabases`.
+  - `Kernel/Proposal/Prohibited.cls`: `EncryptionStartup` takes the tool class and reads the on-disk state; `LeavesInteractiveRequired` gains `pEncryptedOnDisk`; `StartupDatabasesEncrypted` (fails closed). Only this story's own methods changed.
+  - `Area/Security/EncryptionStartupSave.cls`: the form read answers `{kmipServers, encryptedDatabases}`.
+  - Tests: `EncryptionSeamPort` (`ArmOnDisk`, `ondiskfails`), `EncryptionOnDiskPort` (new: the shipped loop over armed directories), `EncryptionStartupDescriptor`, `EncryptionStartupRead`, `EncryptionStartupWrite`.
+  - Client: `encryption-startup.store.ts` and its store and page specs.
+  - This spec: the `[Smoke]` tick, eight new `mutation:` lines and one updated, the triage entry, one deferral.
+- **Review (two layers, 14 findings):** 3 patched (medium 1, low 2), plus the intent layer's medium duplicate of the first. 1 deferred: None while encrypted on disk, high (unverified). 9 rejected: false 3, maybe-false 1, low 5. The reasons are in the Review Triage Log.
+- **Follow-up review:** `false`. This is a follow-up pass and no high was patched.
+- **Verification on `ocupilot-b-ci`:**
+  - Loads went only through `/tmp/epic-18-d7/load-throwaway.sh`, one test class per call.
+  - After the last revert, all green with 0 failed: `EncryptionStartupDescriptor` 10 (run 26), `Read` 5 (27), `Write` 11 (28), `Gate` 4 (29), `Prohibited` 13 (30).
+  - Mutations: the handoff's six (runs 6-11, client specs) and this stage's three (runs 23-25). Each was red, then reverted byte-identical.
+  - Client: component specs `encryption-startup.page` and `.store` 30/30; `npm run build` clean, initial total 2.96 MB with no budget warning against 2962kB; bundle rsynced and `docker cp`'d; `encryption-startup.browser-spec.mjs` 3/3.
+  - `check-objectscript` 0; `lint-docs` 0.
+  - Throwaway: no roster moved, so the sweep was not repeated. Facts read as S0 (mode 0, every flag 0, no key active, `encryptedDatabases` `[]`), and no `OCUPROBESTART` directory remains.
+  - No real key activated, no startup setting changed, no restart.
+- **Residual risks:**
+  - The real read's encrypted answer rests on `SYS.Database` `EncryptedDB` (measured 1 for `IRISAUDIT` in `t0m` m6). This build exercises it only through `EncryptionOnDiskPort`, since no instance may encrypt a database.
+  - The deferred None case.
+  - The refusal sentence does not name the restart (triage, rejected low).
+  - `EncryptionStartupWrite.cls` is 502 lines.

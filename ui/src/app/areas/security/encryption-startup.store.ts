@@ -89,7 +89,7 @@ const EMPTY_SETTINGS: Settings = {
  * Encryption startup settings' store (Story 18.23, AD-19, AD-55): the instance's encryption startup
  * settings, read through the screen's own declared read, so the form and `security.encryptionstartup.read`
  * answer one read (AD-36); Database encryption's declared read for the active keys (AD-5); and the form
- * read's configured KMIP servers.
+ * read's configured KMIP servers and startup databases still encrypted on disk.
  *
  * **It composes no payload of its own and holds no secret.** `PUT /encryption-startup` carries the changed
  * settings only, plus a new Unattended key file's location and administrator; the server merges them over
@@ -121,6 +121,8 @@ export class EncryptionStartupForm {
   private adminValue = '';
 
   private kmipList: readonly string[] = [];
+
+  private encryptedList: readonly string[] = [];
 
   private keyList: readonly string[] = [];
 
@@ -223,6 +225,14 @@ export class EncryptionStartupForm {
     return this.kmipList;
   }
 
+  /**
+   * The audit log's, IRISSECURITY's and IRISTEMP's databases still encrypted on disk, the form read's answer:
+   * a setting turned off leaves its database encrypted until the next start converts it.
+   */
+  encryptedDatabases(): readonly string[] {
+    return this.encryptedList;
+  }
+
   /** The active database encryption keys' ids, Database encryption's read. */
   activeKeys(): readonly string[] {
     return this.keyList;
@@ -235,12 +245,16 @@ export class EncryptionStartupForm {
 
   /**
    * Why start mode `mode` cannot be chosen, or `''`. Interactive is refused while one of `REQUIRED_FLAGS` is
-   * set in the form, or on the instance when it is not already Interactive, as the server judges it (AD-10):
-   * turning the flag off in the same Save does not make Interactive safe before the next start.
+   * set in the form, or on the instance when it is not already Interactive, or while one of their databases
+   * is still encrypted on disk, as the server judges it (AD-10): turning the flag off does not make
+   * Interactive safe before the next start.
    */
   modeRefusal(mode: StartMode): ChoiceRefusal {
     if (mode === this.current.mode) return '';
-    if (mode === 'Interactive' && REQUIRED_FLAGS.some((field) => this.current.flags[field] || (this.opened.mode !== 'Interactive' && this.opened.flags[field]))) {
+    if (
+      mode === 'Interactive' &&
+      (this.encryptedList.length > 0 || REQUIRED_FLAGS.some((field) => this.current.flags[field] || (this.opened.mode !== 'Interactive' && this.opened.flags[field])))
+    ) {
       return 'interactive';
     }
     if (mode === 'KMIP' && this.kmipList.length === 0) return 'kmip';
@@ -300,6 +314,7 @@ export class EncryptionStartupForm {
     this.pathValue = '';
     this.adminValue = '';
     this.kmipList = [];
+    this.encryptedList = [];
     this.keyList = [];
     this.loadedValue = false;
     this.heldValue = false;
@@ -479,6 +494,8 @@ export class EncryptionStartupForm {
     const form = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {};
     const servers = form['kmipServers'];
     this.kmipList = Array.isArray(servers) ? servers.map(textOf).filter((name) => name !== '') : [];
+    const encrypted = form['encryptedDatabases'];
+    this.encryptedList = Array.isArray(encrypted) ? encrypted.map(textOf).filter((name) => name !== '') : [];
   }
 
   private absorb(row: Record<string, unknown>): void {
