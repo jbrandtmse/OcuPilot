@@ -199,13 +199,14 @@ ClassMethod DefinitionReadOnly(pDefinitionId As %String, Output pReadOnly As %Bo
     Quit tSC
 }
 
-/// <p>The verdict for <var>pUserName</var> under the definition in force, resolving that definition
-/// first (<method>OcuPilot.Kernel.State.Agent.ResolveDefault</method>).</p>
+/// <p>The verdict for <var>pUserName</var> under the definition in force for them, resolving that
+/// definition first (<method>OcuPilot.Kernel.State.Agent.ResolveFor</method>: their pick while it
+/// names an enabled definition, else the default).</p>
 /// <p>It resolves an argument and calls <method>Verdict</method>; it computes no part of the
 /// verdict itself.</p>
 ClassMethod Resolved(pUserName As %String, Output pVerdict) As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveFor(pUserName, .tDefinitionId)
     If $$$ISERR(tSC) {
         Do ..Verdict(pUserName, "", .pVerdict)
         Set pVerdict("blocked") = 1

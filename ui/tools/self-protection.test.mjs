@@ -533,6 +533,11 @@ const ATELIER_REFUSALS = [
   ['REASONSQLPARAMETERS', 'explorerSqlParametersReason'],
   // DW-2025: a query or DML statement the statement index does not record once prepared.
   ['REASONSQLUNRECORDED', 'explorerSqlUnrecordedReason'],
+  // Story 19.11: the agent's SQL tools' refusals of a change on the query tool, a statement that
+  // carries code on the run tool, and a statement the instance did not prepare.
+  ['REASONSQLCHANGES', 'explorerSqlChangesReason'],
+  ['REASONSQLAGENTCODE', 'explorerSqlAgentCodeReason'],
+  ['REASONSQLNOTPREPARED', 'explorerSqlNotPreparedReason'],
   // Story 19.15: the background run's query-only, busy, full, not-found and lost refusals.
   ['REASONSQLBACKGROUNDQUERYONLY', 'explorerSqlBackgroundQueryOnlyReason'],
   ['REASONSQLBACKGROUNDBUSY', 'explorerSqlBackgroundBusyReason'],

@@ -166,6 +166,14 @@ Parameter CREATES As BOOLEAN = 0;
 /// the field twice.</p>
 Parameter SCREENACTIONS = "";
 
+/// <p>Whether this tool's fresh read is composed from the values the write itself carries, which
+/// <method>PortQuery</method> turns into the port's query (AD-51, Story 19.11). <code>0</code> here:
+/// the read identifies the target alone. A tool that declares <code>1</code> has the mint pass its
+/// arguments, and a screen action its declared values, through <method>PortQuery</method>, as
+/// Confirm's re-read passes the stored payload, so all three callers read one state. Its
+/// <method>ScreenActionDelta</method> is asked before the fresh read, with no fresh object.</p>
+Parameter READSVALUES As BOOLEAN = 0;
+
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
 /// them.</p>

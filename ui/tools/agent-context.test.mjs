@@ -41,6 +41,7 @@ const FULL_INFO = {
   shareDefault: true,
   userChoice: null,
   contextRowCap: 200,
+  definition: { id: '7', name: 'Operations' },
   provider: 'Anthropic',
   endpointHost: 'api.anthropic.com',
   leavesInstance: true,
@@ -296,4 +297,35 @@ test('a `setShare` that overtakes a read in flight still lets that read settle',
   release[0].resolve(ok(FULL_INFO));
   await inFlight;
   assert.equal(context.share(), false, "the overtaken read does not undo the write's answer");
+});
+
+// --- Story 19.11: the definition in force -------------------------------------------------------
+//
+// Mutation (Rule 19): stop parsing `definition` -> the first test goes red; leave it out of
+// `sameInfo` -> the third goes red, and a picked definition whose provider and host equal the
+// default's would not re-render the chip's neighbour.
+
+test('definition() is the caller\'s definition in force, narrowed key by key', async () => {
+  const context = new AgentContext({ api: stubApi([ok(FULL_INFO)]) });
+  assert.equal(context.definition(), null, 'none before the first read');
+  await context.load();
+  assert.deepEqual(context.definition(), { id: '7', name: 'Operations' });
+});
+
+test('a null or malformed definition reads as none', async () => {
+  for (const definition of [null, 'x', { name: 'no id' }, { id: '' }]) {
+    const context = new AgentContext({ api: stubApi([ok({ ...FULL_INFO, definition })]) });
+    await context.load();
+    assert.equal(context.definition(), null, JSON.stringify(definition));
+  }
+});
+
+test('a re-read that moves only the definition is heard', async () => {
+  const context = new AgentContext({ api: stubApi([ok(FULL_INFO), ok({ ...FULL_INFO, definition: { id: '8', name: 'Developer' } })]) });
+  let heard = 0;
+  context.subscribe(() => (heard += 1));
+  await context.load();
+  await context.load();
+  assert.equal(heard, 2);
+  assert.deepEqual(context.definition(), { id: '8', name: 'Developer' });
 });

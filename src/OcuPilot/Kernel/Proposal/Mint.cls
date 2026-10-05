@@ -164,6 +164,9 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tCreates = ..CreatesOf(pToolClass)
         Kill tQuery
         Set tQuery(##class(OcuPilot.Kernel.Proposal.Operation).ReadIdParamOf(pToolClass, pIdParam)) = pIdValue
+        ; AD-51: a tool whose fresh read is composed from its own values has them applied, as Confirm's
+        ; re-read applies the stored payload, so the mint and the confirm read one guard.
+        If (pToolClass '= "") && +$Parameter(pToolClass, "READSVALUES") Do $ClassMethod(pToolClass, "PortQuery", pArgs, .tQuery)
         Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(pToolClass, ..PortClassOf(pToolClass), tEndpoint, .tQuery, pIdValue, .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set pHttpStatus = +$Get(tReadHttp)
@@ -340,7 +343,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tValues("impact") = ..ImpactValue(pToolName, tTargetRef, $Select(tPresent: tFresh.%ToJSON(), 1: ""), tValues("payload"), tValues("diff"))
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
-        Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
+        Set tDefinitionSC = ..DefinitionInForce(pTurnKey, .tDefinitionId, .tDefinitionVersion)
         If $$$ISERR(tDefinitionSC) {
             Set tSC = ..Internal("the proposal's definition could not be read: " _ $System.Status.GetErrorText(tDefinitionSC), .pHttpStatus, .pFault)
             Quit
@@ -767,14 +770,19 @@ ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPr
 }
 
 /// <p>The agent definition in force and the version it carries, for the proposal's row.</p>
+/// <p>The definition is the one turn <var>pTurnKey</var> was started with (Story 19.11), which
+/// Confirm judges the proposal by; a turn row that holds none reads as the default's.</p>
 /// <p><var>pVersion</var> is <method>OcuPilot.Kernel.State.Agent.GuardedVersion</method>'s answer,
 /// where <code>""</code> is "no row" and is never conflated with <code>0</code>. No definition in
 /// force leaves both empty, which is the configuration-empty state rather than a failure.</p>
-ClassMethod DefinitionInForce(Output pId As %String, Output pVersion As %String) As %Status [ Private ]
+ClassMethod DefinitionInForce(pTurnKey As %String, Output pId As %String, Output pVersion As %String) As %Status [ Private ]
 {
     Set pId = ""
     Set pVersion = ""
-    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.pId)
+    Set tSC = $$$OK
+    If pTurnKey '= "" Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedDefinitionOf(pTurnKey, .pId)
+    If $$$ISERR(tSC) Quit tSC
+    If pId = "" Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.pId)
     If $$$ISERR(tSC) Quit tSC
     If pId = "" Quit $$$OK
     Quit ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .pVersion)

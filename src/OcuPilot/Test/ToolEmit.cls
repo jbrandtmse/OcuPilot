@@ -86,7 +86,7 @@ Method TestEveryLiveToolIsAdvertisedInTheSubset()
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ProviderTools", .tAdvertised), "the tools are advertised")
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tListed), "the live tools list")
     If '$IsObject(tListed) Quit
-    ; AD-53: an unadvertised tool, of which none ships today, is listed and never advertised.
+    ; AD-53: an unadvertised tool (the saves, the license key's activation, the data browser's save) is listed and never advertised.
     Set tTools = []
     Set tListIterator = tListed.%GetIterator()
     While tListIterator.%GetNext(.tListIndex, .tListedTool) { If $ClassMethod(..#REGISTRY, "IsAdvertised", tListedTool) Do tTools.%Push(tListedTool) }
@@ -289,6 +289,11 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead" {
+            ; Story 19.11: a read with a class of its own, gated as SQL query is; the statement's SQL
+            ; privileges and the namespace's database pairs are the port's to check at its prepare.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
         } ElseIf tTool.class = "OcuPilot.Kernel.Shell.PermissionCheck" {
             ; Story 16.3: a read with a class of its own, gated as the Users list is; its arguments
             ; add no pair, and a role check asks the Roles list's set inside the operation.

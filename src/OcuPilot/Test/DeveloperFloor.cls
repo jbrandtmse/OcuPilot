@@ -6,7 +6,7 @@
 /// floor is refused naming both halves of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-five,
+/// admits it, and the tools whose required pairs it holds are exactly the declared thirty-six,
 /// whose writes are the two exports, the SQL console's run and the data browser's save.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
@@ -35,7 +35,7 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerDocDbList,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
+Parameter TOOLS = "agent.transcripts.read,explorer.class.read,explorer.classes.export,explorer.classes.read,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routines.export,explorer.routines.read,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open";
 
 /// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone, and
 /// every other System Explorer write also WRITE on the namespace's routines database, which the
@@ -481,7 +481,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredThirtyFive()
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-five")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared thirty-six")
     Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports, the SQL run and the data browser save")
 }
 

@@ -245,14 +245,15 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
 /// scope): each turn of <var>pConvo</var> carrying a reply contributes its user message then its
 /// reply, oldest first, dropping the oldest whole turns until the combined text fits
 /// <var>pMaxLength</var> characters. A turn with no reply is skipped entirely -- never a stopped
-/// or failed turn, never tool results, never screen context.</p>
-ClassMethod HistoryMessages(pConvo As Convo, pMaxLength As %Integer, Output pMessages As %DynamicArray) As %Status
+/// or failed turn, never tool results, never screen context. With <var>pDefinitionId</var>, a turn whose
+/// entry recorded a different definition is left out too; an entry that recorded none is kept.</p>
+ClassMethod HistoryMessages(pConvo As Convo, pMaxLength As %Integer, Output pMessages As %DynamicArray, pDefinitionId As %String = "") As %Status
 {
     Set pMessages = []
     Set tSC = $$$OK
     Try {
         If '$IsObject(pConvo) Quit
-        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedRows(pConvo.ConvKey, .tTurns)
+        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedRows(pConvo.ConvKey, .tTurns, 0, 1)
         If $$$ISERR(tSC) Quit
         Set tKept = 0
         Set tTotal = 0
@@ -261,6 +262,9 @@ ClassMethod HistoryMessages(pConvo As Convo, pMaxLength As %Integer, Output pMes
             Set tTurn = tTurns.%Get(tI)
             If tTurn.%GetTypeOf("reply") '= "string" Continue
             If tTurn.%Get("reply") = "" Continue
+            ; One conversation, one definition (Story 19.11, AD-42): an entry that ran under another
+            ; definition is not replayed. An entry that recorded none still is.
+            If (pDefinitionId '= "") && (tTurn.%Get("definitionId") '= "") && (tTurn.%Get("definitionId") '= pDefinitionId) Continue
             Set tLen = $Length(tTurn.%Get("message")) + $Length(tTurn.%Get("reply"))
             If (tTotal + tLen) > pMaxLength Quit
             Set tKept = tKept + 1

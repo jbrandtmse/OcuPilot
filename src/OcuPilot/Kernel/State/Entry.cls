@@ -150,9 +150,10 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
 /// <p><var>pWithContext</var> 1 adds <code>appendedAt</code> -- the entry's own time, or its
 /// conversation's <property>OcuPilot.Kernel.State.Convo.CreatedAt</property> for an entry appended
 /// before the column existed -- and <code>context</code>, the stored screen-context payload parsed,
-/// or JSON null when the turn carried none or it does not parse. The default leaves the shape the
-/// panel's restore reads unchanged.</p>
-ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWithContext As %Boolean = 0) As %Status
+/// or JSON null when the turn carried none or it does not parse. <var>pWithDefinition</var> 1 adds
+/// <code>definitionId</code>, the definition the entry ran under or <code>""</code>. The default leaves
+/// the shape the panel's restore reads unchanged.</p>
+ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWithContext As %Boolean = 0, pWithDefinition As %Boolean = 0) As %Status
 {
     Set pRows = []
     Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tIds)
@@ -202,6 +203,7 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray, pWi
         }
         Do tOut.%Set("steps", tSteps)
         Do tOut.%Set("stepsDropped", +tRow.StepsDropped, "number")
+        If pWithDefinition Do tOut.%Set("definitionId", ..Text(tRow.DefinitionId), "string")
         Set tEgress = ##class(OcuPilot.Kernel.State.Turn).EgressObject(..Text(tRow.Egress))
         If $IsObject(tEgress) {
             Do tOut.%Set("egress", tEgress)

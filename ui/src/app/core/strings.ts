@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:644 */
+  /** EXPERIENCE.md:645 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5759,6 +5759,16 @@ export const STRINGS = {
   sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
   /** EXPERIENCE.md:603 */
   sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
+  /** EXPERIENCE.md:604 */
+  agentPickerLabel: 'Agent definition: <name>',
+  /** EXPERIENCE.md:604 */
+  agentPickerOptionDetail: '<provider> \u00b7 <model>',
+  /** EXPERIENCE.md:604 */
+  explorerSqlChangesReason: 'This statement changes something, so it is proposed and runs only once a person confirms it.',
+  /** EXPERIENCE.md:604 */
+  explorerSqlAgentCodeReason: 'A statement that creates a function, method, procedure, query, trigger or aggregate, or a COMPUTECODE field, carries code, which a person writes and runs on SQL query.',
+  /** EXPERIENCE.md:604 */
+  explorerSqlNotPreparedReason: 'The instance did not prepare this statement, so it is not proposed; its SQLCODE says why.',
 } as const;
 
 /**

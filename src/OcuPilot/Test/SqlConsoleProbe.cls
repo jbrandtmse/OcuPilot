@@ -372,7 +372,8 @@ ClassMethod RemovePrincipals() As %Status
 
 /// <p>Run <var>pLegs</var> -- JSON text of an array of <code>{op, namespace, statement, values?,
 /// maxRows?}</code>, <code>op</code> one of <code>classify</code>, <code>query</code>,
-/// <code>write</code> and <code>plan</code>, through <class>OcuPilot.Port.SqlPort</class>, or
+/// <code>write</code> and <code>plan</code>, through <class>OcuPilot.Port.SqlPort</class>, <code>read</code>
+/// and <code>mint</code>, the agent's two SQL tools (Story 19.11), or
 /// <code>prepare</code>, outside it (<method>PreparedIn</method>) -- as <var>pUsername</var> in a
 /// child process, and answer what it signalled, or an object carrying <code>error</code>.</p>
 ClassMethod ProbeAs(pUsername As %String, pLegs As %String) As %DynamicObject
@@ -420,6 +421,17 @@ ClassMethod RunAs(pParent As %Integer, pUsername As %String, pLegs As %String)
             } ElseIf tOp = "prepare" {
                 Set tAnswer = ..PreparedIn(tLeg.%Get("namespace"), tLeg.%Get("statement"))
                 Set tSC = $$$OK
+            } ElseIf tOp = "read" {
+                ; Story 19.11: the agent's SQL query as this principal, in the leg's namespace.
+                Do ##class(OcuPilot.Kernel.Scope).Set(tLeg.%Get("namespace"))
+                Set tReadArgs = {"statement": (tLeg.%Get("statement")), "parameters": (tValues), "maxRows": 10}
+                Set tSC = ##class(OcuPilot.Screen.Tool.ExplorerSqlRead).View("", tReadArgs, 200, .tAnswer, .tHttp, .tFault)
+            } ElseIf tOp = "mint" {
+                ; Story 19.11: the agent's proposal of a statement as this principal; minted or refused.
+                Do ##class(OcuPilot.Kernel.Scope).Set(tLeg.%Get("namespace"))
+                Set tMintArgs = {"Target": "sql", "statement": (tLeg.%Get("statement")), "parameters": (tValues), "rationale": "probe", "expectedImpact": "probe"}
+                Set tSC = ##class(OcuPilot.Screen.Tool.ExplorerSqlRun).View("", tMintArgs, 0, .tMinted, .tHttp, .tFault)
+                If $$$ISOK(tSC) && $IsObject(tMinted) Set tAnswer = {"outcome": "minted"}
             } ElseIf tOp = "plan" {
                 Set tSC = ##class(OcuPilot.Port.SqlPort).Plan(tLeg.%Get("namespace"), tLeg.%Get("statement"), .tAnswer, .tHttp, .tFault)
             } Else {
@@ -429,6 +441,7 @@ ClassMethod RunAs(pParent As %Integer, pUsername As %String, pLegs As %String)
             Do tRow.%Set("http", $Select($$$ISOK(tSC): 200, 1: +tHttp), "number")
             Do tRow.%Set("code", $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "string")
             Do tRow.%Set("failedPair", $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("failedPair"), 1: ""), "string")
+            Do tRow.%Set("faultSqlcode", $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("sqlcode"), 1: ""), "string")
             Set tError = $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("error") = "object"): tAnswer.%Get("error"), 1: "")
             Do tRow.%Set("outcome", $Select($IsObject(tError): "error", $IsObject(tAnswer): tAnswer.%Get("outcome"), 1: ""), "string")
             Do tRow.%Set("sqlcode", $Select($IsObject(tError): tError.%Get("sqlcode"), $IsObject(tAnswer): tAnswer.%Get("sqlcode"), 1: ""), "string")

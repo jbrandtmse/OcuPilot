@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 
+import { AccountPreferences, SHELL_AGENT_DEFINITION, SHELL_KIND } from '../core/account-preferences';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
@@ -141,7 +142,9 @@ interface Mounted {
 
 async function mount(
   options: {
-    rows?: { enabled: boolean }[];
+    rows?: { enabled: boolean; name?: string; provider?: string; model?: string; default?: boolean }[];
+    /** The store the picker writes the pick to; absent, the panel runs without one. */
+    preferences?: AccountPreferences;
     verdict?: Verdict;
     loaded?: boolean;
     restraint?: Partial<Restraint>;
@@ -220,6 +223,7 @@ async function mount(
       { provide: ShellState, useValue: shell },
       { provide: SuggestedView, useValue: suggested },
       { provide: Session, useValue: sessionNamed(options.userName ?? '_SYSTEM') },
+      ...(options.preferences === undefined ? [] : [{ provide: AccountPreferences, useValue: options.preferences }]),
       ...(options.explainEntry === true
         ? [{ provide: ExplainEntry, useValue: new ExplainEntry({ agentStatus, agentContext, turn }) }]
         : []),
@@ -5029,5 +5033,101 @@ describe('Story 14.1: taking the script instead', () => {
     fixture.detectChanges();
     expect(api.calls.filter((call) => call.path === proposalDraftPath('p1'))).toHaveLength(1);
     expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(STRINGS.proposalStatusCanceledByDraft);
+  });
+});
+
+describe('Story 19.11: the agent picker in the header', () => {
+  const TWO_ROWS = [
+    { enabled: true, name: 'Alpha', provider: 'Anthropic', model: 'm1', default: true },
+    { enabled: true, name: 'Beta', provider: 'OpenAI', model: 'm2' },
+  ];
+
+  it('two enabled definitions put a named picker between the title and New conversation', async () => {
+    // Mutation (Rule 19): drop the `<app-agent-picker>` from the header template -> this goes red.
+    const { host } = await mount({ rows: TWO_ROWS, preferences: stubAccountPreferences() });
+    const header = host.querySelector('.ocu-panel-header') as HTMLElement;
+    const button = header.querySelector('.ocu-agent-picker-button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Agent definition: Alpha');
+    const follows = (a: Element, b: Element) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    const picker = header.querySelector('app-agent-picker') as Element;
+    expect(follows(header.querySelector('.ocu-panel-title') as Element, picker)).toBe(true);
+    expect(follows(picker, header.querySelector('.ocu-panel-new-conversation') as Element)).toBe(true);
+  });
+
+  it('the instance-named definition in force is the one the picker shows', async () => {
+    const agentContext = stubAgentContext({ definition: { id: '1', name: 'Beta' } });
+    await agentContext.load();
+    const { host } = await mount({ rows: TWO_ROWS, agentContext, preferences: stubAccountPreferences() });
+    const button = host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Agent definition: Beta');
+  });
+
+  it('choosing a definition stores it as the shell member agentDefinition', async () => {
+    // Mutation (Rule 19): store under another member name -> this goes red.
+    const preferences = stubAccountPreferences();
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences });
+    (host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelectorAll('[role="menuitemradio"]')[1] as HTMLButtonElement).click();
+    await turnSettle();
+    expect(preferences.shell().get(SHELL_AGENT_DEFINITION)).toBe('1');
+    const writes = preferences.calls.filter((call) => call.method === 'POST');
+    expect(writes.length).toBe(1);
+    expect(JSON.parse(writes[0].body ?? '{}')).toMatchObject({ kind: SHELL_KIND, name: SHELL_AGENT_DEFINITION, value: '1' });
+  });
+
+  it('a running turn locks the picker and a press writes nothing', async () => {
+    // Mutation (Rule 19): pass `[locked]="false"` from the header -> this goes red.
+    const { schedule } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const preferences = stubAccountPreferences();
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences, turn });
+    await typeDraft(host, fixture, 'go');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const button = host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+    expect(preferences.calls.filter((call) => call.method === 'POST')).toEqual([]);
+  });
+
+  it('picking another definition while the conversation has turns starts a new conversation', async () => {
+    // Mutation (Rule 19): delete the `this.onNewConversation()` call in `onChooseAgent` -> this goes red.
+    const storage = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const memory = {
+      getItem: (key: string) => (storage.has(key) ? (storage.get(key) as string) : null),
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [{ seq: 1, message: 'hi', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 }],
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, storage: memory, navigationType: () => 'reload' });
+    await turn.restore();
+    expect(turn.entries().length).toBe(1);
+    const preferences = stubAccountPreferences();
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences, turn });
+    (host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelectorAll('[role="menuitemradio"]')[1] as HTMLButtonElement).click();
+    await turnSettle();
+    expect(preferences.shell().get(SHELL_AGENT_DEFINITION)).toBe('1');
+    expect(turn.entries().length).toBe(0);
   });
 });

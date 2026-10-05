@@ -91,7 +91,8 @@ ClassMethod HandleRead() As %Status
 /// <parameter>OcuPilot.Api.Error.PREFERENCESNAME</parameter> on <code>name</code>; an absent,
 /// empty or over-long value is 422 <parameter>OcuPilot.Api.Error.PREFERENCESVALUE</parameter> on
 /// <code>value</code>; a <code>theme</code> value other than <code>light</code> or
-/// <code>dark</code> is 422 <parameter>OcuPilot.Api.Error.PREFERENCESCHOICE</parameter> on
+/// <code>dark</code>, and an <code>agentDefinition</code> value that is not the id of an enabled
+/// definition, are 422 <parameter>OcuPilot.Api.Error.PREFERENCESCHOICE</parameter> on
 /// <code>value</code>; and a twenty-first favorite is 422
 /// <parameter>OcuPilot.Api.Error.PREFERENCESLIMIT</parameter> on <code>route</code>.</p>
 /// <p><b>Only an <parameter>ACTIONADD</parameter> requires a built screen's route.</b> A
@@ -210,6 +211,18 @@ ClassMethod HandleUpdate() As %Status
         If (tAction = ..#ACTIONSET) && (tKeyMember = ..#NAMEMEMBER) && (tKey = ##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME) && '##class(OcuPilot.Kernel.State.Pref).IsThemeValue(tValue) {
             Set tSC = ..RenderViolation(##class(OcuPilot.Api.Error).#PREFERENCESCHOICE, ..#VALUEMEMBER)
             Quit
+        }
+        ; The agent-definition pick names a definition that exists and is enabled, refused before any write.
+        If (tAction = ..#ACTIONSET) && (tKeyMember = ..#NAMEMEMBER) && (tKey = ##class(OcuPilot.Kernel.State.Pref).#SHELLAGENTDEFINITION) {
+            Set tPickSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIsEnabled(tValue, .tPickEnabled)
+            If $$$ISERR(tPickSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPickSC))
+                Quit
+            }
+            If 'tPickEnabled {
+                Set tSC = ..RenderViolation(##class(OcuPilot.Api.Error).#PREFERENCESCHOICE, ..#VALUEMEMBER)
+                Quit
+            }
         }
 
         Set tUser = ..CallerUsername()

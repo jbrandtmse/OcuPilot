@@ -319,6 +319,16 @@ Method TestRunningStatementLiteral()
     Do ..ReadSource("n", "which SQL statements are running right now?")
 }
 
+/// <p>Source (o): a probe row in <code>USER</code> whose <code>Label</code> is the seed, read through
+/// <code>explorer.sqlquery.read</code> in a turn running in <code>USER</code> as the suite's account.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Agent.Loop.Run</method> appends the last
+/// <code>tool_result</code> content to the system prompt -> the stub obeys, and the invariant 1,
+/// obeyed and proposal assertions go red.</p>
+Method TestSqlQueryRow()
+{
+    Do ..ReadSource("o", "what does the probe row say?", $Parameter(..#SEED, "CATALOGNAMESPACE"))
+}
+
 /// <p>Source (g): the rows of sources (a) and (e), each sent as a turn's screen context with no
 /// tool call; the synthetic <code>screen_context</code> result is where the marker arrives.</p>
 Method TestScreenContext()

@@ -43,6 +43,10 @@ const {
   CONSEQUENCE_TASKEXPORTREPLACES,
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
+  CONSEQUENCE_SQLCHANGESROWS,
+  CONSEQUENCE_SQLCHANGESSCHEMA,
+  CONSEQUENCE_SQLRUNSPROCEDURE,
+  CONSEQUENCE_SQLUNDECLARED,
   CONSEQUENCE_PYTHONCUSTOM,
   CONSEQUENCE_TASKMANAGERSUSPEND,
   CONSEQUENCE_LOCKINTRANSACTION,
@@ -84,6 +88,7 @@ const {
   formatUserName,
   isTerminalPhase,
   journalSentence,
+  sqlConsequenceSentence,
   offersRepropose,
   phaseForState,
   statusLineFor,
@@ -914,4 +919,44 @@ test('Story 18.22: an activation and a deactivation state their consequence on t
     assert.equal(consequenceSentence(code), sentence, `${code} reads its published sentence`);
     assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], code, `${name}.cls declares the code the card reads`);
   }
+});
+
+// Story 19.11: an agent-proposed SQL statement's four consequence codes are the tool's own, read from its
+// class rather than restated, and each resolves to the console's confirmation sentence for the kind; the
+// DML sentence names the statement's tables from the proposal's `Tables` row.
+//
+// Mutation (Rule 19): drop the EXPLORER.SQL.RUNSPROCEDURE branch from `consequenceSentence`, or fill
+// `<tables>` from another row in `sqlConsequenceSentence` -> this goes red.
+test("the SQL run's consequence codes are the tool's own and resolve to the console's sentences", () => {
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'ExplorerSqlRun.cls'), 'utf8');
+  for (const [parameter, code] of [
+    ['CONSEQUENCEROWS', CONSEQUENCE_SQLCHANGESROWS],
+    ['CONSEQUENCESCHEMA', CONSEQUENCE_SQLCHANGESSCHEMA],
+    ['CONSEQUENCEPROCEDURE', CONSEQUENCE_SQLRUNSPROCEDURE],
+    ['CONSEQUENCEUNDECLARED', CONSEQUENCE_SQLUNDECLARED],
+  ]) {
+    assert.ok(tool.includes(`Parameter ${parameter} = "${code}";`), `ExplorerSqlRun.cls declares ${parameter} as ${code}`);
+  }
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLCHANGESSCHEMA), STRINGS.explorerSqlConfirmDdl);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLRUNSPROCEDURE), STRINGS.explorerSqlConfirmCall);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLUNDECLARED), STRINGS.explorerSqlConfirmOther);
+  assert.equal(consequenceSentence(CONSEQUENCE_SQLCHANGESROWS), '', 'the DML sentence names tables, so the card states it through sqlConsequenceSentence');
+  const view = {
+    consequence: CONSEQUENCE_SQLCHANGESROWS,
+    changed: [
+      { field: 'Kind', before: '', after: 'dml' },
+      { field: 'Tables', before: '', after: 'OCUPROBE196.GRANTED, OCUPROBE196.OTHER' },
+    ],
+  };
+  assert.equal(
+    sqlConsequenceSentence(view),
+    STRINGS.explorerSqlConfirmDml.replace('<tables>', 'OCUPROBE196.GRANTED, OCUPROBE196.OTHER'),
+    'the DML sentence names the tables the instance recorded'
+  );
+  assert.equal(sqlConsequenceSentence({ ...view, consequence: CONSEQUENCE_SQLCHANGESSCHEMA }), '', 'and no other code reads through it');
+  assert.equal(
+    sqlConsequenceSentence({ consequence: CONSEQUENCE_SQLCHANGESROWS, changed: [{ field: 'Tables', before: '', after: '<tables>' }] }),
+    STRINGS.explorerSqlConfirmDml.replace('<tables>', () => '<tables>'),
+    'a table name holding a placeholder is shown as written'
+  );
 });

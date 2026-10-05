@@ -22,7 +22,7 @@ import type { ApiService } from '../core/api';
  * differently.
  */
 export function stubAgentStatus(
-  rows: { enabled: boolean }[] = [],
+  rows: { enabled: boolean; name?: string; provider?: string; model?: string; default?: boolean }[] = [],
   restraint: Partial<Restraint> = {}
 ): AgentStatus {
   const api = {
@@ -32,7 +32,7 @@ export function stubAgentStatus(
       body:
         path === AGENT_RESTRAINT_PATH
           ? { ...UNRESTRAINED, ...restraint }
-          : { definitions: rows.map((row, index) => ({ id: String(index), enabled: row.enabled })) },
+          : { definitions: rows.map((row, index) => ({ id: String(index), ...row })) },
     }),
   };
   return new AgentStatus({ api: api as unknown as ApiService });

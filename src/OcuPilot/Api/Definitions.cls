@@ -2,12 +2,13 @@
 /// surface in OcuPilot's API. One handler, one envelope, one gate, and one place the audit row is
 /// written.</p>
 /// <p><b>Who may see what.</b> Every caller that reaches here has already cleared
-/// <method>OcuPilot.Api.Router.OnPreDispatch</method>: authenticated, and holding at least one
-/// <code>%Admin_*</code> resource. On top of that, <b>reading one definition and every write</b>
-/// require OcuPilot's own administrative resource, checked server-side through
-/// <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> at the moment of the call. The
-/// <b>list</b> does not: it answers the selection projection -- name, provider, model, enabled,
-/// default -- which is what the switcher needs and what every portal user may see (AD-46).</p>
+/// <method>OcuPilot.Api.Router.OnPreDispatch</method>: authenticated, and holding USE on at least
+/// one <code>%Admin_*</code> resource or on <code>%Development</code>. On top of that,
+/// <b>reading one definition and every write</b> require OcuPilot's own administrative resource,
+/// checked server-side through <method>OcuPilot.Screen.Gate.HoldsPrivilege</method> at the moment
+/// of the call. The <b>list</b> does not: it answers the selection projection -- id, name,
+/// provider, model, enabled, default -- which is what the switcher and the panel's agent picker
+/// need and what every caller past the router may see (AD-46).</p>
 /// <p><b>No response here ever carries a credential value</b> (AD-35). The full projection
 /// carries the credential's <i>type</i> and its <i>name</i>, which is what the schema stores;
 /// there is no property, no argument and no key that could carry the secret. The route that

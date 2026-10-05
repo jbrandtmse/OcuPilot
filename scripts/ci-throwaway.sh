@@ -234,6 +234,7 @@ services:
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: AgentPickTurn, SqlAgentRead
       # classes: TurnStream
       # classes: WebAppWire
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
@@ -458,6 +459,7 @@ services:
       # classes: SanitizeAuditMask
       # classes: EgressLine
       # classes: DeveloperFloorTurn
+      # classes: AgentPickTurn, SqlAgentRead
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

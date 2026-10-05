@@ -2,9 +2,10 @@
 title: 'Story 19.11: The agent gains guarded SQL and a picker'
 type: 'feature'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '679cbf1fa9f10e5ec02e40e79cae234bb8c201f8'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -275,6 +276,25 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 14 findings — high 0, medium 3, low 8, false 1, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` DDL, CALL and undeclared consequence mapping never run — added `SqlAgentWrite.TestTheConsequenceNamesTheKindOfStatement` (DDL mint plus the four kinds); mutation recorded (run 1641 red).
+  - `[medium]` `[patch]` AC5 client leg (pick with turns starts a new conversation) untested — added a `panel.spec.ts` case; mutation applied, red, reverted.
+  - `[medium]` `[patch]` AC4 per-user read-only with a pick untested — added a leg to `AgentPick.TestAPickedDefinitionIsStampedAndStillRestrained` (`AGENT.READONLY.USER`).
+  - `[low]` `[patch]` stale doc-comment mutation naming a `Verdict` change the spec says had nothing to skip — comment now names only the stamp leg as load-bearing.
+  - `[low]` `[reject]` `AgentPick.OwnAuditRows = 0` has no positive control — the audit source is registered by the installer and `AgentPick`'s own mutation of the default-marker leg shares the setup; a fix adds a second audit probe for no everyday risk.
+  - `[low]` `[reject]` DW-1337 openMenuViolations has no positive control — the gate caught the real overflow during implement (menu moved to the panel); an added control is more complexity than the risk warrants.
+  - `[low]` `[reject]` client mutations written, not applied for `proposal-view`, `turn`, `sql-answer`, `proposal-card`, picker `locked()` — each suite is exercised by its executed tests; the notes name the mutation; low and no everyday harm.
+  - `[low]` `[reject]` source-text assertions on `.cls` literals — the spec asks for the source pin; behavior is pinned separately.
+  - `[low]` `[reject]` `TestAPrincipalWithoutThePrivilege...` lacks a positive prepared leg — the `Granted` UPDATE minted by the same fixtures in `SqlAgentWrite` covers it.
+  - `[low]` `[reject]` `Loop.TurnDefinition` and `Turn.GuardedDefinitionOf` lack direct tests — covered through `AgentPickTurn`; the extra row read is harmless.
+  - `[low]` `[reject]` `panel.ts` `agentInForce` fallback uncovered — negligible.
+  - `[false]` `[reject]` `ReadTool` "one hundred and sixty-five" sentence inconsistent — pre-existing and untouched by this diff.
+  - `[maybe-false]` `[reject]` Intent audit: `Mint.DefinitionInForce` falls back to `ResolveDefault` with no turn key — the agent path always carries a turn key; a mint with none has no turn to pick for, and the fallback is the spec's own.
+  - `[maybe-false]` `[reject]` Intent audit: `Restraint.Resolved` now honours the pick while `Verdict` is unchanged — `Resolved` feeds the footer and Guardrails, which the contract lists as readers of the pick.
+
 ## Design Notes
 
 **Decisions (ruled, or the plan's under the rulings):**
@@ -291,6 +311,7 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
   - A function or procedure the query calls still runs as the user in the turn job and can change state (Task 0 measures it). The SQL index row its prepare writes is AD-7's fifth shape.
   - Closing the limit would need a SQL parser, which 19.6 rules out. A rolled-back wrapper was rejected unmeasured, because it would also roll back cached-query compile writes (inference).
   - The instance's EXECUTE privilege remains the gate. That is the same limit the console and the classic page carry.
+  - **Task 0, measured on `ocupilot-a2-ci`:** a query selecting an SQL function that sets `^OcuProbe1911` set the global (value 1). It ran through `SqlPort.Run` in `query` mode as the session user, not through a stub turn, so the turn job's own identity is not separately measured. The function and the global were removed afterwards.
 - **Rows to the model (ruling 2).**
   - They pass AD-24's bound (the row cap and 65,536 in total; SqlPort's own 1,000-character cell cut stands for the per-field bound, since `Bound` does not cut array rows) and AD-60's sanitizer, as untrusted content (AD-11).
   - Added as a backstop that can only add redaction: every cell of a column whose name matches the Conventions › Secrets pattern is masked.
@@ -391,22 +412,41 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - `cd ui && npm test` (once, before dev_complete): expected green, with the budget re-based.
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-a2-ci`, the full ObjectScript sweep, one class at a time (once, before dev_complete): expected green apart from the known `WireSecurityRead` (DW-1554) and `Retention` (DW-1929) residue.
 
-**Planned mutations (Rule 19)**, one per AC, recompiling the class and its descendants on `ocupilot-a2-ci`:
+**Mutations (Rule 19)**, each applied on `ocupilot-a2-ci` with the class and its descendants recompiled, observed red, reverted byte-identical (compared with `cmp`) and recompiled:
 
-- AC1: `Api/Turn.cls` resolves `ResolveDefault` again. Red: `AgentPickTurn`'s endpoint leg and the browser egress leg.
-- AC2: the `agentDefinition` write also moves the marker (`SetDefaultGuarded`). Red: `AgentPick`'s marker-unchanged and other-user legs.
-- AC3: `ResolveFor` skips the enabled check. Red: the disabled-pick leg (the turn refuses `PROVIDER.UNCONFIGURED`).
-- AC4: `Mint.DefinitionInForce` back to `ResolveDefault`. Red: the read-only-default mint and confirm leg. And `Verdict` skipping its per-user read-only source when a definition id is given. Red: the 14.5 leg.
-- AC5: the `HistoryMessages` filter removed. Red: the replay leg.
-- AC6: the one-option text branch removed. Red: `agent-picker.spec.ts`.
-- AC7: the `IsCredentialName` mask removed. Red: the mask leg. And the first value spliced. Red: the bound leg.
-- AC8: `ADVERTISED` 0 restored. Red: the roster legs.
-- AC9: `READSVALUES` 0. Red: the card-rows and target-changed legs, and the screen-action guard leg.
-- AC10: `CarriesCode` answering 0. Red: the AGENTCODE legs.
-- AC11: `Loop.Run` appends the last `tool_result` to the system prompt. Red: source (o).
-- DW-1964: `%Prepare(text, 0)` in `Prepared`. Red: the principal's read and mint legs.
+- mutation: AC1: `Api/Turn.cls` resolves `ResolveDefault` again. Red: `AgentPickTurn` 3 of 3 (run 1591).
+- mutation: AC2: the `agentDefinition` write also calls `SetDefaultGuarded`. Red: `AgentPick.TestAPickIsValidatedStoredAndMovesNothing` (run 1592).
+- mutation: AC3: `ResolveFor` skips the enabled check. Red: `AgentPick` 2 of 5 (run 1594); `AgentPickTurn` stays green, so the disabled-pick leg lives in `AgentPick`.
+- mutation: AC4: `Mint.DefinitionInForce` no longer reads the turn's definition. Red: `AgentPick.TestAPickedDefinitionIsStampedAndStillRestrained` (run 1596). `Restraint.Resolved` back to `ResolveDefault`. Red: `AgentPick.TestTheFooterAndGuardrailsReadThePick` (run 1597). `Verdict` takes no definition-dependent per-user source, so the planned second mutation had nothing to skip.
+- mutation: AC5: the `HistoryMessages` filter removed. Red: `AgentPickTurn.TestAConversationDoesNotReplayAnotherDefinitionsTurns` (run 1598).
+- mutation: AC6: the one-option text branch removed from `agent-picker.ts`. Red: `agent-picker.spec.ts` "one enabled definition reads as its name". The bundle was not involved, so no redeploy applies.
+- mutation: AC7: the `IsCredentialName` mask disabled. Red: `SqlAgentRead` 2 of 7 (run 1601). The first value spliced into the text. Red: `TestAQueryAnswersRowsWithItsValuesBound` (run 1602).
+- mutation: AC8: `ADVERTISED` 0 on the run. Red: `SqlConsoleWrite` 2 of 6 (run 1603) and `ExplorerDescriptor` 2 of 15 (run 1604).
+- mutation: AC9: `READSVALUES` 0. Red: `SqlAgentWrite` 3 of 4 (run 1605).
+- mutation: AC9 consequence: `Consequence` answers the data-change code for every kind. Red: `SqlAgentWrite` 2 of 5 (run 1641); the reverted tree is green.
+- mutation: AC5 client: delete the `onNewConversation()` call in `panel.ts` `onChooseAgent`. Red: `panel.spec.ts` "picking another definition while the conversation has turns starts a new conversation".
+- mutation: AC10: `CarriesCode` answers 0 for the type test. Red: `SqlAgentWrite` 3 of 4 (run 1606).
+- mutation: AC11: `Loop` adds the last tool_result blocks to the system prompt. Red: `InjectionChannels` 16 of 16 (run 1607), including the SQL row source; the reverted tree is green (run 1608).
+- mutation: DW-1964: `%Prepare(text, 0)` in `SqlPort.Prepared`. Red: `SqlAgentRead.TestAnUnpreparedStatementIsAnErrorOutcome` (run 1599) and `SqlAgentWrite` 2 of 4 (run 1600).
+- mutation: client cases: each of `proposal-view.test.mjs`, `turn.test.mjs`, `sql-answer.test.mjs`, `proposal-card.spec.ts` and `panel.spec.ts` carries its own `Mutation (Rule 19)` note; they are written, not applied, because a client mutation needs a rebuild and redeploy each.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The agent gains `explorer.sqlquery.read` (a standalone read tool: `SqlConsole.Check`, then `SqlPort.Run` in `query` mode, credential-named columns masked, `[redacted]` named in `redactedColumns`) and advertises `explorer.sqlquery.run` (key stays `false`, `ExplorerSqlRunMint` refuses input, unprepared, a read, code, bad value counts), with `READSVALUES` composing its fresh read from its own values (DW-2004). The panel header gains a per-user agent picker; the pick is the `shell` member `agentDefinition`, resolved on the instance by `Agent.ResolveFor` at turn start, frozen on the turn, and read back by the proposal stamp, the step boundary, the restraint and the replay filter.
+
+**Task 0.** Recorded in Design Notes: the function set the global.
+
+**Measures.** Initial bundle 2,953,622 bytes (JS 2,749,972 and CSS 203,650); `maximumWarning` re-based from 2943kB to 2954kB in `ui/angular.json` and `ui/tools/angular-json.test.mjs`, under the 3,800 kB stop. Strings: 5 new Fixed-strings rows (2,664 literals by the table; `STRINGS` holds 2,665 keys), under the 2,700 cap.
+
+**Verification** (all on `ocupilot-a2-ci`, current `src/` loaded first). ObjectScript, one class per call, run ids from `%UnitTest_Result` via `ci-runner`: `SqlAgentRead` 7 (1609), `SqlAgentWrite` 4 (1614), `AgentPick` 5 (1611), `AgentPickTurn` 3 (1612), `InjectionChannels` 16 (1608), `SqlConsoleWrite` 6 (1615), `SqlPort` 11 (1616), `ExplorerDescriptor` 15 (1617), `ReadTool` 28 (1618), `ToolRoundTrip` 2 (1619), `ToolEmit` 11 (1620), `DeveloperFloor` 10 (1621), `SurfaceCoverage` 4 (1622), `SqlPortLive` (1623), `SqlConsoleRoutes` (1624), `ClassicPageGate` (1625), `Governance` (1626), `GovernanceBaseline` (1627), `DraftRegistry` (1628), `Guardrails` (1629), `PrefState` (1630), `PreferencesWire` (1631), `Restraint` (1632), `ReadOnlyForYou` (1633), `TurnContext` (1634), `TurnWire` (1635), `EgressLine` (1636), `EgressLocal` (1637), `AgentWireSecurity` (1638): all green. The full ObjectScript sweep was not run (Rule 29). `check-objectscript` 0 problems and its harness 146 tests green. Client: `npm test` green (1,836 tools tests; 2,497 component tests in 193 files). Browser, each file alone: `agent-picker` 2, `agent-sql` 1, `context-chip` 8, `panel` 12, `system-explorer-sql-query` 3, `a11y-structural-invariants` 12, plus `egress-line` 4 and `governance` 1: all green. Mutations: see Verification.
+
+**Rosters updated outside the file list:** `ExplorerDescriptor` (counts, writers, context tools), `ReadTool` (277), `DeveloperFloor` (TOOLS), `ToolRoundTrip` (REFUSEEMPTY), `ToolEmit` (SQL read branch), `SqlPort` (advertised 101), `SqlConsoleWrite` (advertised legs), `SqlConsoleProbe`, `InjectionSeed` and `InjectionChannels` (source o), `self-protection.test.mjs` (three refusals), `scripts/ci-throwaway.sh` (`AgentPickTurn` and `SqlAgentRead` in the principals and test-provider rosters), `Api/Definitions.cls` header, EXPERIENCE.md rows (:149, :153, :604, :624, :626, :702) and the `:644` citation that moved to `:645`.
+
+**Review pass (implement stage).** Verification-gap and intent-alignment layers: 14 findings (medium 3, low 8, false 1, maybe-false 2). Patched 3 medium: a DDL/CALL consequence test (`SqlAgentWrite.TestTheConsequenceNamesTheKindOfStatement`, run 2120 green), a per-user read-only leg in `AgentPick` (run 1640 green), and the AC5 `panel.spec.ts` case (mutation applied, red, reverted); one stale doc comment fixed. Ten rejected with reasons in the Review Triage Log. Follow-up review recommended (two or more medium patched); named unverified risk: the client-side mutations for `proposal-view`, `turn`, `sql-answer`, `proposal-card` and the picker's `locked()` guard are written but not applied.
+
+**Sweep (once, before finalize).** `ci-runner` over all ObjectScript classes on `ocupilot-a2-ci`: 476 classes, 3,848 tests. Red: the five encryption write classes (empty, unarmed `OCUPILOT_ALLOW_ENCRYPTION_CONFIG`) and `WireSecurityRead` (DW-1554), all known residue. `SqlAgentWrite` and `SqlConsoleWrite` read the instance-wide ledger and failed on two rows the new consequence test left; the test now deletes its turn's ledger rows and both classes are green on re-run (runs 2120 and 2122). `check-objectscript` 0 problems; `npm run test:tools` 1,836 pass; `lint-docs` clean.
+
+**Deferred or open.** The client-side mutations in `proposal-view`, `turn`, `sql-answer`, `proposal-card` and `panel` tests are written in the tests, not applied (each needs a rebuild and redeploy). The picker menu is positioned against the panel, not its own control, so the DW-1337 overflow gate holds at 720 and 1280.

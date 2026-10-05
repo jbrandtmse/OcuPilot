@@ -108,6 +108,12 @@ Parameter THEMELIGHT As %String = "light";
 /// <p>The <parameter>SHELLTHEME</parameter> value for the dark theme.</p>
 Parameter THEMEDARK As %String = "dark";
 
+/// <p>The <parameter>KINDSHELL</parameter> member holding the agent definition the user picked in the
+/// panel's header, as a definition id (Story 19.11, AD-50). It is resolved on the instance at every
+/// turn start and wherever the definition in force is read; a pick that no longer names an enabled
+/// definition reads as no pick.</p>
+Parameter SHELLAGENTDEFINITION As %String = "agentDefinition";
+
 /// <p>The <parameter>KINDSHELL</parameter> member recording that the first-login gate has opened
 /// the Definition form for this user, as <code>1</code> (FR-28). The client writes it when the gate
 /// opens the form and reads it before the gate acts, so the form opens automatically once per
@@ -379,6 +385,7 @@ ClassMethod IsShellMember(pName As %String) As %Boolean
     If pName = ..#SHELLPANELWIDTH Quit 1
     If pName = ..#SHELLTHEME Quit 1
     If pName = ..#SHELLFIRSTSIGNIN Quit 1
+    If pName = ..#SHELLAGENTDEFINITION Quit 1
     Quit 0
 }
 

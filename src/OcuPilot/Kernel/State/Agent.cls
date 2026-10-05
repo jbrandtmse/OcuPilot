@@ -632,6 +632,46 @@ ClassMethod ResolveDefault(Output pId As %String) As %Status
     Quit tSC
 }
 
+/// <p>Whether <var>pId</var> names an enabled definition. A value that is not a whole-number id
+/// names none.</p>
+ClassMethod GuardedIsEnabled(pId As %String, Output pEnabled As %Boolean) As %Status
+{
+    Set pEnabled = 0
+    If '$Match(pId, "^[1-9][0-9]{0,17}$") Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE ID = ? AND Enabled = 1", +pId, .tIds)
+    If $$$ISOK(tSC) Set pEnabled = ($Get(tIds(1), "") '= "")
+    Quit tSC
+}
+
+/// <p>The definition in force for <var>pUserName</var>: the id their <code>shell</code> member
+/// <code>agentDefinition</code> names while that definition is enabled (Story 19.11, AD-42, AD-50),
+/// else <method>ResolveDefault</method>'s. <var>pId</var> is <code>""</code> when no definition is in
+/// force, the configuration-empty state. A pick never moves the default marker.</p>
+ClassMethod ResolveFor(pUserName As %String, Output pId As %String) As %Status
+{
+    Set pId = ""
+    Set tSC = $$$OK
+    Try {
+        If pUserName '= "" {
+            Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedValue(pUserName, ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL, ##class(OcuPilot.Kernel.State.Pref).#SHELLAGENTDEFINITION, .tPick)
+            If $$$ISERR(tSC) Quit
+            If tPick '= "" {
+                Set tSC = ..GuardedIsEnabled(tPick, .tEnabled)
+                If $$$ISERR(tSC) Quit
+                If tEnabled {
+                    Set pId = +tPick
+                    Quit
+                }
+            }
+        }
+        Set tSC = ..ResolveDefault(.pId)
+    } Catch ex {
+        Set pId = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Settle the default marker after a create, an update or a delete (DW-20). Three outcomes,
 /// and the tie-break is the <b>lowest id</b> -- creation order, which needs no extra column and
 /// is the same rule a reader can verify from a list:</p>

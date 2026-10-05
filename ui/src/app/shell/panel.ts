@@ -11,10 +11,12 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AccountPreferences, SHELL_AGENT_DEFINITION, SHELL_KIND } from '../core/account-preferences';
 import { AgentContext } from '../core/agent-context';
 import {
   AgentStatus,
   DEFINITIONS_ROUTE,
+  type AgentOption,
   readOnlyApplies,
   readOnlyFooterLine,
   restraintSentence,
@@ -80,6 +82,7 @@ import { turnLimitBanner } from '../core/turn-limit';
 import { isApplePlatform } from './command-box';
 import { CitationNavigator } from './citation-navigator';
 import { CodeBlock } from './code-block';
+import { AgentPicker } from './agent-picker';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
@@ -250,7 +253,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle, AgentPicker],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -258,6 +261,13 @@ interface PanelTurnView {
     <div class="ocu-panel-header">
       <span class="ocu-panel-avatar" aria-hidden="true"></span>
       <h2 class="ocu-panel-title">{{ panelName }}</h2>
+      <app-agent-picker
+        [options]="agentOptions"
+        [current]="agentInForce"
+        [locked]="busy"
+        [reasonId]="newConversationReasonId"
+        (chosen)="onChooseAgent($event)"
+      />
       <button
         type="button"
         class="ocu-panel-icon-button ocu-panel-new-conversation"
@@ -604,6 +614,8 @@ export class Panel {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly agentContext = inject(AgentContext);
+  /** The user's own preferences (Story 19.11): where the picker stores a choice. Optional, so a spec that is not about it provides none. */
+  private readonly preferences = inject(AccountPreferences, { optional: true });
   private readonly panel = inject(PanelState);
   private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
@@ -975,6 +987,39 @@ export class Panel {
 
   protected get newConversationDescribedBy(): string | null {
     return this.busy ? NEW_CONVERSATION_REASON_ID : null;
+  }
+
+  /** The enabled definitions the picker offers (Story 19.11). */
+  protected get agentOptions(): readonly AgentOption[] {
+    this.generation();
+    return this.agentStatus.options();
+  }
+
+  /**
+   * The id of the definition in force: the one the instance named for this caller (their pick while it
+   * names an enabled definition, else the default), or the default's before it has answered.
+   */
+  protected get agentInForce(): string {
+    this.generation();
+    const options = this.agentStatus.options();
+    const named = this.agentContext.definition()?.id ?? '';
+    if (named !== '' && options.some((option) => option.id === named)) return named;
+    return (options.find((option) => option.isDefault) ?? options[0])?.id ?? '';
+  }
+
+  /**
+   * A definition was chosen in the picker (Story 19.11, AD-50): store it as this user's own preference,
+   * and when it landed and the conversation holds turns, start a new one -- one conversation runs under
+   * one definition. Then re-read the context the chip shows. A refusal (the definition was disabled or
+   * deleted meanwhile) re-reads the status too, so the menu drops it.
+   */
+  protected async onChooseAgent(id: string): Promise<void> {
+    if (this.busy || this.preferences === null) return;
+    await this.preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, id);
+    const landed = this.preferences.shell().get(SHELL_AGENT_DEFINITION) === id;
+    if (landed && this.turn.entries().length > 0) this.onNewConversation();
+    await this.agentContext.load();
+    if (!landed) await this.agentStatus.load();
   }
 
   /** The transcript's turns, oldest first, with the live one last while a turn runs (Story 4.5). */

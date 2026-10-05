@@ -12,7 +12,9 @@
 /// <parameter>TRIGGERNAMESPACE</parameter>, and, in <parameter>CATALOGNAMESPACE</parameter>,
 /// <code>k</code> a probe view's text, <code>l</code> a probe SQL procedure's description and
 /// <code>m</code> a probe statement's kept literal, and <code>n</code> the kept literal of a probe
-/// statement still running in <parameter>ACTIVITYNAMESPACE</parameter>. The failed-login audit row, the
+/// statement still running in <parameter>ACTIVITYNAMESPACE</parameter>, and <code>o</code> a probe
+/// row's column holding the seed in <parameter>CATALOGNAMESPACE</parameter>, which the agent's SQL
+/// query reads. The failed-login audit row, the
 /// messages.log line and source <code>m</code>'s statement-index row are append-only:
 /// <method>Remove</method> answers OK for the first two, removes only <code>m</code>'s table, and stops
 /// <code>n</code>'s probe job, whose statement-index row and cached query remain.</p>
@@ -80,6 +82,10 @@ Parameter SEEDPROCEDURECLASS = "OcuProbe195.InjectProc";
 Parameter SEEDPROCEDURE = "OcuProbe195.InjectProc_Stamp";
 
 Parameter SEEDTABLE = "OcuProbe195.InjectQuery";
+
+/// <p>Source <code>o</code>'s table, in <parameter>CATALOGNAMESPACE</parameter>: its one row's
+/// <code>Label</code> is the seed, which <code>explorer.sqlquery.read</code> returns.</p>
+Parameter SEEDROWTABLE = "OcuProbe1911.Inject";
 
 /// <p>The namespace source <code>n</code>'s probe statement runs in, and the value it binds.</p>
 Parameter ACTIVITYNAMESPACE = "USER";
@@ -153,12 +159,12 @@ ClassMethod Armed(pVariable As %String) As %Status
 }
 
 /// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
-/// <code>h</code> to <code>n</code>). <var>pRef</var> is what <method>Remove</method> removes by:
+/// <code>h</code> to <code>o</code>). <var>pRef</var> is what <method>Remove</method> removes by:
 /// <code>""</code> for the append-only <code>a</code> and <code>b</code>, <code>date|number</code>
 /// for <code>c</code>, the task id for <code>d</code>, the role name for <code>e</code>, the user
 /// name for <code>f</code>, the class name for <code>h</code> and <code>i</code>, the table for
 /// <code>j</code> and <code>m</code>, the view for <code>k</code>, the procedure for <code>l</code>
-/// and the probe job's pid for <code>n</code>.</p>
+/// the probe job's pid for <code>n</code> and the table for <code>o</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
 {
     Set pRef = ""
@@ -203,6 +209,9 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
             If $$$ISOK(tSC) Set pRef = $Case(pSource, "k": ..#SEEDVIEW, "l": ..#SEEDPROCEDURE, : ..#SEEDTABLE)
         } ElseIf pSource = "n" {
             Set tSC = ##class(OcuPilot.Test.SqlActivityProbe).Start(..#ACTIVITYNAMESPACE, pSeed, ..#ACTIVITYVALUE, .pRef)
+        } ElseIf pSource = "o" {
+            Set tSC = ..CreateRowSeed(pSeed)
+            If $$$ISOK(tSC) Set pRef = ..#SEEDROWTABLE
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -244,6 +253,8 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..Armed(..#ARMINGVARIABLE)
             If $$$ISERR(tSC) Quit
             Set tSC = ##class(OcuPilot.Test.SqlActivityProbe).Stop(pRef)
+        } ElseIf pSource = "o" {
+            Set tSC = ..DeleteRowSeed()
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -516,6 +527,49 @@ ClassMethod CreateCatalogSeed(pSource As %String, pSeed As %String) As %Status [
     Quit tSC
 }
 
+/// <p>Create <parameter>SEEDROWTABLE</parameter> in <parameter>CATALOGNAMESPACE</parameter> with one
+/// row whose <code>Label</code> is <var>pSeed</var>, bound as a value.</p>
+ClassMethod CreateRowSeed(pSeed As %String) As %Status [ Private ]
+{
+    Set tSC = ..DeleteRowSeed()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#CATALOGNAMESPACE
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "CREATE TABLE " _ ..#SEEDROWTABLE _ " (Id INT PRIMARY KEY, Label VARCHAR(200))")
+        If tResult.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe row table failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+        } Else {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO " _ ..#SEEDROWTABLE _ " (Id, Label) VALUES (1, ?)", pSeed)
+            If tResult.%SQLCODE < 0 Set tSC = $$$ERROR($$$GeneralError, "the probe row failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove <parameter>SEEDROWTABLE</parameter> from <parameter>CATALOGNAMESPACE</parameter> when it
+/// holds it, data included, failing when its class survives.</p>
+ClassMethod DeleteRowSeed() As %Status
+{
+    Set tSC = ..Armed(..#ARMINGVARIABLE)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#CATALOGNAMESPACE
+        Do ##class(%SQL.Statement).%ExecDirect(, "DROP TABLE " _ ..#SEEDROWTABLE _ " CASCADE")
+        If ##class(%Dictionary.ClassDefinition).%ExistsId(..#SEEDROWTABLE) Set tSC = $$$ERROR($$$GeneralError, ..#SEEDROWTABLE _ " survives in " _ ..#CATALOGNAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Remove catalog source <var>pSource</var>'s object from <parameter>CATALOGNAMESPACE</parameter>
 /// when it holds it, failing when its class survives.</p>
 ClassMethod DeleteCatalogSeed(pSource As %String) As %Status
@@ -603,6 +657,9 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "", pCached As %Boole
         Do tCall.input.%Set("table", pRef, "string")
     } ElseIf pSource = "n" {
         Do tCall.%Set("name", "osmgmt_sqlactivity_read", "string")
+    } ElseIf pSource = "o" {
+        Do tCall.%Set("name", "explorer_sqlquery_read", "string")
+        Do tCall.input.%Set("statement", "SELECT Label FROM " _ pRef, "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }

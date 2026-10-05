@@ -149,6 +149,23 @@ Parameter SQLUNRECORDED = "EXPLORER.SQL.UNRECORDED";
 
 Parameter REASONSQLUNRECORDED = "The instance keeps no record of the tables this statement uses before it runs, so OcuPilot cannot check what it reads or changes and does not run it here; writing SELECT %NORUNTIME may let a query be checked.";
 
+/// <p>Envelope codes for the agent's two SQL tools (Story 19.11), each rendered on the
+/// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422: a statement that changes
+/// something sent to the read tool, a statement that carries code sent to the run tool, and a
+/// statement the instance did not prepare sent to the run tool, which the mint refuses before any
+/// proposal exists.</p>
+Parameter SQLCHANGES = "EXPLORER.SQL.CHANGES";
+
+Parameter REASONSQLCHANGES = "This statement changes something, so it is proposed and runs only once a person confirms it.";
+
+Parameter SQLAGENTCODE = "EXPLORER.SQL.AGENTCODE";
+
+Parameter REASONSQLAGENTCODE = "A statement that creates a function, method, procedure, query, trigger or aggregate, or a COMPUTECODE field, carries code, which a person writes and runs on SQL query.";
+
+Parameter SQLNOTPREPARED = "EXPLORER.SQL.NOTPREPARED";
+
+Parameter REASONSQLNOTPREPARED = "The instance did not prepare this statement, so it is not proposed; its SQLCODE says why.";
+
 /// <p>Envelope code: a statement of any kind but a query sent to the console's background run, which
 /// runs only a query (Story 19.15). Rendered on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter>
 /// slug with 422.</p>

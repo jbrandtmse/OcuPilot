@@ -81,18 +81,20 @@ ClassMethod HandleStart() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONTURNCONVERSATIONNOTFOUND, ##class(OcuPilot.Api.Error).#TURNCONVERSATIONNOTFOUND)
             Quit
         }
-        Set tVerdictSC = ##class(OcuPilot.Kernel.Restraint).Resolved(tUser, .tVerdict)
+        ; The definition in force is resolved once, here, and frozen on the turn: the verdict, the turn
+        ; row and the job all use this id (Story 19.11, AD-42).
+        Set tDefaultSC = ##class(OcuPilot.Kernel.State.Agent).ResolveFor(tUser, .tDefinitionId)
+        If $$$ISERR(tDefaultSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDefaultSC))
+            Quit
+        }
+        Set tVerdictSC = ##class(OcuPilot.Kernel.Restraint).Verdict(tUser, tDefinitionId, .tVerdict)
         If $$$ISERR(tVerdictSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVerdictSC))
             Quit
         }
         If +$Get(tVerdict("killSwitch")) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, tVerdict("reason"), tVerdict("code"))
-            Quit
-        }
-        Set tDefaultSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
-        If $$$ISERR(tDefaultSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDefaultSC))
             Quit
         }
         If tDefinitionId = "" {

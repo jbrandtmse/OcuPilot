@@ -207,6 +207,31 @@ export const CONSEQUENCE_EXPLOREREXPORTREPLACES = 'EXPLORER.EXPORT.REPLACES';
 /** Story 19.13: a System Explorer import, which replaces each document of the same name. */
 export const CONSEQUENCE_EXPLORERIMPORTREPLACES = 'EXPLORER.IMPORT.REPLACES';
 
+/**
+ * Story 19.11: an agent-proposed SQL statement, by the kind the instance classified it, each stated as the
+ * SQL query console's own confirmation states it. `consequenceSentence` answers `''` for the DML code,
+ * whose sentence names the statement's tables; the card states it through `sqlConsequenceSentence`.
+ */
+export const CONSEQUENCE_SQLCHANGESROWS = 'EXPLORER.SQL.CHANGESROWS';
+export const CONSEQUENCE_SQLCHANGESSCHEMA = 'EXPLORER.SQL.CHANGESSCHEMA';
+export const CONSEQUENCE_SQLRUNSPROCEDURE = 'EXPLORER.SQL.RUNSPROCEDURE';
+export const CONSEQUENCE_SQLUNDECLARED = 'EXPLORER.SQL.UNDECLARED';
+
+/** The field an agent-proposed SQL statement's diff names the statement's tables in. */
+const SQL_TABLES_FIELD = 'Tables';
+
+/**
+ * The card's sentence for a DML statement the agent proposed, or `''` for any other consequence: the
+ * console's own sentence with `<tables>` filled from the proposal's `Tables` row, the tables the instance
+ * recorded for the statement. The value is inserted through a replacer, so a name holding a placeholder is
+ * shown as written.
+ */
+export function sqlConsequenceSentence(view: Pick<ProposalCardView, 'consequence' | 'changed'>): string {
+  if (view.consequence !== CONSEQUENCE_SQLCHANGESROWS) return '';
+  const tables = view.changed.find((row) => row.field === SQL_TABLES_FIELD)?.after ?? '';
+  return STRINGS.explorerSqlConfirmDml.replace('<tables>', () => tables);
+}
+
 /** Story 16.25, AD-4: a change to a Python language server's own settings, which resets two the read never shows. */
 export const CONSEQUENCE_PYTHONCUSTOM = 'LANGUAGESERVER.PYTHONCUSTOM';
 
@@ -349,6 +374,11 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_EXPLOREREXPORTREPLACES) return STRINGS.taskExportReplaces;
   // The import dialog's own consequence line, published once.
   if (code === CONSEQUENCE_EXPLORERIMPORTREPLACES) return STRINGS.explorerImportReplaces;
+  // Story 19.11: an agent-proposed SQL statement's own confirmation sentences, published once; the DML
+  // sentence names the statement's tables, so the card states it through `sqlConsequenceSentence`.
+  if (code === CONSEQUENCE_SQLCHANGESSCHEMA) return STRINGS.explorerSqlConfirmDdl;
+  if (code === CONSEQUENCE_SQLRUNSPROCEDURE) return STRINGS.explorerSqlConfirmCall;
+  if (code === CONSEQUENCE_SQLUNDECLARED) return STRINGS.explorerSqlConfirmOther;
   // The editor's own consequence line, published once.
   if (code === CONSEQUENCE_PYTHONCUSTOM) return STRINGS.languageServerPythonConsequence;
   // The warning dialog's own consequence sentence, published once.
