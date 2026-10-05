@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:641 */
+  /** EXPERIENCE.md:642 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5701,6 +5701,14 @@ export const STRINGS = {
   explorerSqlDataKeysTab: 'Alt/Option+Shift+PageDown or PageUp',
   /** EXPERIENCE.md:600 */
   explorerSqlDataKeysCloseTab: 'Alt/Option+Shift+W, or Delete on a tab',
+  /** EXPERIENCE.md:601 */
+  explorerViewClassReference: 'Class reference',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceTitle: 'Class reference for <class>',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceNote: 'This is the instance\'s own class reference for <class>, shown with your browser\'s sign-in to the instance. Links inside it do not open here.',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceRestored: 'That link does not open here; the class reference shows <class> again.',
 } as const;
 
 /**

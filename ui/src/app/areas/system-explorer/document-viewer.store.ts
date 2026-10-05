@@ -1,6 +1,7 @@
 /**
  * The class and routine viewers' own state (AD-19): which document the route names, which view is
- * on screen, the form the next read asks for, and the document text the last read answered.
+ * on screen, the form the next read asks for, and the document text the last read answered with the
+ * namespace that read was sent in.
  *
  * **Framework-free.** It imports nothing from Angular; the page holds one per page instance.
  *
@@ -18,16 +19,42 @@ import type { RefreshRead, RefreshReadResult } from '../../core/refresh';
 import { screenReadPath, type ScreenReadCriteria } from '../../core/screen-read';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 
-/** The five views a viewer offers, in their order on screen. */
-export type SourceViewKey = 'source' | 'xml' | 'int' | 'structure' | 'documentation';
+/** The views a viewer offers, in their order on screen; a routine's offers every one but `reference`. */
+export type SourceViewKey = 'source' | 'xml' | 'int' | 'structure' | 'documentation' | 'reference';
 
-export const SOURCE_VIEWS: readonly SourceViewKey[] = ['source', 'xml', 'int', 'structure', 'documentation'];
+export const SOURCE_VIEWS: readonly SourceViewKey[] = ['source', 'xml', 'int', 'structure', 'documentation', 'reference'];
 
 /** The `form` criterion each text view reads. */
 export const VIEW_FORMS: Readonly<Record<'source' | 'xml' | 'int', string>> = { source: 'udl', xml: 'xml', int: 'int' };
 
 /** The code the port refuses a document the namespace does not hold with. */
 export const NOT_FOUND_CODE = 'PORT.NOTFOUND';
+
+/** The instance's own class reference page (Story 19.9): a fixed same-origin path. */
+export const CLASS_REFERENCE_PATH = '/csp/documatic/%25CSP.Documatic.cls';
+
+/** A class name the class reference is asked for: dotted identifiers, the first optionally `%`-led. */
+const CLASS_NAME = /^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
+
+/** A namespace name the class reference is asked for. */
+const NAMESPACE_NAME = /^%?[A-Za-z0-9_-]{1,64}$/;
+
+/** The class a viewer id names: the id with a trailing `.cls` removed, ignoring case. */
+export function referenceClassName(name: string): string {
+  return name.replace(/\.cls$/i, '');
+}
+
+/**
+ * The address of the instance's class reference page for class `name` (a viewer id, `.cls` or not)
+ * in `namespace`: the class page alone, each value encoded, or `null` unless both are names of the
+ * shapes above. It carries nothing else, so no token or credential can reach the frame (AD-28,
+ * AD-47).
+ */
+export function classReferenceUrl(namespace: string, name: string): string | null {
+  const className = referenceClassName(name);
+  if (!CLASS_NAME.test(className) || !NAMESPACE_NAME.test(namespace)) return null;
+  return `${CLASS_REFERENCE_PATH}?PAGE=CLASS&SHOWCLASSONLY=1&LIBRARY=${encodeURIComponent(namespace)}&CLASSNAME=${encodeURIComponent(className)}`;
+}
 
 /** Whether `view` shows the document's text. */
 export function isTextView(view: SourceViewKey): view is 'source' | 'xml' | 'int' {
@@ -108,6 +135,8 @@ export class SourceViewerState {
 
   private goneValue = false;
 
+  private namespaceValue = '';
+
   private opened = false;
 
   private cachedRead: RefreshRead | null = null;
@@ -144,6 +173,11 @@ export class SourceViewerState {
     return this.goneValue;
   }
 
+  /** The namespace the read whose answer is on screen was sent in, or `''`. */
+  documentNamespace(): string {
+    return this.namespaceValue;
+  }
+
   /**
    * Show `name`, from Source: answers true when that is a different document, which the page then
    * reads; the name already open changes nothing.
@@ -156,13 +190,14 @@ export class SourceViewerState {
     this.formValue = VIEW_FORMS.source;
     this.documentValue = null;
     this.goneValue = false;
+    this.namespaceValue = '';
     this.notify();
     return true;
   }
 
   /**
    * Show `view`. A text view asks for its own form and answers true, since each is a re-read;
-   * Structure and Documentation show the rows already read and answer false.
+   * Structure, Documentation and Class reference read nothing and answer false.
    */
   setView(view: SourceViewKey): boolean {
     this.viewValue = view;
@@ -180,11 +215,15 @@ export class SourceViewerState {
     return { name: this.nameValue, form: this.formValue };
   }
 
-  /** Keep what an answer to `sent` carried, unless the name or form has moved on since. */
-  applyAnswer(sent: ScreenReadCriteria, document: SourceDocument | null, gone: boolean): void {
+  /**
+   * Keep what an answer to `sent`, a read sent in `namespace`, carried, unless the name or form has
+   * moved on since.
+   */
+  applyAnswer(sent: ScreenReadCriteria, document: SourceDocument | null, gone: boolean, namespace = ''): void {
     if (sent['name'] !== this.nameValue || sent['form'] !== this.formValue) return;
     this.documentValue = document;
     this.goneValue = gone;
+    this.namespaceValue = namespace;
     this.notify();
   }
 
@@ -196,6 +235,7 @@ export class SourceViewerState {
     if (this.documentValue === null && !this.goneValue) return;
     this.documentValue = null;
     this.goneValue = false;
+    this.namespaceValue = '';
     this.notify();
   }
 
@@ -219,25 +259,30 @@ interface SourceReadBody {
 
 /**
  * The viewer's `RefreshRead`: the declared read with `state`'s criteria, its rows to the screen
- * store and its document to `state`. A 404 `PORT.NOTFOUND` is no rows and a gone document; any
- * other failure is the classified fault the table and the shell's banner show.
+ * store and its document to `state`, tagged with the namespace `namespace` answers as the read is
+ * sent; an answer arriving after `namespace` has moved leaves `state` as it is, as the refresh
+ * framework leaves the store. A 404 `PORT.NOTFOUND` is no rows and a gone document; any other
+ * failure is the classified fault the table and the shell's banner show.
  */
 export function createSourceRead(
   api: Pick<ApiService, 'requestJson'>,
   declaration: Pick<ScreenDeclaration, 'toolIdentifier' | 'read'>,
-  state: SourceViewerState
+  state: SourceViewerState,
+  namespace: () => string = () => ''
 ): RefreshRead {
   return async ({ maxRows }): Promise<RefreshReadResult> => {
     const sent = state.criteria();
+    const scope = namespace();
     const path = screenReadPath(declaration, maxRows, sent);
     const result: JsonResult<SourceReadBody> = await api.requestJson<SourceReadBody>(path);
     const body = result.kind === 'ok' ? result.body : null;
+    const current = namespace() === scope;
     if (result.kind === 'ok' && isRecord(body) && Array.isArray(body['rows'])) {
-      state.applyAnswer(sent, documentOf(body['document']), false);
+      if (current) state.applyAnswer(sent, documentOf(body['document']), false, scope);
       return { kind: 'ok', rows: body['rows'] as readonly unknown[], truncated: body['truncated'] === true };
     }
     if (result.kind === 'error' && result.status === 404 && result.code === NOT_FOUND_CODE) {
-      state.applyAnswer(sent, null, true);
+      if (current) state.applyAnswer(sent, null, true, scope);
       return { kind: 'ok', rows: [], truncated: false };
     }
     const failed: JsonResult<unknown> =

@@ -1,5 +1,15 @@
 import { LocationStrategy } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Renderer2,
+  afterRenderEffect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
@@ -18,9 +28,11 @@ import {
   OBJECT_ONLY_REASON,
   SOURCE_VIEWS,
   SourceViewerState,
+  classReferenceUrl,
   createSourceRead,
   documentedRows,
   isTextView,
+  referenceClassName,
   type DocumentedRow,
   type SourceViewKey,
 } from './document-viewer.store';
@@ -48,6 +60,7 @@ const VIEW_LABELS: Readonly<Record<SourceViewKey, string>> = {
   int: STRINGS.explorerViewInt,
   structure: STRINGS.explorerViewStructure,
   documentation: STRINGS.linksDocumentation,
+  reference: STRINGS.explorerViewClassReference,
 };
 
 /** The sentence a text view shows where the instance keeps no such form. */
@@ -63,9 +76,10 @@ const NAME_SEPARATOR = ' \u00b7 ';
 /**
  * The page every `viewer (source)` archetype renders (Story 19.1): one class or routine, named by
  * the route's id, with a header naming its database, last modification and generated routines, and
- * five views -- Source, XML and Intermediate code, each a re-read with its `form`; Structure, the
- * shared table over the read's rows; and Documentation, each documented row's description under its
- * name. A routine's Structure and Documentation say it has no class structure. While a document's
+ * its views -- Source, XML and Intermediate code, each a re-read with its `form`; Structure, the
+ * shared table over the read's rows; Documentation, each documented row's description under its
+ * name; and, for a class, Class reference (Story 19.9). A routine's Structure and Documentation say
+ * it has no class structure, and a routine offers no Class reference. While a document's
  * source text is on screen, "Edit source" opens its editor (Story 19.3); while any document is on
  * screen, "Compare with" opens Compare with it as the first document and "Look up a macro" opens
  * Macros with it as the context (Story 19.4).
@@ -78,6 +92,20 @@ const NAME_SEPARATOR = ' \u00b7 ';
  *
  * **Document text is data.** Every string the document carries is interpolated as text, never
  * bound as markup (AD-11).
+ *
+ * **Class reference is an inert frame (AD-47, AD-28).** It shows the instance's own class page,
+ * `classReferenceUrl` over the namespace the on-screen document was read in and the class the route
+ * names, in an `<iframe sandbox="">` declared with no flag: a class description is written into
+ * that page as markup, so the frame runs no script, submits no form, opens nothing and has an
+ * opaque origin, and nothing in it can read the tab's storage, where the token pair lives. The page
+ * authenticates with the browser-level sign-in alone, and no value but the namespace and the class
+ * reaches its address. The frame is drawn only while the view is chosen and the read has answered
+ * the document for the namespace on screen, so the port's gate has passed; a refusal, a gone class
+ * or another namespace's answer draws none. `src` is set with `Renderer2` once the frame is drawn,
+ * never through a binding or a sanitizer bypass. A link followed inside the frame reaches the
+ * instance without the sign-in and answers its sign-in page, which the sandbox cannot submit, so a
+ * `load` the page did not start sets the class page again and says so on the status line. The
+ * frame is `inert` until each load the page starts has answered, so no link in it is followed first.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -164,6 +192,18 @@ const NAME_SEPARATOR = ' \u00b7 ';
           }
         }
       }
+      @if (showReference) {
+        <p class="ocu-source-note" data-ocu-source="reference-note">{{ referenceNote }}</p>
+        <iframe
+          #referenceFrame
+          class="ocu-source-reference"
+          sandbox=""
+          data-ocu-source="reference-frame"
+          [attr.title]="referenceTitle"
+          (load)="onReferenceLoad($event)"
+        ></iframe>
+        <p class="ocu-source-note" role="status" data-ocu-source="reference-status">{{ referenceStatus }}</p>
+      }
       @if (showTable) {
         <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
       }
@@ -180,6 +220,7 @@ export class SourceViewerPage {
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
   private readonly locationStrategy = inject(LocationStrategy);
+  private readonly renderer = inject(Renderer2);
 
   protected readonly STRINGS = STRINGS;
 
@@ -189,6 +230,22 @@ export class SourceViewerPage {
 
   /** Bumped by the state, the store and the refresh framework, so the page re-renders under `OnPush`. */
   private readonly generation = signal(0);
+
+  private readonly referenceFrame = viewChild<ElementRef<HTMLIFrameElement>>('referenceFrame');
+
+  /** The class reference frame this page last set `src` on, and the address it set. */
+  private frameElement: HTMLIFrameElement | null = null;
+
+  private frameSource: string | null = null;
+
+  /** Loads the page started on `frameElement` that have not yet answered. */
+  private pendingLoads = 0;
+
+  /** Whether the frame held focus when the page started loading it, so the load gives focus back. */
+  private refocusFrame = false;
+
+  /** The status line under the frame: empty, or the sentence a restored link leaves. */
+  private restoredValue = '';
 
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
@@ -214,6 +271,8 @@ export class SourceViewerPage {
       const raw = map.get('id');
       if (this.state.open(raw === null ? '' : decodeEntityId(raw))) this.readNow();
     });
+    // The class reference's `src` is set once the frame is drawn: once per frame and address.
+    afterRenderEffect(() => this.syncReference(this.referenceFrame()?.nativeElement ?? null, this.referenceSource));
 
     inject(DestroyRef).onDestroy(() => {
       stopRefreshAction();
@@ -228,7 +287,7 @@ export class SourceViewerPage {
   }
 
   private boundRead(screen: ScreenDeclaration) {
-    return this.state.readFor(() => createSourceRead(this.api, screen, this.state));
+    return this.state.readFor(() => createSourceRead(this.api, screen, this.state, () => this.scope.namespace()));
   }
 
   private get isRoutine(): boolean {
@@ -289,7 +348,8 @@ export class SourceViewerPage {
   protected get viewControls(): readonly ViewControl[] {
     this.generation();
     const active = this.state.view();
-    return SOURCE_VIEWS.map((key) => ({ key, label: VIEW_LABELS[key], active: key === active }));
+    const views = this.isRoutine ? SOURCE_VIEWS.filter((key) => key !== 'reference') : SOURCE_VIEWS;
+    return views.map((key) => ({ key, label: VIEW_LABELS[key], active: key === active }));
   }
 
   protected get showText(): boolean {
@@ -330,6 +390,44 @@ export class SourceViewerPage {
   protected get showDocumentation(): boolean {
     this.generation();
     return this.state.view() === 'documentation' && !this.isRoutine;
+  }
+
+  /** The class the route names, without `.cls`. */
+  private get referenceClass(): string {
+    return referenceClassName(this.state.name());
+  }
+
+  /**
+   * The class reference's address: the class page for the route's class in the namespace the
+   * on-screen document was read in, while that is the namespace on screen and the last read raised
+   * no fault; `null` otherwise, and for a routine.
+   */
+  private get referenceSource(): string | null {
+    this.generation();
+    if (this.isRoutine || !this.hasDocument) return null;
+    const namespace = this.state.documentNamespace();
+    if (namespace === '' || namespace !== this.scope.namespace()) return null;
+    if (this.refresh.descriptor() === this.viewer?.screen.descriptor && this.refresh.fault() !== null) return null;
+    return classReferenceUrl(namespace, this.state.name());
+  }
+
+  /** The frame and its two lines: in Class reference, while there is an address to load. */
+  protected get showReference(): boolean {
+    this.generation();
+    return this.state.view() === 'reference' && this.referenceSource !== null;
+  }
+
+  protected get referenceTitle(): string {
+    return STRINGS.explorerClassReferenceTitle.replace('<class>', this.referenceClass);
+  }
+
+  protected get referenceNote(): string {
+    return STRINGS.explorerClassReferenceNote.replace('<class>', this.referenceClass);
+  }
+
+  protected get referenceStatus(): string {
+    this.generation();
+    return this.restoredValue;
   }
 
   protected get documentation(): readonly DocumentedRow[] {
@@ -406,6 +504,62 @@ export class SourceViewerPage {
     event.preventDefault();
     const url = this.editLink.url;
     if (url !== '') void this.router.navigateByUrl(url);
+  }
+
+  /**
+   * Set `source` on `frame` when either is new to this page, counting the load it starts; forget
+   * both, and the status line, once the frame is gone.
+   */
+  private syncReference(frame: HTMLIFrameElement | null, source: string | null): void {
+    if (frame === null || source === null) {
+      this.frameElement = null;
+      this.frameSource = null;
+      this.pendingLoads = 0;
+      this.refocusFrame = false;
+      this.restoredValue = '';
+      return;
+    }
+    if (frame === this.frameElement && source === this.frameSource) return;
+    if (frame !== this.frameElement) this.pendingLoads = 0;
+    this.frameElement = frame;
+    this.frameSource = source;
+    this.loadReference();
+  }
+
+  /**
+   * Set the class page on the frame and count the load it starts. The frame is `inert` until that
+   * load answers: a link followed before then would cancel it, and the link's load would be counted
+   * as the page's own.
+   */
+  private loadReference(): void {
+    const frame = this.frameElement;
+    if (frame === null || this.frameSource === null) return;
+    if (this.pendingLoads === 0) this.refocusFrame = frame.ownerDocument.activeElement === frame;
+    this.pendingLoads += 1;
+    this.renderer.setAttribute(frame, 'inert', '');
+    this.renderer.setAttribute(frame, 'src', this.frameSource);
+  }
+
+  /**
+   * A frame `load`: one the page started is counted off, and the last of them makes the frame
+   * interactive again, with focus back on it if it held focus; any other, a link followed inside
+   * the frame, sets the class page again and says so. A load before the page has set `src` on this
+   * frame is the empty document the frame opens with, and is ignored.
+   */
+  protected onReferenceLoad(event: Event): void {
+    const frame = this.frameElement;
+    if (frame === null || event.target !== frame) return;
+    if (this.pendingLoads > 0) {
+      this.pendingLoads -= 1;
+      if (this.pendingLoads === 0) {
+        this.renderer.removeAttribute(frame, 'inert');
+        if (this.refocusFrame) frame.focus();
+      }
+      return;
+    }
+    this.restoredValue = STRINGS.explorerClassReferenceRestored.replace('<class>', this.referenceClass);
+    this.loadReference();
+    this.bump();
   }
 
   /** Show `view`; a text view re-reads with its form. */

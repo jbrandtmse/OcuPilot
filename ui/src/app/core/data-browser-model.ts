@@ -4,7 +4,8 @@
  * adds the editors' parsers, the BIT toggle, a row's key, which cells may change, and the staged
  * changes a save sends (`StagedChanges`).
  * Story 19.16 adds the tab cap, go to row, a page's CSV cells and the shortcuts
- * (`DATA_BROWSER_SHORTCUTS`).
+ * (`DATA_BROWSER_SHORTCUTS`). Story 19.9 adds the page's CSV file (`pageCsvText`), which writes a
+ * number column's cell bare when it is wholly a number (DW-2061).
  *
  * Ported from iris-table-editor v0.2.3 (MIT, `ui/licenses/iris-table-editor.txt`),
  * `packages/webview/src/grid.js`: `handleColumnSort` (:3961-3999) as `nextSort`; the read-only keys
@@ -17,6 +18,7 @@
  * `node --test`.
  */
 
+import { CSV_BOM, csvField } from './csv.ts';
 import { STRINGS } from './strings.ts';
 import { groupDigits } from './table-model.ts';
 
@@ -741,6 +743,29 @@ export function pageCsvRows(columns: readonly { readonly kind: DataKind }[], row
       return value === null ? '' : cellView(column.kind, value).text;
     })
   );
+}
+
+/**
+ * A number column's cell written bare in a page's CSV file: the whole text a number, as the instance
+ * answers one in ODBC form -- an optional `-`, digits with an optional fraction or a fraction alone
+ * (`-.5` is -0.5), and an optional exponent (DW-2061).
+ */
+export const CSV_NUMBER = /^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/;
+
+/**
+ * A page's CSV file (`core/csv.ts`'s byte-order mark, CRLF and quoting): the column names, then
+ * `pageCsvRows`' cells. A number column's cell that `CSV_NUMBER` matches whole is written bare, so a
+ * spreadsheet reads `-12.5` as a number; every other cell, and the header, goes through `csvField`
+ * and keeps its formula guard.
+ */
+export function pageCsvText(
+  columns: readonly { readonly name: string; readonly kind: DataKind }[],
+  rows: readonly (readonly (string | null)[])[]
+): string {
+  const body = pageCsvRows(columns, rows).map((cells) =>
+    cells.map((text, at) => (columns[at].kind === 'number' && CSV_NUMBER.test(text) ? text : csvField(text)))
+  );
+  return CSV_BOM + [columns.map((column) => csvField(column.name)), ...body].map((fields) => `${fields.join(',')}\r\n`).join('');
 }
 
 /** Where focus is when a key is pressed: the grid or any other control, a tab of the strip, a text field, or an open cell editor. */
