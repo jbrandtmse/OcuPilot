@@ -84,7 +84,7 @@ XData Manifest
 {
   "module": {
     "name": "ocupilot",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "An agent co-pilot for the InterSystems IRIS System Management Portal: an Angular shell over an ObjectScript REST API.",
     "packaging": "module",
     "sourcesRoot": "src"
