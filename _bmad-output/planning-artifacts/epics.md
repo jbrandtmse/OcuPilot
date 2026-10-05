@@ -8411,3 +8411,37 @@ So that every lane stops paying for the same flakes and slow runs, and secrets s
 - **When** they land
 - **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is reopened alone and never holds the others back.
 
+
+### Story 23.4: The range-end cleanup, part 4
+
+Chartered by the orchestrator on 2026-10-05 on the owner's approval of the burn-down scope (relayed by the Planner, 2026-10-05). It takes batches (a) and (b) of the drafted scope from the `range-end-cleanup` queue: 30 entries and the ledger's duplicated ids. Slot A runs it after Stories 19.10 and 19.11 and Epic 19's close, before Epic 20. Batches (c) visible polish and (d) doc and test-gap hygiene wait for the owner's decision on a Story 23.5. The IRIS defect candidates stay on the owner's hold and are not part of it.
+
+As the team keeping OcuPilot's CI fast and trustworthy between releases,
+I want the test environment's known breakages and the product's open correctness and safety entries fixed, or declined with a reason,
+So that later stories stop paying for flakes and lost throwaways, and no known unsafe path stays open.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297 and DW-1086; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** DW-2034 (macOS deletes files under `/tmp` untouched for three days, and the local throwaways keep their data there)
+- **When** it is fixed
+- **Then** the local throwaway root is outside `/tmp` while CI's Linux path is unchanged, `ci-throwaway.sh down` removes a throwaway whose `compose.yml` is gone, and a check fails when a mounted local database has no `IRIS.DAT`.
+
+- **Given** the CI flakes and test-isolation entries in batch (a)
+- **When** each is fixed
+- **Then** the plan names how it was reproduced, and the fix is shown by the test passing under that condition. A test that assumed instance state creates and restores the state it relies on, or asserts only on what its own action produced.
+
+- **Given** the correctness and safety entries in batch (b)
+- **When** each is fixed
+- **Then** a test reddens on the defect before the fix and passes after it.
+
+- **Given** the ledger's duplicated ids (DW-1223, DW-1864, DW-1925 and DW-2027 each have two entries)
+- **When** they are deduplicated
+- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once.
+
+- **Given** the fixes
+- **When** they land
+- **Then** batch (a) and batch (b) each land with CI green on their own head and merge on their own, so a failing batch is reopened alone and never holds the other back.
