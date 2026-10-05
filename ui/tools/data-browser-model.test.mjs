@@ -351,6 +351,45 @@ test('a page writes as the grid shows it: NULL empty, BIT as the yes and no word
   );
 });
 
+// DW-2061 (Story 19.9 AC5). Mutation (Rule 19): `pageCsvText` drops its kind check -> the text column's
+// `-12.5` is written bare and this goes red.
+test("a page's CSV writes a number column's cell bare only when the whole of it is a number; every other cell keeps the guard", () => {
+  assert.equal(model.CSV_NUMBER.source, '^-?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?$', 'the ruled pattern');
+  const columns = [
+    { name: 'Num', kind: 'number' },
+    { name: 'Text', kind: 'text' },
+  ];
+  const line = (num, text) => model.pageCsvText(columns, [[num, text]]).split('\r\n')[1];
+  for (const bare of ['-12.5', '1e-3', '-.5', '.5', '1200', '0', '12.', '-1E+10']) assert.equal(line(bare, 'x'), `${bare},x`, `${bare} is written bare`);
+  assert.equal(line('-1+1', 'x'), "'-1+1,x");
+  assert.equal(line('-', 'x'), "'-,x");
+  assert.equal(line('.', 'x'), '.,x', 'a lone . carries no guard character to add');
+  assert.equal(line('+5', 'x'), "'+5,x");
+  assert.equal(line('1,200', 'x'), '"1,200",x', 'a grouped number is quoted, not bare');
+  assert.equal(line('x', '-12.5'), "x,'-12.5", 'a text column keeps the guard on a number');
+  assert.equal(line('x', '=1+1'), "x,'=1+1");
+  assert.equal(line(null, null), ',', 'NULL is empty');
+  assert.equal(line('', 'x'), ',x');
+});
+
+// DW-2061. Mutation (Rule 19): `pageCsvText` ends its lines LF alone -> this goes red.
+test("a page's CSV with no bare cell is csvText's file: the byte-order mark, CRLF, quoting and the guarded header", () => {
+  const columns = [
+    { name: '=Odd', kind: 'text' },
+    { name: 'Num', kind: 'number' },
+    { name: 'Flag', kind: 'boolean' },
+  ];
+  const rows = [
+    ['a,b', '-1+1', '1'],
+    ['say "hi"', null, '0'],
+    ['line\nbreak', '+5', null],
+  ];
+  const text = model.pageCsvText(columns, rows);
+  assert.equal(text, csv.csvText(columns.map((column) => column.name), model.pageCsvRows(columns, rows)));
+  assert.ok(text.startsWith(`\ufeff'=Odd,Num,Flag\r\n`));
+  assert.equal(csv.CSV_BOM, '\ufeff');
+});
+
 /** A key event as the matchers read it. */
 const ev = (key, extra = {}) => ({ key, code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...extra });
 

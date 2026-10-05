@@ -31,7 +31,7 @@
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
-import { csvFileName, csvText } from '../../core/csv';
+import { csvFileName } from '../../core/csv';
 import {
   DEFAULT_PAGE_SIZE,
   MAX_TABS,
@@ -43,7 +43,7 @@ import {
   lastOffset,
   nextOffset,
   nextSort,
-  pageCsvRows,
+  pageCsvText,
   previousOffset,
   rowKey,
   rowRangeMax,
@@ -629,10 +629,7 @@ export class DataTab {
     const answer = this.answerValue;
     if (!this.canExport() || answer === null || answer.outcome !== 'rows') return null;
     return {
-      text: csvText(
-        answer.columns.map((column) => column.name),
-        pageCsvRows(answer.columns, answer.rows)
-      ),
+      text: pageCsvText(answer.columns, answer.rows),
       fileName: csvFileName(this.label(), now),
       first: answer.offset + 1,
       last: answer.offset + answer.rows.length,

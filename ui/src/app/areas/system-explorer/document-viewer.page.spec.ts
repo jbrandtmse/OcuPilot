@@ -17,13 +17,16 @@ import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { SourceViewerPage } from './document-viewer.page';
-import { SourceViewerState, documentOf } from './document-viewer.store';
+import { SourceViewerState, classReferenceUrl, documentOf } from './document-viewer.store';
 
 /**
  * The class and routine viewers over the shipped descriptors, with the real `RefreshService`,
  * `ScreenStores` and `DataTable` and a stubbed HTTP answer per form (Story 19.1, AC2): the header,
  * each view, the re-read per text form, the not-available sentence, a routine's missing class
- * structure, a gone document, and document text rendered as text (AD-11).
+ * structure, a gone document, and document text rendered as text (AD-11). Story 19.9's Class
+ * reference: the frame's address, `sandbox` and name, drawn only once the read has answered for the
+ * namespace on screen, and a load the page did not start set back to the class page; jsdom loads no
+ * frame, so each `load` is dispatched by the test.
  */
 
 const CLASS_VIEWER = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerClassDocument') as ScreenDeclaration;
@@ -76,13 +79,20 @@ async function mount(screen: ScreenDeclaration, name: string, rows: readonly unk
   const paths: string[] = [];
   let namespace = 'HSCUSTOM';
   const scopeListeners = new Set<() => void>();
+  /** While set, each read waits until the test releases it, oldest first. */
+  let holding = false;
+  const held: (() => void)[] = [];
+  let gone = missing;
+  let refusing = false;
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
-      if (missing) {
+      const asked = namespace;
+      if (holding) await new Promise<void>((resolve) => held.push(resolve));
+      if (gone) {
         return { kind: 'error', status: 404, code: 'PORT.NOTFOUND', reason: 'This namespace holds no document by that name.', detail: null };
       }
-      if (namespace === refuseIn) {
+      if (asked === refuseIn || refusing) {
         return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'Refused.', detail: { failedPair: '%DB_USER:READ' } };
       }
       const form = new URLSearchParams(path.split('?')[1] ?? '').get('form') ?? 'udl';
@@ -135,12 +145,39 @@ async function mount(screen: ScreenDeclaration, name: string, rows: readonly unk
   return {
     host,
     paths,
+    refresh,
+    settle: () => settle(fixture),
+    hold: () => {
+      holding = true;
+    },
+    /** Answer the oldest held read, then let the page settle. */
+    release: async () => {
+      holding = held.length > 1;
+      held.shift()?.();
+      await settle(fixture);
+    },
+    /** From the next read on, the namespace holds no document by this name. */
+    remove: () => {
+      gone = true;
+    },
+    /** From the next read on, every read is refused. */
+    refuse: () => {
+      refusing = true;
+    },
+    frame: () => host.querySelector('iframe[data-ocu-source="reference-frame"]') as HTMLIFrameElement | null,
     /** Move the scope as `src/main.ts` does: the framework re-reads, then the scope's listeners run. */
     switchTo: async (next: string) => {
       namespace = next;
       refresh.noteScopeChanged();
       for (const listener of [...scopeListeners]) listener();
       await settle(fixture);
+    },
+    /** Move the scope and let the page render, without waiting for any held read. */
+    switchHeld: (next: string) => {
+      namespace = next;
+      refresh.noteScopeChanged();
+      for (const listener of [...scopeListeners]) listener();
+      fixture.detectChanges();
     },
     view: async (key: string) => {
       (host.querySelector(`[data-ocu-source-view="${key}"]`) as HTMLElement).click();
@@ -158,7 +195,7 @@ afterEach(() => {
 });
 
 describe('the class and routine viewers', () => {
-  it('opens a class on Source: the header, five views, and the text rendered as text', async () => {
+  it('opens a class on Source: the header, six views, and the text rendered as text', async () => {
     const { host, paths, pressed } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
     expect(paths).toEqual(['/api/ocupilot/screens/explorer.class/read?maxRows=1000&name=Demo.Probe.cls&form=udl']);
     const header = host.querySelector('[data-ocu-source="header"]') as HTMLElement;
@@ -173,6 +210,7 @@ describe('the class and routine viewers', () => {
       STRINGS.explorerViewInt,
       STRINGS.explorerViewStructure,
       STRINGS.linksDocumentation,
+      STRINGS.explorerViewClassReference,
     ]);
     expect(pressed()).toEqual(['source']);
     const text = host.querySelector('pre[data-ocu-source="text"]') as HTMLElement;
@@ -223,8 +261,16 @@ describe('the class and routine viewers', () => {
     expect(host.querySelector('[data-ocu-source="not-available"]')?.textContent?.trim()).toBe(STRINGS.explorerIntNotAvailable);
   });
 
-  it('a routine has no class structure, in Structure and in Documentation', async () => {
+  it('a routine has no class structure, in Structure and in Documentation, and offers five views, no Class reference', async () => {
     const { host, view } = await mount(ROUTINE_VIEWER, 'Demo.Probe.mac', ROUTINE_ROWS);
+    // Mutation (Rule 19): offer every view to a routine too -> a sixth button and this goes red.
+    expect(Array.from(host.querySelectorAll('[data-ocu-source-view]')).map((button) => button.getAttribute('data-ocu-source-view'))).toEqual([
+      'source',
+      'xml',
+      'int',
+      'structure',
+      'documentation',
+    ]);
     await view('structure');
     expect(host.querySelector('[data-ocu-source="no-structure"]')?.textContent?.trim()).toBe(STRINGS.explorerRoutineNoStructure);
     expect(host.querySelector('[role="grid"]')).toBeNull();
@@ -295,6 +341,126 @@ describe('the class and routine viewers', () => {
     const gone = await mount(CLASS_VIEWER, 'Demo.Gone.cls', [], true);
     expect(gone.host.querySelector('a[data-ocu-source="compare"]')).toBeNull();
     expect(gone.host.querySelector('a[data-ocu-source="macro"]')).toBeNull();
+  });
+
+  it('Story 19.9 AC1, AC2, AC6: Class reference loads the class page for the namespace on screen in a frame sandboxed with no flag, named for the class, reading nothing', async () => {
+    // Mutation (Rule 19): the template's `sandbox=""` becomes `sandbox="allow-scripts allow-same-origin"` -> red.
+    // Mutation (Rule 19): the frame's `title` binding is removed -> red.
+    const { host, paths, view, pressed, frame } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    expect(frame()).toBeNull();
+    await view('reference');
+    expect(pressed()).toEqual(['reference']);
+    const element = frame() as HTMLIFrameElement;
+    expect(element.getAttribute('sandbox')).toBe('');
+    expect(element.getAttribute('title')).toBe('Class reference for Demo.Probe');
+    expect(element.getAttribute('src')).toBe(classReferenceUrl('HSCUSTOM', 'Demo.Probe.cls'));
+    expect(element.getAttribute('src')).toBe('/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&SHOWCLASSONLY=1&LIBRARY=HSCUSTOM&CLASSNAME=Demo.Probe');
+    expect(host.querySelector('[data-ocu-source="reference-note"]')?.textContent?.trim()).toBe(
+      STRINGS.explorerClassReferenceNote.replace('<class>', 'Demo.Probe')
+    );
+    const status = host.querySelector('[data-ocu-source="reference-status"]') as HTMLElement;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe('');
+    expect(host.querySelector('pre[data-ocu-source="text"]')).toBeNull();
+    expect(host.querySelector('[role="grid"]')).toBeNull();
+    expect(paths).toHaveLength(1);
+    await view('source');
+    expect(frame()).toBeNull();
+  });
+
+  it('Story 19.9 AC3: a load the page did not start sets the class page again and says so; its own loads are counted off', async () => {
+    // Mutation (Rule 19): the load counter ignores self-started loads (every load reads as the page's own) -> red.
+    const { host, view, frame, settle: render } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    await view('reference');
+    const element = frame() as HTMLIFrameElement;
+    const source = element.getAttribute('src');
+    const status = () => host.querySelector('[data-ocu-source="reference-status"]')?.textContent?.trim();
+    element.dispatchEvent(new Event('load'));
+    await render();
+    expect(status()).toBe('');
+    // A link followed inside the frame: the frame navigates on its own and loads.
+    element.setAttribute('src', '/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=HSCUSTOM&CLASSNAME=%25Library.Persistent');
+    element.dispatchEvent(new Event('load'));
+    await render();
+    expect(element.getAttribute('src')).toBe(source);
+    expect(status()).toBe(STRINGS.explorerClassReferenceRestored.replace('<class>', 'Demo.Probe'));
+    // The restore's own load is the page's, so it sets nothing again.
+    element.setAttribute('src', 'about:blank#kept');
+    element.dispatchEvent(new Event('load'));
+    await render();
+    expect(element.getAttribute('src')).toBe('about:blank#kept');
+    expect(frame()).toBe(element);
+    // Mutation (Rule 19): the frame's removal keeps the status line -> a frame drawn again opens on the old sentence and this goes red.
+    await view('source');
+    await view('reference');
+    expect(frame()).not.toBe(element);
+    expect(status()).toBe('');
+  });
+
+  it('Story 19.9 AC4: a namespace switch drops the frame until the new namespace answers, then loads it there; a refused read and a gone class draw none', async () => {
+    // Mutation (Rule 19): `referenceSource` drops its `hasDocument` condition -> the gone class draws a frame and this goes red.
+    const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    const { host, view, frame } = mounted;
+    await view('reference');
+    expect(frame()?.getAttribute('src')).toContain('&LIBRARY=HSCUSTOM&');
+    mounted.hold();
+    mounted.switchHeld('USER');
+    expect(frame()).toBeNull();
+    expect(host.querySelector('[data-ocu-source="header"]')).toBeNull();
+    await mounted.release();
+    expect(frame()?.getAttribute('src')).toBe(classReferenceUrl('USER', 'Demo.Probe.cls'));
+
+    mounted.refuse();
+    await mounted.refresh.readNow();
+    await mounted.settle();
+    expect(host.querySelector('[data-ocu-source="fault"]')).not.toBeNull();
+    expect(frame()).toBeNull();
+
+    const gone = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    await gone.view('reference');
+    expect(gone.frame()).not.toBeNull();
+    gone.remove();
+    await gone.refresh.readNow();
+    await gone.settle();
+    expect(gone.host.querySelector('.ocu-data-table-empty-title')?.textContent?.trim()).toBe(STRINGS.explorerClassDocumentEmpty);
+    expect(gone.frame()).toBeNull();
+
+    const refused = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS, false, 'USER');
+    await refused.view('reference');
+    await refused.switchTo('USER');
+    expect(refused.host.querySelector('.ocu-data-table-refusal')).not.toBeNull();
+    expect(refused.frame()).toBeNull();
+  });
+
+  it("Story 19.9 AC4: another namespace's answer still on screen draws no frame", async () => {
+    // Mutation (Rule 19): `referenceSource` drops its namespace check -> HSCUSTOM's late answer draws a frame and this goes red.
+    const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    await mounted.view('reference');
+    mounted.hold();
+    void mounted.refresh.readNow();
+    mounted.switchHeld('USER');
+    expect(mounted.frame()).toBeNull();
+    await mounted.release();
+    expect(mounted.host.querySelector('[data-ocu-source="header"]')).not.toBeNull();
+    expect(mounted.frame()).toBeNull();
+    await mounted.release();
+    expect(mounted.frame()?.getAttribute('src')).toBe(classReferenceUrl('USER', 'Demo.Probe.cls'));
+  });
+
+  it('Story 19.9: classReferenceUrl names the class page alone, each value encoded, and nothing for any other shape', () => {
+    expect(classReferenceUrl('USER', '%Library.String.CLS')).toBe(
+      '/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&SHOWCLASSONLY=1&LIBRARY=USER&CLASSNAME=%25Library.String'
+    );
+    expect(classReferenceUrl('%SYS', 'OcuProbe199.Doc')).toBe('/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&SHOWCLASSONLY=1&LIBRARY=%25SYS&CLASSNAME=OcuProbe199.Doc');
+    expect(classReferenceUrl('USER', 'a b')).toBeNull();
+    expect(classReferenceUrl('x/y', 'Demo.Probe.cls')).toBeNull();
+    for (const name of ['', '.cls', 'Demo..Probe', 'Demo.Probe.', '1Demo.Probe', 'Demo.%Probe', 'Demo.Probe&IRISPassword=SYS', 'Demo/Probe']) {
+      expect(classReferenceUrl('USER', name), name).toBeNull();
+    }
+    for (const namespace of ['', 'USER&x=1', 'US ER', '%%SYS', 'N'.repeat(65)]) {
+      expect(classReferenceUrl(namespace, 'Demo.Probe.cls'), namespace).toBeNull();
+    }
+    expect(classReferenceUrl('N'.repeat(64), 'Demo.Probe.cls')).not.toBeNull();
   });
 
   it('the state keeps an answer only for the name and form on screen', () => {

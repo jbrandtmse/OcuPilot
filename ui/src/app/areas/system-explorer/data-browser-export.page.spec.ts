@@ -143,6 +143,21 @@ describe('Data browser Download CSV', () => {
     expect(status(mounted).startsWith(`Saved rows 1,001\u20131,100 to ${files[0].download}, as the instance read them.`)).toBe(true);
   });
 
+  // Story 19.9 AC5 (DW-2061). Mutation (Rule 19): `exportPage` builds the file with `csvText` again -> the
+  // number column's `-12.5` is written `'-12.5` and this goes red.
+  it("writes a number column's cell bare when the whole of it is a number, and keeps the guard on every other cell", async () => {
+    const mounted = await mountDataBrowser();
+    mounted.pages.set('Edit', pageAnswer('Edit', [['n1', '-12.5', '-12.5', '1', 'm'], ['n2', 'x', '-1+1', '0', 'm'], ['n3', 'y', '.5', '1', 'm']]));
+    await openFromTree(mounted, 'Edit');
+    const files = await capture(() => click(mounted, el(mounted.host, 'export')));
+    expect(files).toHaveLength(1);
+    const lines = (await files[0].blob.text()).split('\r\n');
+    expect(lines[0]).toBe('Code,Name,Num,Flag,Memo');
+    expect(lines[1]).toBe(`n1,'-12.5,-12.5,${STRINGS.tableStatusYes},m`);
+    expect(lines[2]).toBe(`n2,x,'-1+1,${STRINGS.tableStatusNo},m`);
+    expect(lines[3]).toBe(`n3,y,.5,${STRINGS.tableStatusYes},m`);
+  });
+
   // AC1.
   it('with no tab open or no row to write -- a page of none, a stopped or a refused page, or a read on its way -- Download CSV is unavailable, and Ctrl/Cmd+E is kept from the browser and saves nothing', async () => {
     const mounted = await mountDataBrowser();

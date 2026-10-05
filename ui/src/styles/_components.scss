@@ -8485,3 +8485,20 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 .ocu-data-browser-row-refused {
   color: var(--ocu-error);
 }
+
+// --- Class reference (Story 19.9) -- the instance's own class page in an inert frame ------------------
+
+// The vendor page inside keeps InterSystems' own styling in both themes; only the frame's edge is ours.
+.ocu-source-reference {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 70vh;
+  min-height: 480px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+}
+
+.ocu-source-reference:focus-visible {
+  @include ocu-focus-ring;
+}

@@ -482,6 +482,9 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 19.16 raised it to 2860kB, the measured 2,859,344-byte initial total rounded up to the next kB
 // (Data browser's tabs, Download CSV, Go to row, the Keyboard shortcuts dialog and its chords, and their
 // strings), under the 4000kB hard stop.
+// Story 19.9 raised it to 2864kB, the measured 2,863,130-byte initial total rounded up to the next kB
+// (the class viewer's Class reference frame, Download CSV's bare numbers and their strings), under the
+// 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -494,7 +497,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2860kB', 'DW-1166, Story 19.16: the measured 2,859,344 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2864kB', 'DW-1166, Story 19.9: the measured 2,863,130 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

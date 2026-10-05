@@ -2,7 +2,8 @@
 title: 'Story 19.9: Documatic and DocDB'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'ecabc9530e8c91a85828decf9927ce466d576336'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
