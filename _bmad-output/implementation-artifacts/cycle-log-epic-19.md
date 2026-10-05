@@ -415,3 +415,5 @@
 2026-10-05T22:50:43Z	Story 19.11	adr_verifications_complete	tool=static_inspection+stage_tests acs=AD-22(key_false),AD-3(read_tool_KIND),DW-1964(SqlConsole.Check_not_AtelierPort) result=pass evidence=Baseline.cls:180(explorer.sqlquery.run_false;no_sqlquery.read_key),ExplorerSqlRead.cls:28(KIND_read),:146(SqlConsole.Check) mutations=stage_demonstrated(AC9_consequence,AC5_panel);client_lines_unverified(to_cr) model=claude-opus-5-5
 2026-10-05T22:50:43Z	Story 19.11	ci_pushed	head=c7ce2008 run=37384957857(pending)
 2026-10-05T22:50:43Z	Story 19.11	stage_spawned	stage=qa spawn_at=2026-10-05T22:50:43Z model=sonnet agent_name=19-11-guarded-sql-picker-qa-1 cycle_iteration=1
+2026-10-05T22:56:25Z	Story 19.11	qa_complete	spawn_at=2026-10-05T22:52Z model=sonnet agent=19-11-guarded-sql-picker-qa-1 tests_added=1_leg(agent-sql:false_key_refuses_agent_proposal) mutations_demonstrated=8(7_client_lines_previously_unapplied_now_red,1_browser) closing_sections_present=true
+2026-10-05T22:56:25Z	Story 19.11	stage_spawned	stage=code-review spawn_at=2026-10-05T22:56:25Z model=opus agent_name=19-11-guarded-sql-picker-code-review-1 cycle_iteration=1 review_tier=full-opus
