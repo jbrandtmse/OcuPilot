@@ -2,7 +2,7 @@
 title: 'Story 19.9: Documatic and DocDB'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'ecabc9530e8c91a85828decf9927ce466d576336'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -114,26 +114,26 @@ Measured on `ocupilot-a2-ci` with `_SYSTEM` and purpose-built principals (Design
 
 **Execution:**
 
-- [ ] `ui/src/app/areas/system-explorer/document-viewer.store.ts`:
+- [x] `ui/src/app/areas/system-explorer/document-viewer.store.ts`:
   - `SourceViewKey` and `SOURCE_VIEWS` gain `reference`, last. `setView('reference')` reads nothing.
   - Add the pure `classReferenceUrl(namespace, name): string | null` (Boundaries).
-- [ ] `ui/src/app/areas/system-explorer/document-viewer.page.ts`:
+- [x] `ui/src/app/areas/system-explorer/document-viewer.page.ts`:
   - A sixth button, "Class reference", offered only when `!isRoutine`.
   - The frame block: rendered while the view is `reference`, `hasDocument` holds and the URL is non-null. The note sentence sits above the frame and the `role="status"` line below it.
   - `src` is set by `Renderer2` once per document, namespace and entry to the view.
   - The `(load)` counter restores a self-started navigation.
   - The class doc comment states the sandbox and the reasons for it.
-- [ ] `ui/src/app/core/strings.ts` (end, add-only), four literals:
+- [x] `ui/src/app/core/strings.ts` (end, add-only), four literals:
   - "Class reference";
   - "Class reference for <class>";
   - "This is the instance's own class reference for <class>, shown with your browser's sign-in to the instance. Links inside it do not open here.";
   - "That link does not open here; the class reference shows <class> again."
-- [ ] `ui/src/styles/_components.scss` (end, add-only): `.ocu-source-reference`, a full-width frame of at least 480px, its border on tokens.
-- [ ] `ui/src/app/core/data-browser-model.ts` (add-only): `CSV_NUMBER` and `pageCsvText`. `ui/src/app/areas/system-explorer/data-browser.store.ts` `exportPage` calls `pageCsvText(answer.columns, answer.rows)`.
-- [ ] `src/OcuPilot/Test/DocumaticProbe.cls` (new, modeled on `ExplorerFindProbe`), with `Make(ns)` and `Remove(ns)` naming only package `OcuProbe199`:
+- [x] `ui/src/styles/_components.scss` (end, add-only): `.ocu-source-reference`, a full-width frame of at least 480px, its border on tokens.
+- [x] `ui/src/app/core/data-browser-model.ts` (add-only): `CSV_NUMBER` and `pageCsvText`. `ui/src/app/areas/system-explorer/data-browser.store.ts` `exportPage` calls `pageCsvText(answer.columns, answer.rows)`.
+- [x] `src/OcuPilot/Test/DocumaticProbe.cls` (new, modeled on `ExplorerFindProbe`), with `Make(ns)` and `Remove(ns)` naming only package `OcuProbe199`:
   - `OcuProbe199.Doc` extends `%Persistent`, so its page links to `%Library.Persistent`.
   - Its description is `<script>window.ocuprobe199=1</script>OcuProbe199 class reference probe.`
-- [ ] **Tests:**
+- [x] **Tests:**
   - `ui/src/app/areas/system-explorer/document-viewer.page.spec.ts`:
     - six views on a class, five on a routine;
     - no frame before `hasDocument`, on a refusal or after a namespace switch;
@@ -143,11 +143,11 @@ Measured on `ocupilot-a2-ci` with `_SYSTEM` and purpose-built principals (Design
   - `ui/tools/data-browser-model.test.mjs`: the CSV matrix rows through `pageCsvText`, and BOM, CRLF and quoting equal to `csvText` for a guarded row.
   - `ui/src/app/areas/system-explorer/data-browser-export.page.spec.ts`: a page holding `-12.5` in a number column saves it bare.
   - `ui/browser/system-explorer-documatic.browser-spec.mjs` (new): AC1-AC3 and AC6 on the throwaway, with `DocumaticProbe` made in `before` and removed in `after`.
-- [ ] EXPERIENCE.md:
+- [x] EXPERIENCE.md:
   - a new Fixed-strings row after :600 for the four literals (Class reference, Story 19.9), whose description names the sandbox, the restore and InterSystems' own styling;
   - :689 in place: the `'` prefix applies except to a number column's cell that is wholly a number;
   - move the citations (`npm run test:tools`).
-- [ ] `ui/angular.json` with `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
+- [x] `ui/angular.json` with `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 
 **Acceptance Criteria:**
 
@@ -173,6 +173,20 @@ Measured on `ocupilot-a2-ci` with `_SYSTEM` and purpose-built principals (Design
 - 2026-10-04, lead (spec gate): the split is approved by=merge_gate (Story 19.17 `19-17-the-docdb-browser` takes criterion 2; epics.md, story_order and the tracker amended), so this story builds criterion 1 and DW-2061 only; `CSV_NUMBER` is the ruled `-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?` against the whole value of a number-typed column, with `.5` bare and a lone `-`, a lone `.` and `+5` guarded where the guard applies; the sandboxed frame, its sign-in-page detection and description images fetched as the classic Documatic does are accepted; the spine carries AD-47, AD-28, the Deferred row and the capability map; EXPERIENCE.md :689 in place and the bundle re-base are approved.
 
 ## Review Triage Log
+
+### 2026-10-04 — Review pass
+
+- verdicts: 9 findings — high 0, medium 1, low 2, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `syncReference`'s once-per-frame-and-address return is unpinned: removing it reloads the frame on every same-namespace re-read and counts a load the frame never answers, so a later link stays on the sign-in page (AC3) with every test green — added the page-spec case "a re-read in the same namespace keeps the frame", demonstrated red alone under that mutation, and wrote its `mutation:` line.
+  - `[false]` `[reject]` the `.` and empty-cell CSV rows cannot tell bare from guarded — the output is identical either way, so no branch is mis-tested; the kind check is pinned by the text column's `-12.5`.
+  - `[false]` `[reject]` `## Auto Run Result` still shows only the plan pass — finalize writes it; the fix would edit this build's spec.
+  - `[low]` `[reject]` AC4's refusal, gone, stale and routine cases run in jsdom over stubbed answers, not on the instance — the decision is client state fed by the port's own answer shapes, which Story 19.1's specs cover live; a purpose-built-principal browser leg is more than a direct correction.
+  - `[false]` `[reject]` the load counter could absorb a later link's load after a started load is superseded — a second `src` on one frame before its load needs a new address, and every new address (scope switch through `forget()`, route change through `open()`) clears the document and drops the frame first; the restore sets `src` only when no load is pending.
+  - `[false]` `[reject]` a banner fault's no-frame case is untested — it takes the same `refresh.fault() !== null` branch the refused-read case pins (the fault-check mutation reddens it).
+  - `[low]` `[reject]` the jsdom AC3 case fakes a followed link by changing `src` — the browser AC3 leg follows a real link; the jsdom case pins the counter only, and no user meets the difference.
+  - `[false]` `[reject]` "InterSystems' own styling in both themes" has no test — nothing in the shell reaches into the frame's document, and the shell's styles do not cross documents.
+  - `[false]` `[reject]` additions beyond the task list (exported `referenceClassName`/`CLASS_REFERENCE_PATH`, the read tagged with its namespace, a 720px walk pass, `height: 70vh`, the `taskCreate` citation move) — none touches a Never item; the tagging implements "the name and namespace on screen", `min-height: 480px` meets the task, and the citation move is the EXPERIENCE.md task's.
 
 ## Design Notes
 
@@ -319,19 +333,51 @@ Load `src/` into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - `cd ui && npm test` (once, before dev_complete): expected green, with the budget re-based.
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-a2-ci`, the full ObjectScript sweep, one class at a time (once, before dev_complete): expected green apart from the known residue (the classes this throwaway is not armed for, `MappingCodeGlobals`, and `WireSecurityRead` DW-1554).
 
-**Planned mutations (Rule 19)**, one per AC:
+**Demonstrated mutations (Rule 19).** Each was reverted byte-identical (`git diff | shasum` unchanged, `cmp` against the pre-mutation copy). A browser leg ran on a rebuilt, redeployed bundle, and the clean bundle (`main-OY7M6IJV.js`) was redeployed after the last.
 
-- AC1: `classReferenceUrl` drops `SHOWCLASSONLY=1&PAGE=CLASS` → the browser spec's AC1 leg (the frameset's inner frames sign in) red.
-- AC2: the template's `sandbox=""` becomes `sandbox="allow-scripts allow-same-origin"` → the browser spec's AC2 leg and the page spec's sandbox case red.
-- AC3: the `load` counter ignores self-started loads → the browser spec's AC3 leg and the page spec's reset case red.
-- AC4: the frame block drops its `hasDocument` condition → the page spec's refusal and namespace cases red.
-- AC5: `pageCsvText` drops its kind check → `data-browser-model.test.mjs`'s text-column `-12.5` case red.
-- AC6: the frame's `title` binding is removed → the page spec's title case and the browser spec's a11y leg red.
+- mutation: AC1, `classReferenceUrl` drops `PAGE=CLASS&SHOWCLASSONLY=1&` → the browser spec's three legs red (the frame showed the frameset, "Documatic - Online class documentation"); the page spec's AC1/AC2/AC6 case, its AC4 namespace case and its `classReferenceUrl` case red.
+- mutation: AC2, the template's `sandbox=""` becomes `sandbox="allow-scripts allow-same-origin"` → the browser spec's AC1, AC2 leg red (`typeof window.ocuprobe199` read `number`), with its AC3 leg; the page spec's AC1/AC2/AC6 case red.
+- mutation: AC3, the `load` counter counts every load as the page's own (`pendingLoads >= 0`) → the browser spec's AC3 leg red (the status line stayed empty) and the page spec's AC3 case red.
+- mutation: AC3, `syncReference` drops its once-per-frame-and-address return → the page spec's "a re-read in the same namespace keeps the frame" case red alone (the re-read set `src` again, so the link's load was counted off and not restored).
+- mutation: AC4, `referenceSource` drops its `hasDocument` condition → the page spec's AC4 namespace case red (the gone class drew a frame). Dropping its fault check reddens the same case on the refused read in USER. Dropping its namespace check reddens "another namespace's answer still on screen draws no frame". A routine offered every view reddens the routine case.
+- mutation: AC5, `pageCsvText` drops its kind check → `data-browser-model.test.mjs`'s bare-number case and `data-browser-export.page.spec.ts`'s bare-number case red. Lines ending LF alone redden both model CSV cases. `exportPage` building with `csvText` again reddens the export spec's bare-number case.
+- mutation: AC6, the frame's `[attr.title]` binding removed → the page spec's AC1/AC2/AC6 case red and the browser spec's AC6 leg red (accessible name `""`).
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none (the split and `CSV_NUMBER` are ruled by=merge_gate 2026-10-04)
+Status: done
+Blocking condition: none
+
+**Implement pass 3** (passes 1 and 2 died unreported; their work, `d0539336`, was kept and re-verified here; baseline `ecabc953` kept).
+
+- **Summary:** the class viewer's sixth view, Class reference, loads the instance's class page in an `<iframe sandbox="">` once the read has answered for the namespace on screen, and restores the class page after a link followed inside it; Download CSV writes a number column's wholly numeric cell bare (DW-2061).
+- **This pass changed:** `pageCsvText` gained its missing column-kind check (WIP wrote a text column's `-12.5` bare); the bundle figure in `angular-json.test.mjs`; one review patch (below).
+- **Files (since baseline):**
+  - `document-viewer.store.ts`: the `reference` view, `classReferenceUrl`, `referenceClassName`, and the read tagged with the namespace it was sent in.
+  - `document-viewer.page.ts`: the sixth view, the sandboxed frame, `src` by `Renderer2`, the load counter's restore and status line.
+  - `document-viewer.page.spec.ts`: six/five views, the frame's sandbox, title and address, AC3 restore and re-read cases, AC4 cases, the URL matrix.
+  - `core/strings.ts`: four literals at the end; the `taskCreate` citation :641 to :642.
+  - `_components.scss`: `.ocu-source-reference`.
+  - `data-browser-model.ts`: `CSV_NUMBER`, `pageCsvText`; `data-browser.store.ts`: `exportPage` uses it.
+  - `data-browser-model.test.mjs`, `data-browser-export.page.spec.ts`: the CSV matrix.
+  - `src/OcuPilot/Test/DocumaticProbe.cls`: the probe class's `Make`/`Remove`.
+  - `ui/browser/system-explorer-documatic.browser-spec.mjs`: AC1, AC2, AC3, AC6 live.
+  - EXPERIENCE.md: the Fixed-strings row at :601; :689 amended.
+  - `ui/angular.json`, `angular-json.test.mjs`: `maximumWarning` 2864kB.
+- **Review:** 9 findings (medium 1, low 2, false 6). Patched 1 medium: the page-spec case "a re-read in the same namespace keeps the frame", with its demonstrated `mutation:` line. Deferred none. Rejected 8, each with its reason in the Review Triage Log.
+- **Follow-up review recommended:** false (patched: high 0, medium 1, low 0).
+- **Verification** (this pass, on `ocupilot-a2-ci`, its `src/` identical to the worktree, the bundle rebuilt and redeployed):
+  - `check-objectscript.py` 0 problems; its harness 146 OK; `lint-docs.sh` 0 issues.
+  - `npm run test:tools` 1,816/1,816; System Explorer component specs 200/200; `npm test` once after the patch: 1,816 tools and 2,442 components green.
+  - `npm run build`: initial total 2,863,129 bytes (2,864 kB budget), no budget warning, under 3,800 kB.
+  - Fixed strings: 2,549 of 2,600 (2,545 at baseline).
+  - Browser, each file alone: `system-explorer-documatic` 3/3, `system-explorer` 4/4, `a11y-structural-invariants` 12/12.
+  - Full ObjectScript sweep, once (`ci-runner.mjs --container ocupilot-a2-ci`): runs 1-456, 456 classes, 3,762 tests, 0 failed, 0 probe leftovers, 0 overlaps.
+  - Mutations: the handoff demonstrated every line in `## Verification`; this pass re-demonstrated AC2's sandbox and AC5's kind check and demonstrated the new guard line. No `OcuProbe199` class or data is left in USER.
+- **Residual risks:**
+  - The load counter is measured in Chrome only. A browser that fired the frame's initial empty-document `load` after `src` is set would show the restore sentence once on first load (inference).
+  - Merge with Epic 18: the `strings.ts` end, the EXPERIENCE.md row, :689 and the `taskCreate` citation; Fixed strings 2,549 plus Epic 18's rows crosses 2,600, so the second to land raises the bound; the bundle re-base takes the larger measured figure.
+
 
 **Plan pass.**
 

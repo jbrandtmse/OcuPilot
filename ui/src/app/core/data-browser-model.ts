@@ -748,7 +748,7 @@ export function pageCsvRows(columns: readonly { readonly kind: DataKind }[], row
 /**
  * A number column's cell written bare in a page's CSV file: the whole text a number, as the instance
  * answers one in ODBC form -- an optional `-`, digits with an optional fraction or a fraction alone
- * (`-.5` is -0.5), and an optional exponent (ruled by=merge_gate, DW-2061).
+ * (`-.5` is -0.5), and an optional exponent (DW-2061).
  */
 export const CSV_NUMBER = /^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/;
 
@@ -763,7 +763,7 @@ export function pageCsvText(
   rows: readonly (readonly (string | null)[])[]
 ): string {
   const body = pageCsvRows(columns, rows).map((cells) =>
-    cells.map((text, at) => (CSV_NUMBER.test(text) ? text : csvField(text)))
+    cells.map((text, at) => (columns[at].kind === 'number' && CSV_NUMBER.test(text) ? text : csvField(text)))
   );
   return CSV_BOM + [columns.map((column) => csvField(column.name)), ...body].map((fields) => `${fields.join(',')}\r\n`).join('');
 }

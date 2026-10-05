@@ -397,6 +397,28 @@ describe('the class and routine viewers', () => {
     expect(status()).toBe('');
   });
 
+  it('Story 19.9 AC3: a re-read in the same namespace keeps the frame without setting its address again, so a link followed afterwards is still restored', async () => {
+    // Mutation (Rule 19): `syncReference` drops its once-per-frame-and-address return -> the re-read sets `src`
+    // again and counts a load, the link's load is taken for the page's own, and this goes red.
+    const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
+    await mounted.view('reference');
+    const element = mounted.frame() as HTMLIFrameElement;
+    const source = element.getAttribute('src');
+    element.dispatchEvent(new Event('load'));
+    await mounted.settle();
+    await mounted.refresh.readNow();
+    await mounted.settle();
+    expect(mounted.paths).toHaveLength(2);
+    expect(mounted.frame()).toBe(element);
+    element.setAttribute('src', '/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=HSCUSTOM&CLASSNAME=%25Library.Persistent');
+    element.dispatchEvent(new Event('load'));
+    await mounted.settle();
+    expect(element.getAttribute('src')).toBe(source);
+    expect(mounted.host.querySelector('[data-ocu-source="reference-status"]')?.textContent?.trim()).toBe(
+      STRINGS.explorerClassReferenceRestored.replace('<class>', 'Demo.Probe')
+    );
+  });
+
   it('Story 19.9 AC4: a namespace switch drops the frame until the new namespace answers, then loads it there; a refused read and a gone class draw none', async () => {
     // Mutation (Rule 19): `referenceSource` drops its `hasDocument` condition -> the gone class draws a frame and this goes red.
     const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
