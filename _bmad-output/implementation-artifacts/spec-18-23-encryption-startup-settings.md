@@ -2,8 +2,9 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'blocked'
 review_loop_iteration: 0
+baseline_revision: '2b3e5e243163d8a0bfc37d62bad357d5ebfbbd69'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -447,6 +448,12 @@ Setup:
 ## Spec Change Log
 
 - 2026-10-05, spec gate (runner): Decisions 1 to 8 confirmed. Decision 1 verified by the runner in the vendor source (`ValidateRequest` builds `RequestValidator(schema, 1)`, exempting only the key ids and the v2 credentials; `RunPut` passes `req.AuditEncrypt` to `ConfigStart`); amendment 9 applied at origin (epics.md :7519, `epic-18-context.md`) and reported to the orchestrator. Spine amendments 1 to 6 written (AD-4, AD-10 two items, AD-13, AD-26, AD-27, AD-44); 7 and 8 wait for Task 0, with ordinals taken from the spine when written.
+- 2026-10-05, Task 0 (implement), for the runner. AD sentences from the record (Design Notes › Measured at implement), not applied:
+  - **AD-8 (amendment 7):** "**Story 18.23's startup settings** declare Security's set; the write declares no pair beyond it, and the path port's `%Admin_FileSystemAccess:USE` when a root is sent; `STARTUPADMIN` reads under Security's set and `%Admin_FileSystemAccess:USE` (measured on `ocupilot-b-ci`, 2026-10-05: a principal holding exactly Security's two pairs read the settings and the KMIP servers and wrote the unchanged `PUT`)."
+  - **AD-15 and AD-53 (amendment 8):** no named case, because every settings `PUT` measured records `%System/%Security/DBEncChange` "Encryption settings modified". The agent's marker records right after an `AuditEncrypt` change and after the next restart (on direction only).
+  - **AD-10, intent gap (blocks the story):** the item "Changing the audit log's encryption deletes every audit record" is contradicted for the on direction. Nothing was deleted at once, and the next start encrypted `IRISAUDIT` in place, keeping every record. The owner decides the treatment and the sentence. The off direction needs its own measurement, and a fresh throwaway.
+  - **AD-10, DW-2065's item:** unattended activation stores a hidden generated administrator (`<key id>_1`), not the typed one, and the key file's administrator list omits it. As written, the arm refuses only that hidden name, so removing the typed administrator stays permitted and does not affect unattended activation (inference: activation uses the hidden administrator). Decision 7's premise needs the owner's re-read.
+- 2026-10-05, runner, after the implement stage's step-17 halt (measured on `ocupilot-b-ci`, evidence `/tmp/epic-18-d7/1823/t0/s14*.out`, `s18x.out`): step 14 ran. `AuditEncrypt` false answered 200 and changed nothing at once (`IRISAUDIT` still encrypted with K1, every record kept). After a graceful restart (12:28:39Z) `messages.log` reads "Decrypting IRISAUDIT database"; `IRISAUDIT` is unencrypted, the same `IRIS.DAT` (inode 12766), the oldest record (05:34:18Z) and the agent's markers kept. So both directions keep every audit record and take effect at the next start, converting the database in place. Also measured: `AdminInFile` `DELETE` of the file's only listed administrator is refused ("A key file keeps at least one administrator"); the hidden startup administrator does not count and is never listed. Steps 15 and 16 were not run; the runner rebuilt the throwaway. Status stays `blocked` until the owner decides `AuditEncrypt`'s treatment and DW-2065's scope (orchestrator clarification). Orchestrator conditions on Decision 1 (2026-10-05): the echoed `AuditEncrypt` is read at the write, never carried from the mint, and a proposal that changes it fingerprints the reviewed current value.
 
 ## Review Triage Log
 
@@ -472,6 +479,35 @@ Setup:
 - `IRISAUDIT` at `/durable/iris/mgr/irisaudit/`: not encrypted. Its `IRIS.DAT` is inode 12766, 134,217,728 bytes, modified 2026-10-05 10:52:49Z, born 2026-06-26 18:00:36Z. 222,237 audit events.
 - `DATABASE1` is object code only. `%SYSTEM.Security.System`'s key methods are kernel-dispatched (inference).
 - **Sources disagree on `AuditEncrypt`'s timing and effect.** `Security.System`'s doc says the audit database is deleted as soon as the property changes. The classic page's hint says it takes effect at the next restart. `MakeIRISAudit` converts the database in place at startup, keeping its data. The official documentation says both. Task 0 measures it (Decision 2).
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-05 12:16-12:21 UTC, as `_SYSTEM`; `/tmp/epic-18-d7/1823/t0/`, one `sN.txt` script and `sN.out` record per step). Steps 1-13 ran; step 13 met step 17's contradiction, so 14-16 did not run.
+
+- **1, plumbing:** `EncryptionPort`'s `Settings` `GET`/`PUT` branches, `SettingsGate`, `StartupProblems`, `KMIPSERVERS`, `STARTUPADMIN`; `EncryptionError`'s six startup codes and `REASONSETTINGSVERSION` (not yet in `Codes()`); `Test/EncryptionStartupProbe.cls`. Loaded and compiled clean.
+- **2, S0:** as at plan: every encryption fact 0 or `""`, no active key, `IRISAUDIT` unencrypted, inode 12766, 222,237 events, `PendingRestart` 0.
+- **3, reads:** `Settings` `GET` through `AdminPort` and through `EncryptionPort` 200 in 0.3-0.6 ms; `KMIPSERVERS` 200 `{Names: []}` in 0.1 ms; `STARTUPADMIN` 200 `false` in 0.7-1 ms. A principal holding exactly Security's two pairs read the first two; `STARTUPADMIN` refused it 403 naming `%Admin_FileSystemAccess:USE` and answered once that pair was added; without `%Admin_Secure:USE` each read is 403 naming it. No read is a declared read yet (no descriptor at Task 0).
+- **4, version gate:** the template at API version 2 carries `AdminName` and `AdminPassword`; `SettingsGate` answers OK in 0.3 ms.
+- **5, refusals:** all 18 cases (KMIP with none configured or none named, Unattended with no file, a new file with no password, no name, an unlisted administrator or a refused root, a flag on with None, a flag or `AuditEncrypt` on with no active key, an inactive default or journal id, an unknown mode, a flag that is not boolean, a body or query naming a file, a non-object body) answered their code on their field with zero `PUT` (the seam recorded only reads), no log line, no audit row, facts unchanged.
+- **6, vendor validation:** a body lacking `AuditEncrypt` answered 400 #40301 (`PORT.VALIDATION`, `PORT.FIELD.REQUIRED` on `AuditEncrypt`), one severity-2 `messages.log` line, nothing changed.
+- **7, unchanged `PUT`:** a real leg. 200 in 5 ms, the seven keys sent, no fact changed, one vendor event `%System/%Security/DBEncChange` "Encryption settings modified", audit identity unchanged.
+- **8, pairs:** the principal holding exactly Security's two pairs wrote step 7's `PUT` (200, its own `DBEncChange` row). No pair beyond Security's set is needed.
+- **9-10:** `start-a.key` seeded (K1 `FFD16635-C0B6-11F1-9289-EE197E2E7394`); its activation through `EncryptionPort` set `DBEncStartMode` 0 to 1 and both key ids to K1, as 18.22 measured (`DBEncChange` "Encryption key(s) activated", `SystemChange`).
+- **11, Unattended:**
+  - A wrong password answered 500, status #5001 `<FUNCTION>ConfigStart+123^DATABASE1`, logged at severity 2, with nothing changed: facts, `Security.System` and the key file read as before, no audit row.
+  - The right one answered 200 in 51 ms. `DBEncStartKeyFile` holds the resolved path exactly as sent and `DBEncStartPassphrase` is set (32 bytes).
+  - `DBEncStartUsername` is a **hidden generated name** (`<K1 id>_1`), not the typed one. `AdminInFile` `LIST` and the vendor's own admin list name only the typed administrator.
+  - `STARTUPADMIN` answers true for the stored (hidden) name and false for the typed name and for another file.
+  - Events: `SystemChange`, `DBEncChange` "Encryption settings modified".
+- **12, `AuditEncrypt` on:** 200 in 37 ms (`SystemChange`, `DBEncChange`). At once nothing happened to the audit database: still unencrypted, same file, oldest row (05:34:18) kept. OcuPilot's marker answered 1 just before and just after, and both rows read back. `PendingRestart` 0, no log line.
+- **13, restart:** healthy in 26 s. `messages.log`: unattended activation from `start-a.key` (K1 active, default and journal key), then "Encrypting IRISAUDIT database with key K1", a dismount and a mount, "Auditing to ...". `IRISAUDIT` reads `EncryptedDB` 1 with K1, **same inode 12766 and size, every record kept** (oldest row 05:34:18, both step-12 markers present), and a new marker records.
+- **Contradiction (step 17):** the audit records survive an `AuditEncrypt` change (off to on) at once and at the next restart, contradicting the owner decision's premise. The on-to-off direction is unmeasured.
+- **Left on `ocupilot-b-ci`:** `DBEncStartMode` 2 with `start-a.key` and its hidden administrator, `AuditEncrypt` 1, `IRISAUDIT` encrypted with K1, K1 active as default and journal key, both persisted ids K1, and `<ManagerDirectory>ocuprobestart/` holding `start-a.key` and `start-r.key`. That key file is what the next start activates from, so it must not be removed before a rebuild. The probe principals were removed.
+- **Set from the record, for the re-plan:**
+  - the credentials refusal is #5001 at 500 on `Settings`, shared with internal faults, so it stays logged (named limit 3) and maps only when the port sent credentials;
+  - `ENCRYPTION.STARTUP.REQUIRED`'s vendor codes are unmeasured (#1212, #1213, #1217 read in message text, inference);
+  - the tool declares no `EXTRAPAIRS`;
+  - the `PUT` has a vendor event, so no AD-15 or AD-53 named case;
+  - the marker survives the on change;
+  - the seam's `STARTUPADMIN` fixture is the hidden name.
 
 **Decisions** (applied in this plan; the runner confirms them at the spec gate):
 
@@ -573,10 +609,14 @@ Setup:
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: the audit records survive an AuditEncrypt change (off to on) at once and at the next restart
 
-- Planned only (Halt after planning). For the runner at the spec gate:
-  - Decision 1 restates the orchestrator's `AuditEncrypt` ruling, because the vendor requires the field in every `PUT` and passes it to `ConfigStart` whatever it holds (read in source). Amendment 9 corrects epics.md :7519 and `epic-18-context.md:85` at origin.
-  - Amendments 1 to 6 are ready to write; 7 and 8 wait for Task 0.
-- Task 0 is planned to end `blocked` with `Task 0 complete; throwaway rebuild needed: <what is left>` after its one real activation and two graceful restarts (step 17). The build then runs on the recorded branch with every value change through the seam.
+- This pass ran Task 0 steps 1 to 13 on `ocupilot-b-ci`. Step 13 met step 17's contradiction, so steps 14 to 16 did not run. The record is under Design Notes › Measured at implement, and the AD sentences are in `## Spec Change Log`. Nothing is built past step 1.
+- The stage re-read the contradiction on the instance after the halt (read-only). `IRISAUDIT` reads `EncryptedDB` 1 with K1, its `IRIS.DAT` is still inode 12766, and the oldest audit row (2026-10-05 05:34:18 UTC) is still there. There are 222,276 rows, 881 of them OcuPilot rows from before the restart.
+- Left uncommitted for the lead: step 1's plumbing (`Port/EncryptionPort.cls`, `Api/EncryptionError.cls`, the new `Test/EncryptionStartupProbe.cls`) and this spec. It loaded and compiled clean through `/tmp/epic-18-d7/load-throwaway.sh`, and `check-objectscript.py` reports 0 problems. The secret scan of the diff counts 0. No test class ran (Rule 29).
+- For the owner, before a re-plan:
+  1. How to treat `AuditEncrypt`, and what its sentence says. Turning it on keeps every record: the next start encrypts `IRISAUDIT` in place. Turning it off is unmeasured and needs a fresh throwaway.
+  2. DW-2065 (Decision 7). The stored startup administrator is a hidden generated name (`<key id>_1`), not the administrator the person typed.
+  3. The matrix row "new file without password". It answers `ENCRYPTION.KEYFILE.PASSWORD`, the key-file rules' code, not `ENCRYPTION.KEYFILE.CREDENTIALS` as the matrix lists.
+- `ocupilot-b-ci` needs a rebuild. It is left in Unattended mode (`DBEncStartMode` 2) from `start-a.key` with the hidden administrator, with `AuditEncrypt` 1 and `IRISAUDIT` encrypted with K1. K1 is active as the default and journal key, and both persisted ids are K1. `<ManagerDirectory>ocuprobestart/` holds `start-a.key` and `start-r.key`. Do not remove `start-a.key` before the rebuild, because the next start activates K1 from it to mount `IRISAUDIT`. The probe principals were removed.

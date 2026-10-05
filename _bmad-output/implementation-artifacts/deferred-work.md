@@ -9813,11 +9813,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: EncryptionKeyActivateMint adds FileKeys to the card; FINGERPRINTSUBJECT is Keys,root,path,AdminName; EncryptionPort.Activate reruns FileKeys only for the all-active check (TaskImport's reviewed tasks is the model)
 - 2026-10-05T10:31:38Z status=escalated owner=burndown by=cr note=fix-risk high: TaskImport-style reviewed FileKeys via fingerprint, PortQuery and port; amends AD-51's 18.22 case
+- 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator): carry the reviewed key list through the activation's fingerprint as TaskImport does, so a key file whose keys changed since the mint refuses the confirm; built by Epic 18's burn-down
 
 ### DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivation
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Decision 7 rests on 'an activation is undone by a deactivation'; Measured at implement: DBEncStartMode 0 to 1 persisted after every key was deactivated; DatabaseKeyActivate declares no DESTRUCTIVE
 - 2026-10-05T10:31:42Z status=decision-pending owner=burndown by=cr note=product call; recommend DESTRUCTIVE on the database activate only (Story 18.6's license activate precedent)
+- 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator, standing grant): give a first database activation only the destructive treatment, with a consequence naming the DBEncStartMode change, as 18.6's license activation is treated; follow 18.6's precedent for the governance key default too; built by Epic 18's burn-down
 
 ### DW-2088: No EncryptionKeyGate principal withholds %DB_IRISSYS:READ, so the screens' second declared pair is never refused by name for 18.22's reads and tools
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story

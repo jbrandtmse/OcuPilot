@@ -1,5 +1,5 @@
-/// <p>The encryption screens' codes (AD-39, Stories 18.7 and 18.22): every <code>ENCRYPTION.*</code> code
-/// Encryption key files, its form, Database encryption and Data element encryption answer, and the one
+/// <p>The encryption screens' codes (AD-39, Stories 18.7, 18.22 and 18.23): every <code>ENCRYPTION.*</code> code
+/// Encryption key files, its form, Database encryption, Data element encryption and the startup settings answer, and the one
 /// sentence each carries, with the state refusals their tools answer as <code>TOOL.ARGUMENTS</code>. They live beside
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit
 /// of 1,000 parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
@@ -107,6 +107,41 @@ Parameter REASONKEYSALLACTIVE = "Every key in this key file is already active.";
 
 Parameter REASONKEYDEFAULT = "This is the default key for new encrypted databases while another key is active. Make another active key the default first.";
 
+/// <p>Story 18.23's violation codes (422), each on its field: a KMIP start mode naming no configured
+/// KMIP server, on <code>DBEncStartKMIPServer</code>.</p>
+Parameter STARTUPKMIPSERVER = "ENCRYPTION.STARTUP.KMIPSERVER";
+
+Parameter REASONSTARTUPKMIPSERVER = "Choose a KMIP server this instance has configured.";
+
+/// <p>Unattended activation with no key file sent and none stored, on <code>path</code>.</p>
+Parameter STARTUPKEYFILE = "ENCRYPTION.STARTUP.KEYFILE";
+
+Parameter REASONSTARTUPKEYFILE = "Unattended activation needs a key file.";
+
+/// <p>An encryption flag turned on while the start mode is None, on the flag.</p>
+Parameter STARTUPNEEDSSTART = "ENCRYPTION.STARTUP.NEEDSSTART";
+
+Parameter REASONSTARTUPNEEDSSTART = "Turn on key activation at startup before encrypting this.";
+
+/// <p>An encryption flag turned on while no database encryption key is active, on the flag.</p>
+Parameter STARTUPNOKEY = "ENCRYPTION.STARTUP.NOKEY";
+
+Parameter REASONSTARTUPNOKEY = "Activate a database encryption key on Database encryption before encrypting this.";
+
+/// <p>A changed default or journal key id that names no active database key, on the id.</p>
+Parameter STARTUPKEYINACTIVE = "ENCRYPTION.STARTUP.KEYINACTIVE";
+
+Parameter REASONSTARTUPKEYINACTIVE = "Choose a key that is active on Database encryption.";
+
+/// <p>Refusal code: the vendor keeps key activation at startup on while something depends on it (409).</p>
+Parameter STARTUPREQUIRED = "ENCRYPTION.STARTUP.REQUIRED";
+
+Parameter REASONSTARTUPREQUIRED = "Key activation at startup stays on while encrypted databases, journal files the instance still needs, the audit log or IRISSECURITY depend on it.";
+
+/// <p>The reason of the startup settings write's version refusal, 501 <code>PORT.NOTIMPLEMENTED</code>:
+/// the endpoint's body template carries no administrator name and password.</p>
+Parameter REASONSETTINGSVERSION = "This instance's admin API does not take the startup administrator in the request body, so change these settings on the classic Database Encryption page.";
+
 /// <p>Every <code>ENCRYPTION.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
@@ -127,6 +162,10 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#KEYFILEKEYLEN Quit "KeyLen"
     If pCode = ..#KEYFILEADMINNAME Quit "AdminName"
     If (pCode = ..#KEYFILEPASSWORD) || (pCode = ..#KEYFILECREDENTIALS) Quit "AdminPassword"
+    If pCode = ..#STARTUPKMIPSERVER Quit "DBEncStartKMIPServer"
+    If pCode = ..#STARTUPKEYFILE Quit "path"
+    If (pCode = ..#STARTUPNEEDSSTART) || (pCode = ..#STARTUPNOKEY) Quit "DBEncJournal"
+    If pCode = ..#STARTUPKEYINACTIVE Quit "DBEncDefaultKeyID"
     Quit ""
 }
 
@@ -149,6 +188,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#KEYDEACTIVATE Quit ..#REASONKEYDEACTIVATE
     If pCode = ..#KEYACTIVATEDATAELEMENT Quit ..#REASONKEYACTIVATEDATAELEMENT
     If pCode = ..#KEYDEACTIVATEDATAELEMENT Quit ..#REASONKEYDEACTIVATEDATAELEMENT
+    If pCode = ..#STARTUPKMIPSERVER Quit ..#REASONSTARTUPKMIPSERVER
+    If pCode = ..#STARTUPKEYFILE Quit ..#REASONSTARTUPKEYFILE
+    If pCode = ..#STARTUPNEEDSSTART Quit ..#REASONSTARTUPNEEDSSTART
+    If pCode = ..#STARTUPNOKEY Quit ..#REASONSTARTUPNOKEY
+    If pCode = ..#STARTUPKEYINACTIVE Quit ..#REASONSTARTUPKEYINACTIVE
+    If pCode = ..#STARTUPREQUIRED Quit ..#REASONSTARTUPREQUIRED
     Quit ""
 }
 
