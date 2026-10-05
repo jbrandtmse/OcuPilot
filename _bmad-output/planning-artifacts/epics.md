@@ -7516,7 +7516,7 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 
 As an operator,
 I want the database-encryption startup settings,
-So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` deletes the audit database at once, so its treatment is the owner's product call, which the plan brings to the orchestrator with options and a recommendation]
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` deletes the audit database (the vendor documents it as immediate, the classic page's hint as at the next restart; Task 0 measures which on `ocupilot-b-ci`)] [AMENDED 2026-10-05, owner decision on `AuditEncrypt` (by=owner, relayed by the orchestrator): it is treated as `security.auditing.purge` is - the screen offers the change behind a destructive confirmation whose consequence line says every audit record, the agent's own markers included, is deleted and suggests archiving or purging first, and the screen's own action is not governed; the agent's tool is advertised behind a governance key that ships `false` and mints a destructive proposal with that consequence. Orchestrator ruling: the settings merge sends `AuditEncrypt` only when the person or the proposal changed it, so a start-mode change leaves it out of the body, pinned by a test]
 
 **Acceptance Criteria:**
 
@@ -7532,7 +7532,7 @@ So that key management is not a reason to keep the classic portal open. [AMENDED
 - **When** it is entered
 - **Then** it is write-only and returned by no read, like every other secret.
 
-- DW-2065: Removing a key file's startup administrator is not refused, while unattended activation opens DBEncStartKeyFile as DBEncStartUsername; whether AD-10's key arm extends to it is a product call (ledger; decision-pending by cr 2026-10-05)
+- DW-2065: Removing a key file's startup administrator is refused, as removing a key a database depends on is refused, because unattended activation opens DBEncStartKeyFile as DBEncStartUsername (ledger; decided by the owner and routed 2026-10-05)
 
 ### Story 18.24: RSA and symmetric-key wallet secrets
 
