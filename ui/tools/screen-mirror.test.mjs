@@ -200,8 +200,10 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 19.10: SQL activity states whose statement text it shows.
+      'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads and the ECP Connections tab declare a note'
+    'the three SQL statements reads, the ECP Connections tab and SQL activity declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -2696,7 +2698,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2802,4 +2804,32 @@ test('Story 19.17: Document databases read through the docdb port, the tenth rea
     { resource: '%DocDB_Admin', permission: 'USE' },
     { resource: '%Service_DocDB', permission: 'USE' },
   ]);
+});
+
+// Story 19.10: SQL activity reads through the sqlactivity port, the eleventh read source, which both
+// engines admit as one LIST of `CurrentStatements` with no criteria, per-row call, parent list, query or
+// parts. Every case in `OcuPilot.Test.SqlActivityDescriptor`'s corpus gets its exact sentence, or none,
+// here as the instance's registry gives it there.
+// Mutation (Rule 19): drop the sqlactivity arm from `readProblem` -> the endpoint, type and key cases go
+// red.
+test('Story 19.10: SQL activity reads through the sqlactivity port, the eleventh read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('sqlactivity'), 'the sqlactivity port is a read source');
+  const corpus = testCorpus(['Test', 'SqlActivityDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.SqlActivityList');
+  assert.ok(screen !== undefined, 'SQL activity is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'sqlactivity', endpoint: 'CurrentStatements', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.equal(screen.declaration.ownPrivileges, undefined, 'it declares no own pair');
+  assert.deepEqual(screen.declaration.refreshRates, [5, 10, 30, 60]);
 });

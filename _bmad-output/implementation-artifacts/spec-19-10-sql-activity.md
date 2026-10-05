@@ -2,9 +2,10 @@
 title: 'Story 19.10: SQL activity'
 type: 'feature'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '24b9c705e82bb9fa1807a0f264530c3b2e82ceef'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
@@ -216,6 +217,29 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 18 findings — high 0, medium 7, low 9, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the row fields after `StatementHash` were never compared with the vendor's columns — `TestTheProbeIsARowAndTheReaderIsNot` now starts its probe in one open transaction (`SqlActivityProbe.Start`'s new `pLevel`) and holds `StatementId`, `StatementHash`, `Routine`, `CachedQuery`, `Workers`, `TransactionLevel` and `Started` equal to the vendor's row for that pid; mutation run 1054.
+  - `[medium]` `[patch]` (verification-gap) a row's `Remote` was only ever seen false — `SqlActivitySeam` arms `LocalServer`, and `TestIsRemote` reads the probe's row as remote; mutation run 1055.
+  - `[medium]` `[patch]` (verification-gap) the globals database's pair in `MayReadText` was never exercised, every probe namespace having one database — the port resolves resources through a private `Resources` seam, and `TestTheTextPreCheckNeedsBothDatabases` holds each half alone and both; mutation run 1056.
+  - `[medium]` `[patch]` (verification-gap) a throw from `Text` was never driven — the seam arms a throw, and `TestAVendorFaultFailsTheRead` asserts 500 `INTERNAL`, no rows, the text unsent and logged once; mutation run 1057.
+  - `[low]` `[patch]` (verification-gap) `TestTheVendorSurface`'s substring check could not fail for `Parent` while `ParentType` stayed — now a whole-word `$Locate`; mutation run 1058.
+  - `[low]` `[patch]` (verification-gap) AC4's screen and tool legs passed on an empty answer — each now also asserts 200 and the probe's row.
+  - `[low]` `[reject]` (verification-gap) AC8's structural leg and AC2's side-bar half carry no mutation line of their own — Rule 19 asks one demonstrated mutation per AC and each AC has one; the AC1 and AC5 halves the finding also named are closed by the first two rows.
+  - `[low]` `[reject]` (verification-gap) the note says a caller's own text shows, while the pre-check withholds it in a namespace whose databases the caller cannot read — both the note and the unconditional pre-check are the spec's; the case needs the caller's own statement running under an application role's database grant.
+  - `[low]` `[reject]` (intent-alignment) the Pair missing row's `PORT.ACCESSDENIED` is asserted only at the port, while the screen read and the tool refuse first with the descriptor gate's `AUTH.NOPRIVILEGE` — the Boundaries place the code on the port; the outer refusal is the shared AD-8 gate naming the same pair, and the side-bar half is pinned over HTTP by `Wire` and `WireSecurityRead`.
+  - `[low]` `[reject]` (intent-alignment) "Not shown" is pinned only as the column's declared `emptyKey` — the shared table renders `emptyKey` and `table-model.test.mjs` and `locks.browser-spec.mjs` pin that rendering.
+  - `[medium]` `[patch]` (intent-alignment) the Nothing running row had no test and `emptyStateKey` was unasserted — `TestTheDescriptorShape` now pins `sqlActivityEmpty` (mutation run 1059); "only the reading process" cannot be arranged on a shared instance, and its mechanism is the own-row leg.
+  - `[low]` `[reject]` (intent-alignment) own-statement text reads R2a while the note reads R2b — same root cause and disposition as the note row above.
+  - `[false]` `[reject]` (intent-alignment) the tool's row set is not compared with the port's — screen and tool resolve through the one declared read (AD-36), `Elapsed` moves between calls so set equality is no stable assertion, and the probe row is asserted in each.
+  - `[false]` `[reject]` (intent-alignment) "no statement prepared" is observed as `Rows` calls, not `%Prepare` calls — `Rows` is the port's only prepare site, so zero calls is zero prepares.
+  - `[medium]` `[patch]` (intent-alignment) the vendor fault's text was never seen reaching the log, and a throw was never driven — grouped with the throw row: the seam records each logged status's text, and both fault legs assert it; mutation run 1057.
+  - `[medium]` `[patch]` (intent-alignment) a remote row's `Remote` and text pre-check are unexercised — the `Remote` half is grouped with the remote row above (run 1055); the text half is refuted on `ocupilot-a2-ci`: `GetSQLStatement` answers `""` with OK for a hash an existing namespace does not hold, and a namespace that does not resolve never reaches the call.
+  - `[low]` `[patch]` (intent-alignment) the "empty resource, no call" path was untested — grouped with the split-database row: its last leg arms an unresolved routines resource and reads no text.
+  - `[low]` `[reject]` (intent-alignment) another account's statement is read only at the port; the screen, tool and browser legs read as the suite's account — the declared read adds nothing account-specific beyond the port's gate and text rule, which `SqlActivityGate` pins with real principals.
+
 ## Design Notes
 
 **Decisions on the five open questions:**
@@ -315,15 +339,53 @@ The stateful classes run one at a time: one test-runner call per message, wait f
 **Pinning tests and the mutation each must redden (Rule 19).** The implement stage records a `mutation:` line under each:
 
 - AC1: `Rows` drops the `$JOB` filter → SqlActivityPort's own-row leg; `Rows` sets no `Namespace` → its list leg and the browser row leg.
+  - mutation: the `$JOB` filter removed from `Rows` → `SqlActivityPort.TestTheProbeIsARowAndTheReaderIsNot` red on the own-row leg (run 1028).
+  - mutation: `Rows` sets no `Namespace` → the same method red on its namespace, screen-read and tool legs (run 1029); the browser row leg red (`(none)` where `USER` was expected).
+  - mutation: `Routine` read from the `CachedQuery` column → the same method red on its vendor-column leg (run 1054).
 - AC2: `PAIRS` without `%DB_IRISSYS:READ` → SqlActivityGate's NoSys leg.
+  - mutation: `PAIRS` = `%Admin_Operate:USE` → `SqlActivityGate.TestEachMissingPairIsRefusedByName` red on OcuP1910NoSys's refusal (run 1030).
+  - mutation: the port's `EvaluateRequired` block removed → `PortGate.TestEveryPortEvaluatesItsDeclaredGate` red on the SqlActivityPort leg (run 1040); a `Rows` call placed before the gate → `SqlActivityPort.TestTheGateRefusesBeforeAnyStatement` red on the prepared count (run 1039).
 - AC3: the pre-check removed → SqlActivityGate's `ProtectCount` leg; #921 mapped to a failure → its Read leg; the cut removed → SqlActivityPort's length leg.
+  - mutation: `StatementText`'s `If 'pAllowed(pNamespace)` line removed → `SqlActivityGate.TestTheExactPairsListWithTheTextWithheld` red: the read answers 500 and the Protect count moves (run 1031).
+  - mutation: the #921 line removed from `StatementText` → `SqlActivityGate.TestTheTextNeedsDevelopmentAndTheDatabase` red on the Read principal (run 1032) and `SqlActivityPort.TestAVendorFaultFailsTheRead` red on its withheld leg (run 1033).
+  - mutation: the cut removed from `Shape` → `SqlActivityPort.TestTheTextIsCutAbove1024` red on both length legs (run 1034).
+  - mutation: the globals database's pair dropped from `MayReadText` → `SqlActivityPort.TestTheTextPreCheckNeedsBothDatabases` red on its routines-only leg (run 1056); a throw from `Text` answered as `""` → `TestAVendorFaultFailsTheRead` red on its throw legs (run 1057).
 - AC4: `Parameters` added to `CURRENTSTATEMENTS` and the row → SqlActivityPort's Parameters leg.
+  - mutation: `Parameters` selected and set on the row → `SqlActivityPort.TestTheBoundValueIsInNoAnswer` and `TestTheVendorSurface` red (run 1035).
 - AC5: `rowTarget` removed → the browser link leg.
+  - mutation: `rowTarget` removed, the mirror regenerated, rebuilt and deployed → the browser link leg red (no link to click).
+  - mutation: `Rows` sets every row's `Remote` to 0 → `SqlActivityPort.TestIsRemote` red on its row leg, a probe read with the seam's `LocalServer` naming another server (run 1055).
 - AC6: `refreshes` false → the browser chip leg and SqlActivityDescriptor's shape leg.
+  - mutation: `refreshes` false with no rates → `SqlActivityDescriptor.TestTheDescriptorShape` red on its two refresh legs (run 1043); rebuilt and deployed, the browser chip leg red (no `.ocu-command-bar-refresh`).
 - AC7: `Loop.Run` appends the last `tool_result` to the system prompt → source (n)'s leg, as source (a)'s does.
+  - mutation: `Loop.Run` appends the last message's blocks to the system prompt → `InjectionChannels` red in all fifteen methods, `TestRunningStatementLiteral` on invariant 1, the obeyed stub, the proposal and both navigation legs (run 1046).
 - AC8: the third prompt removed → SqlActivityDescriptor's shape leg.
+  - mutation: the third prompt removed → `SqlActivityDescriptor.TestTheDescriptorShape` red (run 1044).
+- The source kind's refusals and the remaining port legs:
+  - mutation: the sqlactivity arm removed from `Registry.ReadProblem` → `SqlActivityDescriptor.TestTheSqlActivitySourceRefusals` red on the endpoint, type and four key cases (run 1041); the arm removed from `screen-mirror.mjs`'s `readProblem` → the Story 19.10 mirror test red.
+  - mutation: `ASC` order → `SqlActivityPort.TestRowsComeSlowestFirstAndCutAtTheCap` red on both order legs (run 1036); the cut removed from `Rows` → red on the cap leg (run 1037); `IsRemote` answering 0 → `TestIsRemote` red (run 1038).
+  - mutation: the `CASE` tests `ParentType` in place of `Parent` → `SqlActivityPort.TestTheVendorSurface` red on its whole-word leg (run 1058); the descriptor's `emptyStateKey` set to `sqlActivityLabel` → `SqlActivityDescriptor.TestTheDescriptorShape` red (run 1059), the Nothing running row's empty state.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** OS management gains SQL activity (`os-management/sql-activity`, position 20). `Port/SqlActivityPort` requires `%Admin_Operate:USE` and `%DB_IRISSYS:READ` (403 `PORT.ACCESSDENIED` with `failedPair`), prepares `CURRENTSTATEMENTS` in the caller's namespace, leaves out its own `$JOB`, never selects `Parameters`, and reads a statement's text through `GetSQLStatement` only for a caller holding READ on the namespace's routines and globals databases (#921 answers `""`; any other fault or a throw is 500 `INTERNAL`, logged). The `sqlactivity` source kind joins `Read`, `Registry` and the mirror ("eleven sources"), `sql-statement` joins the entity types, the agent gets `osmgmt.sqlactivity.read`, and injection source (n) is planted and read.
+
+**Files.** New: `Port/SqlActivityPort.cls`; `Screen/Descriptor/SqlActivityList.cls`; tests `SqlActivityDescriptor`, `SqlActivityPort`, `SqlActivityGate`, `SqlActivityGateSeam`, `SqlActivitySeam` (the port test's seams) and the fixture `SqlActivityProbe`; `ui/browser/sql-activity.browser-spec.mjs`. Changed: `Screen/Read.cls`, `Screen/Registry.cls`, `Kernel/EntityType.cls`, `InjectionSeed`, `InjectionChannels`, `ui/tools/screen-mirror.mjs`, `screens.generated.ts`, `strings.ts`, EXPERIENCE.md (:92, :164, the row at :603, :889; one citation moved), `scripts/ci-throwaway.sh` (`# classes: SqlActivityGate, SqlActivityProbe`), `angular.json` and `angular-json.test.mjs`.
+
+**Rosters updated outside the spec's file list:** `ReadTool` (276 tools and the name), `SurfaceCoverage`, `Descriptor` (`ReadShapes` row, 56 entity types), `PortGate` (roster and denial leg), `AdminPairCorpus` and `DocDbDescriptor` ("eleven sources"), `Navigation` (46 screens), `Wire` (strip step), `WireSecurityRead` (three rosters), `WireAreaAnyScreen` (the `%Operator` holder's OS management roster, found red by the sweep), `screen-mirror.test.mjs` (port list, per-source test, read-note roster), `navigation.test.mjs` (two rosters), `src/app/shell/area-verdict.spec.ts` (OS management's side-bar roster, found red by `npm test`), `license-usage.browser-spec.mjs` (count wording). `DraftRegistry`, `DeveloperFloor` and `ToolRoundTrip` needed no edit.
+
+**Review.** Two layers ran (verification-gap, intent-alignment; blind-hunter and edge-case-hunter are disabled in `_bmad/custom/bmad-build-auto.toml`): 18 findings, 0 high, 7 medium, 9 low, 2 false. Patched: 5 medium entries (vendor-column leg with a probe in one open transaction; a remote row through the seam's `LocalServer`; the split-database pre-check through a new private `Resources` seam; a throw from `Text` and the logged vendor text; the Nothing running empty state) and 2 low (whole-word column check; AC4's screen and tool legs now require the probe row). Rejected: 7 low and 2 false, each with its reason in the Review Triage Log. Deferred: none. Follow-up review recommended: true (5 medium entries patched); the unverified risk is that a row's `Remote` path and the split-database pre-check are pinned through seams, never against a second instance's rows or a namespace whose routines and globals databases differ.
+
+**Verification** (all on `ocupilot-a2-ci`, the current `src/` loaded first):
+
+- `check-objectscript.py` 0 problems; its harness 146 OK; `lint-docs.sh` 0 issues; `npm run test:tools` 1,826 pass; `npm test` 1,826 tools and 2,483 component tests pass.
+- Bundle 2,942,499 B initial (2943kB warning, `main-576T5BQA.js`); Fixed strings 2,659 literals of the 2,700 cap.
+- Browser, on that bundle deployed: `sql-activity` 4 of 4, `a11y-structural-invariants` 12 of 12.
+- Story classes after the review patches: SqlActivityPort 1052, SqlActivityDescriptor 1053; review mutations 1054-1059, each red as recorded in `## Verification`, applied to the throwaway's copy only and the tree confirmed identical after each.
+- Full ObjectScript sweep (once): 472 classes, 3,826 tests, 1 failed (`WireAreaAnyScreen`, its roster patched and re-run green, run 1532), 0 probe leftovers. Residue, as known: the five encryption classes (`EncryptionKeyFileRead`, `EncryptionKeyFileWrite`, `EncryptionKeyGate`, `EncryptionKeyWrite`, `EncryptionWriteGate`) ran nothing because the throwaway does not arm `OCUPILOT_ALLOW_ENCRYPTION_CONFIG`. The instance offered 472 classes against the checkout's 470. Story and roster runs in the sweep: SqlActivityDescriptor 1416, SqlActivityGate 1417, SqlActivityPort 1418, InjectionChannels 1223, PortGate 1342, ReadTool 1378, Navigation 1299, Wire 1523, WireSecurityRead 1526, Descriptor 1146, DeveloperFloor 1147, DraftRegistry 1162, DocDbDescriptor 1156, SurfaceCoverage 1443, ToolRoundTrip 1470.
+- After the runs no `OcuP1910*` user or role, probe job or probe registry node remains.
+
+**Residual risks.** `SqlActivityGate` counts `Protect` audit rows instance-wide, so another process's `<PROTECT>` during its read would redden it.

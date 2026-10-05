@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:643 */
+  /** EXPERIENCE.md:644 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5741,6 +5741,24 @@ export const STRINGS = {
   explorerDocDbNameTaken: 'This namespace already holds a document database of that name, in any letter case.',
   /** EXPERIENCE.md:602 */
   explorerDocDbClassTaken: 'A class of that name already exists in this namespace, so the database was not created.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityLabel: 'SQL activity',
+  /** EXPERIENCE.md:603 */
+  sqlActivityColumnRunType: 'Run type',
+  /** EXPERIENCE.md:603 */
+  sqlActivityColumnElapsed: 'Elapsed (s)',
+  /** EXPERIENCE.md:603 */
+  sqlActivityTextWithheld: 'Not shown',
+  /** EXPERIENCE.md:603 */
+  sqlActivityEmpty: 'No SQL statements are running on this instance.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityNote: 'Statement text shows for your own statements, and for another user\'s when you hold %Development:USE and READ on its namespace\'s database.',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt1: 'Which SQL statements have been running the longest?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt2: 'Who is running SQL right now, and in which namespace?',
+  /** EXPERIENCE.md:603 */
+  sqlActivityPrompt3: 'Is any statement running inside an open transaction?',
 } as const;
 
 /**

@@ -1074,7 +1074,7 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The source kinds are
+/// (<method>SourceQueryProblem</method>). The eleven source ports are
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
@@ -1082,10 +1082,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// (AD-61), which declares no <code>rowGet</code>;
 /// <code>state</code>, one of OcuPilot's own kernel stores (AD-9) named without a package, which
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
-/// file's bounded tail, which declares no <code>rowGet</code>; <code>path</code>, the instance's
-/// allowed directories, a <code>LIST</code> of one of <class>OcuPilot.Port.PathPort</class>'s
-/// sources that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code> or
-/// <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
+/// file's bounded tail, which declares no <code>rowGet</code>; <code>encryption</code>, a key file's
+/// lists; <code>path</code>, <code>background</code>, <code>docdb</code> and
+/// <code>sqlactivity</code>, each a <code>LIST</code> of its port's own endpoint (the path port's of
+/// one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>, <code>query</code>
+/// or <code>parts</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
 /// shape is fixed (<method>TimelineProblem</method>);
 /// A source may instead declare <code>rows</code>, a bare admin type's one-object answer read as a
 /// list over one member (<method>RowsProblem</method>, Story 16.7);
@@ -1139,8 +1140,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', the ten sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', the eleven sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1224,6 +1225,28 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on a docdb source, which answers the document databases whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; A sqlactivity source lists the instance's running SQL statements through
+        ; OcuPilot.Port.SqlActivityPort, which answers each one whole behind its own gate (AD-29, AD-36,
+        ; Story 19.10): the port's own endpoint, a LIST, and nothing the port would have to issue per
+        ; row, per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY {
+            Set tSqlActivityEndpoint = ##class(OcuPilot.Port.SqlActivityPort).#ENDPOINT
+            If tSource.%Get("endpoint") '= tSqlActivityEndpoint {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the sqlactivity port's endpoint ('" _ tSqlActivityEndpoint _ "') (AD-29)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.SqlActivityPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a sqlactivity source, which lists the instance's running SQL statements (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on a sqlactivity source, which answers the running statements whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit

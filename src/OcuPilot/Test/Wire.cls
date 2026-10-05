@@ -720,6 +720,11 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
     ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
     ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
     ; roster below stays the one before it.
+    ; Story 19.10 lists SQL activity last, after ECP application servers, denied on %DB_IRISSYS:READ,
+    ; the second of its pairs; it is asserted here and taken off the end.
+    Set tSqlActivity = ",{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
+    Do $$$AssertEquals($Extract(tScreens, *-$Length(tSqlActivity)+1, *), tSqlActivity, "SQL activity is listed last, after ECP application servers, denied on %DB_IRISSYS:READ")
+    Set tScreens = $Extract(tScreens, 1, *-$Length(tSqlActivity)) _ "]"
     Set tEcpSettings = ",{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
     Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcpSettings)+1, *), tEcpSettings, "ECP settings and ECP application servers are listed last, after ECP data servers, denied on %Admin_Manage:USE")
     Set tScreens = $Extract(tScreens, 1, *-$Length(tEcpSettings)) _ "]"
