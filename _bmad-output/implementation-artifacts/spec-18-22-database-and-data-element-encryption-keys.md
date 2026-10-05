@@ -2,8 +2,9 @@
 title: 'Story 18.22: Database and data-element encryption keys'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'in-progress'
 review_loop_iteration: 0
+baseline_revision: '78e85ce221db07c09312856e0e25d2777d222448'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -382,6 +383,9 @@ deferred: []
 ## Spec Change Log
 
 - 2026-10-05, spec gate (runner): Decisions 1 to 7 confirmed. Spine amendments 1 to 4 written (AD-13, AD-36, AD-51 with AD-44, AD-27 with AD-10's key arm); AD-8 (item 5) and AD-15/AD-53 (item 6) wait for Task 0's record. Item 7 corrected at origin (`spec-18-7-encryption.md` :379, `epic-18-context.md` :76). Named limit 3 routed as DW-2085.
+- 2026-10-05, implement Task 0: halted at step 11. A first database key activation persistently sets `DBEncStartMode` to Interactive, and no step 11 call clears it (Design Notes › Measured at implement).
+- 2026-10-05, implement Task 0, for the runner: AD-8 item 5 measured as "the activations also declare PathPort's `%Admin_FileSystemAccess:USE` and nothing more; the deactivations declare nothing beyond the screen's set". AD-15 and AD-53 item 6 has no subject, because the vendor records `DBEncChange` for every activation and deactivation. AD-2: no `UNLOGGEDREFUSALS` entry.
+- 2026-10-05, runner answer to the Task 0 halt (re-dispatch): take the seam branch (Decision 5). Success legs (activate and deactivate, both kinds, both callers) run through the seam; real legs pin the reads, the pre-call refusals and the vendor's measured refusal mapping, and no test activates a real key. Reason: the vendor's only reset of `DBEncStartMode` is `$$ConfigStart^DATABASE1`, which also carries `AuditEncrypt` and is Story 18.23's. The throwaway was rebuilt fresh. Measured by the runner on the restarted throwaway (05:31Z, `DBEncStartMode` 1, no key active, no console): startup asked `Encryption key file?`, logged "Database encryption key activation failed. Encrypted databases will not be processed." at severity 1, raised no alert of its own and came up healthy. `ENCRYPTION.KEY.ACTIVATE` states, as measured, that a first database activation also sets key activation at startup to Interactive, so each later start asks for a key file on the console and, unanswered, starts without the key, leaving encrypted databases unmounted, until the startup settings change it. The 200 with nothing changed on an all-active file (step 12) is covered by the all-active refusal sent before any vendor call. DW-2059: Decision 4's first branch (no code change; the measured spelling joins `EncryptionKeyMatch`). AD-8 item 5 written to the spine.
 
 ## Review Triage Log
 
@@ -406,6 +410,27 @@ deferred: []
 - The license is "InterSystems IRIS Community", 2026.2 build 221U. The throwaway carries `OCUPILOT_ALLOW_ENCRYPTION_CONFIG=1`.
 - Endpoint classes declaring their own request types were queried over `%Dictionary.CompiledParameter`. `Database.Actions`, `Journal.File`, `Security.Audit.Record` and `Security.Encryption.Key` dispatch write types through their own `Run` and read `mutating="0"` in the inventory.
 - Read in the vendor docs (inference until Task 0): the first database activation persistently sets the default and the journal key; a default or journal key cannot be deactivated while another key is active; an activation activates every key in the file; up to 256 data-element keys.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-05 05:18 to 05:24 UTC; evidence in `/tmp/epic-18-d7/1822/t0/`). **HALTED at step 11** (step 12, "any state that no call in step 11 clears"); nothing built past step 1.
+
+- Step 1: `EncryptionPort` gained `DATABASEKEYS`, `DATAELEMENTKEYS`, `JOURNALUSE`, the `File` `ACTIVATE` and `Key` `DEACTIVATE` branches and `FileKeys`, with their reasons in `EncryptionError`; `Test/EncryptionKeyProbe` extends `EncryptionProbe` under `OCUPROBEACT`. `EncryptionProbe.EncryptionFacts` never reported an encrypted database (`SYS.Database:List` answers `Encrypted` as Yes or No), fixed.
+- S0 as Measured at plan; audit count 30452, auditing on, `DBEncChange` enabled. Reads as `_SYSTEM`: `Key` `LIST` 1.9 ms, `DATAELEMENTLIST` 0.3 ms, `Settings` `GET` 0.6 ms, each `[]` or empty.
+- Activation is not license-gated on Community. `act-a` with the right password answered 200 in 27 ms. `Key` `LIST` read `[{Id, KeyLen: 256, IsDefault: true}]`: `KeyLen` is bits.
+- **The first database activation persistently set `Security.System` `DBEncStartMode` 0 to 1 (Interactive), and `DBEncDefaultKeyID` and `DBEncJournalKeyID` "" to K1.** `GetDBEncKeyID()` and `GetJrnEncKeyID(1)` and `(2)` read K1. The audit rows were `DBEncChange` "Encryption key(s) activated" and `SystemChange` "Modify System SYSTEM". `PendingRestart` stayed 0.
+- The persisted values stayed after every key was deactivated. A later first activation of K2 left `DBEncDefaultKeyID` and `DBEncJournalKeyID` at K1, while the running default and journal key read K2.
+- **Left on the throwaway:** at step 11, `Security.System.Modify` restored both key ids to "" but answered OK and left `DBEncStartMode` 1; it is an `[Internal]` property. The vendor's `Settings` `PUT` sets it through `$$ConfigStart^DATABASE1` (read), which step 11 does not name and which was not called. `Settings` `GET` reads `DBEncStartMode` "Interactive".
+- Also left: the monitor read 2, then 0 after `$SYSTEM.Monitor.Clear()`, then 1 a minute later with no new alert line. `messages.log` grew 84 lines and `alerts.log` 4: the vendor's "Unable to activate encryption key" line and the port's #1208, #1201 and suspension lines.
+- Removed: every probe file, the probe database, the principal and every active key.
+- Wrong password: 500 #1219, and the vendor logs its own severity-2 "Unable to activate encryption key" line.
+- Activating a file whose every key is active answered 200 with nothing changed, no audit row and an "already activated" info line (database and data element). With every key active, a wrong password also answered 200. The port's all-active refusal answered 400 before any call in both cases.
+- DW-2059: K2's `KeyInFile` `Id`, `Key` `LIST` `Id` and the probe database's `Database.SysCRUD` `EncryptionKeyID` were byte-identical; so were K1's `KeyInFile` `Id`, `DBEncDefaultKeyID`, `DBEncJournalKeyID` and `GetJrnEncKeyID(2)`. All were upper-case hex and `-`, so Decision 4's first branch applies. The unconfigured probe database (`SYS.Database.CreateDatabase` plus mount) is listed by `Database.SysCRUD` `LIST`.
+- DW-2066: `JOURNALUSE` answered `InUse` false for K1, K2 and an unknown id in 0.2 to 0.4 ms, as `_SYSTEM` and as a principal holding exactly `removekey`'s four pairs. An empty id was refused 400 before the vendor.
+- Deactivation with `{Action, AdminName: "", AdminPassword: ""}`: K2 under its mounted encrypted database answered 500 #1208 with K2 still active. K1, the default, while K2 was active answered 500 #1214 with K1 still active.
+- More deactivation: an inactive id answered 500 #1201, and a body without `AdminName` 400 #40301. After the database was dismounted and deleted, K2 then K1 (the last key) answered 200 each, audited `DBEncChange` "Encryption key deactivated".
+- Pairs: database and data-element activation succeeded for a principal holding exactly `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%Admin_FileSystemAccess:USE`. Database and data-element deactivation succeeded for one holding exactly the first two.
+- Data element: `act-c` (two keys) answered 200; `DATAELEMENTLIST` listed both; two audit rows; no `Security.System` change. Each `DeactivateMK` answered 200.
+- Not halts: Community activation; the vendor's 200 on an all-active file, which the plan's all-active refusal pre-empts (inference: the plan's rule exists for exactly this); `IsDefault` gating, which holds (#1214).
+- Step 13, measured but not applied: the real branch was viable until step 11. Mapped codes: credentials #1219, in use #1208 (and #1215, read in its message text (inference)), role #1214; no license refusal; vendor events for every write, so no AD-15 or AD-53 named case.
 
 **Decisions** (applied in this plan; the runner confirms them at the spec gate):
 
@@ -497,7 +522,10 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: observation contradicts the plan: the first database key activation on `ocupilot-b-ci` persistently set `Security.System` `DBEncStartMode` from 0 (None) to 1 (Interactive), and no call in Task 0 step 11 clears it (`Security.System.Modify` answers OK and leaves it at 1, an `[Internal]` property), so S2 does not equal S0 (step 12, "any state that no call in step 11 clears")
 
-- Planned only (halt after planning). Read-only probes of `ocupilot-b-ci` and the vendor exports at `/tmp/epic-18-d7/vendor/`; nothing written to any instance. The plan stage wrote `/tmp/epic-18-d7/load-throwaway.sh` (the throwaway loader, since `/tmp/epic-18-d6/` is gone); it has not been run.
+- Implement pass 1 (baseline `78e85ce221db07c09312856e0e25d2777d222448`): Task 0 ran through step 11 and halted there; nothing was built past step 1. The record is under Design Notes › Measured at implement, and the AD sentences are in `## Spec Change Log`. Evidence is in `/tmp/epic-18-d7/1822/t0/`.
+- Verified by the stage agent on `ocupilot-b-ci` (read-only, after the handoff returned): `DBEncStartMode` 1, `DBEncDefaultKeyID` and `DBEncJournalKeyID` empty, no active database or data-element key, no `ocuprobeact` directory, no `OcuProbeAct*` user or role. The throwaway needs the runner's rebuild before a re-dispatch; this stage did not restart or rebuild it.
+- Uncommitted step-1 work left in the tree (no commit made, none pushed): `src/OcuPilot/Port/EncryptionPort.cls` (the `DATABASEKEYS`, `DATAELEMENTKEYS` and `JOURNALUSE` types, the `File` `ACTIVATE` and `Key` `DEACTIVATE` branches, `FileKeys`, `COMPOSEDTYPES`; vendor codes not yet mapped), `src/OcuPilot/Api/EncryptionError.cls` (the new codes and sentences), `src/OcuPilot/Test/EncryptionKeyProbe.cls` (new), `src/OcuPilot/Test/EncryptionProbe.cls` (`EncryptionFacts` now reports an encrypted database: `SYS.Database:List` answers `Encrypted` as Yes or No), and this spec. `check-objectscript` on the four classes: 0 problems; `lint-docs`: clean. No test class, browser spec, client tier or build ran.
+- For the runner to decide: (1) the product consequence: a person's first database activation through OcuPilot would persistently switch their instance to interactive key activation at startup, so the `ENCRYPTION.KEY.ACTIVATE` sentence must say so, or the owner may rule on the effect itself; (2) step 12 also lists "answers 2xx having changed nothing": the vendor answered 200 with nothing changed when every key in the file was already active, even with a wrong password; the handoff did not halt on it because the plan's port-level all-active refusal (400, before any vendor call) pre-empts that case (inference); (3) `/tmp/epic-18-d7/load-throwaway.sh` prints `LOAD-RESULT:OK:ERRORS=0` and still exits 1, because under `pipefail` the final `printf | grep -q` breaks its pipe; the handoff read the printed result line and checked the compiled classes directly.
