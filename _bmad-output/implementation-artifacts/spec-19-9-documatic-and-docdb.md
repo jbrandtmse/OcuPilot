@@ -343,6 +343,7 @@ Load `src/` into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - mutation: AC4, `referenceSource` drops its `hasDocument` condition → the page spec's AC4 namespace case red (the gone class drew a frame). Dropping its fault check reddens the same case on the refused read in USER. Dropping its namespace check reddens "another namespace's answer still on screen draws no frame". A routine offered every view reddens the routine case.
 - mutation: AC5, `pageCsvText` drops its kind check → `data-browser-model.test.mjs`'s bare-number case and `data-browser-export.page.spec.ts`'s bare-number case red. Lines ending LF alone redden both model CSV cases. `exportPage` building with `csvText` again reddens the export spec's bare-number case.
 - mutation: AC6, the frame's `[attr.title]` binding removed → the page spec's AC1/AC2/AC6 case red and the browser spec's AC6 leg red (accessible name `""`).
+- (QA) No test added: every AC and matrix row is pinned. Re-observed red and reverted clean (`git status` empty): AC5, `pageCsvText` drops its kind check → `data-browser-model.test.mjs` bare/guarded case; AC2, `sandbox="allow-scripts"` → page spec AC1/AC2/AC6 case; AC4, `referenceSource` drops `hasDocument` → page spec AC4 namespace case; AC3, `pendingLoads >= 0` → page spec AC3 load case and the same-namespace re-read case; AC6, `[attr.title]` removed → page spec AC1/AC2/AC6 case; AC1, `classReferenceUrl` drops `PAGE=CLASS&SHOWCLASSONLY=1&` → page spec AC1/AC2/AC6, AC4 and `classReferenceUrl` cases. Browser legs not re-run.
 
 ## Auto Run Result
 
