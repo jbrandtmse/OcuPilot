@@ -219,6 +219,7 @@ const AUTHORIZATION_SERVER_MAP = {
         { route: 'security/oauth', allowed: false, failedPair: '%Admin_OAuth2_Client:USE' },
         { route: 'security/auditing', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/allowed-directories', allowed: false, failedPair: '%Admin_FileSystemAccess:USE' },
+        { route: 'security/encryption-key-file', allowed: false, failedPair: '%Admin_Secure:USE' },
       ],
     },
     { key: 'agent', allowed: true, screens: [] },
@@ -280,6 +281,7 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
       { label: STRINGS.oauthLabel, gated: null, reason: '' },
       { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
+      { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
     ]);
 
     items[4].click();

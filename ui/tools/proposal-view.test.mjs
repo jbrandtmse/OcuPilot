@@ -63,6 +63,8 @@ const {
   CONSEQUENCE_ECPSETTINGSRESTART,
   CONSEQUENCE_ECPSSLAUTHORIZE,
   CONSEQUENCE_ECPSSLREJECT,
+  CONSEQUENCE_ENCRYPTIONNEWKEY,
+  CONSEQUENCE_ENCRYPTIONREMOVEKEY,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -874,4 +876,19 @@ test('Story 18.21: an ECP settings restart and an SSL/TLS authorize or reject st
   assert.equal(/Parameter RESTARTCONSEQUENCE = "([^"]+)";/.exec(tool('EcpSettingsUpdate'))?.[1], CONSEQUENCE_ECPSETTINGSRESTART, 'EcpSettingsUpdate.cls declares the code the card reads');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('EcpSslConnectionAuthorize'))?.[1], CONSEQUENCE_ECPSSLAUTHORIZE, 'EcpSslConnectionAuthorize.cls declares the authorize code');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('EcpSslConnectionReject'))?.[1], CONSEQUENCE_ECPSSLREJECT, 'EcpSslConnectionReject.cls declares the reject code');
+});
+
+// Story 18.7: a new encryption key and a key's removal state their consequence on the card under the
+// code their tools declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_ENCRYPTIONREMOVEKEY` line from `consequenceSentence` ->
+// the second assertion goes red on ''.
+test('Story 18.7: a new encryption key and a key removal state their consequence on the card', () => {
+  assert.equal(consequenceSentence(CONSEQUENCE_ENCRYPTIONNEWKEY), STRINGS.encryptionKeyFileNewKeyConsequence);
+  assert.equal(consequenceSentence(CONSEQUENCE_ENCRYPTIONREMOVEKEY), STRINGS.encryptionKeyFileRemoveKeyLoss);
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  for (const name of ['EncryptionKeyFileCreate', 'EncryptionKeyFileAddKey']) {
+    assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], CONSEQUENCE_ENCRYPTIONNEWKEY, `${name}.cls declares the new-key code the card reads`);
+  }
+  assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('EncryptionKeyFileRemoveKey'))?.[1], CONSEQUENCE_ENCRYPTIONREMOVEKEY, 'EncryptionKeyFileRemoveKey.cls declares the removal code');
 });

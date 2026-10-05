@@ -283,6 +283,9 @@ const KERNEL_REFUSALS = [
   // Story 19.6: a SQL console statement over OcuPilot's own tables or code, on the run route, the
   // plan route and the write path.
   ['OCUPILOTSQL', 'explorerSqlRefusalOcuPilot'],
+  // Story 18.7: a key OcuPilot or the instance depends on, whose removal from a key file either caller
+  // is answered with.
+  ['OCUPILOTKEY', 'keyRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -665,4 +668,40 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
   assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', { Status: 'Pending' }), STRINGS.ecpSslRefusalNotAuthorized, 'a pending row may not');
   assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name), '', 'with no row the instance alone refuses');
   assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', null), '', 'for either rule');
+});
+
+/** Story 18.7's error class and the key file tools, which declare its published sentences. */
+const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
+const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
+
+/** Story 18.7's published sentences: `[file, parameter, strings.ts key]`. */
+const ENCRYPTION_SENTENCES = [
+  [ENCRYPTION_ERROR, 'REASONKEYFILEVALIDATION', 'encryptionKeyFileValidation'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEDIRECTORY', 'encryptionKeyFileDirectory'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEKEYLEN', 'encryptionKeyFileKeyLen'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEADMINNAME', 'encryptionKeyFileAdminNameRule'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEPASSWORD', 'encryptionKeyFilePasswordRule'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILECREDENTIALS', 'encryptionKeyFileCredentials'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEUNREADABLE', 'encryptionKeyFileUnreadable'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILENEWKEY', 'encryptionKeyFileNewKeyConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEREMOVEKEY', 'encryptionKeyFileRemoveKeyLoss'],
+  [ENCRYPTION_ERROR, 'REASONADMINTAKEN', 'encryptionKeyFileAdminTaken'],
+  [ENCRYPTION_ERROR, 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
+  [ENCRYPTION_ERROR, 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
+  [ENCRYPTION_ERROR, 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+  [ENCRYPTION_TOOL('AddAdmin'), 'REASONADMINTAKEN', 'encryptionKeyFileAdminTaken'],
+  [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
+  [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
+  [ENCRYPTION_TOOL('RemoveKey'), 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+];
+
+test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONADMINLAST in EncryptionKeyFileRemoveAdmin.cls -> this goes red naming both.
+  for (const [file, parameter, key] of ENCRYPTION_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
 });

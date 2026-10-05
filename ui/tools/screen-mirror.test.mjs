@@ -1306,6 +1306,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // classic System box and a schema, and a table's five tabs, whose one criterion is its route id.
   // Story 19.14's nine further tabs, whose one criterion is the table, view or procedure the route id names.
   // Story 18.19's Journal records, whose six criteria are the classic record browser's search.
+  // Story 18.7's two key file lists, whose two criteria are the key file's root and path.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1313,6 +1314,8 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
+      'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
+      'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.ExplorerClassDocument',
       'OcuPilot.Screen.Descriptor.ExplorerClassList',
       'OcuPilot.Screen.Descriptor.ExplorerMacro',
@@ -2330,12 +2333,16 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Activity log own %Admin_ExternalLanguageServerEdit beside OS management's database read, and
   // Story 16.25's editor owns it the same way; Story 18.18's Journal settings owns %Admin_Journal
   // beside OS management's set, and Story 18.21's ECP settings owns %Admin_Secure the same way.
+  // Story 18.7's three key file screens own %Admin_FileSystemAccess beside Security's two pairs.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
       'OcuPilot.Screen.Descriptor.EcpSettings',
+      'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
+      'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
+      'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
@@ -2681,7 +2688,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2740,5 +2747,22 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
       `${name} declares its criteria and their defaults`
     );
     assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }], `${name} is gated on %Development:USE`);
+  }
+});
+
+// Story 18.7: Encryption key files' two lists read through the encryption port, the ninth read source,
+// which both engines admit with server criteria: the key file's root and path.
+// Mutation (Rule 19): drop SOURCE_ENCRYPTION from READ_SOURCE_PORTS -> this goes red on the roster pin
+// and on both reads.
+test('Story 18.7: the key file lists read through the encryption port, the ninth read source, with root and path as criteria', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('encryption'), 'the encryption port is a read source');
+  const { screens } = readSources();
+  for (const [name, endpoint] of [['EncryptionKeyFile', 'Security.Encryption.KeyInFile'], ['EncryptionKeyFileAdminList', 'Security.Encryption.AdminInFile']]) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'encryption', endpoint, type: 'LIST' });
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.deepEqual(screen.declaration.read.criteria.fields.map((field) => field.param), ['root', 'path'], `${name} carries the key file's root and path`);
+    assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_FileSystemAccess', permission: 'USE' }]);
   }
 });

@@ -299,6 +299,9 @@ XData Lists
   {"path":"Description","shape":"literal","templateType":"string","itemType":""},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":""}
 ]},
+"Security.Encryption.AdminInFile": {"endpoint":"Security.Encryption.AdminInFile","source":"none","method":"","class":"","type":"","envelope":"","rows":[]},
+"Security.Encryption.File": {"endpoint":"Security.Encryption.File","source":"none","method":"","class":"","type":"","envelope":"","rows":[]},
+"Security.Encryption.KeyInFile": {"endpoint":"Security.Encryption.KeyInFile","source":"none","method":"","class":"","type":"","envelope":"","rows":[]},
 "Security.Encryption.Settings": {"endpoint":"Security.Encryption.Settings","source":"template","method":"RequestBodySchema","class":"","type":"","envelope":"","rows":[
   {"path":"DBEncStartMode","shape":"literal","templateType":"string","itemType":""},
   {"path":"DBEncJournal","shape":"literal","templateType":"string","itemType":""},

@@ -5458,6 +5458,129 @@ export const STRINGS = {
   /** EXPERIENCE.md:479 */
   ecpSslConnectionDeleteConsequence:
     'Deleting this authorization means the application server that presents this certificate must be authorized again the next time it connects. Its current connection is not affected. This cannot be undone.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileLabel: 'Encryption key files',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormLabel: 'Create encryption key file',
+  /** EXPERIENCE.md:364 */
+  aboutEncryptionKeyFile: 'Encryption key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsTitle: 'Administrators in this key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeysTitle: 'Encryption keys in this key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnAdmin: 'Administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnId: 'Key ID',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnKeyLen: 'Key length (bits)',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCreateAction: 'Create key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddAdminAction: 'Add administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddKeyAction: 'Add key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddAdminTitle: 'Add an administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddKeyTitle: 'Add an encryption key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileExistingAdmin: 'Existing administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileExistingPassword: 'Existing administrator password',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewAdmin: 'New administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminName: 'Administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipherLevel: 'Cipher security level',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher128: '128-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher192: '192-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher256: '256-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyDescription: 'Key description',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminNameHint: 'The key file\'s first administrator. It defaults to your user name.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePasswordHint: 'Keep a written record of this password in a secure place.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewKeyId: 'New encryption key ID: <id>',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNotActivated: 'This key has not been activated.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendAdmin: 'Add an emergency recovery administrator to this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendBackup:
+    'Make a backup copy of the key file and keep it apart from this instance.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendStore:
+    'Store the copy with a written record of the recovery password in a secure place.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeysEmpty: 'Open a key file to see its keys.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsEmpty: 'Open a key file to see its administrators.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileEmptyAgent: 'explain what an encryption key file holds',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCreateRefusedAction: 'create an encryption key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileValidation: 'The key file request was refused.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileDirectory: 'Choose a folder that already exists for the key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyLen: 'Choose 128, 192 or 256 bits.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminNameRule: 'Enter an administrator name of up to 50 characters.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePasswordRule: 'Enter a password of at least 3 characters.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCredentials: 'That administrator name and password do not open this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileUnreadable: 'This file is not an encryption key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewKeyConsequence:
+    'The new key is unique: no existing encrypted database or file can use it. If every key file containing it is lost, all data encrypted with it is permanently inaccessible. Make a backup copy of the key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRemoveKeyLoss:
+    'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminTaken: 'This key file already has an administrator of that name.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminLast: 'A key file keeps at least one administrator.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminAbsent: 'This administrator is not in this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyAbsent: 'This key is not in this key file.',
+  /** EXPERIENCE.md:364 */
+  keyRefusalOcuPilot:
+    'OcuPilot or the instance itself depends on data this key encrypts, so it is not removed from a key file here.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt1: 'What does an encryption key file hold?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt2: 'What happens if I remove the only copy of a key?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt3: 'How do I add a key to an existing key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt1: 'Who can open this encryption key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt2: 'Why should a key file have more than one administrator?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt3: 'What does removing a key file administrator change?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt1: 'Where should I keep a new encryption key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt2: 'Which cipher security level should I choose?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt3: 'What should I do with a key file after I create it?',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyFileRemoveAdminConsequence:
+    'Removing this administrator means its name and password no longer open this key file. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyFileRemoveKeyConsequence:
+    'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible. This cannot be undone.',
   // Story 19.16: Data browser's tab strip, Close tab and its line, the tab cap, Go to row with its
   // field, Go, its range line and its no-row line, the export line, the Keyboard shortcuts dialog's
   // title, scope note and the labels and keys it lists. "Download CSV", "Add row", "Duplicate row",

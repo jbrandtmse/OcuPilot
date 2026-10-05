@@ -181,6 +181,28 @@ XData Entries
       "Routine": "ordinary"
     }
   },
+  "security.encryptionkeyfile.create": {
+    "fieldList": "Security.Encryption.File",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.encryptionkeyfile.addkey": {
+    "fieldList": "Security.Encryption.KeyInFile",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.encryptionkeyfileadmins.addadministrator": {
+    "fieldList": "Security.Encryption.AdminInFile",
+    "classification": {},
+    "authored": {
+      "OldAdminPassword": "secret",
+      "NewAdminPassword": "secret"
+    }
+  },
   "security.auditsystemevents.update": {
     "fieldList": "Security.Audit.Event:Security.Events",
     "classification": {

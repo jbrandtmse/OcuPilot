@@ -72,6 +72,14 @@ Parameter ERRORDELETETOOLCLASS = "OcuPilot.Screen.Tool.ErrorDelete";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
+/// <p>The admin port's pairs admitted ahead of the tools that will issue them, comma-separated: Story
+/// 18.7 admits the key file activation, the key deactivation and the startup settings edit for Stories
+/// 18.22 and 18.23. Each is temporary: the width leg of
+/// <method>TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster</method> asserts no tool
+/// reaches it, so the story that ships its tool trips that assertion and deletes the entry here in the
+/// same pass.</p>
+Parameter AHEADTYPES = "Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.Settings/PUT";
+
 /// <p>An application every instance OcuPilot is installed on carries, read for its keys alone and
 /// never written -- what the delete tool's declared read set is measured against.</p>
 Parameter APIAPPLICATION = "/api/ocupilot";
@@ -1321,7 +1329,12 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     ; which is satisfied by a roster of any width; the parameter's own claim is that it is EXACTLY
     ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is one
     ; entry away.
-    Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached), "the port admits no pair beyond the ones the registry reaches -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
+    Set tAhead = $ListFromString(..#AHEADTYPES)
+    For tI = 1:1:$ListLength(tAhead) {
+        Do $$$AssertTrue($ListFind(tMutating, $List(tAhead, tI)) > 0, "'" _ $List(tAhead, tI) _ "' is admitted ahead of its tool")
+        Do $$$AssertEquals($ListFind(tReached, $List(tAhead, tI)), 0, "'" _ $List(tAhead, tI) _ "' is reached by no tool yet -- the story that ships its tool deletes it from AHEADTYPES")
+    }
+    Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached) + $ListLength(tAhead), "the port admits no pair beyond the ones the registry reaches and AHEADTYPES names -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
     Do $$$AssertEquals(tOtherPorts, 13, "exactly thirteen shipped writes reach their target through another port -- one, since Stories 19.2, 19.13 and 19.3 System Explorer's ten through the source code API port, since Story 19.6 its SQL run through the SQL port, and since Story 19.8 the data browser's save through it too -- and each is held to its own port's contract instead")
 

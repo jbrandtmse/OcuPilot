@@ -323,6 +323,10 @@ services:
       # application servers' pairs, with and without %Admin_Secure and the system database's write,
       # and saves the settings and deletes probe SSL/TLS names as them (Story 18.21).
       # classes: EcpSettingsGate
+      # The encryption key file gate class signs in as probe principals holding Encryption key files'
+      # pairs, with and without the file-system pair and %Admin_Manage, and reads and writes probe key
+      # files as them (Story 18.7).
+      # classes: EncryptionWriteGate
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -525,6 +529,14 @@ services:
       # authorize and delete OCUPROBEECP* SSL/TLS names and seed a marked %ECPClient (Story 18.21).
       # classes: EcpSettingsGate, EcpSettingsWrite, EcpSslConnectionWrite
       OCUPILOT_ALLOW_ECP_CONFIG: "1"
+      # Creates encryption key files under the probe directory <ManagerDirectory>ocuprobe187/, adds and
+      # removes their administrators and keys through the shipped Save, row-action and confirm paths,
+      # and removes the directory. Its own variable because no narrower one names that effect: a key
+      # file holds an encryption key the instance could activate. The classes never activate or
+      # deactivate a key, change no encryption setting and touch no file outside that directory
+      # (Story 18.7).
+      # classes: EncryptionKeyFileRead, EncryptionKeyFileWrite, EncryptionWriteGate
+      OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

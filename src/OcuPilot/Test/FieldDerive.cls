@@ -66,8 +66,10 @@ Parameter AUDITEVENTCLASS = "Security.Events";
 /// <p>The audit event properties identified by the request's query parameters.</p>
 Parameter AUDITEVENTIDENTIFYING = "Source,Type,Name";
 
-/// <p>The mutating endpoints whose bodies are trivial or empty and need no field list.</p>
-Parameter NOTEMPLATE = "Lock,Process,Task.Manager";
+/// <p>The mutating endpoints whose bodies are trivial or empty and need no field list. The three
+/// <code>Security.Encryption.*</code> key file endpoints are Story 18.7's: their bodies are built by
+/// <class>OcuPilot.Port.EncryptionPort</class>, and their tools author only their secrets.</p>
+Parameter NOTEMPLATE = "Lock,Process,Task.Manager,Security.Encryption.AdminInFile,Security.Encryption.File,Security.Encryption.KeyInFile";
 
 /// <p>The OAuth 2.0 server description endpoint, whose template carries <code>Metadata</code> as a
 /// member-less object.</p>

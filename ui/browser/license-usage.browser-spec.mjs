@@ -29,6 +29,7 @@ import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -128,36 +129,10 @@ test('AC1: OS management lists nineteen entries, License usage eighth; its strip
       STRINGS.dashboardLabel
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
-    assert.deepEqual(
-      labels,
-      [
-        STRINGS.processListLabel,
-        STRINGS.lockListLabel,
-        STRINGS.systemUsageLabel,
-        STRINGS.databaseListLabel,
-        STRINGS.databaseIntegrityLogLabel,
-        STRINGS.deviceListLabel,
-        STRINGS.namespaceListLabel,
-        STRINGS.licenseUsageLabel,
-        STRINGS.dashboardLabel,
-        STRINGS.languageServersLabel,
-        STRINGS.localDatabaseListLabel,
-        STRINGS.remoteDatabaseListLabel,
-        // Story 18.5: Journals, the thirteenth.
-        STRINGS.journalListLabel,
-        // Story 18.18: Journal settings, the fourteenth.
-        STRINGS.journalSettingsLabel,
-        // Story 18.6: License key and License servers, the fifteenth and sixteenth.
-        STRINGS.licenseKeyLabel,
-        STRINGS.licenseServerListLabel,
-        // Story 18.20: ECP data servers, the seventeenth.
-        STRINGS.ecpDataServerListLabel,
-        // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
-        STRINGS.ecpSettingsLabel,
-        STRINGS.ecpAppServersLabel,
-      ],
-      'the side bar lists the Integrity log fifth, License usage eighth, the Dashboard ninth, External language servers tenth, Local databases eleventh, Remote databases twelfth, Journals thirteenth, Journal settings fourteenth, License key and License servers fifteenth and sixteenth, ECP data servers seventeenth and ECP settings and ECP application servers eighteenth and nineteenth'
-    );
+    assert.deepEqual(labels, sideBarLabels('os-management'), 'the side bar lists the OS management entries in their declared order');
+    assert.equal(labels[4], STRINGS.databaseIntegrityLogLabel, 'the Integrity log fifth');
+    assert.equal(labels[7], STRINGS.licenseUsageLabel, 'License usage eighth');
+    assert.equal(labels[8], STRINGS.dashboardLabel, 'the Dashboard ninth');
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');
     assert.deepEqual((await headers(page)).slice(0, 3), [STRINGS.licenseUsageUnitUse, STRINGS.licenseUsageLocal, STRINGS.licenseUsageDistributed], 'the Summary headers');

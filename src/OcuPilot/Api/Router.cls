@@ -240,6 +240,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
+  <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
 </Routes>
 }
 
@@ -1785,6 +1786,13 @@ ClassMethod EcpSettingsUpdate() As %Status
 ClassMethod ExplorerSqlData() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlData).HandleBrowse()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /encryption-key-file</code> (Story 18.7): the key
+/// file create form's Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EncryptionKeyFileCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.EncryptionKeyFileSave).HandleCreate()
 }
 
 }

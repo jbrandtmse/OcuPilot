@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -466,6 +466,11 @@ Parameter TYPEECPSETTINGS = "ecp-settings";
 /// the reviewed-few sweep alone judges: AD-10 names no effect on one.</p>
 Parameter TYPEECPSSLCONNECTION = "ecp-ssl-connection";
 
+/// <p>An encryption key file (Story 18.7), whose create and changes the reviewed-few sweep judges
+/// (<method>EncryptionKeyFileFields</method>), and whose key removal <method>KeyFile</method> refuses for a
+/// key OcuPilot or the instance depends on.</p>
+Parameter TYPEENCRYPTIONKEYFILE = "encryption-key-file";
+
 /// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
 /// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
 Parameter ECPSETTINGSGROUPS = "AppServerSettings,DataServerSettings";
@@ -503,6 +508,18 @@ Parameter OCUPILOTSQL = "PROHIBITED.OCUPILOTSQL";
 /// EXPERIENCE.md's Fixed strings and pinned equal to <code>explorerSqlRefusalOcuPilot</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTSQLREASON = "This statement reads or changes OcuPilot's own tables or code, which OcuPilot does not offer.";
+
+/// <p>The write would remove from a key file a key that encrypts OcuPilot's own database, the install
+/// namespace's globals or routines database, one of <parameter>SYSTEMDATABASES</parameter>, or the
+/// journal, read at the write; a read that fails refuses (AD-10 as amended 2026-10-04, Story 18.7).</p>
+Parameter OCUPILOTKEY = "PROHIBITED.OCUPILOTKEY";
+
+/// <p>The one sentence <parameter>OCUPILOTKEY</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings.</p>
+Parameter OCUPILOTKEYREASON = "OcuPilot or the instance itself depends on data this key encrypts, so it is not removed from a key file here.";
+
+/// <p>The write type a key removal issues, the one <method>KeyFile</method> judges by effect.</p>
+Parameter KEYREMOVALENDPOINT = "Security.Encryption.KeyInFile";
 
 /// <p>The write would end a web session OcuPilot is itself running in
 /// (<method>IsOcuPilotSession</method>): one under an application OcuPilot is served through, or
@@ -734,7 +751,7 @@ Parameter READTYPE = "GET";
 /// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -772,6 +789,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTLOCK Quit ..#OCUPILOTLOCKREASON
     If pCode = ..#OCUPILOTCODE Quit ..#OCUPILOTCODEREASON
     If pCode = ..#OCUPILOTSQL Quit ..#OCUPILOTSQLREASON
+    If pCode = ..#OCUPILOTKEY Quit ..#OCUPILOTKEYREASON
     Quit ""
 }
 
@@ -887,6 +905,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     ; Story 18.21: the settings' two objects, and the name an SSL/TLS delete's card lists.
     If pType = ..#TYPEECPSETTINGS Quit $ListFromString(..#ECPSETTINGSGROUPS)
     If pType = ..#TYPEECPSSLCONNECTION Quit $ListBuild("SSLComputerName")
+    If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("change")
     Quit ""
 }
 
@@ -1002,6 +1021,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPELDAP Quit ..LdapFields()
     If pType = ..#TYPELICENSESERVER Quit ..LicenseServerFields()
     If pType = ..#TYPEECPDATASERVER Quit ..EcpDataServerFields()
+    If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("create")
     Quit ""
 }
 
@@ -1082,7 +1102,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1275,6 +1295,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; either.
         If (tType = ..#TYPEECPSETTINGS) || (tType = ..#TYPEECPSSLCONNECTION) {
             Set tSC = ..ReviewedFewOnly(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; An encryption key file (Story 18.7): a key OcuPilot or the instance depends on is not removed.
+        If tType = ..#TYPEENCRYPTIONKEYFILE {
+            Set tSC = ..KeyFile($Get(tToolClass), tPayloadObject, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -2430,6 +2455,120 @@ ClassMethod JournalSettingsFields() As %List [ Private ]
 ClassMethod LicenseServerFields() As %List [ Private ]
 {
     Quit $ListBuild("Address", "Port")
+}
+
+/// <p>An encryption key file's fields (Story 18.7): a create's administrator, key length, description and
+/// password; a change's administrator and key arguments with their passwords. Each declared secret is
+/// among them; a removal's administrator or key names its row and is fingerprinted, never swept.</p>
+ClassMethod EncryptionKeyFileFields(pKind As %String) As %List [ Private ]
+{
+    If pKind = "create" Quit $ListBuild("AdminName", "KeyLen", "Description", "AdminPassword")
+    Quit $ListBuild("OldAdminName", "NewAdminName", "OldAdminPassword", "NewAdminPassword", "AdminName", "AdminPassword", "KeyLen", "Description")
+}
+
+/// <p>A key file write's verdict (AD-10 as amended 2026-10-04, Story 18.7): a key removal whose key
+/// encrypts one of the databases OcuPilot or the instance depends on, or the journal, is refused
+/// <parameter>OCUPILOTKEY</parameter>, and so is one whose state cannot be read; every write then passes
+/// the reviewed-few sweep. The databases' keys come from <code>Database.SysCRUD</code>
+/// <code>LIST</code>, their directories from <method>OwnDatabaseNames</method> and
+/// <method>OwnDatabaseDirectories</method>, and the journal's key from
+/// <code>Security.Encryption.Settings</code> <code>GET</code>, each through the tool's port as the
+/// caller.</p>
+ClassMethod KeyFile(pToolClass As %String, pPayload As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ($ClassMethod(pToolClass, "Endpoint") = ..#KEYREMOVALENDPOINT) && (..WriteTypeOf(pToolClass) = "DELETE") {
+            Set tKey = ""
+            If $IsObject(pPayload) && (pPayload.%GetTypeOf("KeyId") = "string") Set tKey = pPayload.%Get("KeyId")
+            If ..DependsOnKey(..PortClassOf(pToolClass), tKey) {
+                Do ..Refuse(..#OCUPILOTKEY, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEENCRYPTIONKEYFILE, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether OcuPilot or the instance depends on key <var>pKey</var>: one of the databases
+/// <method>OwnDatabaseNames</method> names, matched by directory, needs it (<method>RowNeedsKey</method>),
+/// or it is the journal's key (<method>SameKeyId</method>), each read through <var>pPort</var> as the
+/// caller. A key that reads empty (<method>NormalizedKeyId</method>), and any read that fails, answer 1.
+/// An empty journal key is no journal key.</p>
+ClassMethod DependsOnKey(pPort As %String, pKey As %String) As %Boolean [ Private ]
+{
+    If ..NormalizedKeyId(pKey) = "" Quit 1
+    Set tDepends = 0
+    Try {
+        Set tNamesSC = ..OwnDatabaseNames(pPort, .tOwn)
+        If $$$ISERR(tNamesSC) Set tDepends = 1 Quit
+        Set tDirsSC = ..OwnDatabaseDirectories(pPort, tOwn, .tDirectories)
+        If $$$ISERR(tDirsSC) || (tDirectories = "") Set tDepends = 1 Quit
+        Kill tQuery
+        Set tListSC = $ClassMethod(pPort, "Invoke", "Database.SysCRUD", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+        If $$$ISERR(tListSC) || '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") Set tDepends = 1 Quit
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Set tDirectory = ..Rendered(tRow, "Directory")
+            Set tIsOwn = 0
+            For tI = 1:1:$ListLength(tDirectories) {
+                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) Set tIsOwn = 1 Quit
+            }
+            If tIsOwn && ..RowNeedsKey(tRow, pKey) Set tDepends = 1 Quit
+        }
+        If tDepends Quit
+        Kill tQuery
+        Set tSettingsSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "GET", .tQuery, "", .tSettings, .tHttp, .tFault)
+        If $$$ISERR(tSettingsSC) || '$IsObject($Get(tSettings)) Set tDepends = 1 Quit
+        If ..SameKeyId(..Rendered(tSettings, "DBEncJournalKeyID"), pKey) Set tDepends = 1
+    } Catch {
+        Set tDepends = 1
+    }
+    Quit tDepends
+}
+
+/// <p>Key id <var>pId</var> in the one form two vendor answers are compared in: upper-cased, with every
+/// character that is not a hex digit (<code>0-9A-F</code>) dropped, so braces, hyphens, spaces and case
+/// do not matter. <code>""</code> when nothing is left.</p>
+ClassMethod NormalizedKeyId(pId As %String) As %String
+{
+    Quit $ZStrip($ZConvert(pId, "U"), "*E", "", "0123456789ABCDEF")
+}
+
+/// <p>Whether key ids <var>pA</var> and <var>pB</var> name the same key: their
+/// <method>NormalizedKeyId</method> forms are equal and not empty. An id that reads empty names no key,
+/// so it is never the same as another.</p>
+ClassMethod SameKeyId(pA As %String, pB As %String) As %Boolean
+{
+    Set tA = ..NormalizedKeyId(pA)
+    If tA = "" Quit 0
+    Quit (tA = ..NormalizedKeyId(pB))
+}
+
+/// <p>Whether the database that <var>pRow</var>, one <code>Database.SysCRUD</code> <code>LIST</code> row,
+/// describes needs key <var>pKey</var> to mount: its <code>EncryptionKeyID</code> names that key
+/// (<method>SameKeyId</method>), or its key id cannot be read (missing, not a string, or empty once
+/// normalized) while its <code>Encrypted</code> does not read <code>false</code>. A key that reads empty,
+/// and a row that is not an object, answer 1; a row whose <code>Encrypted</code> reads <code>false</code>
+/// and whose key id names no key answers 0. The caller decides which rows are OcuPilot's or the
+/// instance's own.</p>
+ClassMethod RowNeedsKey(pRow As %DynamicObject, pKey As %String) As %Boolean
+{
+    If ..NormalizedKeyId(pKey) = "" Quit 1
+    If '$IsObject(pRow) Quit 1
+    Set tId = ""
+    If pRow.%GetTypeOf("EncryptionKeyID") = "string" Set tId = pRow.%Get("EncryptionKeyID")
+    If ..SameKeyId(tId, pKey) Quit 1
+    If ..NormalizedKeyId(tId) '= "" Quit 0
+    Set tType = pRow.%GetTypeOf("Encrypted")
+    If ((tType = "boolean") || (tType = "number")) && ('pRow.%Get("Encrypted")) Quit 0
+    Quit 1
 }
 
 /// <p>An ECP data server's fields a create or a change may set (Story 18.20): the classic dialog's

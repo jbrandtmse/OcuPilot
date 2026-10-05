@@ -166,6 +166,8 @@ XData ReadShapes
 <screen name="EcpSettings" filter="AppServerSettings.MaxServers" sort="AppServerSettings.MaxServers" kinds=""/>
 <screen name="EcpAppServerTab" filter="ClientName,Status,IPAddress" sort="ClientName,Status,IPAddress,IPPort" kinds="ClientName:name,Status:status,IPAddress:identifier,IPPort:number"/>
 <screen name="EcpSslConnectionTab" filter="SSLComputerName,ClientIP,Status" sort="SSLComputerName,ClientIP,Status" kinds="SSLComputerName:name,ClientIP:identifier,Status:status"/>
+<screen name="EncryptionKeyFile" filter="Id,KeyLen,Description" sort="Id,KeyLen,Description" kinds="Id:name,KeyLen:number,Description:text"/>
+<screen name="EncryptionKeyFileAdminList" filter="Name" sort="Name" kinds="Name:name"/>
 </shapes>
 }
 
@@ -1740,7 +1742,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 51, "the closed vocabulary holds fifty-one values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 52, "the closed vocabulary holds fifty-two values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21, and encryption-key-file in Story 18.7; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -1913,7 +1915,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
 /// red.</p>
 Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
 {
-    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess"
+    Set tOwned = "WalletCollectionList|%Admin_Wallet,WalletSecretList|%Admin_Wallet,WalletSecretForm|%Admin_Wallet,OAuthServerDescriptionTab|%Admin_OAuth2_Client,OAuthServerDescriptionForm|%Admin_OAuth2_Client,OAuthClientTab|%Admin_OAuth2_Client,OAuthClientForm|%Admin_OAuth2_Client,OAuthResourceServerTab|%Admin_OAuth2_Client,OAuthResourceServerForm|%Admin_OAuth2_Client,OAuthServerTab|%Admin_OAuth2_Server,OAuthServerForm|%Admin_OAuth2_Server,OAuthServerClientTab|%Admin_OAuth2_Registration,OAuthServerClientForm|%Admin_OAuth2_Registration,AllowedDirectoryList|%Admin_FileSystemAccess,EncryptionKeyFile|%Admin_FileSystemAccess,EncryptionKeyFileAdminList|%Admin_FileSystemAccess,EncryptionKeyFileForm|%Admin_FileSystemAccess"
     Kill tExpect
     For tI = 1:1:$Length(tOwned, ",") {
         Set tEntry = $Piece(tOwned, ",", tI)
@@ -1938,7 +1940,7 @@ Method TestTheSecurityScreensOwnTheirWalletAndOAuthPairs()
         }
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": covered by the area, less its own pair")
     }
-    Do $$$AssertEquals(tSeen, 14, "fourteen screens own a pair")
+    Do $$$AssertEquals(tSeen, 17, "seventeen screens own a pair")
     Do $$$AssertTrue(tOthers > 0, "and the rest own none: " _ tOthers)
 }
 

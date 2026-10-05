@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -162,7 +162,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -512,7 +512,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "license-server",
   "ecp-data-server",
   "ecp-settings",
-  "ecp-ssl-connection"
+  "ecp-ssl-connection",
+  "encryption-key-file"
 ];
 
 /**
@@ -4638,6 +4639,399 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFile",
+    "route": "security/encryption-key-file",
+    "area": "security",
+    "labelKey": "encryptionKeyFileLabel",
+    "sideBarPosition": 8,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "entityLabelKey": "aboutEncryptionKeyFile",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "addkey",
+        "selfProtection": ""
+      },
+      {
+        "id": "removekey",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "encryptionKeyFileKeysEmpty",
+    "commandAliases": [
+      "encryption",
+      "encryption key file",
+      "create key file"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "encryption",
+        "endpoint": "Security.Encryption.KeyInFile",
+        "type": "LIST"
+      },
+      "fields": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "filter": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Id",
+          "KeyLen",
+          "Description"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "root",
+            "labelKey": "pathPickerRootLabel",
+            "kind": "text",
+            "maxLength": 1024,
+            "hint": "An allowed directory exactly as the Allowed directories screen lists it."
+          },
+          {
+            "param": "path",
+            "labelKey": "pathPickerFileLabel",
+            "kind": "text",
+            "maxLength": 807,
+            "hint": "The key file's name under that directory, up to eight /-separated parts."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "KeyLen",
+          "labelKey": "encryptionKeyFileColumnKeyLen",
+          "kind": "number"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "encryptionKeyFileEmptyAgent"
+    },
+    "toolIdentifier": "security.encryptionkeyfile",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList",
+    "route": "security/encryption-key-file/administrators",
+    "area": "security",
+    "labelKey": "encryptionKeyFileAdminsTitle",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "entityLabelKey": "aboutEncryptionKeyFile",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "addadministrator",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeadministrator",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "OldAdminPassword",
+      "NewAdminPassword"
+    ],
+    "emptyStateKey": "encryptionKeyFileAdminsEmpty",
+    "commandAliases": [
+      "key file administrators"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "encryption",
+        "endpoint": "Security.Encryption.AdminInFile",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "root",
+            "labelKey": "pathPickerRootLabel",
+            "kind": "text",
+            "maxLength": 1024,
+            "hint": "An allowed directory exactly as the Allowed directories screen lists it."
+          },
+          {
+            "param": "path",
+            "labelKey": "pathPickerFileLabel",
+            "kind": "text",
+            "maxLength": 807,
+            "hint": "The key file's name under that directory, up to eight /-separated parts."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "encryptionKeyFileColumnAdmin",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "encryptionKeyFileEmptyAgent"
+    },
+    "toolIdentifier": "security.encryptionkeyfileadmins",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFileForm",
+    "route": "security/encryption-key-file/create",
+    "area": "security",
+    "labelKey": "encryptionKeyFileFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionCreate",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.encryptionkeyfileform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",
