@@ -158,6 +158,13 @@ test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel('OcuPilot.Screen.Descriptor.JournalList', 'integrity'), STRINGS.databaseIntegrityLabel);
   assert.equal(actionLabel('', JOURNAL_SWITCH_FILE_ACTION_ID), STRINGS.journalSwitchFileAction);
   assert.equal(actionLabel('', JOURNAL_SWITCH_DIRECTORY_ACTION_ID), STRINGS.journalSwitchDirectoryAction);
+  // Story 18.22: Database encryption's and Data element encryption's Activate key, the command bar's
+  // primary, and each row's Deactivate.
+  // Mutation (Rule 19): drop the DatabaseEncryption entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  for (const descriptor of ['OcuPilot.Screen.Descriptor.DatabaseEncryption', 'OcuPilot.Screen.Descriptor.DataElementEncryption']) {
+    assert.equal(actionLabel(descriptor, 'activate'), STRINGS.encryptionKeyActivateAction, `${descriptor}'s Activate key`);
+    assert.equal(actionLabel(descriptor, 'deactivate'), STRINGS.encryptionKeyDeactivateAction, `${descriptor}'s Deactivate`);
+  }
 });
 
 test("Story 16.11: a banner's actions are the ids its cases name, once each and in case order", () => {

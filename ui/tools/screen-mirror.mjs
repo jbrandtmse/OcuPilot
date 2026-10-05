@@ -1253,7 +1253,7 @@ export function readProblem(declaration) {
     const activityFault = activityRowsProblem(declaration);
     if (activityFault !== null) return activityFault;
   } else if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
-    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST' or 'DATAELEMENTLIST'`;
   }
   // A path source lists the instance's allowed directories through `OcuPilot.Port.PathPort`, which
   // computes them whole on every call (AD-21): one of that port's source keys, a LIST, and nothing
@@ -1358,6 +1358,20 @@ export function readProblem(declaration) {
     }
     if (isObject(source.forEach)) {
       return 'read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)';
+    }
+  }
+  // A DATAELEMENTLIST source lists the instance's active data-element encryption keys (AD-36, Story
+  // 18.22): Security.Encryption.Key's own request type, under UPCOMING's rules -- a row is a key with no
+  // detail call to issue and no parent to list.
+  if (source.type === 'DATAELEMENTLIST') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'DATAELEMENTLIST' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a DATAELEMENTLIST source, whose rows are keys with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a DATAELEMENTLIST source, which lists no parents (AD-36)';
     }
   }
   // A VOLUMELIST source lists an admin endpoint's volume files (AD-36, Story 6.11):
@@ -2018,10 +2032,11 @@ function criteriaMarkerProblem(criteria, params) {
  * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
  * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row;
  * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is;
- * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); and `VOLUMELIST`,
- * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11).
+ * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); `VOLUMELIST`,
+ * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11); and `DATAELEMENTLIST`,
+ * `Security.Encryption.Key`'s active data-element keys, issued the same way (Story 18.22).
  */
-export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST'];
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST', 'DATAELEMENTLIST'];
 
 /** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
 export const SOURCE_QUERY_MAX_LENGTH = 50;

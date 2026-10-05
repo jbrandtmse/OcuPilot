@@ -23,6 +23,15 @@
 /// <code>POST</code> and <code>DELETE</code>: a <code>source</code>, the rules, and for an add the existing
 /// administrator listed, before any write. A taken or last administrator and an absent administrator or
 /// key are the tools' state refusals; the port maps the vendor's own answers for them.</li>
+/// <li><parameter>DATABASEKEYSTYPE</parameter> and <parameter>DATAELEMENTKEYSTYPE</parameter>, Story 18.22's
+/// fresh reads: the instance's active keys of one kind, <code>Key</code> <code>LIST</code> or
+/// <code>DATAELEMENTLIST</code>, as <code>{Keys}</code> beside the tools' arguments, empty.</li>
+/// <li><code>File</code> <code>ACTIVATE</code> and <code>Key</code> <code>DEACTIVATE</code>: the activation's
+/// key file a <code>source</code>, its administrator listed and a key in it not yet active, and the
+/// deactivation's key active, each before any vendor call; the vendor's credentials, in-use and role
+/// refusals are mapped (<method>KeyMapped</method>).</li>
+/// <li><parameter>JOURNALUSETYPE</parameter>, AD-27's named case: whether a journal file the instance
+/// still needs for recovery uses a key, from the vendor's own <code>%SYS.Journal.System</code>.</li>
 /// </ul>
 /// <p>Every body is built here from the declared arguments in the query and the declared secrets in
 /// the body, and a password is held in a local cleared right after the call (AD-35, AD-56 (i)). Any
@@ -67,6 +76,37 @@ Parameter ARGUMENTS = "AdminName,KeyLen,Description,OldAdminName,NewAdminName,Ad
 Parameter ADMINISTRATORS = "Administrators";
 
 Parameter KEYS = "Keys";
+
+/// <p>The endpoint the instance's active keys are listed and deactivated through (Story 18.22).</p>
+Parameter ACTIVEENDPOINT = "Security.Encryption.Key";
+
+/// <p>The port-composed fresh reads of Story 18.22's activate and deactivate tools: the active
+/// database keys and the active data-element keys, each beside the tools' arguments, empty.</p>
+Parameter DATABASEKEYSTYPE = "DATABASEKEYS";
+
+Parameter DATAELEMENTKEYSTYPE = "DATAELEMENTKEYS";
+
+/// <p>The port-composed read of whether a journal file the instance still needs for recovery uses a key
+/// (AD-27's named case, Story 18.22): <code>{InUse}</code>.</p>
+Parameter JOURNALUSETYPE = "JOURNALUSE";
+
+/// <p>The query key carrying a tool's constant vendor action.</p>
+Parameter ACTIONPARAM = "Action";
+
+/// <p>The vendor actions each write admits, comma-separated: a database activation or deactivation
+/// first, then the data-element one.</p>
+Parameter ACTIVATIONS = "ActivateDB,ActivateMK";
+
+Parameter DEACTIVATIONS = "DeactivateDB,DeactivateMK";
+
+/// <p>The arguments Story 18.22's tools declare, each answered empty by their fresh read so the merge
+/// carries it into the stored payload (AD-51).</p>
+Parameter KEYARGUMENTS = "root,path,AdminName,KeyId";
+
+/// <p>The writes whose vendor body this port composes from its own constants and no caller value
+/// (AD-51): a deactivation's <code>{Action, AdminName: "", AdminPassword: ""}</code>, whose two names the
+/// vendor requires present and never reads.</p>
+Parameter COMPOSEDTYPES = "Security.Encryption.Key/DEACTIVATE";
 
 /// <p>The class the key file is resolved through. Overridable so a fixture can observe the resolve;
 /// production never overrides it.</p>
@@ -118,6 +158,22 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; AD-21: a caller never names a server file, not even through this port.
         If ..NamesKeyFile(pEndpoint, .pQuery, pBody) {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PATHNAME, ##class(OcuPilot.Api.Error).#REASONPATHNAME, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ((pType = ..#DATABASEKEYSTYPE) || (pType = ..#DATAELEMENTKEYSTYPE)) && ((pEndpoint = ..#FILEENDPOINT) || (pEndpoint = ..#ACTIVEENDPOINT)) {
+            Set tSC = ..ReadActiveKeys(pType, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ACTIVEENDPOINT) && (pType = ..#JOURNALUSETYPE) {
+            Set tSC = ..JournalUse(.pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#FILEENDPOINT) && (pType = "ACTIVATE") {
+            Set tSC = ..Activate(.pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ACTIVEENDPOINT) && (pType = "DEACTIVATE") {
+            Set tSC = ..Deactivate(.pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
         Set tKeyFile = (pEndpoint = ..#FILEENDPOINT) || (pEndpoint = ..#ADMINSENDPOINT) || (pEndpoint = ..#KEYSENDPOINT)
@@ -460,6 +516,219 @@ ClassMethod RemoveKey(ByRef pQuery, Output pResult, Output pHttpStatus As %Integ
     Quit tSC
 }
 
+/// <p>The active keys of the kind fresh read <var>pType</var> names: the database keys
+/// (<code>Key</code> <code>LIST</code>, <code>[{Id, KeyLen, IsDefault}]</code>) for
+/// <parameter>DATABASEKEYSTYPE</parameter>, the data-element keys (<code>DATAELEMENTLIST</code>,
+/// <code>[{Id}]</code>) for <parameter>DATAELEMENTKEYSTYPE</parameter>, in <var>pRows</var>.</p>
+ClassMethod ActiveKeys(pType As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pRows = []
+    Kill tQuery
+    Set tSC = ..Call(..#ACTIVEENDPOINT, $Select(pType = ..#DATAELEMENTKEYSTYPE: "DATAELEMENTLIST", 1: "LIST"), .tQuery, "", .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject($Get(tRows)) && tRows.%IsA("%Library.DynamicArray") Set pRows = tRows
+    Quit tSC
+}
+
+/// <p>Story 18.22's tools' fresh read (AD-51): <code>{Keys: [the active keys of the kind]}</code> with
+/// every <parameter>KEYARGUMENTS</parameter> member <code>""</code>.</p>
+ClassMethod ReadActiveKeys(pType As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ActiveKeys(pType, .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pResult = {}
+    Do pResult.%Set(..#KEYS, tRows)
+    For tI = 1:1:$Length(..#KEYARGUMENTS, ",") {
+        Do pResult.%Set($Piece(..#KEYARGUMENTS, ",", tI), "", "string")
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Whether active-key rows <var>pRows</var> list <var>pId</var>, compared exactly.</p>
+ClassMethod Active(pRows As %DynamicArray, pId As %String) As %Boolean
+{
+    Set tFound = 0
+    If '$IsObject($Get(pRows)) Quit 0
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && (tRow.%Get("Id") = pId) Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
+/// <p>Whether a journal file the instance still needs for recovery uses key <var>pQuery</var>
+/// <code>id</code> (AD-27's named case, Story 18.22): <code>{InUse}</code>, from the vendor's own
+/// <code>%SYS.Journal.System.IsEncKeyInUse</code> in <code>%SYS</code>, after the endpoint's
+/// <code>%Admin_Secure:USE</code> gate. An empty id is 400 <code>TOOL.ARGUMENTS</code>; a refusal or a
+/// throw fails the read.</p>
+ClassMethod JournalUse(ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tId = $Get(pQuery("id"))
+    If tId = "" Quit ..Arguments("'id' names the key and cannot be empty", .pHttpStatus, .pFault)
+    If '$System.Security.Check("%Admin_Secure", "USE") {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tDetail)
+        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, {"failedPair": "%Admin_Secure:USE"})
+    }
+    Set tInUse = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tInUse = ''##class(%SYS.Journal.System).IsEncKeyInUse(tId)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tInUse = ""
+        Set tError = ex.AsStatus()
+    }
+    If tInUse = "" {
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault("the journal's use of an encryption key could not be read", $Get(tError, $$$ERROR($$$GeneralError, "no answer")), pFault.code)
+        Quit tSC
+    }
+    Set pResult = {}
+    Do pResult.%Set("InUse", tInUse, "boolean")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The kind an activation or deactivation <var>pAction</var> acts on: the fresh read type of its
+/// active keys, or <code>""</code> for an action outside <var>pAdmitted</var>.</p>
+ClassMethod KindOf(pAction As %String, pAdmitted As %String) As %String [ Private ]
+{
+    Set tAt = $ListFind($ListFromString(pAdmitted), pAction)
+    If tAt = 0 Quit ""
+    Quit $Select(tAt = 1: ..#DATABASEKEYSTYPE, 1: ..#DATAELEMENTKEYSTYPE)
+}
+
+/// <p>The keys of the key file <var>pRoot</var> and <var>pPath</var> name that activation
+/// <var>pAction</var> would make active, in <var>pIds</var> (a <class>%DynamicArray</class>), checked as
+/// the write checks them before its vendor call: resolved as a <code>source</code>, its administrators
+/// read (a file naming none is not a key file), administrator <var>pAdminName</var>, when given, listed
+/// (else 422 <code>ENCRYPTION.KEYFILE.CREDENTIALS</code> on <code>AdminName</code>), and its keys compared
+/// with the active keys of the action's kind, a file whose every key is active refused 400
+/// <code>TOOL.ARGUMENTS</code> (<parameter>OcuPilot.Api.EncryptionError.REASONKEYSALLACTIVE</parameter>).
+/// The activate tools' mint asks this; nothing is written.</p>
+ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Output pIds As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pNames As %DynamicArray, Output pFile As %String, pAdminName As %String = "") As %Status
+{
+    Set pIds = []
+    Set pNames = []
+    Set pFile = ""
+    Set tKind = ..KindOf(pAction, ..#ACTIVATIONS)
+    If tKind = "" Quit ..Arguments("'" _ ..#ACTIONPARAM _ "' is one of " _ $Translate(..#ACTIVATIONS, ",", " or "), .pHttpStatus, .pFault)
+    If (pRoot = "") || (pPath = "") Quit ..Arguments("'root' and 'path' name the key file and cannot be empty", .pHttpStatus, .pFault)
+    Set tSC = ..Resolve(pRoot, pPath, "source", .pFile, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Administrators(pFile, .pNames, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If (pAdminName '= "") && '..Listed(pNames, pAdminName) Quit ..Violation(##class(OcuPilot.Api.EncryptionError).#KEYFILECREDENTIALS, "AdminName", .pHttpStatus, .pFault)
+    Set tSC = ..Keys(pFile, .tKeys, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..ActiveKeys(tKind, .tActive, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tInactive = 0
+    Set tIterator = tKeys.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        Do pIds.%Push(tRow.%Get("Id") _ "")
+        If '..Active(tActive, tRow.%Get("Id")) Set tInactive = tInactive + 1
+    }
+    If tInactive = 0 Quit ..Arguments(##class(OcuPilot.Api.EncryptionError).#REASONKEYSALLACTIVE, .pHttpStatus, .pFault)
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Activate the keys of a key file (<code>File</code> <code>ACTIVATE</code>, Story 18.22): the
+/// query's key file, <code>AdminName</code> and constant <code>Action</code>, and the body's
+/// <code>AdminPassword</code>. The rules, then the key file and the name listed in it
+/// (<method>FileKeys</method>), are checked first; the body <code>{Action, AdminName, AdminPassword}</code>
+/// goes with the resolved path as <code>file</code>, and the password is cleared right after the call.</p>
+ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tAction = $Get(pQuery(..#ACTIONPARAM))
+    If ..KindOf(tAction, ..#ACTIVATIONS) = "" Quit ..Arguments("'" _ ..#ACTIONPARAM _ "' is one of " _ $Translate(..#ACTIVATIONS, ",", " or "), .pHttpStatus, .pFault)
+    If '..Named(.pQuery, .tRoot, .tPath) Quit ..Arguments("'root' and 'path' name the key file and cannot be empty", .pHttpStatus, .pFault)
+    Set tValues = ..Values(.pQuery, pBody, $ListBuild("AdminName"), $ListBuild("AdminPassword"))
+    Kill tViolations
+    Do ##class(OcuPilot.Area.Security.EncryptionRules).Violations(tValues, $ListBuild("AdminName", "AdminPassword"), .tViolations)
+    If +$Get(tViolations) > 0 {
+        Set tValues = ""
+        Quit ##class(OcuPilot.Area.Security.EncryptionRules).Fault(.tViolations, .pHttpStatus, .pFault)
+    }
+    Set tSC = ..FileKeys(tRoot, tPath, tAction, .tIds, .pHttpStatus, .pFault, .tNames, .tFile, tValues.%Get("AdminName"))
+    If $$$ISERR(tSC) {
+        Set tValues = ""
+        Quit tSC
+    }
+    Set tSend = {}
+    Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+    Do tSend.%Set("AdminName", tValues.%Get("AdminName"), "string")
+    Do tSend.%Set("AdminPassword", tValues.%Get("AdminPassword"), "string")
+    Set tValues = ""
+    Kill tQuery
+    Set tQuery(..#FILEPARAM) = tFile
+    Set tSC = ..Call(..#FILEENDPOINT, "ACTIVATE", .tQuery, tSend, .pResult, .pHttpStatus, .pFault)
+    Set tSend = ""
+    If $$$ISERR(tSC) Quit ..KeyMapped(tSC, .pHttpStatus, .pFault)
+    Quit tSC
+}
+
+/// <p>Deactivate one active key (<code>Key</code> <code>DEACTIVATE</code>, Story 18.22): the query's
+/// <code>KeyId</code> and constant <code>Action</code>. A key the active list of the action's kind does
+/// not hold is 400 <code>TOOL.ARGUMENTS</code>
+/// (<parameter>OcuPilot.Api.EncryptionError.REASONKEYINACTIVE</parameter>); the vendor's body is
+/// composed here (<parameter>COMPOSEDTYPES</parameter>), its in-use and role refusals mapped.</p>
+ClassMethod Deactivate(ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tAction = $Get(pQuery(..#ACTIONPARAM))
+    Set tKind = ..KindOf(tAction, ..#DEACTIVATIONS)
+    If tKind = "" Quit ..Arguments("'" _ ..#ACTIONPARAM _ "' is one of " _ $Translate(..#DEACTIVATIONS, ",", " or "), .pHttpStatus, .pFault)
+    Set tKey = $Get(pQuery("KeyId"))
+    If tKey = "" Quit ..Arguments("'KeyId' names the key to deactivate and cannot be empty", .pHttpStatus, .pFault)
+    Set tSC = ..ActiveKeys(tKind, .tActive, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '..Active(tActive, tKey) Quit ..Arguments(##class(OcuPilot.Api.EncryptionError).#REASONKEYINACTIVE, .pHttpStatus, .pFault)
+    Set tSend = {}
+    Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+    Do tSend.%Set("AdminName", "", "string")
+    Do tSend.%Set("AdminPassword", "", "string")
+    Kill tQuery
+    Set tQuery("id") = tKey
+    Set tSC = ..Call(..#ACTIVEENDPOINT, "DEACTIVATE", .tQuery, tSend, .pResult, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit ..KeyMapped(tSC, .pHttpStatus, .pFault)
+    Quit tSC
+}
+
+/// <p>A vendor refusal of an activation or deactivation in the product's terms: a credentials violation
+/// the admin port mapped is 422 on its field; an in-use or role violation is 409 with its code and
+/// sentence; anything else is the fault as it is.</p>
+ClassMethod KeyMapped(pSC As %Status, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
+{
+    For tCode = ##class(OcuPilot.Api.EncryptionError).#KEYINUSE, ##class(OcuPilot.Api.EncryptionError).#KEYROLE {
+        If ..Carries(pFault, tCode) Quit
+        Set tCode = ""
+    }
+    If tCode '= "" Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, tCode, ##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode), .pHttpStatus, .pFault)
+    Quit ..Mapped(pSC, "", .pHttpStatus, .pFault)
+}
+
+/// <p>Whether fault <var>pFault</var> carries a violation of code <var>pCode</var>.</p>
+ClassMethod Carries(pFault, pCode As %String) As %Boolean [ Private ]
+{
+    If '$IsObject($Get(pFault)) || (pFault.%GetTypeOf("detail") '= "object") || (pFault.%Get("detail").%GetTypeOf("violations") '= "array") Quit 0
+    Set tFound = 0
+    Set tIterator = pFault.%Get("detail").%Get("violations").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && (tRow.%Get("code") = pCode) Set tFound = 1 Quit
+    }
+    Quit tFound
+}
+
 /// <p>The values a branch reads: each of <var>pPlain</var> from the query, each of <var>pSecret</var>
 /// from the body, as strings.</p>
 ClassMethod Values(ByRef pQuery, pBody As %DynamicAbstractObject, pPlain As %List, pSecret As %List) As %DynamicObject [ Private ]
@@ -547,9 +816,11 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <method>Invoke</method> builds it from the query and the body handed here, whose passwords are
 /// placeholders. A key file the port would refuse, or a rule a non-secret argument breaks, renders no
 /// call and one <code>comment</code> step carrying the refusal's sentence. The lists' state checks are
-/// guards a script cannot carry. Every other call is the admin port's script.</p>
+/// guards a script cannot carry. An activation and a deactivation are <method>KeySnippet</method>'s.
+/// Every other call is the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
+    If ((pEndpoint = ..#FILEENDPOINT) && (pType = "ACTIVATE")) || ((pEndpoint = ..#ACTIVEENDPOINT) && (pType = "DEACTIVATE")) Quit ..KeySnippet(pEndpoint, pType, .pQuery, pBody, pContext)
     Set tWrite = ((pEndpoint = ..#FILEENDPOINT) && (pType = "POST")) || ((pEndpoint = ..#ADMINSENDPOINT) && ((pType = "POST") || (pType = "DELETE"))) || ((pEndpoint = ..#KEYSENDPOINT) && ((pType = "POST") || (pType = "DELETE")))
     If 'tWrite Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
     If '..Named(.pQuery, .tRoot, .tPath) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
@@ -594,6 +865,49 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         }
     }
     Set tStep = ..RestStep(pEndpoint, pType, .tQuery, tSend, pContext)
+    If '$IsObject(tStep) Quit []
+    Quit [(tStep)]
+}
+
+/// <p>Story 18.22's two writes as a script (AD-59): an activation is one <code>rest</code> step to
+/// <code>File</code> <code>ACTIVATE</code> with the resolved key file as <code>file</code> and the body
+/// <code>{Action, AdminName, AdminPassword}</code>, the password the placeholder of the body handed here;
+/// a deactivation is one to <code>Key</code> <code>DEACTIVATE</code> with <code>id</code> the
+/// <code>KeyId</code> and the composed body, its password the placeholder. An action outside the write's own, a missing key file or
+/// key, an administrator name the rules refuse, and a key file location <class>OcuPilot.Port.PathPort</class>
+/// refuses each render one <code>comment</code> step carrying the refusal's sentence and no call; the key
+/// file's administrators and keys, and the active list, are guards a script cannot carry.</p>
+ClassMethod KeySnippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray [ Private ]
+{
+    Set tAction = $Get(pQuery(..#ACTIONPARAM))
+    Kill tQuery
+    If pType = "DEACTIVATE" {
+        Set tKey = $Get(pQuery("KeyId"))
+        If (..KindOf(tAction, ..#DEACTIVATIONS) = "") || (tKey = "") Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+        Set tQuery("id") = tKey
+        Set tSend = {}
+        Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+        Do tSend.%Set("AdminName", "", "string")
+        ; AD-59: a name the credential pattern matches reads as its placeholder, though the vendor
+        ; never reads this one.
+        Do tSend.%Set("AdminPassword", "<AdminPassword>", "string")
+    } Else {
+        If (..KindOf(tAction, ..#ACTIVATIONS) = "") || '..Named(.pQuery, .tRoot, .tPath) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+        Set tValues = ..Values(.pQuery, pBody, $ListBuild("AdminName"), $ListBuild("AdminPassword"))
+        Kill tViolations
+        Do ##class(OcuPilot.Area.Security.EncryptionRules).Violations(tValues, $ListBuild("AdminName"), .tViolations)
+        If +$Get(tViolations) > 0 Quit [(..Step("comment", ##class(OcuPilot.Api.EncryptionError).ReasonFor($List(tViolations(1), 2))))]
+        Set tSC = ..Resolve(tRoot, tPath, "source", .tFile, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit [(..Step("comment", $Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)))]
+        Set tQuery(..#FILEPARAM) = tFile
+        Set tSend = {}
+        Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+        Do tSend.%Set("AdminName", tValues.%Get("AdminName"), "string")
+        Do tSend.%Set("AdminPassword", tValues.%Get("AdminPassword"), "string")
+        Set tValues = ""
+    }
+    Set tStep = ..RestStep(pEndpoint, pType, .tQuery, tSend, pContext)
+    Set tSend = ""
     If '$IsObject(tStep) Quit []
     Quit [(tStep)]
 }

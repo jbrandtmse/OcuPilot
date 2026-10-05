@@ -327,6 +327,10 @@ services:
       # pairs, with and without the file-system pair and %Admin_Manage, and reads and writes probe key
       # files as them (Story 18.7).
       # classes: EncryptionWriteGate
+      # The encryption key gate class signs in as probe principals holding Security's pairs, with and
+      # without the file-system pair and Security's resource, and activates and deactivates keys as
+      # them through a seam port that sends neither (Story 18.22).
+      # classes: EncryptionKeyGate
       # The document database gate class signs in as probe principals each missing one pair the DocDB
       # port requires, and lists, creates and drops a probe database as them (Story 19.17).
       # classes: DocDbGate
@@ -543,6 +547,10 @@ services:
       # deactivate a key, change no encryption setting and touch no file outside that directory
       # (Story 18.7).
       # classes: EncryptionKeyFileRead, EncryptionKeyFileWrite, EncryptionWriteGate
+      # Story 18.22's classes create key files under <ManagerDirectory>ocuprobeact/ the same way, and
+      # activate and deactivate keys only through a seam port that sends neither; the one activation
+      # sent to the vendor carries a wrong password, which it refuses before activating anything.
+      # classes: EncryptionKeyGate, EncryptionKeyWrite
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

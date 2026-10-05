@@ -286,6 +286,15 @@ export const CONSEQUENCE_ECPSSLREJECT = 'ECP.SSL.REJECT';
 export const CONSEQUENCE_ENCRYPTIONNEWKEY = 'ENCRYPTION.KEYFILE.NEWKEY';
 export const CONSEQUENCE_ENCRYPTIONREMOVEKEY = 'ENCRYPTION.KEYFILE.REMOVEKEY';
 
+/**
+ * Story 18.22: activating a key file's keys and deactivating one key, for database keys and for
+ * data-element keys, each stated as its screen states it.
+ */
+export const CONSEQUENCE_ENCRYPTIONKEYACTIVATE = 'ENCRYPTION.KEY.ACTIVATE';
+export const CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE = 'ENCRYPTION.KEY.DEACTIVATE';
+export const CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT = 'ENCRYPTION.KEY.ACTIVATEDATAELEMENT';
+export const CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT = 'ENCRYPTION.KEY.DEACTIVATEDATAELEMENT';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -362,6 +371,11 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 18.7: the new key's and the key removal's sentences, each published once.
   if (code === CONSEQUENCE_ENCRYPTIONNEWKEY) return STRINGS.encryptionKeyFileNewKeyConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONREMOVEKEY) return STRINGS.encryptionKeyFileRemoveKeyLoss;
+  // Story 18.22: the two activations' and the two deactivations' sentences, each published once.
+  if (code === CONSEQUENCE_ENCRYPTIONKEYACTIVATE) return STRINGS.encryptionKeyActivateConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE) return STRINGS.encryptionKeyDeactivateConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT) return STRINGS.encryptionKeyActivateDataElementConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT) return STRINGS.encryptionKeyDeactivateDataElementConsequence;
   return '';
 }
 

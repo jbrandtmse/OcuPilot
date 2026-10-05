@@ -9671,6 +9671,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: maybe-false: no encrypted database exists on these instances and activating a key is out of 18.7's scope; settled by Story 18.22's Task 0, which activates a probe key: compare Database.SysCRUD LIST EncryptionKeyID for a database encrypted with it against KeyInFile LIST Id (src/OcuPilot/Kernel/Proposal/Prohibited.cls DependsOnKey)
 - 2026-10-04T22:45:55Z status=routed owner=18-22-database-and-data-element-encryption-keys by=harvest note=18.22's Task 0 activates a probe key and can measure both formats; fix the comparison there if they differ
 - 2026-10-04T23:23:47Z status=routed owner=18-22-database-and-data-element-encryption-keys by=merge_gate note=18.7 now fails closed (orchestrator ruling 2026-10-04): DependsOnKey compares key ids normalized (uppercase, hex digits only) and refuses an encrypted own database whose key id cannot be read, pinned by EncryptionKeyMatch; 18.22's Task 0 measures the real formats and confirms or narrows the comparison
+- 2026-10-05T10:49:41Z status=resolved-by:18-22-database-and-data-element-encryption-keys by=adjudication note=Task 0 step 6 measured one key's id byte-identical across the key file, the active list, the database row, the settings and the journal key (upper-case hex and hyphens); Decision 4's first branch kept the fail-closed comparison unchanged and EncryptionKeyMatch pins the measured spelling (b886ec6b)
 
 ### DW-2060: Kernel/Proposal/Prohibited.cls's Codes doc comment still reads twenty-six codes; PROHIBITED.OCUPILOTKEY makes 27
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
@@ -9693,6 +9694,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
 - evidence: maybe-false: %SYS.Journal.System.IsEncKeyInUse (irissys/%SYS/Journal/System.cls:300) compares GetJrnEncKeyID(1) and (2) and walks the files RequiredForRecovery; no instance here encrypts its journal; settled where a probe key is activated and the journal encrypted
 - 2026-10-05T00:19:26Z status=routed owner=18-22-database-and-data-element-encryption-keys by=cr note=18.22 owns key deactivation, whose vendor guard is IsEncKeyInUse: measure, and widen DependsOnKey to it if real
+- 2026-10-05T10:49:41Z status=resolved-by:18-22-database-and-data-element-encryption-keys by=adjudication note=DependsOnKey asks EncryptionPort JOURNALUSE (the vendor's IsEncKeyInUse) after the configured journal key and refuses on a failed read (Prohibited.cls, b886ec6b); EncryptionKeyFileWrite's journalfiles and journalfails legs pin both callers; the seam-only coverage residual is DW-2089
 
 ### DW-2067: The Add administrator and Add key dialogs mark a refused field aria-invalid but do not name its refusal through aria-describedby (EXPERIENCE.md, Validation)
 - source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
@@ -9798,6 +9800,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Closing the last tab swaps the page's @if (open) branch for the @else branch, whose own <p role=status> is created holding the line (inference on screen-reader behavior, as DW-1372 and DW-154); Story 19.8's namespace-discard line has the same shape. The fix moves one status element across both branches and the tab panel.
 - 2026-10-04T23:39:06Z status=wontfix-accepted owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=reopen_if=an NVDA or VoiceOver check on Chrome closing the last open tab does not speak the closed line
 
+### DW-2085: The database create omits the classic wizard's Encrypt database? (Encrypted and EncryptionKeyID on POST /database-dir, offered while a database key is active); Story 18.3 deferred it to 18.7 and 18.7's split assigned it to no story
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: classic DatabaseWizard.cls:137 offers it; spec-18-3 :93 and :750 defer it to 18.7; spec-18-22 Never and Named limit 3 exclude it
+- 2026-10-05T05:05:22Z status=routed owner=burndown by=spec_gate note=build once 18.22's key activation has landed: the create offers Encrypt database only while a database key is active and sends the default key's id; parity row of FR-80
 ### DW-2084: Vendor defect candidate: the DocDB REST drop (DELETE /api/docdb/v1/<ns>/db/<name>) of a database created without a resource answers 822 even for _SYSTEM, because its CheckAccess W needs a Security.DocDBs record neither create path makes
 - source: spec-19-9-documatic-and-docdb.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 19.9 plan on ocupilot-a2-ci: %SYSTEM.DocDB.CreateDatabase(name) with no resource, then the REST drop as _SYSTEM answered 822; irissys %SYS/DOCDB.int CheckAccess reads Security.DocDBs; in-process DropDatabase dropped it
@@ -9817,3 +9823,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: docdb-list.page.ts:102 onOpen ignores the strip's state; the create dialog draws the DOCDB.SERVICE.DISABLED reason as its alert (docdb-create-dialog.ts:25)
 - 2026-10-05T12:16:56Z status=wontfix-accepted owner=19-17-the-docdb-browser by=cr note=reopen_if=EXPERIENCE.md rules Create aria-disabled while the strip shows, or a user reports it confusing
+### DW-2086: An encryption key activation's card lists the key file's keys, but its confirm activates whatever the file holds then: FileKeys is neither fingerprinted nor compared at the write
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: EncryptionKeyActivateMint adds FileKeys to the card; FINGERPRINTSUBJECT is Keys,root,path,AdminName; EncryptionPort.Activate reruns FileKeys only for the all-active check (TaskImport's reviewed tasks is the model)
+- 2026-10-05T10:31:38Z status=escalated owner=burndown by=cr note=fix-risk high: TaskImport-style reviewed FileKeys via fingerprint, PortQuery and port; amends AD-51's 18.22 case
+
+### DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivation
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Decision 7 rests on 'an activation is undone by a deactivation'; Measured at implement: DBEncStartMode 0 to 1 persisted after every key was deactivated; DatabaseKeyActivate declares no DESTRUCTIVE
+- 2026-10-05T10:31:42Z status=decision-pending owner=burndown by=cr note=product call; recommend DESTRUCTIVE on the database activate only (Story 18.6's license activate precedent)
+
+### DW-2088: No EncryptionKeyGate principal withholds %DB_IRISSYS:READ, so the screens' second declared pair is never refused by name for 18.22's reads and tools
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: All three PRINCIPALS hold %DB_IRISSYS:R; the spec's Tests line asks each declared pair refused by name; 18.7's EncryptionWriteGate shares the convention
+- 2026-10-05T10:31:51Z status=wontfix-accepted owner=18-22-database-and-data-element-encryption-keys by=cr note=reopen_if=a principal lacking %DB_IRISSYS:READ gets 200 from a Database or Data element encryption read or write
+
+### DW-2089: EncryptionPort.JournalUse's InUse true never runs through the real port: the journalfiles leg answers JOURNALUSE in the seam, so a change to the id JournalUse passes would stay green
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: EncryptionSeamPort.Invoke answers JOURNALUSE before the port runs; EncryptionKeyRead.TestTheJournalsUseOfAKeyIsRead reads only a never-active key, answered false
+- 2026-10-05T10:31:51Z status=wontfix-accepted owner=18-22-database-and-data-element-encryption-keys by=cr note=reopen_if=JournalUse transforms its id before IsEncKeyInUse, or an instance here encrypts its journal
+
+### DW-2090: Deactivate on the default database key stays enabled while another key is active; the refusal arrives only after the key's identifier is typed
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: encryption-keys.page.ts draws every row's Deactivate enabled; DatabaseKeyDeactivate.StateRefusal answers REASONKEYDEFAULT; Decision 2 chose the pre-check refusal
+- 2026-10-05T10:31:51Z status=wontfix-accepted owner=18-22-database-and-data-element-encryption-keys by=cr note=reopen_if=Story 18.23 adds Set default to Database encryption's rows, or a user reports the late refusal
+
+### DW-2091: B1's screen-versus-tool equality is shown only for two empty lists; no test reads a non-empty active-key row through Screen.Read, the read tool and the fresh read
+- source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: EncryptionKeyRead.TestEachReadAnswersTheSameRowsOnScreenAndTool asserts [] on every list; ScreenRead exempts DatabaseEncryption and its type filter skips DATAELEMENTLIST
+- 2026-10-05T10:31:51Z status=by-design owner=18-22-database-and-data-element-encryption-keys by=cr note=Named limit 2 (the runner's seam branch); ReadFixture with EndpointFixture could feed the screen's LIST path

@@ -5581,6 +5581,71 @@ export const STRINGS = {
   /** EXPERIENCE.md:490 */
   encryptionKeyFileRemoveKeyConsequence:
     'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible. This cannot be undone.',
+  // Story 18.22: Database encryption and Data element encryption -- the screens, their entities,
+  // Activate key and Deactivate, the two Activate dialogs, the empty states and agent hints, the refusal
+  // and consequence sentences and the prompts. "Key ID", "Key length (bits)", "Default", "Administrator
+  // name", "Password", "Cancel" and the path picker's labels are reused.
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionLabel: 'Database encryption',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionLabel: 'Data element encryption',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEntity: 'Database encryption keys',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEntity: 'Data element encryption keys',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateAction: 'Activate key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyDeactivateAction: 'Deactivate',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionActivateTitle: 'Activate database encryption keys',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionActivateTitle: 'Activate data element encryption keys',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEmpty: 'No database encryption key is active.',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEmpty: 'No data element encryption key is active.',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionEmptyAgent: 'explain how database encryption keys are activated',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionEmptyAgent: 'explain what data element encryption keys are for',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyInUse:
+    'A mounted encrypted database, or a journal file the instance still needs, uses this key, so it stays active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyRole:
+    'This key is the default key for new encrypted databases or the key for encrypted journal files. Make another active key the default and the journal key first.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyInactive: 'This key is not active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyAllActive: 'Every key in this key file is already active.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyDefault:
+    'This is the default key for new encrypted databases while another key is active. Make another active key the default first.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateConsequence:
+    'The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyActivateDataElementConsequence:
+    'The keys in this key file become available to applications that encrypt data elements, until they are deactivated or the instance restarts.',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt1: 'Which database encryption keys are active?',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt2: 'What happens when I activate a database encryption key?',
+  /** EXPERIENCE.md:364 */
+  databaseEncryptionPrompt3: 'What does deactivating a database encryption key change?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt1: 'Which data element encryption keys are active?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt2: 'What are data element encryption keys used for?',
+  /** EXPERIENCE.md:364 */
+  dataElementEncryptionPrompt3: 'What does deactivating a data element encryption key change?',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyDeactivateConsequence:
+    'An encrypted database that needs this key cannot be mounted until the key is activated again from a key file.',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyDeactivateDataElementConsequence:
+    'Data encrypted with this key cannot be read or written until the key is activated again from a key file.',
   // Story 19.16: Data browser's tab strip, Close tab and its line, the tab cap, Go to row with its
   // field, Go, its range line and its no-row line, the export line, the Keyboard shortcuts dialog's
   // title, scope note and the labels and keys it lists. "Download CSV", "Add row", "Duplicate row",

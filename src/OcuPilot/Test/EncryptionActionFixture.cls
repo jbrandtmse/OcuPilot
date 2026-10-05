@@ -1,5 +1,5 @@
-/// <p>Test-only <class>OcuPilot.Api.ScreenAction</class> subclass for Story 18.7's four screen actions:
-/// <method>ToolFor</method> runs each key-file tool through its <code>OcuPilot.Test.SeamEncryptionKeyFile*</code>
+/// <p>Test-only <class>OcuPilot.Api.ScreenAction</class> subclass for Story 18.7's four screen actions and
+/// Story 18.22's four: <method>ToolFor</method> runs each such tool through its <code>OcuPilot.Test.Seam*</code>
 /// subclass, so its fresh read and write go through <class>OcuPilot.Test.EncryptionSeamPort</class>, and
 /// <method>ProhibitedClassName</method> answers the class a test names in
 /// <code>^||OcuPilotEncryptionProhibited</code>. The pairs and everything else are the shipped route's.</p>
@@ -15,7 +15,7 @@ ClassMethod ToolFor(pDescriptor As %String, pActionId As %String, Output pTool A
     Set tSC = ##super(pDescriptor, pActionId, .pTool, .pToolClass)
     If $$$ISERR(tSC) Quit tSC
     Set tShort = $Piece($Get(pToolClass), "OcuPilot.Screen.Tool.", 2)
-    If $ListFind($ListBuild("EncryptionKeyFileAddAdmin", "EncryptionKeyFileRemoveAdmin", "EncryptionKeyFileAddKey", "EncryptionKeyFileRemoveKey"), tShort) Set pToolClass = "OcuPilot.Test.Seam" _ tShort
+    If $ListFind($ListBuild("EncryptionKeyFileAddAdmin", "EncryptionKeyFileRemoveAdmin", "EncryptionKeyFileAddKey", "EncryptionKeyFileRemoveKey", "DatabaseKeyActivate", "DatabaseKeyDeactivate", "DataElementKeyActivate", "DataElementKeyDeactivate"), tShort) Set pToolClass = "OcuPilot.Test.Seam" _ tShort
     Quit tSC
 }
 

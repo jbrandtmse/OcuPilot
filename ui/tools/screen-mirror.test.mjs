@@ -259,6 +259,9 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['ecp-data-server', 'foldcase'],
     // Story 18.21: the instance's ECP settings are one object.
     ['ecp-settings', 'singleton'],
+    // Story 18.22: each set of active encryption keys is one object.
+    ['database-encryption-keys', 'singleton'],
+    ['data-element-encryption-keys', 'singleton'],
     // Story 19.17: a document database's name resolves without case.
     ['docdb-database', 'foldcase'],
   ]);
@@ -600,7 +603,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
     [(d) => (d.read.source.port = 'metrics'), /port 'metrics'/],
-    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST' or 'DATAELEMENTLIST'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],

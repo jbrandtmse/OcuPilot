@@ -212,7 +212,10 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         ; Story 18.21: no application server can connect to a fresh instance, and none is authorized;
         ; EcpDescriptor holds Connections' fields to the vendor query's columns, and EcpSslConnectionWrite
         ; holds the SSL/TLS authorizations' fields to a seeded probe row.
-        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab"), tClass) Continue
+        ; Story 18.22: no instance here holds an active key and no test activates one; the vendor's
+        ; RunList answers exactly Database encryption's three fields (read in its source, measured at
+        ; the story's Task 0).
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.WebSessionList", "OcuPilot.Screen.Descriptor.RemoteDatabaseList", "OcuPilot.Screen.Descriptor.JournalRecordList", "OcuPilot.Screen.Descriptor.EcpDataServerList", "OcuPilot.Screen.Descriptor.EcpAppServerTab", "OcuPilot.Screen.Descriptor.EcpSslConnectionTab", "OcuPilot.Screen.Descriptor.DatabaseEncryption"), tClass) Continue
         Set tChecked = tChecked + 1
         If tRowsMember '= "" Set tRowsChecked = tRowsChecked _ $ListBuild($Piece(tClass, ".", *))
         Kill tQuery
