@@ -9686,6 +9686,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
 - evidence: Prohibited.KeyFile judges KeyInFile/DELETE alone; AdminInFile/DELETE passes the reviewed-few sweep; with DBEncStartMode unattended the instance opens that file with that administrator at startup (inference), so encrypted databases (IRISSECURITY, IRISTEMP included) would not mount
 - 2026-10-05T00:19:26Z status=decision-pending owner=18-23-encryption-startup-settings by=cr note=product call: extend AD-10's key arm to the startup key file's administrator; Story 18.23 builds the unattended startup settings
+- 2026-10-05T03:28:41Z status=routed owner=18-23-encryption-startup-settings by=owner note=owner 2026-10-04: refuse removing the startup key file's administrator, as removing a key a database depends on is refused
 
 ### DW-2066: DependsOnKey reads only the journal's configured key (DBEncJournalKeyID); journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
