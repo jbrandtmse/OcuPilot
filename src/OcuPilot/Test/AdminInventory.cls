@@ -35,7 +35,10 @@ Parameter MUTATINGMETHODS = "RunPut,RunPost,RunDelete,RunPatch";
 /// <code>unreadable</code>; <var>queues</var> is 1 when the class's own source calls
 /// <parameter>QUEUECALL</parameter>, 0 when it does not, or <code>unreadable</code>;
 /// <var>mutating</var> is 1 when the class defines one of <parameter>MUTATINGMETHODS</parameter>
-/// itself.</p>
+/// itself, AD-3's definition. A write request type a class dispatches through its own <code>Run</code>,
+/// such as <code>Security.Encryption.Key</code> <code>DEACTIVATE</code>, reads 0 here; it is admitted by
+/// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> and pinned by
+/// <class>OcuPilot.Test.PortFixture</class>.</p>
 XData Inventory
 {
 <inventory>

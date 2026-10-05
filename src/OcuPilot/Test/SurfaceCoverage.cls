@@ -194,6 +194,8 @@ XData Coverage
 <screen name="EncryptionKeyFile" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <screen name="EncryptionKeyFileAdminList" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <screen name="EncryptionKeyFileForm" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
+<screen name="DatabaseEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
+<screen name="DataElementEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -353,6 +355,10 @@ XData Coverage
 <tool name="security.encryptionkeyfile.removekey" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
 <tool name="security.encryptionkeyfileadmins.addadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
 <tool name="security.encryptionkeyfileadmins.removeadministrator" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheFiveToolsDeclareTheirPairsPagesAndSecrets" corpus="Story 18.7's five tools are asserted together in one loop"/>
+<tool name="security.databaseencryption.activate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.databaseencryption.deactivate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.dataelementencryption.activate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
+<tool name="security.dataelementencryption.deactivate" class="OcuPilot.Test.EncryptionKeyWrite" method="TestDataElementKeysAreActivatedAndDeactivated" corpus="an activation and its deactivation are asserted together on both callers"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>

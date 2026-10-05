@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -170,7 +170,7 @@ export interface ReadSource {
    * `VOLUMELIST` reads a database's own volume files as rows; a bare admin type is read with
    * `rows` (Story 16.7).
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'ACTIVITY' | 'LICENSEUSAGE';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST' | 'DATAELEMENTLIST' | 'ACTIVITY' | 'LICENSEUSAGE';
   /** The one member of a bare admin type's one-object answer this read lists (AD-36, Story 16.7). */
   readonly rows?: string | null;
   readonly rowGet?: ReadRowGet | null;
@@ -513,7 +513,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "ecp-data-server",
   "ecp-settings",
   "ecp-ssl-connection",
-  "encryption-key-file"
+  "encryption-key-file",
+  "database-encryption-keys",
+  "data-element-encryption-keys"
 ];
 
 /**
@@ -557,7 +559,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "license-key": "singleton",
   "license-server": "foldcase",
   "ecp-data-server": "foldcase",
-  "ecp-settings": "singleton"
+  "ecp-settings": "singleton",
+  "database-encryption-keys": "singleton",
+  "data-element-encryption-keys": "singleton"
 };
 
 /**
@@ -2830,6 +2834,123 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DataElementEncryption",
+    "route": "security/data-element-encryption",
+    "area": "security",
+    "labelKey": "dataElementEncryptionLabel",
+    "sideBarPosition": 10,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "data-element-encryption-keys",
+    "entityLabelKey": "dataElementEncryptionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "activate",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "activate",
+        "selfProtection": ""
+      },
+      {
+        "id": "deactivate",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "dataElementEncryptionEmpty",
+    "commandAliases": [
+      "data element encryption"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "dataElementEncryptionPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManaged",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Key",
+        "type": "DATAELEMENTLIST"
+      },
+      "fields": [
+        "Id"
+      ],
+      "filter": [
+        "Id"
+      ],
+      "sort": {
+        "fields": [
+          "Id"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "dataElementEncryptionEmptyAgent"
+    },
+    "toolIdentifier": "security.dataelementencryption",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
     "route": "os-management/databases/details",
     "area": "os-management",
@@ -3110,6 +3231,140 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseEncryption",
+    "route": "security/database-encryption",
+    "area": "security",
+    "labelKey": "databaseEncryptionLabel",
+    "sideBarPosition": 9,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database-encryption-keys",
+    "entityLabelKey": "databaseEncryptionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "activate",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "activate",
+        "selfProtection": ""
+      },
+      {
+        "id": "deactivate",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id",
+        "KeyLen",
+        "IsDefault"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "databaseEncryptionEmpty",
+    "commandAliases": [
+      "database encryption",
+      "activate database key"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "databaseEncryptionPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Key",
+        "type": "LIST"
+      },
+      "fields": [
+        "Id",
+        "KeyLen",
+        "IsDefault"
+      ],
+      "filter": [
+        "Id"
+      ],
+      "sort": {
+        "fields": [
+          "Id",
+          "KeyLen",
+          "IsDefault"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "KeyLen",
+          "labelKey": "encryptionKeyFileColumnKeyLen",
+          "kind": "number"
+        },
+        {
+          "field": "IsDefault",
+          "labelKey": "tableColumnDefault",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "databaseEncryptionEmptyAgent"
+    },
+    "toolIdentifier": "security.databaseencryption",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseFreeSpace",

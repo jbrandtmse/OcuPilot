@@ -1,6 +1,6 @@
-/// <p>The encryption key file screens' codes (AD-39, Story 18.7): every <code>ENCRYPTION.*</code> code
-/// Encryption key files and its form answer, and the one sentence each carries, with the four state
-/// refusals a key-file tool answers as <code>TOOL.ARGUMENTS</code>. They live beside
+/// <p>The encryption screens' codes (AD-39, Stories 18.7 and 18.22): every <code>ENCRYPTION.*</code> code
+/// Encryption key files, its form, Database encryption and Data element encryption answer, and the one
+/// sentence each carries, with the state refusals their tools answer as <code>TOOL.ARGUMENTS</code>. They live beside
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit
 /// of 1,000 parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through
@@ -85,7 +85,7 @@ Parameter REASONKEYROLE = "This key is the default key for new encrypted databas
 /// <p>Consequence codes of Story 18.22's four tools.</p>
 Parameter KEYACTIVATE = "ENCRYPTION.KEY.ACTIVATE";
 
-Parameter REASONKEYACTIVATE = "The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and that setting is kept.";
+Parameter REASONKEYACTIVATE = "The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it.";
 
 Parameter KEYDEACTIVATE = "ENCRYPTION.KEY.DEACTIVATE";
 

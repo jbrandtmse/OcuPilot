@@ -223,6 +223,37 @@ ClassMethod Restore(pFacts As %DynamicObject, Output pDone As %DynamicArray) As 
     Quit tSC
 }
 
+/// <p>Mint <var>pToolClass</var>'s proposal (one of Story 18.22's four, or its seam subclass) from
+/// <var>pArgs</var>, the singleton target and, for an activation, <code>root</code> and the probe file
+/// <var>pName</var>'s <code>path</code> added when absent, for <var>pUser</var>, through the tool's own
+/// mint class over a completed turn seeded for that user. <var>pProposal</var> is <code>""</code> when
+/// the mint refused, with its <code>detail.problem</code>, or the first violation's
+/// <code>field:code</code>, or its code, in <var>pProblem</var>.</p>
+ClassMethod KeyMint(pToolClass As %String, pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pProblem As %String, pUser As %String = {$Username}) As %Status
+{
+    Set pProposal = ""
+    Set pHttp = 0
+    Set pProblem = ""
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(pUser, "completed", .tTurnKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tArgs = $Select($IsObject(pArgs): pArgs, 1: {})
+    Set tTarget = ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID
+    Set tIdArgument = $ClassMethod(pToolClass, "IdArgument")
+    If tArgs.%GetTypeOf(tIdArgument) = "unassigned" Do tArgs.%Set(tIdArgument, tTarget, "string")
+    If (pName '= "") && (tArgs.%GetTypeOf("root") = "unassigned") Do tArgs.%Set("root", ..Root(), "string")
+    If (pName '= "") && (tArgs.%GetTypeOf("path") = "unassigned") Do tArgs.%Set("path", ..RelativeName(pName), "string")
+    Set tSC = $ClassMethod($ClassMethod(pToolClass, "MintClass"), "Mint", $Parameter(pToolClass, "DESCRIPTORCLASS"), $Parameter(pToolClass, "TOOLNAME"), pUser, "", tTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tResult, .pHttp, .tFault, $ClassMethod(pToolClass, "Endpoint"), $ClassMethod(pToolClass, "IdParam"), tArgs.%Get(tIdArgument), tIdArgument, $ClassMethod(pToolClass, "SettableFields"), pToolClass)
+    If $IsObject($Get(tResult)) Set pProposal = tResult
+    If $IsObject($Get(tFault)) {
+        Set tDetail = tFault.%Get("detail")
+        If $IsObject(tDetail) && (tDetail.%Get("problem") '= "") Set pProblem = tDetail.%Get("problem")
+        If (pProblem = "") && $IsObject(tDetail) && (tDetail.%GetTypeOf("violations") = "array") && (tDetail.%Get("violations").%Size() > 0) Set pProblem = tDetail.%Get("violations").%Get(0).%Get("field") _ ":" _ tDetail.%Get("violations").%Get(0).%Get("code")
+        If pProblem = "" Set pProblem = tFault.%Get("code")
+    }
+    If '$IsObject(pProposal) Quit $$$ERROR($$$GeneralError, "the mint answered no proposal: " _ pHttp _ " " _ pProblem)
+    Quit $$$OK
+}
+
 /// <p>Remove every probe object: the probe database, then the inherited users, roles and probe
 /// directory.</p>
 ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status

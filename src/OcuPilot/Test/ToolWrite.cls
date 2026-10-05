@@ -73,12 +73,11 @@ Parameter ERRORDELETETOOLCLASS = "OcuPilot.Screen.Tool.ErrorDelete";
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
 /// <p>The admin port's pairs admitted ahead of the tools that will issue them, comma-separated: Story
-/// 18.7 admits the key file activation, the key deactivation and the startup settings edit for Stories
-/// 18.22 and 18.23. Each is temporary: the width leg of
+/// 18.7 admits the startup settings edit for Story 18.23. Each is temporary: the width leg of
 /// <method>TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster</method> asserts no tool
 /// reaches it, so the story that ships its tool trips that assertion and deletes the entry here in the
 /// same pass.</p>
-Parameter AHEADTYPES = "Security.Encryption.File/ACTIVATE,Security.Encryption.Key/DEACTIVATE,Security.Encryption.Settings/PUT";
+Parameter AHEADTYPES = "Security.Encryption.Settings/PUT";
 
 /// <p>An application every instance OcuPilot is installed on carries, read for its keys alone and
 /// never written -- what the delete tool's declared read set is measured against.</p>

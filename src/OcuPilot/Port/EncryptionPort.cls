@@ -23,6 +23,15 @@
 /// <code>POST</code> and <code>DELETE</code>: a <code>source</code>, the rules, and for an add the existing
 /// administrator listed, before any write. A taken or last administrator and an absent administrator or
 /// key are the tools' state refusals; the port maps the vendor's own answers for them.</li>
+/// <li><parameter>DATABASEKEYSTYPE</parameter> and <parameter>DATAELEMENTKEYSTYPE</parameter>, Story 18.22's
+/// fresh reads: the instance's active keys of one kind, <code>Key</code> <code>LIST</code> or
+/// <code>DATAELEMENTLIST</code>, as <code>{Keys}</code> beside the tools' arguments, empty.</li>
+/// <li><code>File</code> <code>ACTIVATE</code> and <code>Key</code> <code>DEACTIVATE</code>: the activation's
+/// key file a <code>source</code>, its administrator listed and a key in it not yet active, and the
+/// deactivation's key active, each before any vendor call; the vendor's credentials, in-use and role
+/// refusals are mapped (<method>KeyMapped</method>).</li>
+/// <li><parameter>JOURNALUSETYPE</parameter>, AD-27's named case: whether a journal file the instance
+/// still needs for recovery uses a key, from the vendor's own <code>%SYS.Journal.System</code>.</li>
 /// </ul>
 /// <p>Every body is built here from the declared arguments in the query and the declared secrets in
 /// the body, and a password is held in a local cleared right after the call (AD-35, AD-56 (i)). Any
@@ -809,9 +818,11 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <method>Invoke</method> builds it from the query and the body handed here, whose passwords are
 /// placeholders. A key file the port would refuse, or a rule a non-secret argument breaks, renders no
 /// call and one <code>comment</code> step carrying the refusal's sentence. The lists' state checks are
-/// guards a script cannot carry. Every other call is the admin port's script.</p>
+/// guards a script cannot carry. An activation and a deactivation are <method>KeySnippet</method>'s.
+/// Every other call is the admin port's script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
+    If ((pEndpoint = ..#FILEENDPOINT) && (pType = "ACTIVATE")) || ((pEndpoint = ..#ACTIVEENDPOINT) && (pType = "DEACTIVATE")) Quit ..KeySnippet(pEndpoint, pType, .pQuery, pBody, pContext)
     Set tWrite = ((pEndpoint = ..#FILEENDPOINT) && (pType = "POST")) || ((pEndpoint = ..#ADMINSENDPOINT) && ((pType = "POST") || (pType = "DELETE"))) || ((pEndpoint = ..#KEYSENDPOINT) && ((pType = "POST") || (pType = "DELETE")))
     If 'tWrite Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
     If '..Named(.pQuery, .tRoot, .tPath) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
@@ -856,6 +867,48 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         }
     }
     Set tStep = ..RestStep(pEndpoint, pType, .tQuery, tSend, pContext)
+    If '$IsObject(tStep) Quit []
+    Quit [(tStep)]
+}
+
+/// <p>Story 18.22's two writes as a script (AD-59): an activation is one <code>rest</code> step to
+/// <code>File</code> <code>ACTIVATE</code> with the resolved key file as <code>file</code> and the body
+/// <code>{Action, AdminName, AdminPassword}</code>, the password the placeholder of the body handed here;
+/// a deactivation is one to <code>Key</code> <code>DEACTIVATE</code> with <code>id</code> the
+/// <code>KeyId</code> and the composed body, its password the placeholder. An action outside the write's own, a missing key file or
+/// key, an administrator name the rules refuse, and a key file the port would refuse each render one
+/// <code>comment</code> step carrying the refusal's sentence and no call.</p>
+ClassMethod KeySnippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray [ Private ]
+{
+    Set tAction = $Get(pQuery(..#ACTIONPARAM))
+    Kill tQuery
+    If pType = "DEACTIVATE" {
+        Set tKey = $Get(pQuery("KeyId"))
+        If (..KindOf(tAction, ..#DEACTIVATIONS) = "") || (tKey = "") Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+        Set tQuery("id") = tKey
+        Set tSend = {}
+        Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+        Do tSend.%Set("AdminName", "", "string")
+        ; AD-59: a name the credential pattern matches reads as its placeholder, though the vendor
+        ; never reads this one.
+        Do tSend.%Set("AdminPassword", "<AdminPassword>", "string")
+    } Else {
+        If (..KindOf(tAction, ..#ACTIVATIONS) = "") || '..Named(.pQuery, .tRoot, .tPath) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+        Set tValues = ..Values(.pQuery, pBody, $ListBuild("AdminName"), $ListBuild("AdminPassword"))
+        Kill tViolations
+        Do ##class(OcuPilot.Area.Security.EncryptionRules).Violations(tValues, $ListBuild("AdminName"), .tViolations)
+        If +$Get(tViolations) > 0 Quit [(..Step("comment", ##class(OcuPilot.Api.EncryptionError).ReasonFor($List(tViolations(1), 2))))]
+        Set tSC = ..Resolve(tRoot, tPath, "source", .tFile, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit [(..Step("comment", $Select($IsObject($Get(tFault)): tFault.%Get("reason"), 1: ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)))]
+        Set tQuery(..#FILEPARAM) = tFile
+        Set tSend = {}
+        Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
+        Do tSend.%Set("AdminName", tValues.%Get("AdminName"), "string")
+        Do tSend.%Set("AdminPassword", tValues.%Get("AdminPassword"), "string")
+        Set tValues = ""
+    }
+    Set tStep = ..RestStep(pEndpoint, pType, .tQuery, tSend, pContext)
+    Set tSend = ""
     If '$IsObject(tStep) Quit []
     Quit [(tStep)]
 }

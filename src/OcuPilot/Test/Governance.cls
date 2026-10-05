@@ -43,8 +43,9 @@ Parameter LICENSEDISABLED = "osmgmt.licensekey.activate,osmgmt.licenseservers.de
 /// <p>Story 18.21 adds the ECP SSL/TLS authorization delete, which the baseline disables too.</p>
 Parameter ECPDISABLED = "osmgmt.ecpdataservers.changestatus,osmgmt.ecpdataservers.delete,osmgmt.ecpsslconnections.delete";
 
-/// <p>Story 18.7's five key file writes, which the baseline disables.</p>
-Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator";
+/// <p>Story 18.7's five key file writes and Story 18.22's four encryption key writes, which the baseline
+/// disables.</p>
+Parameter ENCRYPTIONDISABLED = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.databaseencryption.deactivate,security.dataelementencryption.activate,security.dataelementencryption.deactivate";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
@@ -137,7 +138,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")
-    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, and the five key file writes disabled")
+    Do $$$AssertEquals($ListToString(tWrong, ", "), "", "each resolves enabled by the baseline, the purge, the namespace delete, the database delete, the task import, the eight disk operations, the enable of interoperability, the two document deletes, the two document imports, the license key's activation, the license server delete, the ECP data server status change and delete, the five key file writes and the four encryption key writes disabled")
     Do $$$AssertEquals(..Resolved(..#PURGE), "0|baseline", "the purge's source is the baseline")
 }
 

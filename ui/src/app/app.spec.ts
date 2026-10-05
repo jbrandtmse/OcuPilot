@@ -37,13 +37,14 @@ import { JournalSettingsForm } from './areas/os-management/journal-settings.stor
 import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
 import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.store';
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
+import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { LedgerSearch } from './areas/agent/ledger.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
-import { ApiService } from './core/api';
+import { ApiService, type JsonResult } from './core/api';
 import { LogHubStore } from './areas/logs/log-hub.store';
 import { LogViewerStore, XDBC_SOURCE } from './areas/logs/log-viewer.store';
 import { ChangeBus } from './core/change-bus';
@@ -1306,6 +1307,13 @@ describe('the shell frame', () => {
     encryptionKeyFileForm.open('APRINCIPAL');
     encryptionKeyFileForm.setValue('Description', 'a key THIS principal described');
     expect(encryptionKeyFileForm.value('Description')).not.toBe('');
+    // And Database encryption (Story 18.22): the active keys THIS principal read.
+    const encryptionKeysStore = TestBed.inject(EncryptionKeysStore);
+    await encryptionKeysStore.read(
+      { requestJson: async <T,>() => ({ kind: 'ok', status: 200, body: { rows: [{ Id: 'A1B2', KeyLen: 256, IsDefault: true }] } }) as unknown as JsonResult<T> },
+      'OcuPilot.Screen.Descriptor.DatabaseEncryption'
+    );
+    expect(encryptionKeysStore.rows('OcuPilot.Screen.Descriptor.DatabaseEncryption').length).toBe(1);
 
     // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
     // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
@@ -1464,6 +1472,9 @@ describe('the shell frame', () => {
     // from `App.verifyWhenSignedIn` -> that line goes red, and the next principal sees the previous one's key file.
     expect(encryptionKeyFileStore.path()).toBe('');
     expect(encryptionKeyFileForm.value('Description')).toBe('');
+    // Mutation (Rule 19): delete `this.encryptionKeysStore.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal sees the previous one's active keys.
+    expect(encryptionKeysStore.rows('OcuPilot.Screen.Descriptor.DatabaseEncryption')).toEqual([]);
 
     // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
     // red, and the next principal's SSL/TLS form holds the previous one's typed key password.

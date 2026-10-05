@@ -1,7 +1,7 @@
 /// <p>Test-only <class>OcuPilot.Port.EncryptionPort</class> subclass: Story 18.7's seam. Every vendor
 /// call the port makes through <method>Call</method> is recorded, in order, in
-/// <code>^||OcuPilotEncryptionSeam</code> with its body's key names and never a value, and then sent to
-/// the vendor.</p>
+/// <code>^||OcuPilotEncryptionSeam</code> with its body's key names and its <code>file</code> query, and
+/// never a body value, and then sent to the vendor.</p>
 /// <p>Armed with a key id (<method>Arm</method>), a read through <method>Invoke</method> answers as if the
 /// instance depended on that key, without any database being encrypted, naming the key lower-cased and in
 /// braces rather than as the key file lists it: <code>protected</code> reads
@@ -17,6 +17,24 @@
 /// <code>Security.Encryption.Settings</code> <code>GET</code> read. Armed <code>keysfail</code>,
 /// <method>Call</method> answers a key file's key list with a 500 that is not the vendor's, without the
 /// vendor.</p>
+/// <p>Story 18.22's modes. <code>journalfiles</code> answers <code>Security.Encryption.Key</code>
+/// <code>JOURNALUSE</code> <code>{InUse: true}</code> for the armed key, compared exactly as the vendor's
+/// <code>IsEncKeyInUse</code> compares it, as a journal file still needed for recovery would, and
+/// <code>journalfails</code> fails that read. Armed <code>activation</code>,
+/// <code>inuse</code> or <code>role</code>, <method>Call</method> answers the active-key lists
+/// (<code>Key</code> <code>LIST</code> and <code>DATAELEMENTLIST</code>) from the seam's own list
+/// (<method>Hold</method>, <method>Held</method>) and never asks the vendor to activate or deactivate
+/// anything: under <code>activation</code> a <code>File</code> <code>ACTIVATE</code> whose body carries the
+/// armed administrator and password (<method>ArmCredentials</method>) adds the key file's keys (read from
+/// the file through the vendor) to the list of its <code>Action</code>'s kind, the first database key the
+/// default, and any other is the vendor's measured refusal, 500 #1219; a <code>Key</code>
+/// <code>DEACTIVATE</code> removes its key; under <code>inuse</code> and <code>role</code> a
+/// <code>DEACTIVATE</code> answers the vendor's measured refusal, 500 #1208 or #1214, and removes nothing.
+/// Each refusal goes through the admin port's own failure path (<method>Fail</method>).</p>
+/// <p>Under any other mode, armed or not, a <code>File</code> <code>ACTIVATE</code> reaches the vendor only
+/// when its password is none of the probe key files' passwords (<method>Refusable</method>), so the
+/// vendor can only refuse it; any other is answered 500 without the vendor. A real first activation
+/// persistently changes the instance's key activation at startup, which no test can restore.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -40,6 +58,21 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
         }
     }
     Set ^||OcuPilotEncryptionSeam("keys", tPair) = tKeys
+    Set ^||OcuPilotEncryptionSeam("file", tPair) = $Get(pQuery("file"))
+    If (tPair = "Security.Encryption.File/ACTIVATE") && ($Get(^||OcuPilotEncryptionSeam("mode")) '= "activation") && '..Refusable(pBody) {
+        Set pResult = ""
+        Set pLocation = ""
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Quit $$$ERROR($$$GeneralError, "the seam sends the vendor no activation it could apply")
+    }
+    If $ListFind($ListBuild("activation", "inuse", "role"), $Get(^||OcuPilotEncryptionSeam("mode"))) {
+        Set tAnswered = ..ActiveAnswer(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .tSC)
+        If tAnswered {
+            Set pLocation = ""
+            Quit tSC
+        }
+    }
     If ($Get(^||OcuPilotEncryptionSeam("mode")) = "keysfail") && (tPair = "Security.Encryption.KeyInFile/LIST") {
         Set pResult = ""
         Set pLocation = ""
@@ -54,6 +87,20 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tMode = $Get(^||OcuPilotEncryptionSeam("mode"))
+    If (pEndpoint = "Security.Encryption.Key") && (pType = "JOURNALUSE") {
+        If tMode = "journalfails" {
+            Set pResult = ""
+            Set pHttpStatus = 500
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+            Quit $$$ERROR($$$GeneralError, "the journal's use of a key fails, as the seam was armed")
+        }
+        If (tMode = "journalfiles") && ($Get(pQuery("id")) '= "") && ($Get(pQuery("id")) = $Get(^||OcuPilotEncryptionSeam("key"))) {
+            Set pResult = {"InUse": true}
+            Set pHttpStatus = 200
+            Set pFault = ""
+            Quit $$$OK
+        }
+    }
     Set tDatabases = (pEndpoint = "Database.SysCRUD") && (pType = "LIST")
     Set tFails = $Case(tMode, "readfails": "Database.SysCRUD/LIST", "namesfail": "Namespace.Namespace/GET", "dirsfail": "Database.ConfigCRUD/LIST", "settingsfail": "Security.Encryption.Settings/GET", : "")
     If (tFails '= "") && (tFails = (pEndpoint _ "/" _ pType)) {
@@ -172,10 +219,125 @@ ClassMethod Arm(pMode As %String, pKey As %String = "")
     Set ^||OcuPilotEncryptionSeam("key") = pKey
 }
 
+/// <p>Under the active-list modes, the answer <method>Call</method> gives without the vendor for the
+/// active-key lists, an activation and a deactivation; <var>pAnswered</var> 0 for every other call, which
+/// goes to the vendor.</p>
+ClassMethod ActiveAnswer(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pSC As %Status) As %Boolean [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set pSC = $$$OK
+    Set tPair = pEndpoint _ "/" _ pType
+    If (tPair = "Security.Encryption.Key/LIST") || (tPair = "Security.Encryption.Key/DATAELEMENTLIST") {
+        Set pResult = ..Held($Select(pType = "LIST": "database", 1: "dataElement"))
+        Set pHttpStatus = 200
+        Quit 1
+    }
+    Set tAction = $Select($IsObject(pBody) && pBody.%IsA("%Library.DynamicObject"): pBody.%Get("Action"), 1: "")
+    Set tKind = $Select((tAction = "ActivateMK") || (tAction = "DeactivateMK"): "dataElement", 1: "database")
+    If tPair = "Security.Encryption.File/ACTIVATE" {
+        If $Get(^||OcuPilotEncryptionSeam("mode")) '= "activation" Quit 0
+        If '$IsObject(pBody) || (pBody.%Get("AdminName") '= ..ArmedAdmin()) || (pBody.%Get("AdminPassword") '= ..ArmedPassword()) {
+            ; The vendor's measured answer to a name and password that do not open the key file.
+            Set pSC = ..Fail(pEndpoint, 500, $$$ERROR(1219), .pHttpStatus, .pFault, "", pBody, 0, pType)
+            Quit 1
+        }
+        Set pSC = ..Keys($Get(pQuery("file")), .tRows, .pHttpStatus, .pFault)
+        If $$$ISERR(pSC) Quit 1
+        Set tHeld = ..Held(tKind)
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) || ..Active(tHeld, tRow.%Get("Id")) Continue
+            If tKind = "dataElement" {
+                Do tHeld.%Push({"Id": (tRow.%Get("Id"))})
+            } Else {
+                Set tAdded = {"Id": (tRow.%Get("Id")), "KeyLen": (+tRow.%Get("KeyLen"))}
+                Do tAdded.%Set("IsDefault", (tHeld.%Size() = 0), "boolean")
+                Do tHeld.%Push(tAdded)
+            }
+        }
+        Do ..Hold(tKind, tHeld)
+        Set pResult = {}
+        Set pHttpStatus = 200
+        Quit 1
+    }
+    If tPair = "Security.Encryption.Key/DEACTIVATE" {
+        Set tMode = $Get(^||OcuPilotEncryptionSeam("mode"))
+        If tMode '= "activation" {
+            Set pSC = ..Fail(pEndpoint, 500, $$$ERROR($Select(tMode = "inuse": 1208, 1: 1214)), .pHttpStatus, .pFault, "", pBody, 0, pType)
+            Quit 1
+        }
+        Set tHeld = ..Held(tKind)
+        Set tKept = []
+        Set tIterator = tHeld.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If $IsObject(tRow) && (tRow.%Get("Id") '= $Get(pQuery("id"))) Do tKept.%Push(tRow)
+        }
+        Do ..Hold(tKind, tKept)
+        Set pResult = {}
+        Set pHttpStatus = 200
+        Quit 1
+    }
+    Quit 0
+}
+
+/// <p>Arm the key file administrator and password an activation's body must carry under
+/// <code>activation</code>; unarmed, the probe's own (<class>OcuPilot.Test.EncryptionKeyProbe</class>).
+/// <method>Clear</method> forgets them and <method>ClearCalls</method> keeps them.</p>
+ClassMethod ArmCredentials(pAdmin As %String, pPassword As %String)
+{
+    Set ^||OcuPilotEncryptionSeam("admin") = pAdmin
+    Set ^||OcuPilotEncryptionSeam("password") = pPassword
+}
+
+/// <p>The administrator <method>ArmCredentials</method> armed, else the probe's.</p>
+ClassMethod ArmedAdmin() As %String
+{
+    Quit $Get(^||OcuPilotEncryptionSeam("admin"), $Parameter("OcuPilot.Test.EncryptionKeyProbe", "ADMIN"))
+}
+
+/// <p>The password <method>ArmCredentials</method> armed, else the probe's.</p>
+ClassMethod ArmedPassword() As %String
+{
+    Quit $Get(^||OcuPilotEncryptionSeam("password"), $Parameter("OcuPilot.Test.EncryptionKeyProbe", "PASSWORD"))
+}
+
+/// <p>Whether an activation carrying <var>pBody</var> can only be refused by the vendor: its password is
+/// non-empty and none of the probe key files' passwords -- the armed one and both probes' own.</p>
+ClassMethod Refusable(pBody As %DynamicAbstractObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
+    Set tPassword = pBody.%Get("AdminPassword")
+    If tPassword = "" Quit 0
+    Quit '$ListFind($ListBuild(..ArmedPassword(), $Parameter("OcuPilot.Test.EncryptionKeyProbe", "PASSWORD"), $Parameter("OcuPilot.Test.EncryptionProbe", "PASSWORD")), tPassword)
+}
+
+/// <p>Set the seam's active keys of kind <var>pKind</var> (<code>database</code> or
+/// <code>dataElement</code>) to <var>pRows</var>, as the vendor's list answers them.</p>
+ClassMethod Hold(pKind As %String, pRows As %DynamicArray)
+{
+    Set ^||OcuPilotEncryptionSeam("active", pKind) = pRows.%ToJSON()
+}
+
+/// <p>The seam's active keys of kind <var>pKind</var>, <code>[]</code> when none was held.</p>
+ClassMethod Held(pKind As %String) As %DynamicArray
+{
+    Set tText = $Get(^||OcuPilotEncryptionSeam("active", pKind))
+    If tText = "" Quit []
+    Quit ##class(%DynamicArray).%FromJSON(tText)
+}
+
 /// <p>Forget every recorded call and the armed mode.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotEncryptionSeam
+}
+
+/// <p>Forget every recorded call, keeping the armed mode, its key and the held active lists.</p>
+ClassMethod ClearCalls()
+{
+    Kill ^||OcuPilotEncryptionSeam("calls"), ^||OcuPilotEncryptionSeam("keys"), ^||OcuPilotEncryptionSeam("file")
 }
 
 /// <p>The recorded calls, comma-joined in order.</p>
@@ -188,16 +350,24 @@ ClassMethod Calls() As %String
     Quit tOut
 }
 
-/// <p>The recorded calls other than lists, comma-joined.</p>
+/// <p>The recorded calls other than lists, <code>LIST</code> and <code>DATAELEMENTLIST</code>,
+/// comma-joined.</p>
 ClassMethod Writes() As %String
 {
     Set tOut = ""
     For tI = 1:1:+$Get(^||OcuPilotEncryptionSeam("calls")) {
         Set tPair = $Get(^||OcuPilotEncryptionSeam("calls", tI))
-        If $Piece(tPair, "/", 2) = "LIST" Continue
+        If ($Piece(tPair, "/", 2) = "LIST") || ($Piece(tPair, "/", 2) = "DATAELEMENTLIST") Continue
         Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tPair
     }
     Quit tOut
+}
+
+/// <p>The <code>file</code> query value the last <var>pPair</var> call carried: a resolved key file's
+/// path, never a secret.</p>
+ClassMethod FileOf(pPair As %String) As %String
+{
+    Quit $Get(^||OcuPilotEncryptionSeam("file", pPair))
 }
 
 /// <p>The body key names the last <var>pPair</var> call carried, sorted and comma-joined.</p>

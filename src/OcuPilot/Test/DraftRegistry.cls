@@ -71,8 +71,10 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 /// script is the refusal's one <code>comment</code> step and carries no secret, comma-separated (Story
 /// 18.7's key-file writes, which address a key file that exists under an allowed directory). Their
 /// password placeholders are pinned against a real probe file by
-/// <method>OcuPilot.Test.EncryptionKeyFileWrite.TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders</method>.</p>
-Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator";
+/// <method>OcuPilot.Test.EncryptionKeyFileWrite.TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders</method>.
+/// Story 18.22's two activations resolve their key file the same way; their placeholders are pinned by
+/// <method>OcuPilot.Test.EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder</method>.</p>
+Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate";
 
 Method OnBeforeOneTest() As %Status
 {

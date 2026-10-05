@@ -2,9 +2,9 @@
 title: 'Story 18.22: Database and data-element encryption keys'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '78e85ce221db07c09312856e0e25d2777d222448'
+baseline_revision: '5952fd82765950e426c2e633c6afeb9310465864'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -389,6 +389,40 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 29 findings — high 0, medium 8, low 10, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The seam applied any activation body, so no test checked the password the vendor receives, and B5's green relied on wrong passwords — the seam now answers the vendor's #1219 through `AdminPort.Fail` unless the body carries the armed administrator and password (`ArmCredentials`); the marker test's key file opens with the marker; mutation run 111.
+  - `[medium]` `[patch]` The seam's `JOURNALUSE` matched through `SameKeyId`, so the id `DependsOnKey` sends was never checked — it now compares exactly, as `IsEncKeyInUse` does; mutation run 112.
+  - `[medium]` `[patch]` The wrong-password leg, the one path that reaches the vendor and logs, never scanned the logs for the password — it now types a random marker and asserts neither log nor the answer carries it.
+  - `[low]` `[patch]` The screen-versus-tool equality compares empty lists, and `ScreenRead`'s exemption comment named a compensating test that checks no row — comment replaced with the measured source (the vendor's `RunList`, Task 0); the empty-list equality is Named limit 2 on the seam branch.
+  - `[medium]` `[patch]` No page test re-read the list on a change event — page spec case added (own type re-reads, another type does not); mutation observed.
+  - `[low]` `[patch]` The all-active and default-key published sentences were never shown in a test — page spec case added for both; mutation observed.
+  - `[low]` `[patch]` The two screens' action labels were never asserted — `screen-actions.test.mjs` asserts both; mutation observed.
+  - `[medium]` `[patch]` The seam built the in-use and role faults itself, skipping the port's failure path — it now calls `AdminPort.Fail`; mutation run 113 reddens the role leg on both callers.
+  - `[low]` `[patch]` "The key is active, and the default" asserted a flag the seam sets — the assertion now pins the key's `Id` and the file's `KeyLen`, and the doc claim is removed.
+  - `[low]` `[patch]` The page spec's store-holds-no-password assertion could not fail — deleted.
+  - `[false]` `[reject]` B0 has no pinning test — B0 is Task 0's process criterion; its evidence is the record under Measured at implement.
+  - `[false]` `[reject]` B1's equality clause and key-material clause lack mutations — Rule 19 asks one demonstrated mutation per AC (runs 60, 61); the empty-list equality is Named limit 2.
+  - `[false]` `[reject]` B2's wrong-password leg and `File:1219` mapping lack a line — B2 carries runs 62, 63, 75, 78 and now 111.
+  - `[low]` `[patch]` B3's role mapping mutation reddened only a static list check — after the `Fail` patch, run 113 reddens the role leg; line updated.
+  - `[medium]` `[patch]` B4's "after the change event" clause had no test — grouped with the change-event finding above.
+  - `[false]` `[reject]` The gate tests carry no mutation line — B8's pairs are pinned by run 75 on `EncryptionKeyGate`.
+  - `[medium]` `[patch]` The seam forwarded a `File` `ACTIVATE` to the vendor under every mode but `activation`, so a later leg or mutation could make a real first activation — under any other mode it now forwards only a body whose password is none of the probe files' (`Refusable`) and answers 500 otherwise.
+  - `[low]` `[patch]` The `ScreenRead` comment names a compensating test that does not exist — grouped with the equality finding above.
+  - `[false]` `[reject]` Success legs run through the seam, not the vendor — the intent lets Task 0 pick real or seam, and the runner's answer in `## Spec Change Log` chose the seam.
+  - `[low]` `[patch]` Read equality is shown for `[]` only and no live row checks the declared fields — grouped with the equality finding above (only Database encryption is exempted in `ScreenRead`).
+  - `[medium]` `[patch]` The in-use and role refusals are tested through a subset of `AdminPort.Fail` — grouped with the `Fail` finding above.
+  - `[false]` `[reject]` The all-active and not-active refusals are checked against the seam's list — on the seam branch the list is the seam's by design; the refusing code (`FileKeys`, `Deactivate`) is the product's.
+  - `[low]` `[patch]` An unlisted administrator was refused on the screen caller only — a confirm-caller leg added: the mint succeeds, its confirm answers 422 `ENCRYPTION.KEYFILE.CREDENTIALS` with nothing sent.
+  - `[false]` `[reject]` The populated table and typed-name Deactivate run only in jsdom — by design: no browser leg activates a real key; the page spec covers them.
+  - `[low]` `[reject]` Screen-context secrecy is checked by declaration only — context carries only the declared row fields, pinned by `TestNoReadAnswersKeyMaterial`; a tracing test would add machinery for a path no password reaches.
+  - `[false]` `[reject]` The activation sentence's startup half rests on the runner's restart — the wording is the runner's binding instruction; this stage restarted nothing.
+  - `[false]` `[reject]` `rowActions` lists `activate` beside `deactivate` — `ScreenAction.cls:151` refuses an action id missing from `RowActionIds`, as `LicenseKey` shows; the page draws only Deactivate per row.
+  - `[false]` `[reject]` The deactivation draft renders `"<AdminPassword>"` — the intent asks for that placeholder, and `AdminPort.RestStep` masks every credential-pattern name.
+  - `[false]` `[reject]` 409 `ENCRYPTION.KEY.ROLE` and the data-element consequence codes go beyond the matrix — the spec's Execution lists them and the Boundaries name the role refusal.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -431,6 +465,16 @@ deferred: []
 - Data element: `act-c` (two keys) answered 200; `DATAELEMENTLIST` listed both; two audit rows; no `Security.System` change. Each `DeactivateMK` answered 200.
 - Not halts: Community activation; the vendor's 200 on an all-active file, which the plan's all-active refusal pre-empts (inference: the plan's rule exists for exactly this); `IsDefault` gating, which holds (#1214).
 - Step 13, measured but not applied: the real branch was viable until step 11. Mapped codes: credentials #1219, in use #1208 (and #1215, read in its message text (inference)), role #1214; no license refusal; vendor events for every write, so no AD-15 or AD-53 named case.
+
+**Step 13, set from the record** (implement pass 2, on the runner's answer in `## Spec Change Log`; steps 2 to 11 are not repeated on any instance):
+
+- **Branch: seam.** Every success leg (activate and deactivate, database and data element, both callers) runs through `EncryptionSeamPort` (`activation`, `inuse`, `role`, `journalfiles`); no test or probe activates a real key. A real `File` `ACTIVATE` runs only where the vendor refuses before activating anything: a wrong password (500 #1219, which left `DBEncStartMode` 0) and a missing or unreadable file (refused before any call). Each such leg re-reads `EncryptionProbe.EncryptionFacts`, `DBEncStartMode` included, and asserts it unchanged. The browser spec never confirms a real activation, so its real activate-and-deactivate leg is dropped; B1's equality holds for the empty list (Named limit 2).
+- **Pairs:** the activations declare Security's two pairs and `%Admin_FileSystemAccess:USE`; the deactivations declare Security's two pairs.
+- **Mapped refusals:** credentials 500 #1219 to 422 `ENCRYPTION.KEYFILE.CREDENTIALS` on `AdminPassword`; in use 500 #1208 and #1215 to 409 `ENCRYPTION.KEY.INUSE`; default or journal role 500 #1214 to 409 `ENCRYPTION.KEY.ROLE`. Already active and not active are the port's 400 `REASONKEYSALLACTIVE` and `REASONKEYINACTIVE` before any call. No license refusal, so `ENCRYPTION.KEY.LICENSE` is not added.
+- **`IsDefault` gates a database deactivation** (#1214): `DatabaseKeyDeactivate.StateRefusal` keeps `REASONKEYDEFAULT`. **`KeyLen` is bits:** the column reuses `encryptionKeyFileColumnKeyLen`.
+- **DW-2059:** Decision 4's first branch, no code change; the measured spelling (upper-case hex and `-`, such as `4AA5F70E-C07C-11F1-BFE2-F298FD505142`) joins `EncryptionKeyMatch`.
+- **`ENCRYPTION.KEY.ACTIVATE`** reads, and EXPERIENCE.md's Fixed strings publish: "The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it."
+- AD-15 and AD-53: no named case. AD-2: no `UNLOGGEDREFUSALS` entry. `scripts/ci-throwaway.sh`'s `OCUPILOT_ALLOW_ENCRYPTION_CONFIG` comment ("never activate or deactivate a key") stays true and unchanged; only its `# classes:` line grows.
 
 **Decisions** (applied in this plan; the runner confirms them at the spec gate):
 
@@ -519,13 +563,40 @@ deferred: []
 - B6: `NormalizedKeyId` back to an exact comparison, with the seam naming the key in its measured spelling → `EncryptionKeyMatch` and `EncryptionKeyFileWrite`'s protected leg red.
 - B7: `DependsOnKey`'s `JOURNALUSE` step removed → the `journalfiles` leg red on both callers; its failed read answering 0 → the failed-read leg red.
 - B8: `security.databaseencryption.deactivate` dropped from `Baseline` → `GovernanceBaseline` red. `DataElementEncryption` `sideBarPosition` 0 → `Wire` and `navigation.test.mjs` red. The dialog's password clear dropped (rebuilt, redeployed) → the page spec and the browser spec red.
+- mutation: `DatabaseEncryption`'s read declares `GET` in place of `LIST` → `EncryptionKeyRead.TestEachReadAnswersTheSameRowsOnScreenAndTool` and `TestNoReadAnswersKeyMaterial` red (run 60)
+- mutation: `DATAELEMENTLIST` dropped from `Registry.READSOURCETYPES` → `EncryptionKeyDescriptor.TestDataElementListIsAReadType` red (run 61)
+- mutation: `EncryptionPort.Activate` sends the caller's `path` unresolved as `file` → `EncryptionKeyWrite.TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers` red on the resolved-file leg; the wrong-password leg stays green (run 62)
+- mutation: the all-active check dropped from `EncryptionPort.FileKeys` → `EncryptionKeyWrite.TestAnActivationRefusedSendsNothing` red, an `ACTIVATE` recorded by the seam (run 63)
+- mutation: `DatabaseKeyDeactivate.StateRefusal` admits an inactive key → `EncryptionKeyWrite.TestADeactivationRefusedKeepsTheKey` red at the mint; the port's own inactive check still refuses the screen's, so no `DEACTIVATE` is sent (run 64)
+- mutation: the in-use entries (1208, 1215) dropped from `AdminPort.PROPERTYFAULTS` → `EncryptionKeyWrite.TestADeactivationRefusedKeepsTheKey` red, the in-use leg answering 500 `INTERNAL` (run 65)
+- mutation: `DataElementKeyActivate.ACTION` set to `ActivateDB` → `EncryptionKeyWrite.TestDataElementKeysAreActivatedAndDeactivated` red, the keys landing in the database list (run 66)
+- mutation: `EncryptionPort.Activate` writes its body to `messages.log` → `EncryptionKeyWrite.TestPasswordsReachNoLogLedgerProposalOrAnswer` red on the log leg (run 67)
+- mutation: `Prohibited.SameKeyId` compares exact strings → `EncryptionKeyMatch.TestTheSameKeyInAnotherFormIsRefused` and `TestTheMeasuredSpellingIsOneKeyInEveryAnswer` red (run 68); `EncryptionKeyFileWrite.TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red on the protected, system, namespace and journal legs (run 69)
+- mutation: `DependsOnKey`'s `JOURNALUSE` step skipped → `EncryptionKeyFileWrite.TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red on the `journalfiles` and `journalfails` legs, both callers (run 70)
+- mutation: `DependsOnKey`'s failed `JOURNALUSE` read answers 0 → the same test red on the `journalfails` leg alone (run 71)
+- mutation: `security.databaseencryption.deactivate` dropped from `Baseline` → `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` red naming the key (run 72); `EncryptionKeyDescriptor.TestTheFourKeysShipDisabled` red (run 73)
+- mutation: `DataElementEncryption` `sideBarPosition` 0 → `Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure` red on the side-bar order (run 74); with the mirror regenerated, `navigation.test.mjs`'s side-bar-order test red
+- mutation: `DatabaseKeyActivate.EXTRAPAIRS` emptied → `EncryptionKeyGate.TestWithoutTheFileSystemPairEveryActivationIsRefused` red on leg 2 (run 75); `EncryptionKeyDescriptor.TestTheFourToolsDeclareTheirPairsActionsAndSecrets` red (run 76)
+- mutation: the `Security.Encryption.Key:1214` entry dropped from `PROPERTYFAULTS` → `EncryptionKeyDescriptor.TestTheErrorCodesAnswerTheirSentences` red (run 77); with the seam's refusals sent through `AdminPort.Fail`, `EncryptionKeyWrite.TestADeactivationRefusedKeepsTheKey` red on the role leg, 500 `INTERNAL` on both callers (run 113)
+- mutation: `AdminPassword` dropped from `EncryptionPort.KeySnippet`'s activation body → `EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder` red (run 78)
+- mutation: `this.passwordValue.set('')` dropped from the page's `clearDialog` → `encryption-keys.page.spec.ts` red, 2 of 9; a browser cannot see it, since the dialog leaves the DOM on close
+- mutation: the password input bound `[attr.value]` in place of `[value]`, rebuilt and redeployed → `encryption-keys.browser-spec.mjs` B2, B5 red
+- mutation: `EncryptionPort.Activate` sends `AdminName` as the password → `EncryptionKeyWrite.TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers`, `TestDataElementKeysAreActivatedAndDeactivated` and `TestPasswordsReachNoLogLedgerProposalOrAnswer` red, the seam answering the vendor's #1219 (run 111)
+- mutation: `DependsOnKey` sends `NormalizedKeyId(pKey)` to `JOURNALUSE` → `EncryptionKeyFileWrite.TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red on the `journalfiles` leg, both callers (run 112)
+- mutation: the page's `ChangeBus` subscription dropped → `encryption-keys.page.spec.ts` "reads its list again on a change event of its own entity type" red
+- mutation: `STRINGS.encryptionKeyAllActive` dropped from `PUBLISHED_PROBLEMS` → `encryption-keys.page.spec.ts` "shows an activation's and a default key's published state refusals" red
+- mutation: the `DatabaseEncryption` entry dropped from `DESCRIPTOR_ACTION_LABELS` → `screen-actions.test.mjs` "a screen's row action draws its own published words" red
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: observation contradicts the plan: the first database key activation on `ocupilot-b-ci` persistently set `Security.System` `DBEncStartMode` from 0 (None) to 1 (Interactive), and no call in Task 0 step 11 clears it (`Security.System.Modify` answers OK and leaves it at 1, an `[Internal]` property), so S2 does not equal S0 (step 12, "any state that no call in step 11 clears")
+Status: done
+Blocking condition: none
 
-- Implement pass 1 (baseline `78e85ce221db07c09312856e0e25d2777d222448`): Task 0 ran through step 11 and halted there; nothing was built past step 1. The record is under Design Notes › Measured at implement, and the AD sentences are in `## Spec Change Log`. Evidence is in `/tmp/epic-18-d7/1822/t0/`.
-- Verified by the stage agent on `ocupilot-b-ci` (read-only, after the handoff returned): `DBEncStartMode` 1, `DBEncDefaultKeyID` and `DBEncJournalKeyID` empty, no active database or data-element key, no `ocuprobeact` directory, no `OcuProbeAct*` user or role. The throwaway needs the runner's rebuild before a re-dispatch; this stage did not restart or rebuild it.
-- Uncommitted step-1 work left in the tree (no commit made, none pushed): `src/OcuPilot/Port/EncryptionPort.cls` (the `DATABASEKEYS`, `DATAELEMENTKEYS` and `JOURNALUSE` types, the `File` `ACTIVATE` and `Key` `DEACTIVATE` branches, `FileKeys`, `COMPOSEDTYPES`; vendor codes not yet mapped), `src/OcuPilot/Api/EncryptionError.cls` (the new codes and sentences), `src/OcuPilot/Test/EncryptionKeyProbe.cls` (new), `src/OcuPilot/Test/EncryptionProbe.cls` (`EncryptionFacts` now reports an encrypted database: `SYS.Database:List` answers `Encrypted` as Yes or No), and this spec. `check-objectscript` on the four classes: 0 problems; `lint-docs`: clean. No test class, browser spec, client tier or build ran.
-- For the runner to decide: (1) the product consequence: a person's first database activation through OcuPilot would persistently switch their instance to interactive key activation at startup, so the `ENCRYPTION.KEY.ACTIVATE` sentence must say so, or the owner may rule on the effect itself; (2) step 12 also lists "answers 2xx having changed nothing": the vendor answered 200 with nothing changed when every key in the file was already active, even with a wrong password; the handoff did not halt on it because the plan's port-level all-active refusal (400, before any vendor call) pre-empts that case (inference); (3) `/tmp/epic-18-d7/load-throwaway.sh` prints `LOAD-RESULT:OK:ERRORS=0` and still exits 1, because under `pipefail` the final `printf | grep -q` breaks its pipe; the handoff read the printed result line and checked the compiled classes directly.
+- Implement pass 2 (baseline `5952fd82765950e426c2e633c6afeb9310465864`), on the seam branch from Task 0 step 13. Pass 1's step-11 halt closed with the runner's answer in `## Spec Change Log`; steps 2 to 11 were not repeated.
+- **Built:** Database encryption (Security 9) and Data element encryption (10) on one page, `EncryptionKeysPage` and `EncryptionKeysStore`; the four tools on `EncryptionKeyWrite` with `EncryptionKeyActivateMint`; `DATAELEMENTLIST` as a read type (`Registry`, `Read`, `screen-mirror.mjs`); `KeySnippet`; the vendor's #1219, #1208, #1215 and #1214 in `PROPERTYFAULTS`; DW-2066's `JOURNALUSE` step in `DependsOnKey`; the two entity types and singletons; the four baseline keys `false`; strings, labels, consequences and EXPERIENCE.md (1035 lines); every roster.
+- **Files:** server in `src/OcuPilot/` (`Port/EncryptionPort`, `Port/AdminPort`, `Api/EncryptionError`, `Kernel/EntityType`, `Kernel/EntityRef`, `Kernel/Governance/Baseline`, `Kernel/Proposal/Prohibited`, `Screen/Read`, `Screen/Registry`, `Screen/Tool/Classification`, `Screen/Tool/ToolFields`, two descriptors, five tool classes and the mint); tests (`EncryptionKeyRead`, `EncryptionKeyWrite`, `EncryptionKeyGate`, `EncryptionKeyDescriptor`, four `Seam*` tools, the seam, the probe, and the roster classes); client (`areas/security/encryption-keys.*`, `shell/screen-action-handler.ts`, `shell/screen-outlet.ts`, `core/screen-actions.ts`, `core/proposal-view.ts`, `core/strings.ts`, `core/screens.generated.ts`, `app.ts`, their specs and `ui/tools/*.test.mjs`); `ui/browser/encryption-keys.browser-spec.mjs`; `ui/angular.json` (`maximumWarning` 2925kB under DW-1166); `scripts/ci-throwaway.sh` (class lines); `.github/workflows/ci.yml` (browser-shard `timeout-minutes` 44 to 45, which `ci.test.mjs` requires for the untimed new spec; refresh `ci-timings.json` from the next green run).
+- **Review:** 29 findings; 17 rows patched (6 medium entries over 8 rows, and 9 low rows), 1 low rejected, 11 false, none deferred. Patches are test-side: the seam checks activation credentials, matches `JOURNALUSE` exactly, refuses through `AdminPort.Fail`, and never forwards an activation the vendor could apply; marker and confirm-caller legs; three page-spec cases and the label assertions. Each patch's mutation was observed red and reverted byte-identical (runs 111, 112, 113 and the client lines in `## Verification`).
+- Follow-up review: `false`. Six medium entries were patched, but each is a test-side fidelity or coverage fix already demonstrated by a mutation, so no specific unverified risk remains to name.
+- **Verified on `ocupilot-b-ci`:** the story's and roster classes green; the full sweep in 32 shards, 465 classes, 3,813 tests, 0 failed, every class in exactly one shard (`ci-shards check`); `npm test` (1,821 tools, 2,464 components) and `npm run build` (2.92 MB initial, same bundle as deployed); the browser loop 11/11; `smoke.sh` 50/50; `check-objectscript`, `lint-docs` and `check-prose` clean. Afterwards the encryption facts equal S0 (`DBEncStartMode` 0, no key active) and no `OCUPROBEACT` file, database, user or role remains.
+- **Residual risks:** the success path against the real vendor, and the declared reads against a non-empty live row, are unverified by design (Named limit 2): no test may activate a real key. A mutation run (`Activate` logging its body) left random test markers and the probe's test password in the throwaway's `messages.log`; none is a real credential. The handoff sent 27 test-runner calls in one message; `%UnitTest_Result` shows runs 79 to 105 back to back with no overlap.
+- **Footprint extensions:** `.github/workflows/ci.yml`, `src/OcuPilot/Screen/Read.cls`, `src/OcuPilot/Test/ReadSourceCorpus.cls`, `ui/tools/screen-actions.test.mjs`, beyond the spec's listed set.

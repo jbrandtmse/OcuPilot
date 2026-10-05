@@ -283,6 +283,12 @@ XData Tools
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.databaseencryption.activate": {"fieldList":"Security.Encryption.File","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.dataelementencryption.activate": {"fieldList":"Security.Encryption.File","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "security.encryptionkeyfile.addkey": {"fieldList":"Security.Encryption.KeyInFile","fields":[
   {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
 ]},

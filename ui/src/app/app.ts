@@ -50,6 +50,7 @@ import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
 import { EncryptionKeyFileActions } from './areas/security/encryption-key-file-actions';
 import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.store';
 import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
+import { EncryptionKeysStore } from './areas/security/encryption-keys.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -358,6 +359,8 @@ export class App {
   private readonly encryptionKeyFileActions = inject(EncryptionKeyFileActions);
   private readonly encryptionKeyFileStore = inject(EncryptionKeyFileStore);
   private readonly encryptionKeyFileForm = inject(EncryptionKeyFileForm);
+  // Database encryption's and Data element encryption's store of active keys (Story 18.22).
+  private readonly encryptionKeysStore = inject(EncryptionKeysStore);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -690,6 +693,7 @@ export class App {
       // The key file page holds a key file THIS principal opened, and the create form one it was creating.
       this.encryptionKeyFileStore.reset();
       this.encryptionKeyFileForm.reset();
+      this.encryptionKeysStore.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
