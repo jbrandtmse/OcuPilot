@@ -944,3 +944,5 @@
 2026-10-05T08:14:46Z	Story 19.9	merged	feature=e3d63db7 mode=fast_forward pushed=verified_on_origin green=da29106b(run_37276448130)
 2026-10-05T08:14:46Z	Release 1.0.10	candidate_updated	newest_green_code=da29106b(19.9,run_37276448130)=feature_e3d63db7_code_tree contents=18.21,19.8,19.16,18.7,19.9 upgrade_check=not_needed(16b50ec8..da29106b)
 2026-10-05T08:14:46Z	Epic 18	merge_risk_relayed	item=spine_ordinals note=feature_now_takes_AD-53_gap_eighteen+nineteen_and_AD-15_case_sixteen;epic-18-context.md:111_stale;runner_told_to_forward_merge_e3d63db7_and_read_next_free_ordinal_from_merged_spine;epic18_committed_spine_uses_none_yet(663d7a02..5952fd82)
+2026-10-05T10:19:58Z	Release 1.0.10	cut_verified	branch=release/1.0.10 sha=da29106b(origin_verified) cut_by=planner(ocupilot-0d) owner_decision=cut_early(relayed_by_planner) green=run_37276448130 contents=18.21,19.8,19.16,18.7,19.9 upgrade_check=not_needed next_release=18.22,19.17
+2026-10-05T10:19:58Z	Parallel	crons_cancelled	ids=573f4ec4(01:47_story_start_cutoff),5920e881(03:31_cut),cb926834(04:01_backstop) reason=release_cut_early kept=321efda7(daily_21:13_tmp_touch)
