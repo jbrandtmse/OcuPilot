@@ -9,8 +9,9 @@
 /// <li><code>AdminInFile</code> and <code>KeyInFile</code> <code>LIST</code>, the screens' reads: a
 /// <code>source</code>; a file whose administrator list names nobody is not a key file, 422
 /// <parameter>OcuPilot.Api.EncryptionError.KEYFILEUNREADABLE</parameter> on <code>path</code>, decided
-/// before the key list is read, so a chosen non-key file logs nothing; a key file whose key list fails
-/// holds no key (measured: removing a file's last key leaves one).</li>
+/// before the key list is read, so a chosen non-key file logs nothing; a key file whose key list the
+/// vendor refuses as holding no key it can read (#5022) holds none (measured: removing a file's last key
+/// leaves one), and any other key list fault fails the read.</li>
 /// <li><parameter>KEYFILETYPE</parameter>, the key-file tools' fresh read: both lists as
 /// <code>{Administrators, Keys}</code> beside the tools' arguments, empty; a missing file is 404
 /// <code>PORT.NOTFOUND</code>, unlogged (a create's absence, AD-54).</li>
@@ -214,8 +215,11 @@ ClassMethod Administrators(pFile As %String, Output pNames As %DynamicArray, Out
 }
 
 /// <p>The keys of key file <var>pFile</var> as the vendor lists them, in <var>pRows</var>:
-/// <code>[{Id, KeyLen, Description}]</code>. A key list the vendor fails on a 500 is a file holding no
-/// key (measured on a key file whose last key was removed), answered <code>[]</code>.</p>
+/// <code>[{Id, KeyLen, Description}]</code>. The vendor's refusal of the list as a file holding no key it
+/// can read (#5022, which <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> names
+/// <parameter>OcuPilot.Api.EncryptionError.KEYFILEUNREADABLE</parameter>) is a key file holding none
+/// (measured on a key file whose last key was removed), answered <code>[]</code>; the caller has already
+/// read its administrators. Any other fault fails the read (AD-2).</p>
 ClassMethod Keys(pFile As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = []
@@ -223,13 +227,26 @@ ClassMethod Keys(pFile As %String, Output pRows As %DynamicArray, Output pHttpSt
     Set tQuery(..#FILEPARAM) = pFile
     Set tSC = ..Call(..#KEYSENDPOINT, "LIST", .tQuery, "", .tRows, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) {
-        If +$Get(pHttpStatus) '= 500 Quit tSC
+        If (+$Get(pHttpStatus) '= 500) || '..NamesNoKey($Get(pFault)) Quit tSC
         Set pHttpStatus = 200
         Set pFault = ""
         Quit $$$OK
     }
     If $IsObject($Get(tRows)) && tRows.%IsA("%Library.DynamicArray") Set pRows = tRows
     Quit tSC
+}
+
+/// <p>Whether fault <var>pFault</var> carries the violation the admin port maps the vendor's #5022 to on a
+/// key list: <parameter>OcuPilot.Api.EncryptionError.KEYFILEUNREADABLE</parameter>.</p>
+ClassMethod NamesNoKey(pFault) As %Boolean [ Private ]
+{
+    If '$IsObject(pFault) || (pFault.%GetTypeOf("detail") '= "object") || (pFault.%Get("detail").%GetTypeOf("violations") '= "array") Quit 0
+    Set tNamed = 0
+    Set tIterator = pFault.%Get("detail").%Get("violations").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && (tRow.%Get("code") = ##class(OcuPilot.Api.EncryptionError).#KEYFILEUNREADABLE) Set tNamed = 1 Quit
+    }
+    Quit tNamed
 }
 
 /// <p>One list of the key file the query's <code>root</code> and <code>path</code> name (the screens'

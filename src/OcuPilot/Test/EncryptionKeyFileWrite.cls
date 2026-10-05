@@ -145,6 +145,13 @@ Method TestACreateIsRefusedOnItsFieldWithNothingSent()
         Set tSC = $ClassMethod(..#SAVE, "Handle", {"root": ($ClassMethod(tP, "Root")), "path": (tPath), "AdminName": ($List(tCase, 4)), "AdminPassword": ($List(tCase, 5)), "KeyLen": ($List(tCase, 3)), "Description": "OCUPROBE187"}, .tAnswer, .tStatus, .tCache)
         Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(tP, "Refusal", tAnswer), "422 " _ $List(tCase, 2), tPath _ " is refused on its field: " _ $Extract(tAnswer, 1, 200))
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with nothing sent")
+        Set tAnswerObject = {}.%FromJSON(tAnswer)
+        Set tReasons = 1
+        Set tRowIterator = tAnswerObject.detail.violations.%GetIterator()
+        While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+            If tRow.reason = "" Set tReasons = 0
+        }
+        Do $$$AssertTrue(tReasons, tPath _ ": every violation carries its sentence, so the form has text to show (QA)")
     }
     Do $$$AssertEquals(##class(%File).DirectoryExists($ClassMethod(tP, "Directory") _ "missing"), 0, "no folder was created")
     Do $$$AssertEquals($ClassMethod(tP, "Contents", "probe-e.key").%Get("keys").%Size(), 1, "and the existing file is unchanged")
@@ -177,6 +184,7 @@ Method TestAnAdministratorIsAddedAndRemovedOnBothCallers()
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(tP, "Mint", ..#ADDADMINTOOL, "probe-d.key", {"OldAdminName": ($Parameter(tP, "ADMIN")), "NewAdminName": "OcuProbe187Admin3"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's add is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals($Select($IsObject(tProposal): ..Fields(tProposal), 1: ""), "OldAdminName,NewAdminName,OldAdminPassword,NewAdminPassword", "its card shows the names and asks for both passwords")
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"OldAdminPassword": ($Parameter(tP, "PASSWORD")), "NewAdminPassword": "OcuProbe187-Pass3"}, .tResult), "200 ", "and its confirm writes")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "Security.Encryption.AdminInFile/POST", "one POST")
     Do $ClassMethod(..#SEAM, "Clear")
@@ -302,6 +310,7 @@ Method TestAKeyIsAddedAndRemovedOnBothCallers()
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(tP, "Mint", ..#ADDKEYTOOL, "probe-k.key", {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 192, "Description": "OCUPROBE187 AGENT"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's add is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals($Select($IsObject(tProposal): ..Fields(tProposal), 1: ""), "AdminName,KeyLen,Description,AdminPassword", "its card shows the arguments and asks for the password")
     Do $$$AssertEquals(..Consequence(tProposal), "ENCRYPTION.KEYFILE.NEWKEY", "with the new-key consequence")
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult), "200 ", "and its confirm writes")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "Security.Encryption.KeyInFile/POST", "one POST")
@@ -339,18 +348,20 @@ Method TestAKeyRemovedSinceTheMintClosesTheProposal()
 
 /// <p>A4, AD-10: removing a key the instance depends on is refused <code>PROHIBITED.OCUPILOTKEY</code> on the
 /// screen and at the confirm, with nothing sent, for each kind the seam can arm: OcuPilot's own database
-/// encrypted with it, IRISSYS (one of the seven protected databases), the journal's key, and a database
-/// read that fails.</p>
+/// encrypted with it, IRISSYS (one of the seven protected databases), the install namespace's globals
+/// database, OcuPilot's own database encrypted with a key id that cannot be read, the journal's key, and
+/// each of the four reads that fails.</p>
 /// <p>Mutation (Rule 19): drop the <code>KeyFile</code> arm from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- every leg sends a DELETE and goes red;
-/// drop <method>OcuPilot.Kernel.Proposal.Prohibited.DependsOnKey</method>'s journal comparison, or answer 0
-/// on its failed database read -- that mode's legs go red.</p>
+/// drop <method>OcuPilot.Kernel.Proposal.Prohibited.DependsOnKey</method>'s journal comparison, compare a
+/// row's key id alone in place of <code>RowNeedsKey</code>, or answer 0 on one of its failed reads -- that
+/// mode's legs go red.</p>
 Method TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller()
 {
     Set tP = ..#PROBE
     Set ^||OcuPilotEncryptionProhibited = "OcuPilot.Test.EncryptionProhibited"
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.EncryptionProhibited")
-    For tMode = "protected", "system", "journal", "readfails" {
+    For tMode = "protected", "system", "namespace", "unreadable", "journal", "readfails", "namesfail", "dirsfail", "settingsfail" {
         Set tFile = "probe-o-" _ tMode _ ".key"
         Do $ClassMethod(..#SEAM, "Clear")
         Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", tFile, , , 256, "OCUPROBE187 O", .tKey), tMode _ ": a key file")
@@ -363,6 +374,46 @@ Method TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller()
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", tMode _ ": with nothing sent")
         Do $$$AssertEquals($ClassMethod(tP, "Contents", tFile).%Get("keys").%Size(), 1, tMode _ ": and the key stays in the file")
     }
+}
+
+/// <p>A4, AD-10: a key that encrypts only a database that is none of OcuPilot's or the instance's own is
+/// removed on the screen and at the confirm; the arm refuses only what the instance depends on.</p>
+/// <p>Mutation (Rule 19): drop the own-database test from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.DependsOnKey</method> -- both removals are refused and this
+/// goes red.</p>
+Method TestAKeyAnotherDatabaseUsesIsRemoved()
+{
+    Set tP = ..#PROBE
+    Set ^||OcuPilotEncryptionProhibited = "OcuPilot.Test.EncryptionProhibited"
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.EncryptionProhibited")
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "probe-u.key", , , 256, "OCUPROBE187 U", .tFirst), "a key file")
+    Set tId = $ClassMethod(tP, "KeyFileId", "probe-u.key")
+    ; Two more keys, one for each caller to remove, so the file never reads as holding none (the
+    ; vendor's list then fails and logs).
+    For tDescription = "OCUPROBE187 U2", "OCUPROBE187 U3" {
+        Do $ClassMethod(tP, "Run", "Security.Encryption.KeyInFile", "POST", {"keyfile": (tId), "AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": "128", "Description": (tDescription)}, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, "OcuPilot.Port.EncryptionPort")
+    }
+    Kill tAdded
+    Set tIterator = $ClassMethod(tP, "Contents", "probe-u.key").%Get("keys").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.%Get("Description") '= "OCUPROBE187 U" Set tAdded($Select(tRow.%Get("Description") = "OCUPROBE187 U2": "screen", 1: "confirm")) = tRow.%Get("Id")
+    }
+    Do $$$AssertTrue(($Get(tAdded("screen")) '= "") && ($Get(tAdded("confirm")) '= ""), "with two more keys")
+    For tLeg = "screen", "confirm" {
+        Set tKey = $Get(tAdded(tLeg))
+        Do $ClassMethod(..#SEAM, "Clear")
+        Do $ClassMethod(..#SEAM, "Arm", "other", tKey)
+        If tLeg = "screen" {
+            Set tSC = $ClassMethod(..#ACTION, "Act", ..#KEYS, {"action": "removekey", "id": (tId), "values": {"KeyId": (tKey)}}, .tAnswer, .tStatus)
+            Set tOutcome = tStatus
+        } Else {
+            Set tSC = $ClassMethod(tP, "Mint", ..#REMOVEKEYTOOL, "probe-u.key", {"KeyId": (tKey)}, .tProposal, .tHttp, .tProblem)
+            Set tOutcome = $ClassMethod(tP, "Confirm", tProposal, "", .tResult)
+        }
+        Do $$$AssertNotEquals($ClassMethod(..#SEAM, "Armed"), "", tLeg _ ": the seam read another database as encrypted with the key")
+        Do $$$AssertEquals($ZStrip(tOutcome, ">W") _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 Security.Encryption.KeyInFile/DELETE", tLeg _ ": the removal is sent")
+    }
+    Do $$$AssertEquals($ClassMethod(tP, "Contents", "probe-u.key").%Get("keys").%Size(), 1, "and both keys left the file, its first kept")
 }
 
 /// <p>AD-35: writes carrying a marker in each password leave no trace of it in
@@ -397,9 +448,10 @@ Method TestPasswordsReachNoLogLedgerProposalOrAnswer()
     Do $$$AssertTrue(tStored '[ tMarker, "and neither carries the marker")
 }
 
-/// <p>AD-59: the script of a minted create, administrator add, key add and key removal each renders one
-/// <code>rest</code> step to the vendor's route, with the resolved key file and each password as its
-/// placeholder, and no password.</p>
+/// <p>AD-59: the script of a minted create, administrator add and removal, key add and key removal each
+/// renders one <code>rest</code> step to the vendor's route, with the resolved key file and each password
+/// as its placeholder, and no password; the removal names its administrator under the vendor's
+/// <code>admin</code> query key.</p>
 /// <p>Mutation (Rule 19): drop <code>AdminPassword</code> from
 /// <method>OcuPilot.Port.EncryptionPort.Snippet</method>'s <code>File</code> <code>POST</code> body -- the
 /// create's leg goes red.</p>
@@ -407,9 +459,10 @@ Method TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders()
 {
     Set tP = ..#PROBE
     Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "probe-x.key", , , 256, "OCUPROBE187 X", .tKey), "a key file")
+    Do $$$AssertStatusOK(..AddAdminDirect("probe-x.key", "OcuProbe187Gone"), "with a second administrator")
     Set tEncoded = $ZConvert($ClassMethod(tP, "FilePath", "probe-x.key"), "O", "URL")
     ; Each case's arguments travel as JSON text: a $List does not keep an object.
-    For tCase = $ListBuild(..#CREATETOOL, "probe-xn.key", {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 256, "Description": "OCUPROBE187 XN"}.%ToJSON(), "/security/encryption/file", $ClassMethod(tP, "FilePath", "probe-xn.key"), "<AdminPassword>"), $ListBuild(..#ADDADMINTOOL, "probe-x.key", {"OldAdminName": ($Parameter(tP, "ADMIN")), "NewAdminName": "OcuProbe187Admin6"}.%ToJSON(), "/security/encryption/file/admin", tEncoded, "<OldAdminPassword>,<NewAdminPassword>"), $ListBuild(..#ADDKEYTOOL, "probe-x.key", {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 128, "Description": "OCUPROBE187 XK"}.%ToJSON(), "/security/encryption/file/key", tEncoded, "<AdminPassword>"), $ListBuild(..#REMOVEKEYTOOL, "probe-x.key", {"KeyId": (tKey)}.%ToJSON(), "/security/encryption/file/key", tEncoded, "") {
+    For tCase = $ListBuild(..#CREATETOOL, "probe-xn.key", {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 256, "Description": "OCUPROBE187 XN"}.%ToJSON(), "/security/encryption/file", $ClassMethod(tP, "FilePath", "probe-xn.key"), "<AdminPassword>"), $ListBuild(..#ADDADMINTOOL, "probe-x.key", {"OldAdminName": ($Parameter(tP, "ADMIN")), "NewAdminName": "OcuProbe187Admin6"}.%ToJSON(), "/security/encryption/file/admin", tEncoded, "<OldAdminPassword>,<NewAdminPassword>"), $ListBuild(..#ADDKEYTOOL, "probe-x.key", {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 128, "Description": "OCUPROBE187 XK"}.%ToJSON(), "/security/encryption/file/key", tEncoded, "<AdminPassword>"), $ListBuild(..#REMOVEKEYTOOL, "probe-x.key", {"KeyId": (tKey)}.%ToJSON(), "/security/encryption/file/key", tEncoded, ""), $ListBuild(..#REMOVEADMINTOOL, "probe-x.key", {"Admin": "OcuProbe187Gone"}.%ToJSON(), "/security/encryption/file/admin?admin=OcuProbe187Gone&", tEncoded, "") {
         Set tTool = $Piece($List(tCase, 1), ".", $Length($List(tCase, 1), "."))
         Set tSC = $ClassMethod(tP, "Mint", $List(tCase, 1), $List(tCase, 2), ##class(%DynamicObject).%FromJSON($List(tCase, 3)), .tProposal, .tHttp, .tProblem)
         Do $$$AssertStatusOK(tSC, tTool _ ": minted (" _ tProblem _ ")")

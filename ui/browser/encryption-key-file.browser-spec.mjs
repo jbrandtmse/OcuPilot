@@ -55,6 +55,7 @@ const PROBE = 'OcuPilot.Test.EncryptionProbe';
 const PROBE_DIRECTORY = serverParameter('Test/EncryptionProbe.cls', 'DIRECTORYNAME');
 const PROBE_ADMIN = serverParameter('Test/EncryptionProbe.cls', 'ADMIN');
 const PROBE_PASSWORD = serverParameter('Test/EncryptionProbe.cls', 'PASSWORD');
+const EXISTS = serverParameter('Api/Error.cls', 'REASONPATHEXISTS');
 const TAKEN = serverParameter('Screen/Tool/EncryptionKeyFileAddAdmin.cls', 'REASONADMINTAKEN');
 
 /** A password typed into the browser, which no DOM node may keep. */
@@ -297,6 +298,53 @@ test('A1: the create form writes a key file, states the new key and its conseque
     await assertStructure(page, `${ROUTE}/create`);
   } finally {
     await context.close();
+  }
+});
+
+// (QA) A2, A3. Mutation (Rule 19): make the form's password type "text" -> the masked-field assertion
+// goes red; let the form's Save skip its confirmation check -> the mismatch leg goes red.
+test('(QA) A2, A3: the form refuses an existing name and a mismatched confirmation on their fields with nothing written, every password field is masked, and the last administrator cannot be removed', async () => {
+  const { context, page } = await signedInAt(browser, config, FORM_URL, VIEWPORTS.wide);
+  try {
+    const seededBefore = JSON.stringify(contents(SEEDED));
+    await chooseFile(page, 'ocu-key-file-form-location', SEEDED);
+    await fill(page, 'ocu-key-file-form-AdminName', PROBE_ADMIN);
+    await fill(page, 'ocu-key-file-form-AdminPassword', MARKER);
+    await fill(page, 'ocu-key-file-form-Confirm', `${MARKER}x`);
+    const masked = await page.evaluate(() => ['AdminPassword', 'Confirm'].map((name) => document.querySelector(`#ocu-key-file-form-${name}`).type));
+    assert.deepEqual(masked, ['password', 'password'], 'both form password fields are masked');
+    await page.click('[data-key-file-form="save"]');
+    await page.waitForSelector('[data-key-file-form="mismatch"]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('[data-key-file-form="saved"]'), null, 'a mismatch is not saved');
+
+    await fill(page, 'ocu-key-file-form-Confirm', MARKER);
+    await page.click('[data-key-file-form="save"]');
+    await page.waitForFunction((sentence) => document.querySelector('.ocu-form-page')?.innerText.includes(sentence) === true, { timeout: config.navigationTimeoutMs }, EXISTS);
+    assert.equal(await page.$('[data-key-file-form="saved"]'), null, 'an existing name is refused on its field with its sentence, not saved');
+    assert.equal(JSON.stringify(contents(SEEDED)), seededBefore, 'and the existing key file is unchanged');
+    assert.ok(!(await page.content()).includes(`${MARKER}x`), 'the mismatched confirmation is not echoed into the DOM');
+  } finally {
+    await context.close();
+  }
+  const opened = await signedInAt(browser, config, URL_AT, VIEWPORTS.wide);
+  try {
+    const screen = opened.page;
+    await openKeyFile(screen, SEEDED);
+    const lastAdmin = await screen.$eval('[data-key-file="remove-admin"]', (button) => button.getAttribute('aria-disabled'));
+    assert.equal(lastAdmin, 'true', 'Remove is aria-disabled while one administrator is listed');
+    await screen.click('[data-key-file="add-admin"]');
+    await screen.waitForSelector('#ocu-key-file-OldAdminPassword', { visible: true, timeout: config.navigationTimeoutMs });
+    const dialogTypes = await screen.evaluate(() => ['OldAdminPassword', 'NewAdminPassword', 'Confirm'].map((name) => document.querySelector(`#ocu-key-file-${name}`).type));
+    assert.deepEqual(dialogTypes, ['password', 'password', 'password'], 'the Add administrator dialog masks its three password fields');
+    await screen.click('.ocu-dialog-actions .ocu-button-secondary');
+    await screen.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await screen.click('[data-key-file="add-key"]');
+    await screen.waitForSelector('#ocu-key-file-AdminPassword', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await screen.$eval('#ocu-key-file-AdminPassword', (input) => input.type), 'password', 'the Add key dialog masks its password field');
+    await screen.click('.ocu-dialog-actions .ocu-button-secondary');
+    await screen.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+  } finally {
+    await opened.context.close();
   }
 });
 

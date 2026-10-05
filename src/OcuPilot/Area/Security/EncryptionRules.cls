@@ -77,8 +77,9 @@ ClassMethod Value(pValues As %DynamicObject, pField As %String) As %String
     Quit pValues.%Get(pField) _ ""
 }
 
-/// <p>Whether <var>pValue</var> holds a character above <code>$Char(255)</code>, which the vendor
-/// refuses in a name or a password (#1211).</p>
+/// <p>Whether <var>pValue</var> holds a character above <code>$Char(255)</code>, which the vendor's
+/// message #1211 says it refuses in a name or a password (inference: read in the message dictionary, not
+/// measured).</p>
 ClassMethod Wide(pValue As %String) As %Boolean
 {
     Set tWide = 0
@@ -96,7 +97,9 @@ ClassMethod Fault(ByRef pViolations, Output pHttpStatus As %Integer, Output pFau
     Set tRows = []
     For tI = 1:1:+$Get(pViolations) {
         Set tCode = $List(pViolations(tI), 2)
-        Do tRows.%Push({"field": ($List(pViolations(tI), 1)), "code": (tCode), "reason": (##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode))})
+        Set tReason = ##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode)
+        If tReason = "" Set tReason = ##class(OcuPilot.Api.Error).ReasonForPath(tCode)
+        Do tRows.%Push({"field": ($List(pViolations(tI), 1)), "code": (tCode), "reason": (tReason)})
     }
     Set tCode = $Select(+$Get(pViolations) = 1: $List(pViolations(1), 2), 1: ##class(OcuPilot.Api.EncryptionError).#KEYFILEVALIDATION)
     Set pHttpStatus = 422
@@ -112,7 +115,9 @@ ClassMethod RenderViolations(ByRef pViolations) As %Status
     Set tRows = []
     For tI = 1:1:+$Get(pViolations) {
         Set tCode = $List(pViolations(tI), 2)
-        Do tRows.%Push({"field": ($List(pViolations(tI), 1)), "code": (tCode), "reason": (##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode))})
+        Set tReason = ##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode)
+        If tReason = "" Set tReason = ##class(OcuPilot.Api.Error).ReasonForPath(tCode)
+        Do tRows.%Push({"field": ($List(pViolations(tI), 1)), "code": (tCode), "reason": (tReason)})
     }
     Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.EncryptionError).#REASONKEYFILEVALIDATION, ##class(OcuPilot.Api.EncryptionError).#KEYFILEVALIDATION, {"violations": (tRows)})
 }

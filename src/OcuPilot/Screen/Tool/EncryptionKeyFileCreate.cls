@@ -52,7 +52,8 @@ Parameter COMPOSEDSECRETS = "AdminPassword";
 Parameter CONSEQUENCE = "ENCRYPTION.KEYFILE.NEWKEY";
 
 /// <p>The kernel's composition, with one <code>Location</code> row first naming the key file the
-/// arguments place, so the card says where the file goes.</p>
+/// arguments place, the root normalized with its trailing separator as the write resolves it, so the card
+/// says where the file goes.</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set tSC = ##super(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
@@ -61,7 +62,9 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Set tLocation = {}
     Do tLocation.%Set("field", "Location", "string")
     Do tLocation.%Set("before", "", "string")
-    Do tLocation.%Set("after", ..Argument(pArgs, ..#ROOTARGUMENT) _ ..Argument(pArgs, ..IdArgument()), "string")
+    Set tRoot = ..Argument(pArgs, ..#ROOTARGUMENT)
+    If tRoot '= "" Set tRoot = ##class(%File).NormalizeDirectory(tRoot)
+    Do tLocation.%Set("after", tRoot _ ..Argument(pArgs, ..IdArgument()), "string")
     Do tRows.%Push(tLocation)
     Set tIterator = pDiff.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {

@@ -97,6 +97,23 @@ Method TestTheErrorCodesAnswerTheirSentences()
     Do $$$AssertEquals($ClassMethod(tRules, "FieldCode", "AdminName", "OcuProbe187" _ $Char(255)), "", "while $Char(255) itself is accepted")
 }
 
+/// <p>The create's card names the key file where the write puts it: the allowed directory with its
+/// separator, then the relative name, whether or not the directory is listed with a trailing
+/// separator.</p>
+/// <p>Mutation (Rule 19): join root and path with no separator in
+/// <method>OcuPilot.Screen.Tool.EncryptionKeyFileCreate.ComposeCreate</method> -- the first leg goes
+/// red.</p>
+Method TestTheCreateCardNamesTheFileItWrites()
+{
+    Set tClass = "OcuPilot.Screen.Tool.EncryptionKeyFileCreate"
+    For tRoot = "/ocuprobe187/keys", "/ocuprobe187/keys/" {
+        Kill tPayload, tDiff, tUnchanged, tProblem
+        Set tSC = $ClassMethod(tClass, "ComposeCreate", {"root": (tRoot), "path": "sub/probe.key", "AdminName": "OcuProbe187Admin", "KeyLen": 256}, "path", $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
+        Do $$$AssertStatusOK(tSC, tRoot _ ": composed (" _ $Get(tProblem) _ ")")
+        Do $$$AssertEquals($Select($IsObject($Get(tDiff)) && (tDiff.%Size() > 0): tDiff.%Get(0).%Get("field") _ " " _ tDiff.%Get(0).%Get("after"), 1: ""), "Location /ocuprobe187/keys/sub/probe.key", tRoot _ ": the card's first row names the file")
+    }
+}
+
 /// <p>AD-22, Decision 3: the five keys ship disabled in the baseline.</p>
 /// <p>Mutation (Rule 19): set <code>security.encryptionkeyfile.removekey</code> to <code>true</code> in
 /// <class>OcuPilot.Kernel.Governance.Baseline</class> -- this goes red.</p>

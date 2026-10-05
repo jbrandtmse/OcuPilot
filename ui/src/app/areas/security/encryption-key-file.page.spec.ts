@@ -99,6 +99,12 @@ async function type(mounted: Awaited<ReturnType<typeof mount>>, field: string, v
   await settle(mounted.fixture);
 }
 
+/** The text of the element a control's `aria-describedby` names, or null when the control names none. */
+function describedReason(host: HTMLElement, field: string): string | null {
+  const id = host.querySelector(`#${keyFileControlId(field)}`)?.getAttribute('aria-describedby') ?? null;
+  return id === null ? null : (host.querySelector(`#${id}.ocu-form-error`)?.textContent?.trim() ?? '');
+}
+
 function actions(sent: readonly Sent[]): readonly unknown[] {
   return sent.filter((entry) => entry.path.endsWith('/action')).map((entry) => JSON.parse(entry.body));
 }
@@ -167,9 +173,13 @@ describe('Encryption key files', () => {
     await type(mounted, 'NewAdminName', 'OcuProbeNew');
     await type(mounted, 'NewAdminPassword', 'new-pass');
     await type(mounted, 'Confirm', 'other-pass');
+    expect(describedReason(mounted.host, 'Confirm')).toBeNull();
     (mounted.host.querySelector('[data-key-file="submit-admin"]') as HTMLButtonElement).click();
     await settle(mounted.fixture);
     expect(mounted.host.querySelector('[data-key-file="mismatch"]')?.textContent?.trim()).toBe(STRINGS.ldapPasswordMismatch);
+    // Mutation (Rule 19): drop the Confirm control's `aria-describedby` binding -> the refusal is no longer tied to it and this goes red.
+    expect(describedReason(mounted.host, 'Confirm')).toBe(STRINGS.ldapPasswordMismatch);
+    expect(describedReason(mounted.host, 'NewAdminPassword')).toBeNull();
     expect(actions(mounted.sent)).toEqual([]);
   });
 
@@ -189,6 +199,24 @@ describe('Encryption key files', () => {
     expect(mounted.host.querySelector('[role="dialog"]')).not.toBeNull();
     expect((mounted.host.querySelector(`#${keyFileControlId('OldAdminPassword')}`) as HTMLInputElement).getAttribute('aria-invalid')).toBe('true');
     expect(mounted.host.textContent).toContain(STRINGS.encryptionKeyFileCredentials);
+  });
+
+  it("ties the instance's refusal on the Add key password to that control while it is shown", async () => {
+    const violation = { field: 'AdminPassword', code: 'ENCRYPTION.KEYFILE.CREDENTIALS', reason: STRINGS.encryptionKeyFileCredentials };
+    const mounted = await mount({
+      action: () => ({ kind: 'error', status: 422, code: 'ENCRYPTION.KEYFILE.VALIDATION', reason: 'refused', detail: { violations: [violation] } }),
+    });
+    (mounted.host.querySelector('[data-key-file="add-key"]') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    await type(mounted, 'AdminPassword', 'wrong');
+    expect(describedReason(mounted.host, 'AdminPassword')).toBeNull();
+    (mounted.host.querySelector('[data-key-file="submit-key"]') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    // Mutation (Rule 19): drop the AdminPassword reason paragraph's `[id]` binding -> the control names an element that is not there and this goes red.
+    expect(describedReason(mounted.host, 'AdminPassword')).toBe(STRINGS.encryptionKeyFileCredentials);
+    expect(describedReason(mounted.host, 'AdminName')).toBeNull();
+    await type(mounted, 'AdminPassword', 'again');
+    expect(describedReason(mounted.host, 'AdminPassword')).toBeNull();
   });
 
   it('removes a key after its identifier is typed, sending the identifier beside the key file', async () => {

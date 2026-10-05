@@ -178,6 +178,20 @@ ClassMethod StateRefusal(pFresh As %DynamicObject, pArgs As %DynamicObject) As %
     Quit ""
 }
 
+/// <p>The card's secret rows (AD-6, AD-56 (i)): one <code>{field, before: "", after: ""}</code> row per
+/// <parameter>SECRETBODY</parameter> name, so the card masks each and asks for it at the confirm; neither
+/// side carries a value. A tool that sends no secret answers none.</p>
+ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
+{
+    Set pRows = []
+    Set pProblem = ""
+    Set tNames = ..SecretBodyNames()
+    For tI = 1:1:$ListLength(tNames) {
+        Do pRows.%Push({"field": ($List(tNames, tI)), "before": "", "after": ""})
+    }
+    Quit $$$OK
+}
+
 /// <p>The stored payload's arguments under the port's own query keys, so the confirm's write and the
 /// screen's carry what the user reviewed (AD-52).</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)

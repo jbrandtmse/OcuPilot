@@ -282,6 +282,41 @@ baseline_revision: '71c38bb69f86ec6148484f3ad172233119a92b3c'
 - **A5:** Given a caller lacking a declared pair, or a raw `file` sent to `AdminPort`, when either caller reads or writes, then it is refused (403 naming the pair, or `PATH.NAME`) with zero vendor calls.
 - **A6:** Given the rosters and DW-1774, when the story lands, then Encryption key files is Security's eighth entry with three prompts on each of its three screens, the five keys are in the baseline disabled, every roster includes the screens and tools, every browser side-bar assertion derives its labels from the mirror and `side-bar-pins.test.mjs` refuses a count pin, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1019 lines.
 
+### Review Findings
+
+Code review 2026-10-05 (`full-opus`, four layers; 60 rows, 43 entries: 2 high, 5 medium, 24 low, 12 rejected). Points (a) to (h) hold after the patches below. On (f), no test reaches `File` `ACTIVATE`, `Key` `DEACTIVATE` or `Settings` `PUT` on the vendor: the raw-file legs build `EndpointFixture` only, and `EncryptionProbe.Run`'s `Call` path is Task 0 tooling no test uses (DW-2076).
+
+- [x] [Review][Patch] The agent's Add key and Add administrator cards asked for no password, so their confirm could not send one: `StateDiff` now emits a masked row per `SECRETBODY` name [Screen/Tool/EncryptionKeyFileWrite.cls]
+- [x] [Review][Patch] `EncryptionPort.Keys` read every key-list 500 as a file holding no key (AD-2): now only the vendor's #5022, named through `PROPERTYFAULTS` [Port/EncryptionPort.cls, Port/AdminPort.cls]
+- [x] [Review][Patch] The ruled unreadable-id arm was pinned on `RowNeedsKey` alone, not on the caller path: seam mode `unreadable` [Test/EncryptionSeamPort.cls, Test/EncryptionKeyFileWrite.cls]
+- [x] [Review][Patch] Three of the arm's four failed reads had no test: seam modes `namesfail`, `dirsfail`, `settingsfail` [same]
+- [x] [Review][Patch] The own-database scoping and the install namespace's databases were unpinned: modes `other` (removal sent) and `namespace` [same]
+- [x] [Review][Patch] The create card's Location joined root and path with no separator [Screen/Tool/EncryptionKeyFileCreate.cls]
+- [x] [Review][Patch] The form's Confirm clearing was unpinned (an input's value never shows in `innerHTML`) [encryption-key-file-form.page.spec.ts]
+- [x] [Review][Patch] `side-bar-pins.test.mjs` missed `deepStrictEqual`, `.map` projections and reversed count pins, and its floor did not cover every roster spec [ui/tools/side-bar-pins.test.mjs]
+- [x] [Review][Patch] No test rendered the administrator removal's script [Test/EncryptionKeyFileWrite.cls]
+- [x] [Review][Patch] `EncryptionRules.Wide`'s #1211 comes from the message dictionary, now labeled (inference) [Area/Security/EncryptionRules.cls]
+- [x] [Review][Defer] The spine lags 18.7's decisions (AD-2: AdminInFile's unlogged 409s and the key list's #5022; AD-8: amendment 8): open DW-2064, the runner's Rule 20 write
+- [x] [Review][Defer] Removing the startup key file's administrator is not refused: decision-pending DW-2065 (Story 18.23)
+- [x] [Review][Defer] The journal arm reads the configured key only, not older files needed for recovery (`IsEncKeyInUse`; maybe-false): routed DW-2066 (Story 18.22)
+- [x] [Review][Defer] Dialog refusals lack `aria-describedby`; the patch overran the 2884kB budget, a contended line: wontfix-accepted DW-2067
+- [x] [Review][Defer] Each wontfix-accepted: the gate counts vendor calls only (DW-2068), #5001 mapped for every AdminInFile type (DW-2069), dialog name refusals unpublished (DW-2070), the agent card asks a new password once (DW-2071), an opened file with no key draws no empty line (DW-2072), the form after an accepted create (DW-2073), a comma in an administrator name (DW-2074)
+- [x] [Review][Defer] Each wontfix-theoretical: an own database absent from the list (DW-2075), `PATHRESOLVED` per class (DW-2076), the Save's dropped reason (DW-2077), a throw after the vendor wrote (DW-2078), the 100-row cap (DW-2079), an empty key id line (DW-2080), the write branches' own resolve (DW-2081), `EncryptionError.FieldOf` (DW-2082), a create taken since the mint (DW-2083)
+- [x] [Review][Defer] The logged no-key and credentials refusals raise the monitor: occurrence on DW-2007
+
+Rejected:
+
+- false: key ids may not be hex: the vendor's ids are GUIDs (Task 0 evidence), and the ruling fixes the normalization.
+- false: no green run for the DW-2059 patch: runs 43 to 47 are recorded.
+- false: an installing or transport answer shows nothing: `ApiService` reports both to the app-wide connectivity banner.
+- false: `RowNeedsKey`'s non-object branch is unreached: harmless, and the pin keeps the documented answer.
+- by-design: the administrator removal's "cannot be undone" (the spec's published copy); `DATAELEMENTLIST` (Task 0 step 1); an empty journal key is no journal key (the DW-2059 ruling).
+- low: the raw-file `File/POST` iteration's `constructed` check cannot fail through `PortFixture`; the same iteration's `PATH.NAME` assertion is the pin.
+- low: the keys table's first column kind `name`: the page draws its own table, and its labels follow EXPERIENCE.md.
+- duplicate: the Codes doc comment's "twenty-six": DW-2060.
+- not edited in review: the frontmatter's "exact strings"; the Spec Change Log records the ruling.
+- already triaged: `Test/Prohibited`'s length-0 assertion.
+
 ## Spec Change Log
 
 - 2026-10-04, spec gate (runner, per the orchestrator merge gate): split approved (18.7 key files; 18.22 key activation; 18.23 startup settings; 18.24 wallet secrets, DW-1555 re-owned); Decisions 1 to 7 confirmed, Decision 3's keys built `false` pending the owner's AD-22 answer, Decision 6's grammar left to the burn-down; amendments 1 to 7 written to the spine and epics.md; the outlines of 18.22 to 18.24 removed (kept at `0a3dfe43`); status `blocked` to `ready-for-dev`.
@@ -289,6 +324,8 @@ baseline_revision: '71c38bb69f86ec6148484f3ad172233119a92b3c'
 - 2026-10-04, implement Task 0 (for the runner, Rule 20): amendment 8 reads "**Story 18.7's Encryption key files declare `%Admin_FileSystemAccess:USE` as their own pair** beside Security's set, because their read resolves a key file through `PathPort`; the key-file writes declare no pair beyond the screen's three, and `removekey` also declares `%Admin_Manage:USE` for its self-protection read; each is refused by name before any port call (measured on `ocupilot-b-ci`, 2026-10-04) [AMENDED 2026-10-04, Story 18.7 Task 0, Rule 20]." Amendment 9 is not needed: the vendor records `%System/%Security/DBEncChange` for every key-file write with auditing on.
 
 - 2026-10-04, implement (for the runner): AD-10's key-file arm reads its databases' and the journal's keys through the tool's port and refuses on a read that fails; a key removal whose reader lacks `%Admin_Manage:USE` therefore never reaches the vendor, which is why `removekey` declares that pair (amendment 8 already says so). No other AD sentence changed.
+
+- 2026-10-04, orchestrator ruling on DW-2059 (before code review): `Prohibited.DependsOnKey` compares key ids normalized (uppercase, hex digits only) and refuses an encrypted own database whose key id cannot be read; pinned by `EncryptionKeyMatch` and by `EncryptionKeyFileWrite`'s dependency test, whose seam now names the key in another form; DW-2059 stays open for Story 18.22's Task 0 to confirm or narrow it against the real formats.
 
 ## Review Triage Log
 
@@ -457,6 +494,20 @@ Recorded (each reverted byte-identical: the throwaway's copy re-synced from the 
 - Matrix Test Audit (implement stage): the Add key dialog now states `ENCRYPTION.KEYFILE.NEWKEY` (matrix row Add a key), a key removed since the mint is pinned target-changed (row Remove a key), and the browser spec walks the Add administrator dialog too (A6)
 - mutation (review patches, one combined run each class, reverted and reloaded, green at runs 6422-6425): `DependsOnKey`'s journal comparison dropped and its failed database read answering 0 → the `journal` and `readfails` legs of `TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red (run 6420); `NAMEMAXLENGTH` 60 → the 51-character Save leg red (run 6420); `Snippet`'s `File` `POST` body without `AdminPassword` → the create's placeholder leg red (run 6420); `AddAdmin`'s listed-name check removed → both unlisted-administrator legs red (run 6420); `EncryptionPort.Invoke`'s `NamesKeyFile` refusal removed → every `EncryptionEndpointPort` raw-file leg red with no vendor endpoint built (run 6419); `EncryptionKeyFileRemoveKey.EXTRAPAIRS` plus `%Admin_Operate:USE` → the remover's confirm and screen legs red (run 6421)
 - mutation: a literal side-bar list restored in `security.browser-spec.mjs`'s gated leg → `side-bar-pins.test.mjs` literal-list leg red (`node --test`)
+- mutation (QA): `EncryptionKeyFileSave.Create` appends the typed `AdminPassword` to the key id it answers → `EncryptionKeyFileWrite.TestACreateWritesOneKeyFileOnBothCallers` and `TestPasswordsReachNoLogLedgerProposalOrAnswer` red (run 36); reverted, tree byte-identical
+- mutation (QA): `EncryptionRules.RenderViolations` without its `ReasonForPath` fallback (a refused existing name answered `reason: ""`, an empty line on the form) → `EncryptionKeyFileWrite.TestACreateIsRefusedOnItsFieldWithNothingSent` red (run 37) and `encryption-key-file.browser-spec.mjs` (QA) test red; the fallback is the QA fix, green at run 38
+- mutation (QA): the create form's Confirm field `type="password"` → `"text"`, rebuilt and redeployed → `encryption-key-file.browser-spec.mjs` (QA) masked-field assertion red; restored byte-identical, rebuilt, redeployed, 4 of 4 green
+- (QA) `ui/browser/encryption-key-file.browser-spec.mjs`: new test for the form's field refusals (mismatch, existing name with its sentence, nothing written), masked password fields on the form and both dialogs, and the last administrator's Remove `aria-disabled`
+- mutation (DW-2059 ruling): `Prohibited.SameKeyId` back to an exact comparison → `EncryptionKeyMatch.TestTheSameKeyInAnotherFormIsRefused` red on all five legs (run 40); `RowNeedsKey`'s last line answering 0 → `TestAnEncryptedRowWhoseKeyIdCannotBeReadIsRefused` red on its six row legs (run 41); `DependsOnKey`'s row and journal comparisons back to exact, with `EncryptionSeamPort` naming the armed key lower-cased in braces → `EncryptionKeyFileWrite.TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red on its protected, system and journal legs (run 42); each reverted byte-identical and reloaded, green at runs 43 to 47
+- mutation (CR): `EncryptionKeyFileWrite.StateDiff` answering no row → `EncryptionKeyFileWrite.TestAKeyIsAddedAndRemovedOnBothCallers` and `TestAnAdministratorIsAddedAndRemovedOnBothCallers` red at the card's secret rows (run 52)
+- mutation (CR): `DependsOnKey` comparing a row's key id alone for `RowNeedsKey`, answering 0 on each failed read, and `OwnDatabaseNames` adding no install-namespace database → `TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller` red on its `unreadable`, `namesfail`, `dirsfail`, `settingsfail` and `namespace` legs, the other four green (run 52); the own-database test dropped → `TestAKeyAnotherDatabaseUsesIsRemoved` red on both callers (run 55)
+- mutation (CR): `Snippet` sending the removed administrator as `key` → `TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders` red on its administrator removal (run 52)
+- mutation (CR): `EncryptionPort.Keys` reading every 500 as no key → `EncryptionKeyFileRead.TestAKeyListThatFailsOtherwiseFailsTheRead` red on both legs (run 53)
+- mutation (CR): `ComposeCreate` joining root and path with no separator → `EncryptionDescriptor.TestTheCreateCardNamesTheFileItWrites` red (run 54)
+- mutation (CR): the form's `clearPasswords` keeping Confirm → `encryption-key-file-form.page.spec.ts` "saves ... clears the password" red (`ng test`)
+- mutation (CR): a mapped literal list, a `deepStrictEqual` literal and an unrecognised collector, each restored in turn → `side-bar-pins.test.mjs` red (`node --test`)
+- (CR) each reverted byte-identical and reloaded; green at runs 56 to 64 (`EncryptionKeyFileWrite`, `EncryptionKeyFileRead`, `EncryptionDescriptor`, `EncryptionWriteGate`, `Prohibited`, `ToolWrite`, `ToolRoundTrip`, `DraftRegistry`, `EncryptionKeyMatch`); `encryption-key-file.browser-spec.mjs` 4 of 4 on the rebuilt bundle; `test:tools` 1,814 of 1,814
+- mutation (DW-2067): the Add administrator Confirm control's `aria-describedby` binding dropped → `encryption-key-file.page.spec.ts` "refuses a new administrator password ..." red; the Add key AdminPassword reason paragraph's `[id]` dropped → "ties the instance's refusal on the Add key password ..." red (`ng test`); each restored byte-identical, 7 of 7 green
 
 ## Auto Run Result
 

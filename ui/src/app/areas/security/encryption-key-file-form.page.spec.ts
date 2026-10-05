@@ -125,6 +125,9 @@ describe('Encryption key file create form', () => {
     expect(saved).toContain(STRINGS.encryptionKeyFileNotActivated);
     expect(saved).toContain(STRINGS.encryptionKeyFileRecommendAdmin);
     expect((mounted.host.querySelector(`#${keyFileFormControlId('AdminPassword')}`) as HTMLInputElement).value).toBe('');
+    // An input's value is a property `innerHTML` never shows, so each password field is read itself.
+    // Mutation (Rule 19): drop `this.confirm.set('')` from `clearPasswords` -> this goes red.
+    expect((mounted.host.querySelector(`#${keyFileFormControlId('Confirm')}`) as HTMLInputElement).value).toBe('');
     expect(mounted.host.innerHTML).not.toContain(MARKER);
     expect(mounted.dirty.dirty()).toBe(false);
   });

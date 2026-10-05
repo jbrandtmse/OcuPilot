@@ -199,37 +199,37 @@ type OpenDialog = 'admin' | 'key' | null;
       <app-dialog [heading]="STRINGS.encryptionKeyFileAddAdminTitle" [closeLabel]="STRINGS.actionCancel" (closed)="closeDialog()">
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('OldAdminName')">{{ STRINGS.encryptionKeyFileExistingAdmin }}</label>
-          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('OldAdminName')" [value]="value('OldAdminName')" [attr.aria-invalid]="invalid('OldAdminName')" (input)="onValue('OldAdminName', $event)" />
+          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('OldAdminName')" [value]="value('OldAdminName')" [attr.aria-invalid]="invalid('OldAdminName')" [attr.aria-describedby]="describedBy('OldAdminName')" (input)="onValue('OldAdminName', $event)" />
           @if (oldAdminReason) {
-            <p class="ocu-form-error">{{ oldAdminReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('OldAdminName')">{{ oldAdminReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('OldAdminPassword')">{{ STRINGS.encryptionKeyFileExistingPassword }}</label>
-          <input class="ocu-field-input" type="password" autocomplete="off" [id]="controlId('OldAdminPassword')" [value]="value('OldAdminPassword')" [attr.aria-invalid]="invalid('OldAdminPassword')" (input)="onValue('OldAdminPassword', $event)" />
+          <input class="ocu-field-input" type="password" autocomplete="off" [id]="controlId('OldAdminPassword')" [value]="value('OldAdminPassword')" [attr.aria-invalid]="invalid('OldAdminPassword')" [attr.aria-describedby]="describedBy('OldAdminPassword')" (input)="onValue('OldAdminPassword', $event)" />
           @if (oldPasswordReason) {
-            <p class="ocu-form-error">{{ oldPasswordReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('OldAdminPassword')">{{ oldPasswordReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('NewAdminName')">{{ STRINGS.encryptionKeyFileNewAdmin }}</label>
-          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('NewAdminName')" [value]="value('NewAdminName')" [attr.aria-invalid]="invalid('NewAdminName')" (input)="onValue('NewAdminName', $event)" />
+          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('NewAdminName')" [value]="value('NewAdminName')" [attr.aria-invalid]="invalid('NewAdminName')" [attr.aria-describedby]="describedBy('NewAdminName')" (input)="onValue('NewAdminName', $event)" />
           @if (newAdminReason) {
-            <p class="ocu-form-error">{{ newAdminReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('NewAdminName')">{{ newAdminReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('NewAdminPassword')">{{ STRINGS.fieldPassword }}</label>
-          <input class="ocu-field-input" type="password" autocomplete="new-password" [id]="controlId('NewAdminPassword')" [value]="value('NewAdminPassword')" [attr.aria-invalid]="invalid('NewAdminPassword')" (input)="onValue('NewAdminPassword', $event)" />
+          <input class="ocu-field-input" type="password" autocomplete="new-password" [id]="controlId('NewAdminPassword')" [value]="value('NewAdminPassword')" [attr.aria-invalid]="invalid('NewAdminPassword')" [attr.aria-describedby]="describedBy('NewAdminPassword')" (input)="onValue('NewAdminPassword', $event)" />
           @if (newPasswordReason) {
-            <p class="ocu-form-error">{{ newPasswordReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('NewAdminPassword')">{{ newPasswordReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('Confirm')">{{ STRINGS.ldapFieldPasswordConfirm }}</label>
-          <input class="ocu-field-input" type="password" autocomplete="new-password" [id]="controlId('Confirm')" [value]="value('Confirm')" [attr.aria-invalid]="invalid('Confirm')" (input)="onValue('Confirm', $event)" />
+          <input class="ocu-field-input" type="password" autocomplete="new-password" [id]="controlId('Confirm')" [value]="value('Confirm')" [attr.aria-invalid]="invalid('Confirm')" [attr.aria-describedby]="describedBy('Confirm')" (input)="onValue('Confirm', $event)" />
           @if (confirmReason) {
-            <p class="ocu-form-error" data-key-file="mismatch">{{ confirmReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('Confirm')" data-key-file="mismatch">{{ confirmReason }}</p>
           }
         </div>
         @if (hasDialogReason) {
@@ -245,27 +245,27 @@ type OpenDialog = 'admin' | 'key' | null;
       <app-dialog [heading]="STRINGS.encryptionKeyFileAddKeyTitle" [closeLabel]="STRINGS.actionCancel" (closed)="closeDialog()">
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('AdminName')">{{ STRINGS.encryptionKeyFileAdminName }}</label>
-          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('AdminName')" [value]="value('AdminName')" [attr.aria-invalid]="invalid('AdminName')" (input)="onValue('AdminName', $event)" />
+          <input class="ocu-field-input" type="text" autocomplete="off" spellcheck="false" [id]="controlId('AdminName')" [value]="value('AdminName')" [attr.aria-invalid]="invalid('AdminName')" [attr.aria-describedby]="describedBy('AdminName')" (input)="onValue('AdminName', $event)" />
           @if (adminNameReason) {
-            <p class="ocu-form-error">{{ adminNameReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('AdminName')">{{ adminNameReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('AdminPassword')">{{ STRINGS.fieldPassword }}</label>
-          <input class="ocu-field-input" type="password" autocomplete="off" [id]="controlId('AdminPassword')" [value]="value('AdminPassword')" [attr.aria-invalid]="invalid('AdminPassword')" (input)="onValue('AdminPassword', $event)" />
+          <input class="ocu-field-input" type="password" autocomplete="off" [id]="controlId('AdminPassword')" [value]="value('AdminPassword')" [attr.aria-invalid]="invalid('AdminPassword')" [attr.aria-describedby]="describedBy('AdminPassword')" (input)="onValue('AdminPassword', $event)" />
           @if (adminPasswordReason) {
-            <p class="ocu-form-error">{{ adminPasswordReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('AdminPassword')">{{ adminPasswordReason }}</p>
           }
         </div>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="controlId('KeyLen')">{{ STRINGS.encryptionKeyFileCipherLevel }}</label>
-          <select class="ocu-field-input" [id]="controlId('KeyLen')" [attr.aria-invalid]="invalid('KeyLen')" (change)="onValue('KeyLen', $event)">
+          <select class="ocu-field-input" [id]="controlId('KeyLen')" [attr.aria-invalid]="invalid('KeyLen')" [attr.aria-describedby]="describedBy('KeyLen')" (change)="onValue('KeyLen', $event)">
             @for (option of keyLengths; track option.value) {
               <option [value]="option.value" [selected]="option.value === keyLength">{{ option.label }}</option>
             }
           </select>
           @if (keyLengthReason) {
-            <p class="ocu-form-error">{{ keyLengthReason }}</p>
+            <p class="ocu-form-error" [id]="reasonId('KeyLen')">{{ keyLengthReason }}</p>
           }
         </div>
         <div class="ocu-field">
@@ -483,6 +483,15 @@ export class EncryptionKeyFilePage {
 
   protected invalid(field: string): 'true' | null {
     return this.reasonFor(field) === '' ? null : 'true';
+  }
+
+  protected reasonId(field: string): string {
+    return `${keyFileControlId(field)}-reason`;
+  }
+
+  /** Names the field's reason paragraph while a reason is shown, so a screen reader announces it. */
+  protected describedBy(field: string): string | null {
+    return this.invalid(field) ? this.reasonId(field) : null;
   }
 
   // --- intents ---------------------------------------------------------------------------------

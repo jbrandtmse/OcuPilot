@@ -128,6 +128,27 @@ Method TestAKeyFileWithNoKeyReadsAsHoldingNone()
     Do $$$AssertEquals($Select($IsObject($Get(tAdmins)): tAdmins.%Get("rows").%Size(), 1: 0), 1, "and the administrator is listed")
 }
 
+/// <p>AD-2: a key list answered with a fault other than the vendor's no-key refusal fails the screen's
+/// read and the tools' fresh read alike; it never reads as a key file holding no key.</p>
+/// <p>Mutation (Rule 19): read every 500 on the key list as no key in
+/// <method>OcuPilot.Port.EncryptionPort.Keys</method> -- both legs answer 200 and this goes red.</p>
+Method TestAKeyListThatFailsOtherwiseFailsTheRead()
+{
+    Set tP = ..#PROBE
+    Set tSeam = "OcuPilot.Test.EncryptionSeamPort"
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "probe-f.key"), "a key file")
+    Do $ClassMethod(tSeam, "Clear")
+    Do $ClassMethod(tSeam, "Arm", "keysfail")
+    For tType = "LIST", "KEYFILE" {
+        Kill tQuery
+        Set tQuery("root") = $ClassMethod(tP, "Root")
+        Set tQuery("path") = $ClassMethod(tP, "RelativeName", "probe-f.key")
+        Set tSC = $ClassMethod(tSeam, "Invoke", "Security.Encryption.KeyInFile", tType, .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $$$ISERR(tSC), "500 1", tType _ ": the read fails rather than answering no key")
+    }
+    Do $ClassMethod(tSeam, "Clear")
+}
+
 /// <p>A5, AD-21: a raw <code>file</code> query parameter, any case, a <code>File</code> body member or a
 /// <code>DBEncStartKeyFile</code> sent to <class>OcuPilot.Port.AdminPort</class>, or to
 /// <class>OcuPilot.Port.EncryptionPort</class> itself, is refused 400 <code>PATH.NAME</code> before the

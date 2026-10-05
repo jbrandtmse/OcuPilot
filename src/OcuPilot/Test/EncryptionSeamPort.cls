@@ -3,11 +3,20 @@
 /// <code>^||OcuPilotEncryptionSeam</code> with its body's key names and never a value, and then sent to
 /// the vendor.</p>
 /// <p>Armed with a key id (<method>Arm</method>), a read through <method>Invoke</method> answers as if the
-/// instance depended on that key, without any database being encrypted: <code>protected</code> reads
-/// OcuPilot's own database as encrypted with it and <code>system</code> IRISSYS, each in the instance's
-/// own <code>Database.SysCRUD</code> <code>LIST</code> rows; <code>journal</code> answers it as
-/// <code>Security.Encryption.Settings</code>' <code>DBEncJournalKeyID</code>; and <code>readfails</code>
-/// fails the <code>Database.SysCRUD</code> <code>LIST</code> read.</p>
+/// instance depended on that key, without any database being encrypted, naming the key lower-cased and in
+/// braces rather than as the key file lists it: <code>protected</code> reads
+/// OcuPilot's own database as encrypted with it, <code>system</code> IRISSYS and <code>namespace</code>
+/// the install namespace's globals database, each in the instance's own <code>Database.SysCRUD</code>
+/// <code>LIST</code> rows; <code>unreadable</code> reads OcuPilot's own database as encrypted with no key
+/// id; <code>other</code> reads the first database that is none of OcuPilot's or the instance's own as
+/// encrypted with the key, recording its directory (<method>Armed</method>); <code>journal</code> answers
+/// the key as <code>Security.Encryption.Settings</code>' <code>DBEncJournalKeyID</code>; and
+/// <code>readfails</code>, <code>namesfail</code>, <code>dirsfail</code> and <code>settingsfail</code>
+/// fail the <code>Database.SysCRUD</code> <code>LIST</code>, <code>Namespace.Namespace</code>
+/// <code>GET</code>, <code>Database.ConfigCRUD</code> <code>LIST</code> and
+/// <code>Security.Encryption.Settings</code> <code>GET</code> read. Armed <code>keysfail</code>,
+/// <method>Call</method> answers a key file's key list with a 500 that is not the vendor's, without the
+/// vendor.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -31,6 +40,13 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
         }
     }
     Set ^||OcuPilotEncryptionSeam("keys", tPair) = tKeys
+    If ($Get(^||OcuPilotEncryptionSeam("mode")) = "keysfail") && (tPair = "Security.Encryption.KeyInFile/LIST") {
+        Set pResult = ""
+        Set pLocation = ""
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Quit $$$ERROR($$$GeneralError, "the key list fails, as the seam was armed")
+    }
     Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .pLocation)
 }
 
@@ -39,27 +55,97 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 {
     Set tMode = $Get(^||OcuPilotEncryptionSeam("mode"))
     Set tDatabases = (pEndpoint = "Database.SysCRUD") && (pType = "LIST")
-    If tDatabases && (tMode = "readfails") {
+    Set tFails = $Case(tMode, "readfails": "Database.SysCRUD/LIST", "namesfail": "Namespace.Namespace/GET", "dirsfail": "Database.ConfigCRUD/LIST", "settingsfail": "Security.Encryption.Settings/GET", : "")
+    If (tFails '= "") && (tFails = (pEndpoint _ "/" _ pType)) {
         Set pResult = ""
         Set pHttpStatus = 500
         Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
-        Quit $$$ERROR($$$GeneralError, "the database list fails, as the seam was armed")
+        Quit $$$ERROR($$$GeneralError, tFails _ " fails, as the seam was armed")
     }
     Set tSC = ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) || '$IsObject($Get(pResult)) Quit tSC
+    Set tKey = "{" _ $ZConvert($Get(^||OcuPilotEncryptionSeam("key")), "L") _ "}"
     If (tMode = "journal") && (pEndpoint = "Security.Encryption.Settings") && (pType = "GET") {
-        Do pResult.%Set("DBEncJournalKeyID", $Get(^||OcuPilotEncryptionSeam("key")), "string")
+        Do pResult.%Set("DBEncJournalKeyID", tKey, "string")
         Quit tSC
     }
-    If 'tDatabases || ((tMode '= "protected") && (tMode '= "system")) Quit tSC
-    Set tDirectory = ..DirectoryOf($Select(tMode = "system": "IRISSYS", 1: ##class(OcuPilot.Kernel.State.Base).#DATABASENAME))
+    If 'tDatabases || '$ListFind($ListBuild("protected", "system", "namespace", "unreadable", "other"), tMode) Quit tSC
+    Set tOwn = ..OwnDirectories()
+    Set tDirectory = $Case(tMode, "system": ..DirectoryOf("IRISSYS"), "namespace": ..DirectoryOf(..GlobalsOf($NAMESPACE)), "other": "", : ..DirectoryOf(##class(OcuPilot.Kernel.State.Base).#DATABASENAME))
     Set tIterator = pResult.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If '$IsObject(tRow) || '##class(OcuPilot.Port.DatabasePort).SameDirectory(tRow.%Get("Directory"), tDirectory) Continue
+        If '$IsObject(tRow) Continue
+        If tMode = "other" {
+            If ..Within(tOwn, tRow.%Get("Directory")) || ($Get(^||OcuPilotEncryptionSeam("armed")) '= "") Continue
+            Set ^||OcuPilotEncryptionSeam("armed") = tRow.%Get("Directory")
+        } ElseIf '##class(OcuPilot.Port.DatabasePort).SameDirectory(tRow.%Get("Directory"), tDirectory) {
+            Continue
+        }
         Do tRow.%Set("Encrypted", 1, "boolean")
-        Do tRow.%Set("EncryptionKeyID", $Get(^||OcuPilotEncryptionSeam("key")), "string")
+        If tMode = "unreadable" {
+            Do tRow.%Remove("EncryptionKeyID")
+        } Else {
+            Do tRow.%Set("EncryptionKeyID", tKey, "string")
+        }
     }
     Quit tSC
+}
+
+/// <p>The directories of OcuPilot's own database, the seven protected databases and the install
+/// namespace's globals and routines databases, read in <code>%SYS</code>.</p>
+ClassMethod OwnDirectories() As %List
+{
+    Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#DATABASENAME) _ $ListFromString($Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SYSTEMDATABASES")) _ $ListBuild(..GlobalsOf($NAMESPACE), ..RoutinesOf($NAMESPACE))
+    Set tOut = ""
+    For tI = 1:1:$ListLength(tNames) {
+        Set tDirectory = ..DirectoryOf($List(tNames, tI))
+        If tDirectory '= "" Set tOut = tOut _ $ListBuild(tDirectory)
+    }
+    Quit tOut
+}
+
+/// <p>Whether <var>pDirectory</var> is one of <var>pDirectories</var>.</p>
+ClassMethod Within(pDirectories As %List, pDirectory As %String) As %Boolean
+{
+    Set tWithin = 0
+    For tI = 1:1:$ListLength(pDirectories) {
+        If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(pDirectories, tI), pDirectory) Set tWithin = 1 Quit
+    }
+    Quit tWithin
+}
+
+/// <p>The globals database of namespace <var>pNamespace</var>, read in <code>%SYS</code>.</p>
+ClassMethod GlobalsOf(pNamespace As %String) As %String
+{
+    Quit ..NamespaceField(pNamespace, "Globals")
+}
+
+/// <p>The routines database of namespace <var>pNamespace</var>, read in <code>%SYS</code>.</p>
+ClassMethod RoutinesOf(pNamespace As %String) As %String
+{
+    Quit ..NamespaceField(pNamespace, "Routines")
+}
+
+/// <p>Field <var>pField</var> of namespace <var>pNamespace</var>'s configuration, or <code>""</code>.</p>
+ClassMethod NamespaceField(pNamespace As %String, pField As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        If $$$ISOK(##class(Config.Namespaces).Get(pNamespace, .tProps)) Set tValue = $Get(tProps(pField))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tValue
+}
+
+/// <p>The directory the <code>other</code> mode armed, or <code>""</code>.</p>
+ClassMethod Armed() As %String
+{
+    Quit $Get(^||OcuPilotEncryptionSeam("armed"))
 }
 
 /// <p>The directory of database <var>pName</var>, read in <code>%SYS</code>.</p>
@@ -78,9 +164,8 @@ ClassMethod DirectoryOf(pName As %String) As %String
     Quit tDirectory
 }
 
-/// <p>Arm <var>pMode</var> (<code>protected</code>, <code>system</code>, <code>journal</code>,
-/// <code>readfails</code>, or <code>""</code> for none) with key
-/// <var>pKey</var>.</p>
+/// <p>Arm <var>pMode</var> (one of the modes this class's header names, or <code>""</code> for none) with
+/// key <var>pKey</var>.</p>
 ClassMethod Arm(pMode As %String, pKey As %String = "")
 {
     Set ^||OcuPilotEncryptionSeam("mode") = pMode

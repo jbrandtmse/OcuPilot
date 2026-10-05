@@ -2495,12 +2495,14 @@ ClassMethod KeyFile(pToolClass As %String, pPayload As %DynamicObject, ByRef pCh
     Quit tSC
 }
 
-/// <p>Whether OcuPilot or the instance depends on key <var>pKey</var>: it encrypts one of the databases
-/// <method>OwnDatabaseNames</method> names, matched by directory, or the journal, read through
-/// <var>pPort</var> as the caller. An empty key, and any read that fails, answer 1.</p>
+/// <p>Whether OcuPilot or the instance depends on key <var>pKey</var>: one of the databases
+/// <method>OwnDatabaseNames</method> names, matched by directory, needs it (<method>RowNeedsKey</method>),
+/// or it is the journal's key (<method>SameKeyId</method>), each read through <var>pPort</var> as the
+/// caller. A key that reads empty (<method>NormalizedKeyId</method>), and any read that fails, answer 1.
+/// An empty journal key is no journal key.</p>
 ClassMethod DependsOnKey(pPort As %String, pKey As %String) As %Boolean [ Private ]
 {
-    If pKey = "" Quit 1
+    If ..NormalizedKeyId(pKey) = "" Quit 1
     Set tDepends = 0
     Try {
         Set tNamesSC = ..OwnDatabaseNames(pPort, .tOwn)
@@ -2512,22 +2514,61 @@ ClassMethod DependsOnKey(pPort As %String, pKey As %String) As %Boolean [ Privat
         If $$$ISERR(tListSC) || '$IsObject($Get(tRows)) || 'tRows.%IsA("%Library.DynamicArray") Set tDepends = 1 Quit
         Set tIterator = tRows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
-            If '$IsObject(tRow) || (..Rendered(tRow, "EncryptionKeyID") '= pKey) Continue
+            If '$IsObject(tRow) Continue
             Set tDirectory = ..Rendered(tRow, "Directory")
+            Set tIsOwn = 0
             For tI = 1:1:$ListLength(tDirectories) {
-                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) Set tDepends = 1 Quit
+                If ##class(OcuPilot.Port.DatabasePort).SameDirectory($List(tDirectories, tI), tDirectory) Set tIsOwn = 1 Quit
             }
-            If tDepends Quit
+            If tIsOwn && ..RowNeedsKey(tRow, pKey) Set tDepends = 1 Quit
         }
         If tDepends Quit
         Kill tQuery
         Set tSettingsSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "GET", .tQuery, "", .tSettings, .tHttp, .tFault)
         If $$$ISERR(tSettingsSC) || '$IsObject($Get(tSettings)) Set tDepends = 1 Quit
-        If ..Rendered(tSettings, "DBEncJournalKeyID") = pKey Set tDepends = 1
+        If ..SameKeyId(..Rendered(tSettings, "DBEncJournalKeyID"), pKey) Set tDepends = 1
     } Catch {
         Set tDepends = 1
     }
     Quit tDepends
+}
+
+/// <p>Key id <var>pId</var> in the one form two vendor answers are compared in: upper-cased, with every
+/// character that is not a hex digit (<code>0-9A-F</code>) dropped, so braces, hyphens, spaces and case
+/// do not matter. <code>""</code> when nothing is left.</p>
+ClassMethod NormalizedKeyId(pId As %String) As %String
+{
+    Quit $ZStrip($ZConvert(pId, "U"), "*E", "", "0123456789ABCDEF")
+}
+
+/// <p>Whether key ids <var>pA</var> and <var>pB</var> name the same key: their
+/// <method>NormalizedKeyId</method> forms are equal and not empty. An id that reads empty names no key,
+/// so it is never the same as another.</p>
+ClassMethod SameKeyId(pA As %String, pB As %String) As %Boolean
+{
+    Set tA = ..NormalizedKeyId(pA)
+    If tA = "" Quit 0
+    Quit (tA = ..NormalizedKeyId(pB))
+}
+
+/// <p>Whether the database that <var>pRow</var>, one <code>Database.SysCRUD</code> <code>LIST</code> row,
+/// describes needs key <var>pKey</var> to mount: its <code>EncryptionKeyID</code> names that key
+/// (<method>SameKeyId</method>), or its key id cannot be read (missing, not a string, or empty once
+/// normalized) while its <code>Encrypted</code> does not read <code>false</code>. A key that reads empty,
+/// and a row that is not an object, answer 1; a row whose <code>Encrypted</code> reads <code>false</code>
+/// and whose key id names no key answers 0. The caller decides which rows are OcuPilot's or the
+/// instance's own.</p>
+ClassMethod RowNeedsKey(pRow As %DynamicObject, pKey As %String) As %Boolean
+{
+    If ..NormalizedKeyId(pKey) = "" Quit 1
+    If '$IsObject(pRow) Quit 1
+    Set tId = ""
+    If pRow.%GetTypeOf("EncryptionKeyID") = "string" Set tId = pRow.%Get("EncryptionKeyID")
+    If ..SameKeyId(tId, pKey) Quit 1
+    If ..NormalizedKeyId(tId) '= "" Quit 0
+    Set tType = pRow.%GetTypeOf("Encrypted")
+    If ((tType = "boolean") || (tType = "number")) && ('pRow.%Get("Encrypted")) Quit 0
+    Quit 1
 }
 
 /// <p>An ECP data server's fields a create or a change may set (Story 18.20): the classic dialog's

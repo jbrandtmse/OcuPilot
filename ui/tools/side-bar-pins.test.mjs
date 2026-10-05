@@ -7,11 +7,12 @@
  * Three legs, each over the files themselves:
  *
  * 1. **No count pin.** A spec that reads `.ocu-side-bar-label` asserts no `entries.length` or
- *    `labels.length` against a number literal.
+ *    `labels.length` against a number literal, in either argument order.
  * 2. **No literal list.** In a spec that reads `.ocu-side-bar-label`, a value collected from that
  *    selector -- a variable assigned from a `$$eval` that reads it, the side-bar items' labels and
- *    verdicts included, or a member a side-bar helper maps from it -- is never compared with
- *    `deepEqual` against a literal array.
+ *    verdicts included, or a member a side-bar helper maps from it, read whole or through `.map` -- is
+ *    never compared with `deepEqual` or `deepStrictEqual` against a literal array. Every spec on
+ *    `SIDE_BAR_SPECS` has a collector this leg recognises, so a collector it stops recognising is red.
  * 3. **The converted specs use the helper.** Each spec on `SIDE_BAR_SPECS` imports
  *    `./side-bar-spec.mjs` and calls `sideBarLabels(`, and the roster is exactly the specs that do.
  *
@@ -52,6 +53,9 @@ const SIDE_BAR_SPECS = [
 
 const SIDE_BAR_SELECTOR = 'ocu-side-bar-label';
 
+/** An optional `.map(...)` projection between a collected name and the comparison's comma. */
+const MAPPED = '(?:\\.map\\(.{0,120}?\\))?';
+
 /** Every browser spec, with its text. */
 function specs() {
   return readdirSync(browserDir)
@@ -76,6 +80,7 @@ test('DW-1774: no spec that reads the side bar pins its entry count to a number'
   for (const { name, text } of specs()) {
     if (!text.includes(SIDE_BAR_SELECTOR)) continue;
     for (const found of text.matchAll(/(?:entries|labels)\.length,\s*\d/g)) pins.push(`${name}:${lineAt(text, found.index)}`);
+    for (const found of text.matchAll(/(?:equal|strictEqual)\(\s*\d+\s*,\s*[\w.]*(?:entries|labels)\.length/g)) pins.push(`${name}:${lineAt(text, found.index)}`);
   }
   assert.deepEqual(pins, [], `count pins on a side bar: ${pins.join(', ')}`);
 });
@@ -86,19 +91,22 @@ test('DW-1774: no spec compares the side-bar labels it collected with a literal 
     if (!text.includes(SIDE_BAR_SELECTOR)) continue;
     const { variables, members } = collectedNames(text);
     for (const variable of variables) {
-      for (const found of text.matchAll(new RegExp(`deepEqual\\(\\s*${variable}\\s*,\\s*\\[`, 'g'))) pins.push(`${name}:${lineAt(text, found.index)}`);
+      for (const found of text.matchAll(new RegExp(`deep(?:Strict)?Equal\\(\\s*${variable}${MAPPED}\\s*,\\s*\\[`, 'g'))) pins.push(`${name}:${lineAt(text, found.index)}`);
     }
     for (const member of members) {
-      for (const found of text.matchAll(new RegExp(`deepEqual\\(\\s*\\w+\\.${member}\\s*,\\s*\\[`, 'g'))) pins.push(`${name}:${lineAt(text, found.index)}`);
+      for (const found of text.matchAll(new RegExp(`deep(?:Strict)?Equal\\(\\s*\\w+\\.${member}${MAPPED}\\s*,\\s*\\[`, 'g'))) pins.push(`${name}:${lineAt(text, found.index)}`);
     }
   }
   assert.deepEqual(pins, [], `literal side-bar lists: ${pins.join(', ')}`);
-  // The floor under the leg above: the collectors it reads are found at all.
-  const collectors = specs().filter(({ text }) => {
-    const { variables, members } = collectedNames(text);
-    return variables.length + members.length > 0;
-  });
-  assert.ok(collectors.length >= 10, `the side-bar collectors are recognised: ${collectors.length}`);
+  // The floor under the leg above: every spec that asserts a side bar has a collector it recognises.
+  const unrecognised = specs()
+    .filter(({ name }) => SIDE_BAR_SPECS.includes(name))
+    .filter(({ text }) => {
+      const { variables, members } = collectedNames(text);
+      return variables.length + members.length === 0;
+    })
+    .map(({ name }) => name);
+  assert.deepEqual(unrecognised, [], `side-bar specs whose collectors are not recognised: ${unrecognised.join(', ')}`);
 });
 
 test('DW-1774: the specs that assert a side bar import the helper and derive its labels', () => {
