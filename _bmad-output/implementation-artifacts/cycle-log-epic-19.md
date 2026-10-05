@@ -423,3 +423,7 @@
 2026-10-05T23:38:04Z	Epic 19	spine_updated	ad=AD-7(19.11_called-function_limit_now_measured_by_Task0,corrected_at_origin) reason=cr_note by=runner lint=1(pre-existing_{id})
 2026-10-05T23:39:37Z	Story 19.11	forward_merge	feature=392c6965(19.10_merged+bookkeeping,docs_only) merge=924c59b0 conflicts=1(sprint-status->ours+generate_valid) ledger_trailer_check=deferred-work_untouched_by_merge
 2026-10-05T23:39:37Z	Story 19.11	committed	head=924c59b0 (bbb06922 QA+review patches + forward merge) run=37389702149(pending) pushed=yes amendments=none footprint_extensions=EXPERIENCE.md,scripts/ci-throwaway.sh
+2026-10-05T23:51:50Z	Epic 19	story_chartered	story=19.18 key=19-18-epic-19-burn-down reason=burndown_gate(orchestrator_close_scope:DW-1001,DW-1945,DW-1977,DW-2092,DW-2093) epics_md=inserted_after_19.17 story_order=19-18_last tracker=generated(new_entries=1) DW-2093_bullet_moved_from_19.10
+2026-10-05T23:51:50Z	Epic 19	deps_hash_rerecorded	reason=burndown_inserted hash=95551c5e test_tools=1836/1836
+2026-10-05T23:51:50Z	Epic 19	ledger_routed_planned	story=19-18-epic-19-burn-down entries=5(DW-1001,DW-1945,DW-1977,DW-2092,DW-2093) excess=0 by=burndown set_aside_for_decision_sheet=DW-1905,DW-1926,DW-1957,DW-1958,DW-1963,DW-1982,DW-1986,DW-2084,DW-2096(epic19_sources;owner_hold_on_IRIS_candidates) not_epic19=DW-1966,DW-1979,DW-1981,DW-2007,DW-2085,DW-2086,DW-2087
+2026-10-05T23:51:50Z	Epic 19	stage_spawned	stage=epic-context spawn_at=2026-10-05T23:51:50Z model=opus agent_name=19-18-epic-context-1 reason=planning_artifacts_newer(epics.md_19.18_charter,spine_19.11)

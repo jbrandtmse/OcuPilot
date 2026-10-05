@@ -7734,7 +7734,6 @@ So that a slow instance can be diagnosed.
 - **Given** the SQL activity screen
 - **When** it loads
 - **Then** currently executing statements list with their text, statistics and application metadata.
-- DW-2093: `ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites` keeps its name while it asserts twenty-five reads and ten writes; rename it to its counts, with its `SurfaceCoverage` rows, when this story changes them (ledger; routed by harvest 2026-10-05)
 
 ### Story 19.11: The agent gains guarded SQL and a picker
 
@@ -7864,6 +7863,22 @@ So that the Explorer covers documents as well as code.
 - **Given** the DocDB browser
 - **When** it opens
 - **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
+
+### Story 19.18: Epic 19 burn-down
+
+As the team closing Stage 3,
+I want the defects Epic 19 filed against its own surfaces closed before the epic merges,
+So that System Explorer's agent tools describe themselves truthfully and its screens read correctly.
+
+Chartered by the burn-down gate from the ledger (Rule 17, 2026-10-05): the five entries the orchestrator kept in Epic 19's close. Every other `burndown` entry belongs to another epic or to Story 23.4, and the decision-pending vendor candidates go to the owner's sheet.
+
+**Acceptance Criteria:**
+
+- DW-1001: a derived read tool describes each text criterion as the port accepts it. `webapp.openapi.read`, `security.secrets.read`, `explorer.search.read`, `explorer.macro.read` and the SQL catalog's read tools take one exact name (or literal search text), yet every derived text criterion carries the audit criteria's "comma-separated list where * matches" description. The descriptor declares a criterion's description (Screen/Registry.cls criteria grammar, the client mirror and Screen/Tool/Read.cls), and a test reads each affected tool's emitted description. (ledger; routed by merge_gate 2026-10-03)
+- DW-1945: `ExplorerWrite`'s AC3 legs (compile and delete) go through `Dispatch.Answer`, as `ExplorerTransfer`'s do, so a schema, pairs or governance regression on those tools reddens them. (ledger; routed by cr 2026-10-02)
+- DW-1977: the three SQL statements tabs and their read tools' descriptions say, in one sentence, that the figures are as of the instance's last aggregation of SQL statistics. (ledger; routed by merge_gate 2026-10-03)
+- DW-2092: the data browser's save dialog and its tab and status sentences take singular and plural forms ("1 row changes", "1 change waiting to be saved"). (ledger; routed by merge_gate 2026-10-05)
+- DW-2093: `ExplorerDescriptor`'s area-count test method is named for the counts it asserts, with its `SurfaceCoverage` rows. (ledger; routed by spec_gate 2026-10-05)
 
 ---
 

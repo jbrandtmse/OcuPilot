@@ -3843,6 +3843,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T00:11:52Z status=routed owner=burndown by=merge_gate note=fix in Epic 19's epic-close burn-down story (orchestrator 2026-10-03): a criterion description declared in the descriptor; Screen/Registry.cls change permitted there, check Epic 18's diff at edit time; raised priority
 - 2026-10-03T01:39:20Z occurrence=19-5-the-sql-catalog-browser note=the nine catalog read tools' schema and table criteria are described as comma lists where * matches; the port takes one exact name
 - 2026-10-03T10:32:35Z occurrence=19-14-the-sql-catalog-s-remaining-detail-tabs note=the nine new catalog read tools' table, view and procedure criteria carry the generic text description
+- 2026-10-05T23:51:10Z owner=19-18-epic-19-burn-down by=burndown note=chartered into Story 19.18, Epic 19's burn-down (orchestrator's close scope 2026-10-05)
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9112,6 +9113,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-13-xml-export-and-import.md (19.13 code review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 19.13's review found ExplorerWrite.MintFor :80-88 calls View, as 19.13's AC3 did before it moved to Dispatch.Answer; a schema or governance regression on compile and delete would pass ExplorerWrite's AC3 leg
 - 2026-10-02T13:19:43Z status=routed owner=burndown by=cr note=move ExplorerWrite's AC3 calls to Dispatch.Answer, as ExplorerTransfer now does
+- 2026-10-05T23:51:10Z owner=19-18-epic-19-burn-down by=burndown note=chartered into Story 19.18, Epic 19's burn-down (orchestrator's close scope 2026-10-05)
 
 ### DW-1946: System Explorer's import and export dialogs re-centre when the directory list loads, moving their source radios about 64 px under the pointer
 - source: spec-19-13-xml-export-and-import.md (rework 1) | severity: low | fix-risk: med | footprint: in-epic
@@ -9291,6 +9293,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on slot A (HSCUSTOM): freshly run statements read StatCount, StatTotal and StatFirst NULL through INFORMATION_SCHEMA.STATEMENTS; no %SYS.Task aggregates SQL statistics (only AutoStatsCollection). Design Notes accepted 'classic counts can be newer' as an inference
 - 2026-10-03T14:19:38Z status=decision-pending owner=burndown by=cr note=options: accept as is; add one sentence on the three tabs and in the tool's description that statistics are as of the last aggregation (recommended); aggregate (refused by AD-61 rule 7)
 - 2026-10-03T14:36:23Z status=routed owner=burndown by=merge_gate note=accepted as recommended: one sentence on the three statements tabs and in the tool description that the figures are as of the instance's last aggregation; a follow-up head after 19.14 merges if green and merged by 19:00Z, else Epic 19's burn-down
+- 2026-10-05T23:51:10Z owner=19-18-epic-19-burn-down by=burndown note=chartered into Story 19.18, Epic 19's burn-down (orchestrator's close scope 2026-10-05)
 
 ### DW-1978: The SQL table's nine-tab strip hides its last tabs at common widths: 3 to 5 tabs fall outside the visible strip from 1024 to 1600 px (Constraints, Cached queries and SQL statements always among them); all nine fit at 1920
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: low | fix-risk: med | footprint: cross-epic
@@ -9863,6 +9866,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Planner demo check 2026-10-05 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Found by the Planner checking the 1.0.10 demo; Story 19.8's data browser save dialog, tab and status sentences interpolate a count into a plural-only string
 - 2026-10-05T11:38:55Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-05: route to Epic 19 (owns the data browser); fold into 19.10 or 19.11 if it fits, else the close burn-down; neither fits (SQL activity; agent picker), so the burn-down: singular and plural forms for both sentences
+- 2026-10-05T23:51:10Z owner=19-18-epic-19-burn-down by=burndown note=chartered into Story 19.18, Epic 19's burn-down (orchestrator's close scope 2026-10-05)
 
 ### DW-2093: ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites keeps its name while it asserts twenty-five reads and ten writes
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-epic
@@ -9870,6 +9874,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T11:38:55Z status=routed owner=19-10-sql-activity by=harvest note=19.10 adds a System Explorer read and so changes this test's counts again: rename the method to its counts then, with its SurfaceCoverage rows
 - 2026-10-05T13:24:58Z status=routed owner=burndown by=spec_gate note=19.10 lands in OS management (ExplorerDescriptor's counts unchanged, decline accepted); fold into Epic 19's close burn-down with DW-2092: rename the method to its counts with its SurfaceCoverage rows (now :323-330)
 - 2026-10-05T18:40:25Z occurrence=19-11-the-agent-gains-guarded-sql-and-a-picker by=spec_gate note=19.11 moves the Explorer counts to 26 reads and 11 writes; the burn-down renames after it
+- 2026-10-05T23:51:10Z owner=19-18-epic-19-burn-down by=burndown note=chartered into Story 19.18, Epic 19's burn-down (orchestrator's close scope 2026-10-05)
 
 ### DW-2094: Document databases' Create stays available while the strip says the DocDB service is disabled; the dialog then shows the 409 sentence
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-story
