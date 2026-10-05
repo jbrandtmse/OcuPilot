@@ -370,25 +370,33 @@ describe('the class and routine viewers', () => {
 
   it('Story 19.9 AC3: a load the page did not start sets the class page again and says so; its own loads are counted off', async () => {
     // Mutation (Rule 19): the load counter ignores self-started loads (every load reads as the page's own) -> red.
+    // Mutation (Rule 19): the frame is not made `inert` while the page's own load is pending -> red.
     const { host, view, frame, settle: render } = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
     await view('reference');
     const element = frame() as HTMLIFrameElement;
     const source = element.getAttribute('src');
     const status = () => host.querySelector('[data-ocu-source="reference-status"]')?.textContent?.trim();
+    expect(element.hasAttribute('inert')).toBe(true);
     element.dispatchEvent(new Event('load'));
     await render();
     expect(status()).toBe('');
+    expect(element.hasAttribute('inert')).toBe(false);
     // A link followed inside the frame: the frame navigates on its own and loads.
+    element.focus();
     element.setAttribute('src', '/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=HSCUSTOM&CLASSNAME=%25Library.Persistent');
     element.dispatchEvent(new Event('load'));
     await render();
     expect(element.getAttribute('src')).toBe(source);
     expect(status()).toBe(STRINGS.explorerClassReferenceRestored.replace('<class>', 'Demo.Probe'));
-    // The restore's own load is the page's, so it sets nothing again.
+    expect(element.hasAttribute('inert')).toBe(true);
+    // The restore's own load is the page's, so it sets nothing again, and focus goes back to the frame.
+    (host.querySelector('[data-ocu-source-view="reference"]') as HTMLElement).focus();
     element.setAttribute('src', 'about:blank#kept');
     element.dispatchEvent(new Event('load'));
     await render();
     expect(element.getAttribute('src')).toBe('about:blank#kept');
+    expect(element.hasAttribute('inert')).toBe(false);
+    expect(document.activeElement).toBe(element);
     expect(frame()).toBe(element);
     // Mutation (Rule 19): the frame's removal keeps the status line -> a frame drawn again opens on the old sentence and this goes red.
     await view('source');
@@ -399,7 +407,8 @@ describe('the class and routine viewers', () => {
 
   it('Story 19.9 AC3: a re-read in the same namespace keeps the frame without setting its address again, so a link followed afterwards is still restored', async () => {
     // Mutation (Rule 19): `syncReference` drops its once-per-frame-and-address return -> the re-read sets `src`
-    // again and counts a load, the link's load is taken for the page's own, and this goes red.
+    // again (in a browser, a reload of the class page on every re-read) and counts a load this test never
+    // answers, so the link's load is taken for the page's own and this goes red.
     const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
     await mounted.view('reference');
     const element = mounted.frame() as HTMLIFrameElement;
@@ -454,8 +463,9 @@ describe('the class and routine viewers', () => {
     expect(refused.frame()).toBeNull();
   });
 
-  it("Story 19.9 AC4: another namespace's answer still on screen draws no frame", async () => {
-    // Mutation (Rule 19): `referenceSource` drops its namespace check -> HSCUSTOM's late answer draws a frame and this goes red.
+  it("Story 19.9 AC4: another namespace's late answer is not put on screen and draws no frame", async () => {
+    // Mutation (Rule 19): `createSourceRead` applies an answer after the namespace has moved -> HSCUSTOM's late
+    // answer is shown in USER and this goes red.
     const mounted = await mount(CLASS_VIEWER, 'Demo.Probe.cls', CLASS_ROWS);
     await mounted.view('reference');
     mounted.hold();
@@ -463,7 +473,7 @@ describe('the class and routine viewers', () => {
     mounted.switchHeld('USER');
     expect(mounted.frame()).toBeNull();
     await mounted.release();
-    expect(mounted.host.querySelector('[data-ocu-source="header"]')).not.toBeNull();
+    expect(mounted.host.querySelector('[data-ocu-source="header"]')).toBeNull();
     expect(mounted.frame()).toBeNull();
     await mounted.release();
     expect(mounted.frame()?.getAttribute('src')).toBe(classReferenceUrl('USER', 'Demo.Probe.cls'));

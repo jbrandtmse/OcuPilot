@@ -260,8 +260,9 @@ interface SourceReadBody {
 /**
  * The viewer's `RefreshRead`: the declared read with `state`'s criteria, its rows to the screen
  * store and its document to `state`, tagged with the namespace `namespace` answers as the read is
- * sent. A 404 `PORT.NOTFOUND` is no rows and a gone document; any other failure is the classified
- * fault the table and the shell's banner show.
+ * sent; an answer arriving after `namespace` has moved leaves `state` as it is, as the refresh
+ * framework leaves the store. A 404 `PORT.NOTFOUND` is no rows and a gone document; any other
+ * failure is the classified fault the table and the shell's banner show.
  */
 export function createSourceRead(
   api: Pick<ApiService, 'requestJson'>,
@@ -275,12 +276,13 @@ export function createSourceRead(
     const path = screenReadPath(declaration, maxRows, sent);
     const result: JsonResult<SourceReadBody> = await api.requestJson<SourceReadBody>(path);
     const body = result.kind === 'ok' ? result.body : null;
+    const current = namespace() === scope;
     if (result.kind === 'ok' && isRecord(body) && Array.isArray(body['rows'])) {
-      state.applyAnswer(sent, documentOf(body['document']), false, scope);
+      if (current) state.applyAnswer(sent, documentOf(body['document']), false, scope);
       return { kind: 'ok', rows: body['rows'] as readonly unknown[], truncated: body['truncated'] === true };
     }
     if (result.kind === 'error' && result.status === 404 && result.code === NOT_FOUND_CODE) {
-      state.applyAnswer(sent, null, true, scope);
+      if (current) state.applyAnswer(sent, null, true, scope);
       return { kind: 'ok', rows: [], truncated: false };
     }
     const failed: JsonResult<unknown> =

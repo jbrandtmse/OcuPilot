@@ -169,6 +169,36 @@ Measured on `ocupilot-a2-ci` with `_SYSTEM` and purpose-built principals (Design
   - the status line is a live region;
   - the structural walk passes on the view, wide light and wide dark.
 
+### Review Findings
+
+Code review 2026-10-05 (four layers, full-opus): 37 rows, 6 entries (high 0, medium 2, low 4), every one patched; no decision-needed, no defer, 16 rejected.
+
+- [x] [Review][Patch] A link followed before the class page's own `load` was counted as that load, so the sign-in page stayed with no restore (AC3; measured on `ocupilot-a2-ci`, the probe's image held: "Login IRIS" still at 15 s). The frame is `inert` until each load the page starts answers, and focus goes back to it; the probe's description gains an image at `/csp/documatic/ocuprobe199.png` for the new browser leg to hold [document-viewer.page.ts:534]
+- [x] [Review][Patch] An answer sent in the previous namespace was put on screen after a switch (Story 19.1's `applyAnswer`; the late-answer case pinned it as expected). `createSourceRead` leaves the state alone once the namespace has moved [document-viewer.store.ts:279]
+- [x] [Review][Patch] `DocumaticProbe.Remove` read a failed survivor lookup as none left; it fails on a negative `%SQLCODE` [DocumaticProbe.cls:55]
+- [x] [Review][Patch] The AC1 leg's `Authorization` header assertion could not fail: an iframe navigation carries no header a page sets, and Puppeteer's `headers()` omits the network stack's. Removed [system-explorer-documatic.browser-spec.mjs:160]
+- [x] [Review][Patch] The browser spec's `after` removed the probe from a container `before` had refused; it acts only on an accepted one [system-explorer-documatic.browser-spec.mjs:68]
+- [x] [Review][Patch] The re-read case's mutation comment named only the jsdom mechanism; it names the browser's reload too [document-viewer.page.spec.ts:410]
+
+**Rejected:**
+
+- `false` A Back trap after a restore: measured, `history.length` stayed 3 through a link and its restore, and Back left the viewer as usual.
+- `false` A `%System/%Security/Protect` audit row per followed link: measured, 519 rows before and after a link and its restore.
+- `false` The browser-level login expiring while the tab's tokens work: the group slot holds the `%SYS.TokenAuth` record's SID, which a refresh keeps live (measured, one live token across a refresh; `%CSP.Daemon.purgeGroupEntries` keeps such a slot).
+- `low` A second restore is not announced again: the class page visibly returns; re-announcing needs a clear-then-set cycle.
+- `low` No frame and no sentence on a banner fault or a class name the URL pattern refuses: the shell's banner names the fault; such names are rare; a sentence needs a new string and branch.
+- `low` Refresh does not reload the frame: re-entering the view does; reloading on every re-read is what the once-per-frame-and-address rule prevents.
+- `low` No loading state for the frame: the same-origin page answers at once; a skeleton needs new state.
+- `low` The load counter is measured in Chrome only: named in the residual risks; the cost is one spurious status sentence.
+- `low` AC5 is not run on the instance: the column-kind mapping is Story 19.7's; Rule 3's real-runtime evidence is the Documatic browser spec.
+- `low` Two AC4 "no frame" assertions are guarded twice: each asserts a real outcome, and AC4's mutations redden its other cases.
+- `false` Two test comments name mutations absent from `## Verification`: each would redden its assertion; Rule 19 asks one recorded mutation per AC.
+- `false` The `taskCreate` citation move is outside the footprint: the EXPERIENCE.md task says to move the citations.
+- `spec-bound` "Links inside it do not open here." while fragment links scroll: the four strings are fixed by this spec.
+- `spec-bound` EXPERIENCE.md's "wholly a number" against `CSV_NUMBER`: the wording is this spec's task.
+- `spec-bound` A negative number of over 15 digits is now bare and rounds in a spreadsheet: `CSV_NUMBER` is ruled by=merge_gate, and a positive one was bare already.
+- `spec edit` The bundle-merge sentence and this spec's prose: both fixes edit this spec; the merge re-measures against the pinned figure.
+
 ## Spec Change Log
 
 - 2026-10-04, lead (spec gate): the split is approved by=merge_gate (Story 19.17 `19-17-the-docdb-browser` takes criterion 2; epics.md, story_order and the tracker amended), so this story builds criterion 1 and DW-2061 only; `CSV_NUMBER` is the ruled `-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?` against the whole value of a number-typed column, with `.5` bare and a lone `-`, a lone `.` and `+5` guarded where the guard applies; the sandboxed frame, its sign-in-page detection and description images fetched as the classic Documatic does are accepted; the spine carries AD-47, AD-28, the Deferred row and the capability map; EXPERIENCE.md :689 in place and the bundle re-base are approved.
@@ -340,7 +370,8 @@ Load `src/` into `ocupilot-a2-ci` and never restart it: `rsync -a --delete /User
 - mutation: AC2, the template's `sandbox=""` becomes `sandbox="allow-scripts allow-same-origin"` → the browser spec's AC1, AC2 leg red (`typeof window.ocuprobe199` read `number`), with its AC3 leg; the page spec's AC1/AC2/AC6 case red.
 - mutation: AC3, the `load` counter counts every load as the page's own (`pendingLoads >= 0`) → the browser spec's AC3 leg red (the status line stayed empty) and the page spec's AC3 case red.
 - mutation: AC3, `syncReference` drops its once-per-frame-and-address return → the page spec's "a re-read in the same namespace keeps the frame" case red alone (the re-read set `src` again, so the link's load was counted off and not restored).
-- mutation: AC4, `referenceSource` drops its `hasDocument` condition → the page spec's AC4 namespace case red (the gone class drew a frame). Dropping its fault check reddens the same case on the refused read in USER. Dropping its namespace check reddens "another namespace's answer still on screen draws no frame". A routine offered every view reddens the routine case.
+- mutation: AC3 (code review), `loadReference` stops making the frame `inert` → the browser spec's "no link inside the frame can be followed before the class page has loaded" leg red (the frame not inert while its load is pending) and the page spec's AC3 case red. Dropping the focus return reddens the page spec's AC3 case.
+- mutation: AC4, `referenceSource` drops its `hasDocument` condition → the page spec's AC4 namespace case red (the gone class drew a frame). Dropping its fault check reddens the same case on the refused read in USER. `createSourceRead` applying an answer after the namespace has moved reddens "another namespace's late answer is not put on screen and draws no frame" (code review). A routine offered every view reddens the routine case.
 - mutation: AC5, `pageCsvText` drops its kind check → `data-browser-model.test.mjs`'s bare-number case and `data-browser-export.page.spec.ts`'s bare-number case red. Lines ending LF alone redden both model CSV cases. `exportPage` building with `csvText` again reddens the export spec's bare-number case.
 - mutation: AC6, the frame's `[attr.title]` binding removed → the page spec's AC1/AC2/AC6 case red and the browser spec's AC6 leg red (accessible name `""`).
 - (QA) No test added: every AC and matrix row is pinned. Re-observed red and reverted clean (`git status` empty): AC5, `pageCsvText` drops its kind check → `data-browser-model.test.mjs` bare/guarded case; AC2, `sandbox="allow-scripts"` → page spec AC1/AC2/AC6 case; AC4, `referenceSource` drops `hasDocument` → page spec AC4 namespace case; AC3, `pendingLoads >= 0` → page spec AC3 load case and the same-namespace re-read case; AC6, `[attr.title]` removed → page spec AC1/AC2/AC6 case; AC1, `classReferenceUrl` drops `PAGE=CLASS&SHOWCLASSONLY=1&` → page spec AC1/AC2/AC6, AC4 and `classReferenceUrl` cases. Browser legs not re-run.

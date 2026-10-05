@@ -104,7 +104,8 @@ const NAME_SEPARATOR = ' \u00b7 ';
  * or another namespace's answer draws none. `src` is set with `Renderer2` once the frame is drawn,
  * never through a binding or a sanitizer bypass. A link followed inside the frame reaches the
  * instance without the sign-in and answers its sign-in page, which the sandbox cannot submit, so a
- * `load` the page did not start sets the class page again and says so on the status line.
+ * `load` the page did not start sets the class page again and says so on the status line. The
+ * frame is `inert` until each load the page starts has answered, so no link in it is followed first.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -239,6 +240,9 @@ export class SourceViewerPage {
 
   /** Loads the page started on `frameElement` that have not yet answered. */
   private pendingLoads = 0;
+
+  /** Whether the frame held focus when the page started loading it, so the load gives focus back. */
+  private refocusFrame = false;
 
   /** The status line under the frame: empty, or the sentence a restored link leaves. */
   private restoredValue = '';
@@ -511,6 +515,7 @@ export class SourceViewerPage {
       this.frameElement = null;
       this.frameSource = null;
       this.pendingLoads = 0;
+      this.refocusFrame = false;
       this.restoredValue = '';
       return;
     }
@@ -521,21 +526,35 @@ export class SourceViewerPage {
     this.loadReference();
   }
 
+  /**
+   * Set the class page on the frame and count the load it starts. The frame is `inert` until that
+   * load answers: a link followed before then would cancel it, and the link's load would be counted
+   * as the page's own.
+   */
   private loadReference(): void {
-    if (this.frameElement === null || this.frameSource === null) return;
+    const frame = this.frameElement;
+    if (frame === null || this.frameSource === null) return;
+    if (this.pendingLoads === 0) this.refocusFrame = frame.ownerDocument.activeElement === frame;
     this.pendingLoads += 1;
-    this.renderer.setAttribute(this.frameElement, 'src', this.frameSource);
+    this.renderer.setAttribute(frame, 'inert', '');
+    this.renderer.setAttribute(frame, 'src', this.frameSource);
   }
 
   /**
-   * A frame `load`: one the page started is counted off; any other, a link followed inside the
-   * frame, sets the class page again and says so. A load before the page has set `src` on this
+   * A frame `load`: one the page started is counted off, and the last of them makes the frame
+   * interactive again, with focus back on it if it held focus; any other, a link followed inside
+   * the frame, sets the class page again and says so. A load before the page has set `src` on this
    * frame is the empty document the frame opens with, and is ignored.
    */
   protected onReferenceLoad(event: Event): void {
-    if (event.target === null || event.target !== this.frameElement) return;
+    const frame = this.frameElement;
+    if (frame === null || event.target !== frame) return;
     if (this.pendingLoads > 0) {
       this.pendingLoads -= 1;
+      if (this.pendingLoads === 0) {
+        this.renderer.removeAttribute(frame, 'inert');
+        if (this.refocusFrame) frame.focus();
+      }
       return;
     }
     this.restoredValue = STRINGS.explorerClassReferenceRestored.replace('<class>', this.referenceClass);

@@ -3,13 +3,15 @@
  * instance's own class page for `OcuProbe199.Doc` in USER, signed in by the browser-level login
  * alone, with no token in its address or its requests (AC1); the frame is sandboxed with no flag, so
  * the probe description's script never runs and the tab's storage is out of its reach (AC2); a link
- * followed inside the frame is replaced by the class page again, with the status line saying so
- * (AC3); and the view is a toggle button, the frame named for the class and reached by Tab, the
- * status line a live region, and the view passes the structural walk at 1280 light, 720 light and
- * 1280 dark with no entry beyond the baseline (AC6).
+ * followed inside the frame is replaced by the class page again, with the status line saying so,
+ * and none can be followed before the class page has loaded (AC3); and the view is a toggle button,
+ * the frame named for the class and reached by Tab, the status line a live region, and the view
+ * passes the structural walk at 1280 light, 720 light and 1280 dark with no entry beyond the
+ * baseline (AC6).
  *
  * The probe class is `OcuPilot.Test.DocumaticProbe`'s, created in `before` and removed in `after` by
- * that class, which names only its own package. It refuses the live container.
+ * that class, which names only its own package. `before` refuses any container but a throwaway, and
+ * `after` removes the probe only from a container `before` accepted.
  *
  * Run: `node --test --test-concurrency=1 browser/system-explorer-documatic.browser-spec.mjs` (after
  * `npm run build`, the bundle copied into the throwaway).
@@ -41,14 +43,17 @@ const STATUS = '[data-ocu-source="reference-status"]';
 const REFERENCE_PATH = `/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&SHOWCLASSONLY=1&LIBRARY=USER&CLASSNAME=${CLASS}`;
 const VENDOR_TITLE = `Class ${CLASS}`;
 const PROBE_TEXT = 'OcuProbe199 class reference probe.';
+const PROBE_IMAGE = '/csp/documatic/ocuprobe199.png';
 
 let browser = null;
+let accepted = false;
 
 const marker = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression})_":OCU"_"-${name}-END",!`;
 
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec creates and removes a class, so it never runs inside the live container');
   await assertThrowaway(config);
+  accepted = true;
   const output = runIris(config.container, [
     `Set tSC=##class(${PROBE}).Remove("USER")`,
     `If tSC Set tSC=##class(${PROBE}).Make("USER")`,
@@ -60,7 +65,7 @@ before(async () => {
 
 after(async () => {
   if (browser !== null) await browser.close();
-  if (config.container === LIVE_CONTAINER) return;
+  if (!accepted) return;
   const output = runIris(config.container, [`Set tSC=##class(${PROBE}).Remove("USER")`, marker('OK', '$System.Status.IsOK(tSC)')]);
   assert.equal(markerValue(output, 'OK'), '1', `no probe class is left in USER: ${output}`);
 });
@@ -114,21 +119,33 @@ async function structural(page, route) {
 }
 
 /**
- * Signed in on the probe class's viewer in USER with Class reference chosen and its page loaded,
- * every request to the class reference recorded with its headers.
+ * Signed in on the probe class's viewer in USER with Class reference chosen and its page shown,
+ * every request to the class reference recorded. The page has loaded and the frame is interactive
+ * again, unless `held` is an array: then each request for the probe's image is held in it, so the
+ * page's own load stays pending.
  */
-async function onClassReference() {
+async function onClassReference(held = null) {
   const { context, page } = await signedInAt(browser, config, `/ocupilot/${CLASS_VIEWER_ROUTE}/${encodeEntityId(`${CLASS}.cls`)}?ns=USER`, VIEWPORTS.wide);
   const documatic = [];
+  if (held !== null) {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === PROBE_IMAGE) held.push(request);
+      else void request.continue();
+    });
+  }
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname.startsWith('/csp/documatic/')) documatic.push({ url: request.url(), headers: request.headers() });
+    if (new URL(request.url()).pathname.startsWith('/csp/documatic/')) documatic.push(request.url());
   });
   await page.waitForSelector('pre[data-ocu-source="text"]', { timeout: config.navigationTimeoutMs });
   await page.click('[data-ocu-source-view="reference"]');
   await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
   const frame = await (await page.$(FRAME)).contentFrame();
   await until(() => frame.title(), VENDOR_TITLE, 'the frame shows the class page');
-  await until(() => frame.evaluate(() => document.readyState), 'complete', 'the class page has loaded');
+  if (held === null) {
+    await until(() => frame.evaluate(() => document.readyState), 'complete', 'the class page has loaded');
+    await until(() => page.$eval(FRAME, (node) => node.hasAttribute('inert')), false, 'the page has counted its load and the frame is interactive');
+  }
   return { context, page, frame, documatic };
 }
 
@@ -140,10 +157,9 @@ test('AC1, AC2: Class reference shows the class page in an inert frame, signed i
     const tokens = [pair?.accessToken, pair?.refreshToken];
     assert.ok(tokens.every((token) => typeof token === 'string' && token.length > 16), 'the tab holds its token pair');
     assert.ok(documatic.length > 0, `the class page was requested: ${JSON.stringify(documatic)}`);
-    for (const request of documatic) {
-      assert.equal(request.headers.authorization, undefined, `no Authorization header reaches the class reference: ${request.url}`);
-      const address = decodeURIComponent(request.url);
-      for (const token of tokens) assert.ok(!request.url.includes(token) && !address.includes(token), `no token is in its address: ${request.url}`);
+    for (const url of documatic) {
+      const address = decodeURIComponent(url);
+      for (const token of tokens) assert.ok(!url.includes(token) && !address.includes(token), `no token is in its address: ${url}`);
     }
     // Mutation (Rule 19): `classReferenceUrl` drops `PAGE=CLASS&SHOWCLASSONLY=1` -> the frame loads the
     // frameset, whose inner frames ask for a sign-in, and this goes red.
@@ -191,6 +207,28 @@ test('AC3: a link followed inside the frame is replaced by the class page again,
     const current = await (await page.$(FRAME)).contentFrame();
     await until(() => current.title(), VENDOR_TITLE, 'the frame shows the class page again, not the sign-in page');
     assert.equal(current.url(), `${config.origin}${REFERENCE_PATH}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC3: no link inside the frame can be followed before the class page has loaded', async () => {
+  const held = [];
+  const { context, page, frame } = await onClassReference(held);
+  try {
+    await until(() => held.length, 1, "the probe's image is held");
+    assert.equal(await frame.evaluate(() => document.readyState), 'interactive', 'the class page is shown and its load is pending');
+    // Mutation (Rule 19): the frame is not made `inert` while the page's own load is pending -> the link
+    // cancels that load, its sign-in page is counted as the page's own load and stays, and this goes red.
+    assert.equal(await page.$eval(FRAME, (node) => node.hasAttribute('inert')), true, 'the frame is inert while its load is pending');
+    await (await frame.$('a[href*="CLASSNAME=%25Library.Persistent"]')).click();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const current = await (await page.$(FRAME)).contentFrame();
+    assert.equal(current.url(), `${config.origin}${REFERENCE_PATH}`, 'the link was not followed');
+    assert.equal(await current.title(), VENDOR_TITLE);
+    await held[0].respond({ status: 404, body: '' });
+    await until(() => page.$eval(FRAME, (node) => node.hasAttribute('inert')), false, 'the frame is interactive once its load answers');
+    assert.equal(await page.$eval(STATUS, (node) => node.textContent.trim()), '', 'its own load restores nothing');
   } finally {
     await context.close();
   }
