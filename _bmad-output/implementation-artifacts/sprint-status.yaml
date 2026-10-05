@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-05-2026 08:04'
+last_updated: '10-05-2026 08:13'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -318,7 +318,7 @@ development_status:
   19-14-the-sql-catalog-s-remaining-detail-tabs: done
   19-15-the-query-console-runs-a-query-in-the-background: done
   19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs: done
-  19-17-the-docdb-browser: ready-for-dev
+  19-17-the-docdb-browser: in-progress
   epic-19-retrospective: optional
 
   epic-20: backlog
