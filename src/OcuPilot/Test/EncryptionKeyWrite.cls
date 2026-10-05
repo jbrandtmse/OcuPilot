@@ -152,9 +152,7 @@ Method TestAnActivationRefusedSendsNothing()
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#DATABASE, ..Activation("act-a.key", , "ab"), .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(tP, "Refusal", tAnswer), "422 AdminPassword:ENCRYPTION.KEYFILE.PASSWORD", "a password the rules refuse is refused on the password")
     Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-a.key", {"AdminName": "OcuProbeActNobody"}, .tProposal, .tHttp, .tProblem)
-    Do $$$AssertStatusOK(tSC, "the agent's activation naming an administrator the file does not list is minted, its key file sound (" _ tProblem _ ")")
-    Set tOutcome = $ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult)
-    Do $$$AssertEquals(tOutcome, "422 ENCRYPTION.KEYFILE.CREDENTIALS", "and its confirm is refused as credentials that do not open the key file (" _ tOutcome _ ")")
+    Do $$$AssertEquals($IsObject(tProposal) _ " " _ tHttp _ " " _ tProblem, "0 422 AdminName:ENCRYPTION.KEYFILE.CREDENTIALS", "the agent's activation naming an administrator the file does not list is refused at the mint, on the name")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "Held", "database").%Size(), " 0", "with nothing sent and nothing active")
 }
 
@@ -167,6 +165,7 @@ Method TestAWrongPasswordIsTheVendorsRefusalAndActivatesNothing()
     Set tP = ..#PROBE
     Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-w.key", , , 256, "OCUPROBEACT W", .tKey), "a key file")
     Set tWrong = "OcuProbeActWrong" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(9), 1), "+/=", "")
+    Do $ClassMethod(..#SEAM, "ArmRefusable", tWrong)
     Set tMessages = $ClassMethod(tP, "LineCount", "messages.log")
     Set tAlerts = $ClassMethod(tP, "LineCount", "alerts.log")
     Set tBefore = $ClassMethod(tP, "EncryptionFacts")
@@ -212,6 +211,29 @@ Method TestADeactivationRefusedKeepsTheKey()
         Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "409 " _ $List(tCase, 2), $List(tCase, 1) _ ": and the confirm's")
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Held", "database").%Size(), 2, $List(tCase, 1) _ ": the key stays active")
     }
+}
+
+/// <p>B3 boundary (QA): the default-key refusal holds only while another key is active. A key that is not
+/// the default deactivates beside the default, and the default deactivates once it is the only key, on the
+/// screen; each is one <code>DEACTIVATE</code> and the key leaves the list.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.DatabaseKeyDeactivate.StateRefusal</method> refuses a
+/// default key without counting the active keys -- the sole-default leg goes red on its 400.</p>
+Method TestTheDefaultKeyIsDeactivatedOnceItIsTheOnlyKeyActive()
+{
+    Set tP = ..#PROBE
+    Set tBefore = $ClassMethod(tP, "EncryptionFacts")
+    Do $ClassMethod(..#SEAM, "Arm", "activation")
+    Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": "OCUPROBEACT-K1", "KeyLen": 256, "IsDefault": true}, {"Id": "OCUPROBEACT-K2", "KeyLen": 256, "IsDefault": false}])
+    Set tSC = $ClassMethod(..#ACTION, "Act", ..#DATABASE, {"action": "deactivate", "id": "SYSTEM", "values": {"KeyId": "OCUPROBEACT-K2"}}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ..ReadBack(tAnswer), "200 notFound", "a key that is not the default deactivates beside it: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "Security.Encryption.Key/DEACTIVATE", "one DEACTIVATE left the port")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Held", "database").%Size(), 1, "the default is the only key left")
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Set tSC = $ClassMethod(..#ACTION, "Act", ..#DATABASE, {"action": "deactivate", "id": "SYSTEM", "values": {"KeyId": "OCUPROBEACT-K1"}}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ..ReadBack(tAnswer), "200 notFound", "the default deactivates once it is the only key active: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "Security.Encryption.Key/DEACTIVATE", "again one DEACTIVATE")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Held", "database").%Size(), 0, "no key is active")
+    Do $$$AssertEquals($ClassMethod(tP, "EncryptionFacts").%ToJSON(), tBefore.%ToJSON(), "the instance's encryption facts read as before")
 }
 
 /// <p>B4: a key file holding two keys is activated for data-element encryption on the screen, both keys

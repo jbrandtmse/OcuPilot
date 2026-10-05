@@ -40,7 +40,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function mount(options: { route?: string; keys?: readonly unknown[]; action?: () => JsonResult<unknown> } = {}) {
+async function mount(options: { route?: string; keys?: readonly unknown[]; action?: () => JsonResult<unknown>; read?: () => JsonResult<unknown> } = {}) {
   TestBed.resetTestingModule();
   const sent: Sent[] = [];
   const api = {
@@ -50,6 +50,7 @@ async function mount(options: { route?: string; keys?: readonly unknown[]; actio
         return { kind: 'ok', status: 200, body: { rows: [{ Directory: ROOT, Restricted: false }], truncated: false } as T };
       }
       if (path.includes('encryption/read')) {
+        if (options.read !== undefined) return options.read() as JsonResult<T>;
         return { kind: 'ok', status: 200, body: { rows: options.keys ?? [{ Id: 'K1', KeyLen: 256, IsDefault: true }, { Id: 'K2', KeyLen: 128, IsDefault: false }], truncated: false } as T };
       }
       if (path.endsWith('/action')) {
@@ -120,6 +121,36 @@ describe('Database encryption and Data element encryption', () => {
     const headers = [...listed.host.querySelectorAll('[data-encryption-keys="keys"] th')].map((cell) => cell.textContent?.trim());
     expect(headers[0]).toBe(STRINGS.encryptionKeyFileColumnId);
     expect(headers.length).toBe(2);
+  });
+
+  it('states no empty sentence for a read the instance refused, only its reason', async () => {
+    // Mutation (Rule 19): drop the ready check from `showsEmpty` -> a refused read also says no key is active and this goes red.
+    const refused = await mount({ read: () => ({ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'REFUSED-READ', detail: null }) });
+    expect(refused.host.querySelector('[data-encryption-keys="reason"]')?.textContent?.trim()).toBe('REFUSED-READ');
+    expect(refused.host.querySelector('[data-encryption-keys="empty"]')).toBeNull();
+  });
+
+  it('ignores a navigation to another screen while it is still shown, reading nothing there and registering nothing', async () => {
+    const mounted = await mount();
+    const sentBefore = mounted.sent.length;
+    await TestBed.inject(Router).navigateByUrl('/security/auditing/system-events');
+    await settle(mounted.fixture);
+    // Mutation (Rule 19): drop the two-screen check from `follow` -> the page reads the other screen's list and registers Activate there, and this goes red.
+    expect(mounted.sent.slice(sentBefore)).toEqual([]);
+    expect(mounted.actions.run('OcuPilot.Screen.Descriptor.AuditSystemEventList', 'activate')).toBe(false);
+  });
+
+  it("opens Data element encryption's own Activate dialog, posting to its own screen", async () => {
+    const mounted = await mount({ route: '/security/data-element-encryption', keys: [{ Id: 'M1' }] });
+    await openActivate(mounted, DATA_ELEMENT_ENCRYPTION);
+    expect(mounted.host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.dataElementEncryptionActivateTitle);
+    // Mutation (Rule 19): answer `encryptionKeyActivateConsequence` on both screens -> this states the database consequence and goes red.
+    expect(mounted.host.querySelector('[data-encryption-keys="consequence"]')?.textContent?.trim()).toBe(STRINGS.encryptionKeyActivateDataElementConsequence);
+    await type(mounted, '#ocu-encryption-keys-location-path', FILE);
+    await type(mounted, `#${encryptionKeysControlId('AdminPassword')}`, 'probe-password');
+    (mounted.host.querySelector('[data-encryption-keys="submit"]') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    expect(mounted.sent.filter((entry) => entry.path.endsWith('/action')).map((entry) => entry.path)).toEqual(['/api/ocupilot/screens/security.dataelementencryption/action']);
   });
 
   it('activates a key file with the password held by the page alone, cleared when the write applies', async () => {

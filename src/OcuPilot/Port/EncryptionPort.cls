@@ -606,11 +606,12 @@ ClassMethod KindOf(pAction As %String, pAdmitted As %String) As %String [ Privat
 /// <p>The keys of the key file <var>pRoot</var> and <var>pPath</var> name that activation
 /// <var>pAction</var> would make active, in <var>pIds</var> (a <class>%DynamicArray</class>), checked as
 /// the write checks them before its vendor call: resolved as a <code>source</code>, its administrators
-/// read (a file naming none is not a key file), and its keys compared with the active keys of the
-/// action's kind, a file whose every key is active refused 400 <code>TOOL.ARGUMENTS</code>
-/// (<parameter>OcuPilot.Api.EncryptionError.REASONKEYSALLACTIVE</parameter>). The activate tools' mint
-/// asks this; nothing is written.</p>
-ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Output pIds As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pNames As %DynamicArray, Output pFile As %String) As %Status
+/// read (a file naming none is not a key file), administrator <var>pAdminName</var>, when given, listed
+/// (else 422 <code>ENCRYPTION.KEYFILE.CREDENTIALS</code> on <code>AdminName</code>), and its keys compared
+/// with the active keys of the action's kind, a file whose every key is active refused 400
+/// <code>TOOL.ARGUMENTS</code> (<parameter>OcuPilot.Api.EncryptionError.REASONKEYSALLACTIVE</parameter>).
+/// The activate tools' mint asks this; nothing is written.</p>
+ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Output pIds As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pNames As %DynamicArray, Output pFile As %String, pAdminName As %String = "") As %Status
 {
     Set pIds = []
     Set pNames = []
@@ -622,6 +623,7 @@ ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Out
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..Administrators(pFile, .pNames, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
+    If (pAdminName '= "") && '..Listed(pNames, pAdminName) Quit ..Violation(##class(OcuPilot.Api.EncryptionError).#KEYFILECREDENTIALS, "AdminName", .pHttpStatus, .pFault)
     Set tSC = ..Keys(pFile, .tKeys, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..ActiveKeys(tKind, .tActive, .pHttpStatus, .pFault)
@@ -641,9 +643,9 @@ ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Out
 
 /// <p>Activate the keys of a key file (<code>File</code> <code>ACTIVATE</code>, Story 18.22): the
 /// query's key file, <code>AdminName</code> and constant <code>Action</code>, and the body's
-/// <code>AdminPassword</code>. The rules, the key file (<method>FileKeys</method>) and the name listed
-/// are checked first; the body <code>{Action, AdminName, AdminPassword}</code> goes with the resolved
-/// path as <code>file</code>, and the password is cleared right after the call.</p>
+/// <code>AdminPassword</code>. The rules, then the key file and the name listed in it
+/// (<method>FileKeys</method>), are checked first; the body <code>{Action, AdminName, AdminPassword}</code>
+/// goes with the resolved path as <code>file</code>, and the password is cleared right after the call.</p>
 ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
@@ -657,14 +659,10 @@ ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResu
         Set tValues = ""
         Quit ##class(OcuPilot.Area.Security.EncryptionRules).Fault(.tViolations, .pHttpStatus, .pFault)
     }
-    Set tSC = ..FileKeys(tRoot, tPath, tAction, .tIds, .pHttpStatus, .pFault, .tNames, .tFile)
+    Set tSC = ..FileKeys(tRoot, tPath, tAction, .tIds, .pHttpStatus, .pFault, .tNames, .tFile, tValues.%Get("AdminName"))
     If $$$ISERR(tSC) {
         Set tValues = ""
         Quit tSC
-    }
-    If '..Listed(tNames, tValues.%Get("AdminName")) {
-        Set tValues = ""
-        Quit ..Violation(##class(OcuPilot.Api.EncryptionError).#KEYFILECREDENTIALS, "AdminName", .pHttpStatus, .pFault)
     }
     Set tSend = {}
     Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
@@ -876,8 +874,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
 /// <code>{Action, AdminName, AdminPassword}</code>, the password the placeholder of the body handed here;
 /// a deactivation is one to <code>Key</code> <code>DEACTIVATE</code> with <code>id</code> the
 /// <code>KeyId</code> and the composed body, its password the placeholder. An action outside the write's own, a missing key file or
-/// key, an administrator name the rules refuse, and a key file the port would refuse each render one
-/// <code>comment</code> step carrying the refusal's sentence and no call.</p>
+/// key, an administrator name the rules refuse, and a key file location <class>OcuPilot.Port.PathPort</class>
+/// refuses each render one <code>comment</code> step carrying the refusal's sentence and no call; the key
+/// file's administrators and keys, and the active list, are guards a script cannot carry.</p>
 ClassMethod KeySnippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray [ Private ]
 {
     Set tAction = $Get(pQuery(..#ACTIONPARAM))

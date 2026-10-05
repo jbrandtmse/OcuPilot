@@ -2,8 +2,9 @@
 /// exactly Security's two pairs and <code>%Admin_FileSystemAccess:USE</code> reads both lists and activates
 /// and deactivates database and data-element keys on both callers; one holding Security's two pairs alone
 /// reads and deactivates and is refused every activation naming the file-system pair with zero port calls;
-/// and one without <code>%Admin_Secure:USE</code> is refused every read and write naming it, with zero port
-/// calls, and sees both side-bar entries unavailable.</p>
+/// and one without <code>%Admin_Secure:USE</code> is refused both reads and every screen write naming it,
+/// with zero port calls, and sees both side-bar entries unavailable. No principal withholds
+/// <code>%DB_IRISSYS:READ</code>.</p>
 /// <p>The in-process legs run in a child process logged in as the principal
 /// (<class>OcuPilot.Test.EncryptionWriteGateProbe</class>), whose
 /// <class>OcuPilot.Test.EncryptionSeamPort</class> is armed <code>activation</code>, so no real key is
@@ -176,9 +177,9 @@ Method TestWithoutTheFileSystemPairEveryActivationIsRefused()
     }
 }
 
-/// <p>Without <code>%Admin_Secure:USE</code>, both reads over the wire, and in process every activation
-/// and deactivation, are refused naming the pair with zero port calls, and both side-bar entries are
-/// unavailable.</p>
+/// <p>Without <code>%Admin_Secure:USE</code>, both reads over the wire, and in process both screens'
+/// activations and deactivations, are refused naming the pair with zero port calls, and both side-bar
+/// entries are unavailable.</p>
 Method TestWithoutSecuritysResourceEveryReadAndWriteIsRefused()
 {
     Set tP = ..#PROBE
@@ -190,18 +191,19 @@ Method TestWithoutSecuritysResourceEveryReadAndWriteIsRefused()
     Set tPlan = []
     Do tPlan.%Push({"kind": "arm", "mode": "activation", "held": {"database": [{"Id": (tKey), "KeyLen": 256, "IsDefault": true}], "dataElement": [{"Id": (tKey)}]}})
     Do tPlan.%Push({"kind": "action", "screen": (..#DATABASE), "body": (##class(OcuPilot.Test.EncryptionKeyWrite).Activation("act-o.key"))})
+    Do tPlan.%Push({"kind": "action", "screen": (..#DATAELEMENT), "body": (##class(OcuPilot.Test.EncryptionKeyWrite).Activation("act-o.key"))})
     Do tPlan.%Push({"kind": "action", "screen": (..#DATABASE), "body": {"action": "deactivate", "id": "SYSTEM", "values": {"KeyId": (tKey)}}})
     Do tPlan.%Push({"kind": "action", "screen": (..#DATAELEMENT), "body": {"action": "deactivate", "id": "SYSTEM", "values": {"KeyId": (tKey)}}})
     Do tPlan.%Push({"kind": "entry", "descriptor": "OcuPilot.Screen.Descriptor.DatabaseEncryption"})
     Do tPlan.%Push({"kind": "entry", "descriptor": "OcuPilot.Screen.Descriptor.DataElementEncryption"})
     Set tRun = ##class(OcuPilot.Test.EncryptionWriteGate).RunAs(tUser, tPlan)
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionWriteGate).Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
-    For tI = 2:1:4 {
+    For tI = 2:1:5 {
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionWriteGate).LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %Admin_Secure:USE calls=0 writes=", "leg " _ tI _ " is refused naming Security's resource before any port call")
     }
-    For tI = 5, 6 {
+    For tI = 6, 7 {
         Set tLeg = ##class(OcuPilot.Test.EncryptionWriteGate).Leg(tRun, tI)
-        Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("failedPair"), 1: ""), "403 %Admin_Secure:USE", "side-bar entry " _ (tI - 4) _ " is unavailable, naming the pair")
+        Do $$$AssertEquals($Select($IsObject(tLeg): tLeg.%Get("http") _ " " _ tLeg.%Get("failedPair"), 1: ""), "403 %Admin_Secure:USE", "side-bar entry " _ (tI - 5) _ " is unavailable, naming the pair")
     }
 }
 

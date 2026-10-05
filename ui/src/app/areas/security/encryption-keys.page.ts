@@ -14,7 +14,10 @@ import { Dialog } from '../../shell/dialog';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ENCRYPTION_ACTIVATE, ENCRYPTION_DEACTIVATE, ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { ServerPathPicker, type ServerPath } from '../../shell/server-path-picker';
-import { DATABASE_ENCRYPTION, EncryptionKeysStore, type ActiveKeyRow } from './encryption-keys.store';
+import { DATA_ELEMENT_ENCRYPTION, DATABASE_ENCRYPTION, EncryptionKeysStore, type ActiveKeyRow } from './encryption-keys.store';
+
+/** The two screens this page serves. */
+const ENCRYPTION_KEY_SCREENS: readonly string[] = [DATABASE_ENCRYPTION, DATA_ELEMENT_ENCRYPTION];
 
 /** The values the Activate dialog sends, under the names the activate tools declare (AD-56). */
 export const KEY_FILE_ROOT = 'root';
@@ -99,7 +102,8 @@ export function encryptionKeysControlId(field: string): string {
           }
         </tbody>
       </table>
-    } @else {
+    }
+    @if (showsEmpty) {
       <p class="ocu-data-table-empty-title" data-encryption-keys="empty">{{ emptyText }}</p>
     }
 
@@ -229,6 +233,12 @@ export class EncryptionKeysPage {
 
   protected get hasRows(): boolean {
     return this.rows.length > 0;
+  }
+
+  /** The empty sentence states what a read answered, so it waits for one: never while loading or refused. */
+  protected get showsEmpty(): boolean {
+    this.generation();
+    return this.store.status(this.descriptor) === 'ready' && !this.hasRows;
   }
 
   protected get emptyText(): string {
@@ -411,10 +421,13 @@ export class EncryptionKeysPage {
 
   // --- internals -------------------------------------------------------------------------------
 
-  /** Take the screen this route serves; on a new one, register its Activate key and read its keys. */
+  /**
+   * Take the screen this route serves; on a new one, register its Activate key and read its keys. A
+   * navigation to any other screen ends before the outlet destroys this page, so it is ignored.
+   */
   private follow(): void {
     const next = screenForUrl(this.router.url);
-    if (next === null || next.descriptor === this.screen()?.descriptor) return;
+    if (next === null || !ENCRYPTION_KEY_SCREENS.includes(next.descriptor) || next.descriptor === this.screen()?.descriptor) return;
     this.clearDialog();
     this.rowRefusal.set('');
     this.screen.set(next);

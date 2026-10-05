@@ -12,6 +12,9 @@
  *    file that is not a key file is refused on its field before anything is activated; the password typed
  *    is nowhere in the DOM after the dialog closes; and the open dialog passes the structural walk in both
  *    themes.
+ * 3. **Listed keys** (B1, B8): with Database encryption's read answered in the browser with two keys, the
+ *    table and a row's typed-name Deactivate dialog pass the structural walk, and closing the dialog
+ *    deactivates nothing.
  *
  * **It never activates a key.** Every instance here runs with no key active, and an activation's success
  * path runs only through `OcuPilot.Test.EncryptionSeamPort`, which a browser cannot reach. It refuses the
@@ -61,6 +64,12 @@ const MARKER = `OcuProbeActBrowser${Date.now()}`;
 const DATABASE_ROUTE = 'security/database-encryption';
 const ELEMENT_ROUTE = 'security/data-element-encryption';
 const TEXT_FILE = 'browser-notes.txt';
+
+/** The rows the browser answers Database encryption's read with, in the vendor's measured key-id spelling. */
+const LISTED_KEYS = [
+  { Id: '4AA5F70E-C07C-11F1-BFE2-F298FD505142', KeyLen: 256, IsDefault: true },
+  { Id: '5BB6E81F-D18D-12F2-A0E3-E3A90E616253', KeyLen: 128, IsDefault: false },
+];
 
 let browser = null;
 
@@ -249,6 +258,37 @@ test('B2, B5: the Activate dialog refuses a file that is not a key file on its f
     assert.ok(!(await page.content()).includes(MARKER), 'and the password is nowhere in the DOM after the dialog closes');
     await openActivate(page);
     assert.equal(await page.$eval('#ocu-encryption-keys-AdminPassword', (input) => input.value), '', 'and the reopened dialog holds none');
+  } finally {
+    await context.close();
+  }
+});
+
+// B1, B8. No key may be activated here, so the browser answers Database encryption's read with two keys.
+// Mutation (Rule 19): give the table's row buttons `width: 4px`, rebuild and redeploy -> the walk finds the
+// row's Deactivate under its 24px floor at 1280 and 720 and this goes red.
+test('B1, B8: listed keys and a key\'s typed-name Deactivate dialog pass DW-1337, and closing it deactivates nothing', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${DATABASE_ROUTE}?ns=HSCUSTOM`, VIEWPORTS.wide);
+  try {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('/screens/security.databaseencryption/read')) {
+        void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ rows: LISTED_KEYS, truncated: false }) });
+        return;
+      }
+      void request.continue();
+    });
+    await page.goto(`${config.origin}/ocupilot/${DATABASE_ROUTE}?ns=HSCUSTOM`, { waitUntil: 'networkidle0', timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('[data-encryption-keys="keys"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const listed = await page.$$eval('[data-encryption-keys="keys"] tbody tr', (rows) => rows.map((row) => row.getAttribute('data-key')));
+    assert.deepEqual(listed, LISTED_KEYS.map((key) => key.Id), 'both keys the read answered are listed');
+    await assertStructure(page, DATABASE_ROUTE);
+    await page.click(`[data-key="${LISTED_KEYS[0].Id}"] [data-encryption-keys="deactivate"]`);
+    await page.waitForSelector('.ocu-typed-name-field', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.encryptionKeyDeactivateConsequence, 'the dialog states what deactivating the key costs');
+    await assertStructure(page, DATABASE_ROUTE, true);
+    await page.click('.ocu-dialog-actions .ocu-button-secondary');
+    await page.waitForFunction(() => document.querySelector('.ocu-typed-name-field') === null, { timeout: config.navigationTimeoutMs });
+    assert.deepEqual(encryptionFacts(), found, 'nothing was deactivated');
   } finally {
     await context.close();
   }

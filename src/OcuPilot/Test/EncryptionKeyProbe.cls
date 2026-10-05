@@ -23,9 +23,12 @@ Parameter ADMIN = "OcuProbeActAdmin";
 
 Parameter PASSWORD = "OcuProbeAct-Pass1";
 
-/// <p>The <class>Security.System</class> properties a first database key activation sets and
-/// <method>Restore</method> puts back (measured at Story 18.22's Task 0).</p>
-Parameter RESTOREDPROPERTIES = "DBEncStartMode,DBEncDefaultKeyID,DBEncJournalKeyID";
+/// <p>The <class>Security.System</class> properties a first database key activation sets that
+/// <method>Restore</method> puts back (measured at Story 18.22's Task 0). It sets
+/// <code>DBEncStartMode</code> too, which no test call restores: <code>Security.System.Modify</code>
+/// answers OK and leaves that internal property as it is (measured), so only a rebuilt throwaway clears
+/// it.</p>
+Parameter RESTOREDPROPERTIES = "DBEncDefaultKeyID,DBEncJournalKeyID";
 
 /// <p>The probe database's folder under the probe directory.</p>
 Parameter DATABASEFOLDER = "db";
@@ -169,6 +172,7 @@ ClassMethod RemoveDatabase() As %Status
 /// set each <parameter>RESTOREDPROPERTIES</parameter> member of <class>Security.System</class> that
 /// differs to the value <var>pFacts</var> (an <method>EncryptionFacts</method> answer taken before)
 /// holds, because a first database key activation sets them and no deactivation clears them (measured).
+/// Key activation at startup is not among them (<parameter>RESTOREDPROPERTIES</parameter>).
 /// <var>pDone</var> lists what was changed.</p>
 ClassMethod Restore(pFacts As %DynamicObject, Output pDone As %DynamicArray) As %Status
 {

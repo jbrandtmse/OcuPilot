@@ -5,6 +5,7 @@ created: '2026-10-04'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '5952fd82765950e426c2e633c6afeb9310465864'
+baseline_commit: '78e85ce221db07c09312856e0e25d2777d222448'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -380,6 +381,55 @@ deferred: []
   - the four keys are in the baseline disabled, and every roster includes the screens and tools;
   - the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1035 lines.
 
+### Review Findings
+
+Code review 2026-10-05 (full-opus, four layers): 54 rows, 19 entries after grouping (high 0, medium 4, low 15), 24 rows rejected.
+
+- [x] [Review][Defer] The activation card lists the key file's keys, but the confirm activates whatever the file holds then [src/OcuPilot/Port/EncryptionPort.cls:613] — deferred: escalated, DW-2086 (medium, fix-risk high; `TaskImport`'s reviewed `tasks` is the model).
+- [x] [Review][Defer] A first database activation takes no destructive treatment, though Task 0 measured that its startup-mode change outlives every deactivation, against Decision 7's premise [src/OcuPilot/Screen/Tool/DatabaseKeyActivate.cls:1] — deferred: decision-pending, DW-2087 (product call for the decision sheet).
+- [x] [Review][Patch] The empty sentence is drawn while the first read loads and after a refused read [ui/src/app/areas/security/encryption-keys.page.ts:102]
+- [x] [Review][Patch] `FileKeys` omits the spec's name-listed step: the mint never checks the administrator, and the write checks it after the all-active refusal [src/OcuPilot/Port/EncryptionPort.cls:613]
+- [x] [Review][Patch] A navigation to another screen before teardown registers Activate there and reads that screen's list [ui/src/app/areas/security/encryption-keys.page.ts:415]
+- [x] [Review][Patch] The seam forwards any activation whose password is off a three-entry deny-list, so a later leg could activate a real key [src/OcuPilot/Test/EncryptionSeamPort.cls:308]
+- [x] [Review][Patch] The seam's class doc still says every call is then sent to the vendor [src/OcuPilot/Test/EncryptionSeamPort.cls:3]
+- [x] [Review][Patch] `EncryptionKeyProbe.Restore` names `DBEncStartMode` as restored through `Security.System.Modify`, which Task 0 measured cannot [src/OcuPilot/Test/EncryptionKeyProbe.cls:28]
+- [x] [Review][Patch] `TestNoReadAnswersKeyMaterial`'s doc claims a port projection the test does not check [src/OcuPilot/Test/EncryptionKeyRead.cls:65]
+- [x] [Review][Patch] No spec opens Data element encryption's Activate dialog [ui/src/app/areas/security/encryption-keys.page.spec.ts]
+- [x] [Review][Patch] `PROPERTYFAULTS`' doc says none of the four entries names a field, and states #1215 as measured [src/OcuPilot/Port/AdminPort.cls:3253]
+- [x] [Review][Patch] `KeySnippet`'s doc claims every key file the port would refuse renders a comment step [src/OcuPilot/Port/EncryptionPort.cls:881]
+- [x] [Review][Patch] QA's assertion says a `DEACTIVATE` the seam answered reached the vendor [src/OcuPilot/Test/EncryptionKeyWrite.cls:230]
+- [x] [Review][Patch] A corpus case still reads "a type outside the five" [src/OcuPilot/Test/ReadSourceCorpus.cls:48]
+- [x] [Review][Patch] The gate's outsider plan sends no data-element activation, though its doc claims every activation; no principal withholds `%DB_IRISSYS:READ` (that residual closed wontfix-accepted, DW-2088) [src/OcuPilot/Test/EncryptionKeyGate.cls:182]
+- [x] [Review][Patch] The populated table and its typed-name dialog never render in a browser, so DW-1337 is unchecked there [ui/browser/encryption-keys.browser-spec.mjs]
+- [x] [Review][Defer] `JOURNALUSE`'s true answer never runs through the real port [src/OcuPilot/Port/EncryptionPort.cls:566] — deferred: wontfix-accepted, DW-2089.
+- [x] [Review][Defer] Deactivate on the default key stays enabled while another key is active [ui/src/app/areas/security/encryption-keys.page.ts:94] — deferred: wontfix-accepted, DW-2090 (Decision 2 chose the pre-check refusal).
+- [x] [Review][Defer] B1's screen-versus-tool equality compares two empty lists [src/OcuPilot/Test/EncryptionKeyRead.cls:42] — deferred: by-design, DW-2091 (Named limit 2).
+
+Rejected:
+
+- `low` An emptied key file is refused as "every key is already active" (two rows): rare, and the fix adds a branch and a sentence.
+- `low` No journal-key column: spec-bound, the vendor `LIST`'s three fields.
+- `low` The role and default refusals and the consequence name settings OcuPilot shows from Story 18.23: spec-bound sentences.
+- `low` The startup half of the consequence is shown unconditionally: spec-bound, and already conditional.
+- `low` `EncryptionKeyRead` assumes no active key: its header declares that environment, and no instance here holds one.
+- `low` No test moves the active list between mint and confirm: the builder refuses a subject omitting `Keys` (AD-51), and the kernel's compare has its own suite.
+- `false` No wrong password through the agent's confirm: run 111 reddened the confirm legs through the seam's #1219.
+- `low` No page test draws the 409 sentences: the handler's refusal path is shared, and the sentences are pinned server-side and in `self-protection.test.mjs`.
+- `low` The reviewed-few list judges nothing (two rows): spec-bound, and AD-10 names no effect on these types.
+- `low` Each write re-reads the list twice: 18.7's model page does the same, and the store keeps only the newest answer.
+- `low` Two baselines in the frontmatter: the fix edits the spec.
+- `false` The 27-call breach needs a handoff fix: the handoff already forbids it, and runs 79 to 105 did not overlap.
+- `false` `ci-timings.json` is untracked: `ci.test.mjs`'s timeout rule is the guard, and it holds at 45.
+- `low` Design Notes misdescribe the `ci-throwaway.sh` change: the fix edits the spec, and `ci.test.mjs` holds the rosters.
+- `low` Uneven command aliases: spec-bound.
+- `low` The published wording: spec-bound, the activation sentence the runner's.
+- `false` A non-array `LIST` reads as no active key: the vendor's `RunList` always builds an array.
+- `low` A key deactivated between the port's check and its call answers 500: one request under AD-34's lock, and the fix adds a mapping.
+- `low` `Restore` deactivates the journal key out of order: `Restore` has no caller.
+- `false` Some B2 and B8 clauses lack mutation lines: Rule 19 asks one per AC, and each has several.
+- `false` Only one write route crosses real HTTP: the browser spec is Rule 3's real-runtime test, and the fixture runs the real route handler.
+- `low` `Read.cls` and `Registry.cls` lines edited in place: a member appended to a one-line list, unioned at merge (Epic 19 edits the same `Execute` condition).
+
 ## Spec Change Log
 
 - 2026-10-05, spec gate (runner): Decisions 1 to 7 confirmed. Spine amendments 1 to 4 written (AD-13, AD-36, AD-51 with AD-44, AD-27 with AD-10's key arm); AD-8 (item 5) and AD-15/AD-53 (item 6) wait for Task 0's record. Item 7 corrected at origin (`spec-18-7-encryption.md` :379, `epic-18-context.md` :76). Named limit 3 routed as DW-2085.
@@ -586,6 +636,14 @@ deferred: []
 - mutation: the page's `ChangeBus` subscription dropped → `encryption-keys.page.spec.ts` "reads its list again on a change event of its own entity type" red
 - mutation: `STRINGS.encryptionKeyAllActive` dropped from `PUBLISHED_PROBLEMS` → `encryption-keys.page.spec.ts` "shows an activation's and a default key's published state refusals" red
 - mutation: the `DatabaseEncryption` entry dropped from `DESCRIPTOR_ACTION_LABELS` → `screen-actions.test.mjs` "a screen's row action draws its own published words" red
+- (QA) `src/OcuPilot/Test/EncryptionKeyWrite.cls` `TestTheDefaultKeyIsDeactivatedOnceItIsTheOnlyKeyActive` (B3 boundary, seam)
+- mutation: `DatabaseKeyDeactivate.StateRefusal` refuses a default key without counting the active keys → `EncryptionKeyWrite.TestTheDefaultKeyIsDeactivatedOnceItIsTheOnlyKeyActive` red (run 581); reverted byte-identical, green again (run 582)
+- (code review) mutation: the name-listed step dropped from `EncryptionPort.FileKeys` → `EncryptionKeyWrite.TestAnActivationRefusedSendsNothing` red on the screen's and the mint's unlisted-administrator legs (run 588)
+- (code review) mutation: `ArmRefusable` dropped from the wrong-password leg → `EncryptionKeyWrite.TestAWrongPasswordIsTheVendorsRefusalAndActivatesNothing` red, the seam answering 500 `INTERNAL` without the vendor (run 588); both reverted byte-identical, green (run 589)
+- (code review) mutation: the ready check dropped from the page's `showsEmpty` → `encryption-keys.page.spec.ts` "states no empty sentence for a read the instance refused" red
+- (code review) mutation: the two-screen check dropped from the page's `follow` → `encryption-keys.page.spec.ts` "ignores a navigation to another screen" red
+- (code review) mutation: the page's `consequence` answers the database sentence on both screens → `encryption-keys.page.spec.ts` "opens Data element encryption's own Activate dialog" red
+- (code review) mutation: the table's row buttons `width: 4px`, rebuilt and redeployed → `encryption-keys.browser-spec.mjs` "listed keys and a key's typed-name Deactivate dialog pass DW-1337" red on min-width at 1280 and 720; a `min-width: 1500px` table stayed green, because `.ocu-form-page` scrolls and the walk's overflow invariant skips what a scrolling container holds
 
 ## Auto Run Result
 

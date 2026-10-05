@@ -1,7 +1,7 @@
 /// <p>Test-only <class>OcuPilot.Port.EncryptionPort</class> subclass: Story 18.7's seam. Every vendor
 /// call the port makes through <method>Call</method> is recorded, in order, in
 /// <code>^||OcuPilotEncryptionSeam</code> with its body's key names and its <code>file</code> query, and
-/// never a body value, and then sent to the vendor.</p>
+/// never a body value, and then sent to the vendor unless an armed mode below answers it.</p>
 /// <p>Armed with a key id (<method>Arm</method>), a read through <method>Invoke</method> answers as if the
 /// instance depended on that key, without any database being encrypted, naming the key lower-cased and in
 /// braces rather than as the key file lists it: <code>protected</code> reads
@@ -32,9 +32,10 @@
 /// <code>DEACTIVATE</code> answers the vendor's measured refusal, 500 #1208 or #1214, and removes nothing.
 /// Each refusal goes through the admin port's own failure path (<method>Fail</method>).</p>
 /// <p>Under any other mode, armed or not, a <code>File</code> <code>ACTIVATE</code> reaches the vendor only
-/// when its password is none of the probe key files' passwords (<method>Refusable</method>), so the
-/// vendor can only refuse it; any other is answered 500 without the vendor. A real first activation
-/// persistently changes the instance's key activation at startup, which no test can restore.</p>
+/// when its password is the wrong one a test armed (<method>ArmRefusable</method>) and none of the probe
+/// key files' passwords (<method>Refusable</method>), so the vendor can only refuse it; any other is
+/// answered 500 without the vendor. A real first activation persistently changes the instance's key
+/// activation at startup, which no test can restore.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -303,13 +304,22 @@ ClassMethod ArmedPassword() As %String
     Quit $Get(^||OcuPilotEncryptionSeam("password"), $Parameter("OcuPilot.Test.EncryptionKeyProbe", "PASSWORD"))
 }
 
+/// <p>Arm the one wrong password a test sends the vendor outside <code>activation</code>, so
+/// <method>Refusable</method> forwards an activation carrying exactly it. <method>Clear</method> forgets it
+/// and <method>ClearCalls</method> keeps it.</p>
+ClassMethod ArmRefusable(pPassword As %String)
+{
+    Set ^||OcuPilotEncryptionSeam("refusable") = pPassword
+}
+
 /// <p>Whether an activation carrying <var>pBody</var> can only be refused by the vendor: its password is
-/// non-empty and none of the probe key files' passwords -- the armed one and both probes' own.</p>
+/// the one <method>ArmRefusable</method> armed, non-empty, and none of the probe key files' passwords --
+/// the armed credentials' and both probes' own.</p>
 ClassMethod Refusable(pBody As %DynamicAbstractObject) As %Boolean [ Private ]
 {
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
     Set tPassword = pBody.%Get("AdminPassword")
-    If tPassword = "" Quit 0
+    If (tPassword = "") || (tPassword '= $Get(^||OcuPilotEncryptionSeam("refusable"))) Quit 0
     Quit '$ListFind($ListBuild(..ArmedPassword(), $Parameter("OcuPilot.Test.EncryptionKeyProbe", "PASSWORD"), $Parameter("OcuPilot.Test.EncryptionProbe", "PASSWORD")), tPassword)
 }
 

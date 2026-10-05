@@ -61,7 +61,7 @@ Method TestEachReadAnswersTheSameRowsOnScreenAndTool()
 }
 
 /// <p>B1: each read declares only a key's identifier, its length in bits and whether it is the default,
-/// and each screen's context the same; the active rows the port maps through carry nothing else.</p>
+/// and each screen's context the same, over the vendor's own two lists.</p>
 Method TestNoReadAnswersKeyMaterial()
 {
     Do $$$AssertEquals(..Joined($ClassMethod(..#DATABASESCREEN, "Read").%Get("fields")), "Id,KeyLen,IsDefault", "Database encryption reads three members")

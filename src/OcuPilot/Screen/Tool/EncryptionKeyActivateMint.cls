@@ -5,7 +5,8 @@
 /// <p>Refused before anything is stored, with the port's own answer unchanged
 /// (<method>OcuPilot.Port.EncryptionPort.FileKeys</method>): an empty <code>root</code> or
 /// <code>path</code>, a location <class>OcuPilot.Port.PathPort</class> refuses or that holds no file, a
-/// file that is not a key file, and a file whose every key is already active. Otherwise the file's key
+/// file that is not a key file, an administrator the file does not list, and a file whose every key is
+/// already active. Otherwise the file's key
 /// ids reach the tool's merge as <parameter>OcuPilot.Screen.Tool.EncryptionKeyWrite.FILEKEYSARGUMENT</parameter>,
 /// which the card lists.</p>
 Class OcuPilot.Screen.Tool.EncryptionKeyActivateMint Extends OcuPilot.Kernel.Proposal.Mint
@@ -23,7 +24,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tPort = ..PortClassOf(pToolClass)
         Set tRoot = ##class(OcuPilot.Area.Security.EncryptionRules).Value(pArgs, $Parameter(tPort, "ROOTPARAM"))
         Set tPath = ##class(OcuPilot.Area.Security.EncryptionRules).Value(pArgs, $Parameter(tPort, "PATHPARAM"))
-        Set tSC = $ClassMethod(tPort, "FileKeys", tRoot, tPath, $Parameter(pToolClass, "ACTION"), .tIds, .pHttpStatus, .pFault, .tNames, .tFile)
+        Set tAdmin = ##class(OcuPilot.Area.Security.EncryptionRules).Value(pArgs, "AdminName")
+        Set tSC = $ClassMethod(tPort, "FileKeys", tRoot, tPath, $Parameter(pToolClass, "ACTION"), .tIds, .pHttpStatus, .pFault, .tNames, .tFile, tAdmin)
         If $$$ISERR(tSC) Quit
         Set pHttpStatus = 0
         Set pFault = ""
