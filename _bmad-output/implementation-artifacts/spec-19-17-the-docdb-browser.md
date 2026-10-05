@@ -2,7 +2,8 @@
 title: 'Story 19.17: The DocDB browser'
 type: 'feature'
 created: '2026-10-05'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e3d63db74e56fbf830b888bf0d6899e539109063'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,16 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-19-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-19-9-documatic-and-docdb.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites keeps its name while it now
+      asserts twenty-five reads and ten writes.
+    evidence: |-
+      Its messages state the current counts; renaming it edits the eight method attributes
+      SurfaceCoverage.cls:321-328 hold, rows Epic 18 also edits, so it waits for the forward merge.
+    location: >-
+      src/OcuPilot/Test/ExplorerDescriptor.cls:141
+    severity: low
 ---
 
 <intent-contract>
@@ -269,6 +279,35 @@ Paths are under `src/OcuPilot/` or `ui/` unless they are given in full. Line num
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 24 findings — high 0, medium 1, low 10, false 13, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AC6's "marks it (AD-15)" had no assertion on either DocDB confirm — both confirm legs in `DocDbWrite` now assert `auditMarked` 1; red with the marker suppressed (run 509).
+  - `[low]` `[patch]` `DocDbGate`'s two "nothing created" checks could not fail: the probe child drops what a wrong create made before the check — both deleted, the per-leg codes are the pin.
+  - `[false]` `[reject]` `DocDbPort`'s "neither created a database" and `DocDbWrite`'s class-name check cannot fail — they read the instance's end state after the refusal; the same shape in `DocDbPort`'s disabled leg went red under the service-check mutation (run 508).
+  - `[false]` `[reject]` the browser spec's `exists(INVALID)` cannot fail — it reads the instance after the refused Save and reddens if the name is ever created; it is not cited as any AC's pin.
+  - `[low]` `[patch]` the dialog spec's "stays open" check could not fail (the host renders the dialog unconditionally) — deleted, test retitled to what it checks.
+  - `[false]` `[reject]` `DocDbWrite`'s "with nothing dropped" after the governance refusal, and "nothing minted" unasserted — the asserted `GOVERNANCE.DISABLED` result comes from the dispatch gate, which precedes the mint (AD-22); the end-state check reads the instance.
+  - `[false]` `[reject]` `DocDbWrite`'s `OcuProbe1917C` check after a refused mint cannot fail — it reads the instance after the refusal (AD-7's guarantee), and went red under the service-check mutation (run 509).
+  - `[low]` `[patch]` `DocDbProbe.Exists`, `ClassExists` and `HasData` read a failed lookup as absence — each now restores the namespace and raises.
+  - `[low]` `[defer]` `ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites` keeps a stale name — its rename edits eight `SurfaceCoverage` rows Epic 18 also edits (not add-only); recorded in `deferred:`.
+  - `[low]` `[reject]` the globals-database WRITE pair is never falsified — every stock namespace keeps globals and routines in one database, so pinning it needs a probe namespace; a regression still meets the instance's own `<PROTECT>`.
+  - `[false]` `[reject]` "pair missing → 403, no audit row" is tested at the port only — every surface reaches the port, whose gate refuses before the service check (`DocDbGate`), whatever the route's own gate did.
+  - `[low]` `[patch]` "one audit row each" was counted at the port only — `DocDbWrite`'s disabled leg now counts four rows for the read, Save, Drop and mint; red under the service-check mutation (run 509).
+  - `[low]` `[reject]` own-code drop is tested against the kernel predicate only — both callers reach the arm through the generic gate and it reads only the target id; a surface test needs an `OcuPilot.*` database on the instance, the effect the arm prevents.
+  - `[false]` `[reject]` a case-variant drop is tested at the port only — the agent's confirmed drop uses `ocuprobe1917a` against `OcuProbe1917A` end to end.
+  - `[low]` `[patch]` a DATABASE 404's "unlogged" was untested — `DocDbLogSeam` and `DocDbPort.TestAnAbsentReadIsUnloggedAndAnAbsentDropLogged` pin it, and the drop's logged 404; red with the read logging (run 508).
+  - `[low]` `[reject]` the #25053, #25070, `<PROTECT>`/#5883 and 500 branches and the agent's class-taken create are unreached — each sits behind a pre-check by design or needs a vendor seam; the Save's class-taken leg runs the same port path.
+  - `[low]` `[reject]` an exact-case re-create answers `CLASS.TAKEN`, not `NAME.TAKEN` — a correct refusal with a true sentence; the fix adds a branch for a rare input.
+  - `[false]` `[reject]` the same input answers differently on Save and the agent's mint — both refuse and write nothing; each follows its caller's documented order (AD-55 asks AD-10 first, AD-54 reads first).
+  - `[false]` `[reject]` the agent-side service reason is pinned in two places, not end to end — the dispatcher's composition is generic and pinned by its own suites; the `DOCDB.` link is now pinned (run 499).
+  - `[false]` `[reject]` the port's validation reasons are unpublished — each port declares its own reasons for malformed internal input, as `AtelierPort` and `MgmntPort` do; the strings rule covers screen copy and `DOCDB.*` refusals.
+  - `[false]` `[reject]` `READBACKFIELDS` changes the kernel — the spec's Tasks require it, and every tool with a `ToolFields` entry or no declaration compares as before.
+  - `[false]` `[reject]` `ListRows`' inner `Catch` does not restore first — it continues inside the switched region by design or rethrows to the outer `Catch`, whose first line restores; it calls no `OcuPilot.*` class.
+  - `[false]` `[reject]` `%Api.DocDB*` appears in a doc comment — the comment states the prohibition; no code names such a class.
+  - `[false]` `[reject]` additions beyond the intent's text (precondition, closed body keys, unresolved-namespace refusal, logged drop 404, script forms, budget) — each is required by an AD the spec binds (AD-51, AD-56, AD-2, AD-59, DW-1166).
+
 ## Design Notes
 
 **Decisions:**
@@ -395,15 +434,57 @@ The stateful classes run one at a time: one test-runner call per message, wait f
 **Pinning tests and the mutation each must redden (Rule 19).** The implement stage records each `mutation:` line here.
 
 - AC1: `DocDbPort` LIST drops `Class` → the DocDbPort list leg and the browser row leg.
+  - mutation: `DocDbPort.Row` sets no `Class` → `DocDbPort.TestTheListAnswersEachDatabase` red (run 483, with two other Class-reading legs); the browser spec's create leg red on the row's class cell (`(none)`).
 - AC2: the port skips `CheckServiceStatus` → the DocDbPort disabled leg (a vendor call was made) and the browser strip leg.
+  - mutation: `Invoke`'s `ServiceStatus` test replaced by `If 0` → `DocDbPort.TestADisabledServiceRefusesEveryCallWithOneAuditRow` red (run 484); the browser strip leg red (no `[data-docdb-service-strip]`).
 - AC3: `PAIRS` loses `%DocDB_Admin:USE` → the DocDbGate missing-admin leg. Moving the service check ahead of the pairs → the leg asserting no audit row.
+  - mutation: `PAIRS` without `%DocDB_Admin:USE` → `DocDbGate.TestEachMissingPairIsRefusedByNameBeforeTheService` red on the NoAdmin and Secure principals (run 485).
+  - mutation: a `ServiceStatus` refusal inserted before the `PAIRS` check → the same method red, including "no refusal reached the vendor's service check, so none wrote an audit row" (run 486).
 - AC4: `NameProblem` removed → the DocDbPort invalid-name leg. `READBACKFIELDS` emptied → DocDbWrite's `matches` leg.
+  - mutation: `Invoke`'s `NameProblem` test replaced by `If 0` → `DocDbPort.TestAMappedOrInvalidNameIsRefusedBeforeTheService` red (run 487).
+  - mutation: `ExplorerDocDbCreate.READBACKFIELDS` = `""` → `DocDbWrite.TestTheSaveCreatesAndRefusesEachRow` and `TestTheAgentsCreateConfirmsAndATakenNameIsRefused` red on their `matches` assertions (run 488).
 - AC5: DROP ignores a 0 answer → DocDbPort's drop-absent leg. `DESTRUCTIVE_CONSEQUENCES` loses the entry, so no Drop is drawn → the browser drop leg.
+  - mutation: `Drop`'s `If 'tDropped` replaced by `If 0` → `DocDbPort.TestAnAbsentDatabaseIsNotFound` red (run 489).
+  - mutation: the `ExplorerDocDbList` entry removed from `DESTRUCTIVE_CONSEQUENCES`, rebuilt and redeployed → the browser create-and-drop leg red (no row menu trigger).
+  - mutation (matrix audit, the drop's data): `Drop` sets `tDropped = 1` without the vendor call → `DocDbPort.TestADropInAnyCaseReachesTheDatabase` red on the database, its class and its data global `^DXKX.DiBt.1` (run 500).
 - AC6: the absence fingerprint is skipped → DocDbWrite's taken-since-mint leg. The baseline sets `explorer.docdb.delete` `true` → GovernanceBaseline and DocDbWrite's governance leg.
+  - mutation: `Confirm` digests `AbsenceState(0)` for a create → `DocDbWrite.TestTheAgentsCreateConfirmsAndATakenNameIsRefused` red on "the confirm is refused as a moved target" (run 490).
+  - mutation: `"explorer.docdb.delete": true` in `Baseline.cls` → `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` red (run 491) and `DocDbWrite.TestTheAgentsDropIsGovernedThenConfirmed` red (run 492).
+  - mutation (review, AD-15 marking): `Confirm`'s success-arm `RecordAgentWrite` replaced by an error status → `DocDbWrite.TestTheAgentsCreateConfirmsAndATakenNameIsRefused` and `TestTheAgentsDropIsGovernedThenConfirmed` red on `auditMarked` (run 509).
 - AC7: the `docdb-database` arm removed → DocDbWrite's two `OCUPILOTCODE` legs.
+  - mutation: the `docdb-database` arm's `If` replaced by `If 0` → `DocDbWrite.TestOcuPilotsOwnCodeIsRefusedOnBothCallers` red on the screen create, the agent confirm and both own-code drops (run 494).
 - AC8: the strip's token swapped for a literal color → `client-lint.mjs` and the structural leg.
+  - mutation: the strip's `color: var(--ocu-warning)` → `#6b4e00` → `client-lint.mjs` red (`no-hardcoded-color`); built with `ng build` and redeployed, the browser strip leg red on dark contrast (1.49:1).
+- Matrix audit and review, the remaining rows' legs:
+  - mutation: the `DOCDB.` line removed from `Error.ReasonForToolCode` → `DocDbDescriptor.TestEachCodeReachesAToolResultWithItsSentence` red (run 499).
+  - mutation: `Invoke`'s name rules replaced by `If 0` and its package check moved after the service check → `DocDbWrite.TestTheAgentsMintRefusesAnInvalidOrMappedName` red on both names and the audit count (run 501).
+  - mutation: `Invoke`'s `ServiceStatus` test replaced by `If 0` → `DocDbWrite.TestADisabledServiceIsReportedOnEveryCaller` red on the four refusals and their four audit rows (run 509).
+  - mutation: `Database` logs its absent answer → `DocDbPort.TestAnAbsentReadIsUnloggedAndAnAbsentDropLogged` red on the read leg (run 508).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** System Explorer gains Document databases (`system-explorer/docdb`): `Port/DocDbPort` repeats the vendor's gate in the spec's order (pairs, namespace, namespace pairs, name rules and package mapping, `CheckServiceStatus`) before any `%SYSTEM.DocDB` call; a disabled service refuses 409 `DOCDB.SERVICE.DISABLED` on every path and the screen draws the published sentence in a status strip. The agent gets `explorer.docdb.read`, `explorer.docdb.create` (AD-54 create, `READBACKFIELDS` `Name`, key `true`) and `explorer.docdb.delete` (AD-51, destructive, key `false`); the screen's Create posts `POST /explorer/docdb` (AD-55) and its Drop is the typed-name delete. Own code is refused through a `docdb-database` arm of `Prohibited`.
+
+**Files.**
+
+- New server: `Api/DocDbError.cls` (codes and sentences), `Port/DocDbPort.cls` (gate, four types, name rules, mappings, script forms), `Area/Explorer/DocDbSave.cls` (Save route), `Screen/Descriptor/ExplorerDocDbList.cls`, `Screen/Tool/ExplorerDocDbWrite.cls`, `ExplorerDocDbCreate.cls`, `ExplorerDocDbDelete.cls`.
+- New tests: `Test/DocDbProbe.cls` (armed fixture), `DocDbDescriptor`, `DocDbPort`, `DocDbGate`, `DocDbWrite`, `DocDbGateSeam`, `DocDbLogSeam`.
+- Changed server: `Api/Error.cls` (one `DOCDB.` prefix line), `Api/Router.cls` (route), `Kernel/EntityType.cls`, `EntityRef.cls`, `Governance/Baseline.cls`, `Proposal/Prohibited.cls` (type, coverage, arm, create field), `Proposal/ReadBack.cls` and `Screen/Tool/Write.cls` (`READBACKFIELDS`), `Screen/Read.cls` and `Registry.cls` (`docdb` source); fourteen roster test classes.
+- Client: `areas/system-explorer/docdb-list.page.ts`, `docdb-create-dialog.ts`, `docdb-create.store.ts` and their specs; `screen-outlet.ts`, `screen-action-handler.ts`, `screen-actions.ts`, `strings.ts`, `screens.generated.ts`; `tools/screen-mirror.mjs` and six tool tests; `angular.json` (2921kB); `browser/system-explorer-docdb.browser-spec.mjs`.
+- Elsewhere: `scripts/ci-throwaway.sh` (`# classes:` lines), EXPERIENCE.md (Fixed-strings row :602, :159, :173).
+
+**This pass beyond the handoff.** Matrix audit added the agent's invalid and mapped mint refusals, the drop's data global (`^DXKX.DiBt.1`) and the `DOCDB.*` tool-result reasons; review patches added `auditMarked` on both confirms, four audit rows on the disabled callers and the unlogged absent read, made the probe lookups raise, and removed three assertions that could not fail. Two deviations from the handoff, kept: `PermittedCreateFields` lists `Name` for `docdb-database`, and AC7's legs name `OcuPilot.OcuProbe1917X` and `ocupilot.ocuprobe1917y` so the probe cleanup covers a wrong create.
+
+**Review.** 24 findings: 6 patched (1 medium, 5 low), 1 deferred (low, the stale `ExplorerDescriptor` method name, waiting on Epic 18's `SurfaceCoverage` rows), 17 rejected with reasons in the triage log (13 false, 4 low). Follow-up review: not recommended (one medium patched).
+
+**Verification.**
+
+- ObjectScript, one class per call on `ocupilot-a2-ci`: story classes after the last patch DocDbGate 505, DocDbPort 506, DocDbWrite 507 (DocDbDescriptor 496); mutation runs 499–501, 508, 509 each red, reverted with the tree byte-identical; handoff runs 461–495.
+- Full sweep, once (runs 510–974): 465 classes, 3,800 tests, 0 failed; the only refusals are the known residue, Story 18.7's EncryptionKeyFileRead, EncryptionKeyFileWrite and EncryptionWriteGate (`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, which this throwaway's compose predates). After it, `%Service_DocDB` reads `Enabled` 0 and USER holds no `OcuProbe1917*` database or class.
+- Client: `npm test` 1,824 tool tests and 2,468 component tests green; `check-objectscript.py` 0 problems and its harness 146 OK; `lint-docs.sh` 0 issues; Fixed strings 2,623 of 2,700.
+- Bundle: 2,920,111 bytes initial (2,921 kB), the deployed `main-UZCA323B.js` equal to the build. Browser (handoff, on that bundle): `system-explorer-docdb` 2 of 2, `a11y-structural-invariants` 12 of 12, nothing new against the baseline.
+
+**Residual risks.** The globals-database WRITE pair is unfalsified on a stock instance (every namespace keeps globals and routines in one database). The vendor-answer branches behind pre-checks (#25053, #25070, `<PROTECT>`) run in no test. Same-line list edits in `Read.cls`, `Registry.cls`, `EntityType.cls`, `EntityRef.cls`, `Prohibited.cls`, the roster counts and the "ten sources" sentence meet Epic 18 at the forward merge, as the spec gate ruled.

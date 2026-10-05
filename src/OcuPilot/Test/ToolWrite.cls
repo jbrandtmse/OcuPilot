@@ -1336,7 +1336,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     }
     Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached) + $ListLength(tAhead), "the port admits no pair beyond the ones the registry reaches and AHEADTYPES names -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
-    Do $$$AssertEquals(tOtherPorts, 13, "exactly thirteen shipped writes reach their target through another port -- one, since Stories 19.2, 19.13 and 19.3 System Explorer's ten through the source code API port, since Story 19.6 its SQL run through the SQL port, and since Story 19.8 the data browser's save through it too -- and each is held to its own port's contract instead")
+    Do $$$AssertEquals(tOtherPorts, 15, "exactly fifteen shipped writes reach their target through another port -- one, since Stories 19.2, 19.13 and 19.3 System Explorer's ten through the source code API port, since Story 19.6 its SQL run through the SQL port, since Story 19.8 the data browser's save through it too, and since Story 19.17 Document databases' create and drop through the DocDB port -- and each is held to its own port's contract instead")
 
     ; The vendor exposes terminating a process twice -- TYPETERMINATE and RunDelete delegating to it.
     ; Story 7.8 admits the first; the second is no mutating type, so the port answers 501 for it

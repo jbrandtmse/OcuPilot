@@ -82,6 +82,7 @@ import { CodeComparePage } from '../areas/system-explorer/code-compare.page';
 import { MacroLookupPage } from '../areas/system-explorer/macro-lookup.page';
 import { SqlQueryPage } from '../areas/system-explorer/sql-query.page';
 import { DataBrowserPage } from '../areas/system-explorer/data-browser.page';
+import { DocDbListPage } from '../areas/system-explorer/docdb-list.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
@@ -239,6 +240,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ExplorerSqlQuery': SqlQueryPage,
   // Story 19.7: Data browser, the schema tree beside one table's or view's paged grid.
   'OcuPilot.Screen.Descriptor.ExplorerSqlData': DataBrowserPage,
+  // Story 19.17: Document databases, the list with its create dialog and the disabled-service strip.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': DocDbListPage,
 };
 
 /**

@@ -236,6 +236,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     addadministrator: STRINGS.encryptionKeyFileAddAdminAction,
     removeadministrator: STRINGS.actionRemove,
   },
+  // Story 19.17: Document databases' delete, which drops the database and titles its typed-name dialog.
+  'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropLabel },
 };
 
 export class ScreenActions {

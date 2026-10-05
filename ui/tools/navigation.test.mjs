@@ -312,6 +312,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-query',
       // Story 19.7: Data browser, after SQL query.
       'system-explorer/sql-data',
+      // Story 19.17: Document databases, after Data browser.
+      'system-explorer/docdb',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

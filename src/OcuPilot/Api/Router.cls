@@ -241,6 +241,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
+  <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
 
@@ -1793,6 +1794,13 @@ ClassMethod ExplorerSqlData() As %Status
 ClassMethod EncryptionKeyFileCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.EncryptionKeyFileSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/docdb</code> (Story 19.17): Document
+/// databases' create, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ExplorerDocDbCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
 }
 
 }
