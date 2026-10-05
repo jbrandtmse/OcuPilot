@@ -392,3 +392,5 @@
 2026-10-05T17:16:21Z	Epic 19	ledger_filed	DW-2096(med,decision-pending_burndown,by=merge_gate,source=orchestrator_note_19.10_rulings:statement_text_credential_literal_to_screen_and_agent,next_to_DW-1982) treatment=19.10_same_as_19.14(none)
 2026-10-05T17:16:21Z	Story 19.10	ci_pushed	head=5356c8d7 run=37347102641(pending)
 2026-10-05T17:16:21Z	Story 19.10	stage_spawned	stage=qa spawn_at=2026-10-05T17:16:21Z model=sonnet agent_name=19-10-sql-activity-qa-1 cycle_iteration=1
+2026-10-05T17:25:31Z	Story 19.10	qa_complete	spawn_at=2026-10-05T17:17Z model=sonnet agent=19-10-sql-activity-qa-1 tests_added=3_legs(sql-activity:AC3_text_withheld,AC2_refusal,empty_state) mutations_demonstrated=3 unproven=AC2_product-side_mutation(PAIRS/descriptor/mirror)_left_refusal_leg_green(flagged_to_cr) closing_sections_present=true
+2026-10-05T17:25:31Z	Story 19.10	stage_spawned	stage=code-review spawn_at=2026-10-05T17:25:31Z model=opus agent_name=19-10-sql-activity-code-review-1 cycle_iteration=1 review_tier=full-opus
