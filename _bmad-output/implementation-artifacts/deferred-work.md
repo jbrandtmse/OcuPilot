@@ -9345,6 +9345,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: ScreenAction.cls:274 calls Operation.Read(..., pId, "", .tFresh); ExplorerSqlRun.PortQuery quits on a non-object payload, so SqlPort.Invoke GUARD returns EmptyGuard; the real guard is read only inside Prohibited.SqlRun and Run.
 - 2026-10-04T00:06:36Z status=routed owner=19-11-the-agent-gains-guarded-sql-and-a-picker by=cr note=19.11 advertises the tool: compose the mint's fresh read from the proposed statement so the card names its kind and tables
+- 2026-10-05T23:36:05Z status=resolved-by:19-11-the-agent-gains-guarded-sql-and-a-picker by=adjudication note=READSVALUES (AD-51): the mint passes its arguments and a screen action its declared values through PortQuery, so explorer.sqlquery.run's GUARD read carries the statement; the base tool's Target argument added to its schema; pinned by SqlAgentWrite's confirm legs and agent-sql's Kind/StatementType/Tables card rows (commit c7ce2008 + review patches)
 
 ### DW-2005: SqlPort.PASSWORDPATTERN's IDENTIFY/IDENTIFIED half matches anywhere, so a read or a change whose text holds the word Identified (a literal or a column) is refused EXPLORER.SQL.PASSWORD
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: low | fix-risk: low | footprint: in-story

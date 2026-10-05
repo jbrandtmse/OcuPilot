@@ -170,8 +170,9 @@ Parameter SCREENACTIONS = "";
 /// <method>PortQuery</method> turns into the port's query (AD-51, Story 19.11). <code>0</code> here:
 /// the read identifies the target alone. A tool that declares <code>1</code> has the mint pass its
 /// arguments, and a screen action its declared values, through <method>PortQuery</method>, as
-/// Confirm's re-read passes the stored payload, so all three callers read one state. Its
-/// <method>ScreenActionDelta</method> is asked before the fresh read, with no fresh object.</p>
+/// Confirm's re-read passes the stored payload, so all three callers read one state. A screen action
+/// asks its <method>ScreenActionDelta</method> twice: before the fresh read, with no fresh object,
+/// for the values the read is composed from, and again with the fresh read.</p>
 Parameter READSVALUES As BOOLEAN = 0;
 
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,

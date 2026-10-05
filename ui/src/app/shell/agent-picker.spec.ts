@@ -84,6 +84,18 @@ describe('the agent picker', () => {
     expect(rows[1].textContent).toContain('OpenAI \u00b7 m-two');
   });
 
+  it('opening the menu moves focus to the item in use, so the keys reach the menu', () => {
+    // Mutation (Rule 19): move focus from a `queueMicrotask` in `onToggle` instead of the effect -> this goes red.
+    const { fixture, host, component } = mount(true);
+    document.body.appendChild(host);
+    component.current.set('2');
+    fixture.detectChanges();
+    trigger(host).click();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(items(host)[1]);
+    host.remove();
+  });
+
   it('choosing another definition emits its id and closes; choosing the one in use emits nothing', () => {
     const { fixture, host, component } = mount(true);
     trigger(host).click();

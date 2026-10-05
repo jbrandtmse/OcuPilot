@@ -191,7 +191,9 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
 
 /// <p>The namespace, the statement, its values as JSON array text and its row cap, from the payload
 /// <var>pPayload</var> under the port's own query keys, so the write runs what the person confirmed
-/// where the guard read it (AD-52). A fresh read, whose payload is empty, is scoped by the port.</p>
+/// where the guard read it (AD-52). The mint, a screen action and the confirm's re-read each compose
+/// the fresh read through it (<parameter>READSVALUES</parameter>); without a namespace, the port reads
+/// in the request's scope.</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     If '$IsObject(pPayload) Quit

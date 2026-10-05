@@ -5092,10 +5092,88 @@ describe('Story 19.11: the agent picker in the header', () => {
     fixture.detectChanges();
     const button = host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement;
     expect(button.getAttribute('aria-disabled')).toBe('true');
+    // Mutation (Rule 19): drop the `[reasonId]` binding from the header -> the reason assertions go red.
+    expect(button.getAttribute('aria-describedby')).toBe('ocu-panel-new-conversation-reason');
+    expect(host.querySelector('#ocu-panel-new-conversation-reason')?.textContent?.trim()).toBe(
+      STRINGS.agentNewConversationLockedReason
+    );
     button.click();
     fixture.detectChanges();
     expect(host.querySelector('[role="menu"]')).toBeNull();
     expect(preferences.calls.filter((call) => call.method === 'POST')).toEqual([]);
+  });
+
+  it('the kill switch locks the picker as it locks New conversation, so no pick outlives its conversation', async () => {
+    // Mutation (Rule 19): lock the picker on `busy` alone -> this goes red.
+    const preferences = stubAccountPreferences();
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences, restraint: { killSwitch: true } });
+    const button = host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.getAttribute('aria-describedby')).toBeNull();
+    button.click();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+    expect(preferences.calls.filter((call) => call.method === 'POST')).toEqual([]);
+  });
+
+  /** A turn store restored onto a conversation holding one completed turn. */
+  async function restoredTurn(): Promise<TurnStore> {
+    const storage = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const memory = {
+      getItem: (key: string) => (storage.has(key) ? (storage.get(key) as string) : null),
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [{ seq: 1, message: 'hi', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 }],
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, storage: memory, navigationType: () => 'reload' });
+    await turn.restore();
+    return turn;
+  }
+
+  async function choose(host: HTMLElement, fixture: ComponentFixture<Panel>, index: number): Promise<void> {
+    (host.querySelector('.ocu-agent-picker-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelectorAll('[role="menuitemradio"]')[index] as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+  }
+
+  it('a landed pick re-reads the status, so the footer reads the picked definition\'s verdict', async () => {
+    // Mutation (Rule 19): re-read only the context after a landed pick -> the footer keeps "off" and this goes red.
+    const restraint: Partial<Restraint> = {};
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences: stubAccountPreferences(), restraint });
+    const footer = () => host.querySelector('.ocu-panel-read-only')?.textContent?.trim();
+    expect(footer()).toBe(STRINGS.statusReadOnlyOff);
+    Object.assign(restraint, { blocked: true, footerKey: 'statusReadOnlyByDefinition' });
+    await choose(host, fixture, 1);
+    expect(footer()).toBe(STRINGS.statusReadOnlyByDefinition);
+  });
+
+  it('a refused pick keeps the conversation and re-reads the status', async () => {
+    // Mutation (Rule 19): drop the `fault() === ''` half of `landed` -> the refused id, already the stored
+    // pick, reads as landed, the conversation is reset and this goes red.
+    const turn = await restoredTurn();
+    expect(turn.entries().length).toBe(1);
+    const preferences = stubAccountPreferences({ shell: { [SHELL_AGENT_DEFINITION]: '1' }, writeAnswer: 'refused' });
+    await preferences.load();
+    const restraint: Partial<Restraint> = {};
+    const { host, fixture } = await mount({ rows: TWO_ROWS, preferences, turn, restraint });
+    Object.assign(restraint, { blocked: true, footerKey: 'statusReadOnlyByDefinition' });
+    await choose(host, fixture, 1);
+    expect(preferences.calls.filter((call) => call.method === 'POST').length).toBe(1);
+    expect(turn.entries().length).toBe(1);
+    expect(host.querySelector('.ocu-panel-read-only')?.textContent?.trim()).toBe(STRINGS.statusReadOnlyByDefinition);
   });
 
   it('picking another definition while the conversation has turns starts a new conversation', async () => {

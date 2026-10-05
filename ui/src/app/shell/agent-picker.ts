@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  effect,
   inject,
   input,
   output,
@@ -146,6 +147,14 @@ export class AgentPicker {
 
   private readonly menuEl = viewChild<ElementRef<HTMLElement>>('menu');
 
+  constructor() {
+    // The items do not exist until the `@if` has rendered, which under zoneless change detection is
+    // after the click handler has returned; an effect runs once the view query holds the menu.
+    effect(() => {
+      if (this.open() && this.menuEl() !== undefined) this.focusCurrent();
+    });
+  }
+
   /** One enabled definition: its name is text, with nothing to choose. */
   protected get single(): boolean {
     return this.options().length === 1;
@@ -193,7 +202,6 @@ export class AgentPicker {
     }
     this.overlays?.push(AGENT_PICKER_OVERLAY_ID, () => this.close(true));
     this.open.set(true);
-    queueMicrotask(() => this.focusCurrent());
   }
 
   /** Arrow, Home and End move between items; Escape closes where no overlay stack does. */

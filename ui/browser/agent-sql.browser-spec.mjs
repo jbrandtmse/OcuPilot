@@ -150,7 +150,8 @@ function updateReply() {
 
 test('a proposed UPDATE shows the statement, its kind and table and the data-change sentence, and Confirm runs it', async () => {
   // Mutation (Rule 19): drop the `sqlVisible` banner from the proposal card -> the sentence assertion goes red;
-  // make `Consequence` answer the undeclared code for DML -> the sentence differs and this goes red.
+  // make `Consequence` answer the undeclared code for DML -> the sentence differs and this goes red;
+  // drop the `StatementType` row from `ExplorerSqlRun.StateDiff` -> the rows assertion goes red.
   await requireFreeSlot(config);
   const tag = nextTag();
   setTag(tag);
@@ -167,10 +168,25 @@ test('a proposed UPDATE shows the statement, its kind and table and the data-cha
     const card = await page.$eval('app-proposal-card', (node) => ({
       text: node.textContent.replace(/\s+/g, ' '),
       sentence: node.querySelector('[data-slot="consequence"]')?.textContent.replace(/\s+/g, ' ').trim() ?? '',
+      rows: Object.fromEntries(
+        [...node.querySelectorAll('.ocu-proposal-card-diff .ocu-diff-row')].map((row) => [
+          row.querySelector('.ocu-diff-field')?.textContent.trim() ?? '',
+          row.querySelector('.ocu-diff-after .ocu-diff-value')?.textContent.trim() ?? '',
+        ])
+      ),
+      destructive: node.querySelector('.ocu-proposal-card')?.classList.contains('ocu-proposal-card-destructive') ?? false,
+      inputs: node.querySelectorAll('input').length,
     }));
     const sentence = STRINGS.explorerSqlConfirmDml.replace('<tables>', 'OCUPROBE1911.GRANTED');
     assert.ok(card.sentence.includes(sentence), `the card states the data change and its table: ${card.sentence}`);
     assert.ok(card.text.includes(STATEMENT), `the card shows the statement: ${card.text}`);
+    assert.deepEqual(
+      [card.rows.Kind, card.rows.StatementType, card.rows.Tables],
+      ['dml', '3', 'OCUPROBE1911.GRANTED'],
+      `the card shows the statement's kind, type and table: ${JSON.stringify(card.rows)}`
+    );
+    assert.equal(card.destructive, true, 'the card takes the destructive treatment');
+    assert.equal(card.inputs, 0, 'and asks for no typed name');
     assert.equal(storedName(), 'before', 'nothing ran before Confirm');
 
     await page.click('.ocu-proposal-card-confirm');
@@ -181,6 +197,32 @@ test('a proposed UPDATE shows the statement, its kind and table and the data-cha
       STRINGS.explorerSqlRowsChanged.replace('<n>', '1')
     );
     assert.equal(storedName(), 'after', 'the confirmed statement changed the row');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+  }
+});
+
+test('under the default `false` key the same proposal is refused: no card, no run, the row unchanged', async () => {
+  // Mutation (Rule 19): enable the key after sign-in, as the first leg does -> a card appears and the no-card
+  // assertion goes red.
+  rebuildTable();
+  await requireFreeSlot(config);
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, updateReply());
+  scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("the run was refused")`);
+  const { context, page } = await signedInAt(browser, config, HOME_URL);
+  try {
+    // Signing in puts the governance policy back to its default, where the run's key is disabled.
+    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-panel-composer', 'rename the probe row');
+    await page.click('.ocu-panel-send');
+    await page.waitForFunction(() => document.body.textContent.includes('the run was refused'), { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('app-proposal-card'), null, 'a refused proposal leaves no card');
+    assert.equal(await page.$('.ocu-proposal-card-confirm'), null, 'there is nothing to confirm');
+    assert.equal(storedName(), 'before', 'nothing ran');
   } finally {
     await context.close();
     forgetTag(tag);

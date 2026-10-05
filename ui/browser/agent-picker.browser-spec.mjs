@@ -160,7 +160,14 @@ test('Leg 1: two enabled definitions give a named picker whose open menu lists b
     assert.equal(items[0].checked, 'true');
     assert.ok(items[1].text.includes(NAME_B) && items[1].text.includes('turnprobe'), `B names its provider: ${items[1].text}`);
     assert.equal(items[1].checked, 'false');
+    // Mutation (Rule 19): move focus from a `queueMicrotask` in `onToggle` instead of the effect -> focus stays on
+    // the button and this goes red.
+    const focused = () => page.evaluate(() => `${document.activeElement?.getAttribute('role')}:${document.activeElement?.textContent ?? ''}`);
+    assert.ok((await focused()).startsWith('menuitemradio:') && (await focused()).includes(NAME_A), `opening the menu focuses the item in use: ${await focused()}`);
+    await page.keyboard.press('ArrowDown');
+    assert.ok((await focused()).includes(NAME_B), `and an arrow moves to the next one: ${await focused()}`);
     await closeMenu(page);
+    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('ocu-agent-picker-button')), true, 'Escape returns focus to the button');
     assert.deepEqual(await openMenuViolations(page, 'permissions/users'), [], 'the open menu adds no structural violation in either theme');
   } finally {
     await context.close();

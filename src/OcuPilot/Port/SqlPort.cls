@@ -141,10 +141,9 @@ Parameter TYPESDDL = "9,10,11,12,13,14,15,17,35,36,37,38,39,40,41,42,43,44,52,54
 
 Parameter TYPESCALL = "45";
 
-/// <p>The statement types that create code the instance later runs: a function, method, procedure,
-/// query, trigger or aggregate, with the two table-level types 43 and 67 the guard's table lists
-/// beside them (Story 19.11). The agent is refused a statement of one of them
-/// (<method>CarriesCode</method>); a person's own run is not.</p>
+/// <p>The statement types that create code the instance later runs: CREATE FUNCTION (35), METHOD
+/// (36), PROCEDURE (37), QUERY (38), TRIGGER (43) and AGGREGATE (67) (Story 19.11). The agent is
+/// refused a statement of one of them (<method>CarriesCode</method>); a person's own run is not.</p>
 Parameter CODETYPES = "35,36,37,38,43,67";
 
 /// <p>The word a CREATE or ALTER TABLE statement names to carry ObjectScript in a computed
@@ -1184,7 +1183,7 @@ ClassMethod Closed(pNamespace As %String, ByRef pStatement) [ Private ]
     }
 }
 
-/// <p>The refusal an agent tool answers for <var>pWhich</var>, with the code and sentence the console
+/// <p>The refusal an agent tool answers for <var>pWhich</var>, with the code and sentence this port
 /// publishes (Story 19.11): <code>input</code> (400 <code>EXPLORER.SQL.INPUT</code>),
 /// <code>changes</code> (422 <code>EXPLORER.SQL.CHANGES</code>), <code>reads</code> (422
 /// <code>EXPLORER.SQL.READS</code>), <code>agentcode</code> (422 <code>EXPLORER.SQL.AGENTCODE</code>),

@@ -8554,6 +8554,12 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 
 .ocu-agent-picker-button[aria-disabled='true'] {
   color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-agent-picker-button[aria-disabled='true']:hover,
+.ocu-agent-picker-button[aria-disabled='true']:active {
+  background: transparent;
 }
 
 .ocu-agent-picker-text {

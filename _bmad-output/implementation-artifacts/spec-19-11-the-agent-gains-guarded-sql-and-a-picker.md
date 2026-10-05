@@ -271,6 +271,49 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
 - **AC11 (AD-11 rule 5):** Given a probe row holding the seeded instruction, when the agent reads it through `explorer.sqlquery.read`, then the turn makes no proposal and no navigation, and posts only to its definition's endpoint.
 - **DW-1964:** Given a principal granted SELECT on `Granted` alone, when its agent reads `Hidden` or proposes a change to it, then the read answers SQLCODE -99 with no row, and the mint is refused `EXPLORER.SQL.NOTPREPARED`. A source pin shows neither new class names `AtelierPort` nor `action/query`.
 
+### Review Findings
+
+Code review 2026-10-05 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 0 decision-needed, 15 patch, 0 defer, 20 rejected. Each patch is in-story with low fix-risk.
+
+- [x] [Review][Patch] The picker's menu takes no focus on open: zoneless change detection renders after the `queueMicrotask`, so a keyboard user cannot reach an item (medium) [ui/src/app/shell/agent-picker.ts:196]
+- [x] [Review][Patch] A landed pick re-reads only the context, so the read-only footer and banners keep the previous definition's verdict (medium) [ui/src/app/shell/panel.ts:1021]
+- [x] [Review][Patch] `AgentPick` leaves the confirmed run's ledger row, which `SqlConsoleWrite` and `SqlAgentWrite` count instance-wide, so both redden by run order (medium) [src/OcuPilot/Test/AgentPick.cls:335]
+- [x] [Review][Patch] The refused-pick path (no new conversation, status re-read) has no test (medium) [ui/src/app/shell/panel.spec.ts]
+- [x] [Review][Patch] A refused pick reads as landed when the stored pick already holds that id (low) [ui/src/app/shell/panel.ts:1019]
+- [x] [Review][Patch] A pick while the agent is off is stored but cannot start the new conversation; the picker now locks whenever New conversation does (low) [ui/src/app/shell/panel.ts:267]
+- [x] [Review][Patch] AC6's lock reason is unpinned through the panel's `[reasonId]` binding (low) [ui/src/app/shell/panel.spec.ts]
+- [x] [Review][Patch] `ExplorerSqlRead.ResultSchema` omits `rolledBack` and types `sqlcode` integer, while the answer can carry `rolledBack` and a null `sqlcode` (low) [src/OcuPilot/Screen/Tool/ExplorerSqlRead.cls:78]
+- [x] [Review][Patch] Doc comments still call `ResolveDefault` the definition in force (`Restraint.Verdict`'s caller contract, `Agent.cls`) (low) [src/OcuPilot/Kernel/Restraint.cls:84]
+- [x] [Review][Patch] `Write.READSVALUES` and `ExplorerSqlRun.PortQuery` docs describe the old fresh read (low) [src/OcuPilot/Screen/Tool/Write.cls:174]
+- [x] [Review][Patch] `SqlPort.RefuseFor` says the console publishes the agent-only codes; `CODETYPES` calls 67 table-level (low) [src/OcuPilot/Port/SqlPort.cls:144]
+- [x] [Review][Patch] `PrefState.TestTheShellMemberSetIsClosed` does not name `agentDefinition` (low) [src/OcuPilot/Test/PrefState.cls:408]
+- [x] [Review][Patch] EXPERIENCE.md says the button "reads" "Agent definition: <name>", which is its name, and that the chip "names" the definition, whose provider and host it shows (low) [EXPERIENCE.md:703]
+- [x] [Review][Patch] The locked picker keeps a pointer cursor and hover fill (low) [ui/src/styles/_components.scss:8547]
+- [x] [Review][Patch] The `agent-sql` browser leg asserts no Kind, StatementType or Tables row and no destructive treatment (AC9) (low) [ui/browser/agent-sql.browser-spec.mjs]
+
+Rejected:
+
+- Two picks inside one write (low): rare, and the fix adds a guard.
+- A refused or failed pick is not announced (low): the status re-read drops the option, and an announcement needs a new string.
+- No way back to following the default (low): AD-42 keeps a pick while it is enabled, the menu marks the default, and a remove needs a new route action.
+- A changed definition in force (disabled pick, marker move, another tab) drops replay silently: spec-bound (AD-24's one conversation, one definition).
+- The header falls back to the default before the context answers (low): transient.
+- One definition reads as bare text, with no label: spec-bound.
+- The menu opens at the panel's edge: by design (DW-1337 overflow).
+- An aliased credential column is not masked: AD-36's named limit.
+- The read has no governance key, ignores Share screen context, and cannot stop a called function's write: rulings 1 and 2, and AD-7's named limit.
+- `NOTPREPARED` carries no message: spec-bound (`detail {sqlcode}`).
+- The run's agent schema states no numeric bounds (low): its description states them and `InputProblem` refuses.
+- `Mint` and `Loop` fall back differently for a turn row with no definition (low): unreachable, because `Api/Turn` answers 503 before it reserves such a turn.
+- The picker's overlay entry outlives a menu whose options drop below two (low): rare, and the fix adds a guard.
+- A confirmed run that answers `error` with no SQLCODE shows no line (low): the console behaved this way before (19.6).
+- A failed pick read answers 500, not 403 (low): a state read failure is internal on either order.
+- A turn's definition deleted before its mint stamps no version (low): no widening against the prior stamp of the then-default.
+- Task 0 ran through `SqlPort.Run`, not a stub turn (low): the read runs the same call, and the spec records the deviation.
+- The moved-target leg does not isolate `Tables` (low): AC9's outcome is pinned, the governed test's successful confirm reddens under `READSVALUES` 0, and `FINGERPRINTSUBJECT` is 19.6's.
+- The spec contradicts itself on client mutations (false): QA applied them after implement wrote its result.
+- No test that the read runs under read-only (low): this is the kernel's rule for every read tool, not this story's code.
+
 ## Spec Change Log
 
 - 2026-10-05, lead (spec gate): the plan's decisions are accepted tier-1 and the twelve spine drafts are written (AD-7, AD-8, AD-15 seventeenth case, AD-21, AD-24, AD-36, AD-39, AD-42, AD-50, AD-51, AD-53, AD-61; AD-8's and AD-53's unadvertised lists corrected at origin against `ADVERTISED = 0`). Task added: `Api/Definitions.cls`'s stale header. DW-2096 and DW-2093 take occurrences, not tasks (owner's sheet; the epic's burn-down).
@@ -429,7 +472,17 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: AC10: `CarriesCode` answers 0 for the type test. Red: `SqlAgentWrite` 3 of 4 (run 1606).
 - mutation: AC11: `Loop` adds the last tool_result blocks to the system prompt. Red: `InjectionChannels` 16 of 16 (run 1607), including the SQL row source; the reverted tree is green (run 1608).
 - mutation: DW-1964: `%Prepare(text, 0)` in `SqlPort.Prepared`. Red: `SqlAgentRead.TestAnUnpreparedStatementIsAnErrorOutcome` (run 1599) and `SqlAgentWrite` 2 of 4 (run 1600).
-- mutation: client cases: each of `proposal-view.test.mjs`, `turn.test.mjs`, `sql-answer.test.mjs`, `proposal-card.spec.ts` and `panel.spec.ts` carries its own `Mutation (Rule 19)` note; they are written, not applied, because a client mutation needs a rebuild and redeploy each.
+- mutation: client cases (applied in QA, each reverted and compared with `cmp`): `sql-answer.ts` pushing the message for every outcome → `sql-answer.test.mjs` "sqlOutcomeLines adds the instance message only under an error"; `turn.ts` `outputLinesOf` without the `outcome` branch → `turn.test.mjs` "outputLinesOf reads a confirmed SQL run as its status line"; `proposal-view.ts` without the `RUNSPROCEDURE` branch, and `<tables>` read from `before` → `proposal-view.test.mjs` "the SQL run's consequence codes are the tool's own"; `agent-picker.ts` without the `locked()` guard → `agent-picker.spec.ts` "while locked the button keeps its tab stop"; `panel.ts` `[locked]="false"` → `panel.spec.ts` "a running turn locks the picker and a press writes nothing"; `proposal-card.ts` without the `sqlVisible` block → `proposal-card.spec.ts` "an agent SQL statement states its consequence".
+- mutation (QA): enabling the run's key before the second `agent-sql` leg → that leg's "a refused proposal leaves no card" goes red.
+- (QA) `ui/browser/agent-sql.browser-spec.mjs`: second leg, the default `false` key refuses the agent's UPDATE proposal under a real runtime (no card, row unchanged).
+- mutation (code review): AC6 keys: `agent-picker.ts` focuses from a `queueMicrotask` instead of its effect → `agent-picker.spec.ts` "opening the menu moves focus to the item in use", and `agent-picker.browser-spec.mjs` Leg 1 after a rebuild and redeploy (focus stayed on the button); reverted, the rebuilt bundle is byte-identical (`main-NRXV3DLI.js`).
+- mutation (code review): AC6 reason: drop the header's `[reasonId]` binding → `panel.spec.ts` "a running turn locks the picker and a press writes nothing".
+- mutation (code review): lock the picker on `busy` alone → `panel.spec.ts` "the kill switch locks the picker as it locks New conversation".
+- mutation (code review): a landed pick re-reads only the context → `panel.spec.ts` "a landed pick re-reads the status, so the footer reads the picked definition's verdict".
+- mutation (code review): drop `fault() === ''` from `landed` → `panel.spec.ts` "a refused pick keeps the conversation and re-reads the status".
+- mutation (code review): drop `GuardedDeleteForTurn` from `AgentPick`'s confirm leg → `AgentPick.TestAPickedDefinitionIsStampedAndStillRestrained` (run 2124); reverted, green (2125), then `SqlConsoleWrite` green after it (2126).
+- mutation (code review): drop `redactedColumns` from `ExplorerSqlRead.ResultSchema` → `SqlAgentRead.TestAQueryAnswersRowsWithItsValuesBound` (run 2129); reverted, green (2130).
+- mutation (code review): AC9 card rows: drop the `StatementType` row from `ExplorerSqlRun.StateDiff` → `agent-sql.browser-spec.mjs`'s first leg; reverted and reloaded, both legs green.
 
 ## Auto Run Result
 

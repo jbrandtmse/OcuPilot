@@ -72,9 +72,9 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
 }
 
 /// <p>The result: <code>{namespace, kind, statementType, tables, outcome, columns, rows, truncated,
-/// redactedColumns}</code> for a statement that ran, with <code>sqlcode</code> and
-/// <code>message</code> for an <code>error</code> outcome and <code>seconds</code> for a
-/// <code>stopped</code> one.</p>
+/// redactedColumns}</code> for a statement that ran, with <code>sqlcode</code>, <code>message</code>
+/// and <code>rolledBack</code> for an <code>error</code> outcome and <code>seconds</code> for a
+/// <code>stopped</code> one. A member the port answers as JSON null is left out.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -91,6 +91,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "redactedColumns": {"type": "array", "items": {"type": "string"}, "description": "The columns whose cells read [redacted] because their names look like credentials."},
             "sqlcode": {"type": "integer", "description": "The instance's SQLCODE, for an error outcome."},
             "message": {"type": "string", "description": "The instance's message, for an error outcome."},
+            "rolledBack": {"type": "boolean", "description": "True when the statement left a transaction open, which was rolled back: a function it called changed something."},
             "seconds": {"type": "integer", "description": "The time bound the statement ran past, for a stopped outcome."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
             "rowsAvailable": {"type": "integer", "description": "How many rows the read produced before the result was bounded."},
@@ -183,8 +184,8 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
 }
 
 /// <p>The tool's answer from the port's run answer <var>pAnswer</var> and the classification
-/// <var>pGuard</var>: the namespace, kind, statement type and tables, then the run's own members,
-/// with the cells of each credential-named column masked.</p>
+/// <var>pGuard</var>: the namespace, kind, statement type and tables, then the run's own members but
+/// a JSON null, with the cells of each credential-named column masked.</p>
 ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer As %DynamicObject) As %DynamicObject [ Private ]
 {
     Set tResult = {}
@@ -194,7 +195,7 @@ ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer A
     Do tResult.%Set("tables", pGuard.%Get("Tables"))
     Set tIterator = pAnswer.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue, .tType) {
-        If (tKey = "kind") || (tKey = "rows") || (tKey = "columns") Continue
+        If (tKey = "kind") || (tKey = "rows") || (tKey = "columns") || (tType = "null") Continue
         If (tType = "object") || (tType = "array") {
             Do tResult.%Set(tKey, tValue)
         } Else {

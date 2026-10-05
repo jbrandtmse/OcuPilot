@@ -412,6 +412,8 @@ Method TestTheShellMemberSetIsClosed()
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME), "so is the theme")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLFIRSTSIGNIN), "so is the first-login gate's record")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#SHELLFIRSTSIGNIN, "firstSignIn", "named firstSignIn on the wire")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLAGENTDEFINITION), "so is the agent definition the user picked (Story 19.11)")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#SHELLAGENTDEFINITION, "agentDefinition", "named agentDefinition on the wire")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember("anything"), "and nothing else is")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember(""), "including the empty name")
 }

@@ -82,7 +82,8 @@ Parameter FOOTERKEYFORYOU = "statusReadOnlyForYou";
 /// <code>code</code> and exactly one <code>footerKey</code> come back, so the panel cannot say two
 /// things at once.</p>
 /// <p><b>Caller contract:</b> <var>pDefinitionId</var> is the definition already resolved for this
-/// turn (<method>OcuPilot.Kernel.State.Agent.ResolveDefault</method>); <code>""</code> means no
+/// turn or caller (<method>OcuPilot.Kernel.State.Agent.ResolveFor</method>, or the turn's own
+/// <code>DefinitionId</code>, or a proposal's stamp); <code>""</code> means no
 /// definition is in force, which contributes no read-only source of its own. Check
 /// <code>$$$ISERR</code> on the returned status: a failed read blocks, and proceeding on it would
 /// be a write made while the switches were unreadable.</p>

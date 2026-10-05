@@ -335,6 +335,12 @@ Method TestAPickedDefinitionIsStampedAndStillRestrained()
     Set tSC = ##class(OcuPilot.Test.SqlAgentWrite).ConfirmIn(tContent, .tResult, .tHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "and the confirm is judged by it: " _ $Get(tCode))
     Do $$$AssertEquals($Select($IsObject($Get(tResult)) && $IsObject(tResult.%Get("output")): tResult.output.outcome, 1: ""), "done", "so it runs")
+    Set tLedger = "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND %EXACT(Name) = ?"
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, tLedger, tTurn, ..#TOOLNAME)
+    Do $$$AssertEquals($Select((tRS.%SQLCODE = 0) && tRS.%Next(): tRS.%Get("N"), 1: -1), 1, "the confirm records one ledger row on the turn")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, tLedger, tTurn, ..#TOOLNAME)
+    Do $$$AssertEquals($Select((tRS.%SQLCODE = 0) && tRS.%Next(): tRS.%Get("N"), 1: -1), 0, "which is removed, so no class that counts the run's rows sees it")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(0, "", 1), "enforced read-only is turned on")
     Do ..AnswerFor(tText, ..PreparedB, .tContent, .tIsError, .tTurn)

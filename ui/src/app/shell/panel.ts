@@ -264,8 +264,8 @@ interface PanelTurnView {
       <app-agent-picker
         [options]="agentOptions"
         [current]="agentInForce"
-        [locked]="busy"
-        [reasonId]="newConversationReasonId"
+        [locked]="pickerLocked"
+        [reasonId]="newConversationDescribedBy ?? ''"
         (chosen)="onChooseAgent($event)"
       />
       <button
@@ -1008,18 +1008,26 @@ export class Panel {
   }
 
   /**
+   * The picker is locked whenever New conversation is: a pick that lands must start a new conversation
+   * when the current one has turns, which only an available New conversation can.
+   */
+  protected get pickerLocked(): boolean {
+    return this.newConversationAriaDisabled !== null;
+  }
+
+  /**
    * A definition was chosen in the picker (Story 19.11, AD-50): store it as this user's own preference,
    * and when it landed and the conversation holds turns, start a new one -- one conversation runs under
-   * one definition. Then re-read the context the chip shows. A refusal (the definition was disabled or
-   * deleted meanwhile) re-reads the status too, so the menu drops it.
+   * one definition. Then re-read the context the chip shows and the status, whose restraint verdict the
+   * footer reads for the definition in force and whose list a refusal (the definition was disabled or
+   * deleted meanwhile) drops it from.
    */
   protected async onChooseAgent(id: string): Promise<void> {
-    if (this.busy || this.preferences === null) return;
+    if (this.pickerLocked || this.preferences === null) return;
     await this.preferences.setValue(SHELL_KIND, SHELL_AGENT_DEFINITION, id);
-    const landed = this.preferences.shell().get(SHELL_AGENT_DEFINITION) === id;
+    const landed = this.preferences.fault() === '' && this.preferences.shell().get(SHELL_AGENT_DEFINITION) === id;
     if (landed && this.turn.entries().length > 0) this.onNewConversation();
-    await this.agentContext.load();
-    if (!landed) await this.agentStatus.load();
+    await Promise.all([this.agentContext.load(), this.agentStatus.load()]);
   }
 
   /** The transcript's turns, oldest first, with the live one last while a turn runs (Story 4.5). */
