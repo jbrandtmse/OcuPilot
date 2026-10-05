@@ -69,13 +69,14 @@ ClassMethod Code(pStatus As %Integer, pAnswer) As %String
 }
 
 /// <p>A page answers 200 as JSON with its outcome, table, columns, key, rows, offset, size, more,
-/// total and truncated, and a cell's NULL as <code>null</code>.</p>
+/// total, truncated and cuts, each column naming whether it is an identity or a generated column, and
+/// a cell's NULL as <code>null</code>.</p>
 Method TestAPageAnswersItsShape()
 {
     Do ..Post({"schema": "OcuProbe197", "table": "Keyed", "sort": {"column": "Code", "direction": "desc"}, "size": 50}, .tStatus, .tAnswer, .tType)
     Do $$$AssertEquals(tStatus, 200, "the route answers 200")
     Do $$$AssertEquals(tType, "application/json", "with CONTENT-TYPE application/json")
-    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer), "{""outcome"":""rows"",""table"":{""schema"":""OcuProbe197"",""name"":""Keyed"",""type"":""table""},""columns"":[{""name"":""Code"",""type"":""varchar"",""kind"":""text"",""nullable"":false,""key"":true},{""name"":""Name"",""type"":""varchar"",""kind"":""text"",""nullable"":true,""key"":false}],""key"":[""Code""],""rows"":[[""c3"",""three""],[""c2"",""two""],[""c1"",""one""]],""offset"":0,""size"":50,""more"":false,""total"":3,""truncated"":false}", "the page's whole shape")
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer), "{""outcome"":""rows"",""table"":{""schema"":""OcuProbe197"",""name"":""Keyed"",""type"":""table""},""columns"":[{""name"":""Code"",""type"":""varchar"",""kind"":""text"",""nullable"":false,""key"":true,""identity"":false,""generated"":false},{""name"":""Name"",""type"":""varchar"",""kind"":""text"",""nullable"":true,""key"":false,""identity"":false,""generated"":false}],""key"":[""Code""],""keyUnique"":true,""rows"":[[""c3"",""three""],[""c2"",""two""],[""c1"",""one""]],""offset"":0,""size"":50,""more"":false,""total"":3,""truncated"":false,""cuts"":[]}", "the page's whole shape")
     Do ..Post({"schema": "OcuProbe197", "table": "Plain", "filters": {"Name": "n4*"}, "sort": {"column": "Num", "direction": "asc"}}, .tStatus, .tAnswer, .tType)
     Do $$$AssertEquals($Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("rows")): tStatus _ " " _ tAnswer.rows.%Size() _ " " _ tAnswer.rows.%Get(0).%Get(0) _ " " _ tAnswer.total, 1: tStatus), "200 1 n40 1", "a filtered page")
 }

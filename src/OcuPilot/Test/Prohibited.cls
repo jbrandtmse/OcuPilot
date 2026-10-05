@@ -229,7 +229,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server", "the set covers exactly thirty-eight entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file", "the set covers exactly forty-one entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11, the create and import types since Epic 8, the server description since Story 12.4, the resource server since Story 12.6, the namespace since Story 18.2, the web session since Story 16.2, the background task since Story 16.5, the three mapping types since Story 18.14, the database configuration since Story 18.3, the language server since Story 16.10, the database since Story 18.4, the lock since Story 16.12, and the class and the routine since Story 19.2, the journal file since Story 18.5, the journal settings since Story 18.18, and the license key and the license server since Story 18.6, and the ECP data server since Story 18.20, and the ECP settings and the ECP SSL/TLS computer name since Story 18.21, and the encryption key file since Story 18.7")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "rest-service")
@@ -351,6 +351,21 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If tEntry.%Get("kind") '= "write" Continue
+        ; Story 18.7: a write whose body is its declared secrets beside the arguments it advertises,
+        ; which its port sends with them, sends fields its type's reviewed few judge too
+        ; (SendsFields): its arguments and its secrets are what it advertises.
+        If '$ClassMethod(tEntry.%Get("class"), "SendsBody") && ..SendsFields(tEntry.%Get("class")) {
+            Set tFieldDescriptor = $Parameter(tEntry.%Get("class"), "DESCRIPTORCLASS")
+            If tFieldDescriptor = "" Continue
+            Set tFieldKind = ''$ClassMethod(tEntry.%Get("class"), "Creates")
+            Set tFieldType = $ClassMethod(tFieldDescriptor, "PrimaryEntityType")
+            Set tBodyTypes(tFieldKind, tFieldType) = ""
+            Set tAdvertised = $ClassMethod(tEntry.%Get("class"), "SettableFields") _ $ClassMethod(tEntry.%Get("class"), "SecretBodyNames")
+            For tI = 1:1:$ListLength(tAdvertised) {
+                Set tUnion(tFieldKind, tFieldType, $List(tAdvertised, tI)) = ""
+            }
+            Continue
+        }
         If '$ClassMethod(tEntry.%Get("class"), "SendsBody") Continue
         Set tBodyDescriptor = $Parameter(tEntry.%Get("class"), "DESCRIPTORCLASS")
         If tBodyDescriptor '= "" Set tBodyTypes(''$ClassMethod(tEntry.%Get("class"), "Creates"), $ClassMethod(tBodyDescriptor, "PrimaryEntityType")) = ""
@@ -408,6 +423,8 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; asserted of an action write is its own emptiness; the reviewed-few equality below is the
         ; body-sending tools' own.
         Set tSendsBody = ''$ClassMethod(tClass, "SendsBody")
+        ; Story 18.7: a secret-body write with advertised arguments is held as a body-sending one.
+        If 'tSendsBody Set tSendsBody = ..SendsFields(tClass)
         ; AD-51 as amended by Story 12.3: a write whose body its declared port composes admits the
         ; arguments the port composes it from, which travel in the port query and are no field of
         ; the type (the reviewed-few loop below still holds them outside the type's fields).
@@ -416,6 +433,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; admits exactly the value its screen action declares (AD-52 as amended 2026-09-29, AD-56
         ; (ii)), which travels in the port query and is no field of the type.
         Set tValued = 'tSendsBody && 'tComposed && (tSettable '= "") && (tSettable = ..ActionValues(tClass))
+        ; Story 18.7: a key file removal's one value names the row it removes, which its port reads
+        ; from its query and the fingerprint holds; it sets no field of the type.
+        If tValued && $ListFind($ListBuild("security.encryptionkeyfileadmins.removeadministrator:Admin", "security.encryptionkeyfile.removekey:KeyId"), tEntry.%Get("name") _ ":" _ $ListToString(tSettable)) Set tValued = 0, tSettable = ""
         If 'tSendsBody {
             If 'tComposed && 'tValued Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
             If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), "osmgmt.localdatabases.delete:DeleteFile", tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
@@ -425,7 +445,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; from its file and its import from its file, its reviewed summary and its compile choice;
             ; Story 19.3's save from its text, its version and its compile choice; Story 19.6's SQL
             ; run from its statement, its values and its Max rows.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, "tasks.schedule.export": 2, "tasks.schedule.import": 3, "explorer.classes.compile": 3, "explorer.routines.compile": 3, "explorer.classes.delete": 0, "explorer.routines.delete": 0, "explorer.classes.export": 2, "explorer.routines.export": 2, "explorer.classes.import": 6, "explorer.routines.import": 6, "explorer.classes.save": 3, "explorer.routines.save": 3, "explorer.sqlquery.run": 3, "explorer.sqldata.save": 4, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.
@@ -700,7 +720,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 26, "the set declares twenty-six codes")
+    Do $$$AssertEquals($ListLength(tCodes), 27, "the set declares twenty-seven codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
@@ -778,6 +798,15 @@ Method Sources(Output pSources) As %Status
     }
     If $$$ISERR(tSC) Kill pSources
     Quit tSC
+}
+
+/// <p>Whether write tool <var>pClass</var> sends fields its type's reviewed few judge: it sends a merge
+/// body, or its body is its declared secrets beside arguments it advertises, which its port sends with
+/// them (AD-56 (i); Story 18.7's key-file create and adds).</p>
+ClassMethod SendsFields(pClass As %String) As %Boolean
+{
+    If $ClassMethod(pClass, "SendsBody") Quit 1
+    Quit ($ClassMethod(pClass, "SecretBodyNames") '= "") && ($ListLength($ClassMethod(pClass, "SettableFields")) > 0)
 }
 
 /// <p><var>pSecrets</var> minus every name a write tool of descriptor <var>pDescriptor</var>'s

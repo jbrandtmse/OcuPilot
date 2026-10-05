@@ -67,6 +67,9 @@ import { LicenseKeyPage } from '../areas/os-management/license-key.page';
 import { LicenseServerFormPage } from '../areas/os-management/license-server-form.page';
 import { EcpDataServerListPage } from '../areas/os-management/ecp-data-server-list.page';
 import { EcpDataServerFormPage } from '../areas/os-management/ecp-data-server-form.page';
+import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
+import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
+import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -209,6 +212,14 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // form, create and edit alike.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': EcpDataServerListPage,
   'OcuPilot.Screen.Descriptor.EcpDataServerForm': EcpDataServerFormPage,
+  // Story 18.21: ECP settings, a form over the screen's own declared read; ECP application servers'
+  // two tabs take the detail page's strip.
+  'OcuPilot.Screen.Descriptor.EcpSettings': EcpSettingsPage,
+  // Story 18.7: Encryption key files, one page over a key file's keys and its administrators, and the
+  // key file create form.
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFile': EncryptionKeyFilePage,
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList': EncryptionKeyFilePage,
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm': EncryptionKeyFileFormPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

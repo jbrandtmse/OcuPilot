@@ -2,13 +2,21 @@
 title: 'Story 18.21: ECP settings and application servers'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b8c6c71af31d21e4c019e12fbbd2cf6220ba064e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Story 18.20's EcpPort mapping of the vendor's #1454 refusal (SSL/TLS over a disabled %ECPClient) still logs a severity-2 port line first, which raises the system monitor each time a DW-2006 test leg runs.
+    evidence: |-
+      Observed by this story's implement pass on ocupilot-b-ci: monitor state 2 after the 11:50:55 DW-2006 leg of EcpSslConnectionWrite, cleared with $SYSTEM.Monitor.Clear(); EcpDataServerWrite's SSL leg does the same, CI included. Pre-existing (18.20's mapping); likely an occurrence of DW-2007 (inference).
+    location: >-
+      src/OcuPilot/Port/EcpPort.cls (Put's SSLConfig mapping)
+    severity: low
 ---
 
 <intent-contract>
@@ -66,7 +74,7 @@ deferred: []
 | --- | --- | --- | --- |
 | Read settings | Stock throwaway (2, 1200, 5 / 1, 60, 0) | ECP settings and `osmgmt.ecpsettings.read` answer the same six members from one read; the license line shows (`NetworkEnabled()` 0); Enabled and Required are drawn `aria-disabled` with the `%ECPServer` sentence | none |
 | Change a setting | `ClientReconnectInterval` 5 to 6 by Save, and by a confirmed proposal; then restored | One `PUT` of the nested body with one diff row `AppServerSettings.ClientReconnectInterval`; read-back `matches`; no ECP process | none |
-| Restart setting | `MaxServerConn` 1 to 2, then back to 1 | The page after the Save and the proposal card state `ECP.SETTINGS.RESTART`; the field's hint says so; after the restore no restart is pending (Task 0 step 4) | none |
+| Restart setting | `MaxServerConn` 1 to 2, through `EcpSeamPort`'s `ecpserver` mode only (no real instance is sent a `MaxServerConn` change: any real change sets a pending restart that no restore clears, measured at Task 0) | The page after the Save and the proposal card state `ECP.SETTINGS.RESTART`; the field's hint says so; a test pins the restart sentence | none |
 | Bad values | `MaxServers` 255, -1, 1.5 or "x"; `ClientReconnectDuration` 9; `ClientReconnectInterval` 61; `ServerTroubleDuration` 19; `SSLECPServer` 3; an unknown member; a third top-level key | Refused on the field (or as unexpected) before any vendor call, on both callers | `ECP.SETTINGS.COUNT`, `.RECOVERY`, `.INTERVAL`, `.TROUBLE`, `.SSL.SHAPE`; 400 `PORT.FIELD.UNEXPECTED` / `TOOL.ARGUMENTS` |
 | SSL/TLS without `%ECPServer` | `SSLECPServer` 1 with `%ECPServer` absent (stock), and seeded disabled where Task 0 can seed it | Refused on `DataServerSettings.SSLECPServer`; no `PUT` | 422 `ECP.SETTINGS.SSLSERVER` |
 | SSL/TLS with `%ECPServer` (seam) | The seam answers `%ECPServer` enabled | The `PUT` carries `SSLECPServer` 1 and is recorded by the seam, never the vendor | none |
@@ -171,7 +179,8 @@ deferred: []
     - a write needs a pair outside the screen's set (with `EcpSettings`' own pair), `%DB_IRISSYS:WRITE` and `%Admin_Operate:USE`, or no measured set avoids a half-apply;
     - `AUTHORIZE` or `REJECT` of a name not pending removes or changes an `Authorized` row;
     - S2 differs from S0 beyond the declared differences.
-11. **Otherwise, set from the record:**
+11. **Resume here after the orchestrator's ruling (2026-10-04, option b).** Steps 1 to 10 ran (Design Notes › Measured at implement); the plumbing patch `_bmad-output/implementation-artifacts/spec-18-21-task0-plumbing.patch` is applied first (`git apply`). `MaxServerConn` stays editable with its restart sentence (Decision 3); every test that changes it runs through `EcpSeamPort`'s `ecpserver` mode, never a real instance (CI's fresh throwaways included); one test pins the screen's restart sentence; a guard (a roster or grep check of the kind other suites use) fails if any test sends `MaxServerConn` to `AdminPort` for real. DW-2006 is closed by the vendor's #1454 (no pre-check). **Known throwaway state:** `ocupilot-b-ci` reads `Config.CPF.PendingRestart` 1 permanently since Task 0's `MaxServerConn` probe (both reasons listed, the value restored to 1); it is never restarted to clear it, no check may depend on that flag, and any check that starts reading it is reported to the runner.
+12. **Otherwise, set from the record:**
     - **Each tool's pairs**, and whether the SSL/TLS tools need `%DB_IRISSYS:WRITE`.
     - **The body.** The complete nested set stands unless step 4a changed anything, set a pending restart, or wrote an audit event step 4b's changes do not; then an unchanged member is omitted (a named AD-4 exception, the `Task.CRUD` model).
     - **The restart consequence** covers `MaxServerConn` and any member step 4b leaves pending until restored.
@@ -256,9 +265,87 @@ deferred: []
 - **C7 (DW-2006):** Given a disabled `%ECPClient`, when a data server is saved with SSL/TLS, then Task 0's measurement decides: it is refused `ECP.DATASERVER.SSLCLIENT` with nothing stored (for every caller the vendor refuses, or for a caller holding `%Admin_Secure:USE`), and any remaining gap is named in the spec and the spine.
 - **C8:** Given the rosters, when the story lands, then ECP settings is OS management's eighteenth entry and ECP application servers its nineteenth; each screen carries three prompts; the four keys are in the baseline with the delete disabled; every roster and pinned side-bar list includes the screens; the DW-1337 gate holds in both themes; EXPERIENCE.md reads 1006 lines.
 
+### Review Findings
+
+Code review 2026-10-04 (`full-opus`, four layers; 53 rows, 43 entries: 0 high, 0 medium, 30 low, 1 maybe-false, 7 false, 5 by-design or spec-only). Points (a) to (h) hold; the `MaxServerConn` text guard's residual gap is judged low (DW-2035).
+
+- [x] [Review][Patch] `EcpError.SSLCLIENT` and `EcpPort`'s header said #1454 means an absent `%ECPClient`; Task 0 measured a disabled one too (the Execution item) [Api/EcpError.cls:67, Port/EcpPort.cls:24]
+- [x] [Review][Patch] The vendor storing members before #456 was labeled measured [Api/EcpError.cls:136, Test/EcpSettingsWrite.cls:275]
+- [x] [Review][Patch] `SslState`'s enabled branch never met a real answer; the seam answers under the same constant [Test/EcpSslConnectionWrite.cls:251]
+- [x] [Review][Patch] No client test drew a refusal on the SSL/TLS radio group [ecp-settings.page.spec.ts]
+- [x] [Review][Patch] The read-back was shown only to match; the two seam-recorded `MaxServerConn` legs now read `differs` [Test/EcpSettingsWrite.cls:186, :194]
+- [x] [Review][Patch] A maximum equal to the defined data servers was unpinned (`>` against `>=`) [Test/EcpSettingsWrite.cls:299]
+- [x] [Review][Patch] The pending confirm leg checked the write type, not the name sent [Test/EcpSslConnectionWrite.cls:203]
+- [x] [Review][Patch] `EcpSettingsGate`'s header claimed the authorize and reject confirms [Test/EcpSettingsGate.cls:5]
+- [x] [Review][Patch] `EcpWriteGateProbe.Run`'s step contract omitted the four new kinds [Test/EcpWriteGateProbe.cls:25]
+- [x] [Review][Patch] `EcpDescriptor`'s header omitted the settings script's environment needs (its every-branch claim is false: the comment branch runs) [Test/EcpDescriptor.cls:10]
+- [x] [Review][Patch] The authorize and reject pairs' inference lacked its label [Screen/Tool/EcpSslConnectionAuthorize.cls:14, EcpSslConnectionReject.cls:14]
+- [x] [Review][Patch] A whole number typed with spaces was sent as text [ecp-settings.store.ts:59]
+- [x] [Review][Defer] The `MaxServerConn` guard matches text — wontfix-accepted DW-2035
+- [x] [Review][Defer] The restart test's unarmed leg rests on the seam guard — wontfix-theoretical DW-2036
+- [x] [Review][Defer] `SettingsRefusal` answers its first refusal only — wontfix-accepted DW-2037
+- [x] [Review][Defer] A large `MaxServers` may need a restart (inference) — wontfix-accepted DW-2038
+- [x] [Review][Defer] `Consequence` answers restart when its read fails — wontfix-theoretical DW-2039
+- [x] [Review][Defer] `EcpProbe` lookups swallow failures — wontfix-theoretical DW-2040
+- [x] [Review][Defer] Authorize and reject's real post-action state is unobserved (Named limit 1) — wontfix-accepted DW-2041
+- [x] [Review][Defer] C7 pinned for a privileged caller only — wontfix-accepted DW-2042
+- [x] [Review][Defer] The `%ECPServer` caption is drawn twice — wontfix-accepted DW-2043
+- [x] [Review][Defer] The authorize and reject card shows no `ClientIP` — wontfix-accepted DW-2044
+- [x] [Review][Defer] The warning dialog never runs in a browser spec — wontfix-accepted DW-2045
+- [x] [Review][Defer] The form stays interactive during a Save — wontfix-accepted DW-2046
+- [x] [Review][Defer] Theoretical, each wontfix-theoretical: a `{}` Save's change event (DW-2047), a partial fresh read (DW-2048), an unreadable class in the guard (DW-2049), `FieldOf`'s two fields (DW-2050)
+- [x] [Review][Defer] `open()` keeps only the form read's refusal — wontfix-accepted DW-2051
+- [x] [Review][Defer] No agent settings confirm for the half-apply principal — wontfix-accepted DW-2052
+
+Rejected:
+
+- false: the tools, the Save and the browser helpers duplicate siblings — each follows the spec's named model and the suites' convention.
+- false: `HandleForm` couples to `LicenseRules.RenderRead` — `EcpRules` and two Saves render through it.
+- false: `MergeUpdate`'s "each member a number" — the vendor answers six numbers (Task 0) and supplied members are coerced.
+- false: `MappedClientColumns` reads 32,000 characters — a longer `Run` fails loudly; the vendor's is nine lines.
+- false: C1 to C8 lack a mutation per clause — Rule 19 asks one per AC, and each carries one.
+- maybe-false: a multi-RDN distinguished name breaks a path — the query is in-process, the match exact and the draft URL-encoded; low if real.
+- by-design: the settings schema's objects are prose (Registry emits no `properties`); a DN both pending and authorized (Named limit 3); Connections' empty parity (Named limit 1).
+- spec-only: the Auto Run Result's medium count and "rules before any vendor call" for the mint's first read — each fix edits the spec.
+
 ## Spec Change Log
 
+- 2026-10-04, orchestrator (merge gate, Task 0 halt): option (b) -- `MaxServerConn` stays editable with its restart sentence; every test that changes it runs through the seam's `ecpserver` mode; the "after the restore no restart is pending" row is dropped; one test pins the restart sentence and a guard keeps any test from sending `MaxServerConn` to `AdminPort` for real; `ocupilot-b-ci`'s `PendingRestart` 1 is a known throwaway state, never cleared by a restart. The measured pairs, the complete body, every refusal before the call, the exact-case SSL/TLS ids and the AD-15/AD-53 cases stand; DW-2006 closes against 18.20's #1454 mapping. The runner wrote AD-4, AD-8, AD-13, AD-15, AD-52 and AD-53; the spec is re-opened at Task 0 step 11.
+
+- 2026-10-04, implement (Task 0, halted at step 10): `intent gap: observation contradicts the plan: a restored MaxServerConn leaves PendingRestart 1`. Recommended: (b) `MaxServerConn` stays settable with its restart sentence (Decision 3), and every test leg that changes it runs through the seam (`ecpserver` records the `PUT` without the vendor), so no instance is left pending; or (a) Decision 3's alternative, shown-only with the classic page's hint, dropping C2's restart clause. Either way the I/O row "after the restore no restart is pending" goes. Measured AD sentences for the runner:
+  - AD-4: "**`ECP.Settings` is the first nested body** [AMENDED <date>, Story 18.21, Rule 20]: its tool merges `AppServerSettings` and `DataServerSettings` member by member over the fresh read, as `LanguageServer`'s `Custom` is merged, and sends both objects complete: an unchanged member stores nothing, writes no event and sets no pending restart; the vendor sets only the members it is sent and does not stop at a refused one (measured at Story 18.21's Task 0)."
+  - AD-13: "**`ecp-settings` is a singleton; an `ecp-ssl-connection` id is the certificate's distinguished name, kept exactly**, because the vendor stores it as given and matches it exactly (Story 18.21, measured)."
+  - AD-8: "**Story 18.21's ECP settings declares `%Admin_Secure:USE` as its own pair** beside OS management's set, because the vendor's settings `GET` calls `Security.System.Get`, and a `PUT` without it stores its `Config.*` members before answering 500 (measured); `osmgmt.ecpsettings.update` declares `%DB_IRISSYS:WRITE`, because the screen's three pairs were answered `<PROTECT>` in `Config.ECP` and `Config.config` with nothing stored, and `%Admin_Operate:USE` did not help; the SSL/TLS authorize, reject and delete declare `%DB_IRISSYS:WRITE`, the delete measured (`<PROTECT>` on `^SYS("ECPSSL")` without it) and the authorize and reject inferred from the same structure; each refused by name before any port call (measured on `ocupilot-b-ci`, 2026-10-04)."
+  - AD-52: "`EcpPort` (Story 18.21) refuses a settings write whose `SSLECPServer` is 1 or 2 while `%ECPServer` is absent or disabled, read through `Security.SSLConfig` before the `PUT`, because the vendor's own refusal (#1453) does not stop the `PUT` storing its other members (measured). DW-2006 needs no pre-check: the vendor refuses a data server's `SSLConfig` 1 over a disabled `%ECPClient` with the #1454 `EcpPort` already maps to `ECP.DATASERVER.SSLCLIENT` (measured at Story 18.21's Task 0)."
+  - AD-15 (fifteenth) and AD-53 (seventeenth): "Authorizing, rejecting or deleting an ECP application server's SSL/TLS name (`ECP.AppServerSSLConnection`, Story 18.21): no vendor event records any of them with auditing on (measured on `ocupilot-b-ci`, 2026-10-04)." The settings `PUT` records `%System/%System/ConfigurationChange` and is no case.
+
+- 2026-10-04, implement (from Task 0 step 11): one further measured AD sentence for the runner:
+  - AD-52: "`EcpPort` (Story 18.21) also refuses a settings write whose `AppServerSettings.MaxServers` is below the number of ECP data servers the instance defines, `ECP.SETTINGS.SERVERS` on that member before the `PUT`, because the vendor answers it 500 with ERROR #456 (`[config] MaxServers parameter must be increased to at least <n>`), which the port can only log as an internal error, and, as AD-4 records, does not stop at a refused member (measured at Story 18.21's Task 0)."
+
 ## Review Triage Log
+
+### 2026-10-04 — Review pass
+
+- verdicts: 18 findings — high 0, medium 3, low 8, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The `MaxServerConn` guard matched only `"MaxServerConn":` and skipped the browser specs — widened to the object-literal, JSON-string and `%Set` spellings in every `%UnitTest.TestCase` on the roster; added the browser twin in `ui/tools/ci.test.mjs` and a `RESTART` refusal in the settings spec's `retype` (mutations below).
+  - `[medium]` `[patch]` The handler spec's wrong-state Delete leg started from a Pending row, so the rule stopped it before the published-problem path — it now starts from an Authorized row and asserts one call; dropping `ecpSslRefusalNotAuthorized` from `PUBLISHED_PROBLEMS` turned it red (vitest), then restored.
+  - `[low]` `[patch]` The Connections parity compares two empty reads and the column check derived the vendor's mapping — the empty parity is the intent's own Community row; `EcpDescriptor.MappedClientColumns` now applies the endpoint's own `MapColumnName` calls, read off its compiled `Run` through `AdminPort.EndpointClass` (run 5728 green).
+  - `[low]` `[patch]` Two "with nothing written" assertions after the real tool's mint read the seam, which that path never reaches — deleted (`EcpSettingsWrite` run 5730 green).
+  - `[false]` `[reject]` ACs lack a mutation line per clause — Rule 19 asks one demonstrated mutation per AC; C1 to C8 each carry at least one, and C0 is Task 0's measurement, recorded under Measured at implement.
+  - `[low]` `[reject]` A stored `SSLECPServer` 1 or 2 with `%ECPServer` later disabled refuses every Save, and the mint accepts what the confirm refuses — the intent's "resulting `SSLECPServer`"; Disabled is never refused, so the same Save clears it; unreachable on Community (4e); a mint-time check would add a fresh read and merge to `ArgumentProblem`.
+  - `[low]` `[patch]` AC labels in the client and browser specs did not match the spec's ACs — corrected (SSL radio C1, restart C2, refused value C3, Connections C4) with the two `mutation:` lines that repeated them.
+  - `[false]` `[reject]` `## Auto Run Result` is stale — finalize rewrites it after the once-before-`dev_complete` checks.
+  - `[false]` `[reject]` No test runs the restart sentence end to end — each link is pinned (the Save's `consequence` through the seam, the store's read of that key, the page's render, the card's `consequenceSentence` of the stored code); the whole chain needs a real `MaxServerConn` change, which the ruling forbids.
+  - `[medium]` `[patch]` The guard covers ObjectScript classes only and matches text — same root cause as the first row; patched with it.
+  - `[low]` `[reject]` The SSL/TLS rule behaves differently at mint and at send — same as the stored-`SSLECPServer` row.
+  - `[false]` `[reject]` The SSL/TLS pairs are called measured — the tools' doc comments match Task 0 (delete measured, authorize and reject inferred); only the stage's prompt overstated it.
+  - `[low]` `[reject]` Authorize and reject's agent confirm without `%DB_IRISSYS:WRITE` is untested — the confirm's pair gate is the kernel's shared path, pinned by the delete's confirm leg, and each tool's pairs are pinned in `EcpDescriptor`; reaching it needs seam-minted pending proposals in a child process.
+  - `[false]` `[reject]` `ECP.SETTINGS.SERVERS` is beyond the intent's list — it keeps a value refusal before the `PUT` (Named limit 2: the vendor's #456 follows its `Security.System` and `Config.ECP` writes), pinned by `TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite`, its AD-52 sentence logged for the runner.
+  - `[low]` `[patch]` The Connections columns are checked against a derivation — same root cause as the parity row; patched with it.
+  - `[false]` `[reject]` The delete's read-back is `notFound`, not `matches` — `notFound` is `ReadBack`'s verdict for a confirmed absence (`ReadBack.NOTFOUND`), as `EcpDataServerWrite` reads it.
+  - `[low]` `[reject]` The agent's change leg changes `ClientReconnectDuration`, not the interval — the merge is member-generic, one code path; no reader is misled.
+  - `[false]` `[reject]` `angular.json`'s budget is a changed value — the dispatch sanctions that one edit under DW-1166, with its history row.
 
 ## Design Notes
 
@@ -278,6 +365,23 @@ deferred: []
 **Measured before this plan** (not re-run): `ECP.Settings` `GET` needs `%Admin_Secure:USE` beyond OS management's set (500 `PORT.ACCESSDENIED` without it); `Security.SSLConfig` `GET` of an SSL/TLS configuration answers 403 without it (Story 18.20, Task 0 steps 7 and 10). The classic pages are spelled as their class names and none is Hidden (`NormalizePage`, Story 18.6's plan). Each `Config.ECPServers` write logs two severity-0 activation lines (Story 18.20).
 
 **Measured at plan** (read-only, `ocupilot-b-ci`, 2026-10-04): `NetworkEnabled()` 0, `MaxECPServers()` 0, `KeyServer()` Single; `PendingRestart` 0; `MaxServers` 2, `MaxServerConn` 1, `Config.ECP` 1200, 5, 60, `SSLECPServer` 0; neither `%ECPServer` nor `%ECPClient` exists; `%Service_ECP` disabled; monitor state 1 (left by earlier runs); 0 ECP jobs. Through `AdminPort` as `irisowner` (`%All`): `ECP.Settings` `GET` 200 in 0.0035 s (`{"AppServerSettings":{"MaxServers":2,"ClientReconnectDuration":1200,"ClientReconnectInterval":5},"DataServerSettings":{"MaxServerConn":1,"ServerTroubleDuration":60,"SSLECPServer":0}}`, all numbers); `ECP.AppServerList` and `ECP.AppServerSSLConnection` `LIST` 200 `[]` in 0.0013 s and 0.0008 s; `Security.SSLConfig` `GET name=%ECPServer` 404 `PORT.NOTFOUND`.
+
+**Measured at implement** (Task 0 on `ocupilot-b-ci`, 2026-10-04 09:54-09:57 UTC, halted at step 10; evidence in `/tmp/epic-18-d6/1821/t0/`). Every call ran through `AdminPort` as `irisowner` (`%All`) unless a principal is named.
+
+- 1-2. The four pairs joined `MUTATINGTYPES` and `PortFixture`'s copy, the three SSL/TLS pairs `BODYLESSTYPES`, and `EcpProbe` gained step 1's methods. S0: `PendingRestart` 0, monitor state 0, 0 ECP jobs.
+- 3. `ECP.Settings` `GET` 200 in 0.003 s, six numbers. `ECP.AppServerList` `LIST` `[]` in 0.001 s. `ECP.AppServerSSLConnection` `LIST` with `CN=OCUPROBEECPA` seeded: one row `{SSLComputerName, Status "Authorized", ClientIP ""}`, all strings, in 0.001 s. Both ignore a `name` query.
+- 4a. The fresh `GET` body sent back unchanged: 200 in 0.002 s; nothing stored, no event, no log line, no pending restart.
+- 4b. Each member alone, +1 then back: 200 in 0.13-0.14 s, only that member stored, one `%System/%System/ConfigurationChange` ("Modify section config" or "Modify section ECP") per change, no log line, 0 ECP jobs. `MaxServers`, `ClientReconnectDuration`, `ClientReconnectInterval` and `ServerTroubleDuration` left `PendingRestart` 0. `MaxServerConn` 1 to 2 set it 1 ("Restart required because section [config], property MaxServerConn modified, new value:2, old value:1"), and the restore to 1 left it 1 with a second reason ("new value:1, old value:2").
+- 4c. One complete object with one member changed: the other object's members were kept. An unchanged `MaxServerConn` sent added no reason.
+- 4d. Refused 500, nothing stored, one severity-2 port line each: `MaxServers` 255 (#7203) and `"x"` (#7207), `ClientReconnectInterval` 0 (#7204), `SSLECPServer` 3 (#1453, #7203). `{AppServerSettings:{ClientReconnectInterval:6}, DataServerSettings:{SSLECPServer:3}}` answered 500 and stored `ClientReconnectInterval` 6 (named limit 2, measured).
+- 4e. `SSLECPServer` 1 with `%ECPServer` absent: 500 #1453 ("'%ECPServer' SSL/TLS configuration does not exist or is disabled"), nothing stored. `Security.SSLConfigs.Create` refuses a server configuration with no certificate (#982), so the `%ECPServer` rule is pinned through the seam.
+- 4f. With `OCUPROBEECPF1` (`192.0.2.10`) and `OCUPROBEECPF2` (`192.0.2.11`) defined, `MaxServers` 1: 500 #456 ("must be increased to at least 2"), nothing stored.
+- 5. `DELETE` of the seeded name 200 in 0.002 s, row gone; again 200. `AUTHORIZE` and `REJECT` of a name not pending, and of the authorized name: 200 each, no row added, removed or changed. `cn=OcuProbeEcpB` is stored as given, and a `DELETE` of `CN=OCUPROBEECPB` answered 200 and kept it: matched exactly.
+- 6. Each changed setting wrote `ConfigurationChange`, 4d's half-apply included; 4a wrote none; no seed, `DELETE`, `AUTHORIZE` or `REJECT` wrote a vendor event.
+- 7. A complete settings body changing `ClientReconnectInterval` and `MaxServers`: with `%Admin_Manage:USE`, `%DB_IRISSYS:READ` and `%Admin_Secure:USE`, `GET` 200 and `PUT` 500 `<PROTECT>` in `Config.ECP` and `Config.config`, nothing stored; `%Admin_Operate:USE` added, the same; `%DB_IRISSYS:WRITE` added, with or without it, 200 and both stored. Without `%Admin_Secure:USE`, with `%DB_IRISSYS:WRITE`: `GET` 500 `PORT.ACCESSDENIED` (#822), `PUT` 500 `PORT.ACCESSDENIED` with both members stored, a half-apply the own pair rules out. `Security.SSLConfig` `GET` of `%ECPServer` (absent): 404 with `%Admin_Secure:USE`, 403 without. With exactly `%Admin_Manage:USE` and `%DB_IRISSYS:READ`: both `LIST`s 200; `AUTHORIZE` and `REJECT` 200 as no-ops (no name can be pending); `DELETE` 403 (`<PROTECT>` on `^SYS("ECPSSL","Authorized",…)`), row kept, and with `%DB_IRISSYS:WRITE` 200, removed; `%Admin_Operate:USE` or `%Admin_Secure:USE` alone did not help. A real `AUTHORIZE` or `REJECT` writes the same `^SYS("ECPSSL")` structure (inference), so all three SSL/TLS tools declare `%DB_IRISSYS:WRITE`.
+- 8. DW-2006: with `%ECPClient` seeded disabled, `PUT name=ocuprobeecpsslc {Address:"192.0.2.10", Port:1972, SSLConfig:1}` answered 500 #1454 ("'%ECPClient' SSL/TLS configuration does not exist or is disabled"), which `EcpPort` already maps to `ECP.DATASERVER.SSLCLIENT`; nothing stored, 0 ECP jobs. Enabled: 201, stored, two severity-0 activation lines, 0 ECP jobs. Decision 5's first branch: resolved by the vendor's refusal.
+- 9. `RemoveAll` left 0 probe objects. S2 equals S0 apart from `messages.log` (10,754 to 10,780 lines: 15 severity-2 port refusal lines, 2 vendor alert-suspension lines, 9 severity-0 activation lines from the probe data servers), `alerts.log` (319 to 328), the monitor state (0 to 2, cleared with `$SYSTEM.Monitor.Clear()`) and `PendingRestart` (0 to 1; no API clears it short of a restart, inference).
+- **Halt (step 10, first and last conditions).** A restored `MaxServerConn` leaves `PendingRestart` 1, so every test that changes and restores it leaves its instance pending a restart, CI's included; this throwaway now reads `PendingRestart` 1 with `MaxServerConn` 1, as at S0. No other condition held: 0 ECP jobs and no connection line, the license and `%Service_ECP` unchanged, every route synchronous, reads at most 0.003 s, and the measured pairs avoid every half-apply.
 
 **Decisions** (each applied in this plan; the runner confirms them at the spec gate):
 
@@ -358,14 +462,53 @@ deferred: []
 - C6: `EcpSettingsUpdate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` (if Task 0 keeps it) → `EcpSettingsGate` red.
 - C7: the DW-2006 pre-check (if built) removed → its leg red with the server stored.
 - C8: `osmgmt.ecpsslconnections.delete` dropped from the baseline → `GovernanceBaseline` red; `EcpSettings` `sideBarPosition` 0 → `Navigation` and `navigation.test.mjs` red.
+- mutation: `EcpSettings`' read drops `DataServerSettings.SSLECPServer` → `EcpDescriptor.TestEcpSettingsIsOsManagementsEighteenthEntry` red (run 5707)
+- mutation: `EcpSettingsForm.sslRefusal` answers `''` for every choice → `ecp-settings.store.spec.ts` and `ecp-settings.page.spec.ts` C1 legs red (vitest)
+- mutation: `EcpSettingsUpdate.MergeUpdate` puts only the changed object → `EcpSettingsWrite.TestAChangeSendsTheNestedBodyOnBothCallers` red (run 5710)
+- mutation: `EcpSettingsUpdate.Consequence` answers `""` for a changed `MaxServerConn` → `EcpSettingsWrite.TestARestartSettingIsStatedAndNeverSentForReal` red (run 5711)
+- mutation: the store never keeps the `ECP.SETTINGS.RESTART` answer → the store and page specs' C2 restart legs red (vitest)
+- mutation: `EcpSettingsRules` `RANGES` admits `ClientReconnectInterval` 61 → `EcpSettingsWrite.TestBadValuesAreRefusedOnTheirFieldBeforeAnyWrite` red (run 5713)
+- mutation: `EcpPort.SettingsRefusal` skips its `%ECPServer` check → `EcpSettingsWrite.TestSslNeedsAnEnabledServerConfiguration` red (run 5714)
+- mutation: `EcpPort.SettingsRefusal` skips its data server count → `EcpSettingsWrite.TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite` red (run 5715)
+- mutation: `EcpAppServerTab` drops `read.note` → `EcpDescriptor.TestEcpApplicationServersIsOsManagementsNineteenthEntry` red (run 5708)
+- mutation: `EcpSslConnectionAuthorize.StateDiff` also admits `Authorized` → `EcpSslConnectionWrite.TestTheWrongStateIsRefusedOnBothCallersWithNothingSent` red (run 5716)
+- mutation: `EcpSslConnectionReject` `WRITETYPE` `AUTHORIZE` → `EcpSslConnectionWrite.TestAPendingRequestIsAuthorizedAndRejectedOnBothCallers` red (run 5717)
+- mutation: `EcpSslConnectionDelete.StateDiff`'s status test inverted → `EcpSslConnectionWrite.TestADeleteRemovesTheNameOnBothCallers` red, with the absent-name and wrong-state legs (run 5718)
+- mutation: the `ecp-ssl-pending` branch dropped from `selfProtectionReason` → `self-protection.test.mjs` "Story 18.21 (C5)" red
+- mutation: `EcpSettingsUpdate.PrivilegePairs` drops `%DB_IRISSYS:WRITE` → `EcpSettingsGate.TestTheMissingToolPairsAreRefusedBeforeAnyPortCall` red (run 5712)
+- mutation: `EcpPort.Put` stops mapping the vendor's `ECP.DATASERVER.SSLCLIENT` fault → `EcpSslConnectionWrite.TestSslOverADisabledClientConfigurationIsRefusedOnItsField` red (run 5719)
+- mutation: `osmgmt.ecpsslconnections.delete` dropped from `Baseline` → `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` and `TestThePurgeIsTheOneDisabledLine` red (run 5720)
+- mutation: `EcpSettings` `sideBarPosition` 0 → `Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` red (run 5721), and with the mirror regenerated `navigation.test.mjs`'s side-bar and OS management tests red
+- mutation: both `ecpserver` arms removed from `EcpSettingsWrite.TestARestartSettingIsStatedAndNeverSentForReal` (loaded, never run) → `EcpDescriptor.TestNoTestSendsMaxServerConnToTheVendor` red (run 5709)
+- mutation: an unarmed `%Set("MaxServerConn", 2)` added to `EcpSettingsWrite.TestAChangeSendsTheNestedBodyOnBothCallers` (loaded, never run) → `EcpDescriptor.TestNoTestSendsMaxServerConnToTheVendor` red (run 5729)
+- mutation: the `RESTART` refusal deleted from `retype` in `ecp-settings.browser-spec.mjs` → `ci.test.mjs` "Story 18.21: no browser spec types into or saves the maximum number of application servers" red; `MaxServerConn` named in `ecp-data-servers.browser-spec.mjs` → its roster assertion red (node --test)
+- mutation: `EcpPort.SSLENABLEDFIELD` misnamed `Enable` (tree reloaded, `EcpSeamPort`'s compiled copy checked) → `EcpSslConnectionWrite.TestSslOverADisabledClientConfigurationIsRefusedOnItsField` red on its enabled leg (run 6198; reverted, green 6200)
+- mutation: `EcpPort.SettingsRefusal` counts with `>=` → `EcpSettingsWrite.TestAMaximumBelowTheDataServersIsRefusedBeforeAnyWrite` red on its equal-count leg (run 6199; reverted, green 6201)
+- mutation: the page's `@if (sslInvalid)` error line removed → `ecp-settings.page.spec.ts` "AD-39: a refusal on SSL/TLS support is drawn on the radio group" red (vitest)
+- mutation: `numberValue` stops trimming → `ecp-settings.store.spec.ts` "a whole number typed with spaces around it is sent as a number" red (vitest)
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 - **Planned:** Story 18.21 from Part C of `spec-18-6-licensing-and-ecp.md` at commit `fe080653`, re-validated against the tree at `60d2305182e57f294de7e01d48a017c995865851` (18.20 built: `EcpPort`, `EcpError`, ECP data servers at 17). Covered: Task 0 with its halt conditions and DW-2006's measurement, server and client execution, rosters (position-0 order, the new own pair's rosters, nineteen side-bar entries), tests, ACs C0-C8, Verification in Rule 29's shape, eight decisions and six proposed spine amendments (1 to 3 at the spec gate, 4 to 6 after Task 0).
 - **Measured at plan:** read-only on `ocupilot-b-ci` (Design Notes › Measured at plan); no write to any instance, no ECP connection, no admin API write. Vendor and classic sources read from the export and `irissys/`.
-- **For the runner at the spec gate:** confirm Decisions 1-8; in particular Decision 3 (`MaxServerConn` settable, never claimed applied), Decision 5 (DW-2006: the `HoldsPair` pre-check with a named gap, or the airtight argument pair) and Decision 7 (AD-22: the three `true` keys enter after 2026-10-04, so the owner's call). The epics.md 18.21 block carries no `DW-2006` bullet yet (Rule 17 1b).
-- **Size:** about Story 18.20's (three descriptors, one an unlisted tab; four tools; no new port), so no split is recommended (inference).
-- **Tree state:** clean at dispatch (`git status --short` empty); this stage leaves only this spec, uncommitted.
+- **Task 0 halt (step 10):** closed by the orchestrator's option (b) ruling (Spec Change Log, 2026-10-04); its plumbing was applied from the parked patch at step 11.
+- **This pass (baseline `b8c6c71af31d21e4c019e12fbbd2cf6220ba064e`):** ECP settings (OS management 18, a singleton form page with its own `%Admin_Secure:USE` pair) and ECP application servers (19, a Connections tab and an SSL/TLS authorizations tab) with `osmgmt.ecpsettings.update` and `osmgmt.ecpsslconnections.authorize`, `.reject` and `.delete`, on `EcpPort`; every value, `%ECPServer` and data-server-count refusal before the `PUT`; `MaxServerConn` editable with its restart sentence, changed only through the seam in tests, with an ObjectScript and a browser-spec guard; DW-2006 closed by 18.20's #1454 mapping (no pre-check).
+- **Files:**
+  - Server, new: `Area/OsMgmt/EcpSettingsRules.cls` (rules, form route), `EcpSettingsSave.cls` (the Save through the tool), `Screen/Descriptor/EcpSettings.cls`, `EcpAppServerTab.cls`, `EcpSslConnectionTab.cls`, `Screen/Tool/EcpSettingsUpdate.cls` (nested member merge, restart consequence), `EcpSslConnectionAuthorize.cls`, `EcpSslConnectionReject.cls`, `EcpSslConnectionDelete.cls` (row-state refusals in `StateDiff`).
+  - Server, changed: `Port/EcpPort.cls` (settings branch, `SslState`, `SettingsRefusal`, script), `Port/AdminPort.cls` (four pairs), `Api/EcpError.cls` (eleven codes, two state sentences), `Api/Router.cls` (two routes), `Screen/Registry.cls` (two self-protection rules), `Screen/Tool/Classification.cls` and regenerated `ToolFields.cls`, `Kernel/EntityType.cls`, `EntityRef.cls`, `Governance/Baseline.cls` (four keys, delete disabled), `Proposal/Prohibited.cls` (two types, the object fold).
+  - Tests: new `EcpSettingsWrite`, `EcpSslConnectionWrite`, `EcpSettingsGate`, `EcpSettingsSaveFixture`, four `SeamEcp*` tools; changed `EcpProbe`, `EcpSeamPort`, `EcpActionFixture`, `EcpWriteGateProbe`, `EcpDescriptor` (with the `MaxServerConn` guard), `PortFixture` and the rosters (`Descriptor`, `ReadTool`, `SurfaceCoverage`, `EndpointCoverage`, `Navigation`, `Wire`, `WireSecurityRead`, `WireAreaAnyScreen`, `ToolRoundTrip`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ScreenRead`, `LanguageServerWire`).
+  - Client: new `ecp-settings.store.ts` and `.page.ts` with specs; changed `app.ts`, `strings.ts`, regenerated `screens.generated.ts`, `self-protection.ts`, `screen-actions.ts`, `proposal-view.ts`, `screen-action-handler.ts`, `screen-outlet.ts` and their specs; `ui/tools` (`ci.test.mjs` browser guard, `screen-mirror.mjs` and the navigation, mirror, field-list, proposal-view, self-protection and angular-json tests); `ui/angular.json` (`maximumWarning` 2737kB to 2762kB, measured 2,761,858 bytes, DW-1166).
+  - Browser: new `ecp-settings` and `ecp-application-servers` specs; seven side-bar pins to nineteen entries; `language-servers` AC5 gains ECP settings' own pair.
+  - Docs and CI: EXPERIENCE.md in place (1006 lines); `scripts/ci-throwaway.sh` `# classes:` lines (no new arming variable).
+- **Review (two layers, 18 findings):** 5 entries patched (2 medium: the `MaxServerConn` guard widened and given a browser twin; the handler spec's wrong-state Delete leg; 3 low: the Connections column check reads the endpoint's own mapping, two vacuous assertions deleted, AC labels corrected); 0 deferred from review; rejected: 4 low (the stored-SSL rule at mint and its duplicate, the authorize and reject agent-confirm pair leg, the Duration leg) and 7 false, each with its reason in the Review Triage Log. One pre-existing item from the handoff is in `deferred:` (the #1454 mapping's severity-2 line raises the monitor).
+- **Follow-up review:** recommended (`true`): two medium entries were patched. The named unverified risk: the `MaxServerConn` guard is still a text match, so a body key built from a variable (`%Set(tKey, ...)`) or a request from a helper class outside `%UnitTest.TestCase` passes it; the seam's runtime refusal covers only calls through `EcpSeamPort`. Patched by verdict: medium 2, low 3.
+- **Verification:**
+  - Targeted (handoff): the story's and roster classes one at a time (`EcpDescriptor` 5722, `EcpSettingsWrite` 5723, `EcpSslConnectionWrite` 5724, `EcpSettingsGate` 5725, all green), the ten listed browser specs green, `test:tools` and `test:components` green, 18 recorded mutations.
+  - After the review patches: `EcpDescriptor` 5728 and 5731, `EcpSettingsWrite` 5730 green; the widened guard red under an unarmed `%Set` (5729); the browser guard red under both mutations; the handler leg red with `ecpSslRefusalNotAuthorized` dropped; `ecp-settings` 5/5 and `ecp-application-servers` 2/2 on the rebuilt bundle.
+  - Once, before `dev_complete`: the full ObjectScript sweep in four shards on `ocupilot-b-ci`, 449 classes, 3,699 tests, 3,697 passed (`%UnitTest_Result`, runs 5732 to 6180). The two failures are not this story's: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (run 6066, task 1001's history past the 1,000-row cap on the old throwaway, known) and `PathPortInstance.TestAnOverwriteNeverReachesADatabasesFiles` (run 6024): `/durable/iris/mgr/hssyslocaltemp/` has held no `IRIS.DAT` since 11:32:11 UTC while `SYS.Database` reads it mounted, during the handoff's `remote-databases` browser run (inference); last green run 5299; no story code touches database files. `npm test` green (tools 1,790, components 2,350); `npm run build` green with no budget warning; `smoke.sh --container ocupilot-b-ci` 50/50; `check-objectscript` 0 problems; `lint-docs` clean; EXPERIENCE.md 1006 lines.
+  - Throwaway end state: settings 2, 1200, 5 / 1, 60, 0; 0 probe objects, data servers, SSL/TLS names or marked configurations; no authorized or pending name; 0 ECP jobs; `%ECPClient`, `%ECPServer` absent and `%Service_ECP` disabled; license facts and license servers (`LOCAL`) as found; 0 agent definitions, 0 policy rows, no holding global; monitor state 2 after the sweep, cleared to 0 with `$SYSTEM.Monitor.Clear()`; `PendingRestart` 1 with the two Task 0 reasons (known; nothing reads it). The audit database was not purged and the container was not restarted.
+- **Residual risks:** the throwaway's `HSSYSLOCALTEMP` mounted without its file (above), for the runner; the Connections tab and the authorize/reject success paths are pinned on Community through declared columns and the seam only (Named limit 1); a proposal changing another member mints while a stored `SSLECPServer` 1 or 2 has lost its `%ECPServer`, and is refused at confirm with the field's sentence (rejected low); the restart consequence costs one extra settings read at mint and Save; a nested proposal's unchanged count counts objects, as `LanguageServerUpdate`'s `Custom` does.
+- **For the runner:** footprint extensions beyond the spec's list: `ui/tools/ci.test.mjs`, `ui/tools/field-lists.test.mjs`, `src/OcuPilot/Test/EcpSettingsSaveFixture.cls`, `ui/src/app/shell/screen-action-handler.spec.ts` (Epic 19 changes none of them); one further measured AD-52 sentence (`ECP.SETTINGS.SERVERS`) in `## Spec Change Log`.

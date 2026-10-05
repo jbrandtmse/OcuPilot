@@ -143,6 +143,14 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        // Story 18.21: ECP application servers' unlisted SSL/TLS authorizations tab, by descriptor class name.
+        {
+          route: 'os-management/ecp-application-servers/ssl',
+          labelKey: 'ecpSslConnectionsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/namespaces/global-mappings/edit',
           labelKey: 'globalMappingFormLabel',
@@ -393,6 +401,22 @@ const LIVE_PAYLOAD = {
           route: 'os-management/ecp-data-servers',
           labelKey: 'ecpDataServerListLabel',
           sideBarPosition: 17,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth, each
+        // refused on %Admin_Manage:USE.
+        {
+          route: 'os-management/ecp-settings',
+          labelKey: 'ecpSettingsLabel',
+          sideBarPosition: 18,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/ecp-application-servers',
+          labelKey: 'ecpAppServersLabel',
+          sideBarPosition: 19,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -812,6 +836,14 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     // Each declares `%Admin_Manage:USE` first, which this principal does not hold.
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['os-management/ecp-data-servers', 'os-management/ecp-data-servers/edit']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
+    }
+  });
+
+  it('Story 18.21: reads the ECP settings, ECP application servers and SSL/TLS authorizations verdicts the live payload carries', () => {
+    // Each declares `%Admin_Manage:USE` first, which this principal does not hold.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['os-management/ecp-settings', 'os-management/ecp-application-servers', 'os-management/ecp-application-servers/ssl']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Manage:USE' });
     }
   });

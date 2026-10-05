@@ -60,6 +60,7 @@ import {
   readBaseline,
   toggleThemeThroughMenu,
 } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -425,10 +426,11 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     );
     // The area's side-bar entries, in declared order. The Definition form is not among them,
     // which is the sentinel this test is about: it is built, routed and listed nowhere.
+    assert.deepEqual(entries, sideBarLabels('agent'), 'the area lists its declared entries in order, and no form');
     assert.deepEqual(
-      entries,
+      entries.slice(0, 6),
       [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel, STRINGS.agentGovernanceLabel, STRINGS.agentLedgerLabel, STRINGS.agentTranscriptsLabel],
-      'the area lists Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts, and no form'
+      'Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts'
     );
 
     await page.keyboard.down('Control');

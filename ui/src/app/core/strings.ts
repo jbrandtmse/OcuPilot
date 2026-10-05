@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:639 */
+  /** EXPERIENCE.md:642 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5303,6 +5303,347 @@ export const STRINGS = {
   impactRemoteDatabasesUseNone: 'no remote database uses it',
   /** EXPERIENCE.md:577 */
   impactRemoteDatabasesUseUnchecked: 'which remote databases use it was not checked',
+  // Story 19.8: Data browser's row actions, the staged and deleted marks and the status column, the
+  // save dialog, the editing, staging, undo, discard and save lines, the read-only line, the cap and
+  // the namespace discard, the editors' refusals and hints, each row's outcome, and the save's two
+  // refusals. "Changed", "Saved", "Change", the SQLCODE and stopped lines, the yes and no words,
+  // "NULL" and "Leave without saving?" are reused.
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataAddRow: 'Add row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDuplicateRow: 'Duplicate row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDeleteRow: 'Delete row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataRestoreRow: 'Restore row',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveChanges: 'Save changes (<n>)',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscard: 'Discard changes',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNew: 'New',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDeleted: 'Deleted',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveTitle: 'Save changes to <table>?',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSaveConsequence: '<u> rows change, <i> are added and <d> are deleted in <table>, and this cannot be undone from OcuPilot.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataEditing: 'Editing <column>.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataWaiting: '<n> changes waiting to be saved.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataUndone: 'Change undone.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataDiscarded: '<n> changes discarded.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataSavedSummary: 'Saved <a> of <n> changes; <b> rolled back.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataReadOnly: 'Rows here are read-only: a view, or a table without a key this account can see, is not changed here.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataCap: 'A save carries at most 100 rows; save or discard some first.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataScopeDiscarded: 'Changes were discarded because the namespace changed.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNotNull: 'This column cannot be NULL.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataNotEditable: 'This cell cannot be edited here.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeChanged: 'Not saved: the row changed or was removed after it was read.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeRefused: 'Not saved: this account may not make this change.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeGone: 'Already removed.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataOutcomeSkipped: 'Not run: the save stopped first.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintInteger: 'Enter a whole number.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintNumber: 'Enter a number.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintDate: 'Enter a date such as 2026-10-04.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintTime: 'Enter a time such as 14:30:00.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataHintTimestamp: 'Enter a date and time such as 2026-10-04 14:30:00.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataChangesReason: 'Name each row\'s key, and change only listed columns that are not keys, identities, computed, streams or binary.',
+  /** EXPERIENCE.md:599 */
+  explorerSqlDataReadOnlyReason: 'This is a view, or a table without a key this account can see, so its rows are not changed here.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsLabel: 'ECP settings',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersLabel: 'ECP application servers',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsLabel: 'SSL/TLS authorizations',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionEntity: 'ECP SSL/TLS authorization',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsAppServerLegend: 'This instance as an ECP application server',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsDataServerLegend: 'This instance as an ECP data server',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsMaxServers: 'Maximum number of data servers',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsReconnectDuration: 'Time to wait for recovery (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsReconnectInterval: 'Time between reconnections (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsMaxServerConn: 'Maximum number of application servers',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsTroubleDuration: 'Time interval for Troubled state (seconds)',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsSslSupport: 'ECP SSL/TLS support',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRestart:
+    'A changed maximum number of application servers takes effect only after the instance restarts.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsServerSsl: 'Create and enable the %ECPServer SSL/TLS configuration before using SSL/TLS.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsCountRange: 'Enter a whole number from 0 to 254.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRecoveryRange: 'Enter a whole number of seconds from 10 to 65535.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsIntervalRange: 'Enter a whole number of seconds from 1 to 60.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsTroubleRange: 'Enter a whole number of seconds from 20 to 65535.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsSslChoice: 'Choose Disabled, Enabled or Required.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsServersBelow:
+    'This instance defines more ECP data servers than that. Delete one first, or enter a larger number.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsRefusedAction: 'change the ECP settings',
+  /** EXPERIENCE.md:375 */
+  ecpClientIp: 'Client IP',
+  /** EXPERIENCE.md:375 */
+  ecpSslComputerName: 'SSL computer name',
+  /** EXPERIENCE.md:375 */
+  ecpAppServerListEmpty: 'No application servers are connected to this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionListEmpty: 'No SSL/TLS authorizations on this instance.',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionListEmptyAgent: 'explain how an ECP application server is authorized',
+  /** EXPERIENCE.md:375 */
+  ecpSslAuthorize: 'Authorize',
+  /** EXPERIENCE.md:375 */
+  ecpSslReject: 'Reject',
+  /** EXPERIENCE.md:375 */
+  ecpSslAuthorizeConsequence:
+    'Authorizing lets the application server that presents this certificate connect to this instance over ECP.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRejectConsequence: 'Rejecting refuses this application server\'s pending connection.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRefusalNotPending: 'This application server is not waiting for authorization.',
+  /** EXPERIENCE.md:375 */
+  ecpSslRefusalNotAuthorized: 'This application server is not authorized.',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt1: 'What do the ECP settings on this instance control?',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt2: 'When does a changed maximum number of application servers take effect?',
+  /** EXPERIENCE.md:375 */
+  ecpSettingsPrompt3: 'What does ECP SSL/TLS support need before it can be enabled?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt1: 'Which ECP application servers are connected to this instance?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt2: 'What does each application server status mean?',
+  /** EXPERIENCE.md:375 */
+  ecpAppServersPrompt3: 'How does this instance act as an ECP data server?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt1: 'Which ECP application servers are authorized to connect over SSL/TLS?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt2: 'What happens when I authorize an ECP application server?',
+  /** EXPERIENCE.md:375 */
+  ecpSslConnectionsPrompt3: 'What does deleting an SSL/TLS authorization change?',
+  /** EXPERIENCE.md:479 */
+  ecpSslConnectionDeleteConsequence:
+    'Deleting this authorization means the application server that presents this certificate must be authorized again the next time it connects. Its current connection is not affected. This cannot be undone.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileLabel: 'Encryption key files',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormLabel: 'Create encryption key file',
+  /** EXPERIENCE.md:364 */
+  aboutEncryptionKeyFile: 'Encryption key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsTitle: 'Administrators in this key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeysTitle: 'Encryption keys in this key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnAdmin: 'Administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnId: 'Key ID',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileColumnKeyLen: 'Key length (bits)',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCreateAction: 'Create key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddAdminAction: 'Add administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddKeyAction: 'Add key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddAdminTitle: 'Add an administrator',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAddKeyTitle: 'Add an encryption key',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileExistingAdmin: 'Existing administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileExistingPassword: 'Existing administrator password',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewAdmin: 'New administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminName: 'Administrator name',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipherLevel: 'Cipher security level',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher128: '128-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher192: '192-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCipher256: '256-bit',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyDescription: 'Key description',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminNameHint: 'The key file\'s first administrator. It defaults to your user name.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePasswordHint: 'Keep a written record of this password in a secure place.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewKeyId: 'New encryption key ID: <id>',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNotActivated: 'This key has not been activated.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendAdmin: 'Add an emergency recovery administrator to this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendBackup:
+    'Make a backup copy of the key file and keep it apart from this instance.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRecommendStore:
+    'Store the copy with a written record of the recovery password in a secure place.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeysEmpty: 'Open a key file to see its keys.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsEmpty: 'Open a key file to see its administrators.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileEmptyAgent: 'explain what an encryption key file holds',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCreateRefusedAction: 'create an encryption key file',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileValidation: 'The key file request was refused.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileDirectory: 'Choose a folder that already exists for the key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyLen: 'Choose 128, 192 or 256 bits.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminNameRule: 'Enter an administrator name of up to 50 characters.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePasswordRule: 'Enter a password of at least 3 characters.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileCredentials: 'That administrator name and password do not open this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileUnreadable: 'This file is not an encryption key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileNewKeyConsequence:
+    'The new key is unique: no existing encrypted database or file can use it. If every key file containing it is lost, all data encrypted with it is permanently inaccessible. Make a backup copy of the key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileRemoveKeyLoss:
+    'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminTaken: 'This key file already has an administrator of that name.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminLast: 'A key file keeps at least one administrator.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminAbsent: 'This administrator is not in this key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileKeyAbsent: 'This key is not in this key file.',
+  /** EXPERIENCE.md:364 */
+  keyRefusalOcuPilot:
+    'OcuPilot or the instance itself depends on data this key encrypts, so it is not removed from a key file here.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt1: 'What does an encryption key file hold?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt2: 'What happens if I remove the only copy of a key?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFilePrompt3: 'How do I add a key to an existing key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt1: 'Who can open this encryption key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt2: 'Why should a key file have more than one administrator?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileAdminsPrompt3: 'What does removing a key file administrator change?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt1: 'Where should I keep a new encryption key file?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt2: 'Which cipher security level should I choose?',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileFormPrompt3: 'What should I do with a key file after I create it?',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyFileRemoveAdminConsequence:
+    'Removing this administrator means its name and password no longer open this key file. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  encryptionKeyFileRemoveKeyConsequence:
+    'If this is the only key file containing this key, all data encrypted with this key will be permanently inaccessible. This cannot be undone.',
+  // Story 19.16: Data browser's tab strip, Close tab and its line, the tab cap, Go to row with its
+  // field, Go, its range line and its no-row line, the export line, the Keyboard shortcuts dialog's
+  // title, scope note and the labels and keys it lists. "Download CSV", "Add row", "Duplicate row",
+  // "Delete row", "<n> changes waiting to be saved.", "Leave without saving?", "Confirm", "Cancel",
+  // "Close" and the namespace discard line are reused.
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataOpenTables: 'Open tables',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataCloseTab: 'Close tab',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataGoToRow: 'Go to row',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataRowNumber: 'Row number',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataGo: 'Go',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataShortcuts: 'Keyboard shortcuts',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataSaveShortcut: 'Save changes',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataPageShortcut: 'Next or previous page',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabShortcut: 'Next or previous tab',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabClosed: '<table> closed.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataTabCap: 'At most <n> tables can be open; close one first.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataRowRange: 'Enter a row from 1 to <n>.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataNoRow: 'No row <n> here.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataExported: 'Saved rows <first>\u2013<last> to <file>, as the instance read them.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataShortcutsScope: 'These work while focus is in Data browser and no dialog or editor is open.',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysHelp: 'Ctrl/Cmd+/',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysSave: 'Ctrl/Cmd+S',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysGoToRow: 'Ctrl/Cmd+G',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysExport: 'Ctrl/Cmd+E',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysAddRow: 'Alt/Option+Shift+N',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysDuplicateRow: 'Alt/Option+Shift+D',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysDeleteRow: 'Alt/Option+Shift+Delete or Backspace',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysPage: 'Alt/Option+PageDown or PageUp',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysTab: 'Alt/Option+Shift+PageDown or PageUp',
+  /** EXPERIENCE.md:600 */
+  explorerSqlDataKeysCloseTab: 'Alt/Option+Shift+W, or Delete on a tab',
+  /** EXPERIENCE.md:601 */
+  explorerViewClassReference: 'Class reference',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceTitle: 'Class reference for <class>',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceNote: 'This is the instance\'s own class reference for <class>, shown with your browser\'s sign-in to the instance. Links inside it do not open here.',
+  /** EXPERIENCE.md:601 */
+  explorerClassReferenceRestored: 'That link does not open here; the class reference shows <class> again.',
 } as const;
 
 /**

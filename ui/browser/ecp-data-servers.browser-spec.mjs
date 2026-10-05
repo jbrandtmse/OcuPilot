@@ -43,6 +43,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -369,7 +370,8 @@ test('B1, B7: ECP data servers is the seventeenth OS management entry, says what
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.21: ECP settings and ECP application servers follow it.
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[16], STRINGS.ecpDataServerListLabel, 'ECP data servers is the seventeenth');
     assert.equal(await page.$eval('[data-ecp="caveat"]', (node) => node.textContent.trim()), STRINGS.ecpDataServerStatusCaveat);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));

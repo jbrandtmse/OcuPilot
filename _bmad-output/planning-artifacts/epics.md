@@ -7205,19 +7205,19 @@ So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03
 
 As an operator,
 I want the four encryption pages,
-So that key management is not a reason to keep the classic portal open.
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split for size, Rule 5 -- 18.7 keeps the encryption key files, the reachable-subset check of all thirteen encryption routes and DW-1774; database and data-element key activation moved to Story 18.22, the startup settings to Story 18.23, and RSA and symmetric-key wallet secrets (DW-1555) to Story 18.24]
 
 **Acceptance Criteria:**
 
-- **Given** AD-26 records `Security.Encryption.Settings` as **excluded by the v2 pin**
+- **Given** AD-26 records that `Security.Encryption.Settings` touches `%request` only under API version 1, so under the v2 pin its administrator credentials travel in the body [AMENDED 2026-10-04, Story 18.7 spec gate, Rule 20] [SPLIT to 18.23 2026-10-04: 18.7 establishes the reachable subset of all thirteen routes; the startup-settings half is built by 18.23]
 - **When** this story is picked up
 - **Then** the reachable subset is established against the instance **first**, before any UI work, and the startup-settings half either ships behind an explicit version gate or is recorded as a classic-portal link-out - the story is not planned as though the endpoint were reachable.
 
-- **Given** create key file, manage key file, data-element encryption activate and deactivate, and the reachable part of database encryption
+- **Given** create key file, manage key file, data-element encryption activate and deactivate, and the reachable part of database encryption [SPLIT to 18.22 2026-10-04: data-element encryption and the reachable part of database encryption to 18.22; 18.7 keeps create and manage key file]
 - **When** each runs
 - **Then** it round-trips through the admin API.
 
-- **Given** the startup options - interactive, unattended and KMIP
+- **Given** the startup options - interactive, unattended and KMIP [SPLIT to 18.23 2026-10-04]
 - **When** they are configured
 - **Then** each is offered with its consequence stated.
 
@@ -7226,7 +7226,6 @@ So that key management is not a reason to keep the classic portal open.
 - **Then** it is write-only and returned by no read, like every other secret.
 
 - DW-1774: Area side bars are pinned as literal lists in browser specs no screen-adding story targets, so its next Security, Permissions or Tasks screen reds CI's browser shards (ledger; routed by cr 2026-09-28)
-- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
 
 ### Story 18.8: Superservers, authentication options and managed file transfer
 
@@ -7494,6 +7493,61 @@ So that a clustered or licensed instance is manageable here. [AMENDED 2026-10-03
 - **Then** it round-trips through the admin API
 - **And** the caveat that the harvested ECP status implementation was never identified is carried, so these rely on the routes alone.
 
+### Story 18.22: Database and data-element encryption keys
+
+As an operator,
+I want to activate and deactivate database and data-element encryption keys,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part B of `spec-18-7-encryption.md` (commit 0a3dfe43); consumes Story 18.7's key files and `EncryptionPort`; if an activation leaves anything only a restart clears, its success paths run through a test seam; the reachable part of database encryption is key activation, and encrypting or decrypting an existing database, which has no admin API route and no classic page, is named unreachable]
+
+**Acceptance Criteria:**
+
+- **Given** data-element encryption activate and deactivate, and the reachable part of database encryption
+- **When** each runs
+- **Then** it round-trips through the admin API.
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+- DW-2059: Prohibited.DependsOnKey compares key ids normalized and fails closed (Story 18.7); this story's Task 0 compares a database's EncryptionKeyID with the key file's Id for a probe key and confirms or narrows the comparison (ledger; routed by merge_gate 2026-10-04)
+- DW-2066: DependsOnKey reads only the journal's configured key; journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks (ledger; routed by cr 2026-10-05)
+
+### Story 18.23: Encryption startup settings
+
+As an operator,
+I want the database-encryption startup settings,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part C of `spec-18-7-encryption.md` (commit 0a3dfe43); every value change is exercised through a test seam; changing `AuditEncrypt` deletes the audit database at once, so its treatment is the owner's product call, which the plan brings to the orchestrator with options and a recommendation]
+
+**Acceptance Criteria:**
+
+- **Given** AD-26 records that `Security.Encryption.Settings` touches `%request` only under API version 1, so under the v2 pin its administrator credentials travel in the body [AMENDED 2026-10-04, Story 18.7 spec gate, Rule 20]
+- **When** this story is picked up
+- **Then** the reachable subset is established against the instance **first**, before any UI work, and the startup-settings half either ships behind an explicit version gate or is recorded as a classic-portal link-out - the story is not planned as though the endpoint were reachable.
+
+- **Given** the startup options - interactive, unattended and KMIP
+- **When** they are configured
+- **Then** each is offered with its consequence stated.
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+- DW-2065: Removing a key file's startup administrator is not refused, while unattended activation opens DBEncStartKeyFile as DBEncStartUsername; whether AD-10's key arm extends to it is a product call (ledger; decision-pending by cr 2026-10-05)
+
+### Story 18.24: RSA and symmetric-key wallet secrets
+
+As an operator,
+I want to create and edit RSA and symmetric-key wallet secrets,
+So that key management is not a reason to keep the classic portal open. [AMENDED 2026-10-04, orchestrator merge gate: split from 18.7 for size, Rule 5; outlined as Part D of `spec-18-7-encryption.md` (commit 0a3dfe43); independent of Stories 18.22 and 18.23]
+
+**Acceptance Criteria:**
+
+- **Given** any key material
+- **When** it is entered
+- **Then** it is write-only and returned by no read, like every other secret.
+
+- DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only (ledger; routed by merge_gate 2026-09-29)
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.
@@ -7641,7 +7695,7 @@ So that the grid is an editor rather than a viewer.
 
 - **Given** inline cell editing with type-specific editors, edit-mode undo, row insert, duplicate and delete, and staged saves
 - **When** each runs
-- **Then** it works, with an optimistic update rolled back on failure.
+- **Then** it works, with an optimistic update rolled back on failure, and its ARIA announcements match the rest of the portal. [AMENDED 2026-10-04, Rule 5 split by=merge_gate: the editing announcements stay here]
 
 - **Given** any save
 - **When** it runs
@@ -7649,7 +7703,7 @@ So that the grid is an editor rather than a viewer.
 
 - **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
 - **When** each is used
-- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
+- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original. [SPLIT to 19.16 2026-10-04: this criterion moved verbatim]
 
 - **DW-2028:** Data browser's grid cuts each cell to one line with no tooltip, so a value wider than its column cannot be read in full; this story ports the shared data table's cut-cell tooltip (`shell/data-table.ts`, on pointer and on the active cell) to the grid. [ADDED 2026-10-04, Rule 17 (1b), routed by Story 19.7's code review]
 
@@ -7667,7 +7721,7 @@ So that the Explorer covers both code and documents.
 
 - **Given** the DocDB browser
 - **When** it opens
-- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
+- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed. [SPLIT to 19.17 2026-10-04: this criterion moved verbatim]
 
 ### Story 19.10: SQL activity
 
@@ -7781,6 +7835,34 @@ So that the console stays usable while it runs.
 - **Given** the console
 - **When** a query is submitted
 - **Then** it runs with a run-in-background option (moved verbatim from 19.6's first criterion).
+
+### Story 19.16: The data browser - export, shortcuts, go-to-row and tabs
+
+As a developer,
+I want to export what the grid shows, reach its actions from the keyboard and keep several tables open,
+So that the data browser covers the classic Open Table page's remaining conveniences.
+
+[ADDED 2026-10-04, Rule 5 split of Story 19.8 by=merge_gate: 19.8's third criterion moved here verbatim; run right after 19.8. 19.8 keeps the editors, staging, the confirmed save, key reconciliation and the editing announcements.]
+
+**Acceptance Criteria:**
+
+- **Given** CSV export, the keyboard shortcuts with their help dialog, the go-to-row dialog, the ARIA announcements and multi-table tabs
+- **When** each is used
+- **Then** it works, the accessibility behavior matching the rest of the portal rather than the harvested original.
+
+### Story 19.17: The DocDB browser
+
+As a developer,
+I want the document databases listed, created and dropped,
+So that the Explorer covers documents as well as code.
+
+[ADDED 2026-10-04, Rule 5 split of Story 19.9 by=merge_gate: 19.9's DocDB criterion moved here verbatim; run right after 19.9. 19.9 keeps the Documatic class reference.]
+
+**Acceptance Criteria:**
+
+- **Given** the DocDB browser
+- **When** it opens
+- **Then** databases list, create and drop, and the requirement that the DocDB service is enabled is reported rather than assumed.
 
 ---
 

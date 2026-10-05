@@ -71,6 +71,11 @@ const OPERATOR_MAP = {
         { route: 'os-management/license-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
         // Story 18.20: ECP data servers, which %Operator does not open either.
         { route: 'os-management/ecp-data-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Story 18.21: ECP settings and ECP application servers, which %Operator does not open either.
+        { route: 'os-management/ecp-settings', allowed: false, failedPair: '%Admin_Manage:USE' },
+        { route: 'os-management/ecp-application-servers', allowed: false, failedPair: '%Admin_Manage:USE' },
+        // Its unlisted SSL/TLS tab, which the entry would open were it allowed (DW-1852).
+        { route: 'os-management/ecp-application-servers/ssl', allowed: false, failedPair: '%Admin_Manage:USE' },
       ],
     },
     { key: 'tasks', allowed: true, screens: [] },
@@ -178,6 +183,9 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       manage,
       // Story 18.20: ECP data servers, the seventeenth.
       manage,
+      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
+      manage,
+      manage,
     ]);
   });
 });
@@ -211,6 +219,7 @@ const AUTHORIZATION_SERVER_MAP = {
         { route: 'security/oauth', allowed: false, failedPair: '%Admin_OAuth2_Client:USE' },
         { route: 'security/auditing', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/allowed-directories', allowed: false, failedPair: '%Admin_FileSystemAccess:USE' },
+        { route: 'security/encryption-key-file', allowed: false, failedPair: '%Admin_Secure:USE' },
       ],
     },
     { key: 'agent', allowed: true, screens: [] },
@@ -272,6 +281,7 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
       { label: STRINGS.oauthLabel, gated: null, reason: '' },
       { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
+      { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
     ]);
 
     items[4].click();

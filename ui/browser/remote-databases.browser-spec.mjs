@@ -43,6 +43,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -297,29 +298,8 @@ test('AC1, AC8: Remote databases is the twelfth OS management entry and lists th
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries, [
-      STRINGS.processListLabel,
-      STRINGS.lockListLabel,
-      STRINGS.systemUsageLabel,
-      STRINGS.databaseListLabel,
-      STRINGS.databaseIntegrityLogLabel,
-      STRINGS.deviceListLabel,
-      STRINGS.namespaceListLabel,
-      STRINGS.licenseUsageLabel,
-      STRINGS.dashboardLabel,
-      STRINGS.languageServersLabel,
-      STRINGS.localDatabaseListLabel,
-      STRINGS.remoteDatabaseListLabel,
-      // Story 18.5: Journals follows, the thirteenth.
-      STRINGS.journalListLabel,
-      // Story 18.18: Journal settings, the fourteenth.
-      STRINGS.journalSettingsLabel,
-      // Story 18.6: License key and License servers, the fifteenth and sixteenth.
-      STRINGS.licenseKeyLabel,
-      STRINGS.licenseServerListLabel,
-      // Story 18.20: ECP data servers, the seventeenth.
-      STRINGS.ecpDataServerListLabel,
-    ]);
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
+    assert.equal(bar.entries[11], STRINGS.remoteDatabaseListLabel, 'Remote databases is the twelfth');
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.remoteDatabaseServer, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);
     assert.deepEqual(await rowCells(page, REMOTE), [REMOTE, SERVER, REMOTE_DIRECTORY], 'the row shows its data server and directory');

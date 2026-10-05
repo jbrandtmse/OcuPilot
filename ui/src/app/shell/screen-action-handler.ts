@@ -102,6 +102,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // Story 18.20: ECP data servers, whose Delete types the server's name and states its impact, and
   // whose Change status its own page runs.
   'OcuPilot.Screen.Descriptor.EcpDataServerList',
+  // Story 18.21: the SSL/TLS authorizations tab, whose Authorize and Reject each warn first and whose
+  // Delete types the SSL computer name.
+  'OcuPilot.Screen.Descriptor.EcpSslConnectionTab',
 ];
 
 /**
@@ -181,6 +184,25 @@ export const REMOTE_DATABASE_LIST = 'OcuPilot.Screen.Descriptor.RemoteDatabaseLi
  */
 export const ECP_DATA_SERVER_LIST = 'OcuPilot.Screen.Descriptor.EcpDataServerList';
 export const ECP_CHANGE_STATUS = 'changestatus';
+
+/**
+ * ECP application servers' SSL/TLS authorizations tab (Story 18.21), whose Authorize and Reject each
+ * warn first, and whose Delete types the SSL computer name and carries no advisory.
+ */
+export const ECP_SSL_CONNECTION_TAB = 'OcuPilot.Screen.Descriptor.EcpSslConnectionTab';
+
+/**
+ * Encryption key files' two lists (Story 18.7): one key file's keys and its administrators, drawn by
+ * one page, which registers and sends every action itself. Each Remove types the row's own name -- the
+ * key's `Id` or the administrator's `Name` -- and sends it as the action's one value beside the key
+ * file's composite id (`TYPED_VALUES`).
+ */
+export const ENCRYPTION_KEY_FILE = 'OcuPilot.Screen.Descriptor.EncryptionKeyFile';
+export const ENCRYPTION_KEY_FILE_ADMINS = 'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList';
+export const ENCRYPTION_ADD_KEY = 'addkey';
+export const ENCRYPTION_REMOVE_KEY = 'removekey';
+export const ENCRYPTION_ADD_ADMIN = 'addadministrator';
+export const ENCRYPTION_REMOVE_ADMIN = 'removeadministrator';
 
 /**
  * Database details' descriptor (Story 18.4), whose five disk operations each warn before they are
@@ -354,7 +376,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -415,6 +437,11 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LicenseServerList': { delete: STRINGS.licenseServerDeleteConsequence },
   // Story 18.20: the ECP data server's Delete types the server's name.
   [ECP_DATA_SERVER_LIST]: { delete: STRINGS.ecpDataServerDeleteConsequence },
+  // Story 18.21: an SSL/TLS authorization's Delete types the SSL computer name.
+  [ECP_SSL_CONNECTION_TAB]: { delete: STRINGS.ecpSslConnectionDeleteConsequence },
+  // Story 18.7: a key file administrator's Remove types its name, and a key's its identifier.
+  [ENCRYPTION_KEY_FILE_ADMINS]: { [ENCRYPTION_REMOVE_ADMIN]: STRINGS.encryptionKeyFileRemoveAdminConsequence },
+  [ENCRYPTION_KEY_FILE]: { [ENCRYPTION_REMOVE_KEY]: STRINGS.encryptionKeyFileRemoveKeyConsequence },
 };
 
 /**
@@ -462,6 +489,20 @@ const TYPED_NAME_ROWS: Readonly<
   [GLOBAL_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [ROUTINE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [PACKAGE_MAPPING_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
+  // Story 18.7: a key file's rows are an administrator's `Name` and a key's `Id`, and the write is
+  // sent with the key file's composite id, which no one types.
+  [ENCRYPTION_KEY_FILE_ADMINS]: { name: 'Name', field: '', equals: '', advisory: '' },
+  [ENCRYPTION_KEY_FILE]: { name: 'Id', field: '', equals: '', advisory: '' },
+};
+
+/**
+ * The value a typed-name dialog's confirmed name is sent as, keyed by descriptor and then by action id
+ * (Story 18.7, AD-56 (ii)): the target names the key file, and the name typed names the row the write
+ * removes from it.
+ */
+const TYPED_VALUES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  [ENCRYPTION_KEY_FILE_ADMINS]: { [ENCRYPTION_REMOVE_ADMIN]: 'Admin' },
+  [ENCRYPTION_KEY_FILE]: { [ENCRYPTION_REMOVE_KEY]: 'KeyId' },
 };
 
 /**
@@ -493,6 +534,9 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
     [JOURNAL_SWITCH_DIRECTORY]: STRINGS.journalSwitchDirectoryConsequence,
     [JOURNAL_INTEGRITY]: STRINGS.journalIntegrityConsequence,
   },
+  // Story 18.21: an authorize lets an application server connect, and a reject refuses it; neither
+  // removes anything, so each warns.
+  [ECP_SSL_CONNECTION_TAB]: { authorize: STRINGS.ecpSslAuthorizeConsequence, reject: STRINGS.ecpSslRejectConsequence },
 };
 
 /**
@@ -555,6 +599,14 @@ const PUBLISHED_PROBLEMS: readonly string[] = [
   STRINGS.lockRemoveTooMany,
   // Story 18.15: an enable of interoperability in %SYS or %ALL.
   STRINGS.namespaceEnableInteropSystem,
+  // Story 18.21: an SSL/TLS authorization action on a row in the wrong state.
+  STRINGS.ecpSslRefusalNotPending,
+  STRINGS.ecpSslRefusalNotAuthorized,
+  // Story 18.7: a key file's administrator or key that is taken, the last one, or not there.
+  STRINGS.encryptionKeyFileAdminTaken,
+  STRINGS.encryptionKeyFileAdminLast,
+  STRINGS.encryptionKeyFileAdminAbsent,
+  STRINGS.encryptionKeyFileKeyAbsent,
 ];
 
 /** The sentence a refused action shows: a published state refusal, else the envelope's own reason. */
@@ -763,6 +815,13 @@ export class ScreenActionHandler {
     const pending = this.waiting();
     const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
+    // Story 18.7: the confirmed name is the action's one value (`TYPED_VALUES`).
+    const typedOwn = pending.kind === 'typed-name' && Object.hasOwn(TYPED_VALUES, pending.descriptor) ? TYPED_VALUES[pending.descriptor] : undefined;
+    const typedValue = typedOwn !== undefined && Object.hasOwn(typedOwn, pending.actionId) ? typedOwn[pending.actionId] : undefined;
+    if (typedValue !== undefined) {
+      void this.send(pending.descriptor, pending.actionId, pending.target, { [typedValue]: pending.name }, sink);
+      return;
+    }
     // A warning's one declared value (Story 18.4): the checkbox's state or the field's text.
     const asked = pending.kind === 'warning' ? this.warningValue(pending.descriptor, pending.actionId) : null;
     if (asked !== null) {

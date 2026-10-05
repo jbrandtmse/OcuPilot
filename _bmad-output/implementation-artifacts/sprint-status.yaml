@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-04-2026 06:32'
+last_updated: '10-05-2026 07:07'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -281,7 +281,7 @@ development_status:
   18-4-the-deferred-disk-operations: done
   18-5-journals: done
   18-6-licensing-and-ecp: done
-  18-7-encryption: backlog
+  18-7-encryption: done
   18-8-superservers-authentication-options-and-managed-file-transfe: backlog
   18-9-sql-privileges-and-the-permission-extras: backlog
   18-10-web-application-extras-and-spec-based-rest-services: backlog
@@ -295,7 +295,10 @@ development_status:
   18-18-journal-settings: done
   18-19-journal-record-browser: done
   18-20-ecp-data-servers: done
-  18-21-ecp-settings-and-application-servers: backlog
+  18-21-ecp-settings-and-application-servers: done
+  18-22-database-and-data-element-encryption-keys: backlog
+  18-23-encryption-startup-settings: backlog
+  18-24-rsa-and-symmetric-key-wallet-secrets: backlog
   epic-18-retrospective: optional
 
   epic-19: in-progress
@@ -306,14 +309,16 @@ development_status:
   19-5-the-sql-catalog-browser: done
   19-6-the-query-console-and-its-dml-and-ddl-guard: done
   19-7-the-data-browser-tree-grid-filter-and-sort: done
-  19-8-the-data-browser-editing-staging-and-export: backlog
-  19-9-documatic-and-docdb: backlog
+  19-8-the-data-browser-editing-staging-and-export: done
+  19-9-documatic-and-docdb: done
   19-10-sql-activity: backlog
   19-11-the-agent-gains-guarded-sql-and-a-picker: backlog
   19-12-a-development-holder-reaches-system-explorer-as-the-classic: done
   19-13-xml-export-and-import: done
   19-14-the-sql-catalog-s-remaining-detail-tabs: done
   19-15-the-query-console-runs-a-query-in-the-background: done
+  19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs: done
+  19-17-the-docdb-browser: backlog
   epic-19-retrospective: optional
 
   epic-20: backlog

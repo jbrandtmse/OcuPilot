@@ -33,6 +33,7 @@ import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './li
 import { authHeader, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -220,7 +221,8 @@ test('AC1: a seeded session is listed with its user, application and no process,
       STRINGS.webSessionListLabel
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
-    assert.deepEqual(labels, [STRINGS.webAppListLabel, STRINGS.restApiListLabel, STRINGS.webSessionListLabel], 'the side bar lists Web sessions third');
+    assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists the Web applications entries in their declared order');
+    assert.equal(labels[2], STRINGS.webSessionListLabel, 'Web sessions third');
     const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(
       headers.slice(0, 5),

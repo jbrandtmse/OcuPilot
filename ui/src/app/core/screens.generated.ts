@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -162,7 +162,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -510,7 +510,10 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "journal-record",
   "license-key",
   "license-server",
-  "ecp-data-server"
+  "ecp-data-server",
+  "ecp-settings",
+  "ecp-ssl-connection",
+  "encryption-key-file"
 ];
 
 /**
@@ -553,7 +556,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "journal-settings": "singleton",
   "license-key": "singleton",
   "license-server": "foldcase",
-  "ecp-data-server": "foldcase"
+  "ecp-data-server": "foldcase",
+  "ecp-settings": "singleton"
 };
 
 /**
@@ -4006,6 +4010,146 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpAppServerTab",
+    "route": "os-management/ecp-application-servers",
+    "area": "os-management",
+    "labelKey": "ecpAppServersLabel",
+    "sideBarPosition": 19,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ClientName",
+        "Status",
+        "IPAddress",
+        "IPPort"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ecpAppServerListEmpty",
+    "commandAliases": [
+      "ecp application servers"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpAppServersPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECPAppServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.AppServerList",
+        "type": "LIST"
+      },
+      "fields": [
+        "ClientName",
+        "Status",
+        "IPAddress",
+        "IPPort"
+      ],
+      "filter": [
+        "ClientName",
+        "Status",
+        "IPAddress"
+      ],
+      "sort": {
+        "fields": [
+          "ClientName",
+          "Status",
+          "IPAddress",
+          "IPPort"
+        ],
+        "default": "ClientName",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "ecpDataServerStatusCaveat",
+        "text": "Each status is what the instance reported when this list was read."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ClientName",
+          "labelKey": "processDetailsClientName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "IPAddress",
+          "labelKey": "ecpClientIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "IPPort",
+          "labelKey": "sslTestPort",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "os-management/ecp-application-servers",
+      "position": 1,
+      "labelKey": "sslPromptGroupConnections"
+    },
+    "toolIdentifier": "osmgmt.ecpappservers",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.EcpDataServerForm",
     "route": "os-management/ecp-data-servers/edit",
     "area": "os-management",
@@ -4240,6 +4384,654 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpSettings",
+    "route": "os-management/ecp-settings",
+    "area": "os-management",
+    "labelKey": "ecpSettingsLabel",
+    "sideBarPosition": 18,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "ecp-settings",
+    "entityLabelKey": "ecpSettingsLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "AppServerSettings.MaxServers",
+        "AppServerSettings.ClientReconnectDuration",
+        "AppServerSettings.ClientReconnectInterval",
+        "DataServerSettings.MaxServerConn",
+        "DataServerSettings.ServerTroubleDuration",
+        "DataServerSettings.SSLECPServer"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "ecp settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSettingsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECP",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.Settings",
+        "type": "GET"
+      },
+      "fields": [
+        "AppServerSettings.MaxServers",
+        "AppServerSettings.ClientReconnectDuration",
+        "AppServerSettings.ClientReconnectInterval",
+        "DataServerSettings.MaxServerConn",
+        "DataServerSettings.ServerTroubleDuration",
+        "DataServerSettings.SSLECPServer"
+      ],
+      "filter": [
+        "AppServerSettings.MaxServers"
+      ],
+      "sort": {
+        "fields": [
+          "AppServerSettings.MaxServers"
+        ],
+        "default": "AppServerSettings.MaxServers",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "osmgmt.ecpsettings",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EcpSslConnectionTab",
+    "route": "os-management/ecp-application-servers/ssl",
+    "area": "os-management",
+    "labelKey": "ecpSslConnectionsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ecp-ssl-connection",
+    "entityLabelKey": "ecpSslConnectionEntity",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "authorize",
+        "selfProtection": "ecp-ssl-pending"
+      },
+      {
+        "id": "reject",
+        "selfProtection": "ecp-ssl-pending"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "ecp-ssl-authorized"
+      }
+    ],
+    "context": {
+      "fields": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "ecpSslConnectionListEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "ecpSslConnectionsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.ECPAppServers",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "ECP.AppServerSSLConnection",
+        "type": "LIST"
+      },
+      "fields": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "filter": [
+        "SSLComputerName",
+        "ClientIP",
+        "Status"
+      ],
+      "sort": {
+        "fields": [
+          "SSLComputerName",
+          "ClientIP",
+          "Status"
+        ],
+        "default": "SSLComputerName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "SSLComputerName",
+          "labelKey": "ecpSslComputerName",
+          "kind": "name"
+        },
+        {
+          "field": "ClientIP",
+          "labelKey": "ecpClientIp",
+          "kind": "identifier"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "ecpSslConnectionListEmptyAgent"
+    },
+    "tab": {
+      "group": "os-management/ecp-application-servers",
+      "position": 2,
+      "labelKey": "ecpSslConnectionsLabel"
+    },
+    "toolIdentifier": "osmgmt.ecpsslconnections",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFile",
+    "route": "security/encryption-key-file",
+    "area": "security",
+    "labelKey": "encryptionKeyFileLabel",
+    "sideBarPosition": 8,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "entityLabelKey": "aboutEncryptionKeyFile",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "addkey",
+        "selfProtection": ""
+      },
+      {
+        "id": "removekey",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "encryptionKeyFileKeysEmpty",
+    "commandAliases": [
+      "encryption",
+      "encryption key file",
+      "create key file"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFilePrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "encryption",
+        "endpoint": "Security.Encryption.KeyInFile",
+        "type": "LIST"
+      },
+      "fields": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "filter": [
+        "Id",
+        "KeyLen",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Id",
+          "KeyLen",
+          "Description"
+        ],
+        "default": "Id",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "root",
+            "labelKey": "pathPickerRootLabel",
+            "kind": "text",
+            "maxLength": 1024,
+            "hint": "An allowed directory exactly as the Allowed directories screen lists it."
+          },
+          {
+            "param": "path",
+            "labelKey": "pathPickerFileLabel",
+            "kind": "text",
+            "maxLength": 807,
+            "hint": "The key file's name under that directory, up to eight /-separated parts."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Id",
+          "labelKey": "encryptionKeyFileColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "KeyLen",
+          "labelKey": "encryptionKeyFileColumnKeyLen",
+          "kind": "number"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "encryptionKeyFileEmptyAgent"
+    },
+    "toolIdentifier": "security.encryptionkeyfile",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList",
+    "route": "security/encryption-key-file/administrators",
+    "area": "security",
+    "labelKey": "encryptionKeyFileAdminsTitle",
+    "sideBarPosition": 0,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "entityLabelKey": "aboutEncryptionKeyFile",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "addadministrator",
+        "selfProtection": ""
+      },
+      {
+        "id": "removeadministrator",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "OldAdminPassword",
+      "NewAdminPassword"
+    ],
+    "emptyStateKey": "encryptionKeyFileAdminsEmpty",
+    "commandAliases": [
+      "key file administrators"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionKeyFileAdminsPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionManage",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "encryption",
+        "endpoint": "Security.Encryption.AdminInFile",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name"
+      ],
+      "filter": [
+        "Name"
+      ],
+      "sort": {
+        "fields": [
+          "Name"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "root",
+            "labelKey": "pathPickerRootLabel",
+            "kind": "text",
+            "maxLength": 1024,
+            "hint": "An allowed directory exactly as the Allowed directories screen lists it."
+          },
+          {
+            "param": "path",
+            "labelKey": "pathPickerFileLabel",
+            "kind": "text",
+            "maxLength": 807,
+            "hint": "The key file's name under that directory, up to eight /-separated parts."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "encryptionKeyFileColumnAdmin",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "encryptionKeyFileEmptyAgent"
+    },
+    "toolIdentifier": "security.encryptionkeyfileadmins",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionKeyFileForm",
+    "route": "security/encryption-key-file/create",
+    "area": "security",
+    "labelKey": "encryptionKeyFileFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Admin_FileSystemAccess",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "encryption-key-file",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "encryptionKeyFileFormPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionCreate",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.encryptionkeyfileform",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",
@@ -5811,7 +6603,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "save",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [],
       "secretFields": []

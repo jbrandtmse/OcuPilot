@@ -237,7 +237,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
   <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
+  <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
+  <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
 </Routes>
 }
 
@@ -1763,11 +1766,33 @@ ClassMethod ExplorerSqlBackgroundStart() As %Status
     Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
+/// form read, delegating to <class>OcuPilot.Area.OsMgmt.EcpSettingsRules</class>. It precedes
+/// <code>/ecp-settings</code>.</p>
+ClassMethod EcpSettingsFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ecp-settings</code> (Story 18.21): ECP settings' Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EcpSettingsUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.EcpSettingsSave).HandleUpdate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /explorer/sql/data</code> (Story 19.7): Data
 /// browser's page read, delegating to <class>OcuPilot.Area.Explorer.SqlData</class>.</p>
 ClassMethod ExplorerSqlData() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlData).HandleBrowse()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /encryption-key-file</code> (Story 18.7): the key
+/// file create form's Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod EncryptionKeyFileCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.EncryptionKeyFileSave).HandleCreate()
 }
 
 }

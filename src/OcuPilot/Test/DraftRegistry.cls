@@ -67,6 +67,13 @@ Parameter PORTREADFIELDS = "osmgmt.localdatabases.update=Directory";
 /// <code>Status</code>).</p>
 Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 
+/// <p>The tools whose port resolves the synthetic target against the instance and refuses it, so the
+/// script is the refusal's one <code>comment</code> step and carries no secret, comma-separated (Story
+/// 18.7's key-file writes, which address a key file that exists under an allowed directory). Their
+/// password placeholders are pinned against a real probe file by
+/// <method>OcuPilot.Test.EncryptionKeyFileWrite.TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders</method>.</p>
+Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator";
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -296,6 +303,10 @@ ClassMethod SecretProblem(pTool As %DynamicObject) As %String
     Set tText = ..Text(tDraft)
     If tDraft.%Get("steps").%Size() = 0 Quit "no step rendered"
     If tText [ ..#SECRETPROBE Quit "a secret probe reached the script"
+    If $ListFind($ListFromString(..#REFUSEDDRAFTS), pTool.%Get("name")) {
+        If (tDraft.%Get("steps").%Size() '= 1) || (tDraft.%Get("steps").%Get(0).%Get("kind") '= "comment") Quit "its synthetic target is refused, so its script is that refusal's one comment step"
+        Quit ""
+    }
     Set tMissing = ""
     For tI = 1:1:$ListLength(tComposed) {
         If tText '[ ("<" _ $List(tComposed, tI) _ ">") Set tMissing = tMissing _ " " _ $List(tComposed, tI)

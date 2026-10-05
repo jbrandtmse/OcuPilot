@@ -229,6 +229,10 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 18.6: the license key's activation declares its screen's set and no write pair of its
             ; own (AD-8 as amended 2026-10-03).
             If tTool.name = "osmgmt.licensekey.activate" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 18.7: the key file writes declare their screen's set and no write pair of their own,
+            ; the key removal adding %Admin_Manage:USE through EXTRAPAIRS below (AD-8 as amended
+            ; 2026-10-04, measured at the story's Task 0).
+            If $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.EncryptionKeyFileWrite") Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 18.20: the ECP data server status change declares its screen's set and its poll's
             ; %Admin_Operate:USE, and no write pair of its own (AD-8, measured at the story's Task 0).
             If tTool.name = "osmgmt.ecpdataservers.changestatus" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved) _ $ListBuild($ListBuild("%Admin_Operate", "USE"))
@@ -238,6 +242,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             ; Story 19.6: the SQL run declares its screen's set and no write pair of its own, its
             ; statement's SQL privileges being checked at its prepare (AD-8).
             If tTool.name = "explorer.sqlquery.run" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            ; Story 19.8: so does the data browser's save, each statement's SQL privileges being checked
+            ; at its prepare (AD-8).
+            If tTool.name = "explorer.sqldata.save" Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             ; Story 18.3: the database create declares the resource pair and the path pair after the
             ; write's own, and the two edits add pairs by argument (AD-8 as amended 2026-09-29).
             If tTool.name = "osmgmt.localdatabases.create" Set tExpected = tExpected _ $ListBuild($ListBuild("%Admin_Secure", "USE"), $ListBuild("%Admin_FileSystemAccess", "USE"))

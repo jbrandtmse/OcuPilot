@@ -6598,6 +6598,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T14:47:12Z status=routed owner=range-end-cleanup by=orchestrator note=Rule 27 range-end cleanup: a real capability, not floor-blocking
 - 2026-09-26T09:53:54Z status=routed owner=burndown by=spec_gate note=feature: RSA and symmetric-key wallet secret create/edit; no 14/16 story owns wallet secrets
 - 2026-09-30T03:32:47Z status=routed owner=18-7-encryption by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: RSA and symmetric-key wallet secrets belong with the key-material design
+- 2026-10-04T16:47:29Z status=routed owner=18-24-rsa-and-symmetric-key-wallet-secrets by=merge_gate note=re-owned at the Story 18.7 split (orchestrator merge gate 2026-10-04): Part D of spec-18-7-encryption.md (commit 0a3dfe43) is its own story
 
 ### DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6866,6 +6867,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: full sweep on ocupilot-ci run 8192: %SYS_Task.History held 1,026 rows on the 3-day-old throwaway; a fresh CI throwaway holds far fewer
 - 2026-09-23T14:43:42Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=harvest note=reopen_if=a CI instance job fails TestTaskHistoryPairSetsAreEnforcedForARealPrincipal
+- 2026-10-04T22:45:55Z occurrence=wontfix-accepted by=harvest note=Story 18.7's sweep on the 3-day-old ocupilot-b-ci saw it again (4,600 task-history rows over the 1,000 cap); green 25/25 on the rebuilt throwaway 2026-10-04T22:39Z, so the environmental cause is observed, not inferred
 
 ### DW-1557: AdminPort's DW-1473 paragraph still says no shipped tool issues Task.CRUD/SUSPEND, which 7.6 made false; its 'The nine' count and 'no screen read reaches one' are stale too
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -8029,6 +8031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
 - 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
 - 2026-09-28T14:26:03Z status=routed owner=18-7-encryption by=adjudication note=restores the 09:44 cr routing; the 08:40 line above is DW-1769's trailer, misplaced here by a union merge
+- 2026-10-05T04:09:40Z status=resolved-by:18-7-encryption by=adjudication note=delivered in 8d0a659a (ui/browser/side-bar-spec.mjs, 18 converted specs) and 9729bef0 (ui/tools/side-bar-pins.test.mjs refuses a count pin); 18.7's committed line claimed it, the trailer was missing
 
 ### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -9390,6 +9393,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: data-browser-grid.ts renders each cell as one ellipsized span with no title or tooltip; shell/data-table.ts draws a cut-cell tooltip on pointer and active cell (Story 15.8)
 - 2026-10-04T13:18:00Z status=routed owner=19-8-the-data-browser-editing-staging-and-export by=cr note=19.8 brings the grid to the portal's accessibility: port the data-table's cut-cell tooltip
+- 2026-10-04T19:24:34Z status=resolved-by:19-8-the-data-browser-editing-staging-and-export owner=19-8-the-data-browser-editing-staging-and-export by=adjudication note=the data table's cut-cell tooltip is ported into data-browser-grid.ts (data-table.ts untouched): on pointer rest and on the active cell, hidden by Escape, scroll, a press or an open editor; pinned by AC13's grid spec and browser leg
 
 ### DW-2029: Data browser pages of a keyless table or view, or sorted on a non-unique column with no visible key, have no total order, so OFFSET pages can repeat or skip a row
 - source: spec-19-7-the-data-browser-tree-grid-filter-and-sort.md | severity: low | fix-risk: med | footprint: in-story
@@ -9418,12 +9422,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-20-ecp-data-servers.md (implement) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: EcpPort maps only the vendor's #1454 (SSLECPClientNotExist), so a disabled %ECPClient is likely accepted (inference); AD-8 rules out the %ECPClient read, which needs %Admin_Secure:USE. Settle on a throwaway: seed a disabled %ECPClient, create a probe at 192.0.2.10 with SSLConfig 1, read whether it is stored, remove both.
 - 2026-10-04T05:57:45Z status=routed owner=18-21-ecp-settings-and-application-servers by=harvest note=18.21 owns the ECP SSL/TLS authorization surfaces; measure, then refuse or name the gap
+- 2026-10-04T10:07:19Z status=resolved-by:18-21-ecp-settings-and-application-servers by=adjudication note=measured at 18.21's Task 0: the vendor refuses SSLConfig 1 over a disabled %ECPClient with #1454, which EcpPort maps to ECP.DATASERVER.SSLCLIENT
 
 ### DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVER.SSLCLIENT
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: med | fix-risk: low | footprint: in-story
 - evidence: ocupilot-b-ci messages.log holds one severity-2 [OcuPilot.Log] 'ECP.DataServer failed with HTTP 500 ... ERROR #1454' line per refused SSL save and no vendor line; AD-2 logs every failure outside UNLOGGEDREFUSALS, whose entries match endpoint/type/status only, so none can scope to #1454; monitor state read 1 then 2 across this review's runs.
 - 2026-10-04T06:51:44Z status=decision-pending owner=burndown by=cr note=recommend amending AD-2: unlog the mapped ECP.DataServer PUT #1454 (code-scoped UNLOGGEDREFUSALS), as 18.6 did for its 400
 - 2026-10-04T07:59:42Z status=routed owner=burndown by=merge_gate note=decided 2026-10-04: amend AD-2 to leave the mapped #1454 (SSL field refusal) unlogged, scoped by code, as 18.6's 400; built at Epic 18's close burn-down
+- 2026-10-04T14:42:18Z occurrence=18-21-ecp-settings-and-application-servers note=EcpSslConnectionWrite's DW-2006 leg and EcpDataServerWrite's SSL leg raise the monitor through the logged #1454 (harvested from 18.21's deferred list)
+- 2026-10-05T00:19:27Z occurrence=18-7-encryption note=18.7 logs #5022 on each no-key read, #1219/#1204 and #5001 credentials refusals; their async alert-throttle line can land in a no-log window
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -9518,3 +9525,280 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Every leg timed out on the browser protocol, so the browser was stuck rather than one assertion wrong; the same spec passed 12/12 in run 37181343435 on f63a048b (same shard) and 12/12 on ocupilot-b-ci against a3f957b2's bundle; a3f957b2 changed no page code but one form-store line (first sighting).
 - 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
+- 2026-10-04T21:10:24Z status=routed owner=range-end-cleanup by=merge_gate note=restoring the 16:23:18Z raise (med p1; the 19.8 forward merge f3c01129 displaced it under DW-2057): recurring Chrome DevTools-protocol hangs across specs and heads (aaa2460d a11y 729 s, a3f957b2 a11y 730 s, 1.0.9 PR run 37212622481 messages-log-files Network.enable 181 s); fix in the browser harness (fresh page or browser and one retry on a protocol timeout, per call), not per spec
+- 2026-10-05T01:33:26Z occurrence=range-end-cleanup note=Story 18.7's code head 9729bef0, run 37248045506 attempt 1: browser shard 2/3, data-table.browser-spec.mjs 'grid keyboard' timed out in Network.enable (CdpPage._create) after 180 s; failed jobs re-run once
+
+### DW-2053: Data browser counts an untouched new row in Save changes (n) and the save dialog but never sends it, so a Proceed with only such rows does nothing and says nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: StagedChanges.count() and counts() include every insert while toWire() skips one with no values (data-browser-model.ts); DataBrowserState.save() then returns false with no announcement
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a Save that sent nothing, or Story 19.16 changes how staged rows count
+
+### DW-2054: Data browser edits of a row whose key cell is cut at 1,000 characters or shown as binary hex send the shown text as the key, so the save answers changed or gone and writes nothing
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: DataBrowserState.pageRow takes key values from the page's displayed cells; SqlPort.BrowseRun cuts a cell at MAXCELL and renders binary as 0x hex
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a table with a binary or over-1,000-character primary key is edited in Data browser
+
+### DW-2055: Data browser checks no value against the save's 32,767-character and 1,000,000-character bounds before sending, and the 400 it gets back names no row
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: parseCellInput takes text as typed; refusalText (sql-query.store.ts) shows only the envelope reason and drops detail.problem
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=a person reports a whole save refused with TOOL.ARGUMENTS after pasting a long value
+
+### DW-2056: A data browser row answered error with no SQLCODE and no message (a trigger's open transaction rolled back, an insert counting no row, a run that raised) leaves its Change cell blank
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SaveOutcome answers RowResult(index, error, "", "", "") on four paths and outcomeText joins two empty parts to ''; a fallback sentence needs a new strings.ts key
+- 2026-10-04T19:18:05Z status=wontfix-accepted owner=19-8-the-data-browser-editing-staging-and-export by=cr note=reopen_if=such a row is answered on a real table; strings.ts is contended with Epic 18 now
+
+### DW-2057: explorer.sqldata.save's AD-59 script composes every guard as %EXACT where the port compares a non-text column with =, because the pure snippet reads no catalog
+- source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SqlPort.SnippetPlan marks every column kind text, so SaveComposed renders %EXACT for a number or date guard; SaveSnippet's doc comment says so; no proposal for this tool can be drafted
+- 2026-10-04T19:18:05Z status=wontfix-theoretical owner=19-8-the-data-browser-editing-staging-and-export by=cr note=real only if Story 19.11 lets the agent propose a row change, so a person could take this script
+- 2026-10-04T16:23:18Z status=routed owner=range-end-cleanup by=merge_gate note=recurring, raised to med p1: Chrome DevTools-protocol hangs across specs and heads - aaa2460d run 37143273820 attempt 1 (a11y, Runtime.callFunctionOn 729 s), a3f957b2 run 37184530521 (a11y, 730 s), release/1.0.9 PR #12 run 37212622481 (messages-log-files AC1, Network.enable timed out at 181 s in CdpPage._create); DW-1822's 600 s protocolTimeout raised the ceiling but does not stop the hang; fix in the browser harness (fresh page or browser and one retry on a protocol timeout, per call), not per spec
+- 2026-10-04T21:10:24Z status=wontfix-theoretical owner=19-8-the-data-browser-editing-staging-and-export by=merge_gate note=restoring the 19:18:05Z disposition: the 16:23:18Z routed line above belongs to DW-2026, displaced here by the forward merge f3c01129
+### DW-2027: MappingCodeGlobals.TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames fails on an instance holding a stored credential whose name starts with OcuPilot (the product's default credential naming): ^Ens.Conf.CredentialsD and ^Ens.SecondaryData.Password appear as extra matches
+- source: 1.0.9 upgrade check sweep on ocupilot-c-ci (16b50ec8) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the only stored credential was the seeded OcuPilotUpgradeProbe; 7/7 after deleting it; a sibling of DW-1759/DW-1839 (a test assuming instance state)
+- 2026-10-04T09:00:25Z status=routed owner=range-end-cleanup by=merge_gate note=the test should set aside or exclude stored interoperability credentials, or assert only on globals its own action names
+
+### DW-2033: ocupilot-b-ci's HSSYSLOCALTEMP lost its IRIS.DAT at 11:32:11 UTC while still mounted, right after a test's ECP server create and remote database create; PathPortInstance now fails there
+- source: runner investigation, Story 18.21 implement sweep (2026-10-04) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Audit: 11:32:11.720 Create section ECPServer OCUPROBEECPA and .864 Create section Database OCUPROBEECPR (EcpDataServerWrite's in-use leg, pid 1204757); at .999 the stream dirs of mgr, HSCUSTOM, hssys, hssyslocaltemp and user were recreated and hssyslocaltemp/IRIS.DAT is gone, SYS.Database still Mounted 1. Cause inference: the vendor's configuration activation; unreproduced; the same seeding ran many times before without it.
+- 2026-10-04T14:41:54Z status=routed owner=burndown by=runner note=investigate on a fresh throwaway (seed a data server, then a remote database on it, watch mgr/*/IRIS.DAT); IRIS defect candidate if reproduced; never restart ocupilot-b-ci to repair it
+- 2026-10-04T14:54:40Z status=routed owner=burndown by=merge_gate note=raised to HIGH-candidate (shape matches the old ocupilot-ci IRISTEMP break); the orchestrator's investigation agent reproduces it on ocupilot-c-ci; ocupilot-b-ci left exactly as is
+- 2026-10-04T15:35:39Z status=wontfix-accepted by=merge_gate note=root cause macOS tmp_cleaner, not IRIS; fix tracked as DW-2034; evidence cycle-log-parallel.md dw2033_root_cause 2026-10-04T15:11:33Z
+
+### DW-2035: EcpDescriptor's MaxServerConn guard matches text: a constructed member name, a property-chain set, or a helper class outside %UnitTest.TestCase passes it
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Guard scans roster TestCase method bodies for three literal body-key spellings and an "ecpserver" string; EcpSettingsWrite already sends MaxServerConn 255 through $List-built keys (refused by the rules). Behind it: the roster of naming classes and EcpSeamPort's runtime refusal.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a test class outside MAXSERVERCONNCLASSES builds the member name, or PendingRestart names MaxServerConn after a test run
+
+### DW-2036: EcpSettingsWrite's restart test ends with an unarmed MaxServerConn Save whose safety rests on EcpSeamPort.ChangesMaxServerConn alone
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: The last leg of TestARestartSettingIsStatedAndNeverSentForReal pins the seam's 409 guard by sending a change unarmed; the guard fails closed when the stored settings cannot be read.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if ChangesMaxServerConn answers 0 for a changed MaxServerConn
+
+### DW-2037: EcpPort.SettingsRefusal answers only the first port refusal, so SSL/TLS without %ECPServer hides a MaxServers below the data servers until the next Save
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: SettingsRefusal quits after the SSL/TLS refusal; EcpSettingsSave.HandleUpdate's doc promises every violation for rule refusals, which Validate keeps.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user reports a second ECP settings refusal after fixing the first in one Save
+
+### DW-2038: A large MaxServers increase may need a restart when the shared memory heap is short, and the tool states a restart only for MaxServerConn (inference)
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: irissys/Config/config.cls:348-351 says MaxServers applies without a restart only if heap memory is available; Task 0 measured 2 to 3 alone (PendingRestart 0).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=Config.CPF.PendingRestart lists MaxServers after an ECP settings write
+
+### DW-2039: EcpSettingsUpdate.Consequence answers the restart code whenever its own settings read fails, though no MaxServerConn change is sent
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Consequence re-reads ECP.Settings to compare MaxServerConn and returns ECP.SETTINGS.RESTART on any read failure; the Save and the mint read the same endpoint just before.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when ECP.Settings GET fails between the fresh read and Consequence for a caller holding the screen's pairs
+
+### DW-2040: EcpProbe.QueryNames and MarkedSsl swallow every failure, so Remaining can undercount probe SSL/TLS names and configurations
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: An empty Catch or failed Execute answers an empty list or 0, which RemoveAll reads as nothing left (EcpProbe.cls QueryNames, MarkedSsl).
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when SYS.ECP's SSL/TLS queries or Security.SSLConfigs.Exists error in %SYS
+
+### DW-2041: Authorize and reject are observed only through EcpSeamPort, whose pending list never changes after an action; a real reject removes the row (read-back notFound, change action updated)
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpSeamPort pending mode re-adds CN=OCUPROBEECPP on every LIST, so the asserted nothingSent is the seam's; ReadBack answers notFound for an absent action target (inference for the real reject). Named limit 1.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a licensed instance or a real pending request reaches a test, or a user reports a Reject reading not found
+
+### DW-2042: C7 (DW-2006) is pinned for the test process's privileged caller only, not for a principal without %Admin_Secure:USE
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: TestSslOverADisabledClientConfigurationIsRefusedOnItsField runs EcpSaveFixture in-process; no EcpWriteGate leg creates SSL/TLS over a disabled %ECPClient as a least-privileged principal (vendor check is system code, inference).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a least-privileged create with SSLConfig 1 over a disabled %ECPClient stores the server
+
+### DW-2043: ECP settings draws the %ECPServer sentence twice, once under Enabled and once under Required
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: ecp-settings.page.ts renders one ocu-field-caption per refused radio, so a Community instance always shows two identical captions.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=an accessibility review or reader flags the repeated caption under the SSL/TLS radios
+
+### DW-2044: The authorize and reject card shows no request details: StateDiff answers no row, so the pending request's ClientIP is not on the card
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EcpSslConnectionAuthorize/Reject.StateDiff return no rows and the fingerprint covers Status only; the tab shows ClientIP before Authorize.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user asks on a card which host a pending SSL/TLS request came from
+
+### DW-2045: The Authorize and Reject warning dialog is never rendered in a browser spec, so the DW-1337 walk never reaches it
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: No pending row exists on Community; the handler's warning entries are pinned in screen-action-handler.spec.ts only (vitest).
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a request-interception harness or a licensed instance lets a browser spec reach the tab's Authorize
+
+### DW-2046: ECP settings stays interactive while a Save is in flight: Cancel drops the change event and edits typed during the Save are reset
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: save() returns before publish when the generation moved (Cancel calls open()); setText ignores savingValue and open(true) resets the fields; journal-settings.store.ts has the same shape.
+- 2026-10-04T15:31:15Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user reports a lost edit or a screen not refreshing after Cancel during an ECP settings Save
+
+### DW-2047: An ECP settings Save the server answers {} (nothing changed) still publishes an updated change event
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: save() publishes on any ok answer; a concurrent identical change makes the server merge empty; screens re-fetch on the event (AD-14).
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if a consumer treats an ecp-settings change event as proof of a write
+
+### DW-2048: EcpSettingsUpdate.MergeUpdate sends a partial object when the fresh read lacks a settings group or answers a member null
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: MergeUpdate substitutes {} for an absent group and CopyMember skips a null member; the vendor's GET answered both groups' six numbers at Task 0.
+- 2026-10-04T15:31:15Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if the vendor's ECP.Settings GET omits a settings group or answers a member null
+
+### DW-2049: EcpDescriptor's MaxServerConn guard skips a test class whose source GetTextAsString cannot read
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestNoTestSendsMaxServerConnToTheVendor continues past a failed GetTextAsString; a roster class read failure still reddens the roster equality.
+- 2026-10-04T15:31:16Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real only if GetTextAsString fails for an OcuPilot.Test class that names the member
+
+### DW-2050: EcpError.FieldOf answers two comma-joined fields for ECP.SETTINGS.COUNT where every sibling answers one
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Only EcpDescriptor reads EcpError.FieldOf today; its doc states the two-field answer.
+- 2026-10-04T15:31:16Z status=wontfix-theoretical owner=18-21-ecp-settings-and-application-servers by=cr note=real when a product caller builds a violation row from EcpError.FieldOf(SETTINGSCOUNT)
+
+### DW-2051: ECP settings' open() keeps only the form read's refusal, so a fault on the screen's own read renders the generic fault
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: open() calls rememberRefusal(form); a privilege refusal hits both reads alike (one descriptor's pairs), so only a vendor fault on the declared read loses its code.
+- 2026-10-04T15:31:16Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=a user sees ECP settings' generic fault for a refusal that names a code or a pair
+
+### DW-2052: No test confirms an agent settings change for a principal holding %DB_IRISSYS:WRITE without %Admin_Secure:USE, the half-apply combination Task 0 measured
+- source: spec-18-21-ecp-settings-and-application-servers.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EcpSettingsGate's OCUPROBEECPHSSL runs only the Save; the confirm's pair gate is the kernel's shared path and the tool's pairs are pinned in EcpDescriptor.
+- 2026-10-04T15:31:16Z status=wontfix-accepted owner=18-21-ecp-settings-and-application-servers by=cr note=reopen_if=the confirm's pair gate stops reading the tool's PrivilegePairs, or a settings confirm half-applies
+
+### DW-2034: Local throwaways keep their data under /tmp/ocupilot-*-ci, which macOS's nightly tmp_cleaner prunes (files untouched more than 3 days): a throwaway older than 3 days loses its temp databases' IRIS.DAT while they stay mounted (<FILEFULL>, HSSYSLOCALTEMP ERROR #6046 at the next start) and its compose.yml (so ci-throwaway.sh down skips docker compose down and leaves the container running)
+- source: DW-2033 investigation 2026-10-04 (ocupilot-c-ci; launchd com.apple.tmp_cleaner log; /tmp/ocupilot-b-ci mtimes 00:00:02-04) | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: find -dx /tmp -type f -atime +3 -mtime +3 -ctime +3 -delete at 00:00 daily; reproduced by deleting the files by hand; no IRIS configuration step deleted anything; explains ocupilot-ci's IRISTEMP and missing compose.yml
+- 2026-10-04T15:12:09Z status=routed owner=range-end-cleanup by=merge_gate note=priority p1: move the local throwaway root out of /tmp (keep CI's Linux path), make ci-throwaway.sh down fall back to docker compose -p when compose.yml is missing, and add a check that every mounted local database still has its IRIS.DAT; until then the orchestrator refreshes the running throwaways' timestamps
+
+### DW-2058: CI flake: system-explorer-transfer.browser-spec AC1's structural walk of the import dialog fails 'Protocol error (DOM.getAttributes): Could not find node with given id' when a marked field is replaced between DOM.querySelectorAll and DOM.getAttributes
+- source: ci run 37228982542 (browser shard 1/3, head f3c01129) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: structural-walk.mjs fieldNames :526 reads each [data-ocu-walk-field] node by id after one querySelectorAll; the transfer spec :222 walks right after typing into the path picker, whose listing re-renders the dialog's fields (inference); 19.8 changes neither file
+- 2026-10-04T20:34:37Z status=routed owner=range-end-cleanup by=runner note=first sighting; the fix is fieldNames tolerating a node replaced mid-walk (re-query once) or the spec waiting for the picker's listing before the walk
+
+### DW-2059: Prohibited.DependsOnKey compares a database's EncryptionKeyID with the key file's Id as exact strings; a format or case difference between the two vendor answers would let a protected key's removal through
+- source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: high | fix-risk: low | footprint: in-footprint
+- evidence: maybe-false: no encrypted database exists on these instances and activating a key is out of 18.7's scope; settled by Story 18.22's Task 0, which activates a probe key: compare Database.SysCRUD LIST EncryptionKeyID for a database encrypted with it against KeyInFile LIST Id (src/OcuPilot/Kernel/Proposal/Prohibited.cls DependsOnKey)
+- 2026-10-04T22:45:55Z status=routed owner=18-22-database-and-data-element-encryption-keys by=harvest note=18.22's Task 0 activates a probe key and can measure both formats; fix the comparison there if they differ
+- 2026-10-04T23:23:47Z status=routed owner=18-22-database-and-data-element-encryption-keys by=merge_gate note=18.7 now fails closed (orchestrator ruling 2026-10-04): DependsOnKey compares key ids normalized (uppercase, hex digits only) and refuses an encrypted own database whose key id cannot be read, pinned by EncryptionKeyMatch; 18.22's Task 0 measures the real formats and confirms or narrows the comparison
+
+### DW-2060: Kernel/Proposal/Prohibited.cls's Codes doc comment still reads twenty-six codes; PROHIBITED.OCUPILOTKEY makes 27
+- source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: the file is add-only while Epic 19 runs, so 18.7 left the sentence; a doc count only, no behavior
+- 2026-10-04T22:45:55Z status=routed owner=range-end-cleanup by=harvest note=correct the count once Epic 19 no longer holds the file add-only
+
+### DW-2064: The spine lags Story 18.7's confirmed decisions: AD-2 names neither AdminInFile's two unlogged 409 refusals nor the key list's #5022 read as no key, and AD-8 lacks amendment 8
+- source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: UNLOGGEDREFUSALS gains AdminInFile/POST/409 and /DELETE/409 (Decision 6) and PROPERTYFAULTS KeyInFile:5022 (review patch); AD-2 still says every other failure is logged; the Spec Change Log queues amendment 8 for the runner and neither AD names 18.7
+- 2026-10-05T00:19:25Z status=open owner=18-7-encryption by=cr note=runner writes the AD-2 and AD-8 sentences (Rule 20) before ledger_adjudicated; no code change
+- 2026-10-05T00:23:34Z status=resolved-by:18-7-encryption by=runner note=AD-8 (Story 18.7's own pair and removekey's pair) and AD-2 (AdminInFile 409s unlogged; KeyInFile LIST #5022 read as no key, still logged) written to the spine at the code-review boundary
+
+### DW-2065: Removing a key file's startup administrator is not refused: AD-10's key arm judges key removals only, while unattended activation opens DBEncStartKeyFile as DBEncStartUsername
+- source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
+- evidence: Prohibited.KeyFile judges KeyInFile/DELETE alone; AdminInFile/DELETE passes the reviewed-few sweep; with DBEncStartMode unattended the instance opens that file with that administrator at startup (inference), so encrypted databases (IRISSECURITY, IRISTEMP included) would not mount
+- 2026-10-05T00:19:26Z status=decision-pending owner=18-23-encryption-startup-settings by=cr note=product call: extend AD-10's key arm to the startup key file's administrator; Story 18.23 builds the unattended startup settings
+- 2026-10-05T03:28:41Z status=routed owner=18-23-encryption-startup-settings by=owner note=owner 2026-10-04: refuse removing the startup key file's administrator, as removing a key a database depends on is refused
+
+### DW-2066: DependsOnKey reads only the journal's configured key (DBEncJournalKeyID); journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks
+- source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
+- evidence: maybe-false: %SYS.Journal.System.IsEncKeyInUse (irissys/%SYS/Journal/System.cls:300) compares GetJrnEncKeyID(1) and (2) and walks the files RequiredForRecovery; no instance here encrypts its journal; settled where a probe key is activated and the journal encrypted
+- 2026-10-05T00:19:26Z status=routed owner=18-22-database-and-data-element-encryption-keys by=cr note=18.22 owns key deactivation, whose vendor guard is IsEncKeyInUse: measure, and widen DependsOnKey to it if real
+
+### DW-2067: The Add administrator and Add key dialogs mark a refused field aria-invalid but do not name its refusal through aria-describedby (EXPERIENCE.md, Validation)
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: encryption-key-file.page.ts dialogs; the create form ties each refusal; the review's patch (eight bindings) added 787 bytes against 301 left under ui/angular.json's 2884kB, a contended line, so it was reverted
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=the next Epic 18 story that re-bases ui/angular.json maximumWarning (add the dialog fields' aria-describedby then)
+- 2026-10-05T00:25:15Z status=open owner=18-7-encryption by=runner note=reopened: the reason given (a contended ui/angular.json line) does not hold, since a DW-1166 re-base from the measured bytes is the sanctioned edit; patched in Story 18.7 before its boundary
+- 2026-10-05T00:31:12Z status=resolved-by:18-7-encryption by=runner note=all eight dialog fields bind aria-describedby to their controlId-reason paragraph while a reason shows; pinned in encryption-key-file.page.spec.ts on Confirm and the Add key AdminPassword (two mutations red); initial bundle 2,884,479 bytes, maximumWarning re-based to 2885kB
+
+### DW-2068: EncryptionWriteGate counts vendor calls only, so PathPort's own 403 would hide a missing route gate for the file-system pair on the Save, screen-action and read legs
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EncryptionWriteGateProbe's calls is EncryptionSeamPort.Call; without %Admin_FileSystemAccess:USE PathPort.Resolve refuses the same envelope inside the port; mutation 6278 pins the confirm leg alone
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=a route or tool is found reaching EncryptionPort or PathPort without the screen's three pairs
+
+### DW-2069: PROPERTYFAULTS maps AdminInFile #5001 to ENCRYPTION.KEYFILE.CREDENTIALS for every request type, so a #5001 on its DELETE or LIST would read as a wrong password
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: AdminPort.PropertyViolations matches endpoint and code, not type; EncryptionPort.RemoveAdmin's Mapped remaps a CREDENTIALS row; #5001 is the generic error, measured only on POST
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=messages.log carries a #5001 on Security.Encryption.AdminInFile DELETE or LIST
+
+### DW-2070: An empty or over-long name in the Add dialogs is refused as TOOL.ARGUMENTS detail.problem, which PUBLISHED_PROBLEMS lacks, so the dialog shows the generic reason and marks no field
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: EncryptionKeyFileWrite.ScreenActionDelta answers EncryptionRules.Problem; screen-action-handler.ts shows detail.problem only when published; the passwords reach the port and land on their fields
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=a person reports an Add dialog refusal that names no field
+
+### DW-2071: The agent's create and add-administrator cards take a new key file password once, with no confirmation field
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: proposal-card.ts draws one masked field per secret for every tool; the form and the dialog ask twice; a mistyped first password leaves a new key nothing encrypts yet
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=a key file created or extended through an agent card is reported with a password nobody can use
+
+### DW-2072: An opened key file holding no key shows the keys table's headers over no row and no empty-state line
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: encryption-key-file.page.ts draws keys-empty only before a file is opened; the vendor lets the last key go (Task 0)
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=a person reports the empty keys table of an opened file as a fault
+
+### DW-2073: After an accepted create the form keeps its values with Save available, and the saved banner stays while a password is retyped
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EncryptionKeyFileForm.canSave is !saving; onPassword and onConfirm leave saved, keyId and readBack set; a second Save answers PATH.EXISTS
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=a person reports a second Save refused PATH.EXISTS after a create
+
+### DW-2074: An administrator name holding a comma is accepted, and the vendor's administrator list splits it into two names
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: AdminInFile RunList pieces $$AdminList^EncryptionKey on ','; EncryptionRules refuses empty, over-long and wide names only; no data is lost (the vendor refuses the last real administrator)
+- 2026-10-05T00:19:26Z status=wontfix-accepted owner=18-7-encryption by=cr note=reopen_if=an administrator name with a comma is created (its file then lists it as two names)
+
+### DW-2075: DependsOnKey refuses only on a matched row, so an own database absent from Database.SysCRUD LIST passes
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: SYS.Database:List omits databases never mounted since startup; every own database is mounted while OcuPilot serves
+- 2026-10-05T00:19:26Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when an own database is configured but never mounted while encrypted with the key
+
+### DW-2076: PATHRESOLVED is per class: EncryptionPort.Call and its inherited InvokeLocated pass a caller's raw file to the vendor
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: only Invoke's branches check NamesKeyFile; Call is public for the seam; no product code calls either with a caller's file
+- 2026-10-05T00:19:26Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a class outside EncryptionPort's branches calls EncryptionPort.Call or InvokeLocated with a caller's file (today only EncryptionProbe's Task 0 helper)
+
+### DW-2077: EncryptionKeyFileSave keeps only a port violation's field and code, so a code outside ENCRYPTION.* and PATH.* renders an empty reason
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: AddViolations drops the row's reason; RenderViolations answers EncryptionError.ReasonFor, then Error.ReasonForPath (QA)
+- 2026-10-05T00:19:26Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a create refusal under another code family reaches the Save
+
+### DW-2078: A create whose re-read or read-back throws after the vendor wrote the file answers 500, and a retry is refused PATH.EXISTS
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: EncryptionKeyFileSave.Create reads Keys(0).Id and ReadBack.ForSave inside its Try after the 201
+- 2026-10-05T00:19:26Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when KEYFILE answers a non-object key row or ReadBack.ForSave throws after a 201
+
+### DW-2079: The key file page ignores its reads' truncated flag at its 100-row cap
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: encryption-key-file.store.ts reads rows only, ENCRYPTION_KEY_FILE_MAX_ROWS 100
+- 2026-10-05T00:19:26Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a key file holds more than 100 keys or administrators
+
+### DW-2080: The create form states 'New encryption key ID:' with no id when neither the re-read nor the Location yields one
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: encryption-key-file-form.page.ts newKeyLine renders store.keyId() unconditionally
+- 2026-10-05T00:19:27Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a 201 create answers no key id
+
+### DW-2081: EncryptionPort's four non-create write branches' own source resolve has no port-level test
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: every write test names an allowed root and an existing file; the tools' KEYFILE fresh read resolves first on both callers
+- 2026-10-05T00:19:27Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a caller reaches those branches without the tools' KEYFILE fresh read
+
+### DW-2082: EncryptionError.FieldOf and ViolationCodes have no caller and no pin
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: grep finds no caller; EcpDescriptor and LicenseDescriptor pin their siblings
+- 2026-10-05T00:19:27Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real when a caller of either appears (pin it in EncryptionDescriptor then)
+
+### DW-2083: No test confirms a key file create whose name was taken since the mint
+- source: spec-18-7-encryption.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-54's absence re-read and the write's PATH.EXISTS both refuse a taken name; the vendor refuses an existing file too (#5027, Task 0)
+- 2026-10-05T00:19:27Z status=wontfix-theoretical owner=18-7-encryption by=cr note=real if a confirmed create is seen writing over a key file taken since its mint
+### DW-2061: Data browser's Download CSV writes a negative number with the formula guard ('-12.5), which a spreadsheet reads as text
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: pageCsvRows hands cellView text to core/csv.ts csvText, whose leading-character guard includes '-' (Story 16.23's rule); no export test writes a negative number. The spec reuses core/csv.ts unedited and EXPERIENCE.md's CSV rule prefixes a leading -.
+- 2026-10-04T23:39:06Z status=by-design owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=spec-bound: core/csv.ts reused unedited, EXPERIENCE.md CSV rule prefixes '-'; reopens only by spec amendment
+- 2026-10-04T23:42:23Z status=decision-pending owner=burndown by=adjudication note=product call for the decision sheet, since core/csv.ts's guard is product-wide (Story 16.23): options (a) keep the guard on every cell (as now); (b) exempt a cell the grid formats as a number from the formula guard in Data browser's export only (recommended: a numeric cell cannot start a formula); (c) exempt numeric cells in core/csv.ts for every export
+- 2026-10-04T23:54:37Z status=routed owner=19-9-documatic-and-docdb by=merge_gate note=option (b) ruled: Data browser's CSV export writes a cell without the formula guard's leading quote only when its column is number-typed AND the value fully matches a strict number pattern (optional leading -, digits, optional decimal part, optional exponent, nothing else); any other value keeps the guard; core/csv.ts and every other export unchanged; 19.16 unchanged; unit test: -12.5 and 1e-3 plain, -1+1 in a number column quoted, a text column's -12.5 quoted; a mutation shown red
+- 2026-10-05T07:05:59Z status=resolved-by:19-9-documatic-and-docdb by=adjudication note=pageCsvText(core/data-browser-model.ts:761)_writes_a_number-kind_cell_matching_CSV_NUMBER_bare_and_guards_every_other_cell;exportPage_uses_it;pinned_by_data-browser-model.test.mjs_and_data-browser-export.page.spec.ts;kind-check_mutation_red(implement_pass3,QA);core/csv.ts_unchanged;commit_c59368ab
+
+### DW-2062: Data browser's Ctrl/Cmd letter chords match by key only, so on a non-Latin layout Ctrl/Cmd+S, G and E do nothing and the browser's own Save page opens
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: controlLetter compares event.key alone, while optionShiftLetter falls back to event.code when the key is no ASCII letter; a Cyrillic layout reports key 'ы' with code KeyS for Ctrl+S (inference on Chromium's accelerator reading). The spec's Tasks fix the matcher: a letter by key, or under Alt/Option by code.
+- 2026-10-04T23:39:06Z status=by-design owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=spec-bound: Tasks match a Ctrl/Cmd letter by key only; reopen by amending it to optionShiftLetter's code fallback
+
+### DW-2063: Data browser's '<table> closed.' after the last tab closes is written into a role=status region inserted with its text, which screen readers commonly do not announce
+- source: spec-19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Closing the last tab swaps the page's @if (open) branch for the @else branch, whose own <p role=status> is created holding the line (inference on screen-reader behavior, as DW-1372 and DW-154); Story 19.8's namespace-discard line has the same shape. The fix moves one status element across both branches and the tab panel.
+- 2026-10-04T23:39:06Z status=wontfix-accepted owner=19-16-the-data-browser-export-shortcuts-go-to-row-and-tabs by=cr note=reopen_if=an NVDA or VoiceOver check on Chrome closing the last open tab does not speak the closed line
+
+### DW-2084: Vendor defect candidate: the DocDB REST drop (DELETE /api/docdb/v1/<ns>/db/<name>) of a database created without a resource answers 822 even for _SYSTEM, because its CheckAccess W needs a Security.DocDBs record neither create path makes
+- source: spec-19-9-documatic-and-docdb.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 19.9 plan on ocupilot-a2-ci: %SYSTEM.DocDB.CreateDatabase(name) with no resource, then the REST drop as _SYSTEM answered 822; irissys %SYS/DOCDB.int CheckAccess reads Security.DocDBs; in-process DropDatabase dropped it
+- 2026-10-05T00:40:46Z status=decision-pending owner=burndown by=runner note=human=decide whether to report upstream (as DW-1527/DW-1640); OcuPilot's own drop (Story 19.17) runs in process and is unaffected

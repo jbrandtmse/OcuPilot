@@ -35,6 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -215,8 +216,8 @@ test('A1, A7: License key is the fifteenth OS management entry, shows the thirte
     await fieldsDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    // Story 18.20: ECP data servers follows License servers.
-    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.20: ECP data servers follows License servers, and Story 18.21's two follow it.
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[14], STRINGS.licenseKeyLabel, 'License key is the fifteenth');
     const labels = await page.$$eval('[data-license="fields"] .ocu-details-field-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [

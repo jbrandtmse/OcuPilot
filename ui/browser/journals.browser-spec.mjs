@@ -41,6 +41,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -274,8 +275,9 @@ test('AC1, AC11: Journals is the thirteenth OS management entry, Logs lists no j
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    // Story 18.6: License key and License servers follow Journal settings; Story 18.20: ECP data servers follows them.
-    assert.equal(bar.entries.length, 17, `seventeen entries: ${JSON.stringify(bar.entries)}`);
+    // Story 18.6: License key and License servers follow Journal settings; Story 18.20: ECP data servers follows them,
+    // and Story 18.21: ECP settings and ECP application servers follow that.
+    assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
     assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
     // Story 18.18: Journal settings follows it.
     assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');

@@ -153,7 +153,7 @@ Method TestTheSortAndItsClearing()
 
 /// <p>AC3: NULL is answered <code>null</code> and an empty value <code>""</code>; a stream's first
 /// 1,000 characters end in U+2026 and binary is <code>0x</code> hex, cut at 499 bytes; each cut is
-/// reported. A filter or sort on a stream, a binary or an unlisted column is refused 400.</p>
+/// reported, and named by its row and column. A filter or sort on a stream, a binary or an unlisted column is refused 400.</p>
 /// <p>Mutation (Rule 19): map <code>$Char(0)</code> to <code>null</code> in
 /// <method>OcuPilot.Port.SqlPort.CellOf</method> -- the empty leg goes red.</p>
 Method TestNullEmptyStreamAndBinaryCells()
@@ -170,6 +170,7 @@ Method TestNullEmptyStreamAndBinaryCells()
     Set tImage = tAnswer.rows.%Get(2).%Get(9)
     Do $$$AssertEquals($Length(tImage) _ " " _ $Extract(tImage, 1, 6) _ " " _ $Ascii($Extract(tImage, *)), (2 + 998 + 1) _ " 0xABAB 8230", "a long binary value cut at 499 bytes, ending in U+2026")
     Do $$$AssertEquals(tAnswer.truncated, 1, "and the cuts are reported")
+    Do $$$AssertEquals(tAnswer.cuts.%ToJSON(), "[[1,7],[2,9]]", "each cut cell named by its row and column (Story 19.8)")
     Do $$$AssertEquals(tAnswer.rows.%Get(0).%Get(3) _ " " _ tAnswer.rows.%Get(0).%Get(2) _ " " _ tAnswer.rows.%Get(0).%Get(4) _ " " _ tAnswer.rows.%Get(0).%Get(6), "1 1.5 2026-10-01 2026-10-01 08:00:00", "a bit, a number, a date and a timestamp in the ODBC form")
     For tExtra = {"filters": {"Notes": "x*"}}, {"filters": {"Blob": "*"}}, {"sort": {"column": "Image", "direction": "asc"}}, {"filters": {"Nope": "x"}}, {"sort": {"column": "name", "direction": "asc"}} {
         Do $$$AssertEquals($ClassMethod(..#PROBE, "Line", ..Browse($Parameter(..#PROBE, "PLAIN"), tExtra)), "400 EXPLORER.DATA.INPUT ", "refused: " _ tExtra.%ToJSON())

@@ -223,6 +223,19 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.LicenseKey': { activate: STRINGS.licenseKeyActivateAction },
   // Story 18.20: ECP data servers' Change status, which opens its dialog.
   'OcuPilot.Screen.Descriptor.EcpDataServerList': { changestatus: STRINGS.ecpDataServerChangeStatus },
+  // Story 18.21: the SSL/TLS authorizations tab's Authorize and Reject, each titling its warning dialog.
+  'OcuPilot.Screen.Descriptor.EcpSslConnectionTab': { authorize: STRINGS.ecpSslAuthorize, reject: STRINGS.ecpSslReject },
+  // Story 18.7: Encryption key files' Create key file, Add key and Remove, and its administrators'
+  // Add administrator and Remove, which the key file page draws beside its two tables.
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFile': {
+    create: STRINGS.encryptionKeyFileCreateAction,
+    addkey: STRINGS.encryptionKeyFileAddKeyAction,
+    removekey: STRINGS.actionRemove,
+  },
+  'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList': {
+    addadministrator: STRINGS.encryptionKeyFileAddAdminAction,
+    removeadministrator: STRINGS.actionRemove,
+  },
 };
 
 export class ScreenActions {

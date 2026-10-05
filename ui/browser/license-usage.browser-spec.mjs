@@ -1,11 +1,12 @@
 /**
  * Story 16.7's License usage in a real browser, against the throwaway instance (AC1, AC6).
  *
- * What it pins: OS management's side bar lists its seventeen entries in order, the Integrity log
+ * What it pins: OS management's side bar lists its nineteen entries in order, the Integrity log
  * (Story 18.17) fifth, License usage eighth, the Dashboard ninth, External language servers
  * (Story 16.10) tenth, Local databases eleventh, Remote databases (Story 18.16) twelfth and Journals
  * (Story 18.5) thirteenth, Journal settings (Story 18.18) fourteenth and License key and License
- * servers (Story 18.6) fifteenth and sixteenth and ECP data servers (Story 18.20) seventeenth;
+ * servers (Story 18.6) fifteenth and sixteenth, ECP data servers (Story 18.20) seventeenth and ECP
+ * settings and ECP application servers (Story 18.21) eighteenth and nineteenth;
  * License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
  * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
@@ -28,6 +29,7 @@ import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -115,7 +117,7 @@ after(async () => {
 
 // AC1. Mutation (Rule 19): read the whole LICENSEUSAGE answer rather than its member in
 // `OcuPilot.Screen.Read` -> every tab's read fails, no row renders, and the row waits go red.
-test('AC1: OS management lists seventeen entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
+test('AC1: OS management lists nineteen entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -127,33 +129,10 @@ test('AC1: OS management lists seventeen entries, License usage eighth; its stri
       STRINGS.dashboardLabel
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
-    assert.deepEqual(
-      labels,
-      [
-        STRINGS.processListLabel,
-        STRINGS.lockListLabel,
-        STRINGS.systemUsageLabel,
-        STRINGS.databaseListLabel,
-        STRINGS.databaseIntegrityLogLabel,
-        STRINGS.deviceListLabel,
-        STRINGS.namespaceListLabel,
-        STRINGS.licenseUsageLabel,
-        STRINGS.dashboardLabel,
-        STRINGS.languageServersLabel,
-        STRINGS.localDatabaseListLabel,
-        STRINGS.remoteDatabaseListLabel,
-        // Story 18.5: Journals, the thirteenth.
-        STRINGS.journalListLabel,
-        // Story 18.18: Journal settings, the fourteenth.
-        STRINGS.journalSettingsLabel,
-        // Story 18.6: License key and License servers, the fifteenth and sixteenth.
-        STRINGS.licenseKeyLabel,
-        STRINGS.licenseServerListLabel,
-        // Story 18.20: ECP data servers, the seventeenth.
-        STRINGS.ecpDataServerListLabel,
-      ],
-      'the side bar lists the Integrity log fifth, License usage eighth, the Dashboard ninth, External language servers tenth, Local databases eleventh, Remote databases twelfth, Journals thirteenth, Journal settings fourteenth, License key and License servers fifteenth and sixteenth and ECP data servers seventeenth'
-    );
+    assert.deepEqual(labels, sideBarLabels('os-management'), 'the side bar lists the OS management entries in their declared order');
+    assert.equal(labels[4], STRINGS.databaseIntegrityLogLabel, 'the Integrity log fifth');
+    assert.equal(labels[7], STRINGS.licenseUsageLabel, 'License usage eighth');
+    assert.equal(labels[8], STRINGS.dashboardLabel, 'the Dashboard ninth');
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');
     assert.deepEqual((await headers(page)).slice(0, 3), [STRINGS.licenseUsageUnitUse, STRINGS.licenseUsageLocal, STRINGS.licenseUsageDistributed], 'the Summary headers');

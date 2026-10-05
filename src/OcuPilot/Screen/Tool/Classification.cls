@@ -67,6 +67,9 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>SSLConfig</code> and <code>BatchMode</code> as booleans, and the read-back's default rule reads
 /// a sent 1 equal to a read <code>true</code>, so neither declares a <code>compare</code> (measured at
 /// the story's Task 0).</p>
+/// <p><b><code>osmgmt.ecpsettings.update</code></b> (Story 18.21) classifies <code>ECP.Settings</code>'
+/// six member rows <code>ordinary</code>, the only classifiable paths of the nested body, and compares both
+/// objects <code>members</code>, so the read-back compares each member sent (AD-4, AD-58).</p>
 /// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
@@ -176,6 +179,28 @@ XData Entries
       "Roles": "opaque",
       "EscalationRoles": "opaque",
       "Routine": "ordinary"
+    }
+  },
+  "security.encryptionkeyfile.create": {
+    "fieldList": "Security.Encryption.File",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.encryptionkeyfile.addkey": {
+    "fieldList": "Security.Encryption.KeyInFile",
+    "classification": {},
+    "authored": {
+      "AdminPassword": "secret"
+    }
+  },
+  "security.encryptionkeyfileadmins.addadministrator": {
+    "fieldList": "Security.Encryption.AdminInFile",
+    "classification": {},
+    "authored": {
+      "OldAdminPassword": "secret",
+      "NewAdminPassword": "secret"
     }
   },
   "security.auditsystemevents.update": {
@@ -675,6 +700,18 @@ XData Entries
       "MirrorConnection": "ordinary",
       "SSLConfig": "ordinary",
       "BatchMode": "ordinary"
+    }
+  },
+  "osmgmt.ecpsettings.update": {
+    "fieldList": "ECP.Settings",
+    "compare": {"AppServerSettings": "members", "DataServerSettings": "members"},
+    "classification": {
+      "AppServerSettings.MaxServers": "ordinary",
+      "AppServerSettings.ClientReconnectDuration": "ordinary",
+      "AppServerSettings.ClientReconnectInterval": "ordinary",
+      "DataServerSettings.MaxServerConn": "ordinary",
+      "DataServerSettings.ServerTroubleDuration": "ordinary",
+      "DataServerSettings.SSLECPServer": "ordinary"
     }
   },
   "security.oauthserverdescriptions.create": {

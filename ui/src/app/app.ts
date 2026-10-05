@@ -46,6 +46,10 @@ import { LicenseServerActions } from './areas/os-management/license-server-actio
 import { LicenseServerForm } from './areas/os-management/license-server-form.store';
 import { EcpDataServerActions } from './areas/os-management/ecp-data-server-actions';
 import { EcpDataServerForm } from './areas/os-management/ecp-data-server-form.store';
+import { EcpSettingsForm } from './areas/os-management/ecp-settings.store';
+import { EncryptionKeyFileActions } from './areas/security/encryption-key-file-actions';
+import { EncryptionKeyFileStore } from './areas/security/encryption-key-file.store';
+import { EncryptionKeyFileForm } from './areas/security/encryption-key-file-form.store';
 import { MappingActions } from './areas/os-management/mapping-actions';
 import { MappingForm } from './areas/os-management/mapping-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
@@ -346,6 +350,14 @@ export class App {
   // with the data server form's store (Story 18.20).
   private readonly ecpDataServerActions = inject(EcpDataServerActions);
   private readonly ecpDataServerForm = inject(EcpDataServerForm);
+  // ECP settings' form store (Story 18.21).
+  private readonly ecpSettingsForm = inject(EcpSettingsForm);
+  // Encryption key files' declared Create key file, the same way
+  // (`areas/security/encryption-key-file-actions.ts`), with the key file page's and the create form's
+  // stores (Story 18.7).
+  private readonly encryptionKeyFileActions = inject(EncryptionKeyFileActions);
+  private readonly encryptionKeyFileStore = inject(EncryptionKeyFileStore);
+  private readonly encryptionKeyFileForm = inject(EncryptionKeyFileForm);
   // The three mapping lists' declared Create, the same way (`areas/os-management/mapping-actions.ts`).
   private readonly mappingActions = inject(MappingActions);
   private readonly mappingForm = inject(MappingForm);
@@ -673,6 +685,11 @@ export class App {
       this.licenseServerForm.reset();
       // The data server form holds an ECP data server THIS principal was creating or editing and has not saved.
       this.ecpDataServerForm.reset();
+      // The ECP settings form holds settings THIS principal was changing and has not saved.
+      this.ecpSettingsForm.reset();
+      // The key file page holds a key file THIS principal opened, and the create form one it was creating.
+      this.encryptionKeyFileStore.reset();
+      this.encryptionKeyFileForm.reset();
       // The mapping editor holds a mapping THIS principal was creating or editing and has not saved.
       this.mappingForm.reset();
       // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).

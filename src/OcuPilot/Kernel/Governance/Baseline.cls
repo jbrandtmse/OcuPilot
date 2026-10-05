@@ -31,6 +31,10 @@ XData Keys [ MimeType = application/json ]
   "osmgmt.ecpdataservers.create": true,
   "osmgmt.ecpdataservers.delete": false,
   "osmgmt.ecpdataservers.update": true,
+  "osmgmt.ecpsettings.update": true,
+  "osmgmt.ecpsslconnections.authorize": true,
+  "osmgmt.ecpsslconnections.delete": false,
+  "osmgmt.ecpsslconnections.reject": true,
   "osmgmt.globalmappings.create": true,
   "osmgmt.globalmappings.delete": true,
   "osmgmt.globalmappings.update": true,
@@ -87,6 +91,11 @@ XData Keys [ MimeType = application/json ]
   "security.audituserevents.delete": true,
   "security.audituserevents.reset": true,
   "security.audituserevents.update": true,
+  "security.encryptionkeyfile.addkey": false,
+  "security.encryptionkeyfile.create": false,
+  "security.encryptionkeyfile.removekey": false,
+  "security.encryptionkeyfileadmins.addadministrator": false,
+  "security.encryptionkeyfileadmins.removeadministrator": false,
   "security.ldap.create": true,
   "security.ldap.delete": true,
   "security.ldap.password": true,
@@ -165,7 +174,8 @@ XData Keys [ MimeType = application/json ]
   "explorer.classes.save": false,
   "explorer.routines.save": false,
   "explorer.sqlquery.run": false,
-  "explorer.routines.import": false
+  "explorer.routines.import": false,
+  "explorer.sqldata.save": false
 }
 }
 

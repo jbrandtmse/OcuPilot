@@ -33,6 +33,7 @@ import { parseMarkers } from './iris-session.mjs';
 import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { entriesAbout, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -274,12 +275,8 @@ test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerber
 
       const sideBar = await sideBarOf(page);
       assert.equal(sideBar.area, STRINGS.navAreaSecurity, `${key}: in the Security and secrets area`);
-      assert.deepEqual(
-        sideBar.entries,
-        [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink, STRINGS.allowedDirectoriesLabel],
-        `${key}: the side bar lists the seven entries in their declared order`
-      );
-      assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories']);
+      assert.deepEqual(sideBar.entries, sideBarLabels('security'), `${key}: the side bar lists its entries in their declared order`);
+      assert.deepEqual(sideBar.entries.slice(0, 7), ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories'], `${key}: the first seven in the published words`);
       if (list.listed) assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
       else assert.equal(sideBar.entries.includes(list.label), false, `${key}: which is never listed`);
     } finally {
@@ -386,9 +383,8 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
         reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
       }))
     );
-    assert.deepEqual(
-      entries,
-      [
+    assert.deepEqual(entries.map((entry) => entry.label), sideBarLabels('security'), 'the side bar lists every entry in its declared order');
+    const about1 = [
         { label: STRINGS.sslListLabel, disabled: null, reason: '' },
         { label: STRINGS.x509ListLabel, disabled: null, reason: '' },
         { label: STRINGS.ldapListLabel, disabled: null, reason: '' },
@@ -396,9 +392,8 @@ test('AC5, Story 16.3 AC7 (DW-1018, Option A): without %Admin_Wallet:USE the Sec
         { label: STRINGS.oauthLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_OAuth2_Client:USE') },
         { label: STRINGS.auditingConfigurationLink, disabled: null, reason: '' },
         { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: formatRequires(STRINGS.privilegeRequiresResource, '%Admin_FileSystemAccess:USE') },
-      ],
-      'SSL/TLS, X.509, LDAP and Auditing are available, and Wallet, OAuth 2.0 and Allowed directories each name the pair they lack'
-    );
+    ];
+    assert.deepEqual(entriesAbout(entries, about1), about1, 'SSL/TLS, X.509, LDAP and Auditing are available, and Wallet, OAuth 2.0 and Allowed directories each name the pair they lack');
 
     await x509.page.click('[role="combobox"]');
     await x509.page.type('[role="combobox"]', STRINGS.walletListLabel);
@@ -454,9 +449,8 @@ test('AD-8 as amended for DW-1768: a rail click opens the Security area for a wa
         reason: item.querySelector('.ocu-side-bar-reason')?.textContent.trim() ?? '',
       }))
     );
-    assert.deepEqual(
-      entries,
-      [
+    assert.deepEqual(entries.map((entry) => entry.label), sideBarLabels('security'), 'the side bar lists every entry in its declared order');
+    const about2 = [
         { label: STRINGS.sslListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.x509ListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.ldapListLabel, disabled: 'true', reason: requires('%Admin_Secure:USE') },
@@ -464,9 +458,8 @@ test('AD-8 as amended for DW-1768: a rail click opens the Security area for a wa
         { label: STRINGS.oauthLabel, disabled: 'true', reason: requires('%Admin_OAuth2_Client:USE') },
         { label: STRINGS.auditingConfigurationLink, disabled: 'true', reason: requires('%Admin_Secure:USE') },
         { label: STRINGS.allowedDirectoriesLabel, disabled: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
-      ],
-      'every Security entry is listed, and Wallet alone is open'
-    );
+    ];
+    assert.deepEqual(entriesAbout(entries, about2), about2, 'every Security entry is listed, and Wallet alone is open');
 
     const readsBefore = reads.length;
     await page.evaluate((label) => {

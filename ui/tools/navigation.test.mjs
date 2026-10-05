@@ -157,6 +157,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.20: the unlisted ECP data server form, reached from ECP data servers, by descriptor
       // class name.
       'os-management/ecp-data-servers/edit',
+      // Story 18.21: ECP application servers' unlisted SSL/TLS authorizations tab, by descriptor
+      // class name.
+      'os-management/ecp-application-servers/ssl',
       // Story 18.14: the three unlisted mapping lists and their forms, reached from the namespace
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
@@ -215,6 +218,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/license-servers',
       // Story 18.20: ECP data servers, the seventeenth.
       'os-management/ecp-data-servers',
+      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
+      'os-management/ecp-settings',
+      'os-management/ecp-application-servers',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -242,6 +248,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
+      'security/encryption-key-file/administrators',
+      'security/encryption-key-file/create',
       // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',
@@ -266,6 +274,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing',
       // Story 18.1: Allowed directories, the seventh Security and secrets entry.
       'security/allowed-directories',
+      'security/encryption-key-file',
       // Story 19.1: System Explorer's two unlisted viewers, then Classes and Routines.
       'system-explorer/classes/document',
       // Story 19.3: each unlisted editor sorts after its viewer, by descriptor class name.
@@ -356,6 +365,9 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/license-servers',
       // Story 18.20: the seventeenth.
       'os-management/ecp-data-servers',
+      // Story 18.21: the eighteenth and nineteenth.
+      'os-management/ecp-settings',
+      'os-management/ecp-application-servers',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -388,6 +400,25 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(ecpForm?.route, 'os-management/ecp-data-servers/edit', "ECP data servers' Create opens its own form");
   assert.equal(isListedScreen(ecpForm), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(screenForRoute('os-management/ecp-data-servers'))?.route, 'os-management/ecp-data-servers/edit', 'and a row name opens it at its id route');
+  // Story 18.21 (C8): ECP settings is the eighteenth entry, a form page of its own, and ECP
+  // application servers the nineteenth, whose Connections tab heads a strip with SSL/TLS
+  // authorizations, which takes no position.
+  const ecpSettings = screenForRoute('os-management/ecp-settings');
+  assert.equal(stringFor(ecpSettings.labelKey), STRINGS.ecpSettingsLabel);
+  assert.equal(ecpSettings.sideBarPosition, 18);
+  assert.equal(ecpSettings.archetype, 'form-page');
+  const appServers = screenForRoute('os-management/ecp-application-servers');
+  assert.equal(stringFor(appServers.labelKey), STRINGS.ecpAppServersLabel);
+  assert.equal(appServers.sideBarPosition, 19);
+  assert.deepEqual(
+    tabMembersFor(appServers).map((tab) => [tab.route, stringFor(tab.tab.labelKey)]),
+    [
+      ['os-management/ecp-application-servers', STRINGS.sslPromptGroupConnections],
+      ['os-management/ecp-application-servers/ssl', STRINGS.ecpSslConnectionsLabel],
+    ]
+  );
+  assert.equal(tabGroupFor(screenForRoute('os-management/ecp-application-servers/ssl'))?.route, 'os-management/ecp-application-servers');
+  assert.equal(isListedScreen(screenForRoute('os-management/ecp-application-servers/ssl')), false, 'the SSL/TLS tab takes no side-bar position');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
@@ -550,8 +581,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration and Allowed directories'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing', 'security/allowed-directories', 'security/encryption-key-file'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, Allowed directories and Encryption key files'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');

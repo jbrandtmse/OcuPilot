@@ -44,6 +44,14 @@ XData Tools
   {"path":"SSLConfig","shape":"literal","templateType":"number","itemType":"","class":"ordinary"},
   {"path":"BatchMode","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"osmgmt.ecpsettings.update": {"fieldList":"ECP.Settings","fields":[
+  {"path":"DataServerSettings.SSLECPServer","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"DataServerSettings.ServerTroubleDuration","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"DataServerSettings.MaxServerConn","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.MaxServers","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.ClientReconnectDuration","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"},
+  {"path":"AppServerSettings.ClientReconnectInterval","shape":"literal","templateType":"number","itemType":"","class":"ordinary","compare":"members"}
+]},
 "osmgmt.globalmappings.create": {"fieldList":"Namespace.GlobalMappings","fields":[
   {"path":"Database","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LockDatabase","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -274,6 +282,16 @@ XData Tools
 "security.audituserevents.update": {"fieldList":"Security.Audit.Event:Security.Events","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.encryptionkeyfile.addkey": {"fieldList":"Security.Encryption.KeyInFile","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.encryptionkeyfile.create": {"fieldList":"Security.Encryption.File","fields":[
+  {"path":"AdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.encryptionkeyfileadmins.addadministrator": {"fieldList":"Security.Encryption.AdminInFile","fields":[
+  {"path":"OldAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true},
+  {"path":"NewAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
 ]},
 "security.ldap.create": {"fieldList":"Security.LDAP","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

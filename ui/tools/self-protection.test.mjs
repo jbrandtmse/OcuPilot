@@ -283,6 +283,9 @@ const KERNEL_REFUSALS = [
   // Story 19.6: a SQL console statement over OcuPilot's own tables or code, on the run route, the
   // plan route and the write path.
   ['OCUPILOTSQL', 'explorerSqlRefusalOcuPilot'],
+  // Story 18.7: a key OcuPilot or the instance depends on, whose removal from a key file either caller
+  // is answered with.
+  ['OCUPILOTKEY', 'keyRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -539,6 +542,9 @@ const ATELIER_REFUSALS = [
   // Story 19.7: Data browser's input and not-found refusals.
   ['REASONDATAINPUT', 'explorerSqlDataInputReason'],
   ['REASONDATANOTFOUND', 'explorerSqlDataNotFoundReason'],
+  // Story 19.8: its save's column-rule and read-only refusals.
+  ['REASONDATACHANGES', 'explorerSqlDataChangesReason'],
+  ['REASONDATAREADONLY', 'explorerSqlDataReadOnlyReason'],
 ];
 
 test("Story 19.2: each of System Explorer's write refusals and delete reasons is one sentence on both surfaces, published in Fixed strings", () => {
@@ -612,4 +618,90 @@ test('Story 18.20: the status dialog draws the current status with the labels an
   assert.notEqual(dialog, null, 'the status dialog declares ECP_STATUS_LABELS');
   const client = Object.fromEntries([...dialog[1].matchAll(/(\w+):\s*'([^']*)'/g)].map((found) => [found[1], found[2]]));
   assert.deepEqual(client, server, "the dialog's current-status labels are the port's same-status labels, status for status");
+});
+
+/** Story 18.21's SSL/TLS authorization tools, which declare the two state refusals and the status each needs. */
+const ECP_SSL_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EcpSslConnection${name}.cls`);
+
+/** Story 18.21's published sentences: `[file, parameter, strings.ts key]`. */
+const ECP_SETTINGS_SENTENCES = [
+  [ECP_ERROR, 'REASONSETTINGSCOUNT', 'ecpSettingsCountRange'],
+  [ECP_ERROR, 'REASONSETTINGSRECOVERY', 'ecpSettingsRecoveryRange'],
+  [ECP_ERROR, 'REASONSETTINGSINTERVAL', 'ecpSettingsIntervalRange'],
+  [ECP_ERROR, 'REASONSETTINGSTROUBLE', 'ecpSettingsTroubleRange'],
+  [ECP_ERROR, 'REASONSETTINGSSSLSHAPE', 'ecpSettingsSslChoice'],
+  [ECP_ERROR, 'REASONSETTINGSSSLSERVER', 'ecpSettingsServerSsl'],
+  [ECP_ERROR, 'REASONSETTINGSSERVERS', 'ecpSettingsServersBelow'],
+  [ECP_ERROR, 'REASONSETTINGSRESTART', 'ecpSettingsRestart'],
+  [ECP_ERROR, 'REASONSSLAUTHORIZE', 'ecpSslAuthorizeConsequence'],
+  [ECP_ERROR, 'REASONSSLREJECT', 'ecpSslRejectConsequence'],
+  [ECP_ERROR, 'REASONSSLNOTPENDING', 'ecpSslRefusalNotPending'],
+  [ECP_ERROR, 'REASONSSLNOTAUTHORIZED', 'ecpSslRefusalNotAuthorized'],
+  [ECP_SSL_TOOL('Authorize'), 'NOTPENDINGREASON', 'ecpSslRefusalNotPending'],
+  [ECP_SSL_TOOL('Reject'), 'NOTPENDINGREASON', 'ecpSslRefusalNotPending'],
+  [ECP_SSL_TOOL('Delete'), 'NOTAUTHORIZEDREASON', 'ecpSslRefusalNotAuthorized'],
+];
+
+test("Story 18.21: each ECP settings refusal, consequence and SSL/TLS state refusal is one sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of NOTPENDINGREASON in EcpSslConnectionAuthorize.cls -> this goes red naming both.
+  for (const [file, parameter, key] of ECP_SETTINGS_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\' sentences on a row in any status but the one each tool needs', async () => {
+  // Mutation (Rule 19): drop the ECP branch from `selfProtectionReason` -> the refused rows go red.
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const { selfProtectionReason, ECP_SSL_PENDING_RULE, ECP_SSL_AUTHORIZED_RULE, ECP_SSL_PENDING_STATUS, ECP_SSL_AUTHORIZED_STATUS } = await import('../src/app/core/self-protection.ts');
+  const needed = (name) => /Parameter NEEDEDSTATUS = "([^"]+)";/.exec(readFileSync(ECP_SSL_TOOL(name), 'utf8'))?.[1];
+  assert.equal(ECP_SSL_PENDING_STATUS, needed('Authorize'), "the pending rule's status is Authorize's");
+  assert.equal(ECP_SSL_PENDING_STATUS, needed('Reject'), "and Reject's");
+  assert.equal(ECP_SSL_AUTHORIZED_STATUS, needed('Delete'), "the authorized rule's status is Delete's");
+  const name = 'CN=OCUPROBEECP';
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name, '', { Status: 'Pending' }), '', 'a pending row may be authorized or rejected');
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name, '', { Status: 'Authorized' }), STRINGS.ecpSslRefusalNotPending, 'an authorized row may not');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', { Status: 'Authorized' }), '', 'an authorized row may be deleted');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', { Status: 'Pending' }), STRINGS.ecpSslRefusalNotAuthorized, 'a pending row may not');
+  assert.equal(selfProtectionReason(ECP_SSL_PENDING_RULE, name), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(ECP_SSL_AUTHORIZED_RULE, name, '', null), '', 'for either rule');
+});
+
+/** Story 18.7's error class and the key file tools, which declare its published sentences. */
+const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
+const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
+
+/** Story 18.7's published sentences: `[file, parameter, strings.ts key]`. */
+const ENCRYPTION_SENTENCES = [
+  [ENCRYPTION_ERROR, 'REASONKEYFILEVALIDATION', 'encryptionKeyFileValidation'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEDIRECTORY', 'encryptionKeyFileDirectory'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEKEYLEN', 'encryptionKeyFileKeyLen'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEADMINNAME', 'encryptionKeyFileAdminNameRule'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEPASSWORD', 'encryptionKeyFilePasswordRule'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILECREDENTIALS', 'encryptionKeyFileCredentials'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEUNREADABLE', 'encryptionKeyFileUnreadable'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILENEWKEY', 'encryptionKeyFileNewKeyConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILEREMOVEKEY', 'encryptionKeyFileRemoveKeyLoss'],
+  [ENCRYPTION_ERROR, 'REASONADMINTAKEN', 'encryptionKeyFileAdminTaken'],
+  [ENCRYPTION_ERROR, 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
+  [ENCRYPTION_ERROR, 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
+  [ENCRYPTION_ERROR, 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+  [ENCRYPTION_TOOL('AddAdmin'), 'REASONADMINTAKEN', 'encryptionKeyFileAdminTaken'],
+  [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
+  [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
+  [ENCRYPTION_TOOL('RemoveKey'), 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+];
+
+test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONADMINLAST in EncryptionKeyFileRemoveAdmin.cls -> this goes red naming both.
+  for (const [file, parameter, key] of ENCRYPTION_SENTENCES) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(readFileSync(file, 'utf8'));
+    assert.notEqual(server, null, `${file} declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
+  }
 });
