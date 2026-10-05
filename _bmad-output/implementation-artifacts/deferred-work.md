@@ -9848,3 +9848,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-23-encryption-startup-settings.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.23 Task 0 on ocupilot-b-ci, /tmp/epic-18-d7/1823/t0/s12-s14r: PUT changed nothing at once; restarts logged Encrypting/Decrypting IRISAUDIT; count 222263->222276, oldest row 05:34:18 and the agent's markers kept, inode 12766 unchanged
 - 2026-10-05T12:35:17Z status=decision-pending owner=burndown by=merge_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; not reported
+
+### DW-2098: PROHIBITED.STARTUPINTERACTIVE judges only the encryption flags: after AuditEncrypt is turned off the audit database stays encrypted until the next start, and Interactive chosen in that window leaves a start that aborts
+- source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: measured by the runner on ocupilot-b-ci 17:57Z (/tmp/epic-18-d7/1823/t0m m5-m6): AuditEncrypt on + restart (encrypted), AuditEncrypt off (IRISAUDIT EncryptedDB still 1), Interactive accepted by OcuPilot, restart aborted into single-user mode
+- 2026-10-05T17:58:36Z status=open owner=18-23-encryption-startup-settings by=harvest note=fix in this story: read each of IRISAUDIT, IRISSECURITY and IRISTEMP's on-disk EncryptedDB through EncryptionPort (AD-27) and refuse Interactive while any is encrypted or its flag set; a failed read refuses

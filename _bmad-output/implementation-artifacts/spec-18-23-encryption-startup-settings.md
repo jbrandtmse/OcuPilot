@@ -2,7 +2,7 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '452352dbbef8dfb1e040d13e8ac584697ea99312'
 followup_review_recommended: true
@@ -233,6 +233,8 @@ Steps, in order:
 - **C8 (DW-2065, only if R1 does not activate):** Given the key file the instance activates its keys from in Unattended mode, when either caller removes one of its administrators or the startup read fails, then the removal is refused `PROHIBITED.STARTUPADMIN` with nothing sent, while another key file's administrator is removed.
 - **C9:** Given the rosters, when the story lands, then the form is unlisted and reached from Database encryption's link with three prompts, its key is in the baseline `false`, every roster includes the screen and tool, the DW-1337 gate holds in both themes, and EXPERIENCE.md reads 1036 lines.
 
+- [ ] [Smoke] DW-2098: `PROHIBITED.STARTUPINTERACTIVE` judges only the three flags, so Interactive chosen after `AuditEncrypt` is turned off but before a restart has decrypted `IRISAUDIT` leaves a start that aborts (measured by the runner, `/tmp/epic-18-d7/1823/t0m` m5-m6: `EncryptedDB` 1 after the flag went off, Interactive accepted, the restart aborted into single-user mode) -- `Kernel/Proposal/Prohibited.cls` `LeavesInteractiveRequired` and `Port/EncryptionPort.cls` -- read whether `IRISAUDIT`, `IRISSECURITY` and `IRISTEMP` are encrypted on disk (`SYS.Database` `EncryptedDB`, by each database's configured directory) through an `EncryptionPort` read under `%Admin_Secure:USE` in `%SYS` (AD-27's 18.23 case, as the spine now words it), and refuse Interactive while any of them is encrypted on disk or its flag is set, in both orders and on both callers; a failed read refuses. The form draws Interactive `aria-disabled` on the same answer (the form read carries it). Pin it through the seam (an on-disk-encrypted answer with every flag off refuses Interactive; a failed read refuses), with a `mutation:` line.
+
 ## Spec Change Log
 
 - 2026-10-05, spec gate (runner): Decisions 1 to 8 confirmed. Decision 1 verified by the runner in the vendor source (`ValidateRequest` builds `RequestValidator(schema, 1)`, exempting only the key ids and the v2 credentials; `RunPut` passes `req.AuditEncrypt` to `ConfigStart`); amendment 9 applied at origin (epics.md :7519, `epic-18-context.md`) and reported to the orchestrator. Spine amendments 1 to 6 written (AD-4, AD-10 two items, AD-13, AD-26, AD-27, AD-44); 7 and 8 wait for Task 0, with ordinals taken from the spine when written.
@@ -252,6 +254,7 @@ Steps, in order:
   - **Decision 8 needs a ruling:** with the audit log encrypted, the vendor accepts Interactive (step 11), and the next start with no console does not finish (R4). Interactive's published sentence ("the instance starts without the key") therefore does not hold while `AuditEncrypt` is on. Open: whether a start-mode change away from Unattended (or KMIP) while the audit log is encrypted is refused, takes the destructive treatment, or carries the audit clause.
   - **For DW-2087 and the read-back:** the `None` reset also clears `Security.System`'s persisted default and journal key ids while the running keys stay, and the `Settings` `GET` answers the running ids (step 7).
 - 2026-10-05, Decision 8 (merge gate under the owner's standing grant, option A), applied by the runner: Interactive key activation is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted, now or at the next start, in both orders (`PROHIBITED.STARTUPINTERACTIVE`, AD-10's serving-path arm, written to the spine). The runner measured IRISTEMP and IRISSECURITY on `ocupilot-b-ci` (`/tmp/epic-18-d7/1823/t0m`: one real activation, Unattended, the flag on, restart: encrypted in place, healthy; then Interactive, restart: "Failure activating required database encryption key. Startup aborted, entering single user mode."), so the rule carries no inference. Interactive's published sentence gains: "While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered." The form draws Interactive `aria-disabled` with that reason while one of the three is set, and each of the three checkboxes `aria-disabled` with it while the mode is Interactive. DW-2065 closed by-design (Task 0 re-run); the build deletes the `STARTUPADMIN` plumbing and keeps `KMIPSERVERS`. Task 0 is complete; the throwaway was rebuilt at 13:43Z. The code review's baseline is `2b3e5e24`, this story's first implement pass, so `f268a30e`'s plumbing stays in the reviewed diff. Status `blocked` to `in-progress` for the build.
+- 2026-10-05, runner, after implement pass 3 (rework iteration 1, trigger: the runner's own measurement before QA): the deferred finding was measured real and filed DW-2098 (high, in-story); AD-10's start arm and AD-27's 18.23 case were widened in the spine to the on-disk state. Work only the `[Smoke]` item above.
 
 ## Review Triage Log
 
