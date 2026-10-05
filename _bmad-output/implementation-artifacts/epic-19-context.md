@@ -4,7 +4,7 @@
 
 ## Goal
 
-Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API and in-process ports. Built: code browsing, editing, compiling, export and import; search, compare and macros; the SQL catalog; the guarded query console; and the data browser. Still to come: Documatic and DocDB (19.9), SQL activity (19.10), and an agent picker with guarded agent SQL (19.11). Everything reaches the instance through a port, in process, as the signed-in user, never with the user's password and never by modifying a vendor web application. As in the classic portal, a `%Development` holder gets in.
+Give developers a System Explorer inside OcuPilot. Code browsing, editing, compiling, export and import are built, along with search, compare and macros, the SQL catalog, the guarded query console, the data browser and the embedded class reference. Three stories remain: the DocDB browser (19.17), SQL activity (19.10), and the agent's guarded SQL with a picker among agent definitions (19.11). Every feature reaches the instance through a port, in process, as the signed-in user. None uses the user's password, and none modifies a vendor web application. As in the classic portal, a `%Development` holder gets in.
 
 ## Stories
 
@@ -24,45 +24,88 @@ Give developers a System Explorer inside OcuPilot, built on the IRIS Atelier API
 - Story 19.14: The SQL catalog's remaining detail tabs
 - Story 19.15: The query console runs a query in the background
 - Story 19.16: The data browser - export, shortcuts, go-to-row and tabs
+- Story 19.17: The DocDB browser
 
 ## Requirements & Constraints
 
-- **One contract (FR-80).** One descriptor per screen; the outside only through a port with its own gate, never an `/api/*` call over HTTP; every agent write a server-minted, fingerprinted, confirmed proposal; every read bounded and reporting truncation; every gate on the caller's own privileges at call time.
-- **SQL.** Caller SQL, and any statement a person's choices shape, goes through `Port/SqlPort`, never Atelier's `action/query`, which prepares with privilege checks off (DW-1963). `action/query` carries only the port's fixed statements with validated, bound values.
-- **Table rows are screen-only.** Grid pages, save outcomes and console rows, with their SQLCODE and messages, never reach a declared read, a tool's view, screen context, the ledger, an audit payload or a log line. The page's CSV is built in the browser, with no request.
-- **19.9 Documatic.** The catalog names a same-origin frame over `/csp/documatic/%25CSP.Documatic.cls?LIBRARY=&CLASSNAME=` under the browser-level session; `%CSP.Documatic` declares no `RESOURCE`, so its web application gates it (inference). The spine names no such path or embed: AD-28 forbids a token in a frame, AD-47's policy names only the instance's origin, and the vendor-editor hand-off is Stage 4. So the spec gate amends the spine for the path and the frame (inference). It measures whether `/csp/documatic` takes the group's browser-level login and whether the shipped policy admits a same-origin frame.
-- **19.9 DocDB.** Databases list, create and drop (the catalog's `/api/docdb/v1/:ns`). The spine names no DocDB port: its port list is closed and `AtelierPort` names only `%Api.Atelier.*`, so the spec gate adds one, with its own gate (AD-29), declared by the write tools (AD-52) (inference). The vendor's handlers check `CheckAdmin^%SYS.DOCDB` and `CheckAccess^%SYS.DOCDB`, then call the documented `%SYSTEM.DocDB` (`CreateDatabase(name, type, resource)`, `GetAllDatabases`, `DropDatabase`). AD-27's named cases (repeat the guard, call the documented class) are the precedent (inference). Create and drop are writes: one tool, two callers (AD-53, AD-55), the create fingerprinting absence (AD-54), the drop destructive. The gate decides impact, AD-10 reach, audit event or named gap, and entity type (inference). `DropAllDatabases` is outside the criteria (inference: not carried). The admin API's `/doc-dbs` is the DocDB web-application list, a different thing.
-- **19.9 `%Service_DocDB`.** Report whether it is enabled; never assume. `%Api.DocDB`'s dispatch checks it (`CheckServiceStatus^%SYS.DOCDB`), so an in-process call skips that unless the port repeats it (inference, as AD-61 found for `%Development`). Reading it through Security needs `%Admin_Secure:USE` and `%DB_IRISSYS:READ`, which a `%Developer` lacks (inference).
-- **19.10.** The classic page `%CSP.UI.Portal.SQL.CurrentStatements` declares `RESOURCE = "%Admin_Operate"`, not `%Development`. It reads `INFORMATION_SCHEMA.CURRENT_STATEMENTS` across every namespace, including `UserName`, `ProcessID`, `Parameters` (bound values) and `CallerName` (read in the export). A port-fixed `action/query` read applies no SQL privilege, so the resource pair is the whole gate (inference). No existing statement read selects a user name, client or call stack, so its spec decides the columns, whether bound values are screen-only, and the area (inference). Cancel is a later catalog row.
-- **19.11.** It advertises `explorer.sqlquery.run` behind the console's guard: a mutating statement is a confirmed proposal, prepared in process with checks on (DW-1964). The card shows the real guard (DW-2004: compose the mint's fresh read from the statement). The spec names the called-function limits and decides whether the agent may call path-taking or state-changing procedures (DW-2003). It decides whether SQL rows reach the model, which the spine forbids today (AD-36, AD-39), and whether the agent proposes row changes (`explorer.sqldata.save`). The picker chooses among enabled definitions and the panel names the one in use. Moving the default marker is a security change (AD-42), and the context chip forecasts from the default, so a picked definition changes its source (inference).
-- **Who gets in.** The API floor is any `%Admin_*` resource or `%Development:USE`. SQL screens declare `%CSP.UI.Portal.SQL.Home`; the data browser declares `%cspapp.exp.utilsqlopen`, unioning `%cspapp.exp.utilsqlopenview`'s custom resource. A new surface declares its classic page's `RESOURCE`; a screen with none says so (AD-44), as DocDB must. Confirm pair sets with a purpose-built least-privileged principal, never `%Operator`.
-- **Governance (AD-22).** After 2026-10-04 the owner decides how a write key enters `Kernel/Governance/Baseline.cls`. That covers 19.9's create and drop, and whether 19.11 turns `explorer.sqlquery.run` on (inference). Ask.
-- **Budgets.** After 19.16 the bundle measures 2859kB against a 2860kB warning, so the next client addition crosses it. Re-base `ui/angular.json` and `angular-json.test.mjs` to the measured size (DW-1166); stop and ask above 3800kB. `strings.test.mjs` caps Fixed strings at 2,600, so measure first; raising the cap needs the lead. A new dependency is ask-first, vendored, and runs under the content-security policy.
+- **One contract.** Every new screen has exactly one descriptor and reaches the outside only through a port that has its own gate, never through an HTTP call to `/api/*`. A read tool and a confirmed write tool arrive with each screen. Every write is a server-minted, fingerprinted proposal that a person confirms. Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time. A destructive key defaults to disabled.
+- **Who gets in.** The API floor is any `%Admin_*` resource or `%Development:USE`. A new surface declares its classic page's `RESOURCE`, read in `irissys/` and never recalled; a screen whose classic page has none says so. Confirm each pair set by running as a purpose-built least-privileged principal.
+- **19.17 DocDB** (measured during Story 19.9's plan on `ocupilot-a2-ci`). The page lists, creates and drops document databases, and reports whether `%Service_DocDB` is enabled rather than assuming it.
+  - **Stock instance:** the service is disabled; the `%Developer` role grants `%DocDB_Admin:U` and `%Service_DocDB:U`.
+  - **The vendor's REST gate:** the service must be enabled and the caller must hold `%Service_DocDB:USE`, plus `%DocDB_Admin:USE` or `%Admin_Secure:USE`.
+  - **In-process `%SYSTEM.DocDB`** (`GetAllDatabases`, `CreateDatabase`, `DropDatabase`) checks neither, so the port must repeat the vendor's gate. Create and drop also need WRITE on the namespace's routines database.
+  - **Service status:** `CheckServiceStatus^%SYS.DOCDB` answers 822 both when the service is disabled and when the caller lacks the resource, and audits each refusal. To tell the two apart, check the caller's own `%Service_DocDB:USE` first. Reading `Security.Services` needs `%Admin_Secure:USE`.
+  - **Names:** a name must be a valid class name. A duplicate or an existing class is refused, so nothing is overwritten. An unqualified name becomes `ISC.DM.<name>`.
+  - **Audit:** no vendor event records a create or a drop.
+  - **Self-protection:** a name in the `OcuPilot` package is OcuPilot code, which `PROHIBITED.OCUPILOTCODE` refuses.
+  - **Out of scope:** the admin API's `/doc-dbs` (WA-11) is a different list.
+  - **Vendor defect:** the vendor's REST drop of a database created without a resource fails even for `_SYSTEM` (DW-2084). It does not affect an in-process drop.
+- **19.10 SQL activity.** The page lists currently executing statements from `INFORMATION_SCHEMA.CURRENT_STATEMENTS`, showing their text, statistics and application metadata. Cancel is a later catalog row.
+  - **Gate:** the classic page `%CSP.UI.Portal.SQL.CurrentStatements` declares `RESOURCE = "%Admin_Operate"`, not `%Development`.
+  - **Columns:** the classic page selects server, process, user name, namespace, bound `Parameters` and `CallerName`.
+  - **The spec decides** the side-bar area, the columns, whether bound values are screen-only, and which port carries the read. `AtelierPort` would add `%Development:USE` and namespace READ, and its `action/query` carries only fixed statements with privilege checks off (inference).
+- **19.11 agent SQL and picker.**
+  - **The tool:** it advertises `explorer.sqlquery.run` behind the console's guard, prepared in process with privilege checks on (`SqlPort`); a mutating statement is a confirmed proposal. The proposal card must show the real guard: the mint's fresh read is composed from the proposed statement (DW-2004).
+  - **The plan decides:**
+    - whether the tool closes the called-function and procedure limit (DW-2003);
+    - whether query rows reach the model, which the spine forbids today (console rows are screen-only, AD-36);
+    - whether the agent may propose row changes through `explorer.sqldata.save`, which would reopen DW-2057.
+  - **The picker:** it chooses among enabled definitions, and the panel names the one in use. Definitions are visible to every user for selection and editable only by OcuPilot administrators. Moving the default marker is a security change (AD-42), so a per-user pick belongs in AD-50's preference store (inference).
+- **Governance (AD-22, owner, 2026-10-04).** A story adds each new write key to `Kernel/Governance/Baseline.cls` in the same change, enabled unless its criteria disable it. Destructive keys are disabled, so DocDB create is `true` and drop is `false`. The baseline only grows: flipping `explorer.sqlquery.run`'s existing `false` is not an addition and needs a ruling (inference).
+- **Budgets.**
+  - **Bundle:** after the 18.7 merge the bundle measures 2,909,916 B against a 2910kB warning, so any client addition crosses it. Re-base `ui/angular.json` with `angular-json.test.mjs` (DW-1166), and stop and ask above 3,800 kB.
+  - **Fixed strings:** capped at 2,700 in `strings.test.mjs`; measure before adding.
 
 ## Technical Decisions
 
-- **`Port/SqlPort`: reuse, never fork.** `%Prepare(text, 1)` in the target namespace as the user, every value bound, bounded by `$System.Alarm` at `BoundSeconds()` with an open transaction rolled back, each statement released in its own namespace (DW-1986). Caller SQL uses `Run` and `Classify`; the grid uses `BrowsePlan`/`BrowseRun` and `SavePlan`/`Save`, identifiers from privilege-filtered `INFORMATION_SCHEMA` rows (AD-21, AD-61).
-- **Person-only SQL writes (AD-53).** `explorer.sqldata.save` and `explorer.sqlquery.run` are unadvertised with keys disabled; target `(class, <ns>, sql)`, a row key bound, never an id (AD-13); no extra pairs, no `CLASSICPAGES`, no vendor audit event (named gaps fifteen and sixteen).
-- **Self-protection (AD-10).** `PROHIBITED.OCUPILOTSQL` refuses console text naming `ocupilot` or an `OcuPilot` schema, and a grid read or save of such a table or a view over one. Named limit: DW-1987.
-- **The write pattern.** One tool, two callers (AD-53, AD-55); the screen mints no proposal. Each write answers for the per-target lock (AD-34; a Save does not hold it yet, DW-1882), fingerprint and server diff (AD-6, AD-51, AD-54), read-back (AD-58), change event (AD-14), `Snippet` (AD-59), `CLASSICPAGES` (AD-44), audit marker or named gap (AD-15), and a removal's impact (AD-8).
-- **A new port names itself in the spine's port list** with its gate (AD-29). A test pins any vendor-internal routine it calls, as AD-61 pins `findmappings^%R`. DocDB's `%SYS.DOCDB` routines are not in the export, so what each requires is measured.
-- **`AtelierPort`** alone names `%Api.Atelier.*`: gate first, then version; vendor text logged, never sent; never `%SQL_Manager.StatementIndex` or caller text in `action/query`.
-- **Reads (AD-36, AD-24, AD-60).** One declared read serves screen and tool, capped by the row cap, 1,000 characters a field and 65,536 in all, sanitized before the model. A SQL statement's text is a row field, shown cut at 1,021 characters with `...`.
+- **Ports.**
+  - Only `AtelierPort` names `%Api.Atelier.*`. It checks the gate first and the version second, and it logs vendor text but never sends it.
+  - Caller SQL goes through `Port/SqlPort` (`%Prepare(text, 1)`, every value bound, alarm-bounded, statements released per namespace), never through `action/query` (DW-1963).
+  - A new port, such as 19.9's recommended `Port/DocDbPort`, is added to the spine's port list with its gate at the spec gate (AD-29, Rule 20). A test pins any vendor-internal routine it calls, such as `CheckServiceStatus`. 19.9 also recommends answering a disabled service with 409, naming the service.
+- **DocDB tools (recommended):**
+  - `explorer.docdb.create` declares `CREATES` and fingerprints the name's absence (AD-54);
+  - `explorer.docdb.delete` is destructive;
+  - both declare their port (AD-52) and add the target routines database's WRITE pair;
+  - each needs a named audit gap (AD-15).
+- **The write pattern.** One tool serves two callers, and the screen mints no proposal (AD-53, AD-55). Each write accounts for:
+  - the per-target lock (AD-34);
+  - the fingerprint and the server-computed diff (AD-6, AD-51, AD-54);
+  - read-back (AD-58);
+  - the change event (AD-14);
+  - the copy-out snippet (AD-59);
+  - its classic page (AD-44);
+  - an audit marker or a named gap (AD-15).
+- **Reads (AD-36, AD-24, AD-60).** One declared read serves the screen and the tool. It is capped at 1,000 characters a field and 65,536 in all, and sanitized before it reaches the model. A statement's text is a row field, shown cut at 1,021 characters with `...`.
+- **Self-protection (AD-10).** `PROHIBITED.OCUPILOTSQL` refuses SQL that names `ocupilot` or touches an `OcuPilot` schema, reads included.
 
 ## UX & Interaction Patterns
 
-- **EXPERIENCE.md.** Edit the side-bar line (:159) and the closed dialog set (:173) in place. System Explorer's Fixed strings run from :586 to :600, the table's end, and the data browser's behavior from :671 to :693. The panel header is :699, where a picker would sit (inference). Move every citation the suites hold (`npm run test:tools`).
-- **Every screen** registers the ten-item contract, three or more Code-group prompts, aliases and Fixed strings. Viewers, editors and tabs are unlisted (`sideBarPosition` 0).
-- **An embedded vendor page** renders in InterSystems' own styling; nothing themes it.
-- **Confirmations.** Destructive: `typed-name-dialog`. A data change: `warning-dialog`. Dialogs never stack.
-- **Known gaps (range-end cleanup).** A tooltip cannot show text taller than the window (DW-1976), and the SQL table's nine-tab strip hides tabs (DW-1978).
+- **EXPERIENCE.md, edited in place:** the side-bar line at :159 and the closed dialog set at :173. A new Fixed-strings row goes after :601. The panel header at :700 holds no picker design yet. Move every citation the suites hold (`npm run test:tools`).
+- **Every screen** registers the ten-item screen contract: three or more prompts, aliases and Fixed strings. Viewers and tabs stay unlisted.
+- **Confirmations.** A destructive action uses a `confirm-dialog` with a typed-name field. An agent proposal carries none. Dialogs never stack.
+- **Context chip.** The chip and the per-turn egress line name the turn's own provider and host, so they must follow a picked definition (inference).
 
 ## Cross-Story Dependencies
 
-- **Done:** 19.1 to 19.8 and 19.12 to 19.16. **Order:** 19.9, 19.10, 19.11.
-- **19.9 carries DW-2061** (merge gate, option b): in Data browser export only, a number-typed cell whose value fully matches a strict number pattern skips the leading-character guard, with `core/csv.ts` unchanged. It may land instead as a pre-close fix with tests.
-- **19.10** reuses the catalog's fixed-statement reads and statement-text field (19.5, 19.14).
-- **19.11** reuses governance, the copy-out draft, the sanitizer, the read-back and Download CSV.
-- **Rosters a change trips.** Always `ExplorerDescriptor`, `ReadTool` (counts need the lead), `ToolRoundTrip` `REFUSEEMPTY`, `SurfaceCoverage`, `Descriptor` `ReadShapes`, and `DeveloperFloor`'s `SCREENS`, `TOOLS`, `HELDWRITES` and count word "thirty-four". A route: `EndpointCoverage`, `DeveloperFloorRoutes`. A write: `GovernanceBaseline`, `DraftRegistry`. An untrusted channel: `InjectionChannels`. The client's mirror, navigation and self-protection tests, and a regenerated `screens.generated.ts`.
-- **Slot A.** Profile `ocupilot-slot-a`; throwaway `ocupilot-a2-ci` (52780/1979), never restarted. Load by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir`; its `/tmp` data is exposed to macOS's nightly cleaner (DW-2033), the first suspect for an unexplained red. One test class per call; probes touch only `OcuProbe*` objects.
-- **Concurrency.** Epic 18 runs in parallel, with 18.7 open (18.22 to 18.24 split from it). Edit shared files add-only (`Router.cls`, `strings.ts`, `_components.scss`, `Baseline.cls`, roster tests, `screen-outlet.ts`, EXPERIENCE.md, the spine, the bundle budget) after checking `.worktrees/epic-18`'s diff. Regenerate `screens.generated.ts` and `ToolFields.cls`; never hand-merge them.
+- **Done:** 19.1 to 19.9 and 19.12 to 19.16. **Order:** 19.17, then 19.10, then 19.11.
+- **What the remaining stories reuse:**
+  - 19.17 reuses `AtelierPort`'s namespace and write pairs.
+  - 19.10 reuses the catalog's fixed-statement reads and the statement-text field (19.5, 19.14).
+  - 19.11 reuses `SqlPort`, the console guard, governance and the copy-out draft.
+- **Contended in-place edits (19.17):**
+  - a new read source kind touches `Screen/Read.cls`, `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs`;
+  - a drop touches `DESTRUCTIVE_ACTIONS` in `screen-action-handler.ts`;
+  - a live fixture must enable `%Service_DocDB` and restore it.
+- **Rosters a change trips:**
+  - `ExplorerDescriptor`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `Descriptor`, and `DeveloperFloor`'s `SCREENS`, `TOOLS` and its count word;
+  - for a route, `EndpointCoverage` and `DeveloperFloorRoutes`;
+  - for a write, `GovernanceBaseline` and `DraftRegistry`;
+  - `InjectionChannels`;
+  - a regenerated `screens.generated.ts`.
+- **Slot A:**
+  - Use profile `ocupilot-slot-a` and the throwaway `ocupilot-a2-ci` (52780); never restart the throwaway. Load the source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir`.
+  - The macOS `/tmp` cleaner is the first suspect for an unexplained red (DW-2033).
+  - Run one test class per call.
+- **Epic 18 runs in parallel** (18.22 to 18.24 open). Keep edits to shared files add-only after checking `.worktrees/epic-18`'s diff:
+  - `strings.ts`, `_components.scss`, `Baseline.cls`, `Router.cls`, the roster tests, EXPERIENCE.md, the spine and the bundle budget.
+  - Regenerate generated files rather than hand-merging them.
