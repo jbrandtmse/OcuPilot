@@ -2,7 +2,7 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '2b3e5e243163d8a0bfc37d62bad357d5ebfbbd69'
 followup_review_recommended: false
@@ -51,6 +51,7 @@ deferred: []
   - A new key file needs an administrator listed in it and a password (`EncryptionRules`).
   - Turning on `DBEncJournal`, `DBEncIRISSecurity`, `DBEncIRISTemp` or `AuditEncrypt` needs a start mode other than None. This covers the vendor's silent no-op (`RunPut`'s own comment) and #1218.
   - The same flags need an active database key (#1235).
+  - **Interactive key activation is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted, now or at the next start, in both orders** (`PROHIBITED.STARTUPINTERACTIVE`, AD-10's serving-path arm, Decision 8, merge gate 2026-10-05): its sentence, on the start-mode field, is "The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first." With any of the three encrypted a start that cannot activate the key aborts into single-user mode (measured for each, `/tmp/epic-18-d7/1823/t0r` r11-r12 and `t0m` m1-m4).
   - A changed default or journal key id must be active.
 - **`AuditEncrypt` is treated as `security.auditing.purge` is** (owner decision 2026-10-05):
   - A proposal that changes it is minted `destructive`, through the new effect `AUDIT.ENCRYPTIONCHANGE` in `Prohibited.WeakensByEffect`, and carries that consequence.
@@ -88,7 +89,7 @@ deferred: []
 | Encryption flags (seam) | Journal, IRISSECURITY, IRISTEMP on, with a seam-active key and Interactive | One `PUT`; each flag's consequence code on the card | none |
 | Default and journal key (seam) | Two seam-active keys; choose the other as default, then as journal key | `PUT` carries only the changed id | none |
 | Audit encryption (seam) | `AuditEncrypt` true with Unattended and a seam-active key | Proposal `destructive`, consequence `AUDIT.ENCRYPTIONCHANGE`; Save opens the typed-name dialog first, the `PUT` only after `IRISAUDIT` is typed | none |
-| Refused before `PUT` | KMIP with none configured; Unattended with no file; new file without password; a new file with an unlisted administrator; a flag on with None; a flag on with no active key; an inactive key id | Refused on its field; zero `PUT` | 422 `ENCRYPTION.STARTUP.KMIPSERVER`, `.KEYFILE`, `ENCRYPTION.KEYFILE.PASSWORD`, `ENCRYPTION.KEYFILE.CREDENTIALS`, `ENCRYPTION.STARTUP.NEEDSSTART`, `.NOKEY`, `.KEYINACTIVE` |
+| Refused before `PUT` | KMIP with none configured; Unattended with no file; new file without password; a new file with an unlisted administrator; a flag on with None; a flag on with no active key; an inactive key id; Interactive with the audit log, IRISSECURITY or IRISTEMP encrypted or being encrypted, in either order | Refused on its field; zero `PUT` | 422 `ENCRYPTION.STARTUP.KMIPSERVER`, `.KEYFILE`, `ENCRYPTION.KEYFILE.PASSWORD`, `ENCRYPTION.KEYFILE.CREDENTIALS`, `ENCRYPTION.STARTUP.NEEDSSTART`, `.NOKEY`, `.KEYINACTIVE`; 403 `PROHIBITED.STARTUPINTERACTIVE` |
 | Version gate | Seam answers the template without `AdminName`/`AdminPassword` | Mint, Save and confirm refused; zero `PUT` | 501 `PORT.NOTIMPLEMENTED` (`REASONSETTINGSVERSION`) |
 | Vendor refusal (seam) | Seam answers Task 0's measured codes (startup required, credentials) | Mapped to OcuPilot's sentences; no vendor text sent | 409 `ENCRYPTION.STARTUP.REQUIRED`; 422 credentials (per Task 0) |
 | Password secrecy | Writes carrying a marker password | Marker in no log line, ledger row, proposal, store, screen context, answer or DOM after save | none |
@@ -242,6 +243,7 @@ Steps, in order:
   - **`ENCRYPTION.STARTUP.REQUIRED`:** #1217 measured (step 10, vendor 500, logged at severity 2 and reaching `alerts.log`); #1212 and #1213 by their text (inference).
   - **Decision 8 needs a ruling:** with the audit log encrypted, the vendor accepts Interactive (step 11), and the next start with no console does not finish (R4). Interactive's published sentence ("the instance starts without the key") therefore does not hold while `AuditEncrypt` is on. Open: whether a start-mode change away from Unattended (or KMIP) while the audit log is encrypted is refused, takes the destructive treatment, or carries the audit clause.
   - **For DW-2087 and the read-back:** the `None` reset also clears `Security.System`'s persisted default and journal key ids while the running keys stay, and the `Settings` `GET` answers the running ids (step 7).
+- 2026-10-05, Decision 8 (merge gate under the owner's standing grant, option A), applied by the runner: Interactive key activation is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted, now or at the next start, in both orders (`PROHIBITED.STARTUPINTERACTIVE`, AD-10's serving-path arm, written to the spine). The runner measured IRISTEMP and IRISSECURITY on `ocupilot-b-ci` (`/tmp/epic-18-d7/1823/t0m`: one real activation, Unattended, the flag on, restart: encrypted in place, healthy; then Interactive, restart: "Failure activating required database encryption key. Startup aborted, entering single user mode."), so the rule carries no inference. Interactive's published sentence gains: "While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered." The form draws Interactive `aria-disabled` with that reason while one of the three is set, and each of the three checkboxes `aria-disabled` with it while the mode is Interactive. DW-2065 closed by-design (Task 0 re-run); the build deletes the `STARTUPADMIN` plumbing and keeps `KMIPSERVERS`. Task 0 is complete; the throwaway was rebuilt at 13:43Z. The code review's baseline is `2b3e5e24`, this story's first implement pass, so `f268a30e`'s plumbing stays in the reviewed diff. Status `blocked` to `in-progress` for the build.
 
 ## Review Triage Log
 
