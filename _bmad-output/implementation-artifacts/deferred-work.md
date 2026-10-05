@@ -9853,3 +9853,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: EncryptionKeyRead.TestEachReadAnswersTheSameRowsOnScreenAndTool asserts [] on every list; ScreenRead exempts DatabaseEncryption and its type filter skips DATAELEMENTLIST
 - 2026-10-05T10:31:51Z status=by-design owner=18-22-database-and-data-element-encryption-keys by=cr note=Named limit 2 (the runner's seam branch); ReadFixture with EndpointFixture could feed the screen's LIST path
+
+### DW-2096: Running and stored statement text can carry a literal credential to the screen and the agent (CREATE USER x IDENTIFIED BY 'pw', ALTER USER ... IDENTIFIED BY): SQL activity's Statement and the SQL catalog's statements tabs show it, and osmgmt.sqlactivity.read and the statement reads hand it to the model
+- source: orchestrator note 2026-10-05 (19.10 rulings) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: SqlPort.PASSWORDPATTERN refuses password text before the console's prepare (19.6), but no display path redacts it: AtelierPort's statement tabs (19.14) and SqlActivityPort (19.10) return the text as the instance holds it; DW-1982 measured a prepared CREATE USER's literal stored in INFORMATION_SCHEMA.STATEMENTS
+- 2026-10-05T17:16:04Z status=decision-pending owner=burndown by=merge_gate note=owner's decision sheet, next to DW-1982: whether (and how) to mask a credential literal in displayed and agent-bound statement text; 19.10 gives its text the same treatment as 19.14's (none), by the orchestrator's instruction
