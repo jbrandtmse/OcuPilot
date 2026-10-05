@@ -101,8 +101,9 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AC3: with the service disabled, each principal missing one of the port's pairs is refused every
-/// call 403 naming that pair, and none of the twenty calls writes a vendor access-denied row: the pairs
-/// are checked before the service.</p>
+/// call 403 naming that pair, and the principal holding READ and not WRITE is refused the create and
+/// the drop naming the write pair; of its twenty-four calls only that principal's two reads reach the
+/// service check, so exactly two vendor access-denied rows are written.</p>
 /// <p>Mutation (Rule 19): drop <code>%DocDB_Admin:USE</code> from
 /// <parameter>OcuPilot.Port.DocDbPort.PAIRS</parameter> -- the missing-admin principal reaches the
 /// service check and this goes red. Moving the service check ahead of the pairs writes a row per call
@@ -120,8 +121,11 @@ Method TestEachMissingPairIsRefusedByNameBeforeTheService()
             Do $$$AssertEquals(..LegText(tProbe, tType), tWanted, tUser _ ": " _ tType _ " is refused naming the pair")
         }
     }
+    Set tProbe = ..ProbeAs("OcuP1917NoWrite")
+    Do $$$AssertEquals(..LegText(tProbe, "CREATE") _ "|" _ ..LegText(tProbe, "DROP"), "403 AUTH.NOPRIVILEGE %DB_USER:WRITE|403 AUTH.NOPRIVILEGE %DB_USER:WRITE", "OcuP1917NoWrite: the create and the drop are refused naming the write pair before the service")
+    Do $$$AssertEquals(..LegText(tProbe, "LIST") _ "|" _ ..LegText(tProbe, "DATABASE"), "409 DOCDB.SERVICE.DISABLED |409 DOCDB.SERVICE.DISABLED ", "OcuP1917NoWrite: its reads reach the disabled service")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DeniedCount", .tAfter), "the rows are counted again")
-    Do $$$AssertEquals(tAfter - tBefore, 0, "no refusal reached the vendor's service check, so none wrote an audit row")
+    Do $$$AssertEquals(tAfter - tBefore, 2, "only the two reads reached the vendor's service check, each writing one audit row; no pair refusal wrote one")
 }
 
 /// <p>AC3: with the service enabled, a principal holding READ on <code>USER</code>'s database and not
@@ -205,9 +209,9 @@ Method EnsurePrincipals() As %Status
             }
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
-    Set $NAMESPACE = tOrigNS
     Quit tSC
 }
 

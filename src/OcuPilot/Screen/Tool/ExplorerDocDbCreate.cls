@@ -17,7 +17,7 @@ Class OcuPilot.Screen.Tool.ExplorerDocDbCreate Extends OcuPilot.Screen.Tool.Expl
 
 Parameter TOOLNAME = "explorer.docdb.create";
 
-Parameter DESCRIPTION = "Propose creating a document database in this namespace. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name it as a class name: letters and digits in parts separated by dots, each part starting with a letter. An unqualified name creates the class ISC.DM.<name>, and a qualified name is the class itself. A name this namespace already holds in any letter case, a class that already exists, a package this namespace keeps in another database and a name beginning with OcuPilot are refused, and nothing is created while the DocDB service is disabled. The database is created with no document type and no resource.";
+Parameter DESCRIPTION = "Propose creating a document database in this namespace. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name it as a class name: letters and digits in parts separated by dots, each part starting with a letter. An unqualified name creates the class ISC.DM.<name>, and a qualified name is the class itself. A name this namespace already holds in any letter case, a class that already exists, a package this namespace keeps in another database and a name whose class begins with OcuPilot are refused, and nothing is created while the DocDB service is disabled. The database is created with no document type and no resource.";
 
 /// <p>This tool creates its target (AD-54).</p>
 Parameter CREATES As BOOLEAN = 1;

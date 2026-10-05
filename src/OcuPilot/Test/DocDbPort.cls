@@ -60,14 +60,14 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>One port call of <var>pType</var> on <var>pName</var> in <var>pNamespace</var>, as
-/// <code>http code</code>.</p>
-ClassMethod Call(pType As %String, pName As %String = "", Output pResult, pNamespace As %String = {..#NAMESPACE}) As %String
+/// <p>One port call of <var>pType</var> on <var>pName</var> in <var>pNamespace</var>, a list cut at
+/// <var>pMax</var> rows, as <code>http code</code>.</p>
+ClassMethod Call(pType As %String, pName As %String = "", Output pResult, pNamespace As %String = {..#NAMESPACE}, pMax As %Integer = 100) As %String
 {
     Kill tQuery
     Set tQuery("namespace") = pNamespace
     If pName '= "" Set tQuery("name") = pName
-    Set tQuery("maxRows") = 100
+    Set tQuery("maxRows") = pMax
     Set tFault = ""
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Databases", pType, .tQuery, "", .pResult, .tHttp, .tFault)
     Quit +$Get(tHttp) _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: "")
@@ -111,9 +111,11 @@ Method TestTheServiceCheckSignature()
 
 /// <p>AC1: with the service enabled, the list answers each probe database as a row -- its name, its
 /// class, an empty document type and an empty resource -- and the screen's declared read and its read
-/// tool answer the same rows.</p>
+/// tool answer the same rows. AD-36: a list cut at one row answers one, and the screen's read under a
+/// cap of one answers one row, truncated.</p>
 /// <p>Mutation (Rule 19): drop <code>Class</code> from <method>OcuPilot.Port.DocDbPort.Row</method> --
-/// this goes red.</p>
+/// this goes red; remove <method>OcuPilot.Port.DocDbPort.ListRows</method>' cut -- the cut leg goes
+/// red.</p>
 Method TestTheListAnswersEachDatabase()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnableService", .tPrior), "the service is enabled")
@@ -125,6 +127,9 @@ Method TestTheListAnswersEachDatabase()
     Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerDocDbList", "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 200, "the screen's read answers")
     Do $$$AssertEquals(..Probes($Select($IsObject($Get(tAnswer)): tAnswer.rows, 1: "")), "OcuProbe1917.Q/OcuProbe1917.Q//;OcuProbe1917A/ISC.DM.OcuProbe1917A//", "the same rows")
+    Do $$$AssertEquals(..Call("LIST", "", .tCut, , 1) _ "|" _ $Select($IsObject($Get(tCut)): tCut.%Size(), 1: ""), "200 |1", "a list cut at one row answers one")
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.ExplorerDocDbList", 1, .tCapped, .tHttp, .tFault)
+    Do $$$AssertEquals($Select($IsObject($Get(tCapped)): tCapped.rows.%Size() _ "|" _ tCapped.truncated, 1: ""), "1|1", "the screen's read under a cap of one answers one row and reports it truncated")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.docdb.read", .tTool, 1)
     Do $$$AssertStatusOK(tSC, "the read tool resolves")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {}, 200, .tResult, .tHttp, .tFault)
@@ -152,8 +157,11 @@ Method TestADropInAnyCaseReachesTheDatabase()
 }
 
 /// <p>A create of a name the namespace holds in another case is 409
-/// <code>DOCDB.NAME.TAKEN</code>, and of a class that exists 409 <code>DOCDB.CLASS.TAKEN</code>; neither
-/// creates anything. A create of a free name answers 201 with its row.</p>
+/// <code>DOCDB.NAME.TAKEN</code>, and of a class that exists 409 <code>DOCDB.CLASS.TAKEN</code>, as is a
+/// class or a package that exists in another letter case; none creates anything. A create of a free
+/// name answers 201 with its row.</p>
+/// <p>Mutation (Rule 19): drop #5092 and #5093 from <method>OcuPilot.Port.DocDbPort.Mapped</method> --
+/// the case-variant class and package answer 500 and this goes red.</p>
 Method TestATakenNameOrClassIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnableService", .tPrior), "the service is enabled")
@@ -161,7 +169,10 @@ Method TestATakenNameOrClassIsRefused()
     Do $$$AssertEquals($Select($IsObject($Get(tRow)): tRow.Class _ "|" _ tRow.DocumentType _ "|" _ tRow.Resource, 1: ""), "ISC.DM.OcuProbe1917A||", "with no document type and no resource")
     Do $$$AssertEquals(..Call("CREATE", "ocuprobe1917a"), "409 " _ ##class(OcuPilot.Api.DocDbError).#NAMETAKEN, "a case variant is a taken name")
     Do $$$AssertEquals(..Call("CREATE", "ISC.DM.OcuProbe1917A"), "409 " _ ##class(OcuPilot.Api.DocDbError).#CLASSTAKEN, "the class's own name is a taken class")
-    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "ISC.DM.OcuProbe1917A"), "neither created a database")
+    Do $$$AssertEquals(..Call("CREATE", "isc.dm.ocuprobe1917a"), "409 " _ ##class(OcuPilot.Api.DocDbError).#CLASSTAKEN, "the class's name in another case is a taken class")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Make", ..#NAMESPACE, "OcuProbe1917.Q"), "a qualified probe is made")
+    Do $$$AssertEquals(..Call("CREATE", "ocuprobe1917.R"), "409 " _ ##class(OcuPilot.Api.DocDbError).#CLASSTAKEN, "a class in a package held in another case is a taken class")
+    Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "ISC.DM.OcuProbe1917A") && '$ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "ocuprobe1917.R"), "none created a database")
 }
 
 /// <p>A name whose package the namespace keeps in another database is 422

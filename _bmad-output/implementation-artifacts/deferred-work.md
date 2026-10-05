@@ -9812,3 +9812,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: src/OcuPilot/Test/ExplorerDescriptor.cls:141; renaming edits the eight method attributes SurfaceCoverage.cls:321-328 holds, rows Epic 18 also edits
 - 2026-10-05T11:38:55Z status=routed owner=19-10-sql-activity by=harvest note=19.10 adds a System Explorer read and so changes this test's counts again: rename the method to its counts then, with its SurfaceCoverage rows
+
+### DW-2094: Document databases' Create stays available while the strip says the DocDB service is disabled; the dialog then shows the 409 sentence
+- source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: docdb-list.page.ts:102 onOpen ignores the strip's state; the create dialog draws the DOCDB.SERVICE.DISABLED reason as its alert (docdb-create-dialog.ts:25)
+- 2026-10-05T12:16:56Z status=wontfix-accepted owner=19-17-the-docdb-browser by=cr note=reopen_if=EXPERIENCE.md rules Create aria-disabled while the strip shows, or a user reports it confusing

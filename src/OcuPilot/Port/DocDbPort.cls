@@ -93,7 +93,14 @@ Parameter CODENAMEINVALID = 25053;
 
 Parameter CODEABSENT = 25351;
 
-Parameter CODEREADONLY = 5883;
+/// <p>#5883: the class would be written to a database the caller cannot write.</p>
+Parameter CODEWRITEDENIED = 5883;
+
+/// <p>#5092 and #5093: a class, or the package of one, already exists under the same name in another
+/// letter case (measured).</p>
+Parameter CODECLASSCASE = 5092;
+
+Parameter CODEPACKAGECASE = 5093;
 
 /// <p>The subsystem every log line of this port is written under.</p>
 Parameter LOGSUBSYSTEM = "docdbport";
@@ -210,8 +217,8 @@ ClassMethod ServiceStatus(pName As %String, pNamespace As %String) As %Status
 /// <parameter>OcuPilot.Api.DocDbError.NAMEMAPPED</parameter> on <code>Name</code>; 409
 /// <parameter>OcuPilot.Api.DocDbError.SERVICEDISABLED</parameter>; 409
 /// <parameter>OcuPilot.Api.DocDbError.NAMETAKEN</parameter> (#25051) or
-/// <parameter>OcuPilot.Api.DocDbError.CLASSTAKEN</parameter> (#25070, or a class of that name found
-/// before the create); 404 <code>PORT.NOTFOUND</code> for an absent database, unlogged on a read, and
+/// <parameter>OcuPilot.Api.DocDbError.CLASSTAKEN</parameter> (#25070, a class of that name found
+/// before the create, or #5092 and #5093 for a class or package of that name in another letter case); 404 <code>PORT.NOTFOUND</code> for an absent database, unlogged on a read, and
 /// for a drop answered 0; 403 <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #5883;
 /// and 500 <code>INTERNAL</code>, logged, for anything else.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is
@@ -450,7 +457,7 @@ ClassMethod IsCode(pException As %Exception.AbstractException, pCode As %Integer
 }
 
 /// <p>A vendor exception <var>pException</var> in this port's own words: #25051
-/// <parameter>OcuPilot.Api.DocDbError.NAMETAKEN</parameter>, #25070
+/// <parameter>OcuPilot.Api.DocDbError.NAMETAKEN</parameter>, #25070, #5092 and #5093
 /// <parameter>OcuPilot.Api.DocDbError.CLASSTAKEN</parameter> and #25053
 /// <parameter>OcuPilot.Api.DocDbError.NAMEINVALID</parameter>, each unlogged; <code>&lt;PROTECT&gt;</code>
 /// and #5883 403 <code>PORT.ACCESSDENIED</code>; anything else 500 <code>INTERNAL</code>. The last two
@@ -458,7 +465,7 @@ ClassMethod IsCode(pException As %Exception.AbstractException, pCode As %Integer
 ClassMethod Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     If ..IsCode(pException, ..#CODENAMETAKEN) Quit ..Conflict(##class(OcuPilot.Api.DocDbError).#NAMETAKEN, .pHttpStatus, .pFault)
-    If ..IsCode(pException, ..#CODECLASSTAKEN) Quit ..Conflict(##class(OcuPilot.Api.DocDbError).#CLASSTAKEN, .pHttpStatus, .pFault)
+    If ..IsCode(pException, ..#CODECLASSTAKEN) || ..IsCode(pException, ..#CODECLASSCASE) || ..IsCode(pException, ..#CODEPACKAGECASE) Quit ..Conflict(##class(OcuPilot.Api.DocDbError).#CLASSTAKEN, .pHttpStatus, .pFault)
     If ..IsCode(pException, ..#CODENAMEINVALID) Quit ..Violation(##class(OcuPilot.Api.DocDbError).#NAMEINVALID, .pHttpStatus, .pFault)
     Set tProtect = 0
     Try {
@@ -466,7 +473,7 @@ ClassMethod Mapped(pException As %Exception.AbstractException, pMessage As %Stri
     } Catch {
         Set tProtect = 0
     }
-    If tProtect || ..IsCode(pException, ..#CODEREADONLY) {
+    If tProtect || ..IsCode(pException, ..#CODEWRITEDENIED) {
         Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .pFault, .tDetail)
         Set pHttpStatus = 403
         Do ..LogFault(pMessage, pException.AsStatus(), ##class(OcuPilot.Api.Error).#PORTACCESSDENIED)
@@ -553,8 +560,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>%SYSTEM.DocDB</code>'s <code>CreateDatabase</code> of the one name, with no document type and
 /// no resource, and <parameter>TYPEDROP</parameter> its <code>DropDatabase</code>. A read writes
 /// nothing and answers no step. Every value is rendered as a string literal, so nothing the query
-/// carries runs as code; the gate and the service check are the instance's to repeat for whoever runs
-/// it.</p>
+/// carries runs as code. <code>%SYSTEM.DocDB</code> checks neither the service nor
+/// <code>%DocDB_Admin</code>, so whoever runs the script is checked only on the namespace's
+/// databases.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ..SnippetForm(pEndpoint, pType) = "" Quit []

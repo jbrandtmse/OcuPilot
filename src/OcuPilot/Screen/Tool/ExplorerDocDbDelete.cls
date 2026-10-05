@@ -48,7 +48,7 @@ ClassMethod SettableFields() As %List
 /// <p>What the schema says of the name.</p>
 ClassMethod NameDescription() As %String
 {
-    Quit "The document database to drop, named as this namespace's Document databases list reports it; letter case does not matter. A database the list does not report is refused."
+    Quit "The document database to drop, named as this namespace's Document databases list reports it: a class name, letters and digits in parts separated by dots, whose class is ISC.DM.<name> when it has no package. Letter case does not matter. A database the list does not report is refused."
 }
 
 /// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: one per

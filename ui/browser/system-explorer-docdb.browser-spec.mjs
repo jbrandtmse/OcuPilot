@@ -11,6 +11,8 @@
  *    instance holds the database between the two and not after.
  * 3. **A refusal on its field** (AC4): a name with an underscore keeps the dialog open with the Name
  *    field marked and the server's sentence under it, and nothing reaches the instance.
+ * 3b. **A refusal with no field** (AC4): a create whose name differs from an existing database only in
+ *    case keeps the dialog open with the server's 409 sentence in the dialog's alert.
  * 4. **DW-1337** (AC8): the strip, the list, the create dialog and the Drop dialog pass the
  *    structural walk at wide light, narrow light and wide dark.
  *
@@ -43,6 +45,7 @@ const PROBE = 'OcuPilot.Test.DocDbProbe';
 const NAMESPACE = 'USER';
 const DATABASE = 'OcuProbe1917B';
 const INVALID = 'OcuProbe1917_bad';
+const TAKEN = 'OcuProbe1917C';
 
 const LIST_ROUTE = 'system-explorer/docdb';
 const LIST_URL = `/ocupilot/${LIST_ROUTE}?ns=${NAMESPACE}`;
@@ -104,8 +107,11 @@ after(async () => {
     if (browser !== null) await browser.close();
   } finally {
     if (config.container !== LIVE_CONTAINER && prior !== '') {
-      removeAll();
-      setService(Number(prior));
+      try {
+        removeAll();
+      } finally {
+        setService(Number(prior));
+      }
     }
   }
 });
@@ -282,8 +288,8 @@ test('AC1, AC4, AC5, AC8: create a probe database through the dialog, see its ro
     const cells = await page.$eval(
       ROW_SELECTOR,
       (row, textSelector) => {
-        const [name, type] = Array.from(row.querySelectorAll('[role="gridcell"]'));
-        return [(name.querySelector(textSelector) ?? name).textContent.trim(), type.textContent.trim()];
+        const [name, cls] = Array.from(row.querySelectorAll('[role="gridcell"]'));
+        return [(name.querySelector(textSelector) ?? name).textContent.trim(), cls.textContent.trim()];
       },
       NAME_TEXT
     );
@@ -309,6 +315,42 @@ test('AC1, AC4, AC5, AC8: create a probe database through the dialog, see its ro
     assert.equal(exists(DATABASE), false, 'the document database is gone');
   } finally {
     await context.close();
-    setService(0);
+    try {
+      removeAll();
+    } finally {
+      setService(0);
+    }
+  }
+});
+
+// AC4 (matrix: case variant). Mutation (Rule 19): DocDbPort maps #25051 to INTERNAL instead of
+// DOCDB.NAME.TAKEN, recompile on the throwaway -> the alert carries another sentence and this goes red.
+test('AC4: a create that differs from an existing database only in case is refused 409 in the dialog\u2019s alert', async () => {
+  setService(1);
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
+  try {
+    await page.waitForSelector('.ocu-data-table-empty', { visible: true, timeout: config.navigationTimeoutMs });
+    await openCreate(page);
+    await page.type(NAME_FIELD, TAKEN);
+    await page.click('[data-docdb-create-confirm]');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: 90000 });
+    await waitForRow(page, TAKEN);
+    assert.equal(exists(TAKEN), true, 'the first create made the database');
+
+    await openCreate(page);
+    await page.type(NAME_FIELD, TAKEN.toLowerCase());
+    await page.click('[data-docdb-create-confirm]');
+    await page.waitForSelector('[data-docdb-create-reason]', { visible: true, timeout: 90000 });
+    assert.equal(await page.$eval('[data-docdb-create-reason]', (node) => node.textContent.trim()), STRINGS.explorerDocDbNameTaken);
+    assert.equal(await page.$eval('[data-docdb-create-reason]', (node) => node.getAttribute('role')), 'alert');
+    assert.notEqual(await page.$('[role="dialog"]'), null, 'the dialog stays open on the refusal');
+    await assertStructure(page, true);
+  } finally {
+    await context.close();
+    try {
+      removeAll();
+    } finally {
+      setService(0);
+    }
   }
 });

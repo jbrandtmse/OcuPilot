@@ -114,6 +114,7 @@ ClassMethod Make(pNamespace As %String, pName As %String) As %Status
 /// lookup that fails raises, so a failure is never read as absence.</p>
 ClassMethod Exists(pNamespace As %String, pName As %String) As %Boolean
 {
+    $$$ThrowOnError(..Armed())
     Set tExists = 0
     Set tOrigNS = $NAMESPACE
     Try {
@@ -131,6 +132,7 @@ ClassMethod Exists(pNamespace As %String, pName As %String) As %Boolean
 /// that fails raises.</p>
 ClassMethod ClassExists(pNamespace As %String, pClass As %String) As %Boolean
 {
+    $$$ThrowOnError(..Armed())
     Set tExists = 0
     Set tOrigNS = $NAMESPACE
     Try {
@@ -172,7 +174,8 @@ ClassMethod AddDocument(pNamespace As %String, pName As %String, pDocument As %D
 ClassMethod DataGlobal(pNamespace As %String, pClass As %String, Output pGlobal As %String) As %Status
 {
     Set pGlobal = ""
-    Set tSC = $$$OK
+    Set tSC = ..Armed()
+    If $$$ISERR(tSC) Quit tSC
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
@@ -194,6 +197,7 @@ ClassMethod DataGlobal(pNamespace As %String, pClass As %String, Output pGlobal 
 /// value that is not a global reference. A lookup that fails raises.</p>
 ClassMethod HasData(pNamespace As %String, pGlobal As %String) As %Boolean
 {
+    $$$ThrowOnError(..Armed())
     If $Extract(pGlobal) '= "^" Quit 0
     Set tHas = 0
     Set tOrigNS = $NAMESPACE
@@ -253,7 +257,8 @@ ClassMethod RemoveAll(pNamespace As %String) As %Status
 ClassMethod Remaining(pNamespace As %String) As %Status
 {
     Set tLeft = ""
-    Set tSC = $$$OK
+    Set tSC = ..Armed()
+    If $$$ISERR(tSC) Quit tSC
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace

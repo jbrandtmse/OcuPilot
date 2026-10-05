@@ -23,6 +23,9 @@ Parameter PROBE = "OcuPilot.Test.DocDbProbe";
 
 Parameter NAMESPACE = "USER";
 
+/// <p>The scope a confirm is sent from to pin that it writes where the proposal read.</p>
+Parameter OTHERSCOPE = "HSCUSTOM";
+
 Parameter CREATE = "OcuPilot.Screen.Tool.ExplorerDocDbCreate";
 
 Parameter DELETE = "OcuPilot.Screen.Tool.ExplorerDocDbDelete";
@@ -82,6 +85,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RestoreService", ..PreparedService), "%Service_DocDB is put back as it was found")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll", ..#NAMESPACE), "every probe database and class is removed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll", ..#OTHERSCOPE), "and none is left in " _ ..#OTHERSCOPE)
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe proposals and turns are removed")
     Quit $$$OK
 }
@@ -127,10 +131,10 @@ Method MintFor(pTool As %String, pName As %String, Output pProposal As %DynamicO
 }
 
 /// <p>Confirm <var>pProposal</var> in process as the running account, scoped to
-/// <parameter>NAMESPACE</parameter>.</p>
-ClassMethod ConfirmIn(pProposal As %DynamicObject, Output pResult, Output pHttp As %Integer, Output pCode As %String) As %Status
+/// <var>pScope</var>.</p>
+ClassMethod ConfirmIn(pProposal As %DynamicObject, Output pResult, Output pHttp As %Integer, Output pCode As %String, pScope As %String = {..#NAMESPACE}) As %Status
 {
-    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Do ##class(OcuPilot.Kernel.Scope).Set(pScope)
     Quit ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm($Select($IsObject($Get(pProposal)): pProposal.%Get("proposalId"), 1: ""), "", $Username, .pResult, .pHttp, .pCode, .tDetail)
 }
 
@@ -226,12 +230,14 @@ Method TestTheScreensDropRemovesTheDatabase()
     Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "OcuProbe1917A") && '$ClassMethod(..#PROBE, "ClassExists", ..#NAMESPACE, "ISC.DM.OcuProbe1917A"), "its database and class are gone")
 }
 
-/// <p>AC6: the agent's create mints a card naming the database, and its confirm creates it and reads
-/// back matching; a create minted for a free name is refused at the confirm once another session has
-/// taken that name in another case, and a create of a name the namespace holds is refused at the
-/// mint.</p>
+/// <p>AC6: the agent's create mints a card naming the database, and its confirm, sent from another
+/// namespace's scope, creates it in the namespace the proposal read and reads back matching; a create
+/// minted for a free name is refused at the confirm once another session has taken that name in another
+/// case, and a create of a name the namespace holds is refused at the mint.</p>
 /// <p>Mutation (Rule 19): let the confirm skip the absence fingerprint -- the taken name reaches the
-/// vendor and answers its own refusal, and this goes red.</p>
+/// vendor and answers its own refusal, and this goes red; empty
+/// <method>OcuPilot.Screen.Tool.ExplorerDocDbWrite.PortQuery</method> -- the confirm creates the database
+/// in <parameter>OTHERSCOPE</parameter> and this goes red.</p>
 Method TestTheAgentsCreateConfirmsAndATakenNameIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnableService", .tPrior), "%Service_DocDB is enabled")
@@ -239,10 +245,10 @@ Method TestTheAgentsCreateConfirmsAndATakenNameIsRefused()
     Do $$$AssertStatusOK(tSC, "the agent's create mints")
     If '$IsObject($Get(tProposal)) Quit
     Do $$$AssertEquals(tProposal.changed.%ToJSON() _ "|" _ tProposal.target.type _ "|" _ tProposal.target.id, "[{""field"":""Name"",""before"":"""",""after"":""OcuProbe1917C""}]|docdb-database|ocuprobe1917c", "its card shows the name")
-    Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode)
-    Do $$$AssertStatusOK(tSC, "and confirms: " _ $Get(tCode))
+    Set tSC = ..ConfirmIn(tProposal, .tResult, .tConfirmHttp, .tCode, ..#OTHERSCOPE)
+    Do $$$AssertStatusOK(tSC, "and confirms from " _ ..#OTHERSCOPE _ "'s scope: " _ $Get(tCode))
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%Get("auditMarked") _ "|" _ tResult.action _ "|" _ tResult.readBack.verdict, 1: ""), "1|created|matches", "creating it, marked (AD-15) and read back matching")
-    Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "OcuProbe1917C"), "the database exists")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, "OcuProbe1917C") && '$ClassMethod(..#PROBE, "Exists", ..#OTHERSCOPE, "OcuProbe1917C"), "the database exists in the namespace the proposal read, and not in the confirm's scope")
 
     Set tSC = ..MintFor(..#CREATE, "OcuProbe1917D", .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a create is minted for a free name")

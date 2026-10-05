@@ -234,7 +234,8 @@ ClassMethod Gone(pToolClass As %String, pAfter As %DynamicObject, pPayloadJson A
 }
 
 /// <p>The compared set of a merge or a create: every top-level key of <var>pSent</var> the tool's
-/// field rows name, minus the descriptor's <code>fingerprintExcludes</code>. A differing name is
+/// field rows name, or its declared <code>READBACKFIELDS</code> when it has no field rows, minus the
+/// descriptor's <code>fingerprintExcludes</code>. A differing name is
 /// appended to <var>pFields</var>; a secret or <code>written</code> name whose sent value is
 /// non-empty and differs from <var>pBefore</var>'s is appended to <var>pWritten</var> and never read
 /// back.</p>
@@ -243,7 +244,8 @@ ClassMethod Gone(pToolClass As %String, pAfter As %DynamicObject, pPayloadJson A
 /// key itself, which found the row, is compared but not counted.</p>
 /// <p><var>pCount</var> is how many names were compared, which the caller reads so that a
 /// comparison of nothing never reads <code>matches</code>. Answers 0 when there is nothing to
-/// compare against -- no sent object, or no field rows for the tool.</p>
+/// compare against -- no sent object, or neither field rows nor <code>READBACKFIELDS</code> for the
+/// tool.</p>
 ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As %DynamicObject, pRead As %DynamicObject, Output pFields As %List, Output pWritten As %List, pRowKey As %String = "", Output pCount As %Integer) As %Boolean [ Private ]
 {
     Set pFields = ""

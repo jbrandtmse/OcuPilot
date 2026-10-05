@@ -126,9 +126,8 @@ Method TestTheToolShapes()
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tTool), "", $Parameter(tTool, "TOOLNAME") _ " passes the subject's adequacy rule")
         Set tSchema = $ClassMethod(tTool, "InputSchema")
         Do $$$AssertEquals(tSchema.required.%ToJSON(), "[""Name""]", $Parameter(tTool, "TOOLNAME") _ " requires the name alone")
-        Do $$$AssertTrue(tSchema.properties.Name.description [ "letter", $Parameter(tTool, "TOOLNAME") _ " describes the name")
+        Do $$$AssertTrue((tSchema.properties.Name.description [ "letters and digits in parts separated by dots") && (tSchema.properties.Name.description [ "ISC.DM.<name>"), $Parameter(tTool, "TOOLNAME") _ " describes the name's rules and the ISC.DM class an unqualified name makes")
     }
-    Do $$$AssertTrue($ClassMethod(tCreate, "InputSchema").properties.Name.description [ "ISC.DM.<name>", "the create names the ISC.DM class an unqualified name makes")
 }
 
 /// <p>Each tool's pairs are the screen's three plus WRITE on the request namespace's routines and

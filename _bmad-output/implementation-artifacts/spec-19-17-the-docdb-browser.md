@@ -274,6 +274,47 @@ Paths are under `src/OcuPilot/` or `ui/` unless they are given in full. Line num
 - **AC7 (own code).** Given either caller, when a create names `OcuPilot.X` or `ocupilot.y`, or a drop targets a database whose class begins with `OcuPilot`, then it is refused `PROHIBITED.OCUPILOTCODE` and nothing is written.
 - **AC8.** Given the screen in light and dark themes, when the structural walk and the screen's browser spec run, then the structural gate passes, the screen keeps three suggested prompts, and the dialog and strip draw only `--ocu-*` tokens.
 
+### Review Findings
+
+Code review 2026-10-05 (full-opus, four layers): 37 rows; 23 survive as 19 entries (0 high, 4 medium, 15 low): 18 patched, 1 deferred; 14 rejected.
+
+- [x] [Review][Patch] (med) A case-variant class or package name answers 500 INTERNAL, logged: the vendor's #5092 and #5093 are unmapped (measured on `ocupilot-a2-ci`) [src/OcuPilot/Port/DocDbPort.cls:460]
+- [x] [Review][Patch] (med) AC3's "before the service check" has no pin for the write pairs: `OcuP1917NoWrite` runs only with the service enabled [src/OcuPilot/Test/DocDbGate.cls:110]
+- [x] [Review][Patch] (med) `PortQuery` is unpinned: every confirm runs in the mint's own scope [src/OcuPilot/Test/DocDbWrite.cls:239]
+- [x] [Review][Patch] (med) The port's `maxRows` cut and the read's `truncated` run under no binding cap (AD-36) [src/OcuPilot/Test/DocDbPort.cls:117]
+- [x] [Review][Patch] (low) The create's description refuses "a name beginning with OcuPilot"; the arm judges the class the name creates [src/OcuPilot/Screen/Tool/ExplorerDocDbCreate.cls:20]
+- [x] [Review][Patch] (low) `OCUPILOTCODE`'s doc comment omits the document database arm [src/OcuPilot/Kernel/Proposal/Prohibited.cls:493]
+- [x] [Review][Patch] (low) `Snippet`'s doc says the instance repeats the gate and service check for a script; `%SYSTEM.DocDB` checks neither [src/OcuPilot/Port/DocDbPort.cls:556]
+- [x] [Review][Patch] (low) `DocDbGate`'s zero-audit-row assertion has no positive control in the class [src/OcuPilot/Test/DocDbGate.cls:124]
+- [x] [Review][Patch] (low) Five `DocDbProbe` read methods skip `Armed()`, against the header and the spec's task [src/OcuPilot/Test/DocDbProbe.cls:115]
+- [x] [Review][Patch] (low) The browser spec's cleanup: test 2's `finally` removes no probe, and `after` skips the service restore when `removeAll` throws [ui/browser/system-explorer-docdb.browser-spec.mjs:105]
+- [x] [Review][Patch] (low) `const [name, type]` binds the Class cell [ui/browser/system-explorer-docdb.browser-spec.mjs:288]
+- [x] [Review][Patch] (low) The QA leg's "creates nothing" assertions cannot fail: a case-insensitive `exists`, and a row count no refresh can change [ui/browser/system-explorer-docdb.browser-spec.mjs:340]
+- [x] [Review][Patch] (low) `ExplorerDescriptor`'s writers message still names only the source code API port [src/OcuPilot/Test/ExplorerDescriptor.cls:157]
+- [x] [Review][Patch] (low) `ReadBack.Compared`'s doc omits the `READBACKFIELDS` fallback [src/OcuPilot/Kernel/Proposal/ReadBack.cls:236]
+- [x] [Review][Patch] (low) `CODEREADONLY` names #5883, a write-permission refusal [src/OcuPilot/Port/DocDbPort.cls:96]
+- [x] [Review][Patch] (low) The drop's `Name` description omits the name rules and the `ISC.DM` mapping, and the test's `[ "letter"` passes on "letter case" [src/OcuPilot/Screen/Tool/ExplorerDocDbDelete.cls:51]
+- [x] [Review][Patch] (low) `EnsurePrincipals` restores the namespace after its `Catch`, not first in it (AD-16) [src/OcuPilot/Test/DocDbGate.cls:207]
+- [x] [Review][Patch] (low) AC3's exact-pairs clause and AC8's prompt count have no `mutation:` line [spec ## Verification]
+- [x] [Review][Defer] (low) Create stays available while the strip says the service is disabled; the dialog then shows the 409 sentence [ui/src/app/areas/system-explorer/docdb-list.page.ts:102] — deferred: DW-2094 wontfix-accepted, not spec-clear
+
+Rejected:
+
+- `low` IsMapped admits a vendor package in `%SYS` (its packages resolve to IRISSYS, the namespace's own database): only an IRISSYS writer who names a vendor package reaches it, and the fix adds a guard.
+- `false` ToolRoundTrip's `DOCDB.SERVICE.DISABLED` depends on the fresh instance's stock state, which Conventions › Tests allows.
+- `low` The own-code drop through both real callers: already rejected in this spec's triage; no new evidence on harm.
+- `low` The dialog posts the name untrimmed: the spec sends it exactly as typed, and the 422 sentence is true of a space.
+- `false` The registry ties no docdb read to the port's pairs: no second docdb screen exists, and a missing pair fails closed, named.
+- `false` `ExplorerDocDbWrite.PrivilegePairs` ignores `tResolved`: it is `ExplorerWrite.PrivilegePairs` verbatim, and the port refuses an unresolved namespace before any vendor call.
+- `false` `DocDbSave`'s seams: identical to `LanguageServerSave`'s (:18-47, :243).
+- `low` The 422 sentence omits the 220-character qualified limit: spec-bound sentence; a 221-character qualified name is rare.
+- `low` EXPERIENCE.md has no Component Patterns entry for the strip: the spec asks for the Fixed-strings row, :159 and :173 only.
+- `low` A non-ASCII name the vendor might accept is refused 422: spec-bound pattern, vendor acceptance unmeasured.
+- `low` A dialog dismissed while its create is in flight publishes no change event: a sub-second window, and every form store orders it this way (`license-server-form.store.ts:383`, `:521`).
+- `false` No per-database `CheckAccess`: the vendor's list checks `CheckAdmin` alone (`%Api.DocDB.v1:237`), and the drop's is the spec's Never item (AD-29, DW-2084).
+- `low` `DocDbGate` cannot run with OcuPilot installed in USER: every throwaway installs into HSCUSTOM.
+- `false` `ExplorerDocDbCreate.FieldRows` is hand-written: AD-3 fails that only for an endpoint that publishes a template, and `%SYSTEM.DocDB` publishes none.
+
 ## Spec Change Log
 
 - 2026-10-05, lead (spec gate): the Design Notes decisions are ruled tier-1 and written into the spine: the `%Admin_Secure`-only holder refused, the drop's `CheckAccess "W"` not repeated (DW-2084 cited), create by name only, a mapped package refused, `READBACKFIELDS` (AD-58), AD-7's sixth shape for the vendor's service-refusal audit row (the shape count corrected at origin), AD-29's `DocDbPort` paragraph, AD-8, AD-10, AD-13, AD-36, AD-15's sixteenth case and AD-53's nineteenth gap (AD-53's duplicate sixteen corrected at origin). The same-line edits in `Read.cls`, `EntityType.cls`, `EntityRef.cls`, `Prohibited.cls` and the roster counts are list entries, add-only in substance, resolved by union at the forward merge.
@@ -436,14 +477,18 @@ The stateful classes run one at a time: one test-runner call per message, wait f
 
 - AC1: `DocDbPort` LIST drops `Class` → the DocDbPort list leg and the browser row leg.
   - mutation: `DocDbPort.Row` sets no `Class` → `DocDbPort.TestTheListAnswersEachDatabase` red (run 483, with two other Class-reading legs); the browser spec's create leg red on the row's class cell (`(none)`).
+  - mutation (review, AD-36 cut): `ListRows`' `maxRows` cut removed → `DocDbPort.TestTheListAnswersEachDatabase` red on the one-row cut (run 980).
 - AC2: the port skips `CheckServiceStatus` → the DocDbPort disabled leg (a vendor call was made) and the browser strip leg.
   - mutation: `Invoke`'s `ServiceStatus` test replaced by `If 0` → `DocDbPort.TestADisabledServiceRefusesEveryCallWithOneAuditRow` red (run 484); the browser strip leg red (no `[data-docdb-service-strip]`).
 - AC3: `PAIRS` loses `%DocDB_Admin:USE` → the DocDbGate missing-admin leg. Moving the service check ahead of the pairs → the leg asserting no audit row.
   - mutation: `PAIRS` without `%DocDB_Admin:USE` → `DocDbGate.TestEachMissingPairIsRefusedByNameBeforeTheService` red on the NoAdmin and Secure principals (run 485).
   - mutation: a `ServiceStatus` refusal inserted before the `PAIRS` check → the same method red, including "no refusal reached the vendor's service check, so none wrote an audit row" (run 486).
+  - mutation (review, the write pairs): `Invoke`'s write branch asks `NamespacePairs` in place of `WritePairs` → the same method red on `OcuP1917NoWrite`'s create, drop and the audit count of 2 (run 981).
+  - mutation (review, the exact pairs succeed): `PAIRS` gains `%Admin_Secure:USE` → `DocDbGate.TestTheExactPairsListCreateAndDrop` red on the exact principal (run 982).
 - AC4: `NameProblem` removed → the DocDbPort invalid-name leg. `READBACKFIELDS` emptied → DocDbWrite's `matches` leg.
   - mutation: `Invoke`'s `NameProblem` test replaced by `If 0` → `DocDbPort.TestAMappedOrInvalidNameIsRefusedBeforeTheService` red (run 487).
   - mutation: `ExplorerDocDbCreate.READBACKFIELDS` = `""` → `DocDbWrite.TestTheSaveCreatesAndRefusesEachRow` and `TestTheAgentsCreateConfirmsAndATakenNameIsRefused` red on their `matches` assertions (run 488).
+  - mutation (review, class taken in another case): `Mapped` without #5092 and #5093 → `DocDbPort.TestATakenNameOrClassIsRefused` red on the case-variant class and package (run 980).
 - AC5: DROP ignores a 0 answer → DocDbPort's drop-absent leg. `DESTRUCTIVE_CONSEQUENCES` loses the entry, so no Drop is drawn → the browser drop leg.
   - mutation: `Drop`'s `If 'tDropped` replaced by `If 0` → `DocDbPort.TestAnAbsentDatabaseIsNotFound` red (run 489).
   - mutation: the `ExplorerDocDbList` entry removed from `DESTRUCTIVE_CONSEQUENCES`, rebuilt and redeployed → the browser create-and-drop leg red (no row menu trigger).
@@ -452,10 +497,14 @@ The stateful classes run one at a time: one test-runner call per message, wait f
   - mutation: `Confirm` digests `AbsenceState(0)` for a create → `DocDbWrite.TestTheAgentsCreateConfirmsAndATakenNameIsRefused` red on "the confirm is refused as a moved target" (run 490).
   - mutation: `"explorer.docdb.delete": true` in `Baseline.cls` → `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` red (run 491) and `DocDbWrite.TestTheAgentsDropIsGovernedThenConfirmed` red (run 492).
   - mutation (review, AD-15 marking): `Confirm`'s success-arm `RecordAgentWrite` replaced by an error status → `DocDbWrite.TestTheAgentsCreateConfirmsAndATakenNameIsRefused` and `TestTheAgentsDropIsGovernedThenConfirmed` red on `auditMarked` (run 509).
+  - mutation (review, `PortQuery`): `ExplorerDocDbWrite.PortQuery` returns at once → `DocDbWrite.TestTheAgentsCreateConfirmsAndATakenNameIsRefused` red on the confirm from HSCUSTOM's scope, and `TestTheCopyOutDraftNamesTheCreate` red (run 984).
 - AC7: the `docdb-database` arm removed → DocDbWrite's two `OCUPILOTCODE` legs.
   - mutation: the `docdb-database` arm's `If` replaced by `If 0` → `DocDbWrite.TestOcuPilotsOwnCodeIsRefusedOnBothCallers` red on the screen create, the agent confirm and both own-code drops (run 494).
 - AC8: the strip's token swapped for a literal color → `client-lint.mjs` and the structural leg.
   - mutation: the strip's `color: var(--ocu-warning)` → `#6b4e00` → `client-lint.mjs` red (`no-hardcoded-color`); built with `ng build` and redeployed, the browser strip leg red on dark contrast (1.49:1).
+  - mutation (review, three prompts): the descriptor's third prompt removed → `DocDbDescriptor.TestTheDescriptorShape` red on "three prompts in the Code group" (run 985).
+- (QA) `ui/browser/system-explorer-docdb.browser-spec.mjs`, third leg: the case-variant create's 409 sentence in the dialog's alert, in a real browser.
+  - mutation: `DocDbPort`'s #25051 test replaced by `If 0`, recompiled on the throwaway → the new leg red ("An internal error occurred"); reverted by rsync and reload, green.
 - Matrix audit and review, the remaining rows' legs:
   - mutation: the `DOCDB.` line removed from `Error.ReasonForToolCode` → `DocDbDescriptor.TestEachCodeReachesAToolResultWithItsSentence` red (run 499).
   - mutation: `Invoke`'s name rules replaced by `If 0` and its package check moved after the service check → `DocDbWrite.TestTheAgentsMintRefusesAnInvalidOrMappedName` red on both names and the audit count (run 501).

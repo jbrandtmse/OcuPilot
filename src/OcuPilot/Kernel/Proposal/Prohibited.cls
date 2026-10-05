@@ -492,6 +492,7 @@ Parameter IMPORTDOCUMENTS = "documents";
 /// <p>The write would compile, delete or replace by import one of OcuPilot's own documents
 /// (<method>IsOcuPilotCode</method>), in any namespace (AD-10 as amended 2026-10-02): those documents
 /// are the code that answers OcuPilot's addresses (AD-9). Refused whatever the caller.</p>
+/// <p>A document database's create or drop is judged by the class its name creates (Story 19.17).</p>
 Parameter OCUPILOTCODE = "PROHIBITED.OCUPILOTCODE";
 
 /// <p>The one sentence <parameter>OCUPILOTCODE</parameter> carries, caller-neutral, published in
