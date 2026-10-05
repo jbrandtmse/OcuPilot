@@ -342,3 +342,5 @@
 2026-10-05T04:09:23Z	Epic 19	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
 2026-10-05T04:09:23Z	Story 19.9	stage_result	stage=implement status=killed(reboot) agent=19-9-documatic-implement-2 findings_carried=none worktree=13_modified+2_new(uncommitted,unverified)
 2026-10-05T04:10:26Z	Story 19.9	wip_committed	by=runner reason=quota_protection(resume-2_prompt) content=passes_1+2_uncommitted_work(unverified) skip_ci=yes(wip,resume-2_prompt_allows) review_baseline=ecabc953(kept)
+2026-10-05T04:11:59Z	Epic 19	integrated_forward	feature=9b2a3bdd(spine_AD-22_owner_decision+bookkeeping,docs_only) conflicts=0 merge=1e0e3bfa by=runner
+2026-10-05T04:11:59Z	Story 19.9	stage_spawned	stage=implement spawn_at=2026-10-05T04:11:59Z model=opus agent_name=19-9-documatic-implement-3 cycle_iteration=1 rerun_after=killed(reboot) start_from=wip_d0539336(passes_1+2,unverified) baseline_revision=ecabc953(kept) throwaway=ocupilot-a2-ci(fresh)
