@@ -9725,6 +9725,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: the file is add-only while Epic 19 runs, so 18.7 left the sentence; a doc count only, no behavior
 - 2026-10-04T22:45:55Z status=routed owner=range-end-cleanup by=harvest note=correct the count once Epic 19 no longer holds the file add-only
+- 2026-10-05T20:00:23Z occurrence=18-23-encryption-startup-settings
 
 ### DW-2064: The spine lags Story 18.7's confirmed decisions: AD-2 names neither AdminInFile's two unlogged 409 refusals nor the key list's #5022 read as no key, and AD-8 lacks amendment 8
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -9892,6 +9893,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: All three PRINCIPALS hold %DB_IRISSYS:R; the spec's Tests line asks each declared pair refused by name; 18.7's EncryptionWriteGate shares the convention
 - 2026-10-05T10:31:51Z status=wontfix-accepted owner=18-22-database-and-data-element-encryption-keys by=cr note=reopen_if=a principal lacking %DB_IRISSYS:READ gets 200 from a Database or Data element encryption read or write
+- 2026-10-05T20:00:23Z occurrence=18-23-encryption-startup-settings
 
 ### DW-2089: EncryptionPort.JournalUse's InUse true never runs through the real port: the journalfiles leg answers JOURNALUSE in the seam, so a change to the id JournalUse passes would stay green
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
@@ -9918,8 +9920,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: med | footprint: in-story
 - evidence: measured by the runner on ocupilot-b-ci 17:57Z (/tmp/epic-18-d7/1823/t0m m5-m6): AuditEncrypt on + restart (encrypted), AuditEncrypt off (IRISAUDIT EncryptedDB still 1), Interactive accepted by OcuPilot, restart aborted into single-user mode
 - 2026-10-05T17:58:36Z status=open owner=18-23-encryption-startup-settings by=harvest note=fix in this story: read each of IRISAUDIT, IRISSECURITY and IRISTEMP's on-disk EncryptedDB through EncryptionPort (AD-27) and refuse Interactive while any is encrypted or its flag set; a failed read refuses
+- 2026-10-05T20:02:19Z status=resolved-by:18-23-encryption-startup-settings by=adjudication note=869f347b reads IRISAUDIT, IRISSECURITY and IRISTEMP's on-disk EncryptedDB through EncryptionPort ENCRYPTEDDATABASES and refuses Interactive while any is encrypted or its flag set, both callers, a failed read refusing; EncryptionStartupWrite and EncryptionStartupGate pin it through the seam and EncryptionOnDiskPort over the real read
 
 ### DW-2099: Start mode None is not refused by OcuPilot while the audit log's, IRISSECURITY's or IRISTEMP's database is still encrypted on disk after its setting was turned off
 - source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: low | footprint: in-story
 - evidence: measured by the runner on ocupilot-b-ci 18:58Z (/tmp/epic-18-d7/1823/t0m m7-m8): AuditEncrypt on + restart, AuditEncrypt off (IRISAUDIT EncryptedDB 1), None refused by the vendor and mapped to 409 ENCRYPTION.STARTUP.REQUIRED, nothing changed
 - 2026-10-05T18:59:05Z status=by-design owner=18-23-encryption-startup-settings by=harvest note=the vendor's own refusal covers it (#1217 class) and EncryptionPort maps it; no OcuPilot arm needed
+
+### DW-2100: AD-10's start arm refuses only Interactive over the three databases: an Unattended key file or KMIP server that cannot activate the key encrypting IRISAUDIT, IRISSECURITY or IRISTEMP, and journal encryption under Interactive, are unmeasured
+- source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: LeavesInteractiveRequired judges Interactive alone and StartupProblems checks only that a new file lists its administrator; the vendor's answer to a key file without the active key, and an unanswered Interactive start under journal encryption (OKNoDBEncKeyAtStartup names it as needing the key), are unmeasured (inference)
+- 2026-10-05T20:00:23Z status=decision-pending owner=burndown by=cr note=unverified high; settle on a throwaway (key file without the active key; journal under Interactive), then decide AD-10's scope

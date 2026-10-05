@@ -5,6 +5,7 @@ created: '2026-10-05'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: 'b389a30be6cc8264b503acfc3ef56c68009dcbf0'
+baseline_commit: '2b3e5e243163d8a0bfc37d62bad357d5ebfbbd69'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
@@ -243,6 +244,44 @@ Steps, in order:
 
 - [x] [Smoke] DW-2098: `PROHIBITED.STARTUPINTERACTIVE` judges only the three flags, so Interactive chosen after `AuditEncrypt` is turned off but before a restart has decrypted `IRISAUDIT` leaves a start that aborts (measured by the runner, `/tmp/epic-18-d7/1823/t0m` m5-m6: `EncryptedDB` 1 after the flag went off, Interactive accepted, the restart aborted into single-user mode) -- `Kernel/Proposal/Prohibited.cls` `LeavesInteractiveRequired` and `Port/EncryptionPort.cls` -- read whether `IRISAUDIT`, `IRISSECURITY` and `IRISTEMP` are encrypted on disk (`SYS.Database` `EncryptedDB`, by each database's configured directory) through an `EncryptionPort` read under `%Admin_Secure:USE` in `%SYS` (AD-27's 18.23 case, as the spine now words it), and refuse Interactive while any of them is encrypted on disk or its flag is set, in both orders and on both callers; a failed read refuses. The form draws Interactive `aria-disabled` on the same answer (the form read carries it). Pin it through the seam (an on-disk-encrypted answer with every flag off refuses Interactive; a failed read refuses), with a `mutation:` line.
 
+### Review Findings
+
+Code review 2026-10-05 (four layers, full-opus): 35 rows, 30 entries after grouping; 7 patch, 3 defer, 20 rejected.
+
+- [x] [Review][Patch] The page spec's password-clear assertion could not fail: the re-read after the Save renders no password field, and `innerHTML` never shows an input's value (C7, Rule 19) [ui/src/app/areas/security/encryption-startup.page.spec.ts:286]
+- [x] [Review][Patch] `AuditEncryptReviewed` shows on the destructive card as a masked unchanged field the port never sends; the confirm's re-merge already refuses a moved value (run 52), so the key goes [src/OcuPilot/Screen/Tool/EncryptionStartupUpdate.cls:214]
+- [x] [Review][Patch] `EncryptionPort.DatabaseEncryption` reads `%SYS` with no gate and is public; it becomes `[ Private ]`, reached only through `EncryptedOnDisk`'s gate (AD-27, AD-29) [src/OcuPilot/Port/EncryptionPort.cls:1156]
+- [x] [Review][Patch] The client's `STARTUP_INTERACTIVE_CODE` is not pinned to `Prohibited.STARTUPINTERACTIVE`, so a rename on either side lands the refusal as a banner [ui/src/app/areas/security/encryption-startup.store.ts:52]
+- [x] [Review][Patch] `PROPERTYFAULTS`' #1212 and #1213 entries have no leg; #1212 is the vendor's refusal of None while journal encryption is on (`%SYS.Journal.System.OKNoDBEncKeyAtStartup`) [src/OcuPilot/Port/AdminPort.cls:3266]
+- [x] [Review][Patch] `Wanted`'s start-mode check, the Save's only guard against a mode outside the four, has no leg [src/OcuPilot/Port/EncryptionPort.cls:869]
+- [x] [Review][Patch] "the seam recorded none" cannot fail: the seam never records `AdminPassword` [src/OcuPilot/Test/EncryptionStartupWrite.cls:416]
+- [x] [Review][Defer] AD-10's start arm guards only Interactive over the three databases: journal encryption under Interactive, and an Unattended key file or KMIP server that cannot activate the key encrypting IRISAUDIT, IRISSECURITY or IRISTEMP, are unmeasured [src/OcuPilot/Kernel/Proposal/Prohibited.cls:2596] — deferred: maybe-false, high if real (unverified); settle on a throwaway with an Unattended write naming a key file without the active key while IRISAUDIT is encrypted, then a restart, and an Interactive start with no console under journal encryption; DW-2100, decision-pending
+- [x] [Review][Defer] No `EncryptionStartupGate` principal withholds `%DB_IRISSYS:READ` from the reads or the confirm, only from the Save [src/OcuPilot/Test/EncryptionStartupGate.cls:169] — deferred: DW-2088's root cause (wontfix-accepted); occurrence added
+- [x] [Review][Defer] `Prohibited.Codes()`' doc comment still reads twenty-six; this story makes 28 [src/OcuPilot/Kernel/Proposal/Prohibited.cls:793] — deferred: DW-2060 (routed, range-end cleanup, the file add-only while Epic 19 runs); occurrence added
+
+Rejected:
+
+- low: the frontmatter `deferred:`, Decision 8, Governing ADs, the Code Map, matrix row "Encryption flags (seam)" and Boundaries' `STARTUPADMIN` line are stale; each fix edits this oversized spec, and DW-2098 and DW-2099 are ledgered.
+- false: DW-2098's ledger row still reads open; the story's own ledger adjudication closes it before smoke (Rule 17 (2)).
+- low: `epic-18-context.md` keeps the 12:31Z rebuild and DW-2065 as a refusal to build; the lead regenerates that context, and no later story builds on either line.
+- false: None is not pre-checked against a flag still on; the vendor refuses it (#1212 while journal encryption is on, `OKNoDBEncKeyAtStartup`; #1217 for an encrypted database, measured r10 and m7-m8), each mapped to 409, and #1218 concerns enabling audit encryption, which `NEEDSSTART` pre-empts.
+- low: `STARTUPDATABASES` omits IRISLOCALDATA and IRISMETRICS; AD-27 names the three, and all three follow `DBEncIRISTemp` and convert at the same start (`DATABASE.int` `MakeIRISLocalData` reinitializes, `MakeIRISMetrics` logs and continues without the key), so IRISTEMP's on-disk state covers the window.
+- low, by-design: Interactive's sentence repeats its reason caption, and the checkboxes under Interactive carry it; Decision 8 publishes the sentence and draws each control "with it" (EXPERIENCE.md:364).
+- low, by-design: the refusal's remedy fits neither KMIP, a flag turned on under Interactive, nor the on-disk case, and names no restart; it is the intent's fixed sentence (Boundaries, AD-10), pinned to EXPERIENCE.md, so a rewording is a spec amendment.
+- false: the audit advisory is stale after DW-2065; an Unattended start still needs the key file and the hidden administrator it holds.
+- low: the Security rosters filter the new route out; its position is asserted in `Wire` and its verdict per principal in both classes.
+- low: the seam's unchanged-`PUT` guard compares only what the `GET` answers; the real leg runs on a stock throwaway, and `OnAfterOneTest` reds a moved fact.
+- low: another writer between the confirm's read and the port's; that needs a classic-portal write within milliseconds, and OcuPilot's own writers are serialized (AD-34).
+- low: under Interactive with a database encrypted on disk the form takes other changes until the 403; that state needs an attended start, and the refusal lands on the start-mode field.
+- low: a flag on at open, toggled off and on again under None or with no key, is refused; Cancel restores it.
+- low: reverting a key select to "(none)" sends `""`, refused `KEYINACTIVE`; it needs an inactive stored key beside an active one, and Cancel restores it.
+- low: a settings read failing alone drops its refusal code; the screen and form reads share the descriptor gate, so a pair refusal is still carried.
+- low, by-design: the real KMIP loop never runs over a configured server; the spec forbids KMIP configuration (Named limit 2), and the loop reads `Name`, the column `Security.KMIPServer:List` declares.
+- false: `EncryptionStartupRead`'s nothing-encrypted leg compares two empty lists; the encrypted answer is pinned through `EncryptionOnDiskPort` (run 23).
+- false: the mint passes an unknown start mode on; `Screen/Tool/Registry.ValueProblem` refuses a value outside the schema's enum before any mint.
+- low: three add-only files had existing lines edited; none is contended with Epic 19.
+- false: EXPERIENCE.md reads 1037 lines; the forward merge added that line, and the story's lines 168, 173, 364 and 516 do not move.
+
 ## Spec Change Log
 
 - 2026-10-05, spec gate (runner): Decisions 1 to 8 confirmed. Decision 1 verified by the runner in the vendor source (`ValidateRequest` builds `RequestValidator(schema, 1)`, exempting only the key ids and the v2 credentials; `RunPut` passes `req.AuditEncrypt` to `ConfigStart`); amendment 9 applied at origin (epics.md :7519, `epic-18-context.md`) and reported to the orchestrator. Spine amendments 1 to 6 written (AD-4, AD-10 two items, AD-13, AD-26, AD-27, AD-44); 7 and 8 wait for Task 0, with ordinals taken from the spine when written.
@@ -421,7 +460,7 @@ Steps, in order:
 - mutation: `MergeUpdate` keeps the fresh read's `AuditEncrypt` → `EncryptionStartupWrite.TestTheWriteReadsAuditEncryptionAtTheWrite` red (run 45) and `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 46)
 - mutation: `MergeUpdate` keeps an unchanged key id → `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 48); `EncryptionStartupWrite` stays green because `StartupBody` drops it (run 47), and with `StartupBody` keeping it too `TestFlagsAndKeyIdsChangeOnBothCallers` and `TestAStartModeChangeIsOnePutOnBothCallers` go red (run 50); `StartupBody` alone stays green (run 49)
 - mutation: `Prohibited.WeakensByEffect`'s `AUDIT.ENCRYPTIONCHANGE` branch dropped → `EncryptionStartupWrite.TestAuditEncryptionIsDestructiveAndConfirmsTheReviewedValue` red on the destructive legs (run 51)
-- mutation: `REVIEWEDAUDITFIELD` left out of the payload → `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 53); `EncryptionStartupWrite`'s reviewed-value leg stays green, the confirm's target digest refusing it on its own (run 52)
+- mutation: `MergeUpdate` keeps an `AuditEncrypt` the arguments carry whether or not it differs from the fresh read → `EncryptionStartupWrite.TestAuditEncryptionIsDestructiveAndConfirmsTheReviewedValue` red on the reviewed-value legs, the confirm sending a `PUT` (code review, run 28)
 - mutation: `StartupProblems`' active-key check dropped → `EncryptionStartupWrite.TestARefusedChangeSendsNothing` red on the two `ENCRYPTION.STARTUP.NOKEY` legs, a `PUT` recorded by the seam (run 54)
 - mutation: `SettingsGate` always answers OK → `EncryptionStartupWrite.TestTheVersionGateRefusesEveryCaller` red on the Save, the mint and the confirm, a `PUT` recorded (run 55)
 - mutation: `Prohibited.EncryptionStartup`'s Interactive check skipped → `EncryptionStartupWrite.TestInteractiveIsRefusedInBothOrdersOnBothCallers` red on every leg (run 56)
@@ -457,6 +496,11 @@ Steps, in order:
 - mutation: the store's `modeRefusal` drops the on-disk check → `encryption-startup.store.spec.ts` and `encryption-startup.page.spec.ts` "AD-10 ... still encrypted on disk" tests red
 - mutation: the push dropped from `EncryptionPort.EncryptedOnDisk` → `EncryptionStartupRead.TestTheFormReadAnswersTheDatabasesEncryptedOnDisk` red on its last leg, the shipped loop over two directories `Test/EncryptionOnDiskPort` reports encrypted (run 23)
 - mutation: `Prohibits` passes `""` for the tool class to `EncryptionStartup`, so the on-disk read asks the base port → `EncryptionStartupGate.TestTheDeclaredPairsReadAndWrite` red on the confirm leg (403 `PROHIBITED.STARTUPINTERACTIVE`), its Save leg with it (run 25)
+- (QA) mutation: `EncryptionPort.StartupProblems`' KMIP-server check dropped (`If 0`) → `EncryptionStartupWrite.TestARefusedChangeSendsNothing` red (run 19); the Unattended no-file check dropped → red (run 20); the NEEDSSTART branch dropped → red (run 21); the key-id inactive check dropped → red (run 22); the new-file administrator-listed check dropped → red (run 23); the password rule dropped from the Violations call → red (run 24). Each reverted byte-identical (`git status --short` unchanged) and the throwaway reloaded; no test run changed a setting.
+- (code review) mutation: `EncryptionPort.Wanted`'s start-mode check off (`If 0 &&`) → `EncryptionStartupWrite.TestARefusedChangeSendsNothing` red on the unknown-mode leg, the Save answering 200 (run 28)
+- (code review) mutation: #1212 and #1213 dropped from `AdminPort.PROPERTYFAULTS` → `EncryptionStartupWrite.TestAVendorRefusalArrivesAsOcuPilotsSentence` red on both legs (run 28); these three mutations ran together on disjoint legs, then reverted byte-identical, reloaded, green (run 29)
+- (code review) mutation: `send()`'s password clear dropped → `encryption-startup.page.spec.ts` "Unattended shows the stored key file ... and clears the password" red, the field coming back holding the marker
+- (code review) mutation: `STARTUP_INTERACTIVE_CODE` misspelled in the store → `ui/tools/self-protection.test.mjs` "Story 18.23: the form draws the Interactive refusal ... by the code the kernel declares" red
 
 ## Auto Run Result
 

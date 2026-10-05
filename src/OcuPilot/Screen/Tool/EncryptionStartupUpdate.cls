@@ -60,11 +60,6 @@ Parameter FLAGFIELDS = "DBEncJournal,DBEncIRISSecurity,DBEncIRISTemp,AuditEncryp
 /// <p>The setting the port reads at the write unless the arguments change it.</p>
 Parameter AUDITFIELD = "AuditEncrypt";
 
-/// <p>The payload key carrying the <code>AuditEncrypt</code> a proposal that changes it reviewed, so its
-/// fingerprint covers that value: the port never sends it, and the card never shows it as a changed
-/// row.</p>
-Parameter REVIEWEDAUDITFIELD = "AuditEncryptReviewed";
-
 /// <p>The administrator and the declared secret a new Unattended key file carries.</p>
 Parameter ADMINFIELD = "AdminName";
 
@@ -151,8 +146,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 }
 
 /// <p>The kernel's merge over the fresh read <var>pFresh</var>, shaped for this write: the startup key file
-/// is left out; <parameter>AUDITFIELD</parameter> is left out unless <var>pArgs</var> changes it, and when
-/// it does, <parameter>REVIEWEDAUDITFIELD</parameter> carries the value it reviewed; a key id the arguments
+/// is left out; <parameter>AUDITFIELD</parameter> is left out unless <var>pArgs</var> changes it, so a
+/// confirm whose fresh read no longer holds the value a proposal reviewed re-merges without it and its
+/// digest differs; a key id the arguments
 /// do not change is left out; the location arguments and <parameter>ADMINFIELD</parameter> stay only for a
 /// new Unattended key file (<method>NewKeyFile</method>), which also carries the
 /// <parameter>PASSWORDFIELD</parameter> placeholder the card asks for. <var>pUnchanged</var> counts the
@@ -211,7 +207,6 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
             Do tDiffOut.%Push(tRow)
         }
         If tNew Do tPayloadOut.%Set(..#PASSWORDFIELD, "", "string")
-        If tChangesAudit Do tPayloadOut.%Set(..#REVIEWEDAUDITFIELD, (..Flag(tFresh, ..#AUDITFIELD) = "true"), "boolean")
         Set tCount = 0
         Set tIterator = tPayloadOut.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {

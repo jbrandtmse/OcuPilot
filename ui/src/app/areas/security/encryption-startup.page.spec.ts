@@ -282,8 +282,11 @@ describe('EncryptionStartupPage', () => {
     await save(mounted);
     expect(puts(mounted.sent)).toEqual([{ DBEncStartMode: 'Unattended', root: ROOT, path: 'keys/start.key', AdminName: 'probeuser', AdminPassword: MARKER }]);
     expect(mounted.host.innerHTML).not.toContain(MARKER);
-    const after = mounted.host.querySelector(`#${encryptionStartupControlId('AdminPassword')}`) as HTMLInputElement | null;
-    expect(after === null || after.value === '').toBe(true);
+    // The re-read answers Interactive, so name the key file again: the password field it brings back is empty.
+    await click(mounted, modeRadio(mounted, 'Unattended'));
+    await type(mounted, 'ocu-encryption-startup-location-path', 'keys/start.key');
+    const after = mounted.host.querySelector(`#${encryptionStartupControlId('AdminPassword')}`) as HTMLInputElement;
+    expect(after.value).toBe('');
   });
 
   it('a stored key file is shown and never sent when the mode stays Unattended', async () => {

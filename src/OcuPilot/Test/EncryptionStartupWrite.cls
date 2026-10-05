@@ -225,9 +225,11 @@ Method TestTheWriteReadsAuditEncryptionAtTheWrite()
     Do $$$AssertEquals(..Puts() _ " " _ $ClassMethod(..#SEAM, "SentOf", "AuditEncrypt") _ " " _ $ClassMethod(..#SEAM, "SentOf", "DBEncStartMode"), "1 true KMIP", "the PUT sends AuditEncrypt as read at the write")
 }
 
-/// <p>C5: every rule refuses on its field with no <code>PUT</code>, on the Save and at the mint.</p>
+/// <p>C5: every rule refuses on its field with no <code>PUT</code>, on the Save and at the mint, and a start
+/// mode outside the four is refused on the Save.</p>
 /// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.EncryptionPort.StartupProblems</method>'s active-key check
-/// -- the no-key legs send a PUT and go red.</p>
+/// -- the no-key legs send a PUT and go red; drop <method>OcuPilot.Port.EncryptionPort.Wanted</method>'s
+/// start-mode check -- the last leg sends a PUT and goes red.</p>
 Method TestARefusedChangeSendsNothing()
 {
     Set tP = ..#PROBE
@@ -250,6 +252,10 @@ Method TestARefusedChangeSendsNothing()
         }
         Do $$$AssertEquals(..Puts(), 0, tBody.%ToJSON() _ ": no PUT")
     }
+    Do ..Hold(##class(%DynamicObject).%FromJSON(tNone))
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Set tOutcome = ..Save({"DBEncStartMode": "interactive"}, .tAnswer)
+    Do $$$AssertTrue(($Piece(tOutcome, " ", 1, 2) = "400 TOOL.ARGUMENTS") && (tOutcome [ "DBEncStartMode") && (..Puts() = 0), "a start mode outside the four is refused on the Save with no PUT: " _ tOutcome)
 }
 
 /// <p>C5, AD-10, Decision 8: Interactive is refused while the audit log, IRISSECURITY or IRISTEMP is
@@ -357,10 +363,13 @@ Method TestTheVersionGateRefusesEveryCaller()
 }
 
 /// <p>Matrix row 8: the vendor's measured refusals arrive as OcuPilot's: turning startup activation off while
-/// something depends on it (#1217) is 409 with its sentence; a new key file's wrong password (#5001) is 422 on
-/// the password; the same #5001 with no credentials sent is the generic 500.</p>
+/// something depends on it (#1217, and #1212 and #1213 by their text) is 409 with its sentence; a new key
+/// file's wrong password (#5001) is 422 on the password; the same #5001 with no credentials sent is the
+/// generic 500.</p>
 /// <p>Mutation (Rule 19): drop the credentials branch from
-/// <method>OcuPilot.Port.EncryptionPort.StartupMapped</method> -- the password leg answers 500 and goes red.</p>
+/// <method>OcuPilot.Port.EncryptionPort.StartupMapped</method> -- the password leg answers 500 and goes red;
+/// drop #1212 and #1213 from <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> -- their legs
+/// answer 500 and go red.</p>
 Method TestAVendorRefusalArrivesAsOcuPilotsSentence()
 {
     Set tP = ..#PROBE
@@ -371,6 +380,10 @@ Method TestAVendorRefusalArrivesAsOcuPilotsSentence()
     Do $ClassMethod(..#SEAM, "ArmFailure", 1217)
     Do $$$AssertEquals(..Save({"DBEncStartMode": "None"}, .tAnswer), "409 ENCRYPTION.STARTUP.REQUIRED", "#1217 is the startup-required refusal")
     Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Api.EncryptionError", "REASONSTARTUPREQUIRED"), "in OcuPilot's sentence")
+    For tCode = 1212, 1213 {
+        Do $ClassMethod(..#SEAM, "ArmFailure", tCode)
+        Do $$$AssertEquals(..Save({"DBEncStartMode": "None"}, .tAnswer), "409 ENCRYPTION.STARTUP.REQUIRED", "#" _ tCode _ ", read in its message text, is the same refusal")
+    }
     Do $ClassMethod(..#SEAM, "ArmFailure", 5001)
     Do $$$AssertEquals(..Save({"DBEncStartMode": "Unattended", "root": ($ClassMethod(tP, "Root")), "path": ($ClassMethod(tP, "RelativeName", "start-v.key")), "AdminName": ($Parameter(tP, "ADMIN")), "AdminPassword": (tPassword)}, .tAnswer), "422 AdminPassword:ENCRYPTION.KEYFILE.CREDENTIALS", "#5001 on a write carrying credentials is the password's refusal")
     Do $$$AssertEquals(..Save({"DBEncStartMode": "None"}, .tAnswer), "500 INTERNAL", "#5001 on a write carrying none is the generic fault")
@@ -378,8 +391,8 @@ Method TestAVendorRefusalArrivesAsOcuPilotsSentence()
 }
 
 /// <p>C7, AD-35: a marker password, sent by the Save and supplied at the confirm, reaches no answer, no line of
-/// <code>messages.log</code> or <code>alerts.log</code>, no proposal or ledger row, and no record of the seam;
-/// the card asks for it as a masked row, and the script renders its placeholder.</p>
+/// <code>messages.log</code> or <code>alerts.log</code>, and no proposal or ledger row; the card asks for it
+/// as a masked row, and the script renders its placeholder.</p>
 /// <p>A control line written to <code>messages.log</code> after the writes must be found by the same scan, so
 /// a scan that reads nothing cannot pass for one that found no marker.</p>
 /// <p>Mutation (Rule 19): the Save answers the body it sent as its read-back -- the marker leg goes red.</p>
@@ -413,7 +426,6 @@ Method TestThePasswordReachesNoRecord()
     Do $$$AssertTrue(tLines '[ tMarker, "messages.log and alerts.log carry no marker")
     Set tStored = ##class(OcuPilot.Test.EncryptionKeyFileWrite).StoredText(tProposal.%Get("proposalId"))
     Do $$$AssertTrue((tStored '= "") && (tStored '[ tMarker), "the proposal row and its ledger rows carry no marker")
-    Do $$$AssertEquals($ClassMethod(..#SEAM, "SentOf", "AdminPassword"), "", "and the seam recorded none")
 }
 
 /// <p>The real leg: a <code>PUT</code> of the instance's own settings, through the port, answers 200 with the

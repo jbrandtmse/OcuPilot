@@ -733,6 +733,15 @@ test("Story 18.23: the audit log's encryption change is one consequence sentence
   assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "the audit change's sentence is published in EXPERIENCE.md's Fixed strings");
 });
 
+test('Story 18.23: the form draws the Interactive refusal on the start-mode field by the code the kernel declares', () => {
+  // Mutation (Rule 19): change STARTUP_INTERACTIVE_CODE in encryption-startup.store.ts -> this goes red.
+  const kernel = /Parameter STARTUPINTERACTIVE = "([^"]+)";/.exec(readFileSync(PROHIBITED, 'utf8'));
+  assert.notEqual(kernel, null, 'Prohibited.cls declares STARTUPINTERACTIVE');
+  const store = /export const STARTUP_INTERACTIVE_CODE = '([^']+)';/.exec(readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8'));
+  assert.notEqual(store, null, 'encryption-startup.store.ts declares STARTUP_INTERACTIVE_CODE');
+  assert.equal(store[1], kernel[1], "the store matches the server's refusal by the kernel's own code");
+});
+
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of REASONADMINLAST in EncryptionKeyFileRemoveAdmin.cls -> this goes red naming both.
   for (const [file, parameter, key] of ENCRYPTION_SENTENCES) {

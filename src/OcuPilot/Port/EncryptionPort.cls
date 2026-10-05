@@ -1153,7 +1153,7 @@ ClassMethod EncryptedOnDisk(Output pNames As %DynamicArray, Output pHttpStatus A
 /// vendor's own <code>SYS.Database</code> and its <code>EncryptedDB</code> read, in <code>%SYS</code> (AD-16).
 /// A database that cannot be found or opened, or a throw, answers an error. Called by
 /// <method>EncryptedOnDisk</method> after its gate, never by a caller of the port.</p>
-ClassMethod DatabaseEncryption(pName As %String, Output pDirectory As %String, Output pEncrypted As %Boolean) As %Status
+ClassMethod DatabaseEncryption(pName As %String, Output pDirectory As %String, Output pEncrypted As %Boolean) As %Status [ Private ]
 {
     Set pDirectory = ""
     Set pEncrypted = 0

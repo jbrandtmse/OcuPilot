@@ -16,7 +16,7 @@ ClassMethod ArmDirectories(pDirectories As %List)
 }
 
 /// <p>The port's own read of <var>pName</var>, reporting it encrypted when its directory is armed.</p>
-ClassMethod DatabaseEncryption(pName As %String, Output pDirectory As %String, Output pEncrypted As %Boolean) As %Status
+ClassMethod DatabaseEncryption(pName As %String, Output pDirectory As %String, Output pEncrypted As %Boolean) As %Status [ Private ]
 {
     Set tSC = ##super(pName, .pDirectory, .pEncrypted)
     If $$$ISERR(tSC) Quit tSC

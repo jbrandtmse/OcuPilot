@@ -190,12 +190,11 @@ Method TestTheStartupArmJudgesTheSettingsTheWriteLeaves()
 
 /// <p>C3, Decision 1: the merge leaves out the startup key file, an <code>AuditEncrypt</code> it does not
 /// change (the port reads it at the write) and a key id it does not change; a changed
-/// <code>AuditEncrypt</code> carries the value it reviewed under its own key; the unchanged count is the
+/// <code>AuditEncrypt</code> is carried with no key the port does not send; the unchanged count is the
 /// payload's properties no row names.</p>
 /// <p>Mutation (Rule 19): keep the fresh read's <code>AuditEncrypt</code> in
 /// <method>OcuPilot.Screen.Tool.EncryptionStartupUpdate.MergeUpdate</method> when the arguments do not change
-/// it -- the first leg goes red; leave <parameter>OcuPilot.Screen.Tool.EncryptionStartupUpdate.REVIEWEDAUDITFIELD</parameter>
-/// out -- the second goes red; keep an unchanged key id -- the third goes red.</p>
+/// it -- the first leg goes red; keep an unchanged key id -- the third goes red.</p>
 Method TestTheMergeShapesThePayload()
 {
     Set tTool = ..#TOOL
@@ -207,7 +206,7 @@ Method TestTheMergeShapesThePayload()
     Do $$$AssertEquals(..Fields(tDiff) _ " " _ tUnchanged, "DBEncStartMode,DBEncStartKMIPServer 3", "two rows and three unchanged")
     Set tSC = $ClassMethod(tTool, "MergeUpdate", tFresh, {"Name": "SYSTEM", "AuditEncrypt": false}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
     Do $$$AssertStatusOK(tSC, "an audit change merges")
-    Do $$$AssertEquals(tPayload.%Get("AuditEncrypt") _ " " _ tPayload.%Get("AuditEncryptReviewed") _ " " _ ..Fields(tDiff), "0 1 AuditEncrypt", "its payload carries the change and the value it reviewed, which no row names")
+    Do $$$AssertEquals(tPayload.%Get("AuditEncrypt") _ " " _ ..Keys(tPayload) _ " " _ ..Fields(tDiff), "0 AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp,DBEncJournal,DBEncStartKMIPServer,DBEncStartMode AuditEncrypt", "its payload carries the change, which its one row names, and no key the port does not send")
     Set tSC = $ClassMethod(tTool, "MergeUpdate", tFresh, {"Name": "SYSTEM", "AuditEncrypt": true, "DBEncJournalKeyID": "K2"}, "Name", tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
     Do $$$AssertStatusOK(tSC, "a key id change merges")
     Do $$$AssertEquals(..Keys(tPayload) _ " " _ ..Fields(tDiff), "DBEncIRISSecurity,DBEncIRISTemp,DBEncJournal,DBEncJournalKeyID,DBEncStartKMIPServer,DBEncStartMode DBEncJournalKeyID", "an unchanged AuditEncrypt and default key id are left out, the changed journal key id carried")
