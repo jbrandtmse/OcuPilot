@@ -780,3 +780,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-05T17:59:00Z	Story 18.23	rework_opened	cycle_iteration=4 iteration=1 trigger=smoke(lead_measurement_before_QA) items=DW-2098 scope_baseline=pending
 2026-10-05T17:59:00Z	Epic 18	throwaway_rebuilt	container=ocupilot-b-ci by=runner reason=DW-2098_measurement_left_it_exited result=healthy STARTPATH-OK encryption=S0 test_classes=1010 tree=82f6373a
 2026-10-05T17:59:00Z	Epic 18	spine_updated	ad=AD-10(start_arm_on-disk_state),AD-27(18.23_case_EncryptedDB_read) reason=rule20(measured;within_Decision_8) by=runner story=18-23 lint=ok(pre-existing_low) memlog=appended
+2026-10-05T17:59:31Z	Story 18.23	stage_spawned	stage=implement spawn_at=2026-10-05T17:59:31Z model=opus agent_name=18-23-encryption-startup-settings-implement-4 cycle_iteration=4 rework=1 items=DW-2098 prompt=/tmp/epic-18-d7/implement-1823-prompt-4.md
