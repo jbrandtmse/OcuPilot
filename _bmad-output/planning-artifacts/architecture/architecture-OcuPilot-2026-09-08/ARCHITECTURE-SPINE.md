@@ -259,6 +259,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 18.22's encryption keys declare Security's set**; the activations also declare `PathPort`'s `%Admin_FileSystemAccess:USE` and nothing more, and the deactivations nothing beyond the screen's set, each refused by name before any port call (measured on `ocupilot-b-ci`, 2026-10-05) [AMENDED 2026-10-05, Story 18.22 Task 0, Rule 20].
 
+  **Story 18.23's startup settings declare Security's set**; the write declares no pair beyond it, and `PathPort`'s `%Admin_FileSystemAccess:USE` when a root is sent, refused by name before any port call (measured on `ocupilot-b-ci`, 2026-10-05: a principal holding exactly Security's two pairs read the settings and the KMIP servers and wrote the unchanged `PUT`) [AMENDED 2026-10-05, Story 18.23 Task 0, Rule 20].
+
   **Story 19.6** [AMENDED 2026-10-03, Story 19.6 spec gate, Rule 20]: the SQL console's write declares no pair beyond its screen's; its SQL privileges, checked by the instance at prepare and, for a DDL statement whose type names a system privilege, by `%CHECKPRIV` at run, and the databases it writes are the instance's to refuse (measured).
 
   **Story 19.7** [AMENDED 2026-10-04, Story 19.7 spec gate, Rule 20]: the data browser declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured). **Story 19.8** [AMENDED 2026-10-04, Story 19.8 spec gate, Rule 20]: the data browser's save declares no pair beyond its screen's; its SQL privileges are the instance's at prepare (measured).
