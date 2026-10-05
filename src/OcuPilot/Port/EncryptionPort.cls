@@ -35,9 +35,8 @@
 /// <li><code>Settings</code> <code>GET</code> and <code>PUT</code> (Story 18.23): the read takes no
 /// query; the write is <method>StartupWrite</method>, behind <method>SettingsGate</method> and
 /// <method>StartupProblems</method>, with <code>DBEncStartKeyFile</code> composed here alone.</li>
-/// <li><parameter>KMIPSERVERSTYPE</parameter> and <parameter>STARTUPADMINTYPE</parameter>, AD-27's named
-/// case: the configured KMIP servers' names, and whether the stored startup key file and administrator
-/// are a given key file and administrator, never the stored name.</li>
+/// <li><parameter>KMIPSERVERSTYPE</parameter>, AD-27's named case: the configured KMIP servers'
+/// names.</li>
 /// </ul>
 /// <p>Every body is built here from the declared arguments in the query and the declared secrets in
 /// the body, and a password is held in a local cleared right after the call (AD-35, AD-56 (i)). Any
@@ -117,13 +116,9 @@ Parameter COMPOSEDTYPES = "Security.Encryption.Key/DEACTIVATE";
 /// <p>The startup settings endpoint (Story 18.23).</p>
 Parameter SETTINGSENDPOINT = "Security.Encryption.Settings";
 
-/// <p>The port-composed reads of what the admin API does not answer about the startup settings (AD-27's
-/// named case): <code>{Names}</code>, the configured KMIP servers; and
-/// <code>{StartupAdministrator}</code>, whether the stored startup key file and administrator are the
-/// query's.</p>
+/// <p>The port-composed read of what the admin API does not answer about the startup settings (AD-27's
+/// named case): <code>{Names}</code>, the configured KMIP servers.</p>
 Parameter KMIPSERVERSTYPE = "KMIPSERVERS";
-
-Parameter STARTUPADMINTYPE = "STARTUPADMIN";
 
 /// <p>The start modes, in the vendor's order (0 to 3).</p>
 Parameter STARTMODES = "None,Interactive,Unattended,KMIP";
@@ -197,8 +192,6 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..Call(..#SETTINGSENDPOINT, "GET", .tQuery, "", .pResult, .pHttpStatus, .pFault)
             } ElseIf pType = ..#KMIPSERVERSTYPE {
                 Set tSC = ..KmipServers(.pResult, .pHttpStatus, .pFault)
-            } ElseIf pType = ..#STARTUPADMINTYPE {
-                Set tSC = ..StartupAdmin(.pQuery, .pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tStartup = 0
             }
@@ -836,10 +829,11 @@ ClassMethod StartupWrite(ByRef pQuery, pBody As %DynamicAbstractObject, Output p
     }
     Set tSend = ..StartupBody(tWanted, tFresh, tKeyFile, tNewFile, tAdmin, tValues.%Get("AdminPassword"))
     Set tValues = ""
+    Set tCredentials = (tSend.%GetTypeOf("AdminPassword") '= "unassigned")
     Kill tQuery
     Set tSC = ..Call(..#SETTINGSENDPOINT, "PUT", .tQuery, tSend, .pResult, .pHttpStatus, .pFault)
     Set tSend = ""
-    If $$$ISERR(tSC) Quit ..StartupMapped(tSC, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit ..StartupMapped(tSC, tCredentials, .pHttpStatus, .pFault)
     Quit tSC
 }
 
@@ -1036,12 +1030,21 @@ ClassMethod StartupFault(ByRef pViolations, Output pHttpStatus As %Integer, Outp
 }
 
 /// <p>A vendor refusal of the startup settings write in the product's terms: a violation the admin port
-/// mapped to <parameter>OcuPilot.Api.EncryptionError.STARTUPREQUIRED</parameter> is 409 with its sentence;
-/// a credentials violation is 422 on its field; anything else is the fault as it is.</p>
-ClassMethod StartupMapped(pSC As %Status, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
+/// mapped to <parameter>OcuPilot.Api.EncryptionError.STARTUPREQUIRED</parameter> is 409 with its sentence.
+/// The vendor's #5001, which <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> maps to a
+/// credentials violation, is 422 on <code>AdminPassword</code> only when the write carried credentials
+/// (<var>pCredentials</var>): it is also the code of the vendor's internal faults, so any other #5001 is the
+/// fault as it is, without that row. The admin port has logged each.</p>
+ClassMethod StartupMapped(pSC As %Status, pCredentials As %Boolean, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tCode = ##class(OcuPilot.Api.EncryptionError).#STARTUPREQUIRED
     If ..Carries(pFault, tCode) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, tCode, ##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode), .pHttpStatus, .pFault)
+    Set tCredentials = ##class(OcuPilot.Api.EncryptionError).#KEYFILECREDENTIALS
+    If ..Carries(pFault, tCredentials) {
+        If pCredentials Quit ..Violation(tCredentials, "AdminPassword", .pHttpStatus, .pFault)
+        If $IsObject(pFault) Do pFault.%Remove("detail")
+        Quit pSC
+    }
     Quit ..Mapped(pSC, "", .pHttpStatus, .pFault)
 }
 
@@ -1095,71 +1098,6 @@ ClassMethod KmipServers(Output pResult, Output pHttpStatus As %Integer, Output p
     If $$$ISERR(tSC) Quit tSC
     Set pResult = {}
     Do pResult.%Set("Names", tNames)
-    Quit $$$OK
-}
-
-/// <p><parameter>STARTUPADMINTYPE</parameter> (AD-27's named case, Story 18.23): the query's key file
-/// (<parameter>KEYFILEPARAM</parameter>, or <code>root</code> and <code>path</code>) resolved as a
-/// <code>source</code>, and its <parameter>ADMINPARAM</parameter>; <code>{StartupAdministrator}</code> is
-/// true when the instance's stored startup key file is that file and its stored startup administrator is
-/// that administrator (<method>IsStartupAdmin</method>). The stored name is never answered; any failure
-/// fails the read.</p>
-ClassMethod StartupAdmin(ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
-{
-    Set pResult = ""
-    Set tAdmin = $Get(pQuery(..#ADMINPARAM))
-    If tAdmin = "" Quit ..Arguments("'" _ ..#ADMINPARAM _ "' names the administrator and cannot be empty", .pHttpStatus, .pFault)
-    If '..Named(.pQuery, .tRoot, .tPath) Quit ..Arguments("'root' and 'path' name the key file and cannot be empty", .pHttpStatus, .pFault)
-    Set tSC = ..Resolve(tRoot, tPath, "source", .tFile, .pHttpStatus, .pFault)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..IsStartupAdmin(tFile, tAdmin, .tIs, .pHttpStatus, .pFault)
-    If $$$ISERR(tSC) Quit tSC
-    Set pResult = {}
-    Do pResult.%Set("StartupAdministrator", tIs, "boolean")
-    Set pHttpStatus = 200
-    Quit $$$OK
-}
-
-/// <p>Whether the instance activates its keys at startup from key file <var>pFile</var> as administrator
-/// <var>pAdmin</var>, in <var>pIs</var>: <code>Security.System</code>'s <code>DBEncStartKeyFile</code> equal
-/// to <var>pFile</var> after normalization, and its <code>DBEncStartUsername</code> equal to
-/// <var>pAdmin</var> without regard to case, read with <code>Security.System.Get</code> in
-/// <code>%SYS</code> after the <code>%Admin_Secure:USE</code> gate. A refusal or a throw fails the
-/// read.</p>
-ClassMethod IsStartupAdmin(pFile As %String, pAdmin As %String, Output pIs As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
-{
-    Set pIs = 0
-    Set pHttpStatus = 0
-    Set pFault = ""
-    If '$System.Security.Check("%Admin_Secure", "USE") {
-        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tDetail)
-        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, {"failedPair": "%Admin_Secure:USE"})
-    }
-    Set tError = $$$OK
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Kill tProps
-        Set tError = ##class(Security.System).Get("SYSTEM", .tProps)
-        Set $NAMESPACE = tOrigNS
-        If $$$ISOK(tError) {
-            Set tName = $Get(tProps("DBEncStartUsername"))
-            Set pIs = (tName '= "") && ($ZConvert(tName, "U") = $ZConvert(pAdmin, "U")) && ..SameFile(pFile, $Get(tProps("DBEncStartKeyFile")))
-            Set tName = ""
-        }
-        Kill tProps
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Kill tProps
-        Set tError = ex.AsStatus()
-    }
-    If $$$ISERR(tError) {
-        Set pIs = 0
-        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
-        Do ..LogFault("the startup key file's administrator could not be read", tError, pFault.code)
-        Quit tSC
-    }
-    Set pHttpStatus = 200
     Quit $$$OK
 }
 
@@ -1267,11 +1205,13 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <method>Invoke</method> builds it from the query and the body handed here, whose passwords are
 /// placeholders. A key file the port would refuse, or a rule a non-secret argument breaks, renders no
 /// call and one <code>comment</code> step carrying the refusal's sentence. The lists' state checks are
-/// guards a script cannot carry. An activation and a deactivation are <method>KeySnippet</method>'s.
-/// Every other call is the admin port's script.</p>
+/// guards a script cannot carry. An activation and a deactivation are <method>KeySnippet</method>'s, and
+/// a startup settings write <method>StartupSnippet</method>'s. Every other call is the admin port's
+/// script.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
     If ((pEndpoint = ..#FILEENDPOINT) && (pType = "ACTIVATE")) || ((pEndpoint = ..#ACTIVEENDPOINT) && (pType = "DEACTIVATE")) Quit ..KeySnippet(pEndpoint, pType, .pQuery, pBody, pContext)
+    If (pEndpoint = ..#SETTINGSENDPOINT) && (pType = "PUT") Quit ..StartupSnippet(.pQuery, pBody, pContext)
     Set tWrite = ((pEndpoint = ..#FILEENDPOINT) && (pType = "POST")) || ((pEndpoint = ..#ADMINSENDPOINT) && ((pType = "POST") || (pType = "DELETE"))) || ((pEndpoint = ..#KEYSENDPOINT) && ((pType = "POST") || (pType = "DELETE")))
     If 'tWrite Quit ##super(pEndpoint, pType, .pQuery, pBody, pContext)
     If '..Named(.pQuery, .tRoot, .tPath) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
@@ -1318,6 +1258,41 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     Set tStep = ..RestStep(pEndpoint, pType, .tQuery, tSend, pContext)
     If '$IsObject(tStep) Quit []
     Quit [(tStep)]
+}
+
+/// <p>The startup settings write as a script (AD-59, Story 18.23): one <code>rest</code> step to
+/// <code>Settings</code> <code>PUT</code> carrying <method>StartupBody</method>'s body over the settings read
+/// now, with the startup key file resolved and the password the placeholder
+/// <code>&lt;AdminPassword&gt;</code>. The version gate's refusal, a file named by the caller, and a rule
+/// <method>StartupProblems</method> answers without the password each render one <code>comment</code> step
+/// carrying the refusal's sentence and no call.</p>
+ClassMethod StartupSnippet(ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray [ Private ]
+{
+    Set tSC = ..SettingsGate(.tHttp, .tFault)
+    If $$$ISERR(tSC) Quit [(..Step("comment", ..FaultReason($Get(tFault))))]
+    If ..NamesKeyFile(..#SETTINGSENDPOINT, .pQuery, pBody) Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONPATHNAME))]
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+    Kill tRead
+    Set tSC = ..Call(..#SETTINGSENDPOINT, "GET", .tRead, "", .tFresh, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") Quit [(..Step("comment", ..FaultReason($Get(tFault))))]
+    Set tWanted = ..Wanted(tFresh, pBody, .tProblem)
+    If tProblem '= "" Quit [(..Step("comment", ##class(OcuPilot.Api.Error).#REASONTOOLARGUMENTS))]
+    Set tAdmin = $Get(pQuery("AdminName"))
+    If (tAdmin = "") && (pBody.%GetTypeOf("AdminName") = "string") Set tAdmin = pBody.%Get("AdminName")
+    Set tSC = ..StartupProblems(tWanted, tFresh, $Get(pQuery(..#ROOTPARAM)), $Get(pQuery(..#PATHPARAM)), tAdmin, "", 0, .tKeyFile, .tNewFile, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit [(..Step("comment", ..FaultReason($Get(tFault))))]
+    Set tSend = ..StartupBody(tWanted, tFresh, tKeyFile, tNewFile, tAdmin, "<AdminPassword>")
+    Kill tQuery
+    Set tStep = ..RestStep(..#SETTINGSENDPOINT, "PUT", .tQuery, tSend, pContext)
+    If '$IsObject(tStep) Quit []
+    Quit [(tStep)]
+}
+
+/// <p>The sentence fault <var>pFault</var> carries, or the generic one.</p>
+ClassMethod FaultReason(pFault) As %String [ Private ]
+{
+    If $IsObject(pFault) && (pFault.%Get("reason") '= "") Quit pFault.%Get("reason")
+    Quit ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON
 }
 
 /// <p>Story 18.22's two writes as a script (AD-59): an activation is one <code>rest</code> step to

@@ -77,7 +77,7 @@ Method TestTheErrorCodesAnswerTheirSentences()
 {
     Set tClass = "OcuPilot.Api.EncryptionError"
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 15, "fifteen codes: Story 18.7's nine and Story 18.22's six")
+    Do $$$AssertEquals($ListLength(tCodes), 27, "twenty-seven codes: Story 18.7's nine, Story 18.22's six and Story 18.23's twelve")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)

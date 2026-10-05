@@ -295,6 +295,19 @@ export const CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE = 'ENCRYPTION.KEY.DEACTIVATE';
 export const CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT = 'ENCRYPTION.KEY.ACTIVATEDATAELEMENT';
 export const CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT = 'ENCRYPTION.KEY.DEACTIVATEDATAELEMENT';
 
+/**
+ * Story 18.23: the start mode an encryption startup settings write chooses, an IRISSECURITY or IRISTEMP
+ * change, a journal encryption change and a change to the audit log's encryption, each stated as the form
+ * states it.
+ */
+export const CONSEQUENCE_ENCRYPTIONSTARTUPNONE = 'ENCRYPTION.STARTUP.NONE';
+export const CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE = 'ENCRYPTION.STARTUP.INTERACTIVE';
+export const CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED = 'ENCRYPTION.STARTUP.UNATTENDED';
+export const CONSEQUENCE_ENCRYPTIONSTARTUPKMIP = 'ENCRYPTION.STARTUP.KMIP';
+export const CONSEQUENCE_ENCRYPTIONSTARTUPRESTART = 'ENCRYPTION.STARTUP.RESTART';
+export const CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL = 'ENCRYPTION.STARTUP.JOURNAL';
+export const CONSEQUENCE_AUDITENCRYPTIONCHANGE = 'AUDIT.ENCRYPTIONCHANGE';
+
 /** The field a switch file proposal's diff names the file the instance writes now in. */
 const JOURNAL_CURRENT_FIELD = 'CurrentFile';
 
@@ -376,6 +389,14 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE) return STRINGS.encryptionKeyDeactivateConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT) return STRINGS.encryptionKeyActivateDataElementConsequence;
   if (code === CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT) return STRINGS.encryptionKeyDeactivateDataElementConsequence;
+  // Story 18.23: the form's own option sentences, each published once.
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPNONE) return STRINGS.encryptionStartupNoneConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE) return STRINGS.encryptionStartupInteractiveConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED) return STRINGS.encryptionStartupUnattendedConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPKMIP) return STRINGS.encryptionStartupKmipConsequence;
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPRESTART) return STRINGS.encryptionStartupRestart;
+  if (code === CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL) return STRINGS.encryptionStartupJournalConsequence;
+  if (code === CONSEQUENCE_AUDITENCRYPTIONCHANGE) return STRINGS.encryptionStartupAuditConsequence;
   return '';
 }
 

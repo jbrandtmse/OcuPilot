@@ -36,6 +36,20 @@
 /// key files' passwords (<method>Refusable</method>), so the vendor can only refuse it; any other is
 /// answered 500 without the vendor. A real first activation persistently changes the instance's key
 /// activation at startup, which no test can restore.</p>
+/// <p>Story 18.23's modes. Armed <code>startup</code>, <code>startupfails</code>, <code>kmip</code> or
+/// <code>settingsv1</code>, <method>Call</method> answers <code>Security.Encryption.Settings</code>
+/// <code>GET</code> from a seam-held settings object (<method>HoldSettings</method>,
+/// <method>HeldSettings</method>, first copied from the instance's own) and the active-key lists from
+/// <method>Held</method>, and never sends a settings <code>PUT</code> to the vendor: it records the body's
+/// key names and its non-secret settings values (<method>SentOf</method>; a password never) and applies them
+/// to the held object, as the vendor's <code>RunPut</code> would; under <code>startupfails</code> it
+/// answers the vendor's measured refusal armed with <method>ArmFailure</method> through
+/// <method>Fail</method> instead. <code>kmip</code> also answers the configured KMIP servers from
+/// <method>ArmKmip</method>, and <code>settingsv1</code> answers the settings endpoint's body template
+/// without <code>AdminName</code> and <code>AdminPassword</code>, as an API version 1 instance would. Under
+/// any other mode, armed or not, a settings <code>PUT</code> reaches the vendor only when it carries the
+/// instance's current settings unchanged and no key id or credential; any other is answered 500 without
+/// the vendor.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -60,6 +74,13 @@ ClassMethod Call(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As 
     }
     Set ^||OcuPilotEncryptionSeam("keys", tPair) = tKeys
     Set ^||OcuPilotEncryptionSeam("file", tPair) = $Get(pQuery("file"))
+    If (pEndpoint = ..#SETTINGSENDPOINT) || (tPair = "Security.Encryption.Key/LIST") || (tPair = "Security.Encryption.Key/DATAELEMENTLIST") {
+        Set tAnswered = ..StartupAnswer(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .tSC)
+        If tAnswered {
+            Set pLocation = ""
+            Quit tSC
+        }
+    }
     If (tPair = "Security.Encryption.File/ACTIVATE") && ($Get(^||OcuPilotEncryptionSeam("mode")) '= "activation") && '..Refusable(pBody) {
         Set pResult = ""
         Set pLocation = ""
@@ -338,6 +359,169 @@ ClassMethod Held(pKind As %String) As %DynamicArray
     Quit ##class(%DynamicArray).%FromJSON(tText)
 }
 
+/// <p>Whether a Story 18.23 mode is armed.</p>
+ClassMethod StartupArmed() As %Boolean
+{
+    Quit ''$ListFind($ListBuild("startup", "startupfails", "kmip", "settingsv1"), $Get(^||OcuPilotEncryptionSeam("mode")))
+}
+
+/// <p>The answer <method>Call</method> gives without the vendor for a settings read or write, or for an
+/// active-key list, under a Story 18.23 mode; <var>pAnswered</var> 0 for every call the vendor answers.
+/// Outside those modes a settings <code>PUT</code> that would change anything is answered 500.</p>
+ClassMethod StartupAnswer(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pSC As %Status) As %Boolean [ Private ]
+{
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set pSC = $$$OK
+    Set tPair = pEndpoint _ "/" _ pType
+    If '..StartupArmed() {
+        If tPair '= (..#SETTINGSENDPOINT _ "/PUT") Quit 0
+        If ..Unchanged(pBody) Quit 0
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Set pSC = $$$ERROR($$$GeneralError, "the seam sends the vendor no settings PUT that changes anything")
+        Quit 1
+    }
+    If (tPair = "Security.Encryption.Key/LIST") || (tPair = "Security.Encryption.Key/DATAELEMENTLIST") {
+        Set pResult = ..Held($Select(pType = "LIST": "database", 1: "dataElement"))
+        Set pHttpStatus = 200
+        Quit 1
+    }
+    If pType = "GET" {
+        Set pResult = ..HeldSettings()
+        Set pHttpStatus = 200
+        Quit 1
+    }
+    If pType '= "PUT" Quit 0
+    Kill ^||OcuPilotEncryptionSeam("sent")
+    If $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If (tKey = "AdminPassword") || $IsObject(tValue) Continue
+            Set ^||OcuPilotEncryptionSeam("sent", tKey) = $Select(pBody.%GetTypeOf(tKey) = "boolean": $Select(tValue: "true", 1: "false"), 1: tValue)
+        }
+    }
+    If $Get(^||OcuPilotEncryptionSeam("mode")) = "startupfails" {
+        Set pSC = ..Fail(pEndpoint, 500, $$$ERROR(+$Get(^||OcuPilotEncryptionSeam("failcode"), 1217)), .pHttpStatus, .pFault, "", pBody, 0, pType)
+        Quit 1
+    }
+    Set tHeld = ..HeldSettings()
+    For tField = "DBEncStartMode", "DBEncStartKMIPServer", "DBEncStartKeyFile", "DBEncDefaultKeyID", "DBEncJournalKeyID" {
+        If $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string") Do tHeld.%Set(tField, pBody.%Get(tField), "string")
+    }
+    For tField = "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt" {
+        If $IsObject(pBody) && (pBody.%GetTypeOf(tField) '= "unassigned") Do tHeld.%Set(tField, ''pBody.%Get(tField), "boolean")
+    }
+    Do ..HoldSettings(tHeld)
+    Set pResult = tHeld
+    Set pHttpStatus = 200
+    Quit 1
+}
+
+/// <p>Whether a settings <code>PUT</code> body <var>pBody</var> carries the instance's current settings
+/// unchanged, sends no key id and no credential, read through the vendor now.</p>
+ClassMethod Unchanged(pBody As %DynamicAbstractObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
+    For tField = "DBEncDefaultKeyID", "DBEncJournalKeyID", "AdminName", "AdminPassword" {
+        If pBody.%GetTypeOf(tField) '= "unassigned" Quit
+        Set tField = ""
+    }
+    If $Get(tField) '= "" Quit 0
+    Kill tQuery
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#SETTINGSENDPOINT, "GET", .tQuery, "", .tNow, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tNow)) Quit 0
+    Set tSame = 1
+    For tField = "DBEncStartMode", "DBEncStartKMIPServer", "DBEncStartKeyFile", "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt" {
+        If ##class(OcuPilot.Kernel.Proposal.Mint).Display(pBody.%Get(tField), pBody.%GetTypeOf(tField)) '= ##class(OcuPilot.Kernel.Proposal.Mint).Display(tNow.%Get(tField), tNow.%GetTypeOf(tField)) Set tSame = 0 Quit
+    }
+    Quit tSame
+}
+
+/// <p>The seam-held settings object, first copied from the instance's own read.</p>
+ClassMethod HeldSettings() As %DynamicObject
+{
+    Set tText = $Get(^||OcuPilotEncryptionSeam("settings"))
+    If tText '= "" Quit ##class(%DynamicObject).%FromJSON(tText)
+    Kill tQuery
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#SETTINGSENDPOINT, "GET", .tQuery, "", .tNow, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject($Get(tNow)) Quit {}
+    Do ..HoldSettings(tNow)
+    Quit tNow
+}
+
+/// <p>Hold <var>pSettings</var> as the settings the seam answers.</p>
+ClassMethod HoldSettings(pSettings As %DynamicObject)
+{
+    Set ^||OcuPilotEncryptionSeam("settings") = pSettings.%ToJSON()
+}
+
+/// <p>Set the held settings' <var>pField</var> to <var>pValue</var>, a boolean for an encryption setting,
+/// as another writer could between a mint and its confirm.</p>
+ClassMethod SetHeld(pField As %String, pValue As %String)
+{
+    Set tHeld = ..HeldSettings()
+    If $ListFind($ListBuild("DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt"), pField) {
+        Do tHeld.%Set(pField, ''pValue, "boolean")
+    } Else {
+        Do tHeld.%Set(pField, pValue, "string")
+    }
+    Do ..HoldSettings(tHeld)
+}
+
+/// <p>The value the last settings <code>PUT</code> carried under <var>pField</var>, booleans as
+/// <code>true</code> or <code>false</code>, <code>""</code> for a field it did not carry; a password is
+/// never recorded.</p>
+ClassMethod SentOf(pField As %String) As %String
+{
+    Quit $Get(^||OcuPilotEncryptionSeam("sent", pField))
+}
+
+/// <p>Arm the vendor code <code>startupfails</code> answers a settings <code>PUT</code> with.</p>
+ClassMethod ArmFailure(pCode As %Integer)
+{
+    Set ^||OcuPilotEncryptionSeam("failcode") = pCode
+}
+
+/// <p>Arm the KMIP server names <code>kmip</code> answers as configured, comma-separated.</p>
+ClassMethod ArmKmip(pNames As %String)
+{
+    Set ^||OcuPilotEncryptionSeam("kmipnames") = pNames
+}
+
+/// <p>The configured KMIP servers: the names <method>ArmKmip</method> armed under <code>kmip</code>, and the
+/// instance's own otherwise.</p>
+ClassMethod KmipNames(Output pNames As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    If $Get(^||OcuPilotEncryptionSeam("mode")) '= "kmip" Quit ##super(.pNames, .pHttpStatus, .pFault)
+    Set pNames = []
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Set tNames = $Get(^||OcuPilotEncryptionSeam("kmipnames"))
+    For tI = 1:1:$Length(tNames, ",") {
+        If $Piece(tNames, ",", tI) '= "" Do pNames.%Push($Piece(tNames, ",", tI))
+    }
+    Quit $$$OK
+}
+
+/// <p>The endpoint's body template, without <code>AdminName</code> and <code>AdminPassword</code> for the
+/// settings endpoint under <code>settingsv1</code>.</p>
+ClassMethod Template(pEndpoint As %String, Output pTemplate As %DynamicAbstractObject, Output pMethod As %String, pArgument As %String) As %Status
+{
+    If $Data(pArgument) {
+        Set tSC = ##super(pEndpoint, .pTemplate, .pMethod, pArgument)
+    } Else {
+        Set tSC = ##super(pEndpoint, .pTemplate, .pMethod)
+    }
+    If $$$ISERR(tSC) || (pEndpoint '= ..#SETTINGSENDPOINT) || ($Get(^||OcuPilotEncryptionSeam("mode")) '= "settingsv1") Quit tSC
+    If $IsObject($Get(pTemplate)) && pTemplate.%IsA("%Library.DynamicObject") {
+        Do pTemplate.%Remove("AdminName")
+        Do pTemplate.%Remove("AdminPassword")
+    }
+    Quit tSC
+}
+
 /// <p>Forget every recorded call and the armed mode.</p>
 ClassMethod Clear()
 {
@@ -347,7 +531,7 @@ ClassMethod Clear()
 /// <p>Forget every recorded call, keeping the armed mode, its key and the held active lists.</p>
 ClassMethod ClearCalls()
 {
-    Kill ^||OcuPilotEncryptionSeam("calls"), ^||OcuPilotEncryptionSeam("keys"), ^||OcuPilotEncryptionSeam("file")
+    Kill ^||OcuPilotEncryptionSeam("calls"), ^||OcuPilotEncryptionSeam("keys"), ^||OcuPilotEncryptionSeam("file"), ^||OcuPilotEncryptionSeam("sent")
 }
 
 /// <p>The recorded calls, comma-joined in order.</p>
@@ -360,14 +544,15 @@ ClassMethod Calls() As %String
     Quit tOut
 }
 
-/// <p>The recorded calls other than lists, <code>LIST</code> and <code>DATAELEMENTLIST</code>,
-/// comma-joined.</p>
+/// <p>The recorded calls other than reads, <code>LIST</code>, <code>DATAELEMENTLIST</code> and
+/// <code>GET</code>, comma-joined. The startup settings' <code>GET</code> reaches this class's
+/// <method>Call</method> from the key removal's protected-set check.</p>
 ClassMethod Writes() As %String
 {
     Set tOut = ""
     For tI = 1:1:+$Get(^||OcuPilotEncryptionSeam("calls")) {
         Set tPair = $Get(^||OcuPilotEncryptionSeam("calls", tI))
-        If ($Piece(tPair, "/", 2) = "LIST") || ($Piece(tPair, "/", 2) = "DATAELEMENTLIST") Continue
+        If ($Piece(tPair, "/", 2) = "LIST") || ($Piece(tPair, "/", 2) = "DATAELEMENTLIST") || ($Piece(tPair, "/", 2) = "GET") Continue
         Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tPair
     }
     Quit tOut

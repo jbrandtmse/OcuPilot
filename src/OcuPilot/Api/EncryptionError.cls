@@ -142,17 +142,49 @@ Parameter REASONSTARTUPREQUIRED = "Key activation at startup stays on while encr
 /// the endpoint's body template carries no administrator name and password.</p>
 Parameter REASONSETTINGSVERSION = "This instance's admin API does not take the startup administrator in the request body, so change these settings on the classic Database Encryption page.";
 
+/// <p>Story 18.23's consequence codes: the start mode a change chooses, an IRISSECURITY or IRISTEMP
+/// change, and a journal encryption change, each stated as the form states it.</p>
+Parameter STARTUPNONE = "ENCRYPTION.STARTUP.NONE";
+
+Parameter REASONSTARTUPNONE = "Keys are not activated at startup. After each start, encrypted databases stay unmounted until someone activates their key on Database encryption. Choosing None discards the instance's stored unattended credential.";
+
+Parameter STARTUPINTERACTIVE = "ENCRYPTION.STARTUP.INTERACTIVE";
+
+Parameter REASONSTARTUPINTERACTIVE = "Each start asks for a key file on the instance's console. When nobody answers, as in a container, the instance starts without the key and leaves encrypted databases unmounted. While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.";
+
+Parameter STARTUPUNATTENDED = "ENCRYPTION.STARTUP.UNATTENDED";
+
+Parameter REASONSTARTUPUNATTENDED = "Not recommended. The instance stores a credential of its own for this key file and activates the keys at every start with no one present, so anyone who can start the instance and reach the key file can read encrypted data. That credential is an administrator the instance adds to the key file, which stays there after unattended activation is turned off.";
+
+Parameter STARTUPKMIP = "ENCRYPTION.STARTUP.KMIP";
+
+Parameter REASONSTARTUPKMIP = "Each start activates the keys from this KMIP server with no one present.";
+
+Parameter STARTUPRESTART = "ENCRYPTION.STARTUP.RESTART";
+
+Parameter REASONSTARTUPRESTART = "Takes effect at the next restart.";
+
+Parameter STARTUPJOURNAL = "ENCRYPTION.STARTUP.JOURNAL";
+
+Parameter REASONSTARTUPJOURNAL = "New journal files are encrypted from the next journal switch or restart. Switch the journal file on Journals to start now.";
+
+/// <p>The consequence of a change to the audit log's encryption (AD-10, owner decision 2026-10-05), which
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method> names as its effect.</p>
+Parameter AUDITENCRYPTIONCHANGE = "AUDIT.ENCRYPTIONCHANGE";
+
+Parameter REASONAUDITENCRYPTIONCHANGE = "Takes effect at the next start, when the instance encrypts or decrypts the audit database in place; every audit record, the agent's own markers included, is kept. While it is encrypted, a start that cannot activate its key does not finish.";
+
 /// <p>Every <code>ENCRYPTION.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT)
+    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE, ..#STARTUPREQUIRED, ..#STARTUPNONE, ..#STARTUPINTERACTIVE, ..#STARTUPUNATTENDED, ..#STARTUPKMIP, ..#STARTUPRESTART, ..#STARTUPJOURNAL)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its first field in
 /// <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE)
+    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE)
 }
 
 /// <p>The first field a violation code refuses, or <code>""</code>.</p>
@@ -194,6 +226,13 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#STARTUPNOKEY Quit ..#REASONSTARTUPNOKEY
     If pCode = ..#STARTUPKEYINACTIVE Quit ..#REASONSTARTUPKEYINACTIVE
     If pCode = ..#STARTUPREQUIRED Quit ..#REASONSTARTUPREQUIRED
+    If pCode = ..#STARTUPNONE Quit ..#REASONSTARTUPNONE
+    If pCode = ..#STARTUPINTERACTIVE Quit ..#REASONSTARTUPINTERACTIVE
+    If pCode = ..#STARTUPUNATTENDED Quit ..#REASONSTARTUPUNATTENDED
+    If pCode = ..#STARTUPKMIP Quit ..#REASONSTARTUPKMIP
+    If pCode = ..#STARTUPRESTART Quit ..#REASONSTARTUPRESTART
+    If pCode = ..#STARTUPJOURNAL Quit ..#REASONSTARTUPJOURNAL
+    If pCode = ..#AUDITENCRYPTIONCHANGE Quit ..#REASONAUDITENCRYPTIONCHANGE
     Quit ""
 }
 

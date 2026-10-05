@@ -299,6 +299,19 @@ XData Tools
   {"path":"OldAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true},
   {"path":"NewAdminPassword","shape":"literal","templateType":"string","class":"secret","authored":true}
 ]},
+"security.encryptionstartup.update": {"fieldList":"Security.Encryption.Settings","fields":[
+  {"path":"DBEncStartMode","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncJournal","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncIRISSecurity","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncIRISTemp","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AuditEncrypt","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncStartKMIPServer","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncStartKeyFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncJournalKeyID","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DBEncDefaultKeyID","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AdminName","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"written"},
+  {"path":"AdminPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"}
+]},
 "security.ldap.create": {"fieldList":"Security.LDAP","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"LDAPAttributes[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},

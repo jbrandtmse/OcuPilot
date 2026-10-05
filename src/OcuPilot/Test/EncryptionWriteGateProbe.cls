@@ -2,7 +2,8 @@
 /// <class>OcuPilot.Test.EncryptionKeyGate</class> start to drive Stories 18.7's and 18.22's writes as a
 /// <b>real principal</b> (AD-8, AD-29). It logs in as that principal and runs each
 /// step of a plan in the process: the create form's Save through
-/// <class>OcuPilot.Test.EncryptionSaveFixture</class>, a screen action through
+/// <class>OcuPilot.Test.EncryptionSaveFixture</class>, the encryption startup settings' Save through
+/// <class>OcuPilot.Test.EncryptionStartupSaveFixture</class> (Story 18.23), a screen action through
 /// <class>OcuPilot.Test.EncryptionActionFixture</class>, a confirm through
 /// <class>OcuPilot.Test.DatabaseConfirm</class>, a declared read through
 /// <class>OcuPilot.Screen.Read</class>, and the side-bar entry's own gate. Each write reaches the instance
@@ -16,10 +17,10 @@ Parameter SEAM = "OcuPilot.Test.EncryptionSeamPort";
 
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal
 /// <code>{loggedIn, username, steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A step
-/// is <code>{kind: "save"|"action"|"confirm"|"read"|"entry"|"arm", screen, body, proposalId, secrets,
+/// is <code>{kind: "save"|"startupsave"|"action"|"confirm"|"read"|"entry"|"arm", screen, body, proposalId, secrets,
 /// descriptor, criteria, mode, held}</code>; its answer is <code>{http, code, failedPair, calls, writes}</code>,
 /// where <code>calls</code> is how many vendor calls the seam was asked during that step alone and
-/// <code>writes</code> the ones other than lists. An <code>arm</code> step arms the seam in this process with
+/// <code>writes</code> the ones other than reads. An <code>arm</code> step arms the seam in this process with
 /// <code>mode</code> and holds <code>held</code>'s <code>database</code> and <code>dataElement</code> active
 /// lists, which the later steps keep.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
@@ -67,6 +68,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
         Set tSC = ##class(OcuPilot.Test.EncryptionActionFixture).Act(pStep.%Get("screen"), pStep.%Get("body"), .tBody, .tHttp)
     } ElseIf tKind = "save" {
         Set tSC = ##class(OcuPilot.Test.EncryptionSaveFixture).Handle(pStep.%Get("body"), .tBody, .tHttp, .tCache)
+    } ElseIf tKind = "startupsave" {
+        Set tSC = ##class(OcuPilot.Test.EncryptionStartupSaveFixture).Handle(pStep.%Get("body"), .tBody, .tHttp)
     } ElseIf tKind = "read" {
         Kill tCriteria
         Set tCriteriaObject = pStep.%Get("criteria")

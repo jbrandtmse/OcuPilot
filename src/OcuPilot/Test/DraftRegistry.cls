@@ -73,8 +73,11 @@ Parameter ARGUMENTVALUES = "osmgmt.ecpdataservers.changestatus=Status:disabled";
 /// password placeholders are pinned against a real probe file by
 /// <method>OcuPilot.Test.EncryptionKeyFileWrite.TestTheScriptRendersTheResolvedFileAndPasswordPlaceholders</method>.
 /// Story 18.22's two activations resolve their key file the same way; their placeholders are pinned by
-/// <method>OcuPilot.Test.EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder</method>.</p>
-Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate";
+/// <method>OcuPilot.Test.EncryptionKeyWrite.TestTheScriptRendersTheResolvedFileAndThePlaceholder</method>.
+/// Story 18.23's startup settings update checks the synthetic settings against the instance's rules the
+/// same way; its placeholder is pinned by
+/// <method>OcuPilot.Test.EncryptionStartupWrite.TestThePasswordReachesNoRecord</method>.</p>
+Parameter REFUSEDDRAFTS = "security.encryptionkeyfile.create,security.encryptionkeyfile.addkey,security.encryptionkeyfile.removekey,security.encryptionkeyfileadmins.addadministrator,security.encryptionkeyfileadmins.removeadministrator,security.databaseencryption.activate,security.dataelementencryption.activate,security.encryptionstartup.update";
 
 Method OnBeforeOneTest() As %Status
 {

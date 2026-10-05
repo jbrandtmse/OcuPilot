@@ -250,6 +250,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing/user-events',
       'security/encryption-key-file/administrators',
       'security/encryption-key-file/create',
+      // Story 18.23: the unlisted encryption startup settings form, reached from Database encryption.
+      'security/database-encryption/startup',
       // Story 16.14: the unlisted LDAP editor, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
       'security/oauth/clients/edit',

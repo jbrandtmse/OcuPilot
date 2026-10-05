@@ -71,13 +71,15 @@
 /// <p><code>database-encryption-keys</code> is the instance's set of active database encryption keys, and
 /// <code>data-element-encryption-keys</code> its set of active data-element encryption keys, each one
 /// object whose every id reads as the singleton (AD-13, Story 18.22).</p>
+/// <p><code>encryption-startup</code> is the instance's encryption startup settings, a singleton (AD-13,
+/// Story 18.23).</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

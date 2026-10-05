@@ -2,14 +2,22 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '2b3e5e243163d8a0bfc37d62bad357d5ebfbbd69'
-followup_review_recommended: false
+baseline_revision: '452352dbbef8dfb1e040d13e8ac584697ea99312'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Interactive can still be chosen in a second write after the audit log's, IRISSECURITY's or IRISTEMP's encryption was turned off and before a restart has decrypted the database.
+    evidence: |-
+      PROHIBITED.STARTUPINTERACTIVE judges the flags (AD-10's parenthetical); after an AuditEncrypt-off write the database stays encrypted until the next start decrypts it, which needs the key (inference: R4 measured an abort only with the flag on).
+      To settle: measure an Interactive start with AuditEncrypt off and IRISAUDIT still encrypted on a throwaway; if it aborts, add an AD-27 read of each database's EncryptedDB and widen AD-10.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls LeavesInteractiveRequired
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -247,6 +255,25 @@ Steps, in order:
 
 ## Review Triage Log
 
+### 2026-10-05 — Review pass
+
+- verdicts: 14 findings — high 1, medium 5, low 7, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) The four encryption-setting sentences and the two key hints had no DOM assertion (C2's flag half) — the page spec's C2 test now pins the four labels, their sentences and both hints in order; mutation recorded.
+  - `[low]` `[patch]` (verification-gap) `app.ts`'s sign-out reset of the new root store had no leg in the `app.spec.ts` roster — leg added (`storedKeyFile` and `adminName` empty after sign-out); mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) The form read's KMIP list was checked only as `[]` against `[]` — `EncryptionStartupSaveFixture.Form` and `EncryptionStartupRead.TestTheFormReadAnswersTheConfiguredKmipServers` answer two seam-armed servers; mutation recorded.
+  - `[low]` `[patch]` (verification-gap) C4's typed name was typed from the page's own constant — the page spec types the literal `IRISAUDIT`; mutation recorded.
+  - `[medium]` `[patch]` (verification-gap) The store's "keeps no password" check read `saveBody()`, which can never hold it — the store spec scans every store field after the Save, with a positive control; mutation recorded.
+  - `[low]` `[reject]` (verification-gap) The self-review diff starts at HEAD, so `f268a30e`'s port plumbing is outside it, and the old Auto Run Result read blocked — the skill captures its own baseline and the runner sets the code review's baseline to `2b3e5e24`; the Auto Run Result is rewritten at finalize; the fix would edit this spec's frontmatter.
+  - `[low]` `[reject]` (verification-gap) `AuditEncryptReviewed` changes no outcome, since the confirm's digest already refuses a moved `AuditEncrypt` — the spec gate made this mechanism the concrete one and it is harmless; its mutation line records that the confirm refuses without it.
+  - `[medium]` `[patch]` (verification-gap) The C7 log scan was never shown able to fail (`LinesAfter` answers `[]` on a failed link) — a control line written to `messages.log` after the writes must be found by the same scan; mutation recorded.
+  - `[high]` `[patch]` (intent-alignment) A single write choosing Interactive while turning the audit log's, IRISSECURITY's or IRISTEMP's encryption off passed, though the intent refuses Interactive while one is encrypted "now or at the next start" — `Prohibited.LeavesInteractiveRequired` also reads the instance's flags when the write changes the mode to Interactive, the store's `modeRefusal` mirrors it, and server legs on both callers and client legs pin it (mutations recorded). The residual two-write case (flag off, then Interactive before a restart decrypts the database) is deferred, unverified.
+  - `[false]` `[reject]` (intent-alignment) The agent's Interactive proposal is minted and refused only at the confirm — every `PROHIBITED.*` arm is evaluated at the write (AD-10, AD-40); the confirm refuses 403 with zero `PUT`, as the intent's "before any write, from either caller" asks.
+  - `[medium]` `[patch]` (intent-alignment) The matrix's Read row expects the stock values, but the server test pinned only agreement — `TestTheFormAndTheToolReadTheSameNineSettings` asserts None, four false and five empty.
+  - `[low]` `[patch]` (intent-alignment) Only `EncryptionStartupWrite` ended with the audit facts as found — `Read`, `Gate` and `Descriptor` now compare `EncryptionStartupWrite.Facts()` before and after each test.
+  - `[low]` `[reject]` (intent-alignment) The diff's baseline leaves `f268a30e`'s port code out — same root cause and route as the verification-gap baseline row.
+  - `[low]` `[reject]` (intent-alignment) `AuditEncryptReviewed` is pinned only by the payload-shape test — same root cause and route as the verification-gap row on it.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-27, AD-52 (`EncryptionPort` extends `AdminPort`; `KMIPSERVERS` is AD-27's 18.23 case, and `STARTUPADMIN` joins it only on DW-2065's breaking branch); AD-26 (the version gate; nothing queues); AD-3, AD-4 (the merge and its named exception); AD-5, AD-36, AD-44 (one descriptor whose page issues Database encryption's read; no `CLASSICPAGES`); AD-6, AD-34, AD-40, AD-53, AD-55, AD-56 (two callers of one tool, the closed confirm channel over `AdminPassword`); AD-8, AD-29 (Security's pairs, measured); AD-10 (`AUDIT.ENCRYPTIONCHANGE`; `PROHIBITED.STARTUPADMIN` only on the breaking branch); AD-13, AD-14 (the singleton, its change event); AD-15, AD-53 (a vendor event on every settings `PUT`, so no named case); AD-21 (the key file as a sixth-case `source`); AD-22 (one key, `false`); AD-24, AD-35, AD-48 (no secret returned or logged); AD-39; AD-58; AD-59.
@@ -359,13 +386,53 @@ Steps, in order:
 - C7: the port writes the `PUT` body to `messages.log` → the marker leg.
 - C8 (DW-2065): `KeyFile`'s `STARTUPADMIN` step skipped → the `startupadmin` legs; a failed read answering false → `startupadminfails`.
 - C9: the baseline key dropped → `GovernanceBaseline`; the link removed (rebuilt) → `encryption-keys.page.spec.ts` and the browser spec.
+- mutation: the descriptor's read declares `LIST` for `GET` → `EncryptionStartupRead.TestTheFormAndTheToolReadTheSameNineSettings` and `TestTheWireReadsAnswerWithNoCredential` red (run 43)
+- mutation: Unattended's code dropped from `EncryptionStartupUpdate.MODECONSEQUENCES` → `EncryptionStartupDescriptor.TestTheConsequenceNamesEachChange` and `TestTheCodesAnswerTheirSentences` red (run 44)
+- mutation: `MergeUpdate` keeps the fresh read's `AuditEncrypt` → `EncryptionStartupWrite.TestTheWriteReadsAuditEncryptionAtTheWrite` red (run 45) and `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 46)
+- mutation: `MergeUpdate` keeps an unchanged key id → `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 48); `EncryptionStartupWrite` stays green because `StartupBody` drops it (run 47), and with `StartupBody` keeping it too `TestFlagsAndKeyIdsChangeOnBothCallers` and `TestAStartModeChangeIsOnePutOnBothCallers` go red (run 50); `StartupBody` alone stays green (run 49)
+- mutation: `Prohibited.WeakensByEffect`'s `AUDIT.ENCRYPTIONCHANGE` branch dropped → `EncryptionStartupWrite.TestAuditEncryptionIsDestructiveAndConfirmsTheReviewedValue` red on the destructive legs (run 51)
+- mutation: `REVIEWEDAUDITFIELD` left out of the payload → `EncryptionStartupDescriptor.TestTheMergeShapesThePayload` red (run 53); `EncryptionStartupWrite`'s reviewed-value leg stays green, the confirm's target digest refusing it on its own (run 52)
+- mutation: `StartupProblems`' active-key check dropped → `EncryptionStartupWrite.TestARefusedChangeSendsNothing` red on the two `ENCRYPTION.STARTUP.NOKEY` legs, a `PUT` recorded by the seam (run 54)
+- mutation: `SettingsGate` always answers OK → `EncryptionStartupWrite.TestTheVersionGateRefusesEveryCaller` red on the Save, the mint and the confirm, a `PUT` recorded (run 55)
+- mutation: `Prohibited.EncryptionStartup`'s Interactive check skipped → `EncryptionStartupWrite.TestInteractiveIsRefusedInBothOrdersOnBothCallers` red on every leg (run 56)
+- mutation: the Interactive check judged only when the mode changes → the same test red on the "under Interactive" legs alone (run 58); judged only when it does not → red on the "Interactive while" legs alone (run 59); reading the mode from the payload alone stays green, the merge carrying it (run 57)
+- mutation: the Save ignores the prohibited verdict → the same test red on the Save legs alone (run 62); the confirm (`Operation`) ignores it for this tool → red on the confirm legs alone (run 63)
+- mutation: the Save answers the body it sent as its read-back → `EncryptionStartupWrite.TestThePasswordReachesNoRecord` red on the marker leg (run 65); the planned `messages.log` mutation was not run, because it writes the marker password to a log; the Save's read-back carrying the password stays green, the answer carrying no sent value (run 64)
+- mutation: `StartupMapped`'s credentials branch dropped → `EncryptionStartupWrite.TestAVendorRefusalArrivesAsOcuPilotsSentence` red on the password leg (run 66)
+- mutation: `StartupBody` sends the credentials for every Unattended write → `EncryptionStartupWrite.TestAStartModeChangeIsOnePutOnBothCallers` red on the stored-file leg (run 67)
+- mutation: the baseline line `security.encryptionstartup.update` dropped → `GovernanceBaseline.TestEveryRegisteredWriteKeyHasABaselineLine` and `TestThePurgeIsTheOneDisabledLine` red (run 68); set `true` → `EncryptionStartupDescriptor.TestTheBaselineKeyShipsDisabled` red (run 69)
+- mutation: the descriptor's `sideBarPosition` 11 → `EncryptionStartupDescriptor.TestTheScreenIsDeclaredAsTheSpecPlacesIt` red (run 70)
+- mutation: `ArgumentPairs`' root branch dropped → `EncryptionStartupDescriptor.TestTheToolDeclaresItsKindPortPairsAndSecret` red (run 71)
+- mutation: `DBEncIRISTemp` dropped from `Prohibited.STARTUPREQUIREDFLAGS` → `EncryptionStartupDescriptor.TestTheStartupArmJudgesTheSettingsTheWriteLeaves` red on the three IRISTEMP legs (run 72)
+- mutation: the version gate dropped from `EncryptionPort.StartupSnippet` → `EncryptionStartupDescriptor.TestTheSnippetRendersEachBranch` red (run 73)
+- mutation: the Save's argument pair check dropped from `HandleUpdate` → `EncryptionStartupGate.TestWithoutTheFileSystemPairALocationIsRefused` red (run 74)
+- mutation: the Save's `Gate` passes every caller → `EncryptionStartupGate.TestWithoutSecuritysResourceEveryReadAndWriteIsRefused` and `TestWithoutTheSystemDatabaseReadTheSaveIsRefused` red (runs 76, 78); dropping only its descriptor check stays green, the write's pairs refusing it (run 75)
+- mutation: the store's `modeRefusal` required-flag check dropped → `encryption-startup.page.spec.ts`'s three "Interactive is aria-disabled" tests and `encryption-startup.store.spec.ts`'s three Decision 8 tests red
+- mutation: the store's `flagRefusal` Interactive check dropped → `encryption-startup.page.spec.ts`'s three "while the mode is Interactive" tests and the store spec's three Decision 8 tests red
+- mutation: the store's KMIP refusal dropped → `encryption-startup.page.spec.ts` and `encryption-startup.store.spec.ts` red; rebuilt and redeployed → `encryption-startup.browser-spec.mjs` C1, C2, C9 red ("KMIP is refused with its reason")
+- mutation: the page's `auditChanged` branch skipped → `encryption-startup.page.spec.ts` C4 red, the `PUT` sent with no dialog
+- mutation: `saveBody` sends both key ids whatever changed → four `encryption-startup.store.spec.ts` tests red
+- mutation: the store's Interactive refusal mapping dropped → `encryption-startup.store.spec.ts` and `encryption-startup.page.spec.ts` AD-10 tests red
+- mutation: the Configure startup settings link removed → `encryption-keys.page.spec.ts` Story 18.23 test red; rebuilt and redeployed → `encryption-startup.browser-spec.mjs` C1, C2, C9 red (the link wait times out)
+- mutation: `Prohibited.LeavesInteractiveRequired` ignores the instance's flags when the write chooses Interactive → `EncryptionStartupDescriptor.TestTheStartupArmJudgesTheSettingsTheWriteLeaves` red on the three same-write legs (run 91) and `EncryptionStartupWrite.TestInteractiveIsRefusedInBothOrdersOnBothCallers` red on the same-write legs of the Save and the confirm (run 93)
+- mutation: `HandleForm` answers `kmipServers` `[]` → `EncryptionStartupRead.TestTheFormReadAnswersTheConfiguredKmipServers` red (run 92)
+- mutation: `EncryptionProbe.LinesAfter` answers `[]` → `EncryptionStartupWrite.TestThePasswordReachesNoRecord` red on the log scan's control line (run 93)
+- mutation: the store's `modeRefusal` judges Interactive on the form's flags alone → `encryption-startup.store.spec.ts` "turning an encryption setting off" and `encryption-startup.page.spec.ts` "turning a setting off does not offer Interactive" red
+- mutation: `flagViews` gives IRISTEMP the journal sentence → `encryption-startup.page.spec.ts` C2 red; `AUDIT_DATABASE_NAME` set to `IRISSYS` → C4 red, no `PUT`; the store keeps the password in a field in `save` → the store spec's AD-35 test red; `this.encryptionStartupForm.reset()` removed from `app.ts` → `app.spec.ts` "AD-8: leaving the signed-in state" red
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: Task 0 complete; throwaway rebuild needed: `ocupilot-b-ci` has exited 1 (`RestartCount` 3, `on-failure:3` spent) and every start aborts in single-user mode, because `IRISAUDIT` is encrypted with K1 (`D06ECF7F-C0BD-11F1-ADE7-C6B998C71C8F`) while the persisted `DBEncStartMode` is 1 (Interactive) with `AuditEncrypt` 1, both persisted key ids K1, and no startup key file, administrator or passphrase; `<ManagerDirectory>ocuprobestart/` holds `start-a.key` (K1; C listed; `<K1>_1` and `<K1>_2` hidden), whose credentials were removed; `<ManagerDirectory>Temp/` holds `ocuprobestart-r1-s0.json` and `ocuprobestart-r1-auditfacts.json`; `messages.log` and `alerts.log` hold the #1217 line; no probe principal. Recorded branch: DW-2065 by-design (R1 and R2 both activated).
+Status: done
+Blocking condition: none
 
-- Task 0 re-run, steps 1-13, on `ocupilot-b-ci` (13:07-13:22Z; evidence `/tmp/epic-18-d7/1823/t0r/`): the record is under Design Notes › Measured at implement, re-run, and the AD sentences and bracketed clauses are in the Spec Change Log's Task 0 re-run entry. It stopped at step 13's planned halt; no step-14 halt was met. Nothing was built past step 1, and no source file changed.
-- Open for the runner: Decision 8. While the audit log is encrypted, the vendor accepts Interactive (step 11), and the next start with no console does not finish (R4). Interactive's sentence does not hold while `AuditEncrypt` is on.
-- `baseline_revision` stays `2b3e5e24`, this story's first implement pass, so `f268a30e`'s step-1 plumbing stays in the reviewed diff.
-- Verified: the record was checked against the evidence (R1 and R2 "Activating encryption key K1", R4's 8 "Failure activating required database encryption key" lines, #1217's text). The evidence carries the passwords only as environment placeholders, and the secret scan of the diff reads 0.
+- **Change:** Encryption startup settings, the unlisted form reached from Database encryption's "Configure startup settings" link, and `security.encryptionstartup.update`, one merge write on `EncryptionPort` behind the explicit version gate, reached by the agent's confirmed proposal and the form's Save (AD-55). `AuditEncrypt` is read at the write; a change to it is destructive (`AUDIT.ENCRYPTIONCHANGE`) and asks for `IRISAUDIT` on the Save. Interactive is refused `PROHIBITED.STARTUPINTERACTIVE` in both orders, also when one write chooses it and turns the flag off. DW-2065's `STARTUPADMIN` plumbing from `f268a30e` is deleted and `KMIPSERVERS` kept. Built by the handoff subagent; this stage reviewed, patched and verified it. No real key was activated, no real startup setting changed, and `ocupilot-b-ci` was never restarted (S0 re-read after the mutations and after the sweep).
+- **Files (62):**
+  - Server, new: `Area/Security/EncryptionStartupSave.cls` (Save and form read), `Screen/Descriptor/EncryptionStartup.cls`, `Screen/Tool/EncryptionStartupUpdate.cls` (merge, consequence, pairs), `Screen/Tool/EncryptionStartupMint.cls` (version gate and rules before the mint).
+  - Server, changed: `Port/EncryptionPort.cls` (`STARTUPADMIN` removed; credentials mapping; `StartupSnippet`), `Port/AdminPort.cls` (`PROPERTYFAULTS` #1217, #1212, #1213, #5001), `Api/EncryptionError.cls` (codes, consequences), `Kernel/Proposal/Prohibited.cls` (type, `STARTUPINTERACTIVE`, `AUDIT.ENCRYPTIONCHANGE`), `Kernel/Governance/Baseline.cls` (`false`), `Api/Router.cls`, `Kernel/EntityType.cls`, `Kernel/EntityRef.cls`, `Screen/Tool/Classification.cls`, `ToolFields.cls` (regenerated).
+  - Server tests, new: `EncryptionStartupDescriptor`, `Read`, `Write`, `Gate`, `Prohibited`, `SaveFixture`, `SeamEncryptionStartupUpdate`; changed: `EncryptionSeamPort` (startup modes; `Writes` skips reads), `EncryptionWriteGateProbe`, and the rosters `Descriptor`, `ReadTool`, `SurfaceCoverage`, `Prohibited`, `GovernanceBaseline`, `Governance`, `ToolRoundTrip`, `ToolWrite` (`AHEADTYPES` emptied), `DraftRegistry`, `EncryptionDescriptor`, `EndpointCoverage`, `Wire`, `WireSecurityRead`, `WireOAuthRead`, `AuditingUpdate` (28 codes), `ToolEmit` (the tool's pairs); `scripts/ci-throwaway.sh` (arming rosters).
+  - Client: `areas/security/encryption-startup.page.ts` and `.store.ts` with specs, `encryption-keys.page.ts` (the link) and its spec, `core/proposal-view.ts`, `core/strings.ts`, `core/screens.generated.ts` (regenerated), `shell/screen-outlet.ts`, `app.ts` and `app.spec.ts` (sign-out reset), `ui/angular.json` (2962kB, measured 2,961,623 bytes), `ui/browser/encryption-startup.browser-spec.mjs`, and the tools tests `angular-json`, `field-lists`, `navigation`, `proposal-view`, `screen-mirror`, `self-protection`.
+  - Docs: EXPERIENCE.md :168, :173, :364, :516 in place (1036 lines); this spec.
+- **Review (two layers, 14 findings):** patched 9 (high 1, medium 5, low 3), rejected 5 (low 4, false 1), deferred 1 residual; each is a row of the Review Triage Log. The Matrix Test Audit also moved the journal legs to Interactive, the matrix's mode.
+- **Follow-up review:** recommended (`true`): a high was patched. The risk to check is the widened Interactive predicate: it now reads the instance's flags when a write chooses Interactive, on the server (`LeavesInteractiveRequired`) and in the store (`modeRefusal`), and both copies must stay equal.
+- **Verification:** each story class, roster class and loop browser spec green on `ocupilot-b-ci`; this pass's patches re-run (`EncryptionStartupDescriptor` 10, `Read` 4, `Write` 10, `Gate` 4, 0 failed, runs 87-90); 8 mutations demonstrated red and reverted byte-identical (Verification); loop browser specs 11/11 on the rebuilt, redeployed bundle; `test:tools` 1825/1825; `test:components` 2503/2503; `npm run build` clean; `check-objectscript` 0; `lint-docs` 0; full ObjectScript sweep 469 classes, 3842 tests, 4 failed in 3 classes, each this story's: `AuditingUpdate` and `ToolEmit` pinned rosters the story moved (fixed), and `EncryptionKeyFileWrite` counted the startup settings `GET` that `f268a30e` routes through `EncryptionPort.Call` as a write (the seam's `Writes` now skips reads; product behavior unchanged); after the fixes `AuditingUpdate` 11, `EncryptionKeyFileWrite` 11, `ToolEmit` 11, `EncryptionKeyWrite` 8, `EncryptionKeyGate` 3, `EncryptionStartupGate` 4 and `EncryptionStartupWrite` 10 green (runs 563-569); `smoke.sh --container ocupilot-b-ci` 49/49 (agentswitches skipped); no `OCUPROBESTART` file or principal remains and every encryption and audit fact reads as at S0 (another suite's `OcuPilotProbeProhibitedRouteRole` was left by `ProhibitedRoute`, which this story does not touch); the staged-diff secret scan reads 0.
+- **Residual risks:** the deferred two-write Interactive case (unverified, needs a measured start); the count pins in `Test/Descriptor.cls` and `Test/ReadTool.cls`, `ui/angular.json`'s budget, `screens.generated.ts`, `EntityType.cls`'s list and EXPERIENCE.md :364 are lines Epic 19 also changes, so the boundary merge re-derives them; named limit (4) stands: the audit dialog renders only in the component spec.

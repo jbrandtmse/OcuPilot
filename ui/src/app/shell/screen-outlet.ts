@@ -71,6 +71,7 @@ import { EcpSettingsPage } from '../areas/os-management/ecp-settings.page';
 import { EncryptionKeyFilePage } from '../areas/security/encryption-key-file.page';
 import { EncryptionKeyFileFormPage } from '../areas/security/encryption-key-file-form.page';
 import { EncryptionKeysPage } from '../areas/security/encryption-keys.page';
+import { EncryptionStartupPage } from '../areas/security/encryption-startup.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
@@ -224,6 +225,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   // Story 18.22: Database encryption and Data element encryption, one page over each list of active keys.
   'OcuPilot.Screen.Descriptor.DatabaseEncryption': EncryptionKeysPage,
   'OcuPilot.Screen.Descriptor.DataElementEncryption': EncryptionKeysPage,
+  // Story 18.23: the encryption startup settings form, reached from Database encryption.
+  'OcuPilot.Screen.Descriptor.EncryptionStartup': EncryptionStartupPage,
   // Story 19.1: System Explorer's two lists, each a criteria form drawn from its declared criteria.
   'OcuPilot.Screen.Descriptor.ExplorerClassList': CodeListPage,
   'OcuPilot.Screen.Descriptor.ExplorerRoutineList': CodeListPage,

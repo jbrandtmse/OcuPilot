@@ -262,6 +262,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.22: each set of active encryption keys is one object.
     ['database-encryption-keys', 'singleton'],
     ['data-element-encryption-keys', 'singleton'],
+    ['encryption-startup', 'singleton'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
