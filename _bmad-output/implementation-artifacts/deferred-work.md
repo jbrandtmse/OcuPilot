@@ -9689,6 +9689,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.KeyFile judges KeyInFile/DELETE alone; AdminInFile/DELETE passes the reviewed-few sweep; with DBEncStartMode unattended the instance opens that file with that administrator at startup (inference), so encrypted databases (IRISSECURITY, IRISTEMP included) would not mount
 - 2026-10-05T00:19:26Z status=decision-pending owner=18-23-encryption-startup-settings by=cr note=product call: extend AD-10's key arm to the startup key file's administrator; Story 18.23 builds the unattended startup settings
 - 2026-10-05T03:28:41Z status=routed owner=18-23-encryption-startup-settings by=owner note=owner 2026-10-04: refuse removing the startup key file's administrator, as removing a key a database depends on is refused
+- 2026-10-05T12:35:17Z status=routed owner=18-23-encryption-startup-settings by=merge_gate note=the owner's premise (removing the startup administrator breaks unattended startup) was measured false as stated: unattended activation stores a hidden generated administrator (<key id>_1) that AdminInFile never lists (Task 0 SYS11); option A under the standing grant: the re-run's Task 0 removes the typed administrator A from a two-administrator key file in Unattended mode and restarts; if the key still activates, close by-design with that evidence and drop the STARTUPADMIN check and read; if startup breaks, the owner's refusal stands, built on the name that matters
 
 ### DW-2066: DependsOnKey reads only the journal's configured key (DBEncJournalKeyID); journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
@@ -9840,3 +9841,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: EncryptionKeyRead.TestEachReadAnswersTheSameRowsOnScreenAndTool asserts [] on every list; ScreenRead exempts DatabaseEncryption and its type filter skips DATAELEMENTLIST
 - 2026-10-05T10:31:51Z status=by-design owner=18-22-database-and-data-element-encryption-keys by=cr note=Named limit 2 (the runner's seam branch); ReadFixture with EndpointFixture could feed the screen's LIST path
+
+### DW-2095: IRIS defect candidate: Security.System's AuditEncrypt documentation says the audit database is deleted as soon as the property changes, while 2026.2 encrypts or decrypts it in place at the next start and keeps every record
+- source: spec-18-23-encryption-startup-settings.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.23 Task 0 on ocupilot-b-ci, /tmp/epic-18-d7/1823/t0/s12-s14r: PUT changed nothing at once; restarts logged Encrypting/Decrypting IRISAUDIT; count 222263->222276, oldest row 05:34:18 and the agent's markers kept, inode 12766 unchanged
+- 2026-10-05T12:35:17Z status=decision-pending owner=burndown by=merge_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; not reported

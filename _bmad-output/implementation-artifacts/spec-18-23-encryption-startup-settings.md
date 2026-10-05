@@ -2,7 +2,7 @@
 title: 'Story 18.23: Encryption startup settings'
 type: 'feature'
 created: '2026-10-05'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 baseline_revision: '2b3e5e243163d8a0bfc37d62bad357d5ebfbbd69'
 followup_review_recommended: false
@@ -16,9 +16,9 @@ deferred: []
 
 ## Intent
 
-**Problem:** The classic Database Encryption page's Configure Startup Settings (`%CSP.UI.Portal.EncryptionDatabase`) is still the only place to choose how the instance activates its database encryption keys at startup, which system databases, journal files and audit log it encrypts, and which active key is the default and the journal key. The admin API carries it as `Security.Encryption.Settings` `GET` and `PUT`. DW-2065 rides along: removing the key file administrator that unattended activation opens the startup key file as is not refused.
+**Problem:** The classic Database Encryption page's Configure Startup Settings (`%CSP.UI.Portal.EncryptionDatabase`) is still the only place to choose how the instance activates its database encryption keys at startup, which system databases, journal files and audit log it encrypts, and which active key is the default and the journal key. The admin API carries it as `Security.Encryption.Settings` `GET` and `PUT`. DW-2065 rides along: whether removing a key file's administrator can break unattended activation at startup.
 
-**Approach:** Add an unlisted form, **Encryption startup settings**, reached from Database encryption, with one merge tool on Story 18.7's `EncryptionPort` behind an explicit version gate. Each option states its consequence. An `AuditEncrypt` change takes the destructive treatment on both callers (owner decision 2026-10-05). A Task 0 on `ocupilot-b-ci` runs the reads, refusals and an unchanged `PUT` first, and last one real activation to time `AuditEncrypt`'s deletion; it is planned to end with a throwaway rebuild. Every value change in the build's tests runs through a seam. DW-2065 adds an AD-10 refusal to 18.7's administrator removal.
+**Approach:** Add an unlisted form, **Encryption startup settings**, reached from Database encryption, with one merge tool on Story 18.7's `EncryptionPort` behind an explicit version gate. Each option states its consequence. An `AuditEncrypt` change takes the destructive treatment on both callers (owner decision 2026-10-05). A Task 0 on `ocupilot-b-ci` runs the reads, refusals and an unchanged `PUT` first, and last the measurements its first run left open (DW-2065's two-administrator restart, and an encrypted audit log at a start that cannot activate the key); it is planned to end with a throwaway rebuild. Every value change in the build's tests runs through a seam. DW-2065's refusal is built only if Task 0 measures that removing the typed administrator breaks unattended activation.
 
 ## Boundaries & Constraints
 
@@ -40,7 +40,7 @@ deferred: []
   - its second caller is the form's Save, `PUT /api/ocupilot/encryption-startup` (AD-55).
 - **The body** (AD-4, the vendor's own `RunPut` and `ValidateRequest`, read in source):
   - **Always sent:** `DBEncStartMode`, the four booleans, `AuditEncrypt`, `DBEncStartKMIPServer` and `DBEncStartKeyFile`, as the fresh read holds them with the change applied. The vendor requires all seven.
-  - **`AuditEncrypt` keeps its fresh value unless the person or the proposal changed it**, so a start-mode change never alters it (Decision 1, which restates the orchestrator's ruling).
+  - **`AuditEncrypt` keeps its fresh value unless the person or the proposal changed it**, so a start-mode change never alters it (Decision 1, which restates the orchestrator's ruling). It is read at the write, never carried from the mint, and a proposal that changes it fingerprints the reviewed current value, so a concurrent toggle refuses the confirm (orchestrator conditions 2026-10-05).
   - **Sent only when changed:** `DBEncDefaultKeyID` and `DBEncJournalKeyID`, each the id of an active database key.
   - **`DBEncStartKeyFile` is composed by the port, never by a caller** (AD-21's sixth case, a `source`). For Unattended it is `root` + `path` resolved through `PathPort`, or the stored file when neither is sent; for every other mode it is `""`, as the classic page sends.
   - **`AdminName` and secret `AdminPassword`** are sent only for Unattended with a key file that is not the stored one, as the classic page asks (`:401-405`).
@@ -54,9 +54,9 @@ deferred: []
   - A changed default or journal key id must be active.
 - **`AuditEncrypt` is treated as `security.auditing.purge` is** (owner decision 2026-10-05):
   - A proposal that changes it is minted `destructive`, through the new effect `AUDIT.ENCRYPTIONCHANGE` in `Prohibited.WeakensByEffect`, and carries that consequence.
-  - The form's Save first opens the shared typed-name dialog (`shell/typed-name-dialog.ts`), typed name `IRISAUDIT`. Its body says every audit record, the agent's own markers included, is deleted; its advisory suggests copying or purging on Auditing first.
+  - The form's Save first opens the shared typed-name dialog (`shell/typed-name-dialog.ts`), typed name `IRISAUDIT`. Its body states the measured effect: the change takes effect at the next start, when the audit database is encrypted or decrypted in place, keeping its records. Its advisory says to keep the key file and its administrator available to every start (merge gate 2026-10-05, after Task 0).
   - The screen's Save is not governed.
-- **DW-2065 (owner, binding):** removing an administrator from a key file is refused `PROHIBITED.STARTUPADMIN` from either caller when the instance's stored startup key file is that file and its stored startup administrator is that administrator, read at the write. A read that fails also refuses.
+- **DW-2065 (merge gate 2026-10-05, measurement-gated):** unattended activation stores a hidden generated administrator (`<key id>_1`) the key file's list never names (Task 0). Task 0 removes the typed administrator from a two-administrator key file in Unattended mode and restarts. If the key still activates, DW-2065 closes by-design and no `STARTUPADMIN` check or read is built. If activation breaks, removing that administrator is refused `PROHIBITED.STARTUPADMIN` from either caller, read at the write, and a failed read refuses.
 - **Secrets are write-only** (AD-35, AD-56). `AdminPassword` is:
   - never returned, never stored in a proposal, the ledger, screen context, a store or a log line, and never queued;
   - rendered `"<AdminPassword>"` in a copy-out draft;
@@ -88,11 +88,11 @@ deferred: []
 | Encryption flags (seam) | Journal, IRISSECURITY, IRISTEMP on, with a seam-active key and Interactive | One `PUT`; each flag's consequence code on the card | none |
 | Default and journal key (seam) | Two seam-active keys; choose the other as default, then as journal key | `PUT` carries only the changed id | none |
 | Audit encryption (seam) | `AuditEncrypt` true with Unattended and a seam-active key | Proposal `destructive`, consequence `AUDIT.ENCRYPTIONCHANGE`; Save opens the typed-name dialog first, the `PUT` only after `IRISAUDIT` is typed | none |
-| Refused before `PUT` | KMIP with none configured; Unattended with no file; new file without password or with an unlisted administrator; a flag on with None; a flag on with no active key; an inactive key id | Refused on its field; zero `PUT` | 422 `ENCRYPTION.STARTUP.KMIPSERVER`, `.KEYFILE`, `ENCRYPTION.KEYFILE.CREDENTIALS`, `ENCRYPTION.STARTUP.NEEDSSTART`, `.NOKEY`, `.KEYINACTIVE` |
+| Refused before `PUT` | KMIP with none configured; Unattended with no file; new file without password; a new file with an unlisted administrator; a flag on with None; a flag on with no active key; an inactive key id | Refused on its field; zero `PUT` | 422 `ENCRYPTION.STARTUP.KMIPSERVER`, `.KEYFILE`, `ENCRYPTION.KEYFILE.PASSWORD`, `ENCRYPTION.KEYFILE.CREDENTIALS`, `ENCRYPTION.STARTUP.NEEDSSTART`, `.NOKEY`, `.KEYINACTIVE` |
 | Version gate | Seam answers the template without `AdminName`/`AdminPassword` | Mint, Save and confirm refused; zero `PUT` | 501 `PORT.NOTIMPLEMENTED` (`REASONSETTINGSVERSION`) |
 | Vendor refusal (seam) | Seam answers Task 0's measured codes (startup required, credentials) | Mapped to OcuPilot's sentences; no vendor text sent | 409 `ENCRYPTION.STARTUP.REQUIRED`; 422 credentials (per Task 0) |
 | Password secrecy | Writes carrying a marker password | Marker in no log line, ledger row, proposal, store, screen context, answer or DOM after save | none |
-| DW-2065 (seam) | Seam reports the stored startup key file and administrator as the probe file's listed administrator; and a failed read | Removing that administrator refused on both callers before anything is sent; another administrator is removed | 403 `PROHIBITED.STARTUPADMIN` |
+| DW-2065 (only if Task 0 finds the removal breaks unattended activation) | Seam reports the startup key file and the administrator whose removal breaks it; and a failed read | Removing that administrator refused on both callers before anything is sent; another administrator is removed | 403 `PROHIBITED.STARTUPADMIN` |
 | Link and placement | The story lands | Database encryption shows "Configure startup settings"; the form is unlisted, reached from it | none |
 
 </intent-contract>
@@ -454,6 +454,7 @@ Setup:
   - **AD-10, intent gap (blocks the story):** the item "Changing the audit log's encryption deletes every audit record" is contradicted for the on direction. Nothing was deleted at once, and the next start encrypted `IRISAUDIT` in place, keeping every record. The owner decides the treatment and the sentence. The off direction needs its own measurement, and a fresh throwaway.
   - **AD-10, DW-2065's item:** unattended activation stores a hidden generated administrator (`<key id>_1`), not the typed one, and the key file's administrator list omits it. As written, the arm refuses only that hidden name, so removing the typed administrator stays permitted and does not affect unattended activation (inference: activation uses the hidden administrator). Decision 7's premise needs the owner's re-read.
 - 2026-10-05, runner, after the implement stage's step-17 halt (measured on `ocupilot-b-ci`, evidence `/tmp/epic-18-d7/1823/t0/s14*.out`, `s18x.out`): step 14 ran. `AuditEncrypt` false answered 200 and changed nothing at once (`IRISAUDIT` still encrypted with K1, every record kept). After a graceful restart (12:28:39Z) `messages.log` reads "Decrypting IRISAUDIT database"; `IRISAUDIT` is unencrypted, the same `IRIS.DAT` (inode 12766), the oldest record (05:34:18Z) and the agent's markers kept. So both directions keep every audit record and take effect at the next start, converting the database in place. Also measured: `AdminInFile` `DELETE` of the file's only listed administrator is refused ("A key file keeps at least one administrator"); the hidden startup administrator does not count and is never listed. Steps 15 and 16 were not run; the runner rebuilt the throwaway. Status stays `blocked` until the owner decides `AuditEncrypt`'s treatment and DW-2065's scope (orchestrator clarification). Orchestrator conditions on Decision 1 (2026-10-05): the echoed `AuditEncrypt` is read at the write, never carried from the mint, and a proposal that changes it fingerprints the reviewed current value.
+- 2026-10-05, merge gate answers (orchestrator, under the owner's standing grant; reported to the owner), applied to the intent contract by the runner: `AuditEncrypt` option A (treatment kept, consequence and advisory measured, the key-activation line labeled `(inference)` until Task 0 measures it); DW-2065 option A with a measurement gate; the `ENCRYPTION.KEYFILE.PASSWORD` row; the read-at-write and fingerprint conditions. Deletion claim corrected at origin (epics.md :7519, the spine's AD-10, the epic context, `spec-1-3` :108, `Installer.cls`); AD-10's startup-administrator item and AD-27's `STARTUPADMIN` read withdrawn pending the measurement; DW-2095 filed (vendor documentation candidate). Status `blocked` to `draft` for the re-plan.
 
 ## Review Triage Log
 
