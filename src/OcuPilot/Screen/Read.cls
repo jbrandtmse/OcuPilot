@@ -114,6 +114,11 @@ Parameter HISTORYTYPE = "HISTORY";
 /// (probed against the instance).</p>
 Parameter VOLUMELISTTYPE = "VOLUMELIST";
 
+/// <p>A fifth list-shaped admin request type a source may declare (AD-36, Story 18.22):
+/// <code>Security.Encryption.Key</code>'s active data-element keys, issued the same way as
+/// <parameter>UPCOMINGTYPE</parameter>.</p>
+Parameter DATAELEMENTLISTTYPE = "DATAELEMENTLIST";
+
 /// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
 /// answered as the read's one row, and a 404 answered as none.</p>
 Parameter OBJECTTYPE = "GET";
@@ -355,7 +360,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -541,7 +546,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST, or a bare type read over one member
+            ; An admin LIST, UPCOMING, HISTORY, VOLUMELIST or DATAELEMENTLIST, or a bare type read over one member
             ; (source.rows): the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1

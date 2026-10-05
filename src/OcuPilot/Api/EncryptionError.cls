@@ -1,6 +1,6 @@
-/// <p>The encryption key file screens' codes (AD-39, Story 18.7): every <code>ENCRYPTION.*</code> code
-/// Encryption key files and its form answer, and the one sentence each carries, with the four state
-/// refusals a key-file tool answers as <code>TOOL.ARGUMENTS</code>. They live beside
+/// <p>The encryption screens' codes (AD-39, Stories 18.7 and 18.22): every <code>ENCRYPTION.*</code> code
+/// Encryption key files, its form, Database encryption and Data element encryption answer, and the one
+/// sentence each carries, with the state refusals their tools answer as <code>TOOL.ARGUMENTS</code>. They live beside
 /// <class>OcuPilot.Api.Error</class> rather than in it because that class holds the compiler's limit
 /// of 1,000 parameters (ERROR #5290); <method>OcuPilot.Api.Error.ReasonForToolCode</method> and
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> answer these codes through
@@ -70,10 +70,47 @@ Parameter REASONADMINABSENT = "This administrator is not in this key file.";
 
 Parameter REASONKEYABSENT = "This key is not in this key file.";
 
+/// <p>Refusal code: a mounted encrypted database, or a journal file the instance still needs, uses the
+/// key a deactivation names (409, Story 18.22).</p>
+Parameter KEYINUSE = "ENCRYPTION.KEY.INUSE";
+
+Parameter REASONKEYINUSE = "A mounted encrypted database, or a journal file the instance still needs, uses this key, so it stays active.";
+
+/// <p>Refusal code: the key a deactivation names is the default key or the journal key while another
+/// key is active (409, Story 18.22).</p>
+Parameter KEYROLE = "ENCRYPTION.KEY.ROLE";
+
+Parameter REASONKEYROLE = "This key is the default key for new encrypted databases or the key for encrypted journal files. Make another active key the default and the journal key first.";
+
+/// <p>Consequence codes of Story 18.22's four tools.</p>
+Parameter KEYACTIVATE = "ENCRYPTION.KEY.ACTIVATE";
+
+Parameter REASONKEYACTIVATE = "The keys in this key file become active until they are deactivated or the instance restarts. If no database key was active, the first one also becomes the default key for new encrypted databases and the key for encrypted journal files, and key activation at startup is set to Interactive. Each later start then asks for a key file on the console and, when nobody answers, starts without the key and leaves encrypted databases unmounted, until the startup settings change it.";
+
+Parameter KEYDEACTIVATE = "ENCRYPTION.KEY.DEACTIVATE";
+
+Parameter REASONKEYDEACTIVATE = "An encrypted database that needs this key cannot be mounted until the key is activated again from a key file.";
+
+Parameter KEYACTIVATEDATAELEMENT = "ENCRYPTION.KEY.ACTIVATEDATAELEMENT";
+
+Parameter REASONKEYACTIVATEDATAELEMENT = "The keys in this key file become available to applications that encrypt data elements, until they are deactivated or the instance restarts.";
+
+Parameter KEYDEACTIVATEDATAELEMENT = "ENCRYPTION.KEY.DEACTIVATEDATAELEMENT";
+
+Parameter REASONKEYDEACTIVATEDATAELEMENT = "Data encrypted with this key cannot be read or written until the key is activated again from a key file.";
+
+/// <p>Story 18.22's state refusals, answered as 400 <code>TOOL.ARGUMENTS</code> with
+/// <code>detail.problem</code>.</p>
+Parameter REASONKEYINACTIVE = "This key is not active.";
+
+Parameter REASONKEYSALLACTIVE = "Every key in this key file is already active.";
+
+Parameter REASONKEYDEFAULT = "This is the default key for new encrypted databases while another key is active. Make another active key the default first.";
+
 /// <p>Every <code>ENCRYPTION.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY)
+    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its first field in
@@ -106,6 +143,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#KEYFILEUNREADABLE Quit ..#REASONKEYFILEUNREADABLE
     If pCode = ..#KEYFILENEWKEY Quit ..#REASONKEYFILENEWKEY
     If pCode = ..#KEYFILEREMOVEKEY Quit ..#REASONKEYFILEREMOVEKEY
+    If pCode = ..#KEYINUSE Quit ..#REASONKEYINUSE
+    If pCode = ..#KEYROLE Quit ..#REASONKEYROLE
+    If pCode = ..#KEYACTIVATE Quit ..#REASONKEYACTIVATE
+    If pCode = ..#KEYDEACTIVATE Quit ..#REASONKEYDEACTIVATE
+    If pCode = ..#KEYACTIVATEDATAELEMENT Quit ..#REASONKEYACTIVATEDATAELEMENT
+    If pCode = ..#KEYDEACTIVATEDATAELEMENT Quit ..#REASONKEYDEACTIVATEDATAELEMENT
     Quit ""
 }
 

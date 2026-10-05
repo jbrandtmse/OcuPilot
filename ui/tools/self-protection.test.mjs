@@ -673,8 +673,9 @@ test('Story 18.21 (C5): ecp-ssl-pending and ecp-ssl-authorized answer the tools\
 /** Story 18.7's error class and the key file tools, which declare its published sentences. */
 const ENCRYPTION_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EncryptionError.cls');
 const ENCRYPTION_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `EncryptionKeyFile${name}.cls`);
+const ENCRYPTION_KEY_TOOL = (name) => join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`);
 
-/** Story 18.7's published sentences: `[file, parameter, strings.ts key]`. */
+/** Stories 18.7's and 18.22's published sentences: `[file, parameter, strings.ts key]`. */
 const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONKEYFILEVALIDATION', 'encryptionKeyFileValidation'],
   [ENCRYPTION_ERROR, 'REASONKEYFILEDIRECTORY', 'encryptionKeyFileDirectory'],
@@ -693,6 +694,18 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINLAST', 'encryptionKeyFileAdminLast'],
   [ENCRYPTION_TOOL('RemoveAdmin'), 'REASONADMINABSENT', 'encryptionKeyFileAdminAbsent'],
   [ENCRYPTION_TOOL('RemoveKey'), 'REASONKEYABSENT', 'encryptionKeyFileKeyAbsent'],
+  // Story 18.22: the in-use, role and state refusals and the four consequences, with the tools' copies.
+  [ENCRYPTION_ERROR, 'REASONKEYINUSE', 'encryptionKeyInUse'],
+  [ENCRYPTION_ERROR, 'REASONKEYROLE', 'encryptionKeyRole'],
+  [ENCRYPTION_ERROR, 'REASONKEYINACTIVE', 'encryptionKeyInactive'],
+  [ENCRYPTION_ERROR, 'REASONKEYSALLACTIVE', 'encryptionKeyAllActive'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEFAULT', 'encryptionKeyDefault'],
+  [ENCRYPTION_ERROR, 'REASONKEYACTIVATE', 'encryptionKeyActivateConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEACTIVATE', 'encryptionKeyDeactivateConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYACTIVATEDATAELEMENT', 'encryptionKeyActivateDataElementConsequence'],
+  [ENCRYPTION_ERROR, 'REASONKEYDEACTIVATEDATAELEMENT', 'encryptionKeyDeactivateDataElementConsequence'],
+  [ENCRYPTION_KEY_TOOL('EncryptionKeyWrite'), 'REASONKEYINACTIVE', 'encryptionKeyInactive'],
+  [ENCRYPTION_KEY_TOOL('DatabaseKeyDeactivate'), 'REASONKEYDEFAULT', 'encryptionKeyDefault'],
 ];
 
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {

@@ -1160,7 +1160,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = ..ActivityRowsProblem(pDeclaration)
             If tProblem '= "" Quit
         } ElseIf (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
-            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST' or 'DATAELEMENTLIST'"
             Quit
         }
         ; A path source lists the instance's allowed directories through OcuPilot.Port.PathPort, which
@@ -1270,6 +1270,23 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If tSource.%GetTypeOf("forEach") = "object" {
                 Set tProblem = "read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)"
+                Quit
+            }
+        }
+        ; A DATAELEMENTLIST source lists the instance's active data-element encryption keys (AD-36,
+        ; Story 18.22): Security.Encryption.Key's own request type, under UPCOMING's rules -- a row is
+        ; a key with no detail call to issue and no parent to list.
+        If tSource.%Get("type") = "DATAELEMENTLIST" {
+            If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+                Set tProblem = "read.source.type 'DATAELEMENTLIST' is declared on a '" _ tPort _ "' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on a DATAELEMENTLIST source, whose rows are keys with no detail call to issue (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("forEach") = "object" {
+                Set tProblem = "read.source.forEach is declared on a DATAELEMENTLIST source, which lists no parents (AD-36)"
                 Quit
             }
         }
@@ -1983,8 +2000,9 @@ ClassMethod DeclaresTimeline(pDeclaration As %DynamicObject) As %Boolean [ Priva
 /// endpoint's list of scheduled occurrences, issued as a list is; <code>HISTORY</code>,
 /// <code>Task.CRUD</code>'s task-run history, issued the same way (Story 6.6); and
 /// <code>VOLUMELIST</code>, <code>Database.SysCRUD</code>'s volume-file list, issued the same way
-/// again (Story 6.11).</p>
-Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY,VOLUMELIST";
+/// again (Story 6.11); and <code>DATAELEMENTLIST</code>, <code>Security.Encryption.Key</code>'s active
+/// data-element keys, issued the same way (Story 18.22).</p>
+Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY,VOLUMELIST,DATAELEMENTLIST";
 
 /// <p>The one request type a <code>path</code> source declares (AD-21, AD-36).</p>
 Parameter READTYPEPATH = "LIST";

@@ -442,7 +442,9 @@ ClassMethod EncryptionFacts() As %DynamicObject
         Set tRS = ##class(%ResultSet).%New("SYS.Database:List")
         If $$$ISOK(tRS.Execute("*")) {
             While tRS.Next() {
-                If tRS.Get("Encrypted") Do tEncrypted.%Push(tRS.Get("Directory") _ "|" _ tRS.Get("EncryptionKeyID"))
+                ; The query answers Encrypted as Yes or No (read on this build), never as 1 or 0.
+                Set tFlag = tRS.Get("Encrypted")
+                If (tFlag = 1) || ($ZConvert(tFlag, "U") = "YES") Do tEncrypted.%Push(tRS.Get("Directory") _ "|" _ tRS.Get("EncryptionKeyID"))
             }
         }
         Set tRS = ""

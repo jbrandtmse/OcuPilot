@@ -220,6 +220,8 @@ const AUTHORIZATION_SERVER_MAP = {
         { route: 'security/auditing', allowed: false, failedPair: '%Admin_Secure:USE' },
         { route: 'security/allowed-directories', allowed: false, failedPair: '%Admin_FileSystemAccess:USE' },
         { route: 'security/encryption-key-file', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/database-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
+        { route: 'security/data-element-encryption', allowed: false, failedPair: '%Admin_Secure:USE' },
       ],
     },
     { key: 'agent', allowed: true, screens: [] },
@@ -282,6 +284,8 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
       { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
       { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
       { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.databaseEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
+      { label: STRINGS.dataElementEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
     ]);
 
     items[4].click();

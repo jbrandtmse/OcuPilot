@@ -349,8 +349,9 @@ Method TestAKeyRemovedSinceTheMintClosesTheProposal()
 /// <p>A4, AD-10: removing a key the instance depends on is refused <code>PROHIBITED.OCUPILOTKEY</code> on the
 /// screen and at the confirm, with nothing sent, for each kind the seam can arm: OcuPilot's own database
 /// encrypted with it, IRISSYS (one of the seven protected databases), the install namespace's globals
-/// database, OcuPilot's own database encrypted with a key id that cannot be read, the journal's key, and
-/// each of the four reads that fails.</p>
+/// database, OcuPilot's own database encrypted with a key id that cannot be read, the journal's key, a
+/// journal file the instance still needs for recovery (DW-2066), and each of the five reads that fails,
+/// the journal's use of the key among them.</p>
 /// <p>Mutation (Rule 19): drop the <code>KeyFile</code> arm from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- every leg sends a DELETE and goes red;
 /// drop <method>OcuPilot.Kernel.Proposal.Prohibited.DependsOnKey</method>'s journal comparison, compare a
@@ -361,7 +362,7 @@ Method TestAKeyTheInstanceDependsOnIsNotRemovedOnEitherCaller()
     Set tP = ..#PROBE
     Set ^||OcuPilotEncryptionProhibited = "OcuPilot.Test.EncryptionProhibited"
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.EncryptionProhibited")
-    For tMode = "protected", "system", "namespace", "unreadable", "journal", "readfails", "namesfail", "dirsfail", "settingsfail" {
+    For tMode = "protected", "system", "namespace", "unreadable", "journal", "readfails", "namesfail", "dirsfail", "settingsfail", "journalfiles", "journalfails" {
         Set tFile = "probe-o-" _ tMode _ ".key"
         Do $ClassMethod(..#SEAM, "Clear")
         Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", tFile, , , 256, "OCUPROBE187 O", .tKey), tMode _ ": a key file")

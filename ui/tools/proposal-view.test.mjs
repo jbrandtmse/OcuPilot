@@ -65,6 +65,10 @@ const {
   CONSEQUENCE_ECPSSLREJECT,
   CONSEQUENCE_ENCRYPTIONNEWKEY,
   CONSEQUENCE_ENCRYPTIONREMOVEKEY,
+  CONSEQUENCE_ENCRYPTIONKEYACTIVATE,
+  CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE,
+  CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT,
+  CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -891,4 +895,23 @@ test('Story 18.7: a new encryption key and a key removal state their consequence
     assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], CONSEQUENCE_ENCRYPTIONNEWKEY, `${name}.cls declares the new-key code the card reads`);
   }
   assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool('EncryptionKeyFileRemoveKey'))?.[1], CONSEQUENCE_ENCRYPTIONREMOVEKEY, 'EncryptionKeyFileRemoveKey.cls declares the removal code');
+});
+
+// Story 18.22: an activation and a deactivation, of database keys and of data-element keys, state their
+// consequence on the card under the code their tools declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE` line from `consequenceSentence` ->
+// the second assertion goes red on ''.
+test('Story 18.22: an activation and a deactivation state their consequence on the card', () => {
+  const cases = [
+    [CONSEQUENCE_ENCRYPTIONKEYACTIVATE, STRINGS.encryptionKeyActivateConsequence, 'DatabaseKeyActivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE, STRINGS.encryptionKeyDeactivateConsequence, 'DatabaseKeyDeactivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT, STRINGS.encryptionKeyActivateDataElementConsequence, 'DataElementKeyActivate'],
+    [CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT, STRINGS.encryptionKeyDeactivateDataElementConsequence, 'DataElementKeyDeactivate'],
+  ];
+  const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
+  for (const [code, sentence, name] of cases) {
+    assert.equal(consequenceSentence(code), sentence, `${code} reads its published sentence`);
+    assert.equal(/Parameter CONSEQUENCE = "([^"]+)";/.exec(tool(name))?.[1], code, `${name}.cls declares the code the card reads`);
+  }
 });
