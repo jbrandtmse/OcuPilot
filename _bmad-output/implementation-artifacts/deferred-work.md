@@ -8031,6 +8031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T09:44:59Z status=routed owner=18-7-encryption by=cr note=a screen-adding story extends every pinned list of its area (grep -l ocu-side-bar-label ui/browser); 18.8 and 18.9 meet it too
 - 2026-09-28T08:40:12Z status=resolved-by:16-24-a-try-it-request-copied-as-curl by=merge_gate note=decided: reword the note, leave the pattern; fixed in 20d4a106 (strings.ts, EXPERIENCE :574, AD-57 item 5); CI run 36398685106
 - 2026-09-28T14:26:03Z status=routed owner=18-7-encryption by=adjudication note=restores the 09:44 cr routing; the 08:40 line above is DW-1769's trailer, misplaced here by a union merge
+- 2026-10-05T04:09:40Z status=resolved-by:18-7-encryption by=adjudication note=delivered in 8d0a659a (ui/browser/side-bar-spec.mjs, 18 converted specs) and 9729bef0 (ui/tools/side-bar-pins.test.mjs refuses a count pin); 18.7's committed line claimed it, the trailer was missing
 
 ### DW-1775: Eight candidate admin API defects observed probing namespaces and mappings on 2026.2 (delete without %Admin_Secure answers 500 after deleting; maxRows limits a namespace DELETE's app cascade; client-input errors as 500; v2 async Location points at /v1)
 - source: spec-18-2-namespaces-and-their-mappings.md | severity: low | fix-risk: low | footprint: out-of-footprint
