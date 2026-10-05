@@ -370,3 +370,5 @@
 2026-10-05T11:39:51Z	Epic 19	ledger_filed	DW-2092(low,routed_burndown,by=merge_gate,source=Planner_demo_check_2026-10-05:data_browser_singular_plural_copy) requested_by=main reason=neither_19.10_nor_19.11_touches_the_data_browser
 2026-10-05T11:39:51Z	Story 19.17	ci_pushed	head=15d10122 run=37304229703(pending)
 2026-10-05T11:39:51Z	Story 19.17	stage_spawned	stage=qa spawn_at=2026-10-05T11:39:51Z model=sonnet agent_name=19-17-docdb-browser-qa-1 cycle_iteration=1
+2026-10-05T11:45:35Z	Story 19.17	qa_complete	spawn_at=2026-10-05T11:39:51Z model=sonnet agent=19-17-docdb-browser-qa-1 tests_added=1(system-explorer-docdb_leg3_case_variant_409_on_dialog) mutations_demonstrated=1 closing_sections_present=true
+2026-10-05T11:45:35Z	Story 19.17	stage_spawned	stage=code-review spawn_at=2026-10-05T11:45:35Z model=opus agent_name=19-17-docdb-browser-code-review-1 cycle_iteration=1 review_tier=full-opus
