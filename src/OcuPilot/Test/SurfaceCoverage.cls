@@ -197,6 +197,7 @@ XData Coverage
 <screen name="EncryptionKeyFileForm" class="OcuPilot.Test.EncryptionDescriptor" method="TestTheThreeScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.7's three key file screens are asserted together in one loop"/>
 <screen name="DatabaseEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
 <screen name="DataElementEncryption" class="OcuPilot.Test.EncryptionKeyDescriptor" method="TestTheTwoScreensAreDeclaredAsTheSpecPlacesThem" corpus="Story 18.22's two encryption key screens are asserted together in one loop"/>
+<screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>

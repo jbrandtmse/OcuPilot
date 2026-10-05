@@ -4,7 +4,7 @@
 
 ## Goal
 
-Give developers a System Explorer inside OcuPilot. Fifteen stories are built: code browsing, editing, compiling, export and import; search, compare and macros; the SQL catalog; the guarded query console and its background runs; the data browser; the embedded class reference; and the DocDB browser. Two remain. SQL activity (19.10) lists the statements running on the instance right now, so a slow instance can be diagnosed. Story 19.11 advertises the console's guarded SQL tool to the agent and adds a picker among enabled agent definitions, so an operations agent and a developer agent can differ. Every feature reaches the instance through a port, in process, as the signed-in user. None uses the user's password, and none modifies a vendor web application.
+Give developers a System Explorer inside OcuPilot. Sixteen of seventeen stories are done: code browsing, editing, compile, export and import; search, compare and macros; the SQL catalog; the guarded query console with background runs; the data browser; the class reference; the DocDB browser; and SQL activity. One story remains, 19.11. It advertises the console's guarded SQL tool to the agent and adds a picker among enabled agent definitions, so an operations agent and a developer agent can differ. Every feature reaches the instance through a port, in process, as the signed-in user. None uses the user's password, and none modifies a vendor web application.
 
 ## Stories
 
@@ -28,93 +28,106 @@ Give developers a System Explorer inside OcuPilot. Fifteen stories are built: co
 
 ## Requirements & Constraints
 
-- **One contract.** Every new screen has exactly one descriptor and reaches the outside only through a port with its own gate, never through an HTTP call to `/api/*`. A read tool arrives with each screen. Every write is a server-minted, fingerprinted proposal that a person confirms. Every read is bounded and reports truncation. Every gate checks the caller's own privileges at call time. A destructive key defaults to disabled.
-- **Who gets in.** The API floor is any `%Admin_*` resource or `%Development:USE`. A new surface declares its classic page's `RESOURCE`, read in `irissys/` and never recalled. Confirm each pair set by running as a purpose-built least-privileged principal.
-- **19.10 SQL activity.** Currently executing statements list with their text, statistics and application metadata.
-  - **Source:** `INFORMATION_SCHEMA.CURRENT_STATEMENTS`, a `_PUBLIC`-owned table built from the SQL application metadata stack (`%SYS.AppMetadataStack.SQL.GetStackInfo`). It has one row per running statement, with a `Namespace` column, so the read is instance-wide rather than per namespace (inference).
-  - **Statement text:** `INFORMATION_SCHEMA.GetSQLStatement(Namespace, StatementIndexHash)`. The vendor's note says a `%Development:USE` holder gets every statement's text.
-  - **The classic page** is `%CSP.UI.Portal.SQL.CurrentStatements`, served under `/csp/sys/op/` (System Operation). It declares `RESOURCE = "%Admin_Operate"`, not `%Development`. It selects server, process id, user name, namespace, run type, duration, statement id and hash, transaction nesting level, bound `Parameters`, cached query, `CallerName`, worker count, start time, and parent and child statements. A details pane shows the metadata stack. It auto-refreshes and offers Cancel Query.
-  - **Out of scope:** cancel (`$SYSTEM.SQL.CancelQuery`) is a later catalog row.
-  - **The spec decides:**
-    - the area: OS management, as the classic page and the PRD's OS-section row place it, or System Explorer, as this epic does;
-    - the columns, and whether bound `Parameters` (possibly secret values, AD-35) and the identifying columns are shown;
-    - which port carries the read;
-    - whether the screen joins auto-refresh.
-  - **The port:** `AtelierPort`'s gate adds `%Development:USE` and namespace READ, which is not the classic pair. Its `action/query` carries only fixed statements, prepared with privilege checks off. A fixed in-process read gated on `%Admin_Operate:USE` would match the classic page more closely (inference).
-  - **DW-2093:** rename `ExplorerDescriptor.TestTheAreaHoldsTwentyFourReadsAndEightWrites` (`ExplorerDescriptor.cls:141`) to its real counts, and with it the eight `SurfaceCoverage` rows that name it (`:323-330`), when this story changes those counts.
-- **19.11 agent SQL and picker.**
-  - **The tool:** it advertises `explorer.sqlquery.run` behind the console's guard, prepared in process with privilege checks on (`SqlPort`); a mutating statement is a confirmed proposal. The proposal card must show the real guard (kind, statement type, tables, consequence), so the mint's fresh read is composed from the proposed statement (DW-2004).
-  - **The plan decides:**
-    - whether the tool closes the limit for a called function or procedure that names a server path or changes state (DW-2003);
-    - whether query rows, or statement-index columns such as `UserName`, reach the model, which the spine forbids today;
-    - whether code-carrying DDL is refused for the agent;
-    - how a confirmed statement's SQL error is recorded;
-    - whether the agent may propose row changes through `explorer.sqldata.save`, which would make DW-2057 real.
-  - **The picker:** it chooses among enabled definitions, and the panel names the one in use. Every user can see definitions for selection; only OcuPilot administrators can edit them. The PRD's row (CP-36) has a developer agent and an operations agent differing per area, with an About bubble. Moving the default marker is a security change (AD-42), so a per-user pick belongs in AD-50's per-user store and never moves the marker (inference).
-- **Governance (AD-22).** A story adds each new write key to `Kernel/Governance/Baseline.cls` in the same change, enabled unless its criteria disable it. The baseline grows only by such additions and is never regenerated. Flipping `explorer.sqlquery.run`'s existing `false` is not an addition, so it needs a ruling (inference).
+- **19.11's criteria.**
+  - Given several enabled definitions, the user chooses among them in the picker, and the panel names the one in use.
+  - The agent's SQL tool passes the console's DML and DDL guard, and any mutating statement is a confirmed proposal.
+- **DW-1964.** The tool prepares in process with privilege checks on (`SqlPort`, `%Prepare(text, 1)`). It never passes caller SQL through Atelier's `action/query`, which prepares with checks off (DW-1963).
+- **DW-2004.** A screen action's fresh read carries no statement: `ScreenAction.Run` reads with an empty payload. So the `GUARD` read, `StateDiff` and the fingerprint's guard fields read empty. Compose the mint's fresh read from the proposed statement, so the card shows the real kind, statement type, tables and consequence.
+- **Agent definitions.** These rules come from the PRD's FR-24 and catalog row CP-36.
+  - Every user may see definitions for selection; only OcuPilot administrators may edit them.
+  - Exactly one is the default. Release 1's panel uses it; a picker among enabled definitions is Stage 3.
+  - CP-36 asks for named agents per area, each with an About bubble.
+  - A definition carries its own provider, model, endpoint, credential reference, limits, system prompt override, read-only flag and retention.
+  - A change to its provider, endpoint or credential disables it until Test connection passes.
+- **The contract every surface keeps.**
+  - Each write is a server-minted, fingerprinted proposal that a person confirms.
+  - Each read is bounded and reports truncation.
+  - Each gate checks the caller's own privileges at call time.
 - **Budgets.**
-  - **Bundle:** after the 18.22 merge it measures 2,939,195 B against a 2940kB warning, so any client addition crosses it. Re-base `ui/angular.json` with `angular-json.test.mjs` (DW-1166). Stop and ask above 3,800 kB.
-  - **Fixed strings:** capped at 2,700 in `strings.test.mjs`. 19.17 measured 2,623 before the 18.22 merge added its own, so measure before adding.
+  - **Bundle:** 19.10 measured 2,942,499 B against a 2943kB warning, so any client addition crosses it. Re-base `ui/angular.json` with `angular-json.test.mjs` (DW-1166), and stop to ask above 3,800 kB.
+  - **Fixed strings:** 2,659 of the 2,700 cap, which leaves 41. Raising the cap is a footprint item for the spec gate.
 
 ## Technical Decisions
 
-- **Ports.**
-  - Only `AtelierPort` names `%Api.Atelier.*`. It checks the gate first and the version second, and it logs vendor text but never sends it.
-  - Caller SQL goes through `Port/SqlPort` (`%Prepare(text, 1)`, every value bound, alarm-bounded, statements released per namespace), never through `action/query` (DW-1963, DW-1964).
-  - A new port, or a new call on an existing one, is named in the spine with its gate at the spec gate (AD-29, AD-61, Rule 20). A test pins any vendor-internal routine it calls.
-- **Reads (AD-36, AD-24, AD-60).**
-  - One declared read serves the screen and the tool. It is capped at 1,000 characters a field and 65,536 in all, and it is sanitized before it reaches the model.
-  - A statement's text is a row field, shown cut at 1,021 characters with `...`.
-  - **Screen-only payloads:** console rows and plans, background-run answers, data-browser pages and save outcomes. None of them is ever a declared read, a tool's view or screen context.
-- **No statement read selects a user name, client or call stack** (AD-61 rule 7, written for the catalog's statement tabs).
-- **19.11's tool.** `explorer.sqlquery.run` is AD-53's unadvertised named case; its key ships `false`.
-  - Its target `(class, <ns>, sql)` serializes runs per namespace. Its sibling-cancel effect on agent proposals is 19.11's to revisit.
-  - A console run has no vendor audit event, which is AD-15's named case.
-  - A turn that prepares caller statements extends AD-7's fifth shape.
-  - The agent never reaches a background run (19.15).
-- **The write pattern.** One tool serves two callers, and the screen mints no proposal (AD-53, AD-55). Each write accounts for:
-  - the per-target lock (AD-34);
-  - the fingerprint and the server-computed diff (AD-6, AD-51, AD-54);
-  - read-back (AD-58);
-  - the change event (AD-14);
-  - the copy-out snippet (AD-59);
-  - its classic page (AD-44);
-  - an audit marker or a named gap (AD-15).
-- **Self-protection (AD-10).** `PROHIBITED.OCUPILOTSQL` refuses SQL that names `ocupilot` or touches an `OcuPilot` schema, reads included.
+- **The guard as shipped (19.6).** `SqlPort` runs as follows:
+  - It checks `AtelierPort`'s rule-1 read pairs, then prepares the statement whole as the signed-in user in the target namespace, binding every value.
+  - It classifies by the prepared `statementType`:
+    - `query` (1, 28, 32, 79) runs at once;
+    - `dml`, `ddl`, `call` (45) and `other` need a confirmation;
+    - session, administration and server-file statements are refused by name.
+  - It refuses text that sets a password before any prepare, because the statement index keeps the literal (DW-1982). It refuses a statement with no statement-index row as 422 `EXPLORER.SQL.UNRECORDED`.
+  - It refuses `PROHIBITED.OCUPILOTSQL` on every path, reads included.
+  - A DDL statement tied to a system privilege needs `%CHECKPRIV`. Statements are released per namespace (DW-1986).
+  - An alarm at `TestCall.BoundSeconds` bounds each run, and a transaction the run leaves open is rolled back.
+  - Input is one statement of at most 100,000 characters, at most 100 values, and Max rows from 1 to 1,000.
+- **`explorer.sqlquery.run`.** It is AD-53's unadvertised case (`ADVERTISED 0`).
+  - It is an action-style write on `SqlPort` (AD-51, AD-52): read type `GUARD`, `RUN`, no body.
+  - Its fingerprint covers Namespace, Kind, StatementType, Tables, `statement`, `parameters` and `maxRows`. It is destructive.
+  - It serves the mutating kinds only. A query runs at once through the console's own route, outside the tool.
+  - Its target `(class, <ns>, sql)` serializes runs per namespace, so a confirm cancels every sibling proposal in that namespace (AD-34). 19.11 revisits that.
+  - Its key is `false` in `Baseline.cls`.
+- **Screen-only results (AD-36, AD-39's sixth exception).** A run's rows, plan, SQLCODE and message never reach a declared read, a tool's view, screen context, the ledger or a log line. 19.6 records a confirmed statement's SQL error as `output`. The agent never reaches a background run (19.15).
+- **Named limits.**
+  - A function or procedure that a query or CALL invokes can reach a server path or change state while the statement is still typed a query (AD-21, DW-2003).
+  - A held compile can skip a DDL statement's object privileges (AD-61, inference).
+  - The view base-table limit (AD-10, DW-1987).
+- **Audit.** The vendor records no event for a console run (AD-53's named gap fifteen). AD-15 has no case for an SQL run yet; once the agent proposes one, its marker is that write's only record.
+- **What advertising reopens.** Each item is a spine edit at 19.11's gate (Rule 20).
+  - **AD-53 and AD-8.** The tests that assert the tool is absent from the provider list, the dispatch lookup and the context's `tools` must invert. AD-8's "today ... two Save tools" list omits the license key, `sqlquery.run` and `sqldata.save`, so correct it at origin.
+  - **AD-3.** A tool declares `read` or `write`, and the existing tool covers only the mutating kinds. So an agent query needs a decision: a separate read tool, or proposals for reads too (inference).
+  - **AD-7.** A turn job never mutates the instance. A query run in a turn extends the fifth shape (statement-index rows), and through a called function it could change state (DW-2003) (inference).
+  - **Rows reaching the model** would amend AD-36 and AD-39. An arbitrary table's columns carry no secret classification (AD-3), so only AD-24's bounds and AD-60's sanitizer would stand in front of them.
+  - **Statement metadata.** AD-61 rule 7 keeps user names, clients and call stacks out of the statement reads. A free query of `INFORMATION_SCHEMA`'s statement tables would return them (inference). DW-2096 (a credential literal in statement text) is pending on the burn-down sheet.
+  - **Row changes.** Letting the agent propose them through `explorer.sqldata.save` (unadvertised, `false`) would contradict AD-36's "row values never reach the model" and make DW-2057 real.
+  - **Undecided by 19.6:** refusing code-carrying DDL (types 35-38, 43, 67) for the agent, how the agent supplies `statement`, `parameters` and `maxRows`, and recording a confirmed statement's SQL error.
+- **Governance (AD-22, amended by the owner 2026-10-04).**
+  - **The rule:** a story that ships a **new** write key adds it to `Kernel/Governance/Baseline.cls` in the same change, enabled unless that story's criteria set it disabled. A key absent from the baseline reads disabled when it mutates. The baseline grows only by such additions and is never regenerated.
+  - **The amendment** only continued the new-key rule past the voting week; the old text left later entries to the owner. AD-22 authorizes no change to an already-listed key's shipped value: its only sanctioned edit is an addition.
+  - **So:** `explorer.sqlquery.run` is already listed `false`. Advertising it adds no key, and turning it `true` needs a ruling and an amendment (inference that silence does not permit it).
+  - **The AD-53 reading.** AD-53's sentence "its key shipping disabled until Story 19.11 advertises it" can be read as anticipating a change (inference). Both precedents left the key `false` when the tool was advertised: `security.auditing.purge` (14.2) and the audit-encryption change.
+  - **Who the key affects.** It is asked only on the agent's path, at dispatch and at Confirm. A person's run is never governed. While it reads `false`, the advertised tool returns a structured denial.
+- **Definitions and the picker.**
+  - **AD-42.**
+    - Writing an endpoint requires OcuPilot's administrative resource and is audited.
+    - Moving the default marker is a security change: `POST /agent/definitions/:id/default`, administrators only.
+    - The context chip and the egress line share `ProviderPort.EgressOf`. Today the chip forecasts from the current default, so a picked definition needs AD-42 amended (inference).
+  - **AD-50.** A per-user pick belongs in the Kind-discriminated per-user store (`Kernel/State/Pref`), behind a caller-own shell-chrome route. It is never screen context or a tool's view, never browser storage, and never moves the marker (inference).
+  - **The selection list.** `GET /agent/definitions` answers the selection projection to every caller past the floor: name, provider, model, enabled and default. This corrects the previous compile's inference that the picker had no list to read. The Definitions screen and the single-definition read are administrator-only. The projection carries no endpoint host, so the chip needs the port's resolution for the pick (inference).
+  - **The turn's definition decides:**
+    - the read-only verdict (`Kernel.Restraint.Verdict`, and so the context's `readOnly`, AD-24 and AD-30);
+    - the iteration limit (AD-31);
+    - the system prompt override (AD-11 rule 1);
+    - transcript retention.
+  - **Widening.** Picking a read/write definition over a read-only default widens what that user's turns may propose. Enforced read-only, the kill switch and per-user read-only (14.5) still apply (inference).
+  - **Validation.** Validate the pick at turn start. State what a pick whose definition was later disabled or deleted falls back to (DW-20's shape). Earlier turns replay to the model (AD-24), so switching definition mid-conversation sends them to the new provider (inference).
 
 ## UX & Interaction Patterns
 
 - **EXPERIENCE.md, edited in place:**
-  - the System Explorer side-bar line is :159, with the OS management row in the table below it;
-  - the closed dialog set is :173;
-  - a new Fixed-strings row goes after :602;
-  - the panel header row is :701 and holds no picker;
-  - the Process details row (:92) says statement text is Story 19.10's.
+  - The panel's Header row (:702) holds avatar, "Agent co-pilot", New conversation and the full-screen toggle, and no picker. The panel's parts are also listed at :153 and :624.
+  - Definitions and Switches are open to OcuPilot administrators only (:226).
+  - The dialog set is closed (:173).
+  - Fixed strings end at :603, so new rows go after it. :597 holds the console's four consequence sentences.
+  - The context chip (:626) and the egress line (:261, :627) name the turn's own provider and host.
   - Move every citation the suites hold (`npm run test:tools`).
-- **Auto-refresh.** The Auto-refresh controls row is AD-43's roster of nine screens. A screen joins only by declaring it in its descriptor and appearing in that row.
-- **Every screen** registers the ten-item screen contract: three or more prompts, aliases and Fixed strings.
-- **Confirmations.** A destructive action uses a `confirm-dialog` with a typed-name field. An agent proposal carries none. Dialogs never stack.
-- **The picker.** The Definitions screen is open to OcuPilot administrators only, so the picker cannot list definitions through that screen's read (inference). The context chip and each turn's egress line name the turn's own provider and host, so both must follow a picked definition (inference).
+- **An agent SQL proposal.** It takes the destructive treatment with no typed name. Its card shows kind, statement type, tables and consequence (DW-2004), plus Story 11.8's pairs line. SQL grants are the instance's verdict at prepare, so that line cannot predict them (inference).
+- **New conversation and a new turn** cancel every live proposal.
 
 ## Cross-Story Dependencies
 
-- **Done:** 19.1 to 19.9 and 19.12 to 19.17. **Order:** 19.10, then 19.11.
-- **What the remaining stories reuse:**
-  - 19.10 reuses the catalog's fixed-statement reads and the statement-text field (19.5, 19.14).
-  - 19.11 reuses `SqlPort`, the console guard, governance, the copy-out draft and 19.14's read tools.
-- **Process details (6.8)** shows whether a cached query is executing, named by its routine, and defers the statement's text to 19.10.
-- **Rosters a change trips:**
-  - `ExplorerDescriptor` (with DW-2093's rename), `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, `Descriptor`, and `DeveloperFloor`'s `SCREENS`, `TOOLS` and its count word;
-  - for a route, `EndpointCoverage` and `DeveloperFloorRoutes`;
-  - for a write, `GovernanceBaseline` and `DraftRegistry`;
-  - `InjectionChannels`;
-  - a regenerated `screens.generated.ts`;
-  - for a System Explorer screen, the Home tile captions in `system-explorer.browser-spec.mjs`, which went red in CI at 19.17.
+- **Done:** every story except 19.11. 19.10's CI run 37352698013 was pending at the last log entry.
+- **19.11 reuses:**
+  - `SqlPort`, `ExplorerSqlRun` and the console guard with its strings;
+  - governance and the AD-59 draft;
+  - 19.14's statement read tools;
+  - the definitions list route, the `Pref` store and `ProviderPort.EgressOf`.
+- **Rosters a change trips:** `ToolRoundTrip`, `ToolEmit`, `ReadTool`, `SurfaceCoverage`, `Governance`, `GovernanceBaseline`, `DeveloperFloor` (`TOOLS` and its count word), `Prohibited`, `SqlConsoleWrite`, `DraftRegistry`, `InjectionChannels`, and the client's `screen-mirror` and `strings` suites.
+- **DW-2093.** The `ExplorerDescriptor` method rename belongs to Epic 19's close burn-down. Any change 19.11 makes to that area's counts drifts the name further.
 - **Slot A:**
-  - Use profile `ocupilot-slot-a` and the throwaway `ocupilot-a2-ci` (52780); never restart the throwaway. Load the source by `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir`.
+  - Use profile `ocupilot-slot-a` and the throwaway `ocupilot-a2-ci` (52780/1979). Never restart the throwaway.
+  - Load the source with `rsync` into `/tmp/ocupilot-a2-ci/src/`, then `$System.OBJ.LoadDir("/opt/ocupilot/src", ...)`.
   - The macOS `/tmp` cleaner is the first suspect for an unexplained red (DW-2033).
   - Run one test class per call.
-- **Epic 18 runs in parallel.** 18.23 is being re-planned and edits the spine and `epics.md`; 18.24 has not started.
-  - Keep edits to shared files add-only after checking `.worktrees/epic-18`'s diff: `strings.ts`, `_components.scss`, `Baseline.cls`, `Router.cls`, the roster tests, EXPERIENCE.md, the spine and the bundle budget.
-  - DW-2093's rename edits `SurfaceCoverage` rows in place, so it is not add-only.
+- **Epic 18 runs in parallel.** 18.23 is in rework and adds `security.encryptionstartup.update` to `Baseline.cls`; 18.24 has not started.
+  - Keep edits to shared files add-only after checking `.worktrees/epic-18`'s diff: `Baseline.cls`, the spine, `epics.md`, EXPERIENCE.md, `strings.ts`, the roster tests and `angular.json`.
   - Regenerate generated files rather than hand-merging them.

@@ -221,6 +221,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
       'os-management/ecp-settings',
       'os-management/ecp-application-servers',
+      // Story 19.10: SQL activity, the twentieth.
+      'os-management/sql-activity',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -373,6 +375,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       // Story 18.21: the eighteenth and nineteenth.
       'os-management/ecp-settings',
       'os-management/ecp-application-servers',
+      // Story 19.10: the twentieth.
+      'os-management/sql-activity',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -424,6 +428,12 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   );
   assert.equal(tabGroupFor(screenForRoute('os-management/ecp-application-servers/ssl'))?.route, 'os-management/ecp-application-servers');
   assert.equal(isListedScreen(screenForRoute('os-management/ecp-application-servers/ssl')), false, 'the SSL/TLS tab takes no side-bar position');
+  // Story 19.10: SQL activity is the twentieth entry, a list whose Process ID cell opens Process
+  // details unless the row is remote.
+  const sqlActivity = screenForRoute('os-management/sql-activity');
+  assert.equal(stringFor(sqlActivity.labelKey), STRINGS.sqlActivityLabel);
+  assert.equal(sqlActivity.sideBarPosition, 20);
+  assert.deepEqual(sqlActivity.rowTarget, { route: 'os-management/processes/details', field: 'ProcessID', unless: 'Remote' });
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'docdb-database';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'docdb-database' | 'sql-statement';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -162,7 +162,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -516,7 +516,8 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "encryption-key-file",
   "database-encryption-keys",
   "data-element-encryption-keys",
-  "docdb-database"
+  "docdb-database",
+  "sql-statement"
 ];
 
 /**
@@ -17679,6 +17680,205 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SqlActivityList",
+    "route": "os-management/sql-activity",
+    "area": "os-management",
+    "labelKey": "sqlActivityLabel",
+    "sideBarPosition": 20,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "sql-statement",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Server",
+        "ProcessID",
+        "StatementHash"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Server",
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Elapsed",
+        "Started",
+        "StatementId",
+        "StatementHash",
+        "Statement",
+        "Routine",
+        "CachedQuery",
+        "Workers",
+        "TransactionLevel",
+        "Remote"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "sqlActivityEmpty",
+    "commandAliases": [
+      "sql activity",
+      "running queries",
+      "current statements"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "sqlActivityPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.CurrentStatements",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "sqlactivity",
+        "endpoint": "CurrentStatements",
+        "type": "LIST"
+      },
+      "fields": [
+        "Server",
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Elapsed",
+        "Started",
+        "StatementId",
+        "StatementHash",
+        "Statement",
+        "Routine",
+        "CachedQuery",
+        "Workers",
+        "TransactionLevel",
+        "Remote"
+      ],
+      "filter": [
+        "ProcessID",
+        "UserName",
+        "Namespace",
+        "RunType",
+        "Statement",
+        "Routine"
+      ],
+      "sort": {
+        "fields": [
+          "ProcessID",
+          "UserName",
+          "Namespace",
+          "RunType",
+          "Elapsed",
+          "Started"
+        ],
+        "default": "Elapsed",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "sqlActivityNote",
+        "text": "Statement text shows for your own statements, and for another user's when you hold %Development:USE and READ on its namespace's database."
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ProcessID",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "UserName",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "RunType",
+          "labelKey": "sqlActivityColumnRunType",
+          "kind": "text"
+        },
+        {
+          "field": "Elapsed",
+          "labelKey": "sqlActivityColumnElapsed",
+          "kind": "number"
+        },
+        {
+          "field": "Statement",
+          "labelKey": "explorerSqlColumnStatement",
+          "kind": "identifier",
+          "emptyKey": "sqlActivityTextWithheld"
+        },
+        {
+          "field": "Routine",
+          "labelKey": "processColumnRoutine",
+          "kind": "identifier"
+        },
+        {
+          "field": "Started",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "ProcessID",
+      "unless": "Remote"
+    },
+    "toolIdentifier": "osmgmt.sqlactivity",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

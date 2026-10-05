@@ -334,6 +334,10 @@ services:
       # The document database gate class signs in as probe principals each missing one pair the DocDB
       # port requires, and lists, creates and drops a probe database as them (Story 19.17).
       # classes: DocDbGate
+      # The SQL activity gate class signs in as probe principals each missing one pair the SQL
+      # activity port requires, or holding READ on USER's database and %Development, and reads
+      # another account's running probe statement as them (Story 19.10).
+      # classes: SqlActivityGate, SqlActivityProbe
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

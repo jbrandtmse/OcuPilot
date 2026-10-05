@@ -11,14 +11,17 @@
 /// matches, <code>j</code> a comment line of a probe table's trigger code in
 /// <parameter>TRIGGERNAMESPACE</parameter>, and, in <parameter>CATALOGNAMESPACE</parameter>,
 /// <code>k</code> a probe view's text, <code>l</code> a probe SQL procedure's description and
-/// <code>m</code> a probe statement's kept literal. The failed-login audit row, the messages.log line
-/// and source <code>m</code>'s statement-index row are append-only: <method>Remove</method> answers OK
-/// for the first two and removes only <code>m</code>'s table.</p>
+/// <code>m</code> a probe statement's kept literal, and <code>n</code> the kept literal of a probe
+/// statement still running in <parameter>ACTIVITYNAMESPACE</parameter>. The failed-login audit row, the
+/// messages.log line and source <code>m</code>'s statement-index row are append-only:
+/// <method>Remove</method> answers OK for the first two, removes only <code>m</code>'s table, and stops
+/// <code>n</code>'s probe job, whose statement-index row and cached query remain.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>. Every seeding and removal helper refuses
 /// unless its own arming variable reads 1: <parameter>SEEDVARIABLE</parameter> for
 /// <code>a</code>, <code>b</code> and <code>c</code>, <parameter>DELETEVARIABLE</parameter> for
 /// removing <code>c</code>, <parameter>TASKVARIABLE</parameter> for <code>d</code> and
-/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user, classes, tables and view.</p>
+/// <parameter>ARMINGVARIABLE</parameter> for the probe role, user, classes, tables, view and running
+/// statement.</p>
 Class OcuPilot.Test.InjectionSeed Extends %RegisteredObject
 {
 
@@ -77,6 +80,11 @@ Parameter SEEDPROCEDURECLASS = "OcuProbe195.InjectProc";
 Parameter SEEDPROCEDURE = "OcuProbe195.InjectProc_Stamp";
 
 Parameter SEEDTABLE = "OcuProbe195.InjectQuery";
+
+/// <p>The namespace source <code>n</code>'s probe statement runs in, and the value it binds.</p>
+Parameter ACTIVITYNAMESPACE = "USER";
+
+Parameter ACTIVITYVALUE = "OcuSecretProbe1910Inject";
 
 /// <p>The probe task's name is this followed by the nonce; it carries
 /// <class>OcuPilot.Test.TaskEditProbe</class>'s prefix.</p>
@@ -145,12 +153,12 @@ ClassMethod Armed(pVariable As %String) As %Status
 }
 
 /// <p>Plant <var>pSeed</var> in source <var>pSource</var> (<code>a</code> to <code>f</code>, and
-/// <code>h</code> to <code>m</code>). <var>pRef</var> is what <method>Remove</method> removes by:
+/// <code>h</code> to <code>n</code>). <var>pRef</var> is what <method>Remove</method> removes by:
 /// <code>""</code> for the append-only <code>a</code> and <code>b</code>, <code>date|number</code>
 /// for <code>c</code>, the task id for <code>d</code>, the role name for <code>e</code>, the user
 /// name for <code>f</code>, the class name for <code>h</code> and <code>i</code>, the table for
-/// <code>j</code> and <code>m</code>, the view for <code>k</code> and the procedure for
-/// <code>l</code>.</p>
+/// <code>j</code> and <code>m</code>, the view for <code>k</code>, the procedure for <code>l</code>
+/// and the probe job's pid for <code>n</code>.</p>
 ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) As %Status
 {
     Set pRef = ""
@@ -193,6 +201,8 @@ ClassMethod Plant(pSource As %String, pSeed As %String, Output pRef As %String) 
         } ElseIf (pSource = "k") || (pSource = "l") || (pSource = "m") {
             Set tSC = ..CreateCatalogSeed(pSource, pSeed)
             If $$$ISOK(tSC) Set pRef = $Case(pSource, "k": ..#SEEDVIEW, "l": ..#SEEDPROCEDURE, : ..#SEEDTABLE)
+        } ElseIf pSource = "n" {
+            Set tSC = ##class(OcuPilot.Test.SqlActivityProbe).Start(..#ACTIVITYNAMESPACE, pSeed, ..#ACTIVITYVALUE, .pRef)
         } Else {
             Set tSC = $$$ERROR($$$GeneralError, "no source " _ pSource)
         }
@@ -230,6 +240,10 @@ ClassMethod Remove(pSource As %String, pRef As %String) As %Status
             Set tSC = ..DeleteTriggerTable()
         } ElseIf (pSource = "k") || (pSource = "l") || (pSource = "m") {
             Set tSC = ..DeleteCatalogSeed(pSource)
+        } ElseIf pSource = "n" {
+            Set tSC = ..Armed(..#ARMINGVARIABLE)
+            If $$$ISERR(tSC) Quit
+            Set tSC = ##class(OcuPilot.Test.SqlActivityProbe).Stop(pRef)
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -587,6 +601,8 @@ ClassMethod ReadCall(pSource As %String, pRef As %String = "", pCached As %Boole
     } ElseIf pSource = "m" {
         Do tCall.%Set("name", $Select(pCached: "explorer_sqlcachedqueries_read", 1: "explorer_sqltablestatements_read"), "string")
         Do tCall.input.%Set("table", pRef, "string")
+    } ElseIf pSource = "n" {
+        Do tCall.%Set("name", "osmgmt_sqlactivity_read", "string")
     } Else {
         Do tCall.%Set("name", "permissions_users_read", "string")
     }

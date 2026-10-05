@@ -186,6 +186,8 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
       manage,
       manage,
+      // Story 19.10: SQL activity, the twentieth, open on Operate and the system database's read.
+      open,
     ]);
   });
 });

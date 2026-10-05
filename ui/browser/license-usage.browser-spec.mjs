@@ -1,12 +1,13 @@
 /**
  * Story 16.7's License usage in a real browser, against the throwaway instance (AC1, AC6).
  *
- * What it pins: OS management's side bar lists its nineteen entries in order, the Integrity log
+ * What it pins: OS management's side bar lists its twenty entries in order, the Integrity log
  * (Story 18.17) fifth, License usage eighth, the Dashboard ninth, External language servers
  * (Story 16.10) tenth, Local databases eleventh, Remote databases (Story 18.16) twelfth and Journals
  * (Story 18.5) thirteenth, Journal settings (Story 18.18) fourteenth and License key and License
  * servers (Story 18.6) fifteenth and sixteenth, ECP data servers (Story 18.20) seventeenth and ECP
- * settings and ECP application servers (Story 18.21) eighteenth and nineteenth;
+ * settings and ECP application servers (Story 18.21) eighteenth and nineteenth and SQL activity (Story
+ * 19.10) twentieth;
  * License usage's strip shows its four tabs; Summary lists the vendor's five
  * rows under its three headers; By process lists rows whose first cell is a process id; By user and
  * Distributed each list rows or show their own empty text; and all four tabs pass the structural and
@@ -117,7 +118,7 @@ after(async () => {
 
 // AC1. Mutation (Rule 19): read the whole LICENSEUSAGE answer rather than its member in
 // `OcuPilot.Screen.Read` -> every tab's read fails, no row renders, and the row waits go red.
-test('AC1: OS management lists nineteen entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
+test('AC1: OS management lists twenty entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
