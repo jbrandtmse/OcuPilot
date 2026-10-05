@@ -263,6 +263,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['database-encryption-keys', 'singleton'],
     ['data-element-encryption-keys', 'singleton'],
     ['encryption-startup', 'singleton'],
+    // Story 19.17: a document database's name resolves without case.
+    ['docdb-database', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -2338,6 +2340,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Story 16.25's editor owns it the same way; Story 18.18's Journal settings owns %Admin_Journal
   // beside OS management's set, and Story 18.21's ECP settings owns %Admin_Secure the same way.
   // Story 18.7's three key file screens own %Admin_FileSystemAccess beside Security's two pairs.
+  // Story 19.17's Document databases owns %DocDB_Admin and %Service_DocDB beside System Explorer's
+  // %Development.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2347,6 +2351,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
+      'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
       'OcuPilot.Screen.Descriptor.LanguageServerForm',
@@ -2692,7 +2697,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2769,4 +2774,33 @@ test('Story 18.7: the key file lists read through the encryption port, the ninth
     assert.deepEqual(screen.declaration.read.criteria.fields.map((field) => field.param), ['root', 'path'], `${name} carries the key file's root and path`);
     assert.deepEqual(screen.declaration.ownPrivileges, [{ resource: '%Admin_FileSystemAccess', permission: 'USE' }]);
   }
+});
+
+// Story 19.17: Document databases read through the docdb port, the tenth read source, which both
+// engines admit as one LIST of `Databases` with no criteria, per-row call, parent list, query or parts.
+// Every case in `OcuPilot.Test.DocDbDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): drop the docdb arm from `readProblem` -> the endpoint, type and key cases go red.
+test('Story 19.17: Document databases read through the docdb port, the tenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('docdb'), 'the docdb port is a read source');
+  const corpus = testCorpus(['Test', 'DocDbDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const screen = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.ExplorerDocDbList');
+  assert.ok(screen !== undefined, 'Document databases is declared');
+  assert.deepEqual(screen.declaration.read.source, { port: 'docdb', endpoint: 'Databases', type: 'LIST' });
+  assert.equal(readProblem(screen.declaration), null, 'its read passes');
+  assert.deepEqual(screen.declaration.ownPrivileges, [
+    { resource: '%DocDB_Admin', permission: 'USE' },
+    { resource: '%Service_DocDB', permission: 'USE' },
+  ]);
 });

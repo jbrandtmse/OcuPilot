@@ -2090,7 +2090,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:642 */
+  /** EXPERIENCE.md:643 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -5802,6 +5802,38 @@ export const STRINGS = {
   explorerClassReferenceNote: 'This is the instance\'s own class reference for <class>, shown with your browser\'s sign-in to the instance. Links inside it do not open here.',
   /** EXPERIENCE.md:601 */
   explorerClassReferenceRestored: 'That link does not open here; the class reference shows <class> again.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListLabel: 'Document databases',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbColumnDocumentType: 'Document type',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbCreateTitle: 'Create document database',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbDropLabel: 'Drop',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbCreateHint: 'An unqualified name creates the class ISC.DM.<name>.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListEmpty: 'No document databases in this namespace.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListEmptyAgent: 'Ask the agent to create a document database here.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt1: 'Which document databases does this namespace hold?',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt2: 'Create a document database named Orders.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbListPrompt3: 'Is the DocDB service enabled here?',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbDropConsequence: 'Dropping a document database deletes its class and every document it holds. This cannot be undone.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbServiceDisabled: 'The DocDB service (%Service_DocDB) is disabled on this instance, so document databases cannot be listed, created or dropped. An administrator can enable it on the Services screen in Permissions.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameInvalid: 'A document database name is a class name: letters and digits in parts separated by dots, each part starting with a letter, and at most 213 characters without a package.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameMapped: 'This namespace keeps that package\'s classes in another database, where OcuPilot does not create or drop document databases.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbNameTaken: 'This namespace already holds a document database of that name, in any letter case.',
+  /** EXPERIENCE.md:602 */
+  explorerDocDbClassTaken: 'A class of that name already exists in this namespace, so the database was not created.',
 } as const;
 
 /**

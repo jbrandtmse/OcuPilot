@@ -243,6 +243,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/encryption-key-file" Method="POST" Call="EncryptionKeyFileCreate"/>
   <Route Url="/encryption-startup/form" Method="GET" Call="EncryptionStartupFormRead"/>
   <Route Url="/encryption-startup" Method="PUT" Call="EncryptionStartupUpdate"/>
+  <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
 </Routes>
 }
 
@@ -1811,6 +1812,13 @@ ClassMethod EncryptionStartupFormRead() As %Status
 ClassMethod EncryptionStartupUpdate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.EncryptionStartupSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /explorer/docdb</code> (Story 19.17): Document
+/// databases' create, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ExplorerDocDbCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Explorer.DocDbSave).HandleCreate()
 }
 
 }

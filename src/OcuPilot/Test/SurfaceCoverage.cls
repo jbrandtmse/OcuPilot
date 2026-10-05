@@ -176,6 +176,7 @@ XData Coverage
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedure" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedureStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>
 <screen name="JournalList" class="OcuPilot.Test.JournalDescriptor" method="TestJournalsIsOsManagementsThirteenthEntry"/>
@@ -332,6 +333,8 @@ XData Coverage
 <tool name="explorer.routines.save" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheTwoSavesAreUnadvertisedDestructiveWrites" corpus="the two System Explorer saves are asserted together in one loop"/>
 <tool name="explorer.sqlquery.run" class="OcuPilot.Test.SqlPort" method="TestTheToolDeclaresItsWritePath"/>
 <tool name="explorer.sqldata.save" class="OcuPilot.Test.SqlSave" method="TestTheToolDeclaresItsWritePath"/>
+<tool name="explorer.docdb.create" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsCreateConfirmsAndATakenNameIsRefused"/>
+<tool name="explorer.docdb.delete" class="OcuPilot.Test.DocDbWrite" method="TestTheAgentsDropIsGovernedThenConfirmed"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

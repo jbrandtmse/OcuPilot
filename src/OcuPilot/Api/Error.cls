@@ -1225,6 +1225,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "LICENSE." Set tReason = ##class(OcuPilot.Api.LicenseError).ReasonFor(pCode)
     If $Extract(pCode, 1, 4) = "ECP." Set tReason = ##class(OcuPilot.Api.EcpError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "ENCRYPTION." Set tReason = ##class(OcuPilot.Api.EncryptionError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }

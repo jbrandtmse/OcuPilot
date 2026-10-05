@@ -14,8 +14,9 @@
 /// <p><b>The kind decides the subject</b>, and the kind is derived from the tool's own parameters,
 /// never hand-set: a delete (<code>CHANGEACTION</code> <code>deleted</code>) expects absence; a
 /// create (<code>CREATES</code>, AD-54) and a merge (<code>SENDSBODY</code> 1) compare every
-/// top-level key of the sent body its <class>OcuPilot.Screen.Tool.ToolFields</class> rows name,
-/// minus the descriptor's <code>fingerprintExcludes</code>; a secret-only write
+/// top-level key of the sent body its <class>OcuPilot.Screen.Tool.ToolFields</class> rows name, or,
+/// for a tool with no such entry, its declared <code>READBACKFIELDS</code>, minus the descriptor's
+/// <code>fingerprintExcludes</code>; a secret-only write
 /// (<code>SECRETBODY</code>, AD-56 (i)) reports its names written; an action-style write (AD-51)
 /// sends no value and says so.</p>
 /// <p><b>How a field the instance normalizes on save is compared</b> is the tool's reviewed
@@ -233,7 +234,8 @@ ClassMethod Gone(pToolClass As %String, pAfter As %DynamicObject, pPayloadJson A
 }
 
 /// <p>The compared set of a merge or a create: every top-level key of <var>pSent</var> the tool's
-/// field rows name, minus the descriptor's <code>fingerprintExcludes</code>. A differing name is
+/// field rows name, or its declared <code>READBACKFIELDS</code> when it has no field rows, minus the
+/// descriptor's <code>fingerprintExcludes</code>. A differing name is
 /// appended to <var>pFields</var>; a secret or <code>written</code> name whose sent value is
 /// non-empty and differs from <var>pBefore</var>'s is appended to <var>pWritten</var> and never read
 /// back.</p>
@@ -242,7 +244,8 @@ ClassMethod Gone(pToolClass As %String, pAfter As %DynamicObject, pPayloadJson A
 /// key itself, which found the row, is compared but not counted.</p>
 /// <p><var>pCount</var> is how many names were compared, which the caller reads so that a
 /// comparison of nothing never reads <code>matches</code>. Answers 0 when there is nothing to
-/// compare against -- no sent object, or no field rows for the tool.</p>
+/// compare against -- no sent object, or neither field rows nor <code>READBACKFIELDS</code> for the
+/// tool.</p>
 ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As %DynamicObject, pRead As %DynamicObject, Output pFields As %List, Output pWritten As %List, pRowKey As %String = "", Output pCount As %Integer) As %Boolean [ Private ]
 {
     Set pFields = ""
@@ -250,7 +253,12 @@ ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As 
     Set pCount = 0
     If '$IsObject(pSent) || 'pSent.%IsA("%Library.DynamicObject") Quit 0
     Set tToolName = $Parameter(pToolClass, "TOOLNAME")
-    If '..Rows(tToolName, .tNamed, .tSecret, .tModes, .tElements) Quit 0
+    If '..Rows(tToolName, .tNamed, .tSecret, .tModes, .tElements) {
+        ; AD-58 as amended (Story 19.17): a tool whose port has no derived field list names the
+        ; fields it compares, each under the default rules.
+        Kill tNamed, tSecret, tModes, tElements
+        If '..DeclaredRows(pToolClass, .tNamed) Quit 0
+    }
     Set tDeclaredSecrets = ""
     Try {
         Set tDeclaredSecrets = $ClassMethod(pToolClass, "SecretArguments", "", .tDeclared)
@@ -546,6 +554,26 @@ ClassMethod Rows(pToolName As %String, Output pNamed, Output pSecret, Output pMo
         Set tRead = 0
     }
     Quit tRead
+}
+
+/// <p>The names <var>pToolClass</var> declares in
+/// <parameter>OcuPilot.Screen.Tool.Write.READBACKFIELDS</parameter>, in <var>pNamed</var> as
+/// <method>Rows</method> answers its own; 0 when it declares none or cannot be asked, and a caller
+/// compares nothing then.</p>
+ClassMethod DeclaredRows(pToolClass As %String, Output pNamed) As %Boolean [ Private ]
+{
+    Kill pNamed
+    Set tNames = ""
+    Try {
+        Set tNames = $ClassMethod(pToolClass, "ReadBackFields")
+    } Catch {
+        Set tNames = ""
+    }
+    If '$ListValid(tNames) Set tNames = ""
+    For tI = 1:1:$ListLength(tNames) {
+        Set pNamed($List(tNames, tI)) = 1
+    }
+    Quit (tNames '= "")
 }
 
 /// <p>The member name of a field-row path <code>Top[].Member</code> under <var>pTop</var>, or

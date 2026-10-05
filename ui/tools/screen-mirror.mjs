@@ -945,7 +945,10 @@ export const SOURCE_BACKGROUND = 'background';
 /** The source code API read through `OcuPilot.Port.AtelierPort` (AD-61, Story 19.1). */
 export const SOURCE_ATELIER = 'atelier';
 export const SOURCE_ENCRYPTION = 'encryption';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION];
+
+/** The namespace's document databases read through `OcuPilot.Port.DocDbPort` (AD-29, Story 19.17). */
+export const SOURCE_DOCDB = 'docdb';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1006,6 +1009,25 @@ export function backgroundEndpoint() {
 
 /** The one request type a `background` source declares. */
 export const BACKGROUND_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.DocDbPort` declares the one endpoint a `docdb` read names. */
+export const DOCDB_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'DocDbPort.cls');
+
+let docDbEndpointCache;
+
+/**
+ * The endpoint `OcuPilot.Port.DocDbPort`'s `ENDPOINT` parameter declares, read from its own class as
+ * the background port's is, or `null` when the parameter is missing.
+ */
+export function docDbEndpoint() {
+  if (docDbEndpointCache === undefined) {
+    docDbEndpointCache = parseBackgroundEndpoint(readFileSync(DOCDB_PORT_SOURCE, 'utf8'));
+  }
+  return docDbEndpointCache;
+}
+
+/** The one request type a `docdb` source declares. */
+export const DOCDB_READ_TYPE = 'LIST';
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -1210,8 +1232,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}' or '${SOURCE_ENCRYPTION}', ` +
-      'the nine sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}' or '${SOURCE_DOCDB}', ` +
+      'the ten sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1266,6 +1288,23 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on a background source, which answers the background tasks whole (AD-36)`;
+    }
+  }
+  // A docdb source lists the namespace's document databases through `OcuPilot.Port.DocDbPort`, which
+  // answers each one whole behind its own gate (AD-29, AD-36, Story 19.17): the port's own endpoint, a
+  // LIST, and nothing the port would have to issue per row, per parent, under a fixed query or in parts.
+  if (source.port === SOURCE_DOCDB) {
+    const endpoint = docDbEndpoint();
+    if (endpoint === null) return `${DOCDB_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
+    if (source.endpoint !== endpoint) {
+      return `read.source.endpoint '${source.endpoint}' is not the docdb port's endpoint ('${endpoint}') (AD-29)`;
+    }
+    if (source.type !== DOCDB_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on a docdb source, which lists the namespace's document databases (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on a docdb source, which answers the document databases whole (AD-36)`;
     }
   }
   // AD-36 as amended (Story 16.9): a timeline composes its area's listed screens' own reads, so its

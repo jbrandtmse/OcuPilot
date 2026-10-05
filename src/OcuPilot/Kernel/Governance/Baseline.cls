@@ -180,7 +180,9 @@ XData Keys [ MimeType = application/json ]
   "explorer.routines.save": false,
   "explorer.sqlquery.run": false,
   "explorer.routines.import": false,
-  "explorer.sqldata.save": false
+  "explorer.sqldata.save": false,
+  "explorer.docdb.create": true,
+  "explorer.docdb.delete": false
 }
 }
 
