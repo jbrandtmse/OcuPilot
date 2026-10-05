@@ -9860,6 +9860,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: SqlPort.PASSWORDPATTERN refuses password text before the console's prepare (19.6), but no display path redacts it: AtelierPort's statement tabs (19.14) and SqlActivityPort (19.10) return the text as the instance holds it; DW-1982 measured a prepared CREATE USER's literal stored in INFORMATION_SCHEMA.STATEMENTS
 - 2026-10-05T17:16:04Z status=decision-pending owner=burndown by=merge_gate note=owner's decision sheet, next to DW-1982: whether (and how) to mask a credential literal in displayed and agent-bound statement text; 19.10 gives its text the same treatment as 19.14's (none), by the orchestrator's instruction
 - 2026-10-05T18:40:24Z occurrence=19-11-the-agent-gains-guarded-sql-and-a-picker by=spec_gate note=the agent's SQL read (explorer.sqlquery.read) returns whatever the caller's SQL privileges read, INFORMATION_SCHEMA's statement tables included, so a statement's credential literal can reach the model; same pending decision
+- 2026-10-05T18:50:32Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
 
 ### DW-2097: SQL activity's Routine and Workers columns are pinned only at their default values, and the child-statement RunType branch never runs in a test
 - source: spec-19-10-sql-activity.md | severity: low | fix-risk: med | footprint: in-story
