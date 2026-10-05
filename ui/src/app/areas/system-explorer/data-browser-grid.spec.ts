@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
 import { DataBrowserGrid, type CellEdit, type PageRequest } from './data-browser-grid';
-import type { BrowseColumn, StagedRow } from './data-browser.store';
+import type { ActiveCell, BrowseColumn, StagedRow } from './data-browser.store';
 
 /**
  * Data browser's grid alone (Stories 19.7 and 19.8): the APG grid's structure -- one Tab stop,
@@ -13,7 +13,8 @@ import type { BrowseColumn, StagedRow } from './data-browser.store';
  * the header and Ctrl/Cmd+PageDown and PageUp intents, and the filter row's inputs and their Enter and
  * Escape; and, editable, the Change column, the editor keys, the editor's own keys, undo and focus,
  * the cells that never open one, a NULL left empty, a re-read row, an IME composition, focus back to a
- * refused editor, and the cut-cell tooltip.
+ * refused editor, and the cut-cell tooltip. Story 19.16 adds `commitInPlace` with a value the column
+ * takes and with one it refuses, `place` moving no focus, and `activeCell` reporting each move.
  */
 
 const COLUMNS: readonly BrowseColumn[] = [
@@ -44,6 +45,7 @@ interface Mounted {
   readonly drafted: { readonly column: string; readonly value: string }[];
   readonly edited: CellEdit[];
   readonly announced: string[];
+  readonly cells: ActiveCell[];
 }
 
 /** `cells` as the page's rows, nothing staged; the rows named in `options` new, deleted or cut. */
@@ -79,6 +81,7 @@ async function mount(
     drafted: [] as { column: string; value: string }[],
     edited: [] as CellEdit[],
     announced: [] as string[],
+    cells: [] as ActiveCell[],
   };
   const drawn = rows.length > 0 && !Array.isArray(rows[0]) ? (rows as readonly StagedRow[]) : staged(rows as readonly (readonly (string | null)[])[]);
   fixture.componentRef.setInput('label', 'OcuProbe197.Plain');
@@ -95,6 +98,7 @@ async function mount(
   fixture.componentInstance.drafted.subscribe((change) => mounted.drafted.push(change));
   fixture.componentInstance.edited.subscribe((edit) => mounted.edited.push(edit));
   fixture.componentInstance.announced.subscribe((line) => mounted.announced.push(line));
+  fixture.componentInstance.activeCell.subscribe((cell) => mounted.cells.push(cell));
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
@@ -483,6 +487,67 @@ describe('Data browser grid', () => {
       if (scrollWidth !== undefined) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
       else delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
     }
+  });
+});
+
+describe('Data browser grid, for the page\'s tabs and shortcuts (Story 19.16)', () => {
+  // AC3. Mutation (Rule 19): `commitInPlace` answers `true` without committing -> nothing is staged
+  // and the editor stays, and this goes red.
+  it('commitInPlace commits a value the column takes where the cell is and puts focus on the grid; a refused value keeps the editor open and answers false', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo']]), 1, 0, true, EDIT_COLUMNS);
+    const component = mounted.fixture.componentInstance;
+    expect(component.editorOpen()).toBe(false);
+    expect(component.commitInPlace()).toBe(true);
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'ArrowRight');
+    await press(mounted, 'F2');
+    expect(component.editorOpen()).toBe(true);
+    await type(mounted, editorOf(mounted.host) as HTMLInputElement, 'abd');
+    expect(component.commitInPlace()).toBe(true);
+    await settle(mounted);
+    expect(mounted.edited).toEqual([{ row: 'p0', column: 1, value: 'abd' }]);
+    expect(editorOf(mounted.host)).toBeNull();
+    expect(component.editorOpen()).toBe(false);
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r0-c2');
+    expect(document.activeElement).toBe(grid(mounted.host));
+    await press(mounted, 'ArrowRight');
+    await press(mounted, '4');
+    await type(mounted, editorOf(mounted.host) as HTMLInputElement, '4.5');
+    expect(component.commitInPlace()).toBe(false);
+    await settle(mounted);
+    expect(component.editorOpen()).toBe(true);
+    expect(editorOf(mounted.host)?.getAttribute('aria-invalid')).toBe('true');
+    expect(mounted.edited).toHaveLength(1);
+  });
+
+  // AC6. Mutation (Rule 19): `place` focuses the grid -> focus leaves the outside control and this goes
+  // red.
+  it('place makes a cell active without moving focus; activeCell reports each move, never where a grid starts', async () => {
+    const mounted = await mount(staged([['a', 'abc', '2', '1', '1', 'memo'], ['b', 'bee', '3', '0', '2', 'memo']]), 2, 0, true, EDIT_COLUMNS);
+    expect(mounted.cells).toEqual([]);
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    planted.push(outside);
+    outside.focus();
+    const component = mounted.fixture.componentInstance;
+    component.place('p1', 2);
+    await settle(mounted);
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r1-c3');
+    expect(document.activeElement).toBe(outside);
+    expect(mounted.cells).toEqual([{ row: 'p1', column: 2 }]);
+    component.place('p9', 0);
+    await settle(mounted);
+    expect(grid(mounted.host).getAttribute('aria-activedescendant')).toBe('ocu-data-cell-r1-c3');
+    component.place(null, -1);
+    await settle(mounted);
+    expect(mounted.cells.at(-1)).toEqual({ row: null, column: -1 });
+    await press(mounted, 'ArrowDown');
+    await press(mounted, 'ArrowRight');
+    expect(mounted.cells.slice(-2)).toEqual([
+      { row: 'p0', column: -1 },
+      { row: 'p0', column: 0 },
+    ]);
   });
 });
 

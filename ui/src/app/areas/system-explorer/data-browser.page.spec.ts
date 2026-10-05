@@ -22,7 +22,7 @@ import { DATA_PATH } from './data-browser.store';
  * template run, so the assertions are about rendered DOM: the schemas holding a table or a view, a
  * schema expanding to its tables then its views, a view marked, the empty, cut and refused lines, a
  * refused schema read again on its next expand, the tree read once the scope resolves and again on a
- * namespace switch, which forgets the open table, a table opening to its first page posted in scope,
+ * namespace switch, which closes every tab, a table opening to its first page posted in scope,
  * the status line with and without a total, Last drawn unavailable while the total is unknown, the
  * paging buttons, the Page field, Rows per page and Ctrl/Cmd+PageDown and PageUp each posting their
  * offset, no page past the route's furthest offset, a BIT filter's yes and no words, a stopped page
@@ -30,9 +30,10 @@ import { DATA_PATH } from './data-browser.store';
  * over a stub of the action handler: the row actions on a table and the read-only line on a view;
  * Add, Duplicate, Delete and Restore; the save dialog's Proceed and Cancel; a mixed answer rolled back
  * by key and the page read again, a failed insert kept staged; the Change column through a save;
- * staged rows surviving paging; `FormDirty`; the leave dialog over another table; a save's answer
- * arriving after its staging was dropped; leaving the route dropping what is staged; a refused save;
- * and a namespace switch discarding what is staged.
+ * staged rows surviving paging; `FormDirty`; another table opening in its own tab beside staged rows,
+ * and the leave dialog when that tab closes (Story 19.16); a save's answer arriving after its staging
+ * was dropped; leaving the route dropping what is staged; a refused save; and a namespace switch
+ * closing every tab and discarding what any tab staged.
  */
 
 const SCREEN = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.ExplorerSqlData') as ScreenDeclaration;
@@ -387,21 +388,24 @@ describe('Data browser', () => {
   });
 
   // Mutation (Rule 19): drop the page's `onScopeChange` subscription -> the old namespace's tree and
-  // the answer on its way stay on screen and this goes red.
-  it("a namespace switch forgets the tree and the open table, drops an answer on its way, and reads the new namespace's tree", async () => {
+  // tabs stay on screen and this goes red.
+  it("a namespace switch closes every tab, drops an answer on its way, and reads the new namespace's tree", async () => {
     const mounted = await mount();
-    await click(mounted, all(mounted.host, 'tree-schema')[0]);
+    await expandAndOpen(mounted);
     mounted.hold = true;
-    await click(mounted, all(mounted.host, 'tree-object')[0]);
+    await click(mounted, all(mounted.host, 'tree-object')[1]);
     expect(mounted.held).toHaveLength(1);
+    expect(all(mounted.host, 'tab')).toHaveLength(2);
     mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'Samples', Tables: true, Views: false, Procedures: false }])]);
     await mounted.switchTo('SAMPLES');
     mounted.held[0](pageAnswer([['p1', '1', '1', '']]));
     await settle(mounted.fixture);
     expect(mounted.requests.filter((request) => request.path === SCHEMAS_PATH)).toHaveLength(2);
     expect(texts(mounted.host, 'tree-schema')).toEqual(['\u25b8Samples']);
+    expect(all(mounted.host, 'tab')).toHaveLength(0);
     expect(el(mounted.host, 'heading')).toBeNull();
     expect(el(mounted.host, 'empty').textContent?.trim()).toBe(STRINGS.explorerSqlDataPick);
+    expect(el(mounted.host, 'status').textContent?.trim(), 'no tab held a staged row, so no discard line').toBe('');
   });
 
   it('the tree waits for the scope to resolve before it reads', async () => {
@@ -562,9 +566,9 @@ describe('Data browser', () => {
     expect(dataPosts(mounted).at(-1)?.['offset']).toBe(37);
   });
 
-  // Mutation (Rule 19): drop the generation check in `DataBrowserState.read` -> the older answer lands
-  // last and this goes red.
-  it('an answer to an older request is dropped, so a slow first table never replaces the second', async () => {
+  // Mutation (Rule 19): drop the generation check in `DataTab.read` -> the older answer to the first
+  // table's tab lands last and this goes red.
+  it("a slow first table's answer fills its own tab, never the second's, and an older answer to one tab is dropped", async () => {
     const mounted = await mount();
     await click(mounted, all(mounted.host, 'tree-schema')[0]);
     mounted.hold = true;
@@ -579,6 +583,17 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Over30');
     expect(texts(mounted.host, 'cell')[0]).toBe('v31');
     expect(el(mounted.host, 'status').textContent?.trim()).toBe('Rows 1\u20131 of 1');
+    await click(mounted, tabNamed(mounted, 'OcuProbe197.Plain'));
+    expect(mounted.held).toHaveLength(2);
+    expect(texts(mounted.host, 'cell')[0]).toBe('p1');
+    await click(mounted, el(mounted.host, 'refresh'));
+    await click(mounted, all(mounted.host, 'header')[1]);
+    const [older, newer] = mounted.held.slice(2);
+    newer(pageAnswer([['new', '1', '1', '']]));
+    await settle(mounted.fixture);
+    older(pageAnswer([['old', '1', '1', '']]));
+    await settle(mounted.fixture);
+    expect(texts(mounted.host, 'cell')[0]).toBe('new');
   });
 
   it('a stopped page and an SQL error read their status lines, the message as text', async () => {
@@ -625,6 +640,7 @@ describe('Data browser', () => {
     expect(all(mounted.host, 'status-cell')).toHaveLength(0);
     mounted.page = pageAnswer([['k1', '1', '1', '']], { key: [] });
     await click(mounted, all(mounted.host, 'tree-object')[0]);
+    await click(mounted, el(mounted.host, 'refresh'));
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
     expect(el(mounted.host, 'edit-actions')).toBeNull();
     expect(el(mounted.host, 'read-only').textContent?.trim()).toBe(STRINGS.explorerSqlDataReadOnly);
@@ -850,8 +866,8 @@ describe('Data browser', () => {
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.formSaved]);
   });
 
-  // AC11. Mutation (Rule 19): `save` applies an answer whose staging was dropped meanwhile -> the page is
-  // read again and its status line claims the old save, and this goes red.
+  // AC11. The namespace switch closes the saving tab, so its late answer reaches nothing on the tab
+  // opened since.
   it('a save answering after its staging was dropped applies nothing to what is staged now', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
@@ -874,6 +890,40 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'status').textContent).not.toContain('Saved 1 of 1');
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
     expect(texts(mounted.host, 'status-cell')).toEqual([STRINGS.tableChangedTag]);
+  });
+
+  // AC6, AC11. Mutation (Rule 19): `save` drops its staging-generation check -> the tab still open after
+  // the return takes the old answer, reads the page again and its status line claims the old save, and
+  // this goes red.
+  it('a save answering after the route was left and opened again applies nothing to the same tab\'s rows staged since', async () => {
+    const mounted = await mount();
+    mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
+    await expandAndOpen(mounted);
+    await edit(mounted, 0, 1, 'old');
+    mounted.holdSend = true;
+    mounted.sendAnswer = { applied: true, output: { outcome: 'saved', results: [{ index: 0, outcome: 'saved', rowCount: 1 }], saved: 1, failed: 0 } };
+    await click(mounted, el(mounted.host, 'save'));
+    await proceed(mounted);
+    const leaving = mounted.formDirty.requestLeave();
+    await settle(mounted.fixture);
+    mounted.formDirty.answer(true);
+    expect(await leaving).toBe(true);
+    mounted.fixture.destroy();
+    const again = TestBed.createComponent(DataBrowserPage);
+    document.body.appendChild(again.nativeElement);
+    planted.push(again.nativeElement);
+    await settle(again);
+    const host = again.nativeElement as HTMLElement;
+    const back: Mounted = { ...mounted, fixture: again, host };
+    expect(el(host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
+    await edit(back, 0, 1, 'new');
+    expect(el(host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    const posts = dataPosts(mounted).length;
+    for (const release of mounted.heldSends.splice(0)) release();
+    await settle(again);
+    expect(dataPosts(mounted)).toHaveLength(posts);
+    expect(el(host, 'status').textContent).not.toContain('Saved 1 of 1');
+    expect(el(host, 'save').textContent?.trim()).toBe('Save changes (1)');
   });
 
   // AC11. Mutation (Rule 19): the page keeps what is staged when it is left -> the page opened again
@@ -940,27 +990,34 @@ describe('Data browser', () => {
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
   });
 
-  // AC11.
-  it('opening another table over staged rows asks Leave without saving?: Cancel keeps them, Confirm opens the other table and drops them', async () => {
+  // AC11, as Story 19.16 changes it: opening another table opens a tab and replaces nothing, so the
+  // question moves to closing the tab that holds the staged rows.
+  it('opening another table over staged rows opens it in its own tab and asks nothing; closing the staged tab asks Leave without saving?: Cancel keeps it, Confirm drops its rows', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
     await expandAndOpen(mounted);
     await edit(mounted, 0, 1, 'kept');
     const posts = dataPosts(mounted).length;
-    void (all(mounted.host, 'tree-object')[1] as HTMLElement).click();
-    await settle(mounted.fixture);
+    await click(mounted, all(mounted.host, 'tree-object')[1]);
+    expect(mounted.host.querySelector('app-dialog')).toBeNull();
+    expect(dataPosts(mounted)).toHaveLength(posts + 1);
+    expect(dataPosts(mounted).at(-1)?.['table']).toBe('Over30');
+    expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Over30');
+    expect(mounted.formDirty.dirty()).toBe(true);
+    await click(mounted, tabNamed(mounted, 'OcuProbe197.Plain, 1 changes waiting to be saved.'));
+    expect(dataPosts(mounted)).toHaveLength(posts + 1);
+    expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
+    await click(mounted, el(mounted.host, 'close-tab'));
     const leave = mounted.host.querySelector('app-dialog') as HTMLElement;
     expect(leave.textContent).toContain(STRINGS.formLeaveWithoutSaving);
     mounted.formDirty.answer(false);
     await settle(mounted.fixture);
-    expect(dataPosts(mounted)).toHaveLength(posts);
     expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Plain');
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (1)');
-    void (all(mounted.host, 'tree-object')[1] as HTMLElement).click();
-    await settle(mounted.fixture);
+    await click(mounted, el(mounted.host, 'close-tab'));
     await click(mounted, el(mounted.host, 'leave'));
-    expect(dataPosts(mounted)).toHaveLength(posts + 1);
-    expect(dataPosts(mounted).at(-1)?.['table']).toBe('Over30');
+    expect(el(mounted.host, 'heading').textContent?.trim()).toBe('OcuProbe197.Over30');
+    expect(all(mounted.host, 'tab')).toHaveLength(1);
     expect(mounted.formDirty.dirty()).toBe(false);
   });
 
@@ -981,24 +1038,36 @@ describe('Data browser', () => {
   });
 
   // AC11. Mutation (Rule 19): the store's `forget` drops nothing -> the status line never says why the
-  // row went and this goes red.
-  it('a namespace switch discards what is staged and says so', async () => {
+  // rows went and this goes red.
+  it('a namespace switch closes every tab, discards what any tab staged, and says so once', async () => {
     const mounted = await mount();
     mounted.page = pageAnswer([['n1', '1', '1', 'note1']]);
     await expandAndOpen(mounted);
     await edit(mounted, 0, 1, 'lost');
+    await click(mounted, all(mounted.host, 'tree-object')[1]);
+    await edit(mounted, 0, 1, 'also lost');
+    expect(all(mounted.host, 'tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([
+      'OcuProbe197.Plain, 1 changes waiting to be saved.',
+      'OcuProbe197.Over30, 1 changes waiting to be saved.',
+    ]);
     expect(mounted.formDirty.dirty()).toBe(true);
     mounted.routes.set(SCHEMAS_PATH, [readAnswer([{ Schema: 'OcuProbe197', Tables: true, Views: true, Procedures: false }])]);
     mounted.routes.set(tablesPath('OcuProbe197'), [readAnswer([{ Schema: 'OcuProbe197', Name: 'Plain' }])]);
     mounted.routes.set(viewsPath('OcuProbe197'), [readAnswer([])]);
     await mounted.switchTo('SAMPLES');
     expect(mounted.formDirty.dirty()).toBe(false);
+    expect(all(mounted.host, 'tab')).toHaveLength(0);
     expect(el(mounted.host, 'status').textContent?.trim()).toBe(STRINGS.explorerSqlDataScopeDiscarded);
     await expandAndOpen(mounted);
     expect(el(mounted.host, 'save').textContent?.trim()).toBe('Save changes (0)');
     expect(texts(mounted.host, 'cell')[0]).toBe('n1');
   });
 });
+
+/** The strip's tab whose accessible name is `name` (Story 19.16). */
+function tabNamed(mounted: Mounted, name: string): HTMLElement {
+  return all(mounted.host, 'tab').find((tab) => tab.getAttribute('aria-label') === name) as HTMLElement;
+}
 
 /** The body cell at grid row `row` and grid column `column` (column 0 is the Change column). */
 function cellAt(mounted: Mounted, row: number, column: number): HTMLElement {

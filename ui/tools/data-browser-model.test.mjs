@@ -8,13 +8,16 @@ import { dirname, join } from 'node:path';
 // grid's cell moves over the header row, offset paging, how a cell reads, a column's track, which
 // kinds take a filter, and the status lines; and the token rule over its styles -- every custom
 // property the `ocu-data-browser` rules read is one of OcuPilot's own, and the harvest's `--ite-*`
-// palette appears nowhere under `ui/src`.
+// palette appears nowhere under `ui/src`. Story 19.8 adds the editors' parsers, the BIT toggle, a
+// row's key and the staged changes; Story 19.16 adds go to row, a page's CSV cells, the tab cap and
+// the shortcut table's matchers, run on plain event objects.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const model = await import(core('data-browser-model.ts'));
 const { STRINGS } = await import(core('strings.ts'));
+const csv = await import(core('csv.ts'));
 
 // Mutation (Rule 19): `nextSort` answering ascending after descending -> the third step goes red.
 test('a header cycles a new column ascending, then descending, then none', () => {
@@ -304,4 +307,127 @@ test('a save sends deletes, updates, then inserts with values; its answer applie
     ['name-n|saved|false', 'name-c|gone|false', 'name-b|changed|false', 'name-a|saved|false'],
     'each outcome on its own row, a failed update and delete rolled back to the values read'
   );
+});
+
+// --- Story 19.16: go to row, a page's CSV cells, the tab cap and the shortcuts -------------------
+
+// AC5. Mutation (Rule 19): `goToRow` reads offset `n * size` -> row 237 reads offset 23,700 and this
+// goes red.
+test('go to row: row n is read at floor((n - 1) / size) * size, from 1 to the total, or to the furthest row the route reads while it is unknown', () => {
+  assert.deepEqual(model.goToRow('237', 100, 340), { offset: 200, index: 36 });
+  assert.deepEqual(model.goToRow(' 1 ', 100, 340), { offset: 0, index: 0 });
+  assert.deepEqual(model.goToRow('100', 100, 340), { offset: 0, index: 99 });
+  assert.deepEqual(model.goToRow('340', 100, 340), { offset: 300, index: 39 });
+  assert.deepEqual(model.goToRow('101', 50, 340), { offset: 100, index: 0 });
+  for (const text of ['0', '341', '1e3', '', ' ', '2.5', '-1', '+5', '1234567890', 'x']) assert.equal(model.goToRow(text, 100, 340), null, JSON.stringify(text));
+  assert.deepEqual(model.goToRow('5000', 100, null), { offset: 4900, index: 99 }, 'any row while the total is unknown');
+  assert.equal(model.goToRow('1', 100, 0), null, 'a total of 0 holds no row');
+  assert.equal(model.rowRangeMax(340, 100), 340);
+  assert.equal(model.rowRangeMax(null, 100), 100_000_000, 'the furthest page the route reads ends at its last row');
+  assert.equal(model.rowRangeMax(150_000_000, 500), 100_000_000, 'never past the furthest page, total or not');
+  for (const size of model.PAGE_SIZES) assert.ok(model.rowRangeMax(null, size) <= model.MAX_OFFSET + size, `size ${size}`);
+  const furthest = model.goToRow('100000000', 100, null);
+  assert.deepEqual(furthest, { offset: 99_999_900, index: 99 });
+  assert.ok(furthest.offset <= model.MAX_OFFSET, 'the offset stays within the route');
+  assert.equal(model.goToRow('100000001', 100, null), null);
+  assert.equal(model.MAX_TABS, 8);
+});
+
+// AC1. Mutation (Rule 19): `pageCsvRows` writes NULL as the grid's "NULL" word -> this goes red.
+test('a page writes as the grid shows it: NULL empty, BIT as the yes and no words, binary and a cut cell as answered, and csvText guards a formula', () => {
+  const columns = [{ kind: 'text' }, { kind: 'boolean' }, { kind: 'number' }, { kind: 'stream' }, { kind: 'binary' }, { kind: 'date' }];
+  const rows = [
+    ['=1+1', '1', '12.5', 'cut text\u2026', '0x00FF', '2026-10-04'],
+    [null, '0', null, '', null, null],
+  ];
+  const cells = model.pageCsvRows(columns, rows);
+  assert.deepEqual(cells, [
+    ['=1+1', STRINGS.tableStatusYes, '12.5', 'cut text\u2026', '0x00FF', '2026-10-04'],
+    ['', STRINGS.tableStatusNo, '', '', '', ''],
+  ]);
+  assert.equal(
+    csv.csvText(['Name', 'Flag', 'Num', 'Memo', 'Bin', 'Born'], cells),
+    `\ufeffName,Flag,Num,Memo,Bin,Born\r\n'=1+1,${STRINGS.tableStatusYes},12.5,cut text\u2026,0x00FF,2026-10-04\r\n,${STRINGS.tableStatusNo},,,,\r\n`
+  );
+});
+
+/** A key event as the matchers read it. */
+const ev = (key, extra = {}) => ({ key, code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...extra });
+
+const PLACES = ['grid', 'tab', 'text', 'editor'];
+
+/** Each action's chords, macOS's Option+Shift characters among them, the places it acts in, and the keys the help dialog names for them. */
+const CHORDS = {
+  help: { keys: 'Ctrl/Cmd+/', events: [ev('/', { ctrlKey: true }), ev('/', { metaKey: true }), ev('/', { ctrlKey: true, shiftKey: true })], places: ['grid', 'tab', 'text'] },
+  save: { keys: 'Ctrl/Cmd+S', events: [ev('s', { ctrlKey: true }), ev('S', { metaKey: true })], places: ['grid', 'tab', 'text', 'editor'] },
+  goToRow: { keys: 'Ctrl/Cmd+G', events: [ev('g', { ctrlKey: true }), ev('G', { metaKey: true })], places: ['grid', 'tab', 'text'] },
+  export: { keys: 'Ctrl/Cmd+E', events: [ev('e', { ctrlKey: true }), ev('E', { metaKey: true })], places: ['grid', 'tab', 'text'] },
+  addRow: { keys: 'Alt/Option+Shift+N', events: [ev('N', { altKey: true, shiftKey: true, code: 'KeyN' }), ev('\u02dc', { altKey: true, shiftKey: true, code: 'KeyN' }), ev('N', { altKey: true, shiftKey: true, code: 'KeyL' })], places: ['grid', 'tab'] },
+  duplicateRow: { keys: 'Alt/Option+Shift+D', events: [ev('D', { altKey: true, shiftKey: true, code: 'KeyD' }), ev('\u00ce', { altKey: true, shiftKey: true, code: 'KeyD' })], places: ['grid', 'tab'] },
+  deleteRow: { keys: 'Alt/Option+Shift+Delete or Backspace', events: [ev('Delete', { altKey: true, shiftKey: true }), ev('Backspace', { altKey: true, shiftKey: true })], places: ['grid', 'tab'] },
+  page: { keys: 'Alt/Option+PageDown or PageUp', events: [ev('PageDown', { altKey: true }), ev('PageUp', { altKey: true })], places: ['grid', 'tab'] },
+  tab: { keys: 'Alt/Option+Shift+PageDown or PageUp', events: [ev('PageDown', { altKey: true, shiftKey: true }), ev('PageUp', { altKey: true, shiftKey: true })], places: ['grid', 'tab'] },
+  closeTab: { keys: 'Alt/Option+Shift+W, or Delete on a tab', events: [ev('W', { altKey: true, shiftKey: true, code: 'KeyW' }), ev('\u201e', { altKey: true, shiftKey: true, code: 'KeyW' })], places: ['grid', 'tab'] },
+};
+
+test('every shortcut row matches its chords in each place it acts and nowhere else; Delete closes only a focused tab', () => {
+  assert.deepEqual(model.DATA_BROWSER_SHORTCUTS.map((row) => row.action).sort(), Object.keys(CHORDS).sort());
+  for (const [action, { events, places }] of Object.entries(CHORDS)) {
+    for (const event of events) {
+      for (const place of PLACES) {
+        assert.equal(model.shortcutFor(event, place), places.includes(place) ? action : null, `${action}: ${JSON.stringify(event)} in ${place}`);
+      }
+    }
+  }
+  assert.equal(model.shortcutFor(ev('Delete'), 'tab'), 'closeTab', 'Delete on a focused tab closes it');
+  for (const place of ['grid', 'text', 'editor']) assert.equal(model.shortcutFor(ev('Delete'), place), null, `Delete stays the grid's own in ${place}`);
+  assert.equal(model.shortcutStep(ev('PageDown', { altKey: true })), 1);
+  assert.equal(model.shortcutStep(ev('PageUp', { altKey: true, shiftKey: true })), -1);
+});
+
+// AC3. Mutation (Rule 19): `shortcutFor` drops the Alt-in-text exclusion -> each Alt/Option row acts in
+// a text field and this goes red.
+test('an Alt/Option chord does nothing in a text field, where it types its character, and with an editor open only Save acts', () => {
+  const optionRows = Object.entries(CHORDS).filter(([, { events }]) => events.every((event) => event.altKey));
+  assert.equal(optionRows.length, 6, 'the Alt/Option family');
+  for (const [action, { events }] of optionRows) {
+    for (const event of events) assert.equal(model.shortcutFor(event, 'text'), null, `${action} in a text field`);
+  }
+  for (const [action, { events }] of Object.entries(CHORDS)) {
+    for (const event of events) assert.equal(model.shortcutFor(event, 'editor'), action === 'save' ? 'save' : null, `${action} with an editor open`);
+  }
+});
+
+// AC3. Mutation (Rule 19): `optionShiftLetter` matches the physical key whatever the key reads ->
+// Dvorak's KeyN, which Chrome reads as Alt+Shift+B, adds a row and this goes red.
+test("no row matches a chord the browser reserves, a zoom or reload chord, the shell's Ctrl/Cmd+K, I or B, Chrome's Alt+Shift A, B, R or T, or a single character", () => {
+  const never = [ev('F5'), ev('F5', { shiftKey: true })];
+  for (const control of [{ ctrlKey: true }, { metaKey: true }]) {
+    for (const key of ['n', 'w', 't', 'r', 'k', 'i', 'b', '=', '-', '0', '+', 'F4', 'Tab', 'PageDown', 'PageUp']) never.push(ev(key, control));
+    for (const key of ['N', 'T', 'W', 'K', 'I', 'B', 'Tab', 'PageDown', 'PageUp']) never.push(ev(key, { ...control, shiftKey: true }));
+  }
+  for (const letter of ['A', 'B', 'R', 'T']) {
+    never.push(ev(letter, { altKey: true, shiftKey: true, code: `Key${letter}` }));
+    // Another layout's letter on a physical key a row names: Dvorak's KeyN types B.
+    for (const physical of ['N', 'D', 'W']) never.push(ev(letter, { altKey: true, shiftKey: true, code: `Key${physical}` }));
+  }
+  for (let code = 0x20; code < 0x7f; code += 1) {
+    const character = String.fromCharCode(code);
+    never.push(ev(character), ev(character, { shiftKey: true }));
+  }
+  for (const event of never) {
+    for (const place of PLACES) assert.equal(model.shortcutFor(event, place), null, `${JSON.stringify(event)} in ${place}`);
+  }
+  assert.ok(never.length > 200, `the chords checked: ${never.length}`);
+});
+
+test('each action appears in exactly one row, with a label and keys the string source holds', () => {
+  const actions = model.DATA_BROWSER_SHORTCUTS.map((row) => row.action);
+  assert.equal(actions.length, 10);
+  assert.equal(new Set(actions).size, actions.length);
+  for (const row of model.DATA_BROWSER_SHORTCUTS) {
+    assert.ok(typeof STRINGS[row.labelKey] === 'string' && STRINGS[row.labelKey] !== '', `${row.action}'s label`);
+    assert.ok(typeof STRINGS[row.keysKey] === 'string' && STRINGS[row.keysKey] !== '', `${row.action}'s keys`);
+    assert.equal(STRINGS[row.keysKey], CHORDS[row.action].keys, `${row.action}'s keys name the chords its matcher binds`);
+  }
 });

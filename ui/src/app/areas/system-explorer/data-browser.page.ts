@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { saveCsv } from '../../core/csv';
 import { FormDirty } from '../../core/form-dirty';
 import {
+  DATA_BROWSER_SHORTCUTS,
   MAX_OFFSET,
   PAGE_SIZES,
   goToPageOffset,
@@ -12,7 +15,12 @@ import {
   pageCount,
   pageOf,
   pageRangeLine,
+  rowRangeMax,
   rowsLine,
+  shortcutFor,
+  shortcutStep,
+  type ShortcutAction,
+  type ShortcutPlace,
   type SortState,
 } from '../../core/data-browser-model';
 import { NavigationService, screenForDescriptor } from '../../core/navigation';
@@ -20,6 +28,7 @@ import { ScopeService, onScopeChange } from '../../core/scope';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { groupDigits } from '../../core/table-model';
 import { Dialog } from '../../shell/dialog';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { WarningDialog } from '../../shell/warning-dialog';
@@ -28,10 +37,12 @@ import { DataBrowserGrid, type CellEdit, type PageRequest } from './data-browser
 import { DataBrowserTree } from './data-browser-tree';
 import {
   DataBrowserState,
+  type ActiveCell,
   type BrowseAnswer,
   type BrowseColumn,
   type DataBrowserDeps,
   type StagedRow,
+  type TabView,
   type TreeObject,
   type TreeSchema,
 } from './data-browser.store';
@@ -43,7 +54,7 @@ export const TREE_DESCRIPTORS = {
   views: 'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
 } as const;
 
-/** One `DataBrowserState` per screen store, so a return to the screen finds the open table and its page. */
+/** One `DataBrowserState` per screen store, so a return to the screen finds the open tabs and their pages. */
 const HELD = new WeakMap<ScreenStore, DataBrowserState>();
 
 function heldFor(store: ScreenStore | null): DataBrowserState {
@@ -54,22 +65,66 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
   return state;
 }
 
+/** One tab of the strip as drawn: its accessible name adds what it stages, and its dot shows that it does. */
+interface TabRender extends TabView {
+  readonly name: string;
+  readonly dot: boolean;
+}
+
+/** Where a closed tab's close came from, which decides where focus goes next. */
+type CloseOrigin = 'strip' | 'button' | 'other';
+
+/** Where the key `target` received was pressed, as the shortcuts read it. */
+function shortcutPlace(target: EventTarget | null): ShortcutPlace {
+  if (!(target instanceof Element)) return 'grid';
+  if (target.closest('.ocu-data-browser-tab') !== null) return 'tab';
+  if (target.closest('input, textarea, [contenteditable]') !== null) return 'text';
+  return 'grid';
+}
+
+/** The tab of the strip `target` is in, or `null`. */
+function tabIdOf(target: EventTarget | null): string | null {
+  return target instanceof Element ? (target.closest('.ocu-data-browser-tab')?.getAttribute('data-tab') ?? null) : null;
+}
+
 /**
- * System Explorer's Data browser (Story 19.7): the schema tree beside the open table's or view's
- * grid, stacked when the column is narrow, with the empty state until a table opens.
+ * System Explorer's Data browser (Story 19.7): the schema tree beside the open tables, stacked when
+ * the column is narrow, with the empty state until a table opens.
  *
- * Above the grid: the open object's name as a heading, Refresh, Clear filters and the filter hint.
- * Below it: First, Previous, a Page field "of N", Next and Last -- Last drawn disabled while the
- * total is unknown -- and Rows per page; then the polite status line, an SQL error's message as text,
- * and a refusal as an alert banner. A control that cannot act is drawn `aria-disabled` and answers
- * nothing.
+ * **Tabs** (Story 19.16). Each table or view opened from the tree opens in a tab of its own, in
+ * Material's tab nav bar named "Open tables" above the head, and is selected; one already open is
+ * selected and reads nothing; past `MAX_TABS` nothing opens and the status line says so. Each tab
+ * keeps its own filters, sort, page, page size, staged changes and active cell, restored through the
+ * grid's `place` when it is selected again or the page opens again, and its grid is its own; a tab
+ * chord pressed in the grid moves focus to the new tab's grid. A tab is named by its
+ * `<schema>.<table>`, plus ", <n> changes waiting to be saved." while it stages rows, which a dot
+ * shows. Its pointer-only close mark, Delete on the focused tab, Alt/Option+Shift+W and Close tab
+ * close it, asking "Leave without saving?" through `FormDirty` first when it stages rows; focus then
+ * moves to the selected tab when it was in the strip, stays on Close tab when it was there, and moves
+ * to the tree when no tab is left. The tabs carry no route, so the URL never changes.
+ *
+ * Above the grid: the open object's name as a heading, Refresh, Clear filters, Download CSV, Go to
+ * row, Keyboard shortcuts, Close tab and the filter hint. Below it: First, Previous, a Page field "of
+ * N", Next and Last -- Last drawn disabled while the total is unknown -- and Rows per page; then the
+ * polite status line, an SQL error's message as text, and a refusal as an alert banner. A control that
+ * cannot act is drawn `aria-disabled` and answers nothing.
  *
  * **Editing** (Story 19.8). On a table whose key this account can list, the head adds Add row,
  * Duplicate row, Delete row (Restore row on a deleted row), Save changes (<n>) and Discard changes,
  * acting on the grid's active row; a view or a keyless table reads the read-only line instead. Save
  * opens the warning dialog naming the table and how many rows change, are added and are deleted;
- * Proceed sends the save, Cancel nothing. Opening another table over staged rows, like leaving the
- * route, asks "Leave without saving?" through `FormDirty`; a namespace switch discards them.
+ * Proceed sends the save for the selected tab, Cancel nothing. Leaving the route asks "Leave without
+ * saving?" and drops every tab's staged rows, keeping the tabs; a namespace switch closes every tab.
+ *
+ * **Download CSV** writes the selected tab's page as the instance read it (`DataTab.exportPage`) to a
+ * file built in this browser and announces it; it sends nothing. **Go to row** and **Keyboard
+ * shortcuts** are the shell's dialog, which traps focus and returns it; no dialog opens over another.
+ *
+ * **Shortcuts** (`DATA_BROWSER_SHORTCUTS`). One capture-phase key handler on the page's host, which
+ * holds only its section, acts while focus is inside it: each chord the table names does what its
+ * control does, or nothing when that control is unavailable, and is kept from the browser and from
+ * the grid either way. It is inert while a dialog is in the document, and while an editor is open but
+ * for Ctrl/Cmd+S, which commits the editor first.
  *
  * **Everything shown is text** (AD-11), and the page lives in `DataBrowserState`, never in the
  * screen's store, so it never reaches screen context (AD-36, AD-39's sixth exception).
@@ -80,7 +135,7 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
 @Component({
   selector: 'app-data-browser-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataBrowserTree, DataBrowserGrid, WarningDialog, Dialog],
+  imports: [DataBrowserTree, DataBrowserGrid, WarningDialog, Dialog, MatTabNav, MatTabLink, MatTabNavPanel],
   template: `<section class="ocu-form-page ocu-data-browser" [attr.aria-busy]="loading">
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-data="refusal">{{ refusal }}</p>
@@ -104,81 +159,116 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
       </div>
       <div class="ocu-data-browser-main">
         @if (open; as object) {
-          <div class="ocu-data-browser-head">
-            <h2 class="ocu-data-browser-heading" data-ocu-data="heading">{{ heading }}</h2>
-            <div class="ocu-data-browser-actions">
-              <button type="button" class="ocu-button-text" data-ocu-data="refresh" [attr.aria-disabled]="loading" (click)="onRefresh()">{{ STRINGS.actionRefresh }}</button>
-              <button type="button" class="ocu-button-text" data-ocu-data="clear-filters" [attr.aria-disabled]="noFilters" (click)="onClearFilters()">{{ STRINGS.explorerSqlDataClearFilters }}</button>
-            </div>
-          </div>
-          @if (writable) {
-            <div class="ocu-data-browser-edit-actions" data-ocu-data="edit-actions">
-              <button type="button" class="ocu-button-text" data-ocu-data="add-row" [attr.aria-disabled]="editBlocked" (click)="onAddRow()">{{ STRINGS.explorerSqlDataAddRow }}</button>
-              <button type="button" class="ocu-button-text" data-ocu-data="duplicate-row" [attr.aria-disabled]="rowBlocked" (click)="onDuplicateRow()">{{ STRINGS.explorerSqlDataDuplicateRow }}</button>
-              <button type="button" class="ocu-button-text" data-ocu-data="delete-row" [attr.aria-disabled]="rowBlocked" (click)="onDeleteRow()">{{ deleteLabel }}</button>
-              <button type="button" class="ocu-button-primary" data-ocu-data="save" [attr.aria-disabled]="saveBlocked" (click)="onSave()">{{ saveLabel }}</button>
-              <button type="button" class="ocu-button-text" data-ocu-data="discard" [attr.aria-disabled]="discardBlocked" (click)="onDiscard()">{{ STRINGS.explorerSqlDataDiscard }}</button>
-            </div>
-          }
-          @if (readOnly) {
-            <p class="ocu-data-browser-hint" data-ocu-data="read-only">{{ STRINGS.explorerSqlDataReadOnly }}</p>
-          }
-          <p class="ocu-data-browser-hint" data-ocu-data="hint">{{ STRINGS.explorerSqlDataFilterHint }}</p>
-          <app-data-browser-grid
-            [label]="heading"
-            [columns]="columns"
-            [rows]="rows"
-            [offset]="pageOffset"
-            [total]="total"
-            [sort]="sort"
-            [drafts]="drafts"
-            [editable]="writable"
-            [saving]="savingNow"
-            (sorted)="onSort($event)"
-            (drafted)="onDraft($event)"
-            (applied)="onApply($event)"
-            (cleared)="onClear($event)"
-            (paged)="onPaged($event)"
-            (edited)="onEdited($event)"
-            (announced)="onAnnounced($event)"
-            (activeRow)="onActiveRow($event)"
-          />
-          <div class="ocu-data-browser-pager" data-ocu-data="pager">
-            <button type="button" class="ocu-button-text" data-ocu-data="first" [attr.aria-disabled]="atStart" (click)="onFirst()">{{ STRINGS.explorerSqlDataFirstPage }}</button>
-            <button type="button" class="ocu-button-text" data-ocu-data="previous" [attr.aria-disabled]="atStart" (click)="onPrevious()">{{ STRINGS.explorerSqlDataPreviousPage }}</button>
-            <label class="ocu-criteria-label" for="ocu-data-page">{{ STRINGS.explorerSqlDataPage }}</label>
-            <input
-              id="ocu-data-page"
-              class="ocu-criteria-input ocu-data-browser-page-input"
-              type="text"
-              inputmode="numeric"
-              autocomplete="off"
-              data-ocu-data="page"
-              [value]="pageText"
-              [attr.aria-invalid]="hasPageProblem ? true : null"
-              [attr.aria-describedby]="pageDescribedBy"
-              (input)="onPageInput($event)"
-              (keydown)="onPageKeydown($event)"
-            />
-            @if (hasPageCount) {
-              <span class="ocu-data-browser-page-count" id="ocu-data-page-count" data-ocu-data="page-count">{{ pageCountText }}</span>
+          <nav
+            mat-tab-nav-bar
+            class="ocu-data-browser-tabs"
+            data-ocu-data="tabs"
+            [tabPanel]="panel"
+            [disableRipple]="true"
+            [attr.aria-label]="STRINGS.explorerSqlDataOpenTables"
+          >
+            @for (tab of tabList; track tab.id) {
+              <button
+                type="button"
+                mat-tab-link
+                class="ocu-data-browser-tab"
+                data-ocu-data="tab"
+                [active]="tab.active"
+                [attr.aria-label]="tab.name"
+                [attr.data-tab]="tab.id"
+                (click)="onSelectTab(tab.id)"
+              >
+                <span class="ocu-data-browser-tab-label">{{ tab.label }}</span>
+                @if (tab.dot) {
+                  <span class="ocu-data-browser-tab-dot" aria-hidden="true" data-ocu-data="tab-dot"></span>
+                }
+                <span class="ocu-data-browser-tab-close" aria-hidden="true" data-ocu-data="tab-close" (click)="onTabCloseClick($event, tab.id)">{{ closeGlyph }}</span>
+              </button>
             }
-            <button type="button" class="ocu-button-text" data-ocu-data="next" [attr.aria-disabled]="atEnd" (click)="onNext()">{{ STRINGS.explorerSqlDataNextPage }}</button>
-            <button type="button" class="ocu-button-text" data-ocu-data="last" [attr.aria-disabled]="lastBlocked" (click)="onLast()">{{ STRINGS.explorerSqlDataLastPage }}</button>
-            <label class="ocu-criteria-label" for="ocu-data-size">{{ STRINGS.explorerSqlDataRowsPerPage }}</label>
-            <select id="ocu-data-size" class="ocu-criteria-input ocu-data-browser-size" data-ocu-data="size" (change)="onSize($event)">
-              @for (size of sizes; track size) {
-                <option [value]="size" [selected]="size === pageSize">{{ size }}</option>
+          </nav>
+          <mat-tab-nav-panel #panel class="ocu-data-browser-panel" data-ocu-data="panel">
+            <div class="ocu-data-browser-head">
+              <h2 class="ocu-data-browser-heading" data-ocu-data="heading">{{ heading }}</h2>
+              <div class="ocu-data-browser-actions">
+                <button type="button" class="ocu-button-text" data-ocu-data="refresh" [attr.aria-disabled]="loading" (click)="onRefresh()">{{ STRINGS.actionRefresh }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="clear-filters" [attr.aria-disabled]="noFilters" (click)="onClearFilters()">{{ STRINGS.explorerSqlDataClearFilters }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="export" [attr.aria-disabled]="exportBlocked" (click)="onExport()">{{ STRINGS.tableDownloadCsv }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="go-to-row" [attr.aria-disabled]="goToRowBlocked" (click)="onOpenGoToRow()">{{ STRINGS.explorerSqlDataGoToRow }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="shortcuts" (click)="onOpenShortcuts()">{{ STRINGS.explorerSqlDataShortcuts }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="close-tab" (click)="onCloseTab()">{{ STRINGS.explorerSqlDataCloseTab }}</button>
+              </div>
+            </div>
+            @if (writable) {
+              <div class="ocu-data-browser-edit-actions" data-ocu-data="edit-actions">
+                <button type="button" class="ocu-button-text" data-ocu-data="add-row" [attr.aria-disabled]="editBlocked" (click)="onAddRow()">{{ STRINGS.explorerSqlDataAddRow }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="duplicate-row" [attr.aria-disabled]="rowBlocked" (click)="onDuplicateRow()">{{ STRINGS.explorerSqlDataDuplicateRow }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="delete-row" [attr.aria-disabled]="rowBlocked" (click)="onDeleteRow()">{{ deleteLabel }}</button>
+                <button type="button" class="ocu-button-primary" data-ocu-data="save" [attr.aria-disabled]="saveBlocked" (click)="onSave()">{{ saveLabel }}</button>
+                <button type="button" class="ocu-button-text" data-ocu-data="discard" [attr.aria-disabled]="discardBlocked" (click)="onDiscard()">{{ STRINGS.explorerSqlDataDiscard }}</button>
+              </div>
+            }
+            @if (readOnly) {
+              <p class="ocu-data-browser-hint" data-ocu-data="read-only">{{ STRINGS.explorerSqlDataReadOnly }}</p>
+            }
+            <p class="ocu-data-browser-hint" data-ocu-data="hint">{{ STRINGS.explorerSqlDataFilterHint }}</p>
+            @for (shown of shownTabs; track shown) {
+              <app-data-browser-grid
+                [label]="heading"
+                [columns]="columns"
+                [rows]="rows"
+                [offset]="pageOffset"
+                [total]="total"
+                [sort]="sort"
+                [drafts]="drafts"
+                [editable]="writable"
+                [saving]="savingNow"
+                (sorted)="onSort($event)"
+                (drafted)="onDraft($event)"
+                (applied)="onApply($event)"
+                (cleared)="onClear($event)"
+                (paged)="onPaged($event)"
+                (edited)="onEdited($event)"
+                (announced)="onAnnounced($event)"
+                (activeCell)="onActiveCell($event)"
+              />
+            }
+            <div class="ocu-data-browser-pager" data-ocu-data="pager">
+              <button type="button" class="ocu-button-text" data-ocu-data="first" [attr.aria-disabled]="atStart" (click)="onFirst()">{{ STRINGS.explorerSqlDataFirstPage }}</button>
+              <button type="button" class="ocu-button-text" data-ocu-data="previous" [attr.aria-disabled]="atStart" (click)="onPrevious()">{{ STRINGS.explorerSqlDataPreviousPage }}</button>
+              <label class="ocu-criteria-label" for="ocu-data-page">{{ STRINGS.explorerSqlDataPage }}</label>
+              <input
+                id="ocu-data-page"
+                class="ocu-criteria-input ocu-data-browser-page-input"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                data-ocu-data="page"
+                [value]="pageText"
+                [attr.aria-invalid]="hasPageProblem ? true : null"
+                [attr.aria-describedby]="pageDescribedBy"
+                (input)="onPageInput($event)"
+                (keydown)="onPageKeydown($event)"
+              />
+              @if (hasPageCount) {
+                <span class="ocu-data-browser-page-count" id="ocu-data-page-count" data-ocu-data="page-count">{{ pageCountText }}</span>
               }
-            </select>
-          </div>
-          @if (hasPageProblem) {
-            <p class="ocu-data-browser-page-problem" id="ocu-data-page-problem" data-ocu-data="page-problem">{{ pageProblem }}</p>
-          }
-          <p class="ocu-explorer-status" role="status" data-ocu-data="status">{{ statusLine }}</p>
-          @if (hasMessage) {
-            <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-data="message" [attr.aria-label]="statusLine">{{ message }}</pre>
-          }
+              <button type="button" class="ocu-button-text" data-ocu-data="next" [attr.aria-disabled]="atEnd" (click)="onNext()">{{ STRINGS.explorerSqlDataNextPage }}</button>
+              <button type="button" class="ocu-button-text" data-ocu-data="last" [attr.aria-disabled]="lastBlocked" (click)="onLast()">{{ STRINGS.explorerSqlDataLastPage }}</button>
+              <label class="ocu-criteria-label" for="ocu-data-size">{{ STRINGS.explorerSqlDataRowsPerPage }}</label>
+              <select id="ocu-data-size" class="ocu-criteria-input ocu-data-browser-size" data-ocu-data="size" (change)="onSize($event)">
+                @for (size of sizes; track size) {
+                  <option [value]="size" [selected]="size === pageSize">{{ size }}</option>
+                }
+              </select>
+            </div>
+            @if (hasPageProblem) {
+              <p class="ocu-data-browser-page-problem" id="ocu-data-page-problem" data-ocu-data="page-problem">{{ pageProblem }}</p>
+            }
+            <p class="ocu-explorer-status" role="status" data-ocu-data="status">{{ statusLine }}</p>
+            @if (hasMessage) {
+              <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-data="message" [attr.aria-label]="statusLine">{{ message }}</pre>
+            }
+          </mat-tab-nav-panel>
         } @else {
           <p class="ocu-explorer-status" role="status" data-ocu-data="status">{{ announcement }}</p>
           <div class="ocu-data-browser-empty" data-ocu-data="empty">
@@ -187,14 +277,47 @@ function heldFor(store: ScreenStore | null): DataBrowserState {
         }
       </div>
     </div>
-    @if (confirming) {
-      <app-warning-dialog [verb]="saveTitle" [consequence]="saveConsequence" (confirmed)="onProceed()" (cancelled)="onCancelSave()" />
-    }
     @if (leavePending) {
       <app-dialog [heading]="STRINGS.formLeaveWithoutSaving" [closeLabel]="STRINGS.actionCancel" (closed)="answerLeave(false)">
         <button dialogAction type="button" class="ocu-button-primary" data-ocu-data="leave" (click)="answerLeave(true)">
           {{ STRINGS.actionConfirm }}
         </button>
+      </app-dialog>
+    }
+    @if (confirmDialog) {
+      <app-warning-dialog [verb]="saveTitle" [consequence]="saveConsequence" (confirmed)="onProceed()" (cancelled)="onCancelSave()" />
+    }
+    @if (shortcutsDialog) {
+      <app-dialog [heading]="STRINGS.explorerSqlDataShortcuts" [closeLabel]="STRINGS.auditDialogClose" (closed)="onCloseShortcuts()">
+        <p class="ocu-data-browser-hint" data-ocu-data="shortcuts-scope">{{ STRINGS.explorerSqlDataShortcutsScope }}</p>
+        <dl class="ocu-data-browser-shortcuts" data-ocu-data="shortcut-list">
+          @for (row of shortcutRows; track row.action) {
+            <dt data-ocu-data="shortcut-label">{{ row.label }}</dt>
+            <dd data-ocu-data="shortcut-keys"><kbd>{{ row.keys }}</kbd></dd>
+          }
+        </dl>
+      </app-dialog>
+    }
+    @if (rowDialog) {
+      <app-dialog [heading]="STRINGS.explorerSqlDataGoToRow" [closeLabel]="STRINGS.actionCancel" (closed)="onCloseGoToRow()">
+        <div class="ocu-data-browser-row-field">
+          <label class="ocu-criteria-label" for="ocu-data-row">{{ STRINGS.explorerSqlDataRowNumber }}</label>
+          <input
+            id="ocu-data-row"
+            class="ocu-criteria-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            data-ocu-data="row-number"
+            aria-describedby="ocu-data-row-range"
+            [value]="rowText"
+            [attr.aria-invalid]="rowRefused ? true : null"
+            (input)="onRowInput($event)"
+            (keydown)="onRowKeydown($event)"
+          />
+          <p class="ocu-data-browser-hint" id="ocu-data-row-range" data-ocu-data="row-range" [class.ocu-data-browser-row-refused]="rowRefused">{{ rowRangeText }}</p>
+        </div>
+        <button dialogAction type="button" class="ocu-button-primary" data-ocu-data="go" (click)="onGoToRow()">{{ STRINGS.explorerSqlDataGo }}</button>
       </app-dialog>
     }
   </section>`,
@@ -205,10 +328,18 @@ export class DataBrowserPage {
   private readonly stores = inject(ScreenStores);
   private readonly scope = inject(ScopeService);
   private readonly formDirty = inject(FormDirty);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly STRINGS = STRINGS;
 
   protected readonly sizes = PAGE_SIZES;
+
+  /** A tab's close mark, drawn for the pointer only. */
+  protected readonly closeGlyph = '\u00d7';
+
+  /** The Keyboard shortcuts dialog's rows, each `DATA_BROWSER_SHORTCUTS` row's label and keys. */
+  protected readonly shortcutRows = DATA_BROWSER_SHORTCUTS.map((shortcut) => ({ action: shortcut.action, label: STRINGS[shortcut.labelKey], keys: STRINGS[shortcut.keysKey] }));
 
   private readonly grid = viewChild(DataBrowserGrid);
 
@@ -227,11 +358,24 @@ export class DataBrowserPage {
   /** The Page field's range line after a page outside it, or `''`. */
   private readonly pageProblemText = signal('');
 
-  /** The grid row the active cell is on, which Duplicate and Delete act on. */
-  private readonly activeRowId = signal<string | null>(null);
-
   /** Whether the save dialog is open. */
   private readonly confirmOpen = signal(false);
+
+  /** Whether the Keyboard shortcuts dialog is open. */
+  private readonly shortcutsShown = signal(false);
+
+  /** Whether the Go to row dialog is open, what its field holds, and whether that was refused. */
+  private readonly rowShown = signal(false);
+
+  private readonly rowDraft = signal('');
+
+  private readonly rowRefusedValue = signal(false);
+
+  /** Whether a Go is on its way, so a second press sends nothing. */
+  private rowBusy = false;
+
+  /** Whether the page has been destroyed, so an answer arriving after it acts on nothing. */
+  private destroyed = false;
 
   constructor() {
     this.screen = this.navigation.screenForUrl(this.router.url);
@@ -249,20 +393,29 @@ export class DataBrowserPage {
     const stop = this.state.subscribe(() => this.bump());
     const stopDirty = this.formDirty.subscribe(() => this.bump());
     // The tree is read once the scope has resolved, and a namespace switch reads it again (AD-44):
-    // the old namespace's tree, open table and page leave now.
+    // the old namespace's tree and tabs leave now.
     const stopScope = onScopeChange(this.scope, () => {
       this.resetPageField();
       void this.state.scopeTo(this.deps, this.scope.namespace());
     });
     if (this.scope.loaded()) void this.state.scopeTo(this.deps, this.scope.namespace());
-    // Leaving the route asked first (the form-page guard), so what is staged goes with the page.
+    // The shortcuts: one capture-phase handler on the host, so a chord is read before the grid or a
+    // tab acts on it, and only while focus is inside the page.
+    const onKeydown = (event: KeyboardEvent): void => this.onShortcutKeydown(event);
+    this.host.addEventListener('keydown', onKeydown, true);
+    // Leaving the route asked first (the form-page guard), so every tab's staged rows go with the page;
+    // the tabs stay for a return.
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
+      this.host.removeEventListener('keydown', onKeydown, true);
       stop();
       stopDirty();
       stopScope();
-      if (this.state.stagedCount() > 0) this.state.discard(this.deps);
+      this.state.discardAll(this.deps);
       this.formDirty.setDirty(false);
     });
+    // A return to the route draws the selected tab's active cell again.
+    this.afterTabChange();
   }
 
   protected get schemas(): readonly TreeSchema[] | null {
@@ -292,6 +445,23 @@ export class DataBrowserPage {
   protected get open(): TreeObject | null {
     this.generation();
     return this.state.open();
+  }
+
+  /** The strip's tabs, each named by its table and what it stages. */
+  protected get tabList(): readonly TabRender[] {
+    this.generation();
+    return this.state.tabs().map((tab) => ({
+      ...tab,
+      name: tab.staged > 0 ? `${tab.label}, ${fillPlaceholders(STRINGS.explorerSqlDataWaiting, { n: tab.staged })}` : tab.label,
+      dot: tab.staged > 0,
+    }));
+  }
+
+  /** The selected tab's id alone, so each tab draws a grid of its own. */
+  protected get shownTabs(): readonly string[] {
+    this.generation();
+    const tab = this.state.activeTab();
+    return tab === null ? [] : [tab.id];
   }
 
   protected get heading(): string {
@@ -355,14 +525,19 @@ export class DataBrowserPage {
     return !this.editing;
   }
 
+  /** The grid row the selected tab's active cell is on, which Duplicate and Delete act on. */
+  private get activeRowId(): string | null {
+    this.generation();
+    return this.state.activeCell()?.row ?? null;
+  }
+
   /** No row to act on: none active, or editing is off. */
   protected get rowBlocked(): boolean {
-    return !this.editing || this.activeRowId() === null;
+    return !this.editing || this.activeRowId === null;
   }
 
   protected get deleteLabel(): string {
-    this.generation();
-    const id = this.activeRowId();
+    const id = this.activeRowId;
     return id !== null && this.state.deleted(id) ? STRINGS.explorerSqlDataRestoreRow : STRINGS.explorerSqlDataDeleteRow;
   }
 
@@ -383,8 +558,44 @@ export class DataBrowserPage {
     return this.state.saving() || this.stagedCount === 0;
   }
 
-  protected get confirming(): boolean {
-    return this.confirmOpen();
+  /** No page to write: none answered, no row on it, or a read on its way. */
+  protected get exportBlocked(): boolean {
+    this.generation();
+    return !this.state.canExport();
+  }
+
+  /** No range to go in: no rows answered, a total of 0, or a read on its way. */
+  protected get goToRowBlocked(): boolean {
+    this.generation();
+    return !this.state.canGoToRow();
+  }
+
+  /** The save dialog, unless "Leave without saving?" stands: no dialog opens over another. */
+  protected get confirmDialog(): boolean {
+    return this.confirmOpen() && !this.leavePending;
+  }
+
+  /** The Keyboard shortcuts dialog, unless another stands. */
+  protected get shortcutsDialog(): boolean {
+    return this.shortcutsShown() && !this.leavePending && !this.confirmOpen();
+  }
+
+  /** The Go to row dialog, unless another stands. */
+  protected get rowDialog(): boolean {
+    return this.rowShown() && !this.leavePending && !this.confirmOpen() && !this.shortcutsShown();
+  }
+
+  protected get rowText(): string {
+    return this.rowDraft();
+  }
+
+  protected get rowRefused(): boolean {
+    return this.rowRefusedValue();
+  }
+
+  /** The Row number field's range line: 1 to the total, or to the furthest row the route reads. */
+  protected get rowRangeText(): string {
+    return fillPlaceholders(STRINGS.explorerSqlDataRowRange, { n: groupDigits(rowRangeMax(this.total, this.pageSize)) });
   }
 
   protected get saveTitle(): string {
@@ -494,8 +705,9 @@ export class DataBrowserPage {
     return announcement === '' ? line : `${announcement} ${line}`.trim();
   }
 
-  /** What the status line says while no object is open, such as why staged rows went. */
+  /** What the status line says while no tab is open, such as why staged rows went. */
   protected get announcement(): string {
+    this.generation();
     return this.state.announcement();
   }
 
@@ -513,16 +725,30 @@ export class DataBrowserPage {
     void this.state.toggle(this.deps, name);
   }
 
-  /** Open `object`, asking first when rows are staged; a declined answer keeps the open table. */
-  protected async onOpen(object: TreeObject): Promise<void> {
-    if (this.state.stagedCount() > 0 && !(await this.formDirty.requestLeave())) return;
-    this.resetPageField();
-    this.activeRowId.set(null);
+  /** Open `object` in a tab, or select its tab when it is open; nothing staged is dropped. */
+  protected onOpen(object: TreeObject): void {
     void this.state.openObject(this.deps, object);
+    this.afterTabChange();
   }
 
   protected answerLeave(leave: boolean): void {
     this.formDirty.answer(leave);
+  }
+
+  protected onSelectTab(id: string): void {
+    if (this.state.selectTab(id)) this.afterTabChange();
+  }
+
+  /** A tab's close mark: close that tab without selecting it. */
+  protected onTabCloseClick(event: Event, id: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    void this.closeTab(id, 'strip');
+  }
+
+  protected onCloseTab(): void {
+    const tab = this.state.activeTab();
+    if (tab !== null) void this.closeTab(tab.id, 'button');
   }
 
   protected onEdited(edit: CellEdit): void {
@@ -533,8 +759,8 @@ export class DataBrowserPage {
     this.state.announce(text);
   }
 
-  protected onActiveRow(id: string | null): void {
-    this.activeRowId.set(id);
+  protected onActiveCell(cell: ActiveCell): void {
+    this.state.setActiveCell(cell);
   }
 
   protected onAddRow(): void {
@@ -544,14 +770,14 @@ export class DataBrowserPage {
   }
 
   protected onDuplicateRow(): void {
-    const id = this.activeRowId();
+    const id = this.activeRowId;
     if (this.rowBlocked || id === null) return;
     const copy = this.state.duplicate(this.deps, id);
     if (copy !== null) this.grid()?.activate(copy);
   }
 
   protected onDeleteRow(): void {
-    const id = this.activeRowId();
+    const id = this.activeRowId;
     if (this.rowBlocked || id === null) return;
     this.state.toggleDelete(this.deps, id);
   }
@@ -573,6 +799,72 @@ export class DataBrowserPage {
   protected onDiscard(): void {
     if (this.discardBlocked) return;
     this.state.discard(this.deps);
+  }
+
+  /** Save the selected tab's page, as the instance read it, to a file built here, and say so. */
+  protected onExport(): void {
+    const file = this.state.exportPage(new Date());
+    if (file === null) return;
+    saveCsv(document, file.text, file.fileName);
+    this.state.announce(fillPlaceholders(STRINGS.explorerSqlDataExported, { first: groupDigits(file.first), last: groupDigits(file.last), file: file.fileName }));
+  }
+
+  protected onOpenShortcuts(): void {
+    this.shortcutsShown.set(true);
+  }
+
+  protected onCloseShortcuts(): void {
+    this.shortcutsShown.set(false);
+  }
+
+  protected onOpenGoToRow(): void {
+    if (this.goToRowBlocked) return;
+    this.rowDraft.set('');
+    this.rowRefusedValue.set(false);
+    this.rowShown.set(true);
+  }
+
+  protected onCloseGoToRow(): void {
+    this.rowShown.set(false);
+  }
+
+  protected onRowInput(event: Event): void {
+    this.rowDraft.set((event.target as HTMLInputElement).value);
+    this.rowRefusedValue.set(false);
+  }
+
+  /** Enter in the Row number field is Go. */
+  protected onRowKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    void this.onGoToRow();
+  }
+
+  /**
+   * Go: a number outside the range keeps the dialog open, `aria-invalid`, with focus on the field;
+   * otherwise the page holding it is read, the dialog closes, and the active cell moves to that row in
+   * the column it was in, with focus on the grid. An answer arriving after another tab was selected,
+   * or after the page was left, changes nothing here.
+   */
+  protected async onGoToRow(): Promise<void> {
+    if (this.rowBusy) return;
+    this.rowBusy = true;
+    const tab = this.state.activeTab();
+    const column = this.state.activeCell()?.column ?? 0;
+    const jump = await this.state.goToRowNumber(this.deps, this.rowDraft());
+    this.rowBusy = false;
+    if (this.destroyed || this.state.activeTab() !== tab) return;
+    if (jump !== null && 'problem' in jump) {
+      this.rowRefusedValue.set(true);
+      this.host.querySelector<HTMLElement>('[data-ocu-data="row-number"]')?.focus();
+      return;
+    }
+    if (!this.rowShown()) return;
+    this.rowShown.set(false);
+    this.resetPageField();
+    if (jump === null) return;
+    const id = `p${jump.index}`;
+    afterNextRender(() => this.grid()?.activate(id, column), { injector: this.injector });
   }
 
   protected onRefresh(): void {
@@ -655,6 +947,122 @@ export class DataBrowserPage {
     const size = Number((event.target as HTMLSelectElement).value);
     this.resetPageField();
     void this.state.setSize(this.deps, size);
+  }
+
+  /**
+   * The shortcuts' one key handler: inert while a dialog is in the document; with an editor open only
+   * Save is read; otherwise the chord is read where focus is. A chord the table names is kept from the
+   * browser and from the grid, and does what its control does.
+   */
+  private onShortcutKeydown(event: KeyboardEvent): void {
+    if (document.querySelector('[role="dialog"]') !== null) return;
+    const place: ShortcutPlace = this.grid()?.editorOpen() === true ? 'editor' : shortcutPlace(event.target);
+    const action = shortcutFor(event, place);
+    if (action === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.runShortcut(action, event, place);
+  }
+
+  /** Do what `action`'s control does, when that control is available. */
+  private runShortcut(action: ShortcutAction, event: KeyboardEvent, place: ShortcutPlace): void {
+    switch (action) {
+      case 'help':
+        this.onOpenShortcuts();
+        return;
+      case 'save':
+        if (place === 'editor' && !(this.grid()?.commitInPlace() ?? true)) return;
+        this.onSave();
+        return;
+      case 'goToRow':
+        this.onOpenGoToRow();
+        return;
+      case 'export':
+        this.onExport();
+        return;
+      case 'addRow':
+        this.onAddRow();
+        return;
+      case 'duplicateRow':
+        this.onDuplicateRow();
+        return;
+      case 'deleteRow':
+        this.onDeleteRow();
+        return;
+      case 'page':
+        if (shortcutStep(event) > 0) this.onNext();
+        else this.onPrevious();
+        return;
+      case 'tab': {
+        // The old tab's grid leaves with the switch, so focus it held moves to the new tab's grid.
+        const fromGrid = event.target instanceof Element && event.target.closest('app-data-browser-grid') !== null;
+        if (this.state.nextTab(shortcutStep(event))) this.afterTabChange(fromGrid);
+        return;
+      }
+      case 'closeTab': {
+        const id = event.key === 'Delete' ? tabIdOf(event.target) : (this.state.activeTab()?.id ?? null);
+        if (id !== null) void this.closeTab(id, this.focusInStrip() ? 'strip' : 'other');
+        return;
+      }
+    }
+  }
+
+  /**
+   * Close tab `id`, asking "Leave without saving?" first when it stages rows; a declined answer keeps
+   * the tab and its rows. Focus then goes where `origin` says.
+   */
+  private async closeTab(id: string, origin: CloseOrigin): Promise<void> {
+    const tab = this.state.tabs().find((entry) => entry.id === id);
+    if (tab === undefined) return;
+    if (tab.staged > 0 && !(await this.formDirty.requestLeave())) return;
+    this.state.closeTab(this.deps, id);
+    if (tab.active) this.afterTabChange();
+    afterNextRender(() => this.focusAfterClose(origin), { injector: this.injector });
+  }
+
+  /**
+   * Focus after a close: the tree when no tab is left; Close tab when the close came from it; the
+   * selected tab when it came from the strip, or when focus was on something the close removed.
+   */
+  private focusAfterClose(origin: CloseOrigin): void {
+    if (this.state.tabs().length === 0) {
+      this.host.querySelector<HTMLElement>('[data-ocu-data="tree"]')?.focus();
+      return;
+    }
+    if (origin === 'button') {
+      this.host.querySelector<HTMLElement>('[data-ocu-data="close-tab"]')?.focus();
+      return;
+    }
+    const now = document.activeElement;
+    if (origin === 'strip' || now === null || now === document.body || !now.isConnected) this.focusSelectedTab();
+  }
+
+  private focusSelectedTab(): void {
+    const id = this.state.activeTab()?.id;
+    if (id !== undefined) this.host.querySelector<HTMLElement>(`.ocu-data-browser-tab[data-tab="${id}"]`)?.focus();
+  }
+
+  private focusInStrip(): boolean {
+    const strip = this.host.querySelector('.ocu-data-browser-tabs');
+    return strip !== null && strip.contains(document.activeElement);
+  }
+
+  /**
+   * After another tab is selected, or the page opens again: the Page field starts over and the
+   * selected tab's own active cell is drawn again in its grid, or let go when its row is no longer
+   * drawn, so the row actions never act on a row the grid does not show active; with `focusGrid`,
+   * focus moves to that grid.
+   */
+  private afterTabChange(focusGrid = false): void {
+    this.resetPageField();
+    afterNextRender(
+      () => {
+        const cell = this.state.activeCell();
+        if (cell !== null && this.grid()?.place(cell.row, cell.column) === false) this.state.setActiveCell({ row: null, column: cell.column });
+        if (focusGrid) this.host.querySelector<HTMLElement>('[data-ocu-data="grid"]')?.focus();
+      },
+      { injector: this.injector }
+    );
   }
 
   private resetPageField(): void {

@@ -2,9 +2,9 @@
 title: 'Story 19.16: The data browser - export, shortcuts, go-to-row and tabs'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-baseline_revision: '5bfcddf33d5da3eeec2a22ac0f8f424dce373925'
+baseline_revision: '3f87f99543658f640a6e5cc3b881b7b1be5c1315'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -57,7 +57,7 @@ deferred: []
     - a single character key.
 - **Go to row:**
   - Row `n` counts the rows the filters match, in the current sort. It is read at offset `floor((n−1)/size)·size`, which must not exceed the route's `MAX_OFFSET`.
-  - With the total known, `n` runs from 1 to the total. With it unknown, `n` runs from 1 to `MAX_OFFSET + size`.
+  - With the total known, `n` runs from 1 to the total. With it unknown, `n` runs from 1 to `MAX_OFFSET + 1`, the furthest row an allowed offset reaches.
   - The active cell moves to that row, in the column it was in. Staged changes survive the move, since it is a page change.
 - **Tabs** (`MAX_TABS` 8):
   - Each tab holds its own open object, filters and drafts, sort, offset, page size, last answer, refusal, announcement, `StagedChanges`, request and staging generations, saving flag and active cell. A read or save that answers for a tab, shown or not, changes only that tab, and changes nothing once the tab is closed.
@@ -145,7 +145,7 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
 
 - [ ] `ui/src/app/core/data-browser-model.ts`, add-only:
   - `MAX_TABS = 8`.
-  - `goToRow(text, size, total)` → `{offset, index}` or `null`: 1 to 9 digits; `n` from 1 to the total, or to `MAX_OFFSET + size` when it is unknown; offset at most `MAX_OFFSET`.
+  - `goToRow(text, size, total)` → `{offset, index}` or `null`: 1 to 9 digits; `n` from 1 to the total, or to `MAX_OFFSET + 1` when it is unknown; offset at most `MAX_OFFSET`.
   - `rowRangeMax(total, size)`.
   - `pageCsvRows(columns, rows)`: each cell's `cellView` text, NULL empty.
   - `DATA_BROWSER_SHORTCUTS`, with `shortcutFor(event, place)` → the action or `null`:
@@ -199,7 +199,7 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
   - :907 in place: one sentence. Data browser captures its own chords only while focus is inside it, and lists them in its Keyboard shortcuts dialog.
   - One Fixed-strings row after :599.
   - Move every citation the suites hold (`npm run test:tools`).
-- [ ] `ui/tools/strings.test.mjs:584`: unchanged in this story (lead, spec gate): 2,546 stays under 2,600, and whichever of Story 19.16 and Story 18.7 lands second raises the bound at the merge under the standing rule.
+- [ ] `ui/tools/strings.test.mjs:584`: unchanged in this story (lead, spec gate): 2,545 stays under 2,600, and whichever of Story 19.16 and Story 18.7 lands second raises the bound at the merge under the standing rule.
 - [ ] `ui/angular.json` and `ui/tools/angular-json.test.mjs`: re-base `maximumWarning` to the measured build (DW-1166). Stop and ask above 3,800 kB.
 - [ ] **Client tests:**
   - `ui/tools/data-browser-model.test.mjs`:
@@ -279,11 +279,94 @@ The counts are the jsdom page specs' fixtures. The browser spec runs on `OcuPilo
 - **AC11 (page keys, DW-2031):** Given the grid, when Alt/Option+PageDown or PageUp is pressed, then the next or previous page is read, as Ctrl/Cmd+PageDown and PageUp still do where the browser passes them. The help dialog lists the Alt/Option form.
 - **AC12 (Integration, Rule 1):** Given two probe tables open in tabs on the real instance, when a value is staged in the first, the second tab is selected and then the first again, and Ctrl/Cmd+S and Proceed are pressed, then SQL query's (Story 19.6) SELECT on that table returns the new value.
 
+### Review Findings
+
+Code review 2026-10-04 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 54 rows, 37 entries: 13 patched, 3 deferred, 21 rejected. No high. The patches grew the bundle to 2,859,344 bytes, so `maximumWarning` moves to 2860kB (DW-1166).
+
+- [x] [Review][Patch] (med) The tab chord pressed in the grid dropped focus to the body with the old grid, so a second press did nothing [ui/src/app/areas/system-explorer/data-browser.page.ts:runShortcut]
+- [x] [Review][Patch] (med) On a return to the route the tab's stored active cell was not drawn, so Delete and Duplicate row acted on a row the grid did not show active; a cell whose row is gone is now let go [data-browser.page.ts:afterTabChange]
+- [x] [Review][Patch] (med) Ctrl/Cmd+S from an editor: the grid's deferred focus landed after the save dialog's, leaving focus behind the modal [data-browser-grid.ts:commitInPlace]
+- [x] [Review][Patch] (med) Go to row and a tab switch never scrolled the active cell into view [data-browser-grid.ts:activate, place]
+- [x] [Review][Patch] (med) Go's continuation acted on whichever tab and dialog were current when its page landed, or on a destroyed page [data-browser.page.ts:onGoToRow]
+- [x] [Review][Patch] (med) A late save answer for a tab still open after a return was unpinned: the namespace-switch test now reaches the closed check first [data-browser.page.spec.ts]
+- [x] [Review][Patch] (med) The export's row numbers were pinned only at offset 0, and a row staged for delete before an export not at all [data-browser-export.page.spec.ts]
+- [x] [Review][Patch] (med) The chords browser spec's `includes('101')` failed on any date or time holding 101 in the exported file name [ui/browser/system-explorer-data-browser-chords.browser-spec.mjs:263]
+- [x] [Review][Patch] (low) A namespace switch with only clean tabs had no assertion that no discard line shows [data-browser.page.spec.ts:392]
+- [x] [Review][Patch] (low) Opening an open table with eight tabs open was unpinned [data-browser-tabs.page.spec.ts:198]
+- [x] [Review][Patch] (low) A Go refused from the Go button left focus on Go and announced nothing [data-browser.page.ts:onGoToRow]
+- [x] [Review][Patch] (low) A chords spec mutation comment named a Delete case the test never presses [system-explorer-data-browser-chords.browser-spec.mjs:242]
+- [x] [Review][Patch] (low) Two test titles read "what any staged" [data-browser.page.spec.ts:36, :1042]
+- [x] [Review][Defer] (low) "<table> closed." after the last tab lands in a newly inserted status region (inference) [data-browser.page.ts:272]. Deferred: DW-2063, wontfix-accepted.
+- [x] [Review][Defer] (low) A negative number is written with the formula guard (`'-12.5`) [core/csv.ts]. Deferred: DW-2061, by-design (csv.ts is reused unedited).
+- [x] [Review][Defer] (low) Ctrl/Cmd letter chords match by key only, so they miss on a non-Latin layout [core/data-browser-model.ts:controlLetter]. Deferred: DW-2062, by-design (the Tasks' matcher).
+
+Rejected:
+
+- false:
+  - Head controls carry no chord: EXPERIENCE.md :916 says Data browser lists its chords in its dialog.
+  - Chords inside a dialog are not prevented: the spec makes them inert, with nothing prevented.
+  - The chords spec is untracked: the lead commits QA's file with the story.
+- low, spec-literal:
+  - "No row <n> here." is ungrouped (the matrix reads "No row 5000 here.").
+  - Delete on a tab ignores Backspace.
+  - The scope note's "no editor" wording.
+  - A grouped "1,234" row number is refused (the spec allows 1 to 9 digits).
+  - The grid's `activeRow` output is unconsumed (the Tasks keep it).
+  - No tab shows no Download CSV, rather than an `aria-disabled` one.
+  - The structural walk runs at two tabs only (the AC; DW-1978 holds the strip).
+- low, not worth the change:
+  - "No row <n> here." on a page cut short by the character bound (a fallback read departs from the offset formula).
+  - Cancel during an in-flight Go still lets its read land.
+  - A tree click at the cap clears a refused Page draft.
+  - Auto-repeat of a held chord.
+  - A newer read superseding Go's read during a save.
+  - Closing a tab during its save (the shape 19.8 accepted for leaving the route).
+  - Redundant assertions: Save changes (0) after a reopen, dirty after destroy, model :331.
+  - `rowRangeMax`'s `?? MAX_OFFSET + size` and `goToRow`'s offset guard never bind.
+  - EXPERIENCE.md :671, Go to row's unavailable state, and the dialog's own row.
+  - The duplicated mount harness.
+- spec edits, for the lead:
+  - Boundaries :60 and Tasks :148 say `MAX_OFFSET + size`. The build's "1 to 100,000,000" is right: every row past it reads at an offset past `MAX_OFFSET`.
+  - Design Notes' "26 literals" and 2,546 against 25 keys and 2,545.
+
 ## Spec Change Log
 
-- 2026-10-04, lead (spec gate): the spine carries the drafted AD-36 and AD-39 clarifications (a CSV of the page built in the browser); EXPERIENCE.md :159, :173, :674, :684 and :907 in place are approved (:173 unioned by hand with Epic 18's at merge); the bundle re-base is pre-authorized under DW-1166; the Fixed-strings bound is not raised here (2,546 of 2,600), the second to land raises it; opening a table opens a tab, replacing 19.8's ask on opening, accepted.
+- 2026-10-04, lead (after code review): with the total unknown, go to row runs to `MAX_OFFSET + 1` (Boundaries and Tasks), as built; the string count is 25 literals, 2,545 of 2,600.
+- 2026-10-04, lead (spec gate): the spine carries the drafted AD-36 and AD-39 clarifications (a CSV of the page built in the browser); EXPERIENCE.md :159, :173, :674, :684 and :907 in place are approved (:173 unioned by hand with Epic 18's at merge); the bundle re-base is pre-authorized under DW-1166; the Fixed-strings bound is not raised here (2,545 of 2,600), the second to land raises it; opening a table opens a tab, replacing 19.8's ask on opening, accepted.
 
 ## Review Triage Log
+
+### 2026-10-04 — Review pass
+
+- verdicts: 27 findings — high 0, medium 2, low 15, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` FormDirty after closing, discarding or saving one of two staged tabs is untested (verification-gap) — added the tabs spec's two-staged-tabs case; each of the three regressions turns it red.
+  - `[low]` `[patch]` Go to row's unavailable state and Ctrl/Cmd+G there are untested (verification-gap) — added the export spec's unavailable Go to row case.
+  - `[medium]` `[patch]` Per-tab page size, and a new tab taking the selected tab's, is untested (verification-gap) — added the tabs spec's page-size case.
+  - `[low]` `[patch]` A staged tab's close mark could select that tab unseen (verification-gap) — the staged-close case asserts Pair stays selected after Cancel.
+  - `[low]` `[patch]` The Page field's reset on a tab switch is untested (verification-gap) — the page-size case types a refused page, then asserts Pair's field starts over.
+  - `[low]` `[patch]` Both "late answer to a closed tab" checks could not fail, since a closed tab is never drawn (verification-gap) — added a direct `DataBrowserState` case reading the closed tab's own state after a late page and a late save; grouped with the closed-tab save row below.
+  - `[low]` `[patch]` The leaving-the-route case clicked through the destroyed fixture (verification-gap) — it now clicks and settles the remounted page and asserts the tab selected.
+  - `[false]` `[reject]` The grid keeps Ctrl/Cmd+PageDown and PageUp, which Chromium reserves (intent-alignment) — AC11 keeps them "where the browser passes them" in the intent itself.
+  - `[low]` `[patch]` A keys string agrees with its matcher only through the hand-kept fixture (intent-alignment) — each `CHORDS` row now names its keys, and the model test holds every `keysKey` string equal to it.
+  - `[false]` `[reject]` The unknown-total range reads 100,000,000, not `MAX_OFFSET + size` (intent-alignment) — `MAX_OFFSET` is 99,999,999, so every row past 100,000,000 lands on an offset the same Boundaries bullet forbids; the line names the furthest reachable row, and a fix would edit this spec.
+  - `[false]` `[reject]` Status lines are tested with `startsWith` (intent-alignment) — the polite line joins the announcement and the rows line, as Stories 19.7 and 19.8 already do.
+  - `[false]` `[reject]` Ctrl or Cmd is accepted on any platform (intent-alignment) — the shell's own chords follow the same convention.
+  - `[low]` `[patch]` A select counted as a text field, so Alt/Option chords were inert on Rows per page (intent-alignment) — `shortcutPlace` reads only `input`, `textarea` and `[contenteditable]` as text; the Alt/Option chords case adds a row from the select.
+  - `[low]` `[patch]` On a layout such as Dvorak the physical-key fallback made Alt+Shift+B (Chrome's) add a row (intent-alignment, inference on Chrome's accelerator reading) — `optionShiftLetter` falls back to `code` only when the key is no ASCII letter; the model's reserved-chord case adds each forbidden letter on the three physical keys.
+  - `[false]` `[reject]` Alt/Option+Shift+W closes the selected tab, Delete the focused one (intent-alignment) — the chord stands for Close tab, which closes the selected tab; Delete is APG's key on the focused tab.
+  - `[low]` `[patch]` Ctrl/Cmd+E with no tab open is untested (intent-alignment) — the export unavailable case presses it on the tree first.
+  - `[false]` `[reject]` The strip sets Material's tab properties with literal sizes (intent-alignment) — the detail page's `.ocu-detail-tabs` carries the same literals, and every custom property the rules read is an `--ocu-*` token.
+  - `[false]` `[reject]` Three new files sit under `ui/src` (intent-alignment) — the Never list's `src/` is the server tree, beside "no route, port, tool or server file".
+  - `[low]` `[reject]` No Alt/Option chord runs in the real-browser spec (intent-alignment) — the matchers are pure functions of the event's fields, run under `node --test` with macOS and other-layout values; a browser leg would add runtime for no new input.
+  - `[low]` `[patch]` No test presses a chord with focus outside Data browser (intent-alignment) — the inert case presses Ctrl/Cmd+/ on a button outside the page and asserts nothing prevented and no dialog.
+  - `[low]` `[reject]` "The URL never changes" has no router assertion (intent-alignment) — the diff adds no router call for tabs.
+  - `[low]` `[patch]` A save answering a closed tab is untested (intent-alignment) — covered by the direct closed-tab case above.
+  - `[low]` `[reject]` APG Space, Home and End in the strip are untested (intent-alignment) — a native button's Space and Material's key manager carry them unchanged.
+  - `[low]` `[reject]` Leaving the route is driven through `FormDirty`, not a router navigation (intent-alignment) — the route guard is Story 19.8's unchanged wiring, and this story's surface is the `FormDirty` question and the destroy path.
+  - `[false]` `[reject]` A return after leaving shows "<n> changes discarded." (intent-alignment) — Story 19.8's discard on leaving reads the same line.
+  - `[false]` `[reject]` "<table> closed." and the cap line land on the selected tab's status line (intent-alignment) — that line is the page's one polite status line.
+  - `[false]` `[reject]` The export's absence from logs, the ledger and screen context is not asserted directly (intent-alignment) — `exportPage` reads only the held answer, and its announcement carries row numbers and the file name.
 
 ## Design Notes
 
@@ -331,7 +414,7 @@ Not bound:
 - **Lifted:** reselecting an open table's tab, and the right-then-left neighbour on close.
 - **Not carried:** global `document` key handling; dialogs that leave chords live behind them; `announce` without clearing; the server-side all-rows export.
 
-**Strings.** 26 literals in one Fixed-strings row after :599:
+**Strings.** 25 literals in one Fixed-strings row after :599:
 
 - **Labels:** "Open tables", "Close tab", "Go to row", "Row number", "Go", "Keyboard shortcuts", "Save changes", "Next or previous page", "Next or previous tab".
 - **Lines:**
@@ -341,7 +424,7 @@ Not bound:
   - "These work while focus is in Data browser and no dialog or editor is open."
 - **Keys:** "Ctrl/Cmd+/", "Ctrl/Cmd+S", "Ctrl/Cmd+G", "Ctrl/Cmd+E", "Alt/Option+Shift+N", "Alt/Option+Shift+D", "Alt/Option+Shift+Delete or Backspace", "Alt/Option+PageDown or PageUp", "Alt/Option+Shift+PageDown or PageUp", "Alt/Option+Shift+W, or Delete on a tab".
 - **Reused:** "Download CSV", "Add row", "Duplicate row", "Delete row", "<n> changes waiting to be saved.", "Leave without saving?", "Confirm", "Cancel", "Close", and "Changes were discarded because the namespace changed.".
-- **Budget:** 2,520 + 26 = 2,546 on this branch. With Story 18.7's 58 in flight, the union reaches about 2,604, above 2,600. Raising the bound to 2,700 is recommended; it is a contended edit, so the lead decides (or the second to land raises it).
+- **Budget:** 2,520 + 25 = 2,545 on this branch. With Story 18.7's 58 in flight, the union reaches about 2,603, above 2,600. Raising the bound to 2,700 is recommended; it is a contended edit, so the lead decides (or the second to land raises it).
 
 **Spine amendments (draft, for the lead's gate; clarifications, apply-and-report):**
 
@@ -407,24 +490,40 @@ Build and deploy before any browser result: `cd ui && npm run build && docker cp
 
 **Planned mutations (Rule 19)**, one per AC:
 
-- AC1: `pageCsvRows` reads the overlaid rows → the export page spec's staged-value case.
-- AC2: `exportPage` calls `refresh` first → the export page spec's no-request case.
-- AC3:
-  - `shortcutFor` drops the Alt-in-text exclusion → the model's inert case;
-  - the editor commit is skipped on Ctrl/Cmd+S → the tabs page spec's editor case.
-- AC4: the help dialog lists a fixed array, not `DATA_BROWSER_SHORTCUTS` → the export page spec's single-source case.
-- AC5: `goToRow` uses `n·size` → the model's offset case and the browser spec's go-to-row leg.
-- AC6: `openObject` reuses the active tab → the tabs page spec's keep-state case.
-- AC7: `MAX_TABS` is not checked → the tabs page spec's cap case.
-- AC8: `closeTab` skips `requestLeave` → the tabs page spec's staged-close case and the browser spec's Delete leg.
-- AC9: `afterStaging` sets dirty from the active tab only → the tabs page spec's aggregation case.
-- AC10: the tab's name drops the staged suffix → the tabs page spec's names case.
-- AC11: the page's handler drops the Alt page row → the tabs page spec's page-key case.
-- AC12: `save` sends the selected tab's previous staging → the browser spec's AC12 leg.
+- mutation: AC1, `DataTab.exportPage` writes the overlaid rows (`this.rows()`) -> `data-browser-export.page.spec.ts` "writes the page as read..." red, and, rebuilt and copied in, the tabs browser spec's AC1, AC2 leg red ("b is written as read, not as staged"); `pageCsvRows` writes NULL as its word -> `data-browser-model.test.mjs` "a page writes as the grid shows it..." and the export spec's file case red. The page ignores chords while no tab is open -> the export spec's no-row case red on its no-tab Ctrl/Cmd+E.
+- mutation: AC2, the page's export reads the page again before it saves -> the export spec's file case red on the request count (5, not 4).
+- mutation: AC3, `shortcutFor` drops the Alt-in-text exclusion -> `data-browser-model.test.mjs` "an Alt/Option chord does nothing in a text field..." and "every shortcut row matches its chords..." red, and `data-browser-tabs.page.spec.ts` "inert: ..." red; the page's Ctrl/Cmd+S skips the editor's commit -> the tabs spec's "Ctrl/Cmd+S in an editor commits it..." red; `commitInPlace` answers `true` without committing -> `data-browser-grid.spec.ts` "commitInPlace commits a value..." and the same tabs case red. `optionShiftLetter` matches the physical key whatever the key reads -> the model's reserved-chord case red (Dvorak's KeyN as Alt+Shift+B); a select counts as a text field -> the tabs spec's Alt/Option chords case red; the handler listens on the document -> the tabs spec's inert case red; `onOpenGoToRow` drops its `goToRowBlocked` guard -> the export spec's unavailable Go to row case red.
+- mutation: AC4, the Keyboard shortcuts dialog lists a copy one row short of `DATA_BROWSER_SHORTCUTS` -> the export spec's "lists every DATA_BROWSER_SHORTCUTS row..." red. A keys string drifts from the chord its matcher binds (Add row's to `Alt/Option+Shift+A`) -> the model's one-row-per-action case red.
+- mutation: AC5, `goToRow` reads offset `n * size` -> the model's go-to-row case, the export spec's two Go to row cases, and, rebuilt and copied in, the tabs browser spec's AC5 leg red.
+- mutation: AC6, a new table replaces the selected tab -> the tabs spec's "a second table opens in its own selected tab..." red, with seven other tabs cases; the per-tab request generation check dropped -> the tabs spec's "a page answers only the tab that asked..." and `data-browser.page.spec.ts` "a slow first table's answer fills its own tab..." red; `place` focuses the grid -> the grid spec's "place makes a cell active without moving focus..." red. A new tab takes `DEFAULT_PAGE_SIZE` -> the tabs spec's page-size case red; `afterTabChange` keeps the Page field's draft -> the same case red; `DataTab.read` drops its closed checks and `close` its generation bump -> the tabs spec's closed-tab state case red.
+- mutation: AC7, `openObject` checks the cap one tab late (`>`) -> the tabs spec's cap case red.
+- mutation: AC8, the page's close skips `requestLeave` for a staged tab -> the tabs spec's staged-close case and the page spec's rewritten opening-another-table case red, and, rebuilt and copied in, the tabs browser spec's AC8 leg red. The close mark's click reaches its tab (`stopPropagation` dropped) -> the tabs spec's staged-close case red.
+- mutation: AC9, `afterStaging` sets `FormDirty` from the selected tab alone -> the tabs spec's `FormDirty` case red; the page drops its `onScopeChange` subscription -> the page spec's two rewritten namespace cases and the tabs spec's namespace case red; `forget` counts no discarded row -> the page spec's namespace-discard case and the tabs spec's namespace case red. `closeTab` drops `stagingChanged`, `discard` sets `FormDirty` clean, or `save` sets it from its own tab -> the tabs spec's two-staged-tabs case red, each alone.
+- mutation: AC10, a tab's name drops the staged suffix -> the tabs spec's strip case and staged-close case red.
+- mutation: AC11, the page's handler drops the Alt/Option page row -> the tabs spec's Alt/Option chords case red.
+- mutation: AC12, `DataBrowserState.save` saves the tab opened last rather than the selected one, rebuilt and copied in -> the tabs browser spec's AC12 leg red.
+- (QA) `ui/browser/system-explorer-data-browser-chords.browser-spec.mjs`, 4/4 on `ocupilot-a2-ci` (AC1, AC2, AC3): the CSV's bytes (BOM, CRLF, the `'` guard on `=`, `+`, `-`, `@`, quoting, NULL empty, a cut cell, no staged value) with no http request under interception; the chords from an editor, a text field, the Rows per page select and the tab strip; reserved chords not prevented.
+- mutation: AC1, `csvField` drops the formula guard -> chords spec "the CSV guards a formula cell..." red.
+- mutation: AC3, `shortcutFor` drops the editor exclusion -> chords spec "in an editor only Ctrl/Cmd+S acts..." red.
+- mutation: AC3, `shortcutPlace` counts a select as a text field -> chords spec "from the tab strip, the Rows per page select and a filter field..." red.
+- mutation: AC3, the export row also binds Ctrl+T -> chords spec "a browser-reserved, zoom, reload or tab chord..." red. Each was applied to a rebuilt, redeployed bundle, reverted, rebuilt and redeployed, and the four specs read green; the sources were `cmp`-identical after the revert.
+- (CR) Each new pinning test went red against the code before its patch, or against the mutation named, reverted `cmp`-identical. After the patches: data-browser component specs 83/83; `npm run test:tools` 1,814/1,814; and on `ocupilot-a2-ci`, bundle rebuilt and copied in, each run alone: tabs 4/4, chords 4/4, edit 3/3, data browser 2/2.
+- mutation: AC3, `commitInPlace` leaves the grid's focus to after the next render -> tabs spec "Ctrl/Cmd+S in an editor commits it..." red (focus behind the save dialog).
+- mutation: AC5:
+  - `activate` scrolls nothing into view -> export spec "reads the page holding row n..." red;
+  - a refused Go leaves focus on Go -> export spec "a number outside 1 to the total..." red.
+- mutation: AC6:
+  - the page restores no tab's active cell on mount -> tabs spec "on a return to the route..." red;
+  - the tab chord leaves focus where it was -> tabs spec "each Alt/Option chord..." red;
+  - `onGoToRow` ignores a change of tab -> export spec "a Go whose page lands after..." red;
+  - `openObject` checks the cap before an open table -> tabs spec cap case red;
+  - `DataTab.save` drops its staging-generation check -> page spec "a save answering after the route was left..." red.
+- mutation: AC1, `exportPage` numbers rows from 1, or leaves out a row staged for delete -> export spec "a page past the first names its own rows..." red, each alone.
+- mutation: AC9, `forget` counts a clean tab as discarded -> page spec "a namespace switch closes every tab, drops an answer..." red.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **Plan pass.**
@@ -442,3 +541,25 @@ Blocking condition: none
   - the cap of 8;
   - the export excluding staged values;
   - opening a table now opening a tab rather than asking (Design Notes › Decisions).
+
+**Implement pass.**
+
+- **Change:** Data browser opens each table or view in a tab of its own (cap 8, per-tab state, `FormDirty` over every tab, close through 19.8's leave dialog), saves the page on screen as a CSV built in the browser from the held answer, goes to an absolute row, and handles one table of chords that its Keyboard shortcuts dialog lists. Client only: no `src/` file changed, so the ObjectScript sweep was waived (CI runs it).
+- **Files:**
+  - `ui/src/app/core/data-browser-model.ts`: `MAX_TABS`, `goToRow`, `rowRangeMax`, `pageCsvRows`, `DATA_BROWSER_SHORTCUTS`, `shortcutFor`, `shortcutStep`.
+  - `ui/src/app/areas/system-explorer/data-browser.store.ts`: `DataTab` per tab; `DataBrowserState` keeps the tree, namespace and tab list and delegates to the selected tab.
+  - `ui/src/app/areas/system-explorer/data-browser-grid.ts`: `editorOpen`, `commitInPlace`, `place`, the `activeCell` output.
+  - `ui/src/app/areas/system-explorer/data-browser.page.ts`: the strip, the four head actions, the two dialogs, the capture-phase handler, the close flow and focus.
+  - `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`: 25 keys and the strip, list and field rules (tokens only); one forced citation move (`taskCreate` :640 to :641).
+  - `ui/angular.json`, `ui/tools/angular-json.test.mjs`: `maximumWarning` 2859kB (measured 2,858,653 bytes, DW-1166).
+  - EXPERIENCE.md: :159, :173, the Grid and Staging paragraphs and :916 in place; the Fixed-strings row at :600; the Tabs, Go to row, Download CSV and Keyboard shortcuts paragraphs.
+  - Tests: `data-browser-tabs.page.spec.ts`, `data-browser-export.page.spec.ts` and their harness `ui/src/app/testing/data-browser-page.ts` (new); `data-browser-grid.spec.ts`, `data-browser.page.spec.ts`, `ui/tools/data-browser-model.test.mjs` (amended); `ui/browser/system-explorer-data-browser-tabs.browser-spec.mjs` (new).
+- **Review:** two layers ran (verification-gap, intent-alignment); Blind Hunter and Edge Case Hunter are disabled by the project's customization. 27 findings: 13 patched (medium 2, low 11), 4 low rejected, 10 false, none deferred (Review Triage Log). Code patches: `optionShiftLetter` reads the physical key only when the key is no ASCII letter, and a select is no longer a text field. The rest add pinning tests, each with a demonstrated mutation in Verification.
+- **Follow-up review:** `false`. Two medium entries were patched, both test additions whose mutations each turned red, so no unverified risk can be named.
+- **Verified:** `npm run test:tools` 1,814 pass; the data-browser component specs 79 pass; `npm test` (1,814 tools, 2,431 components) and `npm run build` green, no budget warning; on `ocupilot-a2-ci`, after rebuilding and copying the bundle in, each run alone: tabs 4/4, data browser 2/2, edit 3/3, structural walk 12/12; `bash scripts/lint-docs.sh` clean. Thirteen review-pass mutations each turned their test red, and every revert left the tree byte-identical.
+- **Residual risks:**
+  - While the total is unknown the range line reads 100,000,000, the furthest row the route reads, not the literal `MAX_OFFSET + size`.
+  - Merge contention: EXPERIENCE.md :173 and the `angular.json` budget (Epic 18 edits both), and `strings.ts`'s `taskCreate` citation.
+  - Fixed strings 2,545 of 2,600.
+  - Option chords on a non-US macOS layout match by physical key (inference).
+  - DW-2053 stays closed: `StagedChanges.count()` is unchanged.

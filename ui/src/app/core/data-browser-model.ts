@@ -3,6 +3,8 @@
  * how a cell reads, a column's track, which columns take a filter, and the status lines. Story 19.8
  * adds the editors' parsers, the BIT toggle, a row's key, which cells may change, and the staged
  * changes a save sends (`StagedChanges`).
+ * Story 19.16 adds the tab cap, go to row, a page's CSV cells and the shortcuts
+ * (`DATA_BROWSER_SHORTCUTS`).
  *
  * Ported from iris-table-editor v0.2.3 (MIT, `ui/licenses/iris-table-editor.txt`),
  * `packages/webview/src/grid.js`: `handleColumnSort` (:3961-3999) as `nextSort`; the read-only keys
@@ -697,4 +699,158 @@ export class StagedChanges {
     this.sent = [];
     return { saved, failed };
   }
+}
+
+// --- Tabs, go to row, the page as CSV and the shortcuts (Story 19.16) ----------------------------
+
+/** The most tables open at once, each in its own tab. */
+export const MAX_TABS = 8;
+
+/**
+ * The largest row number Go to row takes: the total while it is known, else `MAX_OFFSET` plus the
+ * page size, and never past the last row of the furthest page the route reads.
+ */
+export function rowRangeMax(total: number | null, size: number): number {
+  const furthest = (Math.floor(MAX_OFFSET / size) + 1) * size;
+  return Math.min(total ?? MAX_OFFSET + size, furthest);
+}
+
+/**
+ * Where a typed row number lands: row `n` counts the rows the filters match, in the current sort,
+ * and is read at offset `floor((n - 1) / size) * size`, at `index` on that page. `null` for anything
+ * but 1 to 9 digits, or for an `n` outside 1 to `rowRangeMax`, or an offset past `MAX_OFFSET`.
+ */
+export function goToRow(text: string, size: number, total: number | null): { readonly offset: number; readonly index: number } | null {
+  const trimmed = text.trim();
+  if (!/^[0-9]{1,9}$/.test(trimmed)) return null;
+  const row = Number(trimmed);
+  if (row < 1 || row > rowRangeMax(total, size)) return null;
+  const offset = Math.floor((row - 1) / size) * size;
+  if (offset > MAX_OFFSET) return null;
+  return { offset, index: row - 1 - offset };
+}
+
+/**
+ * A page's rows as a CSV file writes them, in `columns`' order: each cell as the grid shows it
+ * (`cellView`), BIT as the yes and no words, a cut cell as cut, and NULL empty.
+ */
+export function pageCsvRows(columns: readonly { readonly kind: DataKind }[], rows: readonly (readonly (string | null)[])[]): string[][] {
+  return rows.map((cells) =>
+    columns.map((column, at) => {
+      const value = cells[at] ?? null;
+      return value === null ? '' : cellView(column.kind, value).text;
+    })
+  );
+}
+
+/** Where focus is when a key is pressed: the grid or any other control, a tab of the strip, a text field, or an open cell editor. */
+export type ShortcutPlace = 'grid' | 'tab' | 'text' | 'editor';
+
+/** What a shortcut does: the control it stands for. */
+export type ShortcutAction = 'help' | 'save' | 'goToRow' | 'export' | 'addRow' | 'duplicateRow' | 'deleteRow' | 'page' | 'tab' | 'closeTab';
+
+/** The parts of a key event a shortcut reads, so the matchers run on a plain object under `node --test`. */
+export interface ShortcutEvent {
+  readonly key: string;
+  readonly code: string;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly altKey: boolean;
+  readonly shiftKey: boolean;
+}
+
+/** One shortcut: what it does, its label and keys as the help dialog lists them, and whether `event` in `place` is its chord. */
+export interface DataBrowserShortcut {
+  readonly action: ShortcutAction;
+  readonly labelKey: keyof typeof STRINGS;
+  readonly keysKey: keyof typeof STRINGS;
+  readonly matches: (event: ShortcutEvent, place: ShortcutPlace) => boolean;
+}
+
+/** Ctrl, or Cmd on a Mac, with `letter` by its key in any case, and neither Alt nor Shift. */
+function controlLetter(event: ShortcutEvent, letter: string): boolean {
+  return (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === letter;
+}
+
+/** Alt/Option and Shift with no Ctrl or Cmd: the product's chord family (the data table's resize). */
+function optionShift(event: ShortcutEvent): boolean {
+  return event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey;
+}
+
+/**
+ * Alt/Option+Shift with `letter`, by its key in any case, or by its physical key when the key is no
+ * ASCII letter, since macOS answers Option+Shift+letter with another character. A key that is a
+ * letter is read as that letter, so on another layout the physical key never makes a chord the
+ * browser reads as a different letter's (Dvorak's KeyN types B: Chrome's Alt+Shift+B).
+ */
+function optionShiftLetter(event: ShortcutEvent, letter: string): boolean {
+  if (!optionShift(event)) return false;
+  if (/^[a-z]$/i.test(event.key)) return event.key.toLowerCase() === letter;
+  return event.code === `Key${letter.toUpperCase()}`;
+}
+
+function isPageKey(event: ShortcutEvent): boolean {
+  return event.key === 'PageDown' || event.key === 'PageUp';
+}
+
+/**
+ * Data browser's shortcuts, in the order its Keyboard shortcuts dialog lists them. The page handles
+ * exactly these chords and the dialog lists exactly these rows, so the dialog cannot name a chord
+ * that is not bound. None is a command Chromium reserves (Ctrl/Cmd+N, Ctrl+Shift+N, Ctrl+T,
+ * Ctrl+Shift+T, Ctrl+W, Ctrl+F4, Ctrl+Shift+W, Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+PageDown, Ctrl+PageUp),
+ * a zoom or reload chord, the shell's Ctrl/Cmd+K, I or B, Chrome's Alt+Shift A, B, R or T, or a
+ * single character; Delete closes only a focused tab, so the grid's Delete still stages NULL.
+ */
+export const DATA_BROWSER_SHORTCUTS: readonly DataBrowserShortcut[] = [
+  {
+    action: 'help',
+    labelKey: 'explorerSqlDataShortcuts',
+    keysKey: 'explorerSqlDataKeysHelp',
+    // Shift is ignored, for the layouts that type `/` with it.
+    matches: (event) => (event.ctrlKey || event.metaKey) && !event.altKey && event.key === '/',
+  },
+  { action: 'save', labelKey: 'explorerSqlDataSaveShortcut', keysKey: 'explorerSqlDataKeysSave', matches: (event) => controlLetter(event, 's') },
+  { action: 'goToRow', labelKey: 'explorerSqlDataGoToRow', keysKey: 'explorerSqlDataKeysGoToRow', matches: (event) => controlLetter(event, 'g') },
+  { action: 'export', labelKey: 'tableDownloadCsv', keysKey: 'explorerSqlDataKeysExport', matches: (event) => controlLetter(event, 'e') },
+  { action: 'addRow', labelKey: 'explorerSqlDataAddRow', keysKey: 'explorerSqlDataKeysAddRow', matches: (event) => optionShiftLetter(event, 'n') },
+  { action: 'duplicateRow', labelKey: 'explorerSqlDataDuplicateRow', keysKey: 'explorerSqlDataKeysDuplicateRow', matches: (event) => optionShiftLetter(event, 'd') },
+  {
+    action: 'deleteRow',
+    labelKey: 'explorerSqlDataDeleteRow',
+    keysKey: 'explorerSqlDataKeysDeleteRow',
+    matches: (event) => optionShift(event) && (event.key === 'Delete' || event.key === 'Backspace'),
+  },
+  {
+    action: 'page',
+    labelKey: 'explorerSqlDataPageShortcut',
+    keysKey: 'explorerSqlDataKeysPage',
+    matches: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && isPageKey(event),
+  },
+  { action: 'tab', labelKey: 'explorerSqlDataTabShortcut', keysKey: 'explorerSqlDataKeysTab', matches: (event) => optionShift(event) && isPageKey(event) },
+  {
+    action: 'closeTab',
+    labelKey: 'explorerSqlDataCloseTab',
+    keysKey: 'explorerSqlDataKeysCloseTab',
+    matches: (event, place) =>
+      optionShiftLetter(event, 'w') ||
+      (place === 'tab' && event.key === 'Delete' && !event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey),
+  },
+];
+
+/**
+ * The action `event` asks for in `place`, or `null`. With an editor open only Save acts, and an
+ * Alt/Option chord does nothing in a text field, which still types its character.
+ */
+export function shortcutFor(event: ShortcutEvent, place: ShortcutPlace): ShortcutAction | null {
+  for (const shortcut of DATA_BROWSER_SHORTCUTS) {
+    if (place === 'editor' && shortcut.action !== 'save') continue;
+    if (place === 'text' && event.altKey) continue;
+    if (shortcut.matches(event, place)) return shortcut.action;
+  }
+  return null;
+}
+
+/** The direction a page or tab chord moves: PageDown forward, PageUp back. */
+export function shortcutStep(event: ShortcutEvent): 1 | -1 {
+  return event.key === 'PageDown' ? 1 : -1;
 }
