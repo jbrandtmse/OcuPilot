@@ -9525,6 +9525,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-04T07:49:20Z status=routed owner=range-end-cleanup by=runner note=first-sighting flake; reopen if it recurs on a later head
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=second a11y-walk hang today: the gate-fix run's attempt 1 on aaa2460d hung the same way; recurring, see DW-1822
 - 2026-10-04T21:10:24Z status=routed owner=range-end-cleanup by=merge_gate note=restoring the 16:23:18Z raise (med p1; the 19.8 forward merge f3c01129 displaced it under DW-2057): recurring Chrome DevTools-protocol hangs across specs and heads (aaa2460d a11y 729 s, a3f957b2 a11y 730 s, 1.0.9 PR run 37212622481 messages-log-files Network.enable 181 s); fix in the browser harness (fresh page or browser and one retry on a protocol timeout, per call), not per spec
+- 2026-10-05T01:33:26Z occurrence=range-end-cleanup note=Story 18.7's code head 9729bef0, run 37248045506 attempt 1: browser shard 2/3, data-table.browser-spec.mjs 'grid keyboard' timed out in Network.enable (CdpPage._create) after 180 s; failed jobs re-run once
 
 ### DW-2053: Data browser counts an untouched new row in Save changes (n) and the save dialog but never sends it, so a Proceed with only such rows does nothing and says nothing
 - source: spec-19-8-the-data-browser-editing-staging-and-export.md | severity: low | fix-risk: low | footprint: in-story
