@@ -9818,6 +9818,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: src/OcuPilot/Test/ExplorerDescriptor.cls:141; renaming edits the eight method attributes SurfaceCoverage.cls:321-328 holds, rows Epic 18 also edits
 - 2026-10-05T11:38:55Z status=routed owner=19-10-sql-activity by=harvest note=19.10 adds a System Explorer read and so changes this test's counts again: rename the method to its counts then, with its SurfaceCoverage rows
+- 2026-10-05T13:24:58Z status=routed owner=burndown by=spec_gate note=19.10 lands in OS management (ExplorerDescriptor's counts unchanged, decline accepted); fold into Epic 19's close burn-down with DW-2092: rename the method to its counts with its SurfaceCoverage rows (now :323-330)
 
 ### DW-2094: Document databases' Create stays available while the strip says the DocDB service is disabled; the dialog then shows the 409 sentence
 - source: spec-19-17-the-docdb-browser.md | severity: low | fix-risk: low | footprint: in-story
