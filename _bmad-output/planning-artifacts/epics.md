@@ -8446,7 +8446,7 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
+- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710, DW-1465 and DW-2096
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
@@ -8465,6 +8465,10 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 - **Given** the correctness and safety entries in batch (b)
 - **When** each is fixed
 - **Then** a test reddens on the defect before the fix and passes after it.
+
+- **Given** DW-2096 (a credential typed as a literal in SQL statement text, as in `IDENTIFIED BY 'pw'`, shows on SQL activity and the statements tabs and reaches the agent through `explorer.sqlquery.read`)
+- **When** it is fixed
+- **Then** the value after `IDENTIFIED BY` or `PASSWORD` is masked in every displayed and agent-bound statement text, reusing `SqlPort.PASSWORDPATTERN`, and a test plants such a statement and finds the literal in no screen answer and no tool result. [AMENDED 2026-10-06, owner decision relayed by the Planner: DW-2096 added to batch (b)]
 
 - **Given** the ledger's duplicated ids (DW-1223, DW-1864, DW-1925 and DW-2027 each have two entries)
 - **When** they are deduplicated
