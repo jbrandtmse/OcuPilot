@@ -34,7 +34,7 @@ Keep the deferred-work ledger honest and the code it names correct between relea
   - DW-1297: the install-lock refusal names the `^$LOCK` holder.
   - DW-1086: extract the turnprobe helpers into one module, as `list-spec.mjs` did, on `iris-session.mjs`'s marker.
 - **Correctness and safety (b).** A test reddens on each defect before the fix and passes after it.
-- **Ledger dedup.** DW-1223, 1864, 1925 and 2027 each have two blocks. Each id ends with one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once. DW-1223's two blocks describe different defects: a proposal-card disclosure, and error-log navigation timeouts. Both carry the same `resolved-by:5-8` trailer, so the plan must decide that case explicitly.
+- **Ledger dedup.** DW-1223, 1864, 1925 and 2027 each have two blocks. Each id ends with one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once. DW-1223's two blocks describe different defects: a proposal-card disclosure, and error-log navigation timeouts. Both carry the same `resolved-by:5-8` trailer, which a merge copied onto the second. Decided (AC amended 2026-10-06): the proposal-card finding keeps DW-1223 and its own trailers; the error-log navigation timeouts are filed under a new id with their own history, without the copied trailer.
 
 ## Technical Decisions
 

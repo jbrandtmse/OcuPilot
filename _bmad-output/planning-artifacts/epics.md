@@ -8468,7 +8468,7 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 
 - **Given** the ledger's duplicated ids (DW-1223, DW-1864, DW-1925 and DW-2027 each have two entries)
 - **When** they are deduplicated
-- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once.
+- **Then** each id has one entry carrying the union of both copies' trailers in time order, and `ledger.sh load` counts each id once. DW-1223's two copies are two different findings under one id: the proposal-card finding keeps DW-1223 and its own trailers, and the error-log navigation timeouts are filed under a new id with their own history, without the trailer a merge copied onto them. [AMENDED 2026-10-06, Epic 23 runner at Story 23.4's plan: DW-1223 is an id collision, not a duplicated block, so a union of its trailers would merge two findings]
 
 - **Given** the fixes
 - **When** they land

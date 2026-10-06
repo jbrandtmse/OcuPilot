@@ -276,3 +276,5 @@
 2026-10-06T07:12:55Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=61 status=final read=full_once(rule26)
 2026-10-06T07:12:55Z	Epic 23	ledger_load	total=1566 open=0 routed=100 escalated=0 decision_pending=10 terminal=1456 owner_unknown=0 burndown=18 range_end_cleanup=43 owner_23-4=34(31_unique;DW-1864,1925,2027_duplicated) before=story_23.4
 2026-10-06T07:15:57Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(23.4_charter,epics.md,spine,UX,PRD) model=opus agent=a585046395eb35830 size=8006B
+2026-10-06T07:19:41Z	Epic 23	amendment_applied	file=_bmad-output/planning-artifacts/epics.md:8471 tier=1 what=DW-1223_id_collision(second_finding_refiled_under_new_id) context_synced=epic-23-context.md:37 test_tools=1841/1841 lint=0
+2026-10-06T07:19:41Z	Story 23.4	stage_spawned	stage=plan spawn_at=2026-10-06T07:19:41Z model=opus agent_name=23-4-the-range-end-cleanup-part-4-plan-1 cycle_iteration=1
