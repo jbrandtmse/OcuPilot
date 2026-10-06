@@ -7242,6 +7242,7 @@ So that the Security area reaches parity.
 - **Given** the authentication options touch the **JWT issuer OcuPilot itself depends on**
 - **When** a change is proposed
 - **Then** the card states that consequence, and a change that would break OcuPilot's own sign-in is refused on the instance under the same rule that protects the application and the service behind it.
+- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writing it via Security.LDAPConfigs.Modify in %SYS would let it (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 18.9: SQL privileges and the permission extras
 
@@ -7269,6 +7270,8 @@ So that the Permissions area reaches parity.
 
 - `GET /v2/security/sql-privileges` names a row's object and action `Object` and `Action`, not the schema's `Name` and `Privilege` (checked); a revoke is built from those.
 - A role owner's `AdminOption` arrives as the string `"0"` or `"1"`, not a boolean (reported). `"0"` is truthy in TypeScript, so compare the value.
+- DW-236: A widened SQL grant on OcuPilot_Kernel_State - another role or _PUBLIC holding it - is neither detected nor refused (ledger; routed by merge_gate 2026-10-06)
+- DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 18.10: Web application extras and spec-based REST services
 
@@ -7331,6 +7334,7 @@ So that the portal and the agent stay in step.
 - **Given** the wallet is already wired for the Release 1 secrets screen
 - **When** the credential ladder is extended
 - **Then** a wallet-backed rung joins the environment-variable and IRIS-credential rungs.
+- DW-1756: Epic 16's Guardrails page lists the instance's limits without Story 14.6's turns-per-hour setting once the branches merge (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 18.13: Multi-namespace install
 
@@ -7355,6 +7359,8 @@ So that it is not confined to the one the installer picks.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
+- DW-423: OcuPilot.Kernel.State.Stamp records one row per install run with no retention policy, and the live instance already holds 3306 of them (ledger; routed by merge_gate 2026-10-06)
+- DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 18.14: Namespace mappings and copy-mappings
 
@@ -7908,6 +7914,7 @@ So that embedding is seamless and irrelevant menus do not appear.
 - **Given** a namespace that does not support interoperability or analytics
 - **When** the rail renders
 - **Then** the category does not appear for it, gated by the namespace's own reported features.
+- DW-1921: The interoperability event log screen lacks %Ens_Portal:USE, which the classic EnsPortal.EventLog page requires (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 20.2: Productions, listed and controlled
 
@@ -8272,6 +8279,9 @@ So that no area has a remaining gap.
 - **Given** any leaf whose backing class was never inventoried
 - **When** it is picked up
 - **Then** the class is identified against the instance first, and that is the story's first task.
+- DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by merge_gate 2026-10-06)
+- DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by merge_gate 2026-10-06)
+- DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by merge_gate 2026-10-06)
 
 ### Story 21.11: The agent gains the harvested tools and undo
 
