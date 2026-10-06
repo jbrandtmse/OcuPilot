@@ -8428,7 +8428,7 @@ So that every lane stops paying for the same flakes and slow runs, and secrets s
 
 ### Story 23.4: The range-end cleanup, part 4
 
-Chartered by the orchestrator on 2026-10-05 on the owner's approval of the burn-down scope (relayed by the Planner, 2026-10-05). It takes batches (a) and (b) of the drafted scope from the `range-end-cleanup` queue: 30 entries and the ledger's duplicated ids. Slot A runs it after Stories 19.10 and 19.11 and Epic 19's close, before Epic 20. Batches (c) visible polish and (d) doc and test-gap hygiene wait for the owner's decision on a Story 23.5. The IRIS defect candidates stay on the owner's hold and are not part of it.
+Chartered by the orchestrator on 2026-10-05 on the owner's approval of the burn-down scope (relayed by the Planner, 2026-10-05). It takes batches (a) and (b) of the drafted scope from the `range-end-cleanup` queue: 30 entries and the ledger's duplicated ids, plus DW-2102 (a fifth CI instance shard), which the orchestrator added to batch (a) on 2026-10-06. Slot A runs it after Stories 19.10 and 19.11 and Epic 19's close, before Epic 20. Batches (c) visible polish and (d) doc and test-gap hygiene wait for the owner's decision on a Story 23.5. The IRIS defect candidates stay on the owner's hold and are not part of it.
 
 As the team keeping OcuPilot's CI fast and trustworthy between releases,
 I want the test environment's known breakages and the product's open correctness and safety entries fixed, or declined with a reason,
@@ -8436,13 +8436,17 @@ So that later stories stop paying for flakes and lost throwaways, and no known u
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297 and DW-1086; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
+- **Given** the entries re-owned to this story: batch (a) DW-2034, DW-2026, DW-2058, DW-1925, DW-1935, DW-1915, DW-1937, DW-1983, DW-1984, DW-1873, DW-1916, DW-1917, DW-1929, DW-1936, DW-1938, DW-2027, DW-1297, DW-1086 and DW-2102; batch (b) DW-1827, DW-1869, DW-1882, DW-1641, DW-1013, DW-1864, DW-1939, DW-1449, DW-1414, DW-1637, DW-1710 and DW-1465
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** DW-2034 (macOS deletes files under `/tmp` untouched for three days, and the local throwaways keep their data there)
 - **When** it is fixed
 - **Then** the local throwaway root is outside `/tmp` while CI's Linux path is unchanged, `ci-throwaway.sh down` removes a throwaway whose `compose.yml` is gone, and a check fails when a mounted local database has no `IRIS.DAT`.
+
+- **Given** DW-2102 (the ObjectScript suite has outgrown four instance shards: the largest refreshed leg is 50.5 minutes and the timeout floor 80 minutes)
+- **When** it is fixed
+- **Then** CI runs the instance suite in five shard legs from refreshed timings, every class still runs in exactly one leg, `ui/tools/ci.test.mjs` holds the new shape, no `timeout-minutes` is lowered, and a green run's longest instance leg is reported. [AMENDED 2026-10-06, orchestrator: DW-2102 added to batch (a) under the owner's standing grant, as CI health]
 
 - **Given** the CI flakes and test-isolation entries in batch (a)
 - **When** each is fixed
