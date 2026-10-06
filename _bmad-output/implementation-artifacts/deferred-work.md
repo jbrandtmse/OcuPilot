@@ -9967,3 +9967,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: LeavesInteractiveRequired judges Interactive alone and StartupProblems checks only that a new file lists its administrator; the vendor's answer to a key file without the active key, and an unanswered Interactive start under journal encryption (OKNoDBEncKeyAtStartup names it as needing the key), are unmeasured (inference)
 - 2026-10-05T20:00:23Z status=decision-pending owner=burndown by=cr note=unverified high; settle on a throwaway (key file without the active key; journal under Interactive), then decide AD-10's scope
 - 2026-10-06T01:34:04Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-05 under the owner's standing grant (recommended disposition): Epic 18's close burn-down measures an Unattended key file or KMIP server lacking the active key that encrypts IRISAUDIT, IRISSECURITY or IRISTEMP, and journal encryption under Interactive, on the throwaway first, then decides whether AD-10's STARTUPINTERACTIVE arm widens
+
+### DW-2103: structural-walk.mjs withRetry, the per-pass protocol-timeout retry, has no executed test: it is a closure inside walk()
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: only isProtocolTimeout and retryOnce are unit-tested; the walk-level retry was checked by hand under a held font (batch a, 16313a0e)
+- 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; extracting withRetry into protocol-retry.mjs would make it testable
+
+### DW-2104: ci-throwaway.sh data-check's session logic is pinned only as source text; its red path never ran against a real instance
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ci.test.mjs stubs docker with a canned session answer; an inverted IRIS.DAT test did not redden in the stub harness, only the text pins did (batch a, 16313a0e)
+- 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; CI runs the green path on every instance leg
+
+### DW-2105: turnprobe-spec.mjs disarm passes no username, so SweepSince deletes every user's turn state above the mark (unverified)
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/browser/turnprobe-spec.mjs:237; harmless while specs run one at a time (batch a, 16313a0e)
+- 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; settle by checking whether any spec writes concurrently as another user
+
+### DW-2106: structural-walk.mjs's per-pass retry may run the dark-theme pass in a fresh context that starts light (unverified)
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ui/browser/structural-walk.mjs withRetry re-signs-in a fresh context; whether the dark toggle carries over is unread (batch a, 16313a0e)
+- 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; settle by failing a pass after the dark toggle and reading the retry's theme
