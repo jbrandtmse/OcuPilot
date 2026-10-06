@@ -444,3 +444,5 @@
 2026-10-06T05:25:19Z	Story 19.18	adr_verifications_complete	result=none_required(no_AD-tooled_AC;AD-36_hint_mechanism_unchanged) model=claude-opus-5-5
 2026-10-06T05:25:19Z	Epic 19	ledger_note	DW-2101_stays_range-end-cleanup(orchestrator_offer_declined:19.18_implement_already_finished,taking_it_costs_another_pass)
 2026-10-06T05:25:19Z	Story 19.18	stage_spawned	stage=qa spawn_at=2026-10-06T05:25:19Z model=sonnet agent_name=19-18-burn-down-qa-1 cycle_iteration=1
+2026-10-06T05:28:39Z	Story 19.18	qa_complete	spawn_at=2026-10-06T05:26Z model=sonnet agent=19-18-burn-down-qa-1 tests_added=0 mutations_demonstrated=4(DW-2092_node,DW-1001/DW-1945/DW-2093_ObjectScript_runs_2662-2664) closing_sections_present=true
+2026-10-06T05:28:39Z	Story 19.18	stage_spawned	stage=code-review spawn_at=2026-10-06T05:28:39Z model=opus agent_name=19-18-burn-down-code-review-1 cycle_iteration=1 review_tier=full-opus

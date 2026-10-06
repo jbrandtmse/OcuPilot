@@ -302,6 +302,7 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: DW-2092 console: `statusLineFor` drops the `explorerSqlRowsChangedOne` branch. Observed red: `sql-answer.test.mjs` (1 failed) and, after rebuild and redeploy, `agent-sql.browser-spec.mjs` (1 failed).
 - mutation: DW-2092 saved summary: `data-browser.store.ts` builds the line without `savedSummaryText`. Observed red: `data-browser.page.spec.ts` 'a save of exactly one change reads singular in the status line' (1 failed of 37).
 - mutation: DW-2093: renamed the method and left the rows. Observed red: `SurfaceCoverage.TestEveryCoverageRowNamesATestTheSuiteExecutes` (run 2177).
+- mutation (QA, re-demonstrated, reverted, tree clean): DW-2092 `pickCount` always plural → `data-browser-model.test.mjs` count sentences (red); DW-1001 `ExplorerSqlTable` hint removed → `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` (run 2662); DW-1945 `ExplorerClassCompile` `ADVERTISED` 0 → `ExplorerWrite` 2 of 10 (run 2663); DW-2093 method renamed, rows kept → `SurfaceCoverage.TestEveryCoverageRowNamesATestTheSuiteExecutes` (run 2664). No QA test files added.
 
 ## Auto Run Result
 
