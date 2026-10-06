@@ -10089,3 +10089,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (Story 23.4 batch b CI) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 37492247584 (head ae8afad7) instance shard 3/5: 0.0.0.0:52776 address already in use on attempts 1-3, exit 1 before the suite; DW-439's bounded retry (13.2) did not outlast it
 - 2026-10-06T20:34:11Z status=routed owner=range-end-cleanup by=lead note=recurrence of DW-439's shape past its bounded retry; a longer or backed-off wait, or a port probe, would cover it
+
+### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.24 plan on ocupilot-ci 2026-10-06: Secret64 alone 201, AES-CBC round trip ok, Length empty; Secret64 with Length 201 and the round trip fails; irislib/%Wallet/SymmetricKey.cls:65-83
+- 2026-10-06T21:56:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; OcuPilot's WalletPort sequences two PUTs (AD-52)
+
+### DW-2125: IRIS defect candidate: the admin API's Wallet.Secret PUT accepts CertificateFile, PublicKeyFile and PrivateKeyFile and reads the named server file as the irisowner process, so a caller holding %Admin_Wallet:USE can load any file the instance can read into a wallet secret
+- source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.24 plan on ocupilot-ci 2026-10-06: CertificateFile naming a server file 201 and the vendor read it; irislib/%Wallet/AsymmetricKey.cls NormalizeProperties GetFile
+- 2026-10-06T21:56:59Z status=decision-pending owner=burndown by=spec_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; owner hold 2026-10-05: not reported; OcuPilot's AdminPort refuses the three fields (AD-21)
