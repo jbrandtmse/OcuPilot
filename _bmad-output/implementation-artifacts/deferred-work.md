@@ -10010,3 +10010,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 35466022679 on 240618d, attempt 1: tests 45-49 of ui/browser/error-log.browser-spec.mjs all failed 'Navigation timeout of 30000 ms exceeded' on page.goto inside the shared signedInAtScreen() helper at :342, five sequential 30 s losses, then the rest of the suite ran normally and only DW-1169 failed. Attempt 2 on the same head, same code, was 185/186 with those five passing. Both parents of the merge were individually healthy (epic 10 cf2012f 186/186, feature ed11819 184/185), so this is not an integration regression. Something makes the instance briefly unable to serve that screen's route -- the error-log spec's own seeding is the obvious suspect since it is the heaviest fixture in the suite. Probe: run error-log.browser-spec.mjs alone against a fresh throwaway with the instance's process table and journal watched, and check whether the seed step precedes the stall
 - 2026-10-06T11:56:04Z status=routed owner=range-end-cleanup by=lead note=re-filed from DW-1223 (id collision); routed to 13-2 on 09-19, declined there as Epic 5's; same shape in run 36483764167
+
+### DW-2112: SaveHoldCoverage checks Save handler source text; only the web-application Save is held at runtime, so a wrong hold key in another Save is not caught
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: SaveHoldCoverage asserts .HoldTool( and .Release( per handler; ReadBackRoute holds one target (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral; a table-driven live leg over a create, a singleton and a mapping route would pin each key
+
+### DW-2113: DW-1710 added a caller compare mode to AD-58's closed read-back vocabulary: a blank sent value matches the reading account
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Kernel/Proposal/ReadBack.cls; a task create sends RunAsUser blank and the instance stores the caller (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral; the lead decides AD-58's amendment, the alternative is a tool-level hook
+
+### DW-2114: DW-1465's name hooks on TaskRun, TaskDelete and TaskExport have no mint-level test; only TaskResume, TaskCreate and TaskUpdate are pinned
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: a hook answering empty on those three leaves the card titled by id with no test red (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+
+### DW-2115: DW-2096's three mask sites (catalog, SQL activity, explorer read) are pinned only by the all-sites MaskCredentials mutation
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Test/SqlCredentialMask.cls; each site's removal was not run as its own mutation (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+
+### DW-2116: The locator bar's router handler calls clearFault() with no origin on every navigation, clearing Home's and the panel's fault slots (unverified)
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/shell/locator-bar.ts:409; settle by refusing a Home write and navigating before it is announced (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
+
+### DW-2117: Small batch b test gaps: field-lists.mjs has no malformed caller case, OAuthClientUpdate asserts no card-row count, RenderTargetBusy's internal-error arm is untested
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: verification-gap layer; each needs a fixture for a path the wire cannot reach today (batch b, 77a71c2f)
+- 2026-10-06T15:59:36Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch b deferral
