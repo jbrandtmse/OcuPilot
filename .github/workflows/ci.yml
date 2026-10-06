@@ -12,7 +12,7 @@
 #                   and the client suite they gate -- once per Node band `ui/package.json`
 #                   declares, at each band's floor, because a suite that runs on one Node only
 #                   proves one Node.
-#   instance-shard  four legs, each with its own throwaway container and its share of the
+#   instance-shard  five legs, each with its own throwaway container and its share of the
 #                   ObjectScript suite, run one class at a time. Leg 1 also runs the admin API drift
 #                   check before its share and the smoke script after it, so each runs once.
 #   instance        the roll-up. It reads the legs' records and fails unless every class the
@@ -128,11 +128,11 @@ jobs:
   # race left a probe database mounted with no directory, and `browser.config.mjs` runs one spec file
   # at a time because `unreadable.browser-spec.mjs` revokes and restores a grant the others depend
   # on. Each took about 50 minutes on one container in run 36359053662, so the parallelism is across
-  # containers instead: the ObjectScript suite runs as four legs and the browser specs as three,
+  # containers instead: the ObjectScript suite runs as five legs and the browser specs as three,
   # each leg against its own fresh throwaway, which costs only runner-minutes -- free on a public
   # repository.
   instance-shard:
-    name: instance shard ${{ matrix.shard }}/4
+    name: instance shard ${{ matrix.shard }}/5
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # First, before anything else can mask it: the Linux ownership reproduction for the durable
@@ -174,6 +174,10 @@ jobs:
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+      # Every mounted local database still holds its IRIS.DAT, so a leg whose data directory was
+      # pruned out from under it fails here and not as a hundred unrelated reds.
+      - name: every mounted database holds its IRIS.DAT
+        run: sh scripts/ci-throwaway.sh data-check
       # Leg 1 only, and before its share, so a vendor drift fails in seconds rather than minutes in:
       # the instance's own generated admin API spec against the derived path-and-method table
       # vendored at a named upstream commit (AD-27).
@@ -183,7 +187,7 @@ jobs:
         run: node tools/admin-spec.mjs --origin http://localhost:52776
       - name: objectscript suite, this leg's share, one class at a time
         working-directory: ui
-        run: node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/4 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json
+        run: node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json
       # Leg 1 only, after its share, where the single job ran it after the whole suite: on an
       # instance this run installed from this checkout on a scrubbed volume.
       - name: smoke
@@ -229,7 +233,7 @@ jobs:
           path: ${{ runner.temp }}/ci-records
       - name: every class ran in exactly one leg
         working-directory: ui
-        run: node tools/ci-shards.mjs check --suite objectscript --shards 4 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}
+        run: node tools/ci-shards.mjs check --suite objectscript --shards 5 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}
 
   # Each leg's throwaway is a full parameterisation of the same script, not a copy: `up` takes
   # --dir/--project/--web/--super because the parallel slots needed exactly that, and

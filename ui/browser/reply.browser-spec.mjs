@@ -328,8 +328,9 @@ test('(b) a remote image and a remote link produce zero requests to that host, a
   });
   try {
     await typeAndSend(page, 'show me the remote content');
-    await page.waitForFunction(
-      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') !== '',
+    // The final reply, not the streamed block that precedes it: only the final reply carries the link.
+    await page.waitForSelector(
+      '.ocu-panel-message-agent:not(.ocu-panel-message-streamed) .ocu-panel-message-agent-text a',
       { timeout: config.navigationTimeoutMs }
     );
     const hasImg = await page.evaluate(() => document.querySelector('.ocu-panel-message-agent-text img') !== null);

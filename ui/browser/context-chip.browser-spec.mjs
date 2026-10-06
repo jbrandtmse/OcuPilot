@@ -106,32 +106,6 @@ function runIris(lines) {
 }
 
 /**
- * Abandon every turn the configured user still has running, and answer how many were abandoned
- * (`-1` when the route itself did not answer) -- the same `POST /turn/abandon` route
- * `navigate.browser-spec.mjs`'s `requireFreeSlot` uses.
- */
-async function abandonTurns() {
-  try {
-    const response = await fetch(`${config.origin}/api/ocupilot/turn/abandon`, {
-      method: 'POST',
-      headers: { Authorization: authHeader() },
-    });
-    if (!response.ok) return -1;
-    return Number((await response.json()).abandoned ?? -1);
-  } catch {
-    return -1;
-  }
-}
-
-/** Which process holds the configured user's turn slot this instant -- `''` while none does. */
-function slotOwner() {
-  const output = runIris([
-    `Write "OCU-CHIP-SLOT-START:"_##class(OcuPilot.Test.TurnFixture).SlotOwner("${escapeOs(config.username)}")_":OCU-CHIP-SLOT-END",!`,
-  ]);
-  return markerValue(output, 'CHIP-SLOT') ?? '';
-}
-
-/**
  * Refuse to start (or finish) until the configured user's one turn slot is free, naming the
  * global, the holding pid and TURN.BUSY on failure rather than the bare 30 s puppeteer timeout a
  * taken slot would otherwise produce on this file's first Send. Copied from

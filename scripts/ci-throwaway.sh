@@ -24,13 +24,17 @@
 #   sh scripts/ci-throwaway.sh logs  [--dir DIR]
 #   sh scripts/ci-throwaway.sh product-check [--dir DIR]
 #   sh scripts/ci-throwaway.sh product-reuse [--dir DIR]
+#   sh scripts/ci-throwaway.sh data-check [--dir DIR]
 #   sh scripts/ci-throwaway.sh down  [--dir DIR] [--project NAME]
+#
+# Without --dir or OCUPILOT_THROWAWAY_DIR the directory is $HOME/.ocupilot-throwaways/<project> on
+# macOS, whose /tmp cleaner prunes files left untouched for days, and /tmp/ocupilot-ci elsewhere.
 set -e
 
 ACTION="${1:-}"
 shift 2>/dev/null || true
 
-DIR="${OCUPILOT_THROWAWAY_DIR:-/tmp/ocupilot-ci}"
+DIR="${OCUPILOT_THROWAWAY_DIR:-}"
 PROJECT="ocupilot-ci"
 WEB_PORT="52776"
 SUPER_PORT="1975"
@@ -50,6 +54,15 @@ while [ $# -gt 0 ]; do
         *) echo "ci-throwaway: unknown argument $1"; exit 2 ;;
     esac
 done
+
+if [ -z "$DIR" ]; then
+    DIR="/tmp/ocupilot-ci"
+    if [ "$(uname -s)" = "Darwin" ] && [ -n "${HOME:-}" ]; then
+        case "$HOME" in
+            /?*) DIR="${HOME%/}/.ocupilot-throwaways/$PROJECT" ;;
+        esac
+    fi
+fi
 
 # The live instance's own ports, refused outright. This script writes a compose file and starts
 # a container from it; publishing the live ports would either collide with a running instance or,
@@ -86,9 +99,19 @@ fi
 case "$DIR" in
     *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
 esac
+# The local root is the one a macOS default lands in. Trailing slashes come off HOME, and a HOME
+# that is not absolute adds no arm, so a relative HOME cannot admit a relative --dir.
+HOME_ROOT="${HOME:-/nonexistent-home}"
+while [ "$HOME_ROOT" != "${HOME_ROOT%/}" ]; do
+    HOME_ROOT="${HOME_ROOT%/}"
+done
+case "$HOME_ROOT" in
+    /?*) ;;
+    *) HOME_ROOT=/nonexistent-home ;;
+esac
 case "$DIR" in
-    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*) ;;
-    *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
+    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"$HOME_ROOT/.ocupilot-throwaways"/?*) ;;
+    *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
 
 COMPOSE_FILE="$DIR/compose.yml"
@@ -748,17 +771,68 @@ EOF
         fi
         echo "ci-throwaway: the start over the reused volume deleted the two test classes compiled before it"
         ;;
+    data-check)
+        # Every mounted local database directory still holds its IRIS.DAT. A host cleaner that
+        # prunes the data directory leaves the instance running against files that are gone, and
+        # nothing else says so. One %SYS session reads SYS.Database:List; a row counts when its
+        # status starts with "Mounted" and its directory is a local path. No databases listed is
+        # a failure, since an empty list proves nothing.
+        if [ ! -f "$COMPOSE_FILE" ]; then
+            echo "ci-throwaway: no compose file at $COMPOSE_FILE; nothing was brought up to check"
+            exit 1
+        fi
+        RAW=$(docker compose -f "$COMPOSE_FILE" exec -T iris iris session iris -U %SYS 2>&1 <<'EOF'
+Set tRS=##class(%ResultSet).%New("SYS.Database:List")
+Set tSC=tRS.Execute("*")
+Set tN=0,tMissing=""
+If tSC { While tRS.Next() { Set tDir=tRS.GetData(1),tStatus=tRS.GetData(4) If ($Extract(tStatus,1,7)="Mounted")&&($Extract(tDir,1)="/") { Set tN=tN+1,tFile=##class(%File).NormalizeDirectory(tDir)_"IRIS.DAT" If ##class(%File).Exists(tFile)=0 Set tMissing=tMissing_$Select(tMissing="":"",1:";")_tDir } } }
+Write "OCUPILOT-"_"DATCHECK-START:"_tN_":"_tMissing_":OCUPILOT-"_"DATCHECK-END",!
+Halt
+EOF
+) || { echo "ci-throwaway: could not open a session in the throwaway's iris service"; printf '%s\n' "$RAW" | tail -n 20; exit 1; }
+        DATA=$(printf '%s' "$RAW" | tr '\r\n' '  ' | grep -o 'OCUPILOT-DATCHECK-START:.*:OCUPILOT-DATCHECK-END' | sed -e 's/^OCUPILOT-DATCHECK-START://' -e 's/:OCUPILOT-DATCHECK-END$//')
+        COUNT=$(printf '%s' "$DATA" | cut -d: -f1)
+        MISSING=$(printf '%s' "$DATA" | cut -d: -f2-)
+        case "$COUNT" in
+            ""|*[!0-9]*)
+                echo "ci-throwaway: the throwaway did not answer which of its databases hold an IRIS.DAT"
+                printf '%s\n' "$RAW" | tail -n 20
+                exit 1
+                ;;
+        esac
+        if [ "$COUNT" -lt 1 ]; then
+            echo "ci-throwaway: the throwaway listed no mounted local database, so a check of their files proves nothing"
+            exit 1
+        fi
+        if [ -n "$MISSING" ]; then
+            echo "ci-throwaway: a mounted database has no IRIS.DAT in: $MISSING"
+            exit 1
+        fi
+        echo "ci-throwaway: all $COUNT mounted local database(s) hold their IRIS.DAT"
+        ;;
     down)
         if [ -f "$COMPOSE_FILE" ]; then
             docker compose -f "$COMPOSE_FILE" logs --no-color iris | tail -n 80 || true
             docker compose -f "$COMPOSE_FILE" down -v
+        else
+            # compose.yml is gone (a host cleaner pruned it) but the container may still be up.
+            # Compose is asked to remove the project only when it lists this project from this
+            # directory's own compose file; any other listing is someone else's throwaway.
+            listed=$(docker compose ls -a --format json 2>/dev/null | tr -d '\n' | grep -o "{[^}]*\"Name\":\"$PROJECT\"[^}]*}" || true)
+            if [ -n "$listed" ] && printf '%s' "$listed" | grep -q "\"ConfigFiles\":\"$COMPOSE_FILE\""; then
+                docker compose -p "$PROJECT" down -v --remove-orphans
+            elif [ -n "$listed" ]; then
+                echo "ci-throwaway: no compose file at $COMPOSE_FILE and Compose lists '$PROJECT' from a different config file; no Compose call made"
+            else
+                echo "ci-throwaway: no compose file at $COMPOSE_FILE and Compose does not list '$PROJECT'; no Compose call made"
+            fi
         fi
         scrub_data
         rm -rf "$DIR"
         echo "ci-throwaway: removed $DIR"
         ;;
     *)
-        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|product-reuse|down [options]"
+        echo "ci-throwaway: usage: ci-throwaway.sh up|logs|product-check|product-reuse|data-check|down [options]"
         exit 2
         ;;
 esac

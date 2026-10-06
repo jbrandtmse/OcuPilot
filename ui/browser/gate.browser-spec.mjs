@@ -546,7 +546,13 @@ test('FR-28: the form opens on the account\'s first sign-in only; Cancel on it g
     }
     assert.equal(recorded, FIRST_SIGN_IN_RECORDED, 'opening the form recorded the first sign-in on the instance');
 
-    // Cancel on the form the gate opened goes to Home, not to the Definitions list.
+    // Cancel on the form the gate opened goes to Home, not to the Definitions list. The banner
+    // renders before the form's own read answers, so Cancel is awaited rather than looked up once.
+    await page.waitForFunction(
+      (label) => [...document.querySelectorAll('.ocu-form-bar-actions button')].some((candidate) => candidate.textContent.trim() === label),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.actionCancel
+    );
     const clicked = await page.evaluate((label) => {
       const button = [...document.querySelectorAll('.ocu-form-bar-actions button')].find(
         (candidate) => candidate.textContent.trim() === label

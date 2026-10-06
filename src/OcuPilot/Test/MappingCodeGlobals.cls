@@ -4,8 +4,8 @@
 /// global, a pattern or range naming it, a subscript mapping reaching OcuPilot's names, or one whose
 /// base mapping would move the global -- is refused <code>PROHIBITED.OCUPILOTMAPPING</code> on the
 /// screen's Save and at the agent's confirm, and in a copy; a subscript range of one that does not
-/// reach them, and an unrelated global, are permitted. It also holds the declared set equal to the
-/// instance's own routine database.</p>
+/// reach them, and an unrelated global, are permitted. It also holds the declared set inside the
+/// instance's own routine database's holders.</p>
 /// <p>Every write in the namespace this process runs in goes to
 /// <class>OcuPilot.Test.MappingAcceptPort</class>, which sends none, and the <code>%ALL</code> legs ask
 /// the prohibited set directly (<class>OcuPilot.Test.MappingAllTargetFixture</class>). The only
@@ -37,6 +37,10 @@ Parameter ACCEPT = "OcuPilot.Test.MappingAcceptPort";
 Parameter COPYTOOL = "OcuPilot.Screen.Tool.NamespaceCopyMappings";
 
 Parameter OWNCODE = "PROHIBITED.OCUPILOTMAPPING";
+
+/// <p>The global <method>%SYS.Ensemble.SecondarySet</method> writes a stored credential's password
+/// to. No class's storage owns it, so it is named here.</p>
+Parameter CREDENTIALSECRETS = "Ens.SecondaryData.Password";
 
 Parameter TYPE = "global-mapping";
 
@@ -76,11 +80,13 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
-/// <p>The declared set is the instance's: walking every global of the routine database of the
+/// <p>The declared set is inside the instance's: walking every global of the routine database of the
 /// namespace this process runs in, the ones holding a subscript that begins with one of OcuPilot's
-/// stems in any case, at the first or second level, are exactly
-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.CODEGLOBALS</parameter>, and the ones holding it at
-/// the second under a first subscript that does not begin with a stem are exactly
+/// stems in any case, at the first or second level, include every one of
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.CODEGLOBALS</parameter>, and any other is a global a
+/// compiled class's storage owns (a stored credential adds the Ensemble credentials' own) or
+/// <parameter>CREDENTIALSECRETS</parameter>. The ones holding the stems at the second level under a
+/// first subscript that does not begin with a stem are exactly
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.NESTEDCODEGLOBALS</parameter>. A global whose own
 /// name begins with a stem is the stem rule's and is not counted.</p>
 Method TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames()
@@ -101,8 +107,32 @@ Method TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames()
         If tBelow Set tNested(tName) = ""
     }
     Do $$$AssertTrue(tWalked > 0, "the walk read " _ tWalked _ " globals of " _ tDest)
-    Do $$$AssertEquals(..Joined(.tHolders), ..Sorted($Parameter(..#KERNEL, "CODEGLOBALS")), "the globals holding OcuPilot's names are the kernel's code globals")
+    Set tDeclared = $ListFromString($Parameter(..#KERNEL, "CODEGLOBALS"))
+    Set tMissing = ""
+    For tI = 1:1:$ListLength(tDeclared) {
+        If '$Data(tHolders($List(tDeclared, tI))) Set tMissing = tMissing _ " " _ $List(tDeclared, tI)
+        Kill tHolders($List(tDeclared, tI))
+    }
+    Do $$$AssertEquals(tMissing, "", "every code global the kernel declares holds OcuPilot's names")
+    Set tUnowned = ""
+    Set tName = ""
+    For {
+        Set tName = $Order(tHolders(tName))
+        If tName = "" Quit
+        If (tName '= ..#CREDENTIALSECRETS) && '..StorageOwns(tName) Set tUnowned = tUnowned _ " " _ tName
+    }
+    Do $$$AssertEquals(tUnowned, "", "and every other holder is a global a compiled class's storage owns")
     Do $$$AssertEquals(..Joined(.tNested), ..Sorted($Parameter(..#KERNEL, "NESTEDCODEGLOBALS")), "and the ones holding them under a first subscript that is not one are its nested ones")
+}
+
+/// <p>Whether a compiled class's storage names global <var>pName</var> (without its caret) as its
+/// data, index, stream or id location.</p>
+ClassMethod StorageOwns(pName As %String) As %Boolean
+{
+    Set tRef = "^" _ pName
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledStorage WHERE DataLocation = ? OR IndexLocation = ? OR StreamLocation = ? OR IdLocation = ?", tRef, tRef, tRef, tRef)
+    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit 0
+    Quit +tRS.%GetData(1) > 0
 }
 
 /// <p>Each code global mapped whole, and a pattern or range naming one with case (<code>odd*</code>,

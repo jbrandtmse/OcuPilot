@@ -39,7 +39,7 @@
  *   node tools/ci-runner.mjs --container <name> --class OcuPilot.Test.Wire --class ...
  *   node tools/ci-runner.mjs --container <name> --shard k/n [--timings PATH] [--record PATH]
  *
- * **`--shard k/n`** is one leg of CI's `instance shard k/4` (Story 13.5). The listing and the
+ * **`--shard k/n`** is one leg of CI's `instance shard k/5` (Story 13.5). The listing and the
  * on-disk floor are unchanged; the run then keeps only this shard's share of the offered classes,
  * as `ci-shards.mjs` assigns it from `--timings` (default `ui/tools/ci-timings.json`), in the order
  * the instance offered them, and labels its summary and problems with the shard. A shard assigned
@@ -224,6 +224,36 @@ export function parseProbeAppsMarker(text, name = 'PROBEAPPS') {
   const body = match[1].trim();
   if (body.startsWith('error:')) return { paths: [], error: body.slice('error:'.length).trim() };
   return { paths: body === '' ? [] : body.split(/\s+/), error: null };
+}
+
+/**
+ * The governance fixture's answer a session reported (DW-1936): the text between the markers, or
+ * `null` when the session printed none. `name` is `GOVASIDE` for the set-aside taken before the
+ * class and `GOVBACK` for the put-back after it.
+ */
+export function parseGovernanceMarker(text, name) {
+  const match = new RegExp(`OCUPILOT-${name}-START:(.*?):OCUPILOT-${name}-END`).exec(String(text).replace(/[\r\n]+/g, ' '));
+  return match === null ? null : match[1].trim();
+}
+
+/**
+ * The problems the governance set-aside and put-back make for a class (DW-1936), none when both
+ * answered `ok`. A missing answer is a failure as much as a refusal: a policy that was not set
+ * aside may have decided the class's writes, and one that was not put back is left changed.
+ */
+export function classifyGovernance(className, aside, back) {
+  const problems = [];
+  for (const [label, answer, consequence] of [
+    ['set aside', aside, 'the stored policy may have decided this class\'s writes'],
+    ['put back', back, 'the policy this class ran under may still be stored'],
+  ]) {
+    if (answer === null) {
+      problems.push(`${className}: the session did not report whether the governance policy was ${label}, so ${consequence} -- which is a failure, never a pass`);
+    } else if (answer !== 'ok') {
+      problems.push(`${className}: the governance policy was not ${label} (${answer}), so ${consequence} -- which is a failure, never a pass`);
+    }
+  }
+  return problems;
 }
 
 /**
@@ -505,6 +535,8 @@ function main() {
     }
     const detailProblems = classifyFailureDetail(className, marker, failures);
     problems.push(...detailProblems);
+    const governanceProblems = classifyGovernance(className, parseGovernanceMarker(output, 'GOVASIDE'), parseGovernanceMarker(output, 'GOVBACK'));
+    problems.push(...governanceProblems);
     const probeApps = parseProbeAppsMarker(output);
     const probeAppsBefore = parseProbeAppsMarker(output, 'PROBEAPPS-BEFORE');
     const leftover = classifyLeftovers(className, probeApps, probeAppsBefore);
@@ -518,7 +550,7 @@ function main() {
       failed += marker.failed;
     }
     let outcome = verdict.outcome;
-    if (outcome === 'passed' && detailProblems.length > 0) outcome = 'failed';
+    if (outcome === 'passed' && (detailProblems.length > 0 || governanceProblems.length > 0)) outcome = 'failed';
     if (outcome === 'passed' && leftover !== null) {
       outcome = !checked ? 'unchecked' : leftoverIsOwn(probeApps, probeAppsBefore) ? 'leaked' : 'inherited';
     }
@@ -538,7 +570,7 @@ function main() {
     } else if (verdict.outcome === 'failed') {
       console.log('      the session reported no failure detail for this run');
     }
-    for (const problem of detailProblems) console.log(`      ${problem}`);
+    for (const problem of [...detailProblems, ...governanceProblems]) console.log(`      ${problem}`);
     if (leftover !== null) console.log(`      ${leftover}`);
     if (outcome !== 'passed') {
       console.log(

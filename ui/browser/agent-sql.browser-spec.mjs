@@ -19,9 +19,10 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
-import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
+import { governanceRowVersion, resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
 import {
   armProbeDefinition,
+  clearGovernancePolicy,
   disarmProbeDefinition,
   escapeOs,
   forgetTag as sharedForgetTag,
@@ -47,12 +48,15 @@ const STATEMENT = `UPDATE ${TABLE} SET Name = ? WHERE Name = ?`;
 let browser = null;
 let preparedId = '';
 let priorDefault = '';
+// Whether no policy was stored before this file ran: the resets save a default row, which the end clears.
+let noStoredPolicy = false;
 
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs a data change, so it never runs inside the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   await requireFreeSlot(config);
+  noStoredPolicy = (await governanceRowVersion()) === 0;
   browser = await puppeteer.launch(launchOptions(config));
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
@@ -69,6 +73,10 @@ after(async () => {
   dropProposals();
   dropTable();
   await resetGovernancePolicy();
+  if (noStoredPolicy) {
+    clearGovernancePolicy(config.container);
+    assert.equal(await governanceRowVersion(), 0, 'no governance policy is stored, as before this file ran');
+  }
   await resetRememberedState();
   disarmProbeDefinition(probe, priorDefault);
 });

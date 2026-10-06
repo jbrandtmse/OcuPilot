@@ -107,8 +107,13 @@ fi
 docker exec -i "$CONTAINER" iris session iris -U "$NAMESPACE" 2>&1 <<EOF
 Set ^UnitTestRoot = \$System.Util.ManagerDirectory()
 Set tBefore = \$Order(^UnitTest.Result(""), -1)
+; DW-1936: the stored governance policy is set aside before the class and put back after it, so
+; a policy an earlier run, class or person left cannot change what the class's writes are allowed
+; to do. Each answer is `ok` or the reason it is not; the runner fails the class on anything else.
+Write "OCUPILOT-"_"GOVASIDE-START:"_##class(OcuPilot.Test.GovernanceFixture).SetAside()_":OCUPILOT-"_"GOVASIDE-END",!
 Write "OCUPILOT-"_"PROBEAPPS-BEFORE-START:"_##class(OcuPilot.Test.ProbeApps).Existing()_":OCUPILOT-"_"PROBEAPPS-BEFORE-END",!
 Set tSC = ##class(%UnitTest.Manager).RunTest(":$CLASSNAME", "/noload/nodelete/norecursive")
+Write "OCUPILOT-"_"GOVBACK-START:"_##class(OcuPilot.Test.GovernanceFixture).PutBack()_":OCUPILOT-"_"GOVBACK-END",!
 Set tRun = \$Order(^UnitTest.Result(""), -1)
 Set tTotal = 0
 Set tFailed = 0

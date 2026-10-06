@@ -91,37 +91,6 @@ function runIris(lines) {
   return sharedRunIris(config.container, lines);
 }
 
-/** The Basic header the configured user authenticates the API with. */
-function basicHeader() {
-  return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
-}
-
-/**
- * Abandon every turn the configured user still has running, and answer how many were abandoned
- * (`-1` when the route itself did not answer). This is the instance's own path, not a global
- * write: the same `POST /turn/abandon` the client calls at sign-out.
- */
-async function abandonTurns() {
-  try {
-    const response = await fetch(`${config.origin}/api/ocupilot/turn/abandon`, {
-      method: 'POST',
-      headers: { Authorization: basicHeader() },
-    });
-    if (!response.ok) return -1;
-    return Number((await response.json()).abandoned ?? -1);
-  } catch {
-    return -1;
-  }
-}
-
-/** Which process holds the configured user's turn slot this instant -- `''` while none does. */
-function slotOwner() {
-  const output = runIris([
-    `Write "OCU-NAV-SLOT-START:"_##class(OcuPilot.Test.TurnFixture).SlotOwner("${escapeOs(config.username)}")_":OCU-NAV-SLOT-END",!`,
-  ]);
-  return markerValue(output, 'NAV-SLOT') ?? '';
-}
-
 /**
  * Refuse to start until the configured user's one turn slot is free, and say so in a sentence
  * that names the cause.

@@ -18,6 +18,7 @@ import { basename, dirname, join } from 'node:path';
 
 import {
   classifyFailureDetail,
+  classifyGovernance,
   classifyLeftovers,
   classifyRun,
   describeFailures,
@@ -25,6 +26,7 @@ import {
   nonConsecutiveRuns,
   overlappingRuns,
   parseFailuresMarker,
+  parseGovernanceMarker,
   parseListMarker,
   parseProbeAppsMarker,
   parseRunMarker,
@@ -117,15 +119,16 @@ export const DECLARED_GATES = [
   'cat /proc/sys/net/ipv4/ip_local_port_range',
   'sh scripts/ci-throwaway.sh up',
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
+  'sh scripts/ci-throwaway.sh data-check',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
   'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
-  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/4 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
+  'node tools/ci-runner.mjs --container ocupilot-ci --shard ${{ matrix.shard }}/5 --record ${{ runner.temp }}/ci-records/objectscript-shard-${{ matrix.shard }}.json',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser:shard -- --shard ${{ matrix.shard }}/3 --record ${{ runner.temp }}/ci-records/browser-shard-${{ matrix.shard }}.json',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
   // instance and browser -- the roll-ups, one check each over their shard jobs' records.
-  'node tools/ci-shards.mjs check --suite objectscript --shards 4 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
+  'node tools/ci-shards.mjs check --suite objectscript --shards 5 --records ${{ runner.temp }}/ci-records --result ${{ needs.instance-shard.result }}',
   'node tools/ci-shards.mjs check --suite browser --shards 3 --records ${{ runner.temp }}/ci-records --result ${{ needs.browser-shard.result }}',
   // browser-shard -- the same script fully parameterised onto a second throwaway, so the two
   // suites that dominated the old instance job run side by side instead of end to end.
@@ -983,15 +986,17 @@ const FAILURE_DETAIL = [
 
 /**
  * The session output a class run prints: the leftover answer before the run (when `before` is
- * given), the run marker, the failure marker (unless `fails` is `null`), the leftover marker
+ * given), the governance set-aside and put-back answers (`ok` unless given, none when `null`), the run marker, the failure marker (unless `fails` is `null`), the leftover marker
  * (unless `probeApps` is `null`), then any `tail` lines.
  */
-function sessionOutput({ failed, fails, probeApps, before = null, tail = [] }) {
+function sessionOutput({ failed, fails, probeApps, before = null, tail = [], aside = 'ok', back = 'ok' }) {
   return [
     'HSCUSTOM>',
+    ...(aside === null ? [] : [`OCUPILOT-GOVASIDE-START:${aside}:OCUPILOT-GOVASIDE-END`]),
     ...(before === null ? [] : [`OCUPILOT-PROBEAPPS-BEFORE-START:${before}:OCUPILOT-PROBEAPPS-BEFORE-END`]),
     `OCUPILOT-RUN-START:44:3:${failed}:1:1:OCUPILOT-RUN-END`,
     ...(fails === null ? [] : [`OCUPILOT-FAILS-START:${JSON.stringify(fails)}:OCUPILOT-FAILS-END`]),
+    ...(back === null ? [] : [`OCUPILOT-GOVBACK-START:${back}:OCUPILOT-GOVBACK-END`]),
     ...(probeApps === null ? [] : [`OCUPILOT-PROBEAPPS-START:${probeApps}:OCUPILOT-PROBEAPPS-END`]),
     ...tail,
   ].join('\n');
@@ -1146,6 +1151,42 @@ test('DW-242, DW-243: the session reads failures from its own run index and repo
   const run = script.indexOf('##class(%UnitTest.Manager).RunTest(');
   const after = script.indexOf('"PROBEAPPS-START:"_##class(OcuPilot.Test.ProbeApps).Existing()');
   assert.ok(before !== -1 && run !== -1 && after !== -1 && before < run && run < after, 'the leftover answer is taken before RunTest and again after it');
+});
+
+// DW-1936: the stored governance policy is set aside around every class run.
+//
+// Mutations (Rule 19): ignore `GOVBACK` in ci-runner.mjs -> the put-back case goes green and this
+// goes red. Delete `SetAside` from ci-unit-test.sh -> the order assertion goes red.
+test('DW-1936: a class run fails when the governance policy was not set aside or not put back (executed)', () => {
+  assert.equal(parseGovernanceMarker('OCUPILOT-GOVBACK-START:ok:OCUPILOT-GOVBACK-END', 'GOVBACK'), 'ok');
+  assert.equal(parseGovernanceMarker('no marker', 'GOVBACK'), null, 'no marker is not ok');
+  assert.deepEqual(classifyGovernance('X', 'ok', 'ok'), []);
+  const green = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '' }));
+  assert.equal(green.status, 0, green.stdout + green.stderr);
+
+  const refusedBack = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '', back: 'ERROR #5001: refused' }));
+  assert.equal(refusedBack.status, 1, 'a put-back that was refused fails the class');
+  assert.match(refusedBack.stderr, /the governance policy was not put back \(ERROR #5001: refused\)/);
+  assert.match(refusedBack.stdout, /FAILED\s+OcuPilot\.Test\.GrantReadBack/);
+
+  const noBack = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '', back: null }));
+  assert.equal(noBack.status, 1, 'a put-back that reported nothing fails the class');
+  assert.match(noBack.stderr, /did not report whether the governance policy was put back/);
+
+  const noAside = runRunnerOver(sessionOutput({ failed: 0, fails: [], probeApps: '', aside: null }));
+  assert.equal(noAside.status, 1, 'a set-aside that reported nothing fails the class');
+  assert.match(noAside.stderr, /did not report whether the governance policy was set aside/);
+});
+
+test('DW-1936: the session sets the policy aside, runs the class, then puts the policy back', () => {
+  const script = readFileSync(join(REPO_ROOT, 'scripts', 'ci-unit-test.sh'), 'utf8');
+  const aside = script.indexOf('##class(OcuPilot.Test.GovernanceFixture).SetAside()');
+  const before = script.indexOf('"PROBEAPPS-BEFORE-START:"');
+  const run = script.indexOf('##class(%UnitTest.Manager).RunTest(');
+  const back = script.indexOf('##class(OcuPilot.Test.GovernanceFixture).PutBack()');
+  assert.ok(aside !== -1 && aside < before && before < run && run < back, 'SetAside, then RunTest, then PutBack');
+  assert.match(script, /"GOVASIDE-START:"_##class\(OcuPilot\.Test\.GovernanceFixture\)\.SetAside\(\)_":OCUPILOT-"_"GOVASIDE-END"/);
+  assert.match(script, /"GOVBACK-START:"_##class\(OcuPilot\.Test\.GovernanceFixture\)\.PutBack\(\)_":OCUPILOT-"_"GOVBACK-END"/);
 });
 
 // --- The shell scripts CI's red and green actually depend on ---------------------------------
@@ -1340,10 +1381,22 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   assert.match(throwaway, /ConfigFiles[^\n]*\$COMPOSE_FILE/, 'recognizing its own earlier run only by this config file');
   // `docker compose ls` is the one verb that takes no file: it is the read-only listing the
   // name-clash guard asks, and it can touch nothing. Every other invocation still names the file.
-  const composeInvocations = (throwaway.replace(/^\s*#.*$/gm, '').match(/docker compose[^\n]*/g) ?? [])
+  // The one other exception is the `down` fallback for a compose.yml a host cleaner removed
+  // (DW-2034): it names the project instead, and only after the listing's `ConfigFiles` matched
+  // this directory's own file. It is exempted by its exact text, and the check must precede it.
+  const FALLBACK = 'docker compose -p "$PROJECT" down -v --remove-orphans';
+  const withoutComments = throwaway.replace(/^\s*#.*$/gm, '');
+  assert.equal(withoutComments.split(FALLBACK).length - 1, 1, 'the project-named teardown appears exactly once');
+  assert.ok(
+    withoutComments.indexOf('"\\"ConfigFiles\\":\\"$COMPOSE_FILE\\""', withoutComments.indexOf('down)')) <
+      withoutComments.indexOf(FALLBACK),
+    'and only after the listing was checked against this directory\'s own compose file'
+  );
+  const guarded = withoutComments.replace(FALLBACK, '');
+  const composeInvocations = (guarded.match(/docker compose[^\n]*/g) ?? [])
     .filter((invocation) => !/^docker compose ls\b/.test(invocation.trim()));
   assert.ok(
-    !/docker compose\s+(?!ls\b)(-f\s+)?(?!.*\$COMPOSE_FILE)/.test(throwaway.replace(/^\s*#.*$/gm, '')),
+    !/docker compose\s+(?!ls\b)(-f\s+)?(?!.*\$COMPOSE_FILE)/.test(guarded),
     'every docker compose invocation names the generated compose file'
   );
   for (const invocation of composeInvocations) {
@@ -1798,6 +1851,139 @@ test('product-check passes only on a namespace holding OcuPilot classes and no O
   assert.equal(nothing.status, 1, 'with no throwaway brought up there is nothing to check, which is a failure');
   assert.match(nothing.output, /nothing was brought up to check/);
   assert.equal(nothing.argv, '', 'and no docker command ran');
+});
+
+// --- DW-2034: a throwaway outlives a pruned /tmp, and its data is checked ---------------------
+//
+// macOS's /tmp cleaner deletes files untouched for days, so a long-lived local throwaway lost its
+// compose.yml (and once its IRIS.DAT) while the container kept running. The default directory on
+// macOS is under $HOME, `down` removes the project by name when only compose.yml is gone, and
+// `data-check` fails on a mounted local database with no IRIS.DAT.
+
+/** Run `ci-throwaway.sh <args>` with a stub docker whose `compose ls` prints `ls`, and a stub uname. */
+function runThrowaway(args, { ls = '[]', uname = 'Linux', session = '', env = {}, composeFile = false } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-dw2034-'));
+  try {
+    const bin = join(dir, 'bin');
+    const scratch = join(dir, 'scratch');
+    const capture = join(dir, 'docker-argv.txt');
+    mkdirSync(scratch);
+    if (composeFile) writeFileSync(join(scratch, 'compose.yml'), 'name: ocupilot-ci\n');
+    writeStub(bin, 'docker', [
+      'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'case "$1 $2" in',
+      '  "compose ls") printf \'%s\\n\' "$OCUPILOT_COMPOSE_LS"; exit 0 ;;',
+      'esac',
+      'cat > /dev/null 2>&1',
+      'printf \'%s\\n\' "$OCUPILOT_SESSION_ANSWER"',
+      'exit 0',
+    ]);
+    writeStub(bin, 'uname', ['printf \'%s\\n\' "$OCUPILOT_UNAME"']);
+    const argv = args.map((arg) => (arg === '<scratch>' ? scratch : arg));
+    const spawnEnv = stubEnv(bin, {
+      OCUPILOT_DOCKER_CAPTURE: capture,
+      OCUPILOT_COMPOSE_LS: typeof ls === 'function' ? ls(scratch) : ls,
+      OCUPILOT_UNAME: uname,
+      OCUPILOT_SESSION_ANSWER: session,
+      OCUPILOT_THROWAWAY_DIR: '',
+      ...env,
+    });
+    delete spawnEnv.OCUPILOT_THROWAWAY_DIR;
+    const run = spawnSync('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), ...argv], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: spawnEnv,
+    });
+    const calls = existsSync(capture) ? readFileSync(capture, 'utf8').split(scratch).join('<scratch>') : '';
+    return { status: run.status, output: `${run.stdout}${run.stderr}`, calls, scratchGone: !existsSync(scratch) };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const listing = (file) => (scratch) =>
+  `[{"Name":"ocupilot-ci","Status":"running(1)","ConfigFiles":"${file === null ? 'elsewhere/compose.yml' : `${scratch}/compose.yml`}"}]`;
+
+// Mutations (Rule 19): delete the fallback -> no `compose -p ... down -v --remove-orphans` is
+// captured. Delete the `ConfigFiles` check -> the "another file" case downs it.
+test('down with compose.yml gone removes the project by name only when Compose lists this directory (DW-2034)', () => {
+  const own = runThrowaway(['down', '--dir', '<scratch>'], { ls: listing('own') });
+  assert.equal(own.status, 0, `down succeeds: ${own.output}`);
+  assert.match(own.calls, /^compose -p ocupilot-ci down -v --remove-orphans$/m, 'an own listing is removed by project name');
+  assert.ok(own.scratchGone, 'and the directory is removed');
+
+  const other = runThrowaway(['down', '--dir', '<scratch>'], { ls: listing(null) });
+  assert.equal(other.status, 0, `down succeeds: ${other.output}`);
+  assert.ok(!/ down /.test(other.calls), `a project listed from another file is left alone: ${other.calls}`);
+  assert.match(other.output, /different config file/, 'saying why');
+  assert.ok(other.scratchGone, 'the scrub and the directory removal still run');
+
+  const absent = runThrowaway(['down', '--dir', '<scratch>'], { ls: '[]' });
+  assert.equal(absent.status, 0, `down succeeds: ${absent.output}`);
+  assert.ok(!/ down /.test(absent.calls), `a project Compose does not list gets no Compose call: ${absent.calls}`);
+  assert.match(absent.output, /does not list/, 'saying why');
+});
+
+// Mutation (Rule 19): default Darwin back to /tmp/ocupilot-ci -> the first case goes red.
+test('without --dir the throwaway lives under $HOME on macOS and under /tmp elsewhere (DW-2034)', () => {
+  const home = '/nonexistent-home-dw2034';
+  const pathOf = (run) => /no compose file at (\S+);/.exec(run.output)?.[1] ?? /compose -f (\S+) ps -a/.exec(run.calls)?.[1];
+  const darwin = runThrowaway(['logs'], { uname: 'Darwin', env: { HOME: home } });
+  assert.equal(pathOf(darwin), `${home}/.ocupilot-throwaways/ocupilot-ci/compose.yml`, 'macOS defaults under $HOME, by project');
+  const named = runThrowaway(['logs', '--project', 'ocupilot-x'], { uname: 'Darwin', env: { HOME: home } });
+  assert.equal(pathOf(named), `${home}/.ocupilot-throwaways/ocupilot-x/compose.yml`, 'and follows --project');
+  const linux = runThrowaway(['logs'], { uname: 'Linux', env: { HOME: home } });
+  assert.equal(pathOf(linux), '/tmp/ocupilot-ci/compose.yml', 'CI keeps /tmp/ocupilot-ci');
+  const explicit = runThrowaway(['logs', '--dir', '/tmp/ocupilot-explicit'], { uname: 'Darwin', env: { HOME: home } });
+  assert.equal(pathOf(explicit), '/tmp/ocupilot-explicit/compose.yml', 'an explicit --dir wins');
+});
+
+// Mutation (Rule 19): delete the `$HOME` arm -> the admitted case goes red.
+test('the scratch-root guard admits a directory under $HOME/.ocupilot-throwaways and not its root (DW-2034)', () => {
+  const home = '/nonexistent-home-dw2034';
+  const env = { HOME: home, TMPDIR: '/nonexistent-tmp-dw2034' };
+  const admitted = runThrowaway(['logs', '--dir', `${home}/.ocupilot-throwaways/x`], { env });
+  assert.equal(admitted.status, 0, `admitted under the local root: ${admitted.output}`);
+  const root = runThrowaway(['logs', '--dir', `${home}/.ocupilot-throwaways`], { env });
+  assert.equal(root.status, 2, `the root itself is refused: ${root.output}`);
+  const slash = runThrowaway(['logs', '--dir', `${home}/.ocupilot-throwaways/`], { env });
+  assert.equal(slash.status, 2, `and so is the root with a trailing slash: ${slash.output}`);
+  const relative = runThrowaway(['logs', '--dir', 'rel/.ocupilot-throwaways/x'], { env: { HOME: 'rel', TMPDIR: '/nonexistent-tmp-dw2034' } });
+  assert.equal(relative.status, 2, `a relative HOME admits nothing: ${relative.output}`);
+});
+
+const dataAnswer = (fields) => `%SYS>\nOCUPILOT-DATCHECK-START:${fields}:OCUPILOT-DATCHECK-END\n%SYS>`;
+
+// Mutations (Rule 19): invert the `IRIS.DAT` test, or drop the zero-count floor -> the missing and
+// empty cases exit 0.
+test('data-check passes only when every mounted local database holds its IRIS.DAT (DW-2034)', () => {
+  const ok = runThrowaway(['data-check', '--dir', '<scratch>'], { composeFile: true, session: dataAnswer('14:') });
+  assert.equal(ok.status, 0, `all present passes: ${ok.output}`);
+  assert.match(ok.calls, /^compose -f <scratch>\/compose\.yml exec -T iris iris session iris -U %SYS$/m, "asking the generated file's iris service");
+
+  const missing = runThrowaway(['data-check', '--dir', '<scratch>'], { composeFile: true, session: dataAnswer('14:/durable/iris/mgr/user/;/durable/iris/mgr/x/') });
+  assert.equal(missing.status, 1, `a missing file fails: ${missing.output}`);
+  assert.match(missing.output, /\/durable\/iris\/mgr\/user\/;\/durable\/iris\/mgr\/x\//, 'naming the directories');
+
+  const empty = runThrowaway(['data-check', '--dir', '<scratch>'], { composeFile: true, session: dataAnswer('0:') });
+  assert.equal(empty.status, 1, `no databases listed fails: ${empty.output}`);
+  assert.match(empty.output, /proves nothing/);
+
+  for (const [label, session] of [['no marker', '%SYS>\n<UNDEFINED>\n%SYS>'], ['a garbled count', dataAnswer('1x:')]]) {
+    const run = runThrowaway(['data-check', '--dir', '<scratch>'], { composeFile: true, session });
+    assert.equal(run.status, 1, `${label} fails: ${run.output}`);
+    assert.match(run.output, /did not answer which of its databases/, label);
+  }
+
+  // The stub answers for the session, so the session's own test is pinned as text: a directory is
+  // missing when its IRIS.DAT does not exist, and only mounted rows with a local path are counted.
+  const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  assert.match(source, /If ##class\(%File\)\.Exists\(tFile\)=0 Set tMissing=/, 'a directory is missing when its IRIS.DAT does not exist');
+  assert.match(source, /\$Extract\(tStatus,1,7\)="Mounted"\)&&\(\$Extract\(tDir,1\)="\/"/, 'and only mounted rows with a local path are checked');
+
+  const none = runThrowaway(['data-check', '--dir', '<scratch>'], { composeFile: false });
+  assert.equal(none.status, 1, 'with no throwaway brought up there is nothing to check');
+  assert.equal(none.calls, '', 'and no docker command ran');
 });
 
 // --- DW-1885: the images job starts its product throwaway again over a volume with test classes ---
@@ -2714,7 +2900,7 @@ test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, c
  * the number of legs its matrix runs.
  */
 const SHARDED = [
-  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs', legs: 4 },
+  { shard: 'instance-shard', rollUp: 'instance', suite: 'objectscript', command: 'node tools/ci-runner.mjs', legs: 5 },
   { shard: 'browser-shard', rollUp: 'browser', suite: 'browser', command: 'npm run test:browser:shard', legs: 3 },
 ];
 
@@ -2749,7 +2935,7 @@ export function jobSteps(text, job) {
 
 // Mutation (Rule 19): delete the last leg from either shard matrix, or label a shard job's legs with
 // another count -> this goes red naming the job; set a roll-up's --shards to another count -> red.
-test("each suite's shard matrix is 1..legs (instance 4, browser 3), and every k/n and --shards n is its length (AC1, AC2, AC8)", () => {
+test("each suite's shard matrix is 1..legs (instance 5, browser 3), and every k/n and --shards n is its length (AC1, AC2, AC8)", () => {
   for (const { shard, rollUp, suite, command, legs } of SHARDED) {
     const matrix = shardMatrix(workflow, shard);
     const expected = Array.from({ length: legs }, (_, i) => i + 1);

@@ -541,7 +541,29 @@ ClassMethod LockInstall(pProfile As %String, pWhat As %String) As %Status [ Priv
     Set tWait = ..#INSTALLLOCKSECONDS
     Lock +@tName:tWait
     If $Test Quit $$$OK
-    Quit $$$ERROR($$$GeneralError, pWhat _ " refused for profile '" _ pProfile _ "'" _ $Select(pProfile = "": " (production)", 1: "") _ ": another install, uninstall or start mark of that profile still held its install lock after " _ tWait _ " seconds. Nothing was changed; run it again once the other one has finished.")
+    Quit $$$ERROR($$$GeneralError, pWhat _ " refused for profile '" _ pProfile _ "'" _ $Select(pProfile = "": " (production)", 1: "") _ ": another install, uninstall or start mark of that profile still held its install lock after " _ tWait _ " seconds. Nothing was changed; run it again once the other one has finished. The lock is held by " _ ..InstallLockHolder(pProfile) _ ".")
+}
+
+/// <p>Who holds <var>pProfile</var>'s install lock, as <code>process &lt;pid&gt; (routine &lt;r&gt;,
+/// namespace &lt;n&gt;, user &lt;u&gt;)</code>, read from the lock table of <code>%SYS</code>, where
+/// <method>InstallLockName</method> takes it. Says so when no holder can be read, and never
+/// raises.</p>
+ClassMethod InstallLockHolder(pProfile As %String) As %String
+{
+    Set tKey = $Select(pProfile = "": "production", 1: pProfile)
+    Set tRef = "^OcuPilotInstallLock(""" _ $Replace(tKey, """", """""") _ """)"
+    Set tText = "no process the lock table names"
+    Try {
+        Set tOwner = $Get(^$|"%SYS"|LOCK(tRef, "OWNER"))
+        If tOwner '= "" {
+            Set tText = "process " _ tOwner
+            Set tProcess = ##class(%SYS.ProcessQuery).%OpenId(tOwner)
+            If $IsObject(tProcess) Set tText = tText _ " (routine " _ tProcess.Routine _ ", namespace " _ tProcess.NameSpace _ ", user " _ tProcess.UserName _ ")"
+        }
+    } Catch ex {
+        Set tText = "no process the lock table names"
+    }
+    Quit tText
 }
 
 /// <p>Release what <method>LockInstall</method> took.</p>

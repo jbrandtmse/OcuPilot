@@ -2,13 +2,42 @@
 title: 'Story 23.4: The range-end cleanup, part 4'
 type: 'bugfix'
 created: '2026-10-06'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3168e2d6df11a79b79edbe0edc4ce34050bb472c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      structural-walk.mjs withRetry (per-pass retry) has no executed test; it is a closure inside walk.
+    evidence: |-
+      Only isProtocolTimeout and retryOnce are unit-tested; the walk-level retry was checked by hand with a held font. Extracting withRetry into protocol-retry.mjs would make it testable.
+    location: >-
+      ui/browser/structural-walk.mjs
+    severity: low
+  - summary: >-
+      data-check's session logic is pinned as source text; the red path was never run on a real instance.
+    evidence: |-
+      ci.test.mjs stubs docker with a canned session answer. CI runs the green path on every instance leg; the lead's real-runtime step covers the rest.
+    location: >-
+      scripts/ci-throwaway.sh
+    severity: low
+  - summary: >-
+      turnprobe disarm passes no username, so SweepSince covers every user's rows above the mark (unverified).
+    evidence: |-
+      Harmless while specs run one at a time; settle by checking whether any spec writes concurrently as another user.
+    location: >-
+      ui/browser/turnprobe-spec.mjs:237
+    severity: low (unverified)
+  - summary: >-
+      structural-walk retry assumes the dark theme persists outside a fresh browser context (unverified).
+    evidence: |-
+      Settle by failing a pass after the dark toggle and reading the retry's theme.
+    location: >-
+      ui/browser/structural-walk.mjs
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -213,7 +242,7 @@ deferred: []
 
 ### Batch a: CI and test-environment health
 
-- [ ] **DW-2034**: local throwaways sit under `/tmp`, which macOS's cleaner prunes, and `down` skips Compose when `compose.yml` is gone.
+- [x] **DW-2034**: local throwaways sit under `/tmp`, which macOS's cleaner prunes, and `down` skips Compose when `compose.yml` is gone.
   - **Fix in `scripts/ci-throwaway.sh`:**
     - **Default dir.** Decide it after argument parsing, when neither `--dir` nor `OCUPILOT_THROWAWAY_DIR` is set: `$HOME/.ocupilot-throwaways/$PROJECT` when `uname -s` is `Darwin`, otherwise `/tmp/ocupilot-ci`. CI's commands and paths stay byte-identical.
     - **Guard (`:89-92`).** Add an arm for `"$HOME_ROOT/.ocupilot-throwaways"/?*`.
@@ -241,7 +270,7 @@ deferred: []
     - Given a throwaway whose `compose.yml` is gone, when `down` runs, then Compose removes exactly that project.
     - Given a mounted database with no `IRIS.DAT`, when `data-check` runs, then it exits 1 naming the directory.
 
-- [ ] **DW-2102**: four instance legs take 48 to 60 min under 81. Run 37421343025: 60.5, 56.7, 53.0 and 48.3 min; wall time 60.9 min.
+- [x] **DW-2102**: four instance legs take 48 to 60 min under 81. Run 37421343025: 60.5, 56.7, 53.0 and 48.3 min; wall time 60.9 min.
   - **Fix, in one commit.** A refresh on four legs alone reddens AC9: the floor reaches 82.0, above 81.
     - `cd ui && node tools/ci-shards.mjs refresh --run 37421343025` (0e38f829, green). Its suite total, 206.7 min against 201.8 for run 37352698013, shows it is not a slow-runner outlier.
     - `ci.yml`:
@@ -262,7 +291,7 @@ deferred: []
     - no `timeout-minutes` is lower;
     - the lead reports the longest instance leg and the wall time.
 
-- [ ] **DW-2026**: DevTools-protocol hangs fail whole specs. The a11y walk timed out at 730 s on `Runtime.callFunctionOn`; page creation timed out at 180 s on `Network.enable` (messages-log-files, data-table).
+- [x] **DW-2026**: DevTools-protocol hangs fail whole specs. The a11y walk timed out at 730 s on `Runtime.callFunctionOn`; page creation timed out at 180 s on `Network.enable` (messages-log-files, data-table).
   - **Reproduce:**
     - a11y: hold the first `.woff2` after load, never released (23.3's hook), with `protocolTimeout` temporarily set to 20 s at `:48`. The before hook goes red in about 20 s.
     - A `Network.enable` hang cannot be induced; the fakes pin it.
@@ -280,23 +309,23 @@ deferred: []
   - **ADs:** Conventions › Tests.
   - **AC:** Given a page creation or a walk pass that hits one protocol timeout, when the spec runs, then it is retried once fresh and the spec passes. A second timeout still fails.
 
-- [ ] **DW-2058**: AC1's walk of the import dialog (`:222`) loses marked nodes.
+- [x] **DW-2058**: AC1's walk of the import dialog (`:222`) loses marked nodes.
   - **Cause (inference, from the code):** the classes list re-reads after the delete. `code-list.store.ts:394` sets the status line before that read. The read lands mid-walk and replaces the two marked check inputs.
   - **Reproduce:** hold the first classes-list read after the delete POST long enough to land inside the walk. Measure the walk first. Red at `:222`.
   - **Fix:** after `:216`, wait for that re-read (the spec's `rowsRead`) before the walk.
   - **AC:** Given the held re-read, when AC1 runs, then the walk starts only after the list re-reads, and it passes.
 
-- [ ] **DW-1925**: `reply.browser-spec.mjs:331` passes on any non-empty agent text, including the streamed block, so `:340` reads `href` null mid-stream (inference).
+- [x] **DW-1925**: `reply.browser-spec.mjs:331` passes on any non-empty agent text, including the streamed block, so `:340` reads `href` null mid-stream (inference).
   - **Reproduce:** script the reply with `ScriptStream(tag, 0, <TextReply body>, 6)` through `runIris`. Red at `:340`.
   - **Fix:** wait for `.ocu-panel-message-agent:not(.ocu-panel-message-streamed) .ocu-panel-message-agent-text a`.
   - **AC:** Given the slow stream, when (b) runs, then it reads the final reply's link and passes.
 
-- [ ] **DW-1935**: the 15 s hang (`:209`) must also cover the other tab's whole sign-in (`:228`). On a slow runner turn 1 frees the slot first, so no lock banner appears (inference).
+- [x] **DW-1935**: the 15 s hang (`:209`) must also cover the other tab's whole sign-in (`:228`). On a slow runner turn 1 frees the slot first, so no lock banner appears (inference).
   - **Reproduce:** hold the second context's sign-in for 16 s. Red at `:231`.
   - **Fix:** sign in the other tab just after `:210`, before the hang starts, and close it in the outer `finally`.
   - **AC:** Given the held sign-in, when 'Second send' runs, then the lock banner appears and the test passes.
 
-- [ ] **DW-1983**: in `sendAndConfirm` (`:180-211`), `:193`, `:196` and `:197` are not scoped to the new card, and `:203-210` can match the streamed block.
+- [x] **DW-1983**: in `sendAndConfirm` (`:180-211`), `:193`, `:196` and `:197` are not scoped to the new card, and `:203-210` can match the streamed block.
   - **Reproduce:**
     - Stream turn 2's reply slowly with a mid-hang of about 40 s: test 2 goes red at `:193`.
     - A response-stage hold on the confirm (`Fetch.enable`, `requestStage: Response`) shows that `:197` does not wait.
@@ -305,17 +334,17 @@ deferred: []
     - Replace `:203-210` with: the final non-streamed reply starts with the expected text, and the composer is enabled again.
   - **AC:** Given the slow second turn, when the DW-1405 test runs, then both toasts are seen and test 2 is unaffected.
 
-- [ ] **DW-1984**: `gate.browser-spec.mjs` test 6 looks up Cancel once (`:550-558`). The banner renders before the form's read answers.
+- [x] **DW-1984**: `gate.browser-spec.mjs` test 6 looks up Cancel once (`:550-558`). The banner renders before the form's read answers.
   - **Reproduce:** after `FORM_PATH`, hold the form's first `/api/ocupilot` read for about 5 s. Red at `:558`.
   - **Fix:** before `:550`, `waitForFunction` for the Cancel button inside `.ocu-form-bar-actions`.
   - **AC:** Given the held read, when test 6 runs, then it finds Cancel and passes.
 
-- [ ] **DW-1873**: the pointer rests on the rail after `:216`. Its tooltip, revealed by `:hover` after 300 ms, overflows its slot at capture.
+- [x] **DW-1873**: the pointer rests on the rail after `:216`. Its tooltip, revealed by `:hover` after 300 ms, overflows its slot at capture.
   - **Reproduce:** hover the rail item and wait 400 ms before each capture. Red at `:234`.
   - **Fix:** the overflow loop in `structural-walk.mjs` (`:388-420`) skips elements matching `[role="tooltip"]`. The page-scroll check at `:360-373` still applies.
   - **AC:** Given a hovered rail item, when web-sessions AC1 captures, then no rail tooltip is reported and a real overflow still is.
 
-- [ ] **DW-1916**: `nextTag` restarts per process, so a late call record leaks into the next run. Two specs never forget (`agent-picker`, `egress-line`).
+- [x] **DW-1916**: `nextTag` restarts per process, so a late call record leaks into the next run. Two specs never forget (`agent-picker`, `egress-line`).
   - **Reproduce:** seed `##class(OcuPilot.Test.TurnProvider).Script("REPLY2", 0, ##class(OcuPilot.Test.TurnProvider).TextReply("stale"))`. reply.browser-spec's first reply assertion goes red. Remove it with `Forget("REPLY2")`; `Remains("REPLY2")` should read 0.
   - **Fix:**
     - The tag becomes `${prefix}${RUN}n${count}`, where `RUN` is 4 random bytes in hex.
@@ -325,7 +354,7 @@ deferred: []
   - **Pin:** a new `ui/tools` test imports `turnprobe-spec.mjs` twice (`?a`, `?b`). The tags differ, and each starts with its marker.
   - **AC:** Given a stale script under an old-format tag, when reply.browser-spec runs, then its replies are its own.
 
-- [ ] **DW-1917**: the reset leaves an empty-preset Policy row where none existed. Only governance and agent-sql write the policy.
+- [x] **DW-1917**: the reset leaves an empty-preset Policy row where none existed. Only governance and agent-sql write the policy.
   - **Reproduce:** Policy count is 0. Run governance.browser-spec. Count is 1.
   - **Fix:**
     - Each of the two specs reads the policy in `before`.
@@ -335,7 +364,7 @@ deferred: []
     - Given no stored policy, when either spec runs, then none is left.
     - Given a seeded policy (`GovernanceFixture.Apply`), when either spec runs, then the policy survives. Afterwards, `Clear()` reads back 0.
 
-- [ ] **DW-1929**: every spec that runs a turn leaves a `_SYSTEM` conversation, its entries, a turn, steps and ledger rows. `Retention` reddens on a container older than a day.
+- [x] **DW-1929**: every spec that runs a turn leaves a `_SYSTEM` conversation, its entries, a turn, steps and ledger rows. `Retention` reddens on a container older than a day.
   - **Reproduce:** counts before and after one agent-ledger run go from 0/0/0/0 to Convo 1, Entry 1, Turn 1, Step ≥3.
   - **Fix:**
     - **New `TurnWireFixture.StateMark()`:** the high-water mark over Convo, Turn and Ledger IDs. Use one mark if they share the `State.Base` extent; verify that.
@@ -350,7 +379,7 @@ deferred: []
     - Given a clean throwaway, when agent-ledger runs, then all four counts read 0 after it.
     - Given turn-running specs have run, when `Retention` runs next on the same container, then it finds no `_SYSTEM` conversation the specs left.
 
-- [ ] **DW-1936**: ErrorDelete goes 6 of 15 under a stored override on its key. A source scan finds about 40 classes that reach the confirm gate without `GovernanceFixture` (inference).
+- [x] **DW-1936**: ErrorDelete goes 6 of 15 under a stored override on its key. A source scan finds about 40 classes that reach the confirm gate without `GovernanceFixture` (inference).
   - **Reproduce:** `GovernanceFixture.Apply("", .s)` with `s("logs.applicationerrors.delete")="disabled"`. `ci-runner --class OcuPilot.Test.ErrorDelete` goes 6/15.
   - **Fix: one harness point.**
     - **New `GovernanceFixture.SetAside()`:**
@@ -370,7 +399,7 @@ deferred: []
     - Given a stored override on a key a class confirms, when the class runs through `ci-runner`, then it is green and the override reads back unchanged afterwards.
     - Given a put-back that fails, when the run ends, then the runner reports the class run as failed.
 
-- [ ] **DW-2027**: `MappingCodeGlobals` walks every global in a routine database that is also the globals database. A stored `OcuPilot*` credential adds `^Ens.Conf.CredentialsD` and `^Ens.SecondaryData.Password`.
+- [x] **DW-2027**: `MappingCodeGlobals` walks every global in a routine database that is also the globals database. A stored `OcuPilot*` credential adds `^Ens.Conf.CredentialsD` and `^Ens.SecondaryData.Password`.
   - **Reproduce:** in HSCUSTOM, `##class(Ens.Config.Credentials).SetCredential("OcuPilotRepro2027", "u", "p", 1)`. Red at `:104`. Afterwards, `%DeleteId`, and `$Data` of both globals reads 0.
   - **Fix:**
     - Assert that `CODEGLOBALS` is a subset of the holders.
@@ -378,7 +407,7 @@ deferred: []
     - Never exclude a declared member.
   - **AC:** Given the seeded credential, when the class runs, then it is green, and removing a `CODEGLOBALS` member still reddens it.
 
-- [ ] **DW-1297**: the install-lock refusal (`Installer.cls:544`) names no holder.
+- [x] **DW-1297**: the install-lock refusal (`Installer.cls:544`) names no holder.
   - **Reproduce:** run `iris session iris -U %SYS 'Lock +^OcuPilotInstallLock("probe") Hang 120'` in the background on `ocupilot-ci`. `Installer.Install("probe")` refuses after 10 s.
     - Remove it by ending that session.
     - `$Data(^$|"%SYS"|LOCK("^OcuPilotInstallLock(""probe"")"))` should then read 0.
@@ -389,7 +418,7 @@ deferred: []
   - **ADs:** AD-38, AD-16.
   - **AC:** Given another process holds the install lock, when an install is refused, then the message names that process.
 
-- [ ] **DW-1915**: `AssertMasked` reads the screen once (`:133`). The vendor's audit index refresh gives up when its lock is held for more than 0.01 s, so the newest rows can be missing from that read (inference).
+- [x] **DW-1915**: `AssertMasked` reads the screen once (`:133`). The vendor's audit index refresh gives up when its lock is held for more than 0.01 s, so the newest rows can be missing from that read (inference).
   - **Reproduce:**
     1. First read the value run 36949919497 failed on (`gh run view --log-failed`).
     2. Hold the index lock from a `%SYS` session for 5 s (confirm the global name with `iris_macro_info`). Red at `:133`.
@@ -397,7 +426,7 @@ deferred: []
   - **Fix:** each of the two reads polls for at most 15 s until "1 3", asserting "carries no key" on every answer.
   - **AC:** Given a 5 s index-lock hold, when the test runs, then it is green. A real masking regression still reddens at the bound.
 
-- [ ] **DW-1937**: `AddServer`'s own "Create Metadata" row can share the window's start millisecond (inference).
+- [x] **DW-1937**: `AddServer`'s own "Create Metadata" row can share the window's start millisecond (inference).
   - **Reproduce:** a temporary edit moves `tSince` above `AddServer`. Red at `:157`.
   - **Fix:**
     - The loop asserts only on the "Modify OAuth2 Server Definition" row for this issuer (`AuditPort.cls:120`).
@@ -409,7 +438,7 @@ deferred: []
   - Preferences and the switches row are cleared by `PreferencesWire` and `SwitchFixture.Reset`'s 18 callers, which run only on throwaways and CI.
   - `reopen_if`: a release or upgrade check must read seeded preferences or switches back after a full sweep on the same instance.
 
-- [ ] **DW-1086**: Story 4.7 (237d9de7) extracted the helpers into `turnprobe-spec.mjs`; its markers follow `OCU-<name>-START`, and `scriptReply` asserts its status. What remains is dead private copies of `abandonTurns` and `slotOwner`, which nothing calls.
+- [x] **DW-1086**: Story 4.7 (237d9de7) extracted the helpers into `turnprobe-spec.mjs`; its markers follow `OCU-<name>-START`, and `scriptReply` asserts its status. What remains is dead private copies of `abandonTurns` and `slotOwner`, which nothing calls.
   - **Fix:** delete `navigate.browser-spec.mjs:104-124` and `context-chip.browser-spec.mjs:113-141`.
   - **AC:** Given the tree, when it is searched, then `abandonTurns` and `slotOwner` are defined only in `turnprobe-spec.mjs`, and both specs are green.
 
@@ -613,6 +642,21 @@ deferred: []
 - 2026-10-06, lead spec gate: DW-1869 closes `resolved-by:23-3-the-range-end-cleanup-part-3` (f2168084; pin `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` seeds `%Manager` and judges by effect in both spellings), because a `wontfix-accepted` or `by-design` would misstate a fixed defect. The lead runs `ServiceUpdate` in batch b's verification. Every other planned disposition and fix shape is accepted as written.
 
 ## Review Triage Log
+
+### 2026-10-06 — Review pass
+
+- verdicts: 9 findings — high 0, medium 1, low 5, false 0, maybe-false 3
+- findings:
+
+  - `[medium]` `[patch]` browser.config.mjs wiring of installProtocolRetry unpinned — added ui/tools/browser-config-retry.test.mjs; mutation: comment out the call, the test reddens, reverted byte-identical.
+  - `[low]` `[defer]` structural-walk withRetry has no executed test — see deferred list.
+  - `[low]` `[reject]` MappingCodeGlobals weakened to subset plus storage-owned — the spec directed the dictionary-query acceptance; the declared set is still asserted present.
+  - `[low]` `[defer]` data-check session logic pinned as text — see deferred list.
+  - `[low]` `[reject]` DW-2058, DW-1983 no reproduced red — recorded as such in the batch a results block; waits are in and green.
+  - `[low]` `[patch]` SanitizeAuditMask stacked doc comments attach to the wrong parameter — MODIFYROW block moved above the AUDITRESOURCES comment; class recompiled, 0 errors.
+  - `[maybe-false]` `[defer]` structural-walk retry theme persistence — see deferred list.
+  - `[maybe-false]` `[defer]` turnprobe SweepSince without username — see deferred list.
+  - `[low]` `[reject]` ci.test.mjs overlong comment line — cosmetic.
 
 ## Design Notes
 
@@ -827,6 +871,21 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - Report the longest instance leg and the wall time.
   - Then the DW-2034 step and the ledger dedupe.
 
+**Batch a, executed (implement pass):**
+
+- DW-2034, DW-2102: `ci.test.mjs` 87 tests green; every mutation listed above went red and was reverted byte-identical (the `IRIS.DAT` test is pinned as text, since the stub answers the session). `SYS.Database:List` probe on `ocupilot-ci`: column 4 reads `Mounted/RW`, remote rows are not `/`-led paths (none present on the throwaway). `ci-shards.mjs assign --shards 5`: 41.3 min per leg.
+- DW-2026: `protocol-retry.test.mjs` green; mutation: no retry in `retryOnce` and a narrowed pattern both red. a11y walk under a held font requested after load with `protocolTimeout` 20 s: red without the walk retry (22 s), 12/12 with it. No second-pass "late resolve" close exists: a rejected creation has nothing to close.
+- DW-1925: red at the `href` read with `ScriptStream(...,6)`, green with the wait. DW-1935: red with a 16 s sign-in delay at the old position, green with the early sign-in. DW-1984: red with the form read held 5 s, green with the wait. DW-1873: red when the tooltip skip is removed (rail tooltip 406 px past its slot), green with it.
+- DW-2058: the held re-read did not reproduce a red in 12 holds from 0.5 to 8 s; the wait is in place and the spec is green under a 3 s hold. DW-1983: a 40 s mid-hang fails both versions on the 30 s waits, and 20 s fails neither, so the red was not reproduced; the clean spec is green.
+- DW-1916: stale `REPLY2` seed: `reply` red with the old tag format, green with the new; `Remains("REPLY2")` reads 0. `turnprobe-tags.test.mjs` green; mutation: old format red.
+- DW-1917: policy count 0 before and after `governance` and `agent-sql`; without the clear it is 1 (version 2); a seeded policy survives and `Clear()` reads 0.
+- DW-1929: counts Convo/Entry/Turn/Step equal before and after `agent-ledger`; mutation: skipping the Convo delete leaves Convo 1 and Entry 1 and disarm's assertion names them. `Retention` green.
+- DW-1936: `ErrorDelete` 6 of 15 failed under a stored `logs.applicationerrors.delete` override without the set-aside, 15 of 15 with it, override read back and then cleared; `GovernanceRestore` 3 of 3; mutations in `ci-unit-test.sh` and `ci-runner.mjs` red.
+- DW-2027: `MappingCodeGlobals` red under a seeded `OcuPilotRepro2027` credential, green after; mutation: no storage-owner acceptance red. The credential is deleted and both globals read 0. `^Ens.SecondaryData.Password` has no storage owner, so it is accepted by name (`CREDENTIALSECRETS`).
+- DW-1297: `InstallLock` 6 of 6; mutation: lock table read without `|"%SYS"|` red (the owner reads empty from the install namespace). DW-1915: green under a 5 s on and 1 s off hold of `^IRIS.AuditI`, red with a single read; the holder was ended and the lock reads absent. DW-1937: green with `tSince` moved above `AddServer`, red with the Description filter dropped.
+- DW-1086: `navigate`, `context-chip`, `proposal-demo` and `process-control` green.
+- Checks: `npm run test:tools` 1855 of 1855, `check-objectscript.py` and `lint-docs.sh` clean, `npm run build` green.
+
 **Batch b (loop):**
 
 - **Classes:**
@@ -863,6 +922,7 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` revert the `$Select` → `AuditStarted` goes red. Always answer `STARTED` → the finished-write assertion goes red.
   - `mutation:` remove `READBACKTOOL` from `TaskCreate` → the new `ReadBack` test goes red.
   - `mutation:` the hook answers `""` → both DW-1465 tests go red.
+  - `mutation:` comment out `installProtocolRetry(puppeteer)` in `browser.config.mjs` → `browser-config-retry.test.mjs` goes red.
 
 **Full sweep (once, before batch b's dev_complete):** `cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, on the rebuilt throwaway, with no seeded state present. Expected: 0 failed, with totals taken from `%UnitTest_Result`. The full browser suite runs in CI's three browser legs (Rule 29).
 
@@ -870,5 +930,9 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Batch a (17 entries, less DW-1938 and the ledger dedupe, which are the lead's) is implemented: throwaway directory, `data-check` and `down` fallback (DW-2034); five instance shards (DW-2102); protocol retry (DW-2026); wait, scope and cleanup fixes in the browser specs and test classes; governance set-aside in the runner. Review patched two findings (a config-wiring test, a doc-comment order) and deferred four to the spec's `deferred:` list. Follow-up review: false.
+
+Verified: `npm run test:tools` 1856 of 1856; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; src loaded on `ocupilot-ci` with 0 errors; each fix shown red then green under its reproduction on `ocupilot-ci` (DW-2058 and DW-1983 did not reproduce a red). The full sweep and full browser suite did not run (Rule 29). Residual: CI proof on the five-way split, DW-2034's real-runtime step, DW-1938 and the dedupe are the lead's.

@@ -208,6 +208,9 @@ test('Second send: Enter while busy shows the lock banner, keeps the draft, appe
   setTag(tag);
   scriptReply(tag, 15, textReply('done'));
   const { context, page } = await signedInAt(HOME_URL);
+  // The same user's other tab signs in before the first send, so its whole sign-in is outside the
+  // 15 s hang and the turn is still running when it sends.
+  const other = await signedInAt(HOME_URL);
   try {
     await page.type('#ocu-panel-composer', 'first message');
     await page.click('.ocu-panel-send');
@@ -225,18 +228,13 @@ test('Second send: Enter while busy shows the lock banner, keeps the draft, appe
     assert.equal(userMessages, 1, 'no second message was appended');
 
     // The same user's other tab: the instance refuses its send 409, and it shows the same banner.
-    const other = await signedInAt(HOME_URL);
-    try {
-      await typeAndSend(other.page, 'from the other tab');
-      await other.page.waitForSelector('[data-slot="lock"] .ocu-banner[role="status"]', { timeout: config.navigationTimeoutMs });
-      const otherState = await other.page.evaluate(() => ({
-        draft: document.querySelector('#ocu-panel-composer').value,
-        messages: document.querySelectorAll('.ocu-panel-message-user').length,
-      }));
-      assert.deepEqual(otherState, { draft: 'from the other tab', messages: 0 }, 'the other tab keeps its draft and appends nothing');
-    } finally {
-      await other.context.close();
-    }
+    await typeAndSend(other.page, 'from the other tab');
+    await other.page.waitForSelector('[data-slot="lock"] .ocu-banner[role="status"]', { timeout: config.navigationTimeoutMs });
+    const otherState = await other.page.evaluate(() => ({
+      draft: document.querySelector('#ocu-panel-composer').value,
+      messages: document.querySelectorAll('.ocu-panel-message-user').length,
+    }));
+    assert.deepEqual(otherState, { draft: 'from the other tab', messages: 0 }, 'the other tab keeps its draft and appends nothing');
 
     // Closing the context does not end the server-side job: every test here signs in as the same
     // configured user and so shares one AD-41 turn slot. Waiting for this turn to actually finish
@@ -246,6 +244,7 @@ test('Second send: Enter while busy shows the lock banner, keeps the draft, appe
       timeout: config.navigationTimeoutMs,
     });
   } finally {
+    await other.context.close();
     await context.close();
     forgetTag(tag);
   }

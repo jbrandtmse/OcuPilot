@@ -20,6 +20,15 @@
  * `ui/tools/build-output.test.mjs` asserts over what the build actually emits.
  */
 
+import puppeteer from 'puppeteer';
+
+import { installProtocolRetry } from './browser/protocol-retry.mjs';
+
+// Every spec imports this file and launches through `puppeteer`, so wrapping the launch here
+// gives all of them one retry of a context or page creation that times out on the DevTools
+// protocol, without a line in any spec.
+installProtocolRetry(puppeteer);
+
 /** The origin the spec drives. Never the live container's 52774 -- see this file's header. */
 export const DEFAULT_ORIGIN = 'http://localhost:52776';
 

@@ -184,26 +184,35 @@ async function sendAndConfirm(page, tag, enabled, replyText, toolUseId) {
     () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
     { timeout: config.navigationTimeoutMs }
   );
+  // Every lookup below is scoped to the card this send adds, the one at index `before`, so a card
+  // from an earlier turn cannot answer it.
+  const before = await page.$$eval('app-proposal-card', (cards) => cards.length);
   await page.type('#ocu-panel-composer', `set the probe application's Enabled to ${enabled}`);
   // A real click on the send button, not a keypress. A toast standing from an earlier turn used to
   // sit over this button at this viewport size, so this file sent with Enter instead; DW-1412 moved
   // the stack into the content area and out from over the panel, and clicking here is what keeps
   // that true for the second of two turns (`hitTestSend` below pins the hit test itself).
   await page.click('.ocu-panel-send');
-  await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', {
-    timeout: config.navigationTimeoutMs,
-  });
-  await page.click('.ocu-proposal-card-confirm');
-  await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', {
-    timeout: config.navigationTimeoutMs,
-  });
-  // Not strict equality: `panel.ts`'s own `replyWithChangeSentence` (this story's own addition)
-  // appends the published "<entity> was updated" sentence after the scripted reply, so the
-  // rendered text is `${replyText}\n\n<entity> was updated`, not `replyText` verbatim.
+  await page.waitForFunction(
+    (index) => document.querySelectorAll('app-proposal-card')[index]?.querySelector('.ocu-proposal-card-confirm') != null,
+    { timeout: config.navigationTimeoutMs },
+    before
+  );
+  const card = await page.evaluateHandle((index) => document.querySelectorAll('app-proposal-card')[index], before);
+  await (await card.$('.ocu-proposal-card-confirm')).click();
+  await page.waitForFunction(
+    (index) => document.querySelectorAll('app-proposal-card')[index]?.querySelector('.ocu-proposal-card-status') != null,
+    { timeout: config.navigationTimeoutMs },
+    before
+  );
+  // The final reply, not the streamed block: `panel.ts`'s own `replyWithChangeSentence` appends the
+  // published "<entity> was updated" sentence after the scripted reply, so the rendered text starts
+  // with `replyText` rather than equalling it. The composer is enabled again once the turn is settled.
   await page.waitForFunction(
     (want) => {
-      const replies = document.querySelectorAll('.ocu-panel-message-agent-text');
-      return (replies[replies.length - 1]?.textContent ?? '').startsWith(want);
+      const replies = document.querySelectorAll('.ocu-panel-message-agent:not(.ocu-panel-message-streamed) .ocu-panel-message-agent-text');
+      const settled = !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled');
+      return settled && (replies[replies.length - 1]?.textContent ?? '').startsWith(want);
     },
     { timeout: config.navigationTimeoutMs },
     replyText

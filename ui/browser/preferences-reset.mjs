@@ -111,6 +111,15 @@ export async function resetTurnLimit() {
   assert.equal(answer.status, 200, `the turns-an-hour limit was put back to none: ${await answer.text()}`);
 }
 
+/** The stored governance policy's version: 0 while no policy is stored. */
+export async function governanceRowVersion() {
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const text = await read.text();
+  assert.equal(read.status, 200, `the governance policy reads: ${text}`);
+  const policy = JSON.parse(text);
+  return typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
+}
+
 /**
  * Put the governance policy back to the default (Story 14.2): no preset, every key inheriting,
  * saved at the version the read answered, asserting both answers. A policy that already reads

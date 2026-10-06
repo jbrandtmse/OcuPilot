@@ -42,6 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { isProtocolTimeout } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -389,6 +390,9 @@ function detectInPage(options) {
       if (el === document.body) continue;
       const cs = style(el);
       if (cs.position === 'fixed') continue;
+      // A tooltip revealed by the pointer resting on its trigger is transient, positioned against the
+      // trigger and not its slot; the page-scroll check above still applies to it.
+      if (el.closest('[role="tooltip"]') !== null) continue;
       const block = containingBlock(el);
       if (block === null || block === root) continue;
       let clipped = false;
@@ -708,7 +712,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 /**
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
- * invariant), all with one conversation seeded (`seedConversation`) and removed on every exit
+ * invariant). Each of the two passes is run once more in a fresh context when it fails on a
+ * DevTools-protocol timeout. All of it runs with one conversation seeded (`seedConversation`) and removed on every exit
  * path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
  * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
  */
@@ -726,27 +731,55 @@ export async function walk(browser, config) {
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
+  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context. Its
+  // entries join the walk only when it completes, and the unmeasurable count is put back first.
+  let themeFlipped = false;
+  const withRetry = async (body) => {
+    const unmeasurable = report.unmeasurable;
+    for (let attempt = 1; ; attempt += 1) {
+      const found = [];
+      try {
+        await body(found);
+        entries.push(...found);
+        return;
+      } catch (error) {
+        if (attempt === 2 || !isProtocolTimeout(error)) throw error;
+        report.unmeasurable = unmeasurable;
+      }
+    }
+  };
+
   const seeded = seedConversation(config);
   try {
-    const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
-    try {
-      const requests = trackRequests(wide.page);
-      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
-      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-      entries.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
-      await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
-      await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-    } finally {
-      await wide.context.close();
-    }
+    await withRetry(async (found) => {
+      const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+      try {
+        const requests = trackRequests(wide.page);
+        if (themeFlipped) {
+          await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+          themeFlipped = false;
+        }
+        found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
+        await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+        themeFlipped = true;
+        found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
+        await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
+        await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
+        themeFlipped = false;
+      } finally {
+        await wide.context.close();
+      }
+    });
 
-    const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
-    try {
-      const requests = trackRequests(narrow.page);
-      entries.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
-    } finally {
-      await narrow.context.close();
-    }
+    await withRetry(async (found) => {
+      const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
+      try {
+        const requests = trackRequests(narrow.page);
+        found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
+      } finally {
+        await narrow.context.close();
+      }
+    });
   } finally {
     removeConversation(config, seeded);
   }

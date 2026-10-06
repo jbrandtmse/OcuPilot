@@ -23,6 +23,9 @@ Parameter TOOLNAME = "logs.audit.read";
 
 Parameter PROBE = "OcuPilot.Test.OAuthResourceServerProbe";
 
+/// <p>How long each read of the audit rows repeats until the rows it expects are there.</p>
+Parameter READSECONDS = 15;
+
 /// <p>The vendor event the resource server rows are written under.</p>
 Parameter EVENT = "OAuth2ResourceServerChange";
 
@@ -121,26 +124,41 @@ Method TestTheMaskReadsTheDeclarationAlone()
 
 /// <p>Assert that the audit screen's read over the wire and <code>logs.audit.read</code> each answer
 /// the Create and Modify rows naming <var>pName</var> since <var>pSince</var> with <var>pKey</var>'s
-/// setting masked everywhere the vendor wrote it, and that no answered row carries <var>pKey</var>.</p>
+/// setting masked everywhere the vendor wrote it, and that no answered row carries <var>pKey</var>.
+/// Each read repeats for up to <parameter>READSECONDS</parameter> until the rows are there, because the
+/// vendor's audit index refresh gives up when its lock is held, so the newest rows can be missing from
+/// one read; every answer is held to carry no key.</p>
 Method AssertMasked(pSince As %String, pName As %String, pKey As %String)
 {
     Set tPath = ..#READPATH _ "?events=" _ ..#EVENT _ "&maxRows=200&beginDateTime=" _ $ZConvert(pSince, "O", "URL")
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
-    Do $$$AssertEquals(tStatus, 200, "the audit screen's read answers: " _ $Extract(tRaw, 1, 200))
-    Set tScreen = ""
-    Try { Set tScreen = ##class(%DynamicObject).%FromJSON(tRaw).%Get("rows") } Catch { Set tScreen = "" }
-    Do $$$AssertEquals(tRaw [ pKey, 0, "the screen's read carries no key")
-    Do $$$AssertEquals(..MaskedCounts($Get(tScreen), pName), "1 3", "and answers the Create row's key and the Modify row's three masked, Claim as written")
+    Set tDeadline = $ZHorolog + ..#READSECONDS
+    For {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders)
+        Do $$$AssertEquals(tStatus, 200, "the audit screen's read answers: " _ $Extract(tRaw, 1, 200))
+        Set tScreen = ""
+        Try { Set tScreen = ##class(%DynamicObject).%FromJSON(tRaw).%Get("rows") } Catch { Set tScreen = "" }
+        Do $$$AssertEquals(tRaw [ pKey, 0, "the screen's read carries no key")
+        Set tCounts = ..MaskedCounts($Get(tScreen), pName)
+        If (tCounts = "1 3") || ($ZHorolog > tDeadline) Quit
+        Hang 0.5
+    }
+    Do $$$AssertEquals(tCounts, "1 3", "the screen answers the Create row's key and the Modify row's three masked, Claim as written")
 
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#TOOLNAME, .tTool)
     Do $$$AssertStatusOK(tSC, "the read tool resolves")
-    Set tArgs = {"events": (..#EVENT), "maxRows": 200}
-    Do tArgs.%Set("beginDateTime", pSince, "string")
-    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 200, .tResult, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "logs.audit.read answers")
-    Set tText = $Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "")
-    Do $$$AssertEquals(tText [ pKey, 0, "logs.audit.read carries no key")
-    Do $$$AssertEquals(..MaskedCounts($Select($IsObject($Get(tResult)): tResult.%Get("rows"), 1: ""), pName), "1 3", "and answers the Create row's key and the Modify row's three masked, Claim as written")
+    Set tDeadline = $ZHorolog + ..#READSECONDS
+    For {
+        Set tArgs = {"events": (..#EVENT), "maxRows": 200}
+        Do tArgs.%Set("beginDateTime", pSince, "string")
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 200, .tResult, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "logs.audit.read answers")
+        Set tText = $Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "")
+        Do $$$AssertEquals(tText [ pKey, 0, "logs.audit.read carries no key")
+        Set tCounts = ..MaskedCounts($Select($IsObject($Get(tResult)): tResult.%Get("rows"), 1: ""), pName)
+        If (tCounts = "1 3") || ($ZHorolog > tDeadline) Quit
+        Hang 0.5
+    }
+    Do $$$AssertEquals(tCounts, "1 3", "logs.audit.read answers the Create row's key and the Modify row's three masked, Claim as written")
 }
 
 /// <p>For the rows of <var>pRows</var> naming <var>pName</var>, how many times the probe key reads the

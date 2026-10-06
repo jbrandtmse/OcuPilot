@@ -21,6 +21,10 @@ Parameter FIXTURE = "OcuPilot.Test.TurnWireFixture";
 
 Parameter TAG = "sanitizeauditmask-probe";
 
+/// <p>The leading words of the vendor row a server description's token write adds, the one row the
+/// masking test asserts on.</p>
+Parameter MODIFYROW = "Modify OAuth2 Server Definition";
+
 /// <p>The pairs <code>logs/audit</code> declares beyond the shared fixture's own set, so this
 /// class's principal can call the real <code>logs.audit.read</code> tool.</p>
 Parameter AUDITRESOURCES = "%Admin_Secure:U,%DB_IRISSYS:R";
@@ -111,6 +115,31 @@ Method SeedMaskedRow(Output pIssuer As %String, Output pToken As %String, Output
     Quit ##class(OcuPilot.Port.OAuthServerPort).Invoke("Security.OAuth2.Client.ServerDefinition", "TOKEN", .tQuery, {"InitialAccessToken": (pToken)}, .tResult, .tHttp, .tFault)
 }
 
+/// <p>Wait up to fifteen seconds for the audit read, narrowed to <var>pSince</var>, to carry the
+/// <parameter>MODIFYROW</parameter> row of <var>pIssuer</var>; whether it did. The vendor's audit
+/// index can lag the write, and the server description's own Create row can share the window's first
+/// millisecond, so only this row is waited for and asserted on.</p>
+Method AwaitModifyRow(pSince As %String, pIssuer As %String) As %Boolean
+{
+    Set tFound = 0
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.audit.read", .tTool)
+    If $$$ISERR(tSC) Quit 0
+    Set tDeadline = $ZHorolog + 15
+    While 'tFound && ($ZHorolog < tDeadline) {
+        Set tArgs = {"events": "OAuth2", "maxRows": 200}
+        Do tArgs.%Set("beginDateTime", pSince, "string")
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, tArgs, 200, .tResult, .tHttp, .tFault)
+        If $$$ISOK(tSC) && $IsObject($Get(tResult)) {
+            Set tIterator = tResult.%Get("rows").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If $IsObject(tRow) && ($Extract(tRow.%Get("Description"), 1, $Length(..#MODIFYROW)) = ..#MODIFYROW) && (tRow.%Get("EventData") [ pIssuer) Set tFound = 1
+            }
+        }
+        If 'tFound Hang 0.5
+    }
+    Quit tFound
+}
+
 /// <p>Integration: a real masked vendor secret reaches the model exactly as masked. The turn's
 /// model calls <code>logs_audit_read</code>, narrowed to this row's own event and window; the
 /// recorded <code>tool_result</code> arrives framed (Story 14.3's one seam), the row is found, its
@@ -126,6 +155,7 @@ Method TestARealMaskedVendorSecretReachesTheModelOnceMasked()
     Set tSC = ..SeedMaskedRow(.tIssuer, .tToken, .tSince)
     Do $$$AssertStatusOK(tSC, "the token write stores the token")
     If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue(..AwaitModifyRow(tSince, tIssuer), "the token write's row is on the audit read before the turn starts")
 
     Set tCalls = [{"name": "logs_audit_read", "input": {"events": "OAuth2", "beginDateTime": (tSince), "maxRows": 200}}]
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tCalls))
@@ -152,6 +182,7 @@ Method TestARealMaskedVendorSecretReachesTheModelOnceMasked()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Set tData = tRow.%Get("EventData")
         If (tData = "") || (tData '[ tIssuer) Continue
+        If $Extract(tRow.%Get("Description"), 1, $Length(..#MODIFYROW)) '= ..#MODIFYROW Continue
         Set tFoundRow = 1
         Do $$$AssertEquals(tData [ tToken, 0, "the raw token never reaches the model: " _ $Extract(tData, 1, 200))
         Do $$$AssertTrue(tData [ "*****", "the vendor's own mask is present: " _ $Extract(tData, 1, 200))
