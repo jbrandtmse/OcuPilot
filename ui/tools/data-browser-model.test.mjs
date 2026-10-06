@@ -477,6 +477,7 @@ test('the count sentences read singular at exactly 1 and plural at 0 and 2 (DW-2
   assert.equal(model.waitingText(0), '0 changes waiting to be saved.');
   assert.equal(model.waitingText(2), '2 changes waiting to be saved.');
   assert.equal(model.discardedText(1), '1 change discarded.');
+  assert.equal(model.discardedText(0), '0 changes discarded.');
   assert.equal(model.discardedText(2), '2 changes discarded.');
   assert.equal(model.savedSummaryText(1, 1, 0), 'Saved 1 of 1 change; 0 rolled back.');
   assert.equal(model.savedSummaryText(0, 1, 1), 'Saved 0 of 1 change; 1 rolled back.');
@@ -485,4 +486,5 @@ test('the count sentences read singular at exactly 1 and plural at 0 and 2 (DW-2
   assert.equal(model.saveConsequenceText({ update: 1, insert: 1, delete: 1 }, 'T'), '1 row changes, 1 is added and 1 is deleted in T, and this cannot be undone from OcuPilot.');
   assert.equal(model.saveConsequenceText({ update: 2, insert: 0, delete: 0 }, 'T'), '2 rows change, 0 are added and 0 are deleted in T, and this cannot be undone from OcuPilot.');
   assert.equal(model.saveConsequenceText({ update: 0, insert: 2, delete: 1 }, 'T'), '0 rows change, 2 are added and 1 is deleted in T, and this cannot be undone from OcuPilot.');
+  assert.equal(model.saveConsequenceText({ update: 1, insert: 0, delete: 2 }, 'T'), '1 row changes, 0 are added and 2 are deleted in T, and this cannot be undone from OcuPilot.');
 });

@@ -76,7 +76,8 @@ ClassMethod Act(pList As %String, pNamespace As %String, pAction As %String, pId
 /// <p>The mint of <var>pTool</var> for <var>pNames</var> with <var>pArgs</var>, scoped to
 /// <var>pNamespace</var>, inside a completed turn seeded for the running account: the tool's
 /// <code>View</code> called directly, which skips the dispatcher's schema, pairs and governance. The
-/// mint-side refusals use it; the agent legs use <method>DispatchFor</method>.</p>
+/// legs that test a refusal at the mint or at the confirm use it; the agent's compile and delete legs
+/// send their calls through <method>DispatchFor</method>.</p>
 Method MintFor(pTool As %String, pNamespace As %String, pNames As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault) As %Status
 {
     Set pProposal = ""
@@ -246,9 +247,9 @@ ClassMethod HoldDocument(pDocument As %String, pHold As %Boolean)
     }
 }
 
-/// <p>AC3: the agent's compile mints a proposal whose card names the documents and the three flags
-/// and carries no console line; confirming compiles both in one call and answers the console as the
-/// confirm's <code>output</code>.</p>
+/// <p>AC3: the agent's compile, sent through the dispatcher, mints a proposal whose card names the
+/// documents and the three flags and carries no console line; confirming compiles both in one call and
+/// answers the console as the confirm's <code>output</code>.</p>
 /// <p>Mutation (Rule 19): put the written output on the mint's answer -- the turn leg goes red.</p>
 Method TestTheAgentCompilesThroughConfirm()
 {

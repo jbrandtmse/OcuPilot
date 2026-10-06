@@ -190,6 +190,34 @@ Paths are under `src/OcuPilot/` or `ui/` unless given in full. Line numbers were
   - Given the SQL console, when a query answers one row, a query is cut at Max rows 1, a DML statement changes one row, or the statement asks for one value, then the status reads "1 row", "1 row is shown; the answer holds more.", "1 row changed" or "This statement takes 1 value.", and a confirmed agent run's card line reads "1 row changed".
 - **DW-2093:** Given `ExplorerDescriptor`, when its area-count method runs, then its name states twenty-six reads and eleven writes, and `SurfaceCoverage`'s eight rows resolve to it.
 
+### Review Findings
+
+Code review 2026-10-05 (four layers, `full-opus`): 0 decision-needed, 7 patch, 0 defer, 13 rejected.
+
+- [x] [Review][Patch] (medium) No test checks that the read and field a hint names exist: seven hints are on reads that are not parent-scoped, and the parent check stops before the field name [src/OcuPilot/Test/CriterionHints.cls:109]
+- [x] [Review][Patch] (low, Rule 19) The comma-list half of the two-sided roster has never been seen red [spec `## Verification`]
+- [x] [Review][Patch] (low) The model test misses `discardedText(0)` and the deleted phrase at 2 [ui/tools/data-browser-model.test.mjs:475]
+- [x] [Review][Patch] (low) `MintFor`'s doc says the agent legs use `DispatchFor`, but four legs still mint directly to test a refusal at the confirm [src/OcuPilot/Test/ExplorerWrite.cls:76]
+- [x] [Review][Patch] (low) The compile leg's doc does not say it goes through the dispatcher [src/OcuPilot/Test/ExplorerWrite.cls:249]
+- [x] [Review][Patch] (low) The renamed method's doc counts eleven writes but lists ten, leaving out the SQL query's run and Story 19.11 [src/OcuPilot/Test/ExplorerDescriptor.cls:131]
+- [x] [Review][Patch] (low) `Criteria` has a dead `ISERR` check after its inner loop and never sets `tSC` first [src/OcuPilot/Test/CriterionHints.cls:51]
+
+Rejected:
+
+- low: the hints name reads by their dotted canonical name while the model's tool list uses `WireName`'s underscores. The spec sets the text, and Story 18.19's shipped journal hint uses the same form (by-design).
+- low: `Read.InputSchema` emits `required: []`, so the required criteria do not say they are required. This predates the story, `Read.cls` is on the Never list, and the model learns it from the 400.
+- false: Task history `search` no longer says what omitting it does. The schema's empty `required` already marks it optional, and the hint states nothing false.
+- low: the three `schema` hints say "every schema", but the default `system` = no leaves out system items. That belongs to the separate `system` criterion, and the text is set by the spec (by-design).
+- low: `AddCriteria`'s generic sentence and its doc still describe a comma list. This predates the story, `Read.cls` is on the Never list, and `CriterionHints` catches any new criterion that lacks a hint.
+- low: the hints ship in the client mirror. That is AD-5's single generated mirror, and the spec budgeted for it.
+- low: a future hinted text criterion with a default would fail the exact-equality leg. None exists today, and the failure would be loud (theoretical).
+- low: "Stopped after <s> seconds." has no singular. It reaches 1 only when the CSP gateway timeout is under 3 s (`TestCall.BoundSeconds`), so wontfix-theoretical.
+- low: the two singular choosers, and `explorerSqlRowCountOne` beside the shared count. The spec chose the console's own key, and DW-2101 owns the shared count.
+- low: `DispatchFor` copies `ExplorerTransfer.DispatchFor`. The spec asks for that shape.
+- low: the compile leg's new console check repeats the one two lines below it. The spec asks for the assertion.
+- low: the dispatched calls leave ledger rows behind. The confirm's rows already did before this story, the exemplar is the same, and the leftover rows reach no test.
+- low: a future second hinted criterion on a parent-scoped read would fail the parent leg. None exists (theoretical).
+
 ## Spec Change Log
 
 - 2026-10-05, lead (spec gate): accepted as planned. The Fixed-strings bound raise to 2,800 in `ui/tools/strings.test.mjs` is approved (sized for the merge with Epic 18). The epic context's count of OS management and Tasks criteria is 12, not 13 (the plan's parse). The plural-only counts outside this scope (the shared `<n> rows` count and the code list's export status) are DW-2101, routed to the range-end cleanup.
@@ -302,6 +330,8 @@ Load source into `ocupilot-a2-ci` and never restart it:
 - mutation: DW-2092 console: `statusLineFor` drops the `explorerSqlRowsChangedOne` branch. Observed red: `sql-answer.test.mjs` (1 failed) and, after rebuild and redeploy, `agent-sql.browser-spec.mjs` (1 failed).
 - mutation: DW-2092 saved summary: `data-browser.store.ts` builds the line without `savedSummaryText`. Observed red: `data-browser.page.spec.ts` 'a save of exactly one change reads singular in the status line' (1 failed of 37).
 - mutation: DW-2093: renamed the method and left the rows. Observed red: `SurfaceCoverage.TestEveryCoverageRowNamesATestTheSuiteExecutes` (run 2177).
+- mutation (code review): DW-1001 named field: `DatabaseDetails`'s hint names `Path` instead of `Directory`. Observed red: `CriterionHints.TestEveryReadAHintNamesDeclaresItsField` alone, naming `osmgmt.databasedetails.read:dir` (run 2668).
+- mutation (code review): DW-1001 comma-list half: `explorer.classes.read` `pattern` given a hint. Observed red: `TestEveryTextCriterionHasAHintOrIsACommaList` and `TestAHintedCriterionIsDescribedByItsHint`, both naming `explorer.classes.read:pattern` (run 2669). Both reverted with `cmp`; green at run 2670.
 - mutation (QA, re-demonstrated, reverted, tree clean): DW-2092 `pickCount` always plural → `data-browser-model.test.mjs` count sentences (red); DW-1001 `ExplorerSqlTable` hint removed → `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` (run 2662); DW-1945 `ExplorerClassCompile` `ADVERTISED` 0 → `ExplorerWrite` 2 of 10 (run 2663); DW-2093 method renamed, rows kept → `SurfaceCoverage.TestEveryCoverageRowNamesATestTheSuiteExecutes` (run 2664). No QA test files added.
 
 ## Auto Run Result

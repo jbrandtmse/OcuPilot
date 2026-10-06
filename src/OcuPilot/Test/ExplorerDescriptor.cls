@@ -128,12 +128,13 @@ Method TestEveryScreenDeclaresThreePromptsInTheCodeGroup()
     }
 }
 
-/// <p>Stories 19.2 AC9, 19.13 AC7, 19.4 AC6, 19.5 AC5, 19.14 AC7 and 19.17: the area's advertised tools are
+/// <p>Stories 19.2 AC9, 19.13 AC7, 19.4 AC6, 19.5 AC5, 19.14 AC7, 19.11 and 19.17: the area's advertised tools are
 /// its twenty-six reads and eleven writes, the lists' compile, delete, export and import, each over the source code API port with its
 /// own request type, fingerprint subject and precondition -- a delete covers each document's modified
 /// time and an import its reviewed documents; the compile and export keys are enabled and the delete,
 /// import and save keys disabled at the baseline; Document databases' create and drop over the DocDB
-/// port, the create's key enabled and the drop's disabled; and the two lists declare the seven row
+/// port, the create's key enabled and the drop's disabled; the SQL query's run over the SQL port, its key
+/// disabled; and the two lists declare the seven row
 /// actions, compile, delete and export acting on the checked rows, at most one hundred, while the
 /// viewers and editors declare none. The two unadvertised saves are
 /// <method>TestTheTwoSavesAreUnadvertisedDestructiveWrites</method>'s.</p>

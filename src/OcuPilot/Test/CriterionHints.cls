@@ -2,7 +2,8 @@
 /// each derived read tool's <code>text</code> criteria. Every one either declares a hint or is one of
 /// the eight criteria that really are comma lists; a hinted one is described by its hint and the
 /// "At most N characters." sentence, with no comma-list wording; and a hinted criterion of a
-/// parent-scoped read names the parent's read tool as the source of its value.</p>
+/// parent-scoped read names the parent's read tool as the source of its value; and every read a hint
+/// names is registered and declares the field the hint says it answers.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>. It reads
 /// descriptors and the emitted tool list, and writes nothing.</p>
 Class OcuPilot.Test.CriterionHints Extends %UnitTest.TestCase
@@ -19,6 +20,7 @@ Parameter GENERIC = "A server-search criterion, as a comma-separated list of nam
 /// and the emitted description of each into <code>pRows(n, "description")</code>.</p>
 ClassMethod Criteria(Output pRows) As %Status
 {
+    Set tSC = $$$OK
     Kill pRows
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     If $$$ISERR(tSC) Quit tSC
@@ -48,7 +50,6 @@ ClassMethod Criteria(Output pRows) As %Status
             Set pRows(tN) = $ListBuild(tTool.%Get("name"), tWire, tField.param, tField.%Get("hint"), tField.%Get("maxLength"), tClass)
             Set pRows(tN, "description") = $Select($IsObject(tProperties) && $IsObject(tProperties.%Get(tField.param)): tProperties.%Get(tField.param).description, 1: "")
         }
-        If $$$ISERR(tSC) Quit
     }
     Set pRows = tN
     Quit tSC
@@ -128,6 +129,47 @@ Method TestAParentScopedHintNamesTheParentsRead()
         Do $$$AssertTrue(tHint [ tExpected, tKey _ " names its parent's read: " _ tExpected)
     }
     Do $$$AssertTrue(tChecked > 0, "at least one parent-scoped hint was checked")
+}
+
+/// <p>DW-1001: every read a hint names, as <code>&lt;tool&gt;.read</code>, is a registered read, and its
+/// declared fields hold the field the hint says it answers, the word after <code>answers its </code>.</p>
+/// <p>Mutation (Rule 19): name in a hint a field its read does not declare -- this names the criterion.</p>
+Method TestEveryReadAHintNamesDeclaresItsField()
+{
+    Set tSC = ..Criteria(.tRows)
+    Do $$$AssertStatusOK(tSC, "the criteria are read")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+    Do $$$AssertStatusOK(tSC, "the registry lists")
+    If $$$ISERR(tSC) Quit
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        If tTool.%Get("descriptor") '= "" Set tDescriptors(tTool.%Get("name")) = tTool.%Get("descriptor")
+    }
+    Set tChecked = 0
+    For tI = 1:1:tRows {
+        Set tHint = $List(tRows(tI), 4)
+        If tHint '[ " answers its " Continue
+        Set tKey = $List(tRows(tI), 1) _ ":" _ $List(tRows(tI), 3)
+        Set tField = ""
+        If $Locate(tHint, "answers its [A-Za-z0-9]+", 1, tEnd, tMatch) Set tField = $Piece(tMatch, " ", 3)
+        Set tNamed = 0
+        Set tFrom = 1
+        For {
+            Set tAt = $Locate(tHint, "[a-z]+\.[a-z]+\.read", tFrom, tNext, tRead)
+            If tAt = 0 Quit
+            Set tFrom = tNext
+            Set tNamed = tNamed + 1
+            Set tClass = $Get(tDescriptors(tRead))
+            Kill tDeclaration
+            If tClass '= "" Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+            Set tFields = $Select($IsObject($Get(tDeclaration)) && $IsObject(tDeclaration.%Get("read")) && $IsObject(tDeclaration.read.%Get("fields")): tDeclaration.read.fields.%ToJSON(), 1: "")
+            Set tChecked = tChecked + 1
+            Do $$$AssertTrue((tField '= "") && (tFields [ ("""" _ tField _ """")), tKey _ " names " _ tRead _ ", a registered read that declares " _ tField)
+        }
+        Do $$$AssertTrue(tNamed > 0, tKey _ " names the read that answers its " _ tField)
+    }
+    Do $$$AssertTrue(tChecked > 30, "the reads the hints name were checked: " _ tChecked)
 }
 
 }
