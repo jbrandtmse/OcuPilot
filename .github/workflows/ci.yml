@@ -136,7 +136,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 61
+    timeout-minutes: 81
     strategy:
       fail-fast: false
       matrix:

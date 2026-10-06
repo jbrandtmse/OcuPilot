@@ -9927,3 +9927,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-18-epic-19-burn-down.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 19.18's plan found the same plural-only count pattern as DW-2092 in shared shell surfaces and the code list's export status, outside the burn-down's scope
 - 2026-10-06T00:20:51Z status=routed owner=range-end-cleanup by=burndown note=same root cause as DW-2092; apply 19.18's count-phrase pattern to the shared row count and the export status in the next range-end cleanup
+
+### DW-2102: The ObjectScript suite has outgrown four instance shards: refreshed timings estimate the largest leg at 50.5 min, green run 37352698013's legs took 48-59 min, and run 37389702149's shard 1/4 was cancelled at its 61-minute limit with every class green
+- source: Epic 19 lead, CI run 37389702149 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ci.test.mjs AC9 needs timeout >= 1.5 x (largest leg + 3 min setup) = 80.3; Epic 19 raised instance-shard timeout-minutes 61 -> 81 and refreshed ui/tools/ci-timings.json from run 37352698013; a fifth shard (as DW-1901 added the fourth) would bring wall time back near 45 min
+- 2026-10-06T00:45:23Z status=routed owner=range-end-cleanup by=burndown note=add a fifth instance shard in the next range-end cleanup; until then each instance leg runs about 50-55 min under an 81-minute limit
