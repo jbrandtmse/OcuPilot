@@ -1014,3 +1014,5 @@
 2026-10-06T07:04:44Z	Epic 19	worktree_removed	worktree=.worktrees/epic-19
 2026-10-06T07:04:44Z	Epic 19	epic_branches_deleted	branch=OCU-1-epic19(local+origin;fully_merged_at_ad6d9ea1)
 2026-10-06T07:11:00Z	Epic 23	runner_dispatched	story=23.4 runner=a75fadbafb0ac717c slot=a model=opus implement=sonnet prompt=prompts/e23-4-prompt.md worktree=.worktrees/epic-23 from=5767c771 feature=d11bda0a
+2026-10-06T09:20:01Z	Story 23.4	owner_decision	item=DW-2096 by=owner(relayed_by_planner) choice=option_1:add_to_batch_(b);mask_value_after_IDENTIFIED_BY/PASSWORD_in_displayed_and_agent-bound_statement_text note=10-05_hold_covers_IRIS_reports_only;hold_kept_on_DW-1905,1926,1957,1958,1963,1982,1986,2084,2095
+2026-10-06T09:20:01Z	orchestrator	deps_hash_rerecorded	reason=rule5_amendment(23.4_DW-2096) hash=a338217ea9e5a1d782758a6c2149671127f674fe6262cde1e04d6b5c984656ad
