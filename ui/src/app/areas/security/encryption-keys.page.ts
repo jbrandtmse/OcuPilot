@@ -4,7 +4,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { AllowedDirectoriesStore } from '../../core/allowed-directories';
 import { ApiService } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
-import { screenForUrl } from '../../core/navigation';
+import { screenForUrl, withQuery } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
 import { ENTITY_SINGLETON_ID, type ScreenDeclaration } from '../../core/screens.generated';
 import { Session } from '../../core/session';
@@ -15,6 +15,7 @@ import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ENCRYPTION_ACTIVATE, ENCRYPTION_DEACTIVATE, ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { ServerPathPicker, type ServerPath } from '../../shell/server-path-picker';
 import { DATA_ELEMENT_ENCRYPTION, DATABASE_ENCRYPTION, EncryptionKeysStore, type ActiveKeyRow } from './encryption-keys.store';
+import { ENCRYPTION_STARTUP_ROUTE } from './encryption-startup.store';
 
 /** The two screens this page serves. */
 const ENCRYPTION_KEY_SCREENS: readonly string[] = [DATABASE_ENCRYPTION, DATA_ELEMENT_ENCRYPTION];
@@ -47,6 +48,8 @@ export function encryptionKeysControlId(field: string): string {
  * instance's, drawn on its field.
  *
  * A change event of the screen's entity type, from either caller, reads the list again (AD-14).
+ *
+ * Database encryption links to the encryption startup settings (Story 18.23), its one way in.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
  */
@@ -105,6 +108,11 @@ export function encryptionKeysControlId(field: string): string {
     }
     @if (showsEmpty) {
       <p class="ocu-data-table-empty-title" data-encryption-keys="empty">{{ emptyText }}</p>
+    }
+    @if (databaseKeys) {
+      <nav class="ocu-details-links">
+        <a class="ocu-details-link" data-encryption-keys="startup" [href]="startupRelative" (click)="goStartup($event)">{{ STRINGS.encryptionStartupLink }}</a>
+      </nav>
     }
 
     @if (dialogOpen) {
@@ -319,6 +327,16 @@ export class EncryptionKeysPage {
     return this.dialogRefusal() !== '';
   }
 
+  /** Story 18.23: the encryption startup settings form, in the namespace on screen (AD-44). */
+  protected get startupHref(): string {
+    return withQuery(ENCRYPTION_STARTUP_ROUTE, this.router.url);
+  }
+
+  /** Relative, so the anchor resolves under the document's base href; the router takes the rooted form. */
+  protected get startupRelative(): string {
+    return this.startupHref.replace(/^\//, '');
+  }
+
   protected defaultLabel(key: ActiveKeyRow): string {
     return key.IsDefault ? STRINGS.tableStatusYes : STRINGS.tableStatusNo;
   }
@@ -405,6 +423,13 @@ export class EncryptionKeysPage {
     const onField = refusal.violations.filter((entry) => fields.includes(entry.field));
     this.violations.set(onField);
     this.dialogRefusal.set(onField.length > 0 ? '' : refusal.reason || STRINGS.connectivityRequestRefused);
+  }
+
+  /** Open the encryption startup settings with the router, leaving a modified click to the browser. */
+  protected goStartup(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigateByUrl(this.startupHref);
   }
 
   /** Deactivate a key, after the typed-name dialog that asks for its identifier. */

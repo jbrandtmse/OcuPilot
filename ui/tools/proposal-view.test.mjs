@@ -73,6 +73,13 @@ const {
   CONSEQUENCE_ENCRYPTIONKEYDEACTIVATE,
   CONSEQUENCE_ENCRYPTIONKEYACTIVATEDATAELEMENT,
   CONSEQUENCE_ENCRYPTIONKEYDEACTIVATEDATAELEMENT,
+  CONSEQUENCE_ENCRYPTIONSTARTUPNONE,
+  CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE,
+  CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED,
+  CONSEQUENCE_ENCRYPTIONSTARTUPKMIP,
+  CONSEQUENCE_ENCRYPTIONSTARTUPRESTART,
+  CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL,
+  CONSEQUENCE_AUDITENCRYPTIONCHANGE,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -959,4 +966,29 @@ test("the SQL run's consequence codes are the tool's own and resolve to the cons
     STRINGS.explorerSqlConfirmDml.replace('<tables>', () => '<tables>'),
     'a table name holding a placeholder is shown as written'
   );
+});
+
+// Story 18.23: an encryption startup settings write states the consequence of the start mode it
+// chooses, of an IRISSECURITY or IRISTEMP change, of a journal encryption change and of a change to the
+// audit log's encryption, under the codes its tool and the kernel declare.
+//
+// Mutation (Rule 19): delete the `CONSEQUENCE_AUDITENCRYPTIONCHANGE` line from `consequenceSentence` ->
+// the audit case goes red on ''.
+test('Story 18.23: an encryption startup settings write states its consequence on the card', () => {
+  const cases = [
+    [CONSEQUENCE_ENCRYPTIONSTARTUPNONE, STRINGS.encryptionStartupNoneConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE, STRINGS.encryptionStartupInteractiveConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED, STRINGS.encryptionStartupUnattendedConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPKMIP, STRINGS.encryptionStartupKmipConsequence],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPRESTART, STRINGS.encryptionStartupRestart],
+    [CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, STRINGS.encryptionStartupJournalConsequence],
+    [CONSEQUENCE_AUDITENCRYPTIONCHANGE, STRINGS.encryptionStartupAuditConsequence],
+  ];
+  for (const [code, sentence] of cases) assert.equal(consequenceSentence(code), sentence, `${code} reads its published sentence`);
+  const tool = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'EncryptionStartupUpdate.cls'), 'utf8');
+  assert.equal(/Parameter MODECONSEQUENCES = "([^"]+)";/.exec(tool)?.[1], [CONSEQUENCE_ENCRYPTIONSTARTUPNONE, CONSEQUENCE_ENCRYPTIONSTARTUPINTERACTIVE, CONSEQUENCE_ENCRYPTIONSTARTUPUNATTENDED, CONSEQUENCE_ENCRYPTIONSTARTUPKMIP].join(','), 'the tool declares the four mode codes the card reads');
+  assert.equal(/Parameter RESTARTCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPRESTART, 'the tool declares the restart code');
+  assert.equal(/Parameter JOURNALCONSEQUENCE = "([^"]+)";/.exec(tool)?.[1], CONSEQUENCE_ENCRYPTIONSTARTUPJOURNAL, 'the tool declares the journal code');
+  const prohibited = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Prohibited.cls'), 'utf8');
+  assert.equal(/Parameter EFFECTAUDITENCRYPTION = "([^"]+)";/.exec(prohibited)?.[1], CONSEQUENCE_AUDITENCRYPTIONCHANGE, 'the kernel declares the audit effect the card reads');
 });

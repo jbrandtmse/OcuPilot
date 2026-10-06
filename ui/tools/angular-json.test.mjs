@@ -510,6 +510,15 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // (SQL activity's descriptor mirror and its strings), under the 4000kB hard stop.
 // Story 19.11 raised it to 2954kB, the measured 2,953,533-byte initial total rounded up to the next kB
 // (the agent picker and the SQL answer reading), under the 4000kB hard stop.
+// Story 18.23 raised it to 2962kB, the measured 2,961,623-byte initial total rounded up to the next kB
+// (the encryption startup settings' page, its store, the descriptor's mirror and its strings), under the
+// 4000kB hard stop.
+// Story 18.23's forward merge of Story 19.17 raised it to 2973kB, the measured 2,972,031-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// The staging merge of Stories 18.23 and 19.10 raised it to 2976kB, the measured 2,975,335-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
+// Story 19.11's forward merge of Story 18.23 raised it to 2987kB, the measured 2,986,760-byte initial total
+// rounded up to the next kB (both branches' additions together), under the 4000kB hard stop.
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "3MB") -> the
@@ -522,7 +531,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '2954kB', 'DW-1166, Story 19.11: the measured 2,953,533 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '2987kB', 'DW-1166, Story 19.11 forward merge of Story 18.23: the measured 2,986,760 bytes rounded up to the next kB, under the 4000kB hard stop; a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

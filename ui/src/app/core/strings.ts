@@ -5640,6 +5640,99 @@ export const STRINGS = {
   dataElementEncryptionPrompt2: 'What are data element encryption keys used for?',
   /** EXPERIENCE.md:364 */
   dataElementEncryptionPrompt3: 'What does deactivating a data element encryption key change?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupLabel: 'Encryption startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupLink: 'Configure startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeLegend: 'Key activation at startup',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeInteractive: 'Interactive',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeUnattended: 'Unattended',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupModeKmip: 'KMIP',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNoneConsequence:
+    'Keys are not activated at startup. After each start, encrypted databases stay unmounted until someone activates their key on Database encryption. Choosing None discards the instance\'s stored unattended credential.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveConsequence:
+    'Each start asks for a key file on the instance\'s console. When nobody answers, as in a container, the instance starts without the key and leaves encrypted databases unmounted. While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupUnattendedConsequence:
+    'Not recommended. The instance stores a credential of its own for this key file and activates the keys at every start with no one present, so anyone who can start the instance and reach the key file can read encrypted data. That credential is an administrator the instance adds to the key file, which stays there after unattended activation is turned off.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipConsequence:
+    'Each start activates the keys from this KMIP server with no one present.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveNotOffered:
+    'While the audit log, IRISSECURITY or IRISTEMP is encrypted, a start nobody answers does not finish, so Interactive is not offered.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipUnavailable: 'No KMIP server is configured on this instance.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipServer: 'KMIP server',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupStoredKeyFile: 'Startup key file',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNewKeyFile: 'Use another key file',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupFlagsLegend: 'System encryption',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupIrisSecurity: 'Encrypt IRISSECURITY',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupIrisTemp: 'Encrypt IRISTEMP, IRISLOCALDATA and IRISMETRICS',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournal: 'Encrypt journal files',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupAudit: 'Encrypt the audit log',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRestart: 'Takes effect at the next restart.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalConsequence:
+    'New journal files are encrypted from the next journal switch or restart. Switch the journal file on Journals to start now.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupDefaultKey: 'Default key',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalKey: 'Journal key',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupDefaultKeyHint: 'New encrypted databases use this key.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalKeyHint: 'New encrypted journal files use this key.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupAuditVerb: 'Change audit log encryption',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRefusedAction: 'change the encryption startup settings',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipServerRefusal: 'Choose a KMIP server this instance has configured.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyFileRefusal: 'Unattended activation needs a key file.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNeedsStart: 'Turn on key activation at startup before encrypting this.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupNoKey:
+    'Activate a database encryption key on Database encryption before encrypting this.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyInactive: 'Choose a key that is active on Database encryption.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupRequired:
+    'Key activation at startup stays on while encrypted databases, journal files the instance still needs, the audit log or IRISSECURITY depend on it.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupVersion:
+    'This instance\'s admin API does not take the startup administrator in the request body, so change these settings on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupInteractiveRefusal:
+    'The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt1: 'How does this instance activate its encryption keys at startup?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt2: 'What does unattended key activation store on this instance?',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupPrompt3: 'What happens when the audit log is encrypted?',
+  /** EXPERIENCE.md:516 */
+  encryptionStartupAuditConsequence:
+    'Takes effect at the next start, when the instance encrypts or decrypts the audit database in place; every audit record, the agent\'s own markers included, is kept. While it is encrypted, a start that cannot activate its key does not finish.',
+  /** EXPERIENCE.md:516 */
+  encryptionStartupAuditAdvisory: 'Keep the key file and its administrator available to every start.',
   /** EXPERIENCE.md:490 */
   encryptionKeyDeactivateConsequence:
     'An encrypted database that needs this key cannot be mounted until the key is activated again from a key file.',

@@ -528,5 +528,6 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
     'osmgmt.journalsettings.update': { CurrentDirectory: 'unslashed', AlternateDirectory: 'unslashed' },
     // Story 18.21: the vendor answers each settings group whole, its unsent members included.
     'osmgmt.ecpsettings.update': { AppServerSettings: 'members', DataServerSettings: 'members' },
+    'security.encryptionstartup.update': { AdminName: 'written' },
   });
 });

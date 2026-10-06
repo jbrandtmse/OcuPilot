@@ -264,6 +264,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     // Story 18.22: each set of active encryption keys is one object.
     ['database-encryption-keys', 'singleton'],
     ['data-element-encryption-keys', 'singleton'],
+    ['encryption-startup', 'singleton'],
     // Story 19.17: a document database's name resolves without case.
     ['docdb-database', 'foldcase'],
   ]);

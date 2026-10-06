@@ -332,6 +332,10 @@ services:
       # without the file-system pair and Security's resource, and activates and deactivates keys as
       # them through a seam port that sends neither (Story 18.22).
       # classes: EncryptionKeyGate
+      # The encryption startup gate class signs in as probe principals holding Security's pairs, with
+      # and without the file-system pair, Security's resource and the system database's read, and saves
+      # the startup settings as them through a seam port that sends nothing (Story 18.23).
+      # classes: EncryptionStartupGate
       # The document database gate class signs in as probe principals each missing one pair the DocDB
       # port requires, and lists, creates and drops a probe database as them (Story 19.17).
       # classes: DocDbGate
@@ -557,6 +561,10 @@ services:
       # activate and deactivate keys only through a seam port that sends neither; the one activation
       # sent to the vendor carries a wrong password, which it refuses before activating anything.
       # classes: EncryptionKeyGate, EncryptionKeyWrite
+      # Story 18.23's class creates key files under <ManagerDirectory>ocuprobestart/ the same way, sends
+      # every startup setting change only to a seam port that sends nothing, and sends the vendor one
+      # Settings PUT of the settings unchanged.
+      # classes: EncryptionStartupWrite
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
