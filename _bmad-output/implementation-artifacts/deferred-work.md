@@ -9944,6 +9944,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 19 lead, CI run 37389702149 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ci.test.mjs AC9 needs timeout >= 1.5 x (largest leg + 3 min setup) = 80.3; Epic 19 raised instance-shard timeout-minutes 61 -> 81 and refreshed ui/tools/ci-timings.json from run 37352698013; a fifth shard (as DW-1901 added the fourth) would bring wall time back near 45 min
 - 2026-10-06T00:45:23Z status=routed owner=range-end-cleanup by=burndown note=add a fifth instance shard in the next range-end cleanup; until then each instance leg runs about 50-55 min under an 81-minute limit
+- 2026-10-06T03:04:12Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=orchestrator 2026-10-06 under the owner's standing grant: CI health, added to Story 23.4 batch (a) as DW-1901 added the fourth shard in 23.3
 ### DW-2095: IRIS defect candidate: Security.System's AuditEncrypt documentation says the audit database is deleted as soon as the property changes, while 2026.2 encrypts or decrypts it in place at the next start and keeps every record
 - source: spec-18-23-encryption-startup-settings.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: Story 18.23 Task 0 on ocupilot-b-ci, /tmp/epic-18-d7/1823/t0/s12-s14r: PUT changed nothing at once; restarts logged Encrypting/Decrypting IRISAUDIT; count 222263->222276, oldest row 05:34:18 and the agent's markers kept, inode 12766 unchanged

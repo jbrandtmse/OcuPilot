@@ -989,3 +989,9 @@
 2026-10-06T00:33:46Z	Story 18.23	decision	item=DW-2100 by=merge_gate(standing_grant,recommended) choice=route_to_epic_18_burn-down;measure_unattended_key_file/KMIP_lacking_the_key_and_journal_encryption_under_Interactive_on_the_throwaway_first;then_decide_AD-10_widening note=noted_ci-timings_refresh_from_a_healthy_run_and_CLAUDE.md_39-minute_figure_stale
 2026-10-06T01:33:49Z	Story 18.23	ci_green_verified	run=37394622036 head=c9692005(staging) conclusion=success jobs=15/15 by=orchestrator
 2026-10-06T01:34:04Z	Story 18.23	merged	feature=c9692005 mode=fast_forward_to_staging(OCU-1-staging-18-23) green=c9692005(run_37394622036) pushed=verified_on_origin
+2026-10-06T03:03:53Z	Story 19.11	runner_boundary	head=d0d1b93f ci=success run=37402075835(15/15) branch=66f177f6 by=runner(a639848bd2f8adaa6)
+2026-10-06T03:03:53Z	Story 19.11	ci_green_verified	run=37402075835 head=d0d1b93f conclusion=success jobs=15/15 by=orchestrator
+2026-10-06T03:03:53Z	Story 19.11	merge_enqueued	mode=fast_forward feature=37115295->66f177f6 code_equal=d0d1b93f..tip(empty) upgrade_check=NEEDED_at_next_cut(Kernel/State/Agent,Convo,Entry,Pref,Turn_changed;methods_and_a_parameter_only,no_property/index/storage_change)
+2026-10-06T03:04:46Z	Story 19.11	merged	feature=66f177f6 mode=fast_forward pushed=verified_on_origin green=d0d1b93f(run_37402075835)
+2026-10-06T03:04:46Z	Story 23.4	scope_amended	item=DW-2102(fifth_instance_shard) by=merge_gate(standing_grant) batch=a reason=CI_health(largest_leg_50.5min,timeout_floor_80;as_DW-1901_in_23.3) epics.md=23.4_block_amended deps_hash_rerecorded=1731b58a
+2026-10-06T03:04:46Z	Epic 19	noted	CI_timeouts_instance-shard_81_browser-shard_56(raised_never_lowered) fixed-strings_bound_2800 bundle_2987kB DW-2101_range-end(plural_copy) DW-1977_closed(19.14_f1d89c56)
