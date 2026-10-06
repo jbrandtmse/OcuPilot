@@ -9968,3 +9968,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: LeavesInteractiveRequired judges Interactive alone and StartupProblems checks only that a new file lists its administrator; the vendor's answer to a key file without the active key, and an unanswered Interactive start under journal encryption (OKNoDBEncKeyAtStartup names it as needing the key), are unmeasured (inference)
 - 2026-10-05T20:00:23Z status=decision-pending owner=burndown by=cr note=unverified high; settle on a throwaway (key file without the active key; journal under Interactive), then decide AD-10's scope
 - 2026-10-06T01:34:04Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-05 under the owner's standing grant (recommended disposition): Epic 18's close burn-down measures an Unattended key file or KMIP server lacking the active key that encrypts IRISAUDIT, IRISSECURITY or IRISTEMP, and journal encryption under Interactive, on the throwaway first, then decides whether AD-10's STARTUPINTERACTIVE arm widens
+
+### DW-2107: The agent panel header cuts the agent picker's label to 'Anth' for a definition named Anthropic at the default panel width on a 1440 px window
+- source: Planner demo check 2026-10-06 (release/1.0.11 876e6dc8 on the demo) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on the demo account at the default panel width, 1440 px window; Story 19.11's picker
+- 2026-10-06T10:41:23Z status=routed owner=range-end-cleanup by=merge_gate note=visible polish, a candidate for the drafted batch (c) or a later polish pass; not part of 23.4
