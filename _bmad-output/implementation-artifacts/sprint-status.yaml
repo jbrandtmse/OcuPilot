@@ -298,7 +298,7 @@ development_status:
   18-21-ecp-settings-and-application-servers: done
   18-22-database-and-data-element-encryption-keys: done
   18-23-encryption-startup-settings: done
-  18-24-rsa-and-symmetric-key-wallet-secrets: ready-for-dev
+  18-24-rsa-and-symmetric-key-wallet-secrets: in-progress
   epic-18-retrospective: optional
 
   epic-19: done
