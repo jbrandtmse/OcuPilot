@@ -9922,3 +9922,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-10-sql-activity.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestTheProbeIsARowAndTheReaderIsNot compares Routine (CallerName, '' for a top-level statement) and Workers (0 serial) to the vendor's columns; no probe has a Parent, so CURRENTSTATEMENTS' ELSE (ParentType || ' Query') never executes
 - 2026-10-05T17:48:27Z status=wontfix-accepted owner=19-10-sql-activity by=cr note=needs a nested or %PARALLEL probe; reopen_if=a row's Routine, Workers or child RunType differs from INFORMATION_SCHEMA.CURRENT_STATEMENTS
+
+### DW-2101: Count copy outside the data browser and console has no singular forms: the shared '<n> rows' count (data table footer, command bar, context chip, ledger page) and the code list's export status 'Saved 1 documents as <file>.'
+- source: spec-19-18-epic-19-burn-down.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 19.18's plan found the same plural-only count pattern as DW-2092 in shared shell surfaces and the code list's export status, outside the burn-down's scope
+- 2026-10-06T00:20:51Z status=routed owner=range-end-cleanup by=burndown note=same root cause as DW-2092; apply 19.18's count-phrase pattern to the shared row count and the export status in the next range-end cleanup
