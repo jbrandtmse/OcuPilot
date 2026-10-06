@@ -638,6 +638,14 @@ deferred:
   - **ADs:** AD-6, AD-13, Conventions › When `SCHEMAVERSION` moves.
   - **AC:** Given a proposal for any task write, when its card renders, then its title names the task. If the name could not be read, it falls back to the id.
 
+- [ ] **DW-2096** (fix-risk med; added 2026-10-06 by owner decision): a credential typed as a literal in statement text (`CREATE USER x IDENTIFIED BY 'pw'`, `ALTER USER … IDENTIFIED BY`, a `PASSWORD` clause) reaches the screen and the model unmasked.
+  - **Where it shows:** SQL activity's `Statement` (`Port/SqlActivityPort.cls:164-166`, read by `osmgmt.sqlactivity.read`); the SQL catalog's statement texts (`Port/AtelierPort.cls`: `CATALOGSTATEMENTSQUERY` `:208`, cached-query text `CATALOGCACHEDQUERIESCOLUMNS` `:249`), screen and read tool alike; and every string cell of `explorer.sqlquery.read`'s answer (`Port/SqlPort.cls` `Run` `:522`, `RunAnswer` `:813`), which can select `INFORMATION_SCHEMA`'s statement tables.
+  - **Red, a new test class:** plant a statement the instance records without running it (prepare `CREATE USER <probe> IDENTIFIED BY '<literal>'`, as DW-1982 measured), then read it through the statements tab's declared read (screen and tool), `explorer.sqlquery.read` over `INFORMATION_SCHEMA.STATEMENTS`, and SQL activity through a test seam or a held statement. Assert the literal appears in no answer and that each answer still carries the statement with its value masked. Today the literal appears. Remove the planted statement-index row and any cached query, and read it back as gone.
+  - **Fix:** one `SqlPort.MaskCredentials(pText)` that answers the text unchanged unless `$Locate(pText, ..#PASSWORDPATTERN)`; when it matches, it replaces the value after each `IDENTIFIED BY` and each `PASSWORD` (a quoted literal, a delimited identifier or a bare token) with `[redacted]`, the AD-60 word. Call it on SQL activity's `Statement`, on the catalog's statement and cached-query texts before the row is returned, and on every string cell of `explorer.sqlquery.read`'s answer. The data browser and a person's console run are not statement text and stay unmasked (the data browser's Save guards on the values it read).
+  - **Pins:** the class above, plus a unit test of `MaskCredentials` over each form (single-quoted, double-quoted, bare, `ALTER USER`, `PASSWORD`, two in one text, and a text the pattern does not match, which comes back byte-identical).
+  - **ADs:** AD-35, AD-36, AD-29, AD-61, AD-60, Conventions › Secrets.
+  - **AC:** Given a statement whose text carries a credential literal, when SQL activity, the statements tabs or the agent's SQL read return it, then the literal appears in no screen answer and no tool result, and the rest of the text is unchanged.
+
 ### Review Findings (batch a)
 
 Code review 2026-10-06, full tier, four layers. Every patch below was applied in the review pass and its test re-run on `ocupilot-ci`.
@@ -690,6 +698,7 @@ Rejected:
 ## Spec Change Log
 
 - 2026-10-06, lead spec gate: DW-1869 closes `resolved-by:23-3-the-range-end-cleanup-part-3` (f2168084; pin `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` seeds `%Manager` and judges by effect in both spellings), because a `wontfix-accepted` or `by-design` would misstate a fixed defect. The lead runs `ServiceUpdate` in batch b's verification. Every other planned disposition and fix shape is accepted as written.
+- 2026-10-06, lead (owner decision relayed by the orchestrator, feature b78bc4b5): DW-2096 joins batch b; the story owns 32 entries. Its item is a lead edit under Tasks & Acceptance; the frozen Intent still says thirty-one.
 
 ## Review Triage Log
 
@@ -786,6 +795,7 @@ No AC contradicts an AD.
     - "A screen's own Save (AD-55) does not hold it yet (DW-1882)." → "A screen's own Save (AD-55) holds it the same way, under the key its tool's mint computes [AMENDED, Story 23.4, DW-1882, Rule 20]."
   - **AD-53:** "so a row action and a confirm on one target are ordered by OcuPilot (AD-34) […; a Save does not hold it yet, DW-1882]" → "so a row action, a Save and a confirm on one target are ordered by OcuPilot (AD-34)", keeping the DW-1497 marker.
   - **AD-58:** after "re-reads the target through the tool's declared port and read type", add "; a create whose declared read is a list row re-reads by its created id through its update tool's read (`READBACKTOOL`) [AMENDED, Story 23.4, DW-1710, Rule 20]". The Deferred row for DW-1710 changes its "Revisit when" to "Done in Story 23.4".
+  - **AD-35 (DW-2096):** add "A credential literal after `IDENTIFIED BY` or `PASSWORD` in a statement's text is masked wherever OcuPilot shows or hands statement text: SQL activity, the SQL catalog's statement and cached-query texts, and the agent's SQL read (`SqlPort.MaskCredentials`) [AMENDED 2026-10-06, Story 23.4, DW-2096, Rule 20]."
   - **AD-26:** "so the confirm records the write as applied and marks it (AD-15)" → "so the confirm records the write as applied, its ledger row carrying the code `PORT.STARTED`, and marks it (AD-15)".
   - **AD-22:** "ships disabled until DW-1827's review of `TaskClass` and `RunAsUser` on an import proposal lands" → "ships disabled; DW-1827's review of `TaskClass` and `RunAsUser` on an import proposal landed in Story 23.4, and re-enabling the key is the owner's decision".
   - **AD-53, the marking paragraph:** add "The restraint read is a third producer: while the stored fact reads not-marked, it re-observes the same two flags with the reader's own privileges and records marked when both read on (DW-1449) [AMENDED, Story 23.4, Rule 20]."
@@ -982,6 +992,7 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` revert the `$Select` → `AuditStarted` goes red. Always answer `STARTED` → the finished-write assertion goes red.
   - `mutation:` remove `READBACKTOOL` from `TaskCreate` → the new `ReadBack` test goes red.
   - `mutation:` the hook answers `""` → both DW-1465 tests go red.
+  - `mutation:` `MaskCredentials` answers its input unchanged → the DW-2096 class and its unit test go red.
 
 **Full sweep (once, before batch b's dev_complete):** `cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, on the rebuilt throwaway, with no seeded state present. Expected: 0 failed, with totals taken from `%UnitTest_Result`. The full browser suite runs in CI's three browser legs (Rule 29).
 
