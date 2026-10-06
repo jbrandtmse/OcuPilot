@@ -34,6 +34,8 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    ; A copy held now is the test's own: the runner's was taken over before the test.
+    Kill ^OcuPilotTestGovernanceAside
     Kill tRows
     Merge tRows = ..StoredPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)

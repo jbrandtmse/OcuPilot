@@ -627,7 +627,8 @@ Parameter ALLNAMESPACE = "%ALL";
 /// maps and SQL projections. Measured on this build by walking the routine database's globals for
 /// subscripts, at the first or second level, beginning with an <method>OwnNameStems</method> stem in
 /// any case (Story 18.14's spec,
-/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds it equal to that walk. A global
+/// Design Notes); <class>OcuPilot.Test.MappingCodeGlobals</class> holds every member to that walk, and accepts
+/// another global the walk finds only when a non-<code>%</code> class's storage owns it. A global
 /// mapping of one, whole or over a range reaching OcuPilot's names, moves where OcuPilot's code is
 /// read from (<method>CoversCodeGlobal</method>).</p>
 Parameter CODEGLOBALS = "ROUTINE,oddCOM,oddDEF,oddDEP,oddEXT,oddEXTR,oddMAP,oddPROC,oddSQL,rINDEX,rINDEXCLASS,rINDEXEXT,rINDEXSQL,rMAC,rMAP,rOBJ";

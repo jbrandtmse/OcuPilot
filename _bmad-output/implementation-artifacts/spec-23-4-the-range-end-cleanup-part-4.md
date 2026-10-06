@@ -638,6 +638,55 @@ deferred:
   - **ADs:** AD-6, AD-13, Conventions › When `SCHEMAVERSION` moves.
   - **AC:** Given a proposal for any task write, when its card renders, then its title names the task. If the name could not be read, it falls back to the id.
 
+### Review Findings (batch a)
+
+Code review 2026-10-06, full tier, four layers. Every patch below was applied in the review pass and its test re-run on `ocupilot-ci`.
+
+- [x] [Review][Patch] DW-1983's fix did not meet its AC: the first toast's 30 s action lifetime ran out during a slow second turn [ui/browser/toast.browser-spec.mjs:184]
+- [x] [Review][Patch] DW-2027's storage-owner acceptance excused `oddPROC`, `rINDEX` and `oddEXT`, owned by `%` classes; owners now non-`%`, compared with `%EXACT` [src/OcuPilot/Test/MappingCodeGlobals.cls:132]
+- [x] [Review][Patch] The walk retry ran its light pass in dark, since `signedInAt` clears the theme (DW-2106) [ui/browser/structural-walk.mjs:737]
+- [x] [Review][Patch] The walk retry kept the failed attempt's unsettled and unresolved visits [ui/browser/structural-walk.mjs:737]
+- [x] [Review][Patch] Retries compounded: the walk retry around a twice-failed page creation, and a wrapped default context under the browser's own retry [ui/browser/protocol-retry.mjs:35]
+- [x] [Review][Patch] DW-1937's filter narrowed the raw-token check to one row; the whole tool result is now checked [src/OcuPilot/Test/SanitizeAuditMask.cls:177]
+- [x] [Review][Patch] The `down` fallback ran Compose from the working directory, which loads this repository's compose file (inference); it runs from `/` [scripts/ci-throwaway.sh:824]
+- [x] [Review][Patch] Backticks in the unquoted heredoc ran a command named `ok` on every class run [scripts/ci-unit-test.sh:112]
+- [x] [Review][Patch] A test's own held copy was taken over as the runner's by the next test, replacing the stored policy [src/OcuPilot/Test/GovernanceRestore.cls:35]
+- [x] [Review][Patch] The `ConfigFiles`-before-fallback assertion passed when the check was gone [ui/tools/ci.test.mjs:1390]
+- [x] [Review][Patch] The default directory and the guard stripped HOME's trailing slashes differently [scripts/ci-throwaway.sh:61]
+- [x] [Review][Patch] agent-sql's governance clear ran before the probe disarm, so a failed clear left the definition armed [ui/browser/agent-sql.browser-spec.mjs:78]
+- [x] [Review][Patch] `CODEGLOBALS`' doc still said the test holds it equal to the walk [src/OcuPilot/Kernel/Proposal/Prohibited.cls:630]
+- [x] [Review][Patch] `InstallLockHolder`'s Catch discarded a holder already read [src/OcuPilot/Install/Installer.cls:564]
+- [x] [Review][Patch] The runner's governance set-aside was undocumented [docs/DEVELOPMENT.md:464]
+- [x] [Review][Patch] "Wrapping twice wraps once" could not fail, and the context-creation retry had no test [ui/tools/protocol-retry.test.mjs:89]
+- [x] [Review][Patch] DW-1873's tooltip skip had no standing pin; an a11y liveness case added [ui/browser/a11y-structural-invariants.browser-spec.mjs:208]
+- [x] [Review][Patch] New doc comments named ledger ids [ui/tools/ci-runner.mjs:230]
+- [x] [Review][Patch] Verification: DW-1917's seeded leg, DW-2027's member removal and the new pins had no mutation line; DW-2058's and DW-1983's lines claimed reds never seen; DW-2026's executed line said a rejected creation leaves nothing open; a batch (a) line sat under batch (b)
+- [x] [Review][Defer] A retried page creation leaves puppeteer's first blank tab open [ui/browser/protocol-retry.mjs:35] — DW-2108, wontfix-accepted
+- [x] [Review][Defer] `disarmProbeDefinition`'s sweep assertion skips callers' later teardown [ui/browser/turnprobe-spec.mjs:248] — DW-2109, wontfix-accepted
+- [x] [Review][Defer] An interrupted set-aside can lose or overwrite a policy outside a throwaway [scripts/ci-unit-test.sh:113] — DW-2110, wontfix-theoretical
+
+Rejected:
+
+- `false`: Restore cannot reproduce a key-only policy, wedging every later set-aside — the ErrorDelete reproduction stored a key-only override and read it back after the run.
+- `false`: `rowsRead(page, [])` can pass before the re-read lands — the data table keeps its rows while it re-reads.
+- `low`: `data-check` says "nothing was brought up" when only `compose.yml` is gone — wording; it still exits 1.
+- `low`: `--dir ""` now takes the default instead of refusing — no caller passes an empty value.
+- `low`: `down` without `--dir` after the default moved leaves a `/tmp` throwaway running with exit 0 — the I/O Matrix row specifies no Compose call and a message, which it prints.
+- `low`: README test counts are stale — they are refreshed at each release; the minutes are a planned lead edit.
+- `low`: `parallel.yaml` and `CLAUDE.md` still name `/tmp` and four legs — Design Notes assign both to the lead and the orchestrator.
+- `low`: `AwaitModifyRow` iterates `rows` unguarded and hard-codes 15 s — the read always answers `rows`; a missing one fails loudly.
+- `low`: `SweepSince` checks no Entry or Step residue, and a pre-mark key's ledger rows can go with a post-mark row — both need a parent the sweep does not own; the AC's four counts were read equal.
+- `low`: a zero `StateMark` sweeps everything — an installed instance always has rows in that extent.
+- `low`: `InstallLockHolder` rebuilds the key, its wording after a race, and a pid-prefix match in the test — the test pins the key, and the rest needs a race or a coincidence.
+- `low`: `governanceRowVersion` reads a non-number as 0 — the GET always answers a number (`Api/Governance.cls:130`).
+- `low`: turn's second sign-in sits outside its `try` — `browser.close()` and the disarm's forget-all clean up after it.
+- `low`: a crashed run's scripts are never forgotten now that tags are run-unique — they answer nothing.
+- `low`: toast's card handle can be null or reorder — cards are never removed, and a null fails loudly.
+- `low`: `StorageOwns` reads no per-index location — no holder found so far needs one; a miss fails loudly.
+- `low`: `CREDENTIALSECRETS` accepts a holder by name — no class's storage owns it, and the AC holds.
+- `low`: the governance and agent-sql specs reset a seeded policy's content — `resetGovernancePolicy` is unchanged by the spec.
+- `low`: Never-list and Auto Run Result bookkeeping — spec text outside `## Verification`.
+
 ## Spec Change Log
 
 - 2026-10-06, lead spec gate: DW-1869 closes `resolved-by:23-3-the-range-end-cleanup-part-3` (f2168084; pin `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` seeds `%Manager` and judges by effect in both spellings), because a `wontfix-accepted` or `by-design` would misstate a fixed defect. The lead runs `ServiceUpdate` in batch b's verification. Every other planned disposition and fix shape is accepted as written.
@@ -817,6 +866,7 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` delete the `ConfigFiles` check → the "another file" case downs it.
   - `mutation:` invert the `IRIS.DAT` test, or drop the zero-count floor → the missing-dir or empty-list case exits 0.
   - `mutation:` default Darwin back to `/tmp` → the default-dir case goes red.
+  - `mutation:` (review) delete the `down` arm's `ConfigFiles` check → the static ordering assertion and the "another file" case go red. Default Darwin from `${HOME%/}` → the trailing-slash HOME case goes red.
 - **DW-2102:**
   - `cd ui && node tools/ci-shards.mjs assign --suite objectscript --shards 5`. Expected: largest leg ≈41.3 min.
   - `npm run test:tools` green.
@@ -830,6 +880,9 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` create the page only once → the tools test goes red.
   - `mutation:` narrow the pattern to `Network.enable` → the `Runtime.callFunctionOn` case goes red.
   - `mutation:` remove the walk retry → a11y goes red under the held font.
+  - `mutation:` comment out `installProtocolRetry(puppeteer)` in `browser.config.mjs` → `browser-config-retry.test.mjs` goes red.
+  - `mutation:` (review) drop the retried mark in `retryOnce` → the two nested-retry cases go red. Drop either `WRAPPED` guard → the wrap-twice case goes red. Create a context without `retryOnce` → the context-creation case goes red.
+  - `mutation:` (review) restore 16313a0e's theme flag in `walk()` and throw one protocol timeout after the dark toggle → the retry's light pass starts dark and AC5 "no violation outside the baseline" goes red; with the fix it starts light, 13/13.
 - **Specs under their conditions,** each red before its fix, then green under the condition and clean after it:
   - `system-explorer-transfer` (the held re-read);
   - `reply` (the slow stream);
@@ -837,7 +890,10 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `toast` (the slow second turn and the held confirm);
   - `gate` (the held form read);
   - `web-sessions` (the forced hover).
-  - `mutation:` remove each added wait, scope or skip → its spec goes red under its condition.
+  - `mutation:` remove each added wait, scope or skip → its spec goes red under its condition (DW-1925, DW-1935, DW-1984, DW-1873).
+  - `mutation:` (review) DW-1983: `holdToasts: false` on DW-1405's two calls → with the second turn's proposal held 20 s and its reply 15 s, the test goes red at the two-toast wait; green with the hold.
+  - `mutation:` (review) DW-1873: drop the `[role="tooltip"]` skip → a11y's tooltip liveness case goes red.
+  - DW-2058: no mutation reddens; no red was reproduced (below).
 - **DW-1916:**
   - Seeded `REPLY2`: `reply` red before, green after. Then `Forget` it, and `Remains` reads 0.
   - The new tools test is green.
@@ -846,6 +902,7 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - Policy count before and after `governance` and `agent-sql`: 0 and 0.
   - A seeded row survives the run.
   - `mutation:` drop the clear → count 1, red.
+  - `mutation:` (review) make the clear unconditional → a seeded policy (2 rows) reads 0 rows after `governance`; with the guard its row survives, and `Clear()` then reads 0.
 - **DW-1929:**
   - Turn-state counts before and after `agent-ledger`: equal.
   - `mutation:` skip the Convo branch → disarm's readback goes red.
@@ -857,6 +914,7 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
 - **DW-2027:**
   - `MappingCodeGlobals` red under the seeded credential before, green after. Then delete the credential, and `$Data` reads 0.
   - `mutation:` drop the storage-owner exclusion → red.
+  - `mutation:` (review) remove `oddPROC` from `CODEGLOBALS` → red at the holders assertion, under the seeded credential too.
 - **DW-1297:**
   - `InstallLock` green, and the refusal names the holder.
   - `mutation:` read `^$LOCK` without `|"%SYS"|` → red.
@@ -875,9 +933,10 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
 **Batch a, executed (implement pass):**
 
 - DW-2034, DW-2102: `ci.test.mjs` 87 tests green; every mutation listed above went red and was reverted byte-identical (the `IRIS.DAT` test is pinned as text, since the stub answers the session). `SYS.Database:List` probe on `ocupilot-ci`: column 4 reads `Mounted/RW`, remote rows are not `/`-led paths (none present on the throwaway). `ci-shards.mjs assign --shards 5`: 41.3 min per leg.
-- DW-2026: `protocol-retry.test.mjs` green; mutation: no retry in `retryOnce` and a narrowed pattern both red. a11y walk under a held font requested after load with `protocolTimeout` 20 s: red without the walk retry (22 s), 12/12 with it. No second-pass "late resolve" close exists: a rejected creation has nothing to close.
+- DW-2026: `protocol-retry.test.mjs` green; mutation: no retry in `retryOnce` and a narrowed pattern both red. a11y walk under a held font requested after load with `protocolTimeout` 20 s: red without the walk retry (22 s), 12/12 with it. A timed-out page creation's tab is not closed: puppeteer opens it before the page setup that times out (DW-2108).
 - DW-1925: red at the `href` read with `ScriptStream(...,6)`, green with the wait. DW-1935: red with a 16 s sign-in delay at the old position, green with the early sign-in. DW-1984: red with the form read held 5 s, green with the wait. DW-1873: red when the tooltip skip is removed (rail tooltip 406 px past its slot), green with it.
-- DW-2058: the held re-read did not reproduce a red in 12 holds from 0.5 to 8 s; the wait is in place and the spec is green under a 3 s hold. DW-1983: a 40 s mid-hang fails both versions on the 30 s waits, and 20 s fails neither, so the red was not reproduced; the clean spec is green.
+- DW-2058: the held re-read did not reproduce a red in 12 holds from 0.5 to 8 s; the wait is in place and the spec is green under a 3 s hold. The wait holds by reading: the table keeps its rows while it re-reads, so no rows means the post-delete read has landed. That this read replaced the marked inputs stays an inference.
+- DW-1983 (review): a 40 s hang outlasts every 30 s wait, so it fails any version. Holding the second turn's proposal 20 s and its reply 15 s keeps each wait in budget and reddens the two-toast wait, because the first toast's 30 s action lifetime runs out. The review's stack hold makes it green, and the clean file is 3 of 3.
 - DW-1916: stale `REPLY2` seed: `reply` red with the old tag format, green with the new; `Remains("REPLY2")` reads 0. `turnprobe-tags.test.mjs` green; mutation: old format red.
 - DW-1917: policy count 0 before and after `governance` and `agent-sql`; without the clear it is 1 (version 2); a seeded policy survives and `Clear()` reads 0.
 - DW-1929: counts Convo/Entry/Turn/Step equal before and after `agent-ledger`; mutation: skipping the Convo delete leaves Convo 1 and Entry 1 and disarm's assertion names them. `Retention` green.
@@ -923,7 +982,6 @@ Every IRIS MCP call carries `server: "ocupilot-slot-a"` (the dev instance, never
   - `mutation:` revert the `$Select` → `AuditStarted` goes red. Always answer `STARTED` → the finished-write assertion goes red.
   - `mutation:` remove `READBACKTOOL` from `TaskCreate` → the new `ReadBack` test goes red.
   - `mutation:` the hook answers `""` → both DW-1465 tests go red.
-  - `mutation:` comment out `installProtocolRetry(puppeteer)` in `browser.config.mjs` → `browser-config-retry.test.mjs` goes red.
 
 **Full sweep (once, before batch b's dev_complete):** `cd ui && node tools/ci-runner.mjs --container ocupilot-ci`, on the rebuilt throwaway, with no seeded state present. Expected: 0 failed, with totals taken from `%UnitTest_Result`. The full browser suite runs in CI's three browser legs (Rule 29).
 

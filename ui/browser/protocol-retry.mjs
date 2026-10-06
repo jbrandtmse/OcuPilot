@@ -7,7 +7,9 @@
  * (`Network.enable`) and a long in-page call (`Runtime.callFunctionOn`), and each failed a whole
  * spec although the next attempt would have passed. `installProtocolRetry` wraps `puppeteer.launch`
  * once, so every spec's browser creates its contexts and pages through `retryOnce`; any other
- * error, and a second timeout, propagate unchanged.
+ * error, and a second timeout, propagate unchanged. A second timeout is marked as retried, so a
+ * retry around another one (the structural walk's per-pass retry around a page creation) does not
+ * try it again.
  *
  * The wrappers are assigned through `.bind` and property assignment, so this file spells neither
  * call `tools/browser-reset.mjs` counts in a spec.
@@ -18,18 +20,30 @@ export const PROTOCOL_TIMEOUT = / timed out\. Increase the 'protocolTimeout'/;
 
 const WRAPPED = Symbol.for('ocupilot.protocolRetry');
 
+/** Set on an error that has already had its retry. */
+const RETRIED = Symbol.for('ocupilot.protocolRetried');
+
 /** Whether `error` is a DevTools-protocol timeout. */
 export function isProtocolTimeout(error) {
   return PROTOCOL_TIMEOUT.test(String(error?.message ?? error ?? ''));
 }
 
-/** Run `create`; when it fails with a protocol timeout, run it once more. */
-export async function retryOnce(create) {
+/**
+ * Run `create`; when it fails with a protocol timeout that has not had its retry, call `reset` and
+ * run it once more. The second attempt's error is marked, so no other retry repeats it.
+ */
+export async function retryOnce(create, reset = () => {}) {
   try {
     return await create();
   } catch (error) {
-    if (!isProtocolTimeout(error)) throw error;
-    return create();
+    if (!isProtocolTimeout(error) || error[RETRIED] === true) throw error;
+    reset();
+    try {
+      return await create();
+    } catch (again) {
+      if (again !== null && typeof again === 'object') again[RETRIED] = true;
+      throw again;
+    }
   }
 }
 

@@ -73,12 +73,12 @@ after(async () => {
   dropProposals();
   dropTable();
   await resetGovernancePolicy();
+  await resetRememberedState();
+  disarmProbeDefinition(probe, priorDefault);
   if (noStoredPolicy) {
     clearGovernancePolicy(config.container);
     assert.equal(await governanceRowVersion(), 0, 'no governance policy is stored, as before this file ran');
   }
-  await resetRememberedState();
-  disarmProbeDefinition(probe, priorDefault);
 });
 
 const runIris = (lines) => sharedRunIris(config.container, lines);

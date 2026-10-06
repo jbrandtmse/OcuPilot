@@ -55,12 +55,22 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# The local root a macOS default lands in, and the one the scratch-root guard below admits. Trailing
+# slashes come off HOME, and a HOME that is not absolute gives no root, so a relative HOME cannot
+# admit a relative --dir.
+HOME_ROOT="${HOME:-}"
+while [ "$HOME_ROOT" != "${HOME_ROOT%/}" ]; do
+    HOME_ROOT="${HOME_ROOT%/}"
+done
+case "$HOME_ROOT" in
+    /?*) ;;
+    *) HOME_ROOT="" ;;
+esac
+
 if [ -z "$DIR" ]; then
     DIR="/tmp/ocupilot-ci"
-    if [ "$(uname -s)" = "Darwin" ] && [ -n "${HOME:-}" ]; then
-        case "$HOME" in
-            /?*) DIR="${HOME%/}/.ocupilot-throwaways/$PROJECT" ;;
-        esac
+    if [ "$(uname -s)" = "Darwin" ] && [ -n "$HOME_ROOT" ]; then
+        DIR="$HOME_ROOT/.ocupilot-throwaways/$PROJECT"
     fi
 fi
 
@@ -99,18 +109,8 @@ fi
 case "$DIR" in
     *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
 esac
-# The local root is the one a macOS default lands in. Trailing slashes come off HOME, and a HOME
-# that is not absolute adds no arm, so a relative HOME cannot admit a relative --dir.
-HOME_ROOT="${HOME:-/nonexistent-home}"
-while [ "$HOME_ROOT" != "${HOME_ROOT%/}" ]; do
-    HOME_ROOT="${HOME_ROOT%/}"
-done
-case "$HOME_ROOT" in
-    /?*) ;;
-    *) HOME_ROOT=/nonexistent-home ;;
-esac
 case "$DIR" in
-    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"$HOME_ROOT/.ocupilot-throwaways"/?*) ;;
+    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
     *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
 
@@ -820,7 +820,8 @@ EOF
             # directory's own compose file; any other listing is someone else's throwaway.
             listed=$(docker compose ls -a --format json 2>/dev/null | tr -d '\n' | grep -o "{[^}]*\"Name\":\"$PROJECT\"[^}]*}" || true)
             if [ -n "$listed" ] && printf '%s' "$listed" | grep -q "\"ConfigFiles\":\"$COMPOSE_FILE\""; then
-                docker compose -p "$PROJECT" down -v --remove-orphans
+                # From /, so Compose loads no compose file from the working directory or above it.
+                (cd / && docker compose -p "$PROJECT" down -v --remove-orphans)
             elif [ -n "$listed" ]; then
                 echo "ci-throwaway: no compose file at $COMPOSE_FILE and Compose lists '$PROJECT' from a different config file; no Compose call made"
             else

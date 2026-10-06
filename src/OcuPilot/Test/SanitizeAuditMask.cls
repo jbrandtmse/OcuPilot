@@ -174,6 +174,7 @@ Method TestARealMaskedVendorSecretReachesTheModelOnceMasked()
     Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResultBlock.content, .tWrapped)
     Do $$$AssertTrue(tWrapped, "the tool_result arrives framed as data: " _ $Extract(tResultBlock.content, 1, 80))
     If 'tWrapped Quit
+    Do $$$AssertEquals(tBody [ tToken, 0, "the raw token is nowhere in the tool result, in any row")
     Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tBody)
 
     Set tRedactedMark = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED

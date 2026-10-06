@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { isProtocolTimeout } from './protocol-retry.mjs';
+import { retryOnce } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -731,22 +731,23 @@ export async function walk(browser, config) {
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
-  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context. Its
-  // entries join the walk only when it completes, and the unmeasurable count is put back first.
-  let themeFlipped = false;
+  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
+  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it. Its
+  // entries join the walk only when it completes, and the report is put back as it was first.
   const withRetry = async (body) => {
-    const unmeasurable = report.unmeasurable;
-    for (let attempt = 1; ; attempt += 1) {
+    const saved = {
+      walked: new Set(report.walked),
+      skipped: new Set(report.skipped),
+      unresolved: new Set(report.unresolved),
+      unsettled: new Set(report.unsettled),
+      unmeasurable: report.unmeasurable,
+    };
+    const run = async () => {
       const found = [];
-      try {
-        await body(found);
-        entries.push(...found);
-        return;
-      } catch (error) {
-        if (attempt === 2 || !isProtocolTimeout(error)) throw error;
-        report.unmeasurable = unmeasurable;
-      }
-    }
+      await body(found);
+      return found;
+    };
+    entries.push(...(await retryOnce(run, () => Object.assign(report, saved))));
   };
 
   const seeded = seedConversation(config);
@@ -755,17 +756,11 @@ export async function walk(browser, config) {
       const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
         const requests = trackRequests(wide.page);
-        if (themeFlipped) {
-          await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-          themeFlipped = false;
-        }
         found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-        themeFlipped = true;
         found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'dark', checks: ['contrast'], minimums, report })));
         await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
-        themeFlipped = false;
       } finally {
         await wide.context.close();
       }

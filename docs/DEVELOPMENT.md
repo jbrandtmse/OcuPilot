@@ -461,7 +461,9 @@ count, its failure count — before the next starts, then reports the job red if
 runs overlapped in wall-clock time. The suite's classes share one instance and one set of
 fixtures; on 2026-09-11 eighteen were started together, a probe uninstall raced a probe install,
 and the probe database was left mounted over a deleted directory until a human restarted the
-instance.
+instance. Around each class it also sets the stored governance policy aside and puts it back
+(`GovernanceFixture.SetAside` and `PutBack`), so a class runs under the baseline policy there; a
+class run any other way runs under whatever policy is stored.
 
 **The ObjectScript suite is split across five containers and the browser specs across three, never run in parallel inside one.**
 `ui/tools/ci-shards.mjs` gives every leg its share from `ui/tools/ci-timings.json`, longest first,

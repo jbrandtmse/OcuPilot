@@ -227,7 +227,7 @@ export function parseProbeAppsMarker(text, name = 'PROBEAPPS') {
 }
 
 /**
- * The governance fixture's answer a session reported (DW-1936): the text between the markers, or
+ * The governance fixture's answer a session reported: the text between the markers, or
  * `null` when the session printed none. `name` is `GOVASIDE` for the set-aside taken before the
  * class and `GOVBACK` for the put-back after it.
  */
@@ -237,7 +237,7 @@ export function parseGovernanceMarker(text, name) {
 }
 
 /**
- * The problems the governance set-aside and put-back make for a class (DW-1936), none when both
+ * The problems the governance set-aside and put-back make for a class, none when both
  * answered `ok`. A missing answer is a failure as much as a refusal: a policy that was not set
  * aside may have decided the class's writes, and one that was not put back is left changed.
  */

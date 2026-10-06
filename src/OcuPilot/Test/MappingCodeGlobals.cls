@@ -84,7 +84,8 @@ Method OnAfterAllTests() As %Status
 /// namespace this process runs in, the ones holding a subscript that begins with one of OcuPilot's
 /// stems in any case, at the first or second level, include every one of
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.CODEGLOBALS</parameter>, and any other is a global a
-/// compiled class's storage owns (a stored credential adds the Ensemble credentials' own) or
+/// compiled class outside the <code>%</code> packages stores to (a stored credential adds the Ensemble
+/// credentials' own) or
 /// <parameter>CREDENTIALSECRETS</parameter>. The ones holding the stems at the second level under a
 /// first subscript that does not begin with a stem are exactly
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.NESTEDCODEGLOBALS</parameter>. A global whose own
@@ -121,16 +122,17 @@ Method TestTheCodeGlobalsAreTheOnesHoldingOcuPilotsNames()
         If tName = "" Quit
         If (tName '= ..#CREDENTIALSECRETS) && '..StorageOwns(tName) Set tUnowned = tUnowned _ " " _ tName
     }
-    Do $$$AssertEquals(tUnowned, "", "and every other holder is a global a compiled class's storage owns")
+    Do $$$AssertEquals(tUnowned, "", "and every other holder is a global the storage of a compiled class outside the % packages owns")
     Do $$$AssertEquals(..Joined(.tNested), ..Sorted($Parameter(..#KERNEL, "NESTEDCODEGLOBALS")), "and the ones holding them under a first subscript that is not one are its nested ones")
 }
 
-/// <p>Whether a compiled class's storage names global <var>pName</var> (without its caret) as its
-/// data, index, stream or id location.</p>
+/// <p>Whether the storage of a compiled class outside the <code>%</code> packages names global
+/// <var>pName</var> (without its caret), case and all, as its data, index, stream or id location. A
+/// <code>%</code> class's storage is left out: it owns several of the code globals themselves.</p>
 ClassMethod StorageOwns(pName As %String) As %Boolean
 {
     Set tRef = "^" _ pName
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledStorage WHERE DataLocation = ? OR IndexLocation = ? OR StreamLocation = ? OR IdLocation = ?", tRef, tRef, tRef, tRef)
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.CompiledStorage WHERE NOT (parent %STARTSWITH '%') AND (%EXACT(DataLocation) = ? OR %EXACT(IndexLocation) = ? OR %EXACT(StreamLocation) = ? OR %EXACT(IdLocation) = ?)", tRef, tRef, tRef, tRef)
     If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit 0
     Quit +tRS.%GetData(1) > 0
 }

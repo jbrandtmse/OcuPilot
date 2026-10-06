@@ -176,8 +176,12 @@ function textReply(text) {
  * lost the race. Waiting for the actual rendered reply, keyed to this call's own expected text
  * (`replyText`, distinct per call) rather than the composer's `aria-disabled` alone, is what
  * proves the first turn is truly settled before a second one starts.
+ *
+ * `holdToasts` rests the pointer on the toast stack whenever no click needs it, which holds every
+ * toast's countdown (`core/toasts.ts`). A toast that opens a screen lives 30 s, and two of them are
+ * on screen together only if the first outlives the second turn, which on a slow runner it did not.
  */
-async function sendAndConfirm(page, tag, enabled, replyText, toolUseId) {
+async function sendAndConfirm(page, tag, enabled, replyText, toolUseId, { holdToasts = false } = {}) {
   scriptReply(tag, 0, proposeReply(enabled, toolUseId));
   scriptReply(tag, 0, textReply(replyText));
   await page.waitForFunction(
@@ -193,6 +197,7 @@ async function sendAndConfirm(page, tag, enabled, replyText, toolUseId) {
   // the stack into the content area and out from over the panel, and clicking here is what keeps
   // that true for the second of two turns (`hitTestSend` below pins the hit test itself).
   await page.click('.ocu-panel-send');
+  if (holdToasts) await (await page.$('.ocu-toast'))?.hover();
   await page.waitForFunction(
     (index) => document.querySelectorAll('app-proposal-card')[index]?.querySelector('.ocu-proposal-card-confirm') != null,
     { timeout: config.navigationTimeoutMs },
@@ -205,6 +210,7 @@ async function sendAndConfirm(page, tag, enabled, replyText, toolUseId) {
     { timeout: config.navigationTimeoutMs },
     before
   );
+  if (holdToasts) await (await page.waitForSelector('.ocu-toast', { timeout: config.navigationTimeoutMs })).hover();
   // The final reply, not the streamed block: `panel.ts`'s own `replyWithChangeSentence` appends the
   // published "<entity> was updated" sentence after the scripted reply, so the rendered text starts
   // with `replyText` rather than equalling it. The composer is enabled again once the turn is settled.
@@ -288,7 +294,7 @@ test(
     const tag = nextTag();
     setTag(tag);
     try {
-      await sendAndConfirm(page, tag, false, 'geometry-first', 'toolu_toast_1');
+      await sendAndConfirm(page, tag, false, 'geometry-first', 'toolu_toast_1', { holdToasts: true });
       await page.waitForSelector('.ocu-toast-region', { timeout: config.navigationTimeoutMs });
 
       const firstOnly = await page.evaluate(toastGeometry);
@@ -352,7 +358,7 @@ test(
       );
 
       // A second confirmed write while the first toast still stands: two in the stack now.
-      await sendAndConfirm(page, tag, true, 'geometry-second', 'toolu_toast_2');
+      await sendAndConfirm(page, tag, true, 'geometry-second', 'toolu_toast_2', { holdToasts: true });
       await page.waitForFunction(
         () => document.querySelectorAll('.ocu-toast').length === 2,
         { timeout: config.navigationTimeoutMs }

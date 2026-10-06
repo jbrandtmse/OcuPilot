@@ -561,7 +561,7 @@ ClassMethod InstallLockHolder(pProfile As %String) As %String
             If $IsObject(tProcess) Set tText = tText _ " (routine " _ tProcess.Routine _ ", namespace " _ tProcess.NameSpace _ ", user " _ tProcess.UserName _ ")"
         }
     } Catch ex {
-        Set tText = "no process the lock table names"
+        ; What was read before the fault stands.
     }
     Quit tText
 }

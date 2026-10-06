@@ -9973,6 +9973,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: only isProtocolTimeout and retryOnce are unit-tested; the walk-level retry was checked by hand under a held font (batch a, 16313a0e)
 - 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; extracting withRetry into protocol-retry.mjs would make it testable
+- 2026-10-06T10:43:54Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=cr note=cr moved the pass retry into retryOnce(create, reset), unit-tested in protocol-retry.test.mjs; forced retry 13/13
 
 ### DW-2104: ci-throwaway.sh data-check's session logic is pinned only as source text; its red path never ran against a real instance
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
@@ -9988,3 +9989,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ui/browser/structural-walk.mjs withRetry re-signs-in a fresh context; whether the dark toggle carries over is unread (batch a, 16313a0e)
 - 2026-10-06T09:23:40Z status=open owner=23-4-the-range-end-cleanup-part-4 by=harvest note=batch a deferral; settle by failing a pass after the dark toggle and reading the retry's theme
+- 2026-10-06T10:43:54Z status=resolved-by:23-4-the-range-end-cleanup-part-4 by=cr note=cr dropped the theme flag: forced retry on 16313a0e ran light in dark, AC5 red; fixed retry starts light, 13/13
+
+### DW-2108: protocol-retry.mjs retries a timed-out page creation without closing the blank tab puppeteer already opened for it
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: puppeteer-core cdp/Browser.js _createPageInContext sends Target.createTarget before the page setup whose Network.enable timed out; retryOnce opens a second tab beside it (batch a 16313a0e)
+- 2026-10-06T10:43:40Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=a CI browser leg fails after a retried page creation with a target, tab-count or memory error
+
+### DW-2109: turnprobe-spec.mjs disarmProbeDefinition throws on a sweep leftover before callers' own teardown that follows it in their after hooks
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: about 15 specs call disarm and then remove principals, logs, seeds or putShare(true) in the same after hook; a throw skips those (batch a 16313a0e)
+- 2026-10-06T10:43:40Z status=wontfix-accepted owner=23-4-the-range-end-cleanup-part-4 by=cr note=reopen_if=a CI leg shows the turn-state-swept assertion failing and later spec files in the same leg failing on its leftovers
+
+### DW-2110: The runner's governance set-aside can lose or overwrite a stored policy on an interrupted run outside a throwaway
+- source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: GovernanceRestore holds the runner's held copy in memory during its tests; a held copy is put back over any policy stored since; ci-runner refuses no container
+- 2026-10-06T10:43:40Z status=wontfix-theoretical owner=23-4-the-range-end-cleanup-part-4 by=cr note=real if ci-runner runs on an instance holding an operator policy and is interrupted, or the policy is edited before the next run

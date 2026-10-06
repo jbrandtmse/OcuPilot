@@ -1387,9 +1387,10 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   const FALLBACK = 'docker compose -p "$PROJECT" down -v --remove-orphans';
   const withoutComments = throwaway.replace(/^\s*#.*$/gm, '');
   assert.equal(withoutComments.split(FALLBACK).length - 1, 1, 'the project-named teardown appears exactly once');
+  const downArm = withoutComments.indexOf('down)');
+  const ownFileCheck = withoutComments.indexOf('"\\"ConfigFiles\\":\\"$COMPOSE_FILE\\""', downArm);
   assert.ok(
-    withoutComments.indexOf('"\\"ConfigFiles\\":\\"$COMPOSE_FILE\\""', withoutComments.indexOf('down)')) <
-      withoutComments.indexOf(FALLBACK),
+    downArm !== -1 && ownFileCheck !== -1 && ownFileCheck < withoutComments.indexOf(FALLBACK),
     'and only after the listing was checked against this directory\'s own compose file'
   );
   const guarded = withoutComments.replace(FALLBACK, '');
@@ -1930,6 +1931,8 @@ test('without --dir the throwaway lives under $HOME on macOS and under /tmp else
   const pathOf = (run) => /no compose file at (\S+);/.exec(run.output)?.[1] ?? /compose -f (\S+) ps -a/.exec(run.calls)?.[1];
   const darwin = runThrowaway(['logs'], { uname: 'Darwin', env: { HOME: home } });
   assert.equal(pathOf(darwin), `${home}/.ocupilot-throwaways/ocupilot-ci/compose.yml`, 'macOS defaults under $HOME, by project');
+  const slashed = runThrowaway(['logs'], { uname: 'Darwin', env: { HOME: `${home}//` } });
+  assert.equal(pathOf(slashed), `${home}/.ocupilot-throwaways/ocupilot-ci/compose.yml`, 'a HOME with trailing slashes lands in the root the guard admits');
   const named = runThrowaway(['logs', '--project', 'ocupilot-x'], { uname: 'Darwin', env: { HOME: home } });
   assert.equal(pathOf(named), `${home}/.ocupilot-throwaways/ocupilot-x/compose.yml`, 'and follows --project');
   const linux = runThrowaway(['logs'], { uname: 'Linux', env: { HOME: home } });
