@@ -286,6 +286,9 @@ const KERNEL_REFUSALS = [
   // Story 18.7: a key OcuPilot or the instance depends on, whose removal from a key file either caller
   // is answered with.
   ['OCUPILOTKEY', 'keyRefusalOcuPilot'],
+  // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
+  // which the form shows on the start-mode field when either caller is answered with it.
+  ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -706,7 +709,38 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONKEYDEACTIVATEDATAELEMENT', 'encryptionKeyDeactivateDataElementConsequence'],
   [ENCRYPTION_KEY_TOOL('EncryptionKeyWrite'), 'REASONKEYINACTIVE', 'encryptionKeyInactive'],
   [ENCRYPTION_KEY_TOOL('DatabaseKeyDeactivate'), 'REASONKEYDEFAULT', 'encryptionKeyDefault'],
+  // Story 18.23: the startup rules', the vendor's and the version gate's sentences, and each option's.
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIPSERVER', 'encryptionStartupKmipServerRefusal'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYFILE', 'encryptionStartupKeyFileRefusal'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNEEDSSTART', 'encryptionStartupNeedsStart'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNOKEY', 'encryptionStartupNoKey'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYINACTIVE', 'encryptionStartupKeyInactive'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPREQUIRED', 'encryptionStartupRequired'],
+  [ENCRYPTION_ERROR, 'REASONSETTINGSVERSION', 'encryptionStartupVersion'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPNONE', 'encryptionStartupNoneConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPINTERACTIVE', 'encryptionStartupInteractiveConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPUNATTENDED', 'encryptionStartupUnattendedConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
 ];
+
+test("Story 18.23: the audit log's encryption change is one consequence sentence on both surfaces, published in Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONAUDITENCRYPTIONCHANGE in EncryptionError.cls -> this goes red.
+  const server = /Parameter REASONAUDITENCRYPTIONCHANGE = "([^"]+)";/.exec(readFileSync(ENCRYPTION_ERROR, 'utf8'));
+  assert.notEqual(server, null, 'EncryptionError.cls declares REASONAUDITENCRYPTIONCHANGE');
+  assert.equal(server[1], stringValue('encryptionStartupAuditConsequence'), 'the audit change and the form state one sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), "the audit change's sentence is published in EXPERIENCE.md's Fixed strings");
+});
+
+test('Story 18.23: the form draws the Interactive refusal on the start-mode field by the code the kernel declares', () => {
+  // Mutation (Rule 19): change STARTUP_INTERACTIVE_CODE in encryption-startup.store.ts -> this goes red.
+  const kernel = /Parameter STARTUPINTERACTIVE = "([^"]+)";/.exec(readFileSync(PROHIBITED, 'utf8'));
+  assert.notEqual(kernel, null, 'Prohibited.cls declares STARTUPINTERACTIVE');
+  const store = /export const STARTUP_INTERACTIVE_CODE = '([^']+)';/.exec(readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8'));
+  assert.notEqual(store, null, 'encryption-startup.store.ts declares STARTUP_INTERACTIVE_CODE');
+  assert.equal(store[1], kernel[1], "the store matches the server's refusal by the kernel's own code");
+});
 
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
   // Mutation (Rule 19): change one word of REASONADMINLAST in EncryptionKeyFileRemoveAdmin.cls -> this goes red naming both.

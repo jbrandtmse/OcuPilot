@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'docdb-database' | 'sql-statement';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -516,6 +516,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "encryption-key-file",
   "database-encryption-keys",
   "data-element-encryption-keys",
+  "encryption-startup",
   "docdb-database",
   "sql-statement"
 ];
@@ -564,6 +565,7 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "ecp-settings": "singleton",
   "database-encryption-keys": "singleton",
   "data-element-encryption-keys": "singleton",
+  "encryption-startup": "singleton",
   "docdb-database": "foldcase"
 };
 
@@ -5290,6 +5292,121 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "multiSelect": null,
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.EncryptionStartup",
+    "route": "security/database-encryption/startup",
+    "area": "security",
+    "labelKey": "encryptionStartupLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "encryption-startup",
+    "entityLabelKey": "encryptionStartupLabel",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "DBEncStartMode",
+        "DBEncJournal",
+        "DBEncIRISSecurity",
+        "DBEncIRISTemp",
+        "AuditEncrypt",
+        "DBEncStartKMIPServer",
+        "DBEncStartKeyFile",
+        "DBEncDefaultKeyID",
+        "DBEncJournalKeyID"
+      ],
+      "secretFields": []
+    },
+    "secretArguments": [
+      "AdminPassword"
+    ],
+    "emptyStateKey": "",
+    "commandAliases": [
+      "encryption startup",
+      "startup settings"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "encryptionStartupPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.EncryptionDatabase",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Encryption.Settings",
+        "type": "GET"
+      },
+      "fields": [
+        "DBEncStartMode",
+        "DBEncJournal",
+        "DBEncIRISSecurity",
+        "DBEncIRISTemp",
+        "AuditEncrypt",
+        "DBEncStartKMIPServer",
+        "DBEncStartKeyFile",
+        "DBEncDefaultKeyID",
+        "DBEncJournalKeyID"
+      ],
+      "filter": [
+        "DBEncStartMode"
+      ],
+      "sort": {
+        "fields": [
+          "DBEncStartMode"
+        ],
+        "default": "DBEncStartMode",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "toolIdentifier": "security.encryptionstartup",
+    "refreshDefault": 0,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerClassDocument",

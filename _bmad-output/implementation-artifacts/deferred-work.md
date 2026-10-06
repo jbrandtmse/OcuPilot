@@ -9725,6 +9725,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: the file is add-only while Epic 19 runs, so 18.7 left the sentence; a doc count only, no behavior
 - 2026-10-04T22:45:55Z status=routed owner=range-end-cleanup by=harvest note=correct the count once Epic 19 no longer holds the file add-only
+- 2026-10-05T20:00:23Z occurrence=18-23-encryption-startup-settings
 
 ### DW-2064: The spine lags Story 18.7's confirmed decisions: AD-2 names neither AdminInFile's two unlogged 409 refusals nor the key list's #5022 read as no key, and AD-8 lacks amendment 8
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -9737,6 +9738,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.KeyFile judges KeyInFile/DELETE alone; AdminInFile/DELETE passes the reviewed-few sweep; with DBEncStartMode unattended the instance opens that file with that administrator at startup (inference), so encrypted databases (IRISSECURITY, IRISTEMP included) would not mount
 - 2026-10-05T00:19:26Z status=decision-pending owner=18-23-encryption-startup-settings by=cr note=product call: extend AD-10's key arm to the startup key file's administrator; Story 18.23 builds the unattended startup settings
 - 2026-10-05T03:28:41Z status=routed owner=18-23-encryption-startup-settings by=owner note=owner 2026-10-04: refuse removing the startup key file's administrator, as removing a key a database depends on is refused
+- 2026-10-05T12:35:17Z status=routed owner=18-23-encryption-startup-settings by=merge_gate note=the owner's premise (removing the startup administrator breaks unattended startup) was measured false as stated: unattended activation stores a hidden generated administrator (<key id>_1) that AdminInFile never lists (Task 0 SYS11); option A under the standing grant: the re-run's Task 0 removes the typed administrator A from a two-administrator key file in Unattended mode and restarts; if the key still activates, close by-design with that evidence and drop the STARTUPADMIN check and read; if startup breaks, the owner's refusal stands, built on the name that matters
+- 2026-10-05T13:28:00Z status=by-design owner=18-23-encryption-startup-settings by=adjudication note=the merge gate's measurement gate decided it: Task 0 re-run on ocupilot-b-ci (/tmp/epic-18-d7/1823/t0r r1-r2): with three listed administrators and Unattended as A, removing B (R1) and then the typed A (R2) each left K1 activating at the next start; unattended activation opens the key file as a hidden generated administrator (<key id>_N) only AdminList flag 0 names; the STARTUPADMIN check and read are dropped, KMIPSERVERS kept
 
 ### DW-2066: DependsOnKey reads only the journal's configured key (DBEncJournalKeyID); journal files still needed for recovery may be encrypted with an earlier key, which the vendor's IsEncKeyInUse checks
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: med | footprint: in-story
@@ -9878,16 +9881,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: EncryptionKeyActivateMint adds FileKeys to the card; FINGERPRINTSUBJECT is Keys,root,path,AdminName; EncryptionPort.Activate reruns FileKeys only for the all-active check (TaskImport's reviewed tasks is the model)
 - 2026-10-05T10:31:38Z status=escalated owner=burndown by=cr note=fix-risk high: TaskImport-style reviewed FileKeys via fingerprint, PortQuery and port; amends AD-51's 18.22 case
+- 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator): carry the reviewed key list through the activation's fingerprint as TaskImport does, so a key file whose keys changed since the mint refuses the confirm; built by Epic 18's burn-down
 
 ### DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivation
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Decision 7 rests on 'an activation is undone by a deactivation'; Measured at implement: DBEncStartMode 0 to 1 persisted after every key was deactivated; DatabaseKeyActivate declares no DESTRUCTIVE
 - 2026-10-05T10:31:42Z status=decision-pending owner=burndown by=cr note=product call; recommend DESTRUCTIVE on the database activate only (Story 18.6's license activate precedent)
+- 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator, standing grant): give a first database activation only the destructive treatment, with a consequence naming the DBEncStartMode change, as 18.6's license activation is treated; follow 18.6's precedent for the governance key default too; built by Epic 18's burn-down
+- 2026-10-05T13:28:00Z status=routed owner=burndown by=adjudication note=for the burn-down (Story 18.23 Task 0 re-run step 7): a Settings PUT with None clears the stored unattended credential and Security.System's persisted default and journal key ids while the running keys stay, and the Settings GET answers the running ids; a first activation's start-mode change is reset only through that PUT
 
 ### DW-2088: No EncryptionKeyGate principal withholds %DB_IRISSYS:READ, so the screens' second declared pair is never refused by name for 18.22's reads and tools
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: All three PRINCIPALS hold %DB_IRISSYS:R; the spec's Tests line asks each declared pair refused by name; 18.7's EncryptionWriteGate shares the convention
 - 2026-10-05T10:31:51Z status=wontfix-accepted owner=18-22-database-and-data-element-encryption-keys by=cr note=reopen_if=a principal lacking %DB_IRISSYS:READ gets 200 from a Database or Data element encryption read or write
+- 2026-10-05T20:00:23Z occurrence=18-23-encryption-startup-settings
 
 ### DW-2089: EncryptionPort.JournalUse's InUse true never runs through the real port: the journalfiles leg answers JOURNALUSE in the seam, so a change to the id JournalUse passes would stay green
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
@@ -9914,3 +9921,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-19-10-sql-activity.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestTheProbeIsARowAndTheReaderIsNot compares Routine (CallerName, '' for a top-level statement) and Workers (0 serial) to the vendor's columns; no probe has a Parent, so CURRENTSTATEMENTS' ELSE (ParentType || ' Query') never executes
 - 2026-10-05T17:48:27Z status=wontfix-accepted owner=19-10-sql-activity by=cr note=needs a nested or %PARALLEL probe; reopen_if=a row's Routine, Workers or child RunType differs from INFORMATION_SCHEMA.CURRENT_STATEMENTS
+### DW-2095: IRIS defect candidate: Security.System's AuditEncrypt documentation says the audit database is deleted as soon as the property changes, while 2026.2 encrypts or decrypts it in place at the next start and keeps every record
+- source: spec-18-23-encryption-startup-settings.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Story 18.23 Task 0 on ocupilot-b-ci, /tmp/epic-18-d7/1823/t0/s12-s14r: PUT changed nothing at once; restarts logged Encrypting/Decrypting IRISAUDIT; count 222263->222276, oldest row 05:34:18 and the agent's markers kept, inode 12766 unchanged
+- 2026-10-05T12:35:17Z status=decision-pending owner=burndown by=merge_gate note=human=decide whether to report it to InterSystems, with the held vendor-report list; not reported
+- 2026-10-05T18:59:05Z status=decision-pending owner=burndown by=owner note=owner hold 2026-10-05 (relayed by the Planner): IRIS defect candidates stay on hold, no report to InterSystems for now
+
+### DW-2098: PROHIBITED.STARTUPINTERACTIVE judges only the encryption flags: after AuditEncrypt is turned off the audit database stays encrypted until the next start, and Interactive chosen in that window leaves a start that aborts
+- source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: measured by the runner on ocupilot-b-ci 17:57Z (/tmp/epic-18-d7/1823/t0m m5-m6): AuditEncrypt on + restart (encrypted), AuditEncrypt off (IRISAUDIT EncryptedDB still 1), Interactive accepted by OcuPilot, restart aborted into single-user mode
+- 2026-10-05T17:58:36Z status=open owner=18-23-encryption-startup-settings by=harvest note=fix in this story: read each of IRISAUDIT, IRISSECURITY and IRISTEMP's on-disk EncryptedDB through EncryptionPort (AD-27) and refuse Interactive while any is encrypted or its flag set; a failed read refuses
+- 2026-10-05T20:02:19Z status=resolved-by:18-23-encryption-startup-settings by=adjudication note=869f347b reads IRISAUDIT, IRISSECURITY and IRISTEMP's on-disk EncryptedDB through EncryptionPort ENCRYPTEDDATABASES and refuses Interactive while any is encrypted or its flag set, both callers, a failed read refusing; EncryptionStartupWrite and EncryptionStartupGate pin it through the seam and EncryptionOnDiskPort over the real read
+
+### DW-2099: Start mode None is not refused by OcuPilot while the audit log's, IRISSECURITY's or IRISTEMP's database is still encrypted on disk after its setting was turned off
+- source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: low | footprint: in-story
+- evidence: measured by the runner on ocupilot-b-ci 18:58Z (/tmp/epic-18-d7/1823/t0m m7-m8): AuditEncrypt on + restart, AuditEncrypt off (IRISAUDIT EncryptedDB 1), None refused by the vendor and mapped to 409 ENCRYPTION.STARTUP.REQUIRED, nothing changed
+- 2026-10-05T18:59:05Z status=by-design owner=18-23-encryption-startup-settings by=harvest note=the vendor's own refusal covers it (#1217 class) and EncryptionPort maps it; no OcuPilot arm needed
+
+### DW-2100: AD-10's start arm refuses only Interactive over the three databases: an Unattended key file or KMIP server that cannot activate the key encrypting IRISAUDIT, IRISSECURITY or IRISTEMP, and journal encryption under Interactive, are unmeasured
+- source: spec-18-23-encryption-startup-settings.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: LeavesInteractiveRequired judges Interactive alone and StartupProblems checks only that a new file lists its administrator; the vendor's answer to a key file without the active key, and an unanswered Interactive start under journal encryption (OKNoDBEncKeyAtStartup names it as needing the key), are unmeasured (inference)
+- 2026-10-05T20:00:23Z status=decision-pending owner=burndown by=cr note=unverified high; settle on a throwaway (key file without the active key; journal under Interactive), then decide AD-10's scope

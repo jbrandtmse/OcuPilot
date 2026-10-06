@@ -100,6 +100,7 @@ XData Keys [ MimeType = application/json ]
   "security.encryptionkeyfile.removekey": false,
   "security.encryptionkeyfileadmins.addadministrator": false,
   "security.encryptionkeyfileadmins.removeadministrator": false,
+  "security.encryptionstartup.update": false,
   "security.ldap.create": true,
   "security.ldap.delete": true,
   "security.ldap.password": true,

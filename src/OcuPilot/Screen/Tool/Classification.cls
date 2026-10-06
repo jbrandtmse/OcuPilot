@@ -221,6 +221,23 @@ XData Entries
       "AdminPassword": "secret"
     }
   },
+  "security.encryptionstartup.update": {
+    "fieldList": "Security.Encryption.Settings",
+    "compare": {"AdminName": "written"},
+    "classification": {
+      "DBEncStartMode": "ordinary",
+      "DBEncJournal": "ordinary",
+      "DBEncIRISSecurity": "ordinary",
+      "DBEncIRISTemp": "ordinary",
+      "AuditEncrypt": "ordinary",
+      "DBEncStartKMIPServer": "ordinary",
+      "DBEncStartKeyFile": "ordinary",
+      "DBEncJournalKeyID": "ordinary",
+      "DBEncDefaultKeyID": "ordinary",
+      "AdminName": "ordinary",
+      "AdminPassword": "secret"
+    }
+  },
   "security.auditsystemevents.update": {
     "fieldList": "Security.Audit.Event:Security.Events",
     "classification": {

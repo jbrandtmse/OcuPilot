@@ -272,4 +272,17 @@ describe('Database encryption and Data element encryption', () => {
     await settle(mounted.fixture);
     expect(reads()).toBe(2);
   });
+
+  it('Story 18.23: Database encryption links to the encryption startup settings in the namespace on screen, and Data element encryption does not', async () => {
+    const mounted = await mount({ route: '/security/database-encryption?ns=USER' });
+    const link = mounted.host.querySelector('[data-encryption-keys="startup"]') as HTMLAnchorElement | null;
+    // Mutation (Rule 19): remove the link from the template -> this goes red.
+    expect(link?.textContent?.trim()).toBe(STRINGS.encryptionStartupLink);
+    expect(link?.getAttribute('href')).toBe('security/database-encryption/startup?ns=USER');
+    link?.click();
+    await settle(mounted.fixture);
+    expect(TestBed.inject(Router).url).toBe('/security/database-encryption/startup?ns=USER');
+    const other = await mount({ route: '/security/data-element-encryption', keys: [{ Id: 'M1' }] });
+    expect(other.host.querySelector('[data-encryption-keys="startup"]')).toBeNull();
+  });
 });

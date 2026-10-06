@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,docdb-database";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -478,6 +478,35 @@ Parameter TYPEENCRYPTIONKEYFILE = "encryption-key-file";
 Parameter TYPEDATABASEKEYS = "database-encryption-keys";
 
 Parameter TYPEDATAELEMENTKEYS = "data-element-encryption-keys";
+
+/// <p>The instance's encryption startup settings (Story 18.23), a singleton whose one merge write
+/// <method>EncryptionStartup</method> judges: Interactive key activation is refused while the audit log,
+/// IRISSECURITY or IRISTEMP is encrypted, and every other change passes the reviewed-few sweep.</p>
+Parameter TYPEENCRYPTIONSTARTUP = "encryption-startup";
+
+/// <p>The write would leave key activation at startup Interactive while the audit log, IRISSECURITY or
+/// IRISTEMP is encrypted, now or at the next start (AD-10 as amended 2026-10-05, Story 18.23): a start
+/// nobody answers on the console then aborts into single-user mode, taking down the path that serves
+/// OcuPilot (measured for each of the three). Judged over the resolved settings, the payload's values
+/// over the target's, so both orders are refused: Interactive chosen while one is set, now or by the same
+/// write, and one set under Interactive; and over whether one of their databases is still encrypted on
+/// disk, read at the write.</p>
+Parameter STARTUPINTERACTIVE = "PROHIBITED.STARTUPINTERACTIVE";
+
+/// <p>The one sentence <parameter>STARTUPINTERACTIVE</parameter> carries, caller-neutral, published in
+/// EXPERIENCE.md's Fixed strings and pinned equal to <code>encryptionStartupInteractiveRefusal</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter STARTUPINTERACTIVEREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.";
+
+/// <p>The start mode and the three settings <parameter>STARTUPINTERACTIVE</parameter> reads.</p>
+Parameter STARTUPMODEFIELD = "DBEncStartMode";
+
+Parameter STARTUPREQUIREDFLAGS = "AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a startup settings write that changes the
+/// audit log's encryption (AD-10 as amended 2026-10-05): permitted, destructive, and named on the card. It
+/// is also the proposal's consequence code.</p>
+Parameter EFFECTAUDITENCRYPTION = "AUDIT.ENCRYPTIONCHANGE";
 
 /// <p>A document database (Story 19.17), whose create and drop are judged by the class its name creates
 /// (<method>OcuPilot.Port.DocDbPort.ClassNameOf</method>) under the code arm (<method>Code</method>).</p>
@@ -764,7 +793,7 @@ Parameter READTYPE = "GET";
 /// <method>SqlStatement</method> adds last -- twenty-six in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -803,6 +832,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTCODE Quit ..#OCUPILOTCODEREASON
     If pCode = ..#OCUPILOTSQL Quit ..#OCUPILOTSQLREASON
     If pCode = ..#OCUPILOTKEY Quit ..#OCUPILOTKEYREASON
+    If pCode = ..#STARTUPINTERACTIVE Quit ..#STARTUPINTERACTIVEREASON
     Quit ""
 }
 
@@ -920,6 +950,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEECPSSLCONNECTION Quit $ListBuild("SSLComputerName")
     If pType = ..#TYPEENCRYPTIONKEYFILE Quit ..EncryptionKeyFileFields("change")
     If (pType = ..#TYPEDATABASEKEYS) || (pType = ..#TYPEDATAELEMENTKEYS) Quit ..EncryptionKeyFields()
+    If pType = ..#TYPEENCRYPTIONSTARTUP Quit ..EncryptionStartupFields()
     Quit ""
 }
 
@@ -1118,7 +1149,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEDOCDBDATABASE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEDOCDBDATABASE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1334,6 +1365,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; An encryption key file (Story 18.7): a key OcuPilot or the instance depends on is not removed.
         If tType = ..#TYPEENCRYPTIONKEYFILE {
             Set tSC = ..KeyFile($Get(tToolClass), tPayloadObject, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; The encryption startup settings (Story 18.23): a start that cannot finish is not chosen.
+        If tType = ..#TYPEENCRYPTIONSTARTUP {
+            Set tSC = ..EncryptionStartup($Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1593,6 +1629,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPESSL {
             Set pEffect = ..SslWeakening(pPayload, pTarget)
+            Quit
+        }
+        If pType = ..#TYPEENCRYPTIONSTARTUP {
+            If ..ChangesAuditEncryption(pPayload, pTarget) Set pEffect = ..#EFFECTAUDITENCRYPTION
             Quit
         }
         If pType = ..#TYPESERVICE {
@@ -2506,6 +2546,100 @@ ClassMethod EncryptionKeyFileFields(pKind As %String) As %List [ Private ]
 ClassMethod EncryptionKeyFields() As %List [ Private ]
 {
     Quit $ListBuild("root", "path", "AdminName", "AdminPassword")
+}
+
+/// <p>The startup settings' reviewed few (Story 18.23): the start mode, the four encryption settings, the
+/// KMIP server, the default and journal key ids and the startup administrator, the startup key file's
+/// location and the administrator's password. The startup key file itself is never one: only
+/// <class>OcuPilot.Port.EncryptionPort</class> composes it (AD-21).</p>
+ClassMethod EncryptionStartupFields() As %List [ Private ]
+{
+    Quit $ListBuild("DBEncStartMode", "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt", "DBEncStartKMIPServer", "DBEncDefaultKeyID", "DBEncJournalKeyID", "AdminName", "root", "path", "AdminPassword")
+}
+
+/// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23): when the settings
+/// the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation with the
+/// audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
+/// <parameter>STARTUPINTERACTIVE</parameter>; every write then passes the reviewed-few sweep. A write that
+/// leaves Interactive also reads, through <var>pToolClass</var>'s port as the caller, whether one of their
+/// databases is still encrypted on disk (<method>StartupDatabasesEncrypted</method>); a read that fails
+/// refuses.</p>
+ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tOnDisk = 0
+        If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) = "Interactive" Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
+        If ..LeavesInteractiveRequired(pPayload, pTarget, tOnDisk) {
+            Do ..Refuse(..#STARTUPINTERACTIVE, .pProhibits, .pCode)
+            Quit
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEENCRYPTIONSTARTUP, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether a write leaves key activation at startup Interactive while the audit log, IRISSECURITY or
+/// IRISTEMP is encrypted, now or at the next start: <parameter>STARTUPMODEFIELD</parameter> and each of
+/// <parameter>STARTUPREQUIREDFLAGS</parameter> read from <var>pPayload</var> where it carries one and from
+/// <var>pTarget</var>, the instance's settings at the write, otherwise; and, when the write changes the mode
+/// to Interactive, each flag as <var>pTarget</var> holds it, so a write that chooses Interactive and turns
+/// the flag off together is refused too. Whatever the flags, a write that leaves Interactive is refused while
+/// <var>pEncryptedOnDisk</var> says one of their databases is still encrypted on disk, which a flag turned
+/// off leaves until the next start converts it.</p>
+ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    If pEncryptedOnDisk Quit 1
+    Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= "Interactive")
+    Set tRequired = 0
+    For tI = 1:1:$Length(..#STARTUPREQUIREDFLAGS, ",") {
+        Set tFlag = $Piece(..#STARTUPREQUIREDFLAGS, ",", tI)
+        If ..StartupSetting(pPayload, pTarget, tFlag) = "true" Set tRequired = 1 Quit
+        If tChoosing && (..StartupSetting("", pTarget, tFlag) = "true") Set tRequired = 1 Quit
+    }
+    Quit tRequired
+}
+
+/// <p>Whether the audit log's, IRISSECURITY's or IRISTEMP's database is encrypted on disk, read through
+/// <var>pPort</var> as the caller (<code>Security.Encryption.Settings</code> <code>ENCRYPTEDDATABASES</code>,
+/// AD-27's named case). A read that fails, or answers anything but a list, answers 1.</p>
+ClassMethod StartupDatabasesEncrypted(pPort As %String) As %Boolean [ Private ]
+{
+    Set tEncrypted = 1
+    Try {
+        Kill tQuery
+        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "ENCRYPTEDDATABASES", .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Encrypted") '= "array") Quit
+        Set tEncrypted = (tRead.%Get("Encrypted").%Size() > 0)
+    } Catch {
+        Set tEncrypted = 1
+    }
+    Quit tEncrypted
+}
+
+/// <p>Whether <var>pPayload</var> carries an <code>AuditEncrypt</code> other than <var>pTarget</var>'s.</p>
+ClassMethod ChangesAuditEncryption(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("AuditEncrypt") = "unassigned") Quit 0
+    Quit (..StartupSetting(pPayload, "", "AuditEncrypt") '= ..StartupSetting("", pTarget, "AuditEncrypt"))
+}
+
+/// <p>Setting <var>pName</var> as the write leaves it, rendered: <var>pPayload</var>'s when it carries one,
+/// else <var>pTarget</var>'s; a number reads <code>true</code> when it is not 0 and <code>false</code>
+/// otherwise.</p>
+ClassMethod StartupSetting(pPayload As %DynamicObject, pTarget As %DynamicObject, pName As %String) As %String [ Private ]
+{
+    Set tFrom = $Select($IsObject(pPayload) && (pPayload.%GetTypeOf(pName) '= "unassigned"): pPayload, 1: pTarget)
+    If '$IsObject(tFrom) Quit ""
+    If tFrom.%GetTypeOf(pName) = "number" Quit $Select(+tFrom.%Get(pName): "true", 1: "false")
+    Quit ..Rendered(tFrom, pName)
 }
 
 /// <p>A key file write's verdict (AD-10 as amended 2026-10-04, Story 18.7): a key removal whose key
