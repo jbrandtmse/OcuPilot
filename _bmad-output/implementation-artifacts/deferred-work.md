@@ -9718,6 +9718,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: structural-walk.mjs fieldNames :526 reads each [data-ocu-walk-field] node by id after one querySelectorAll; the transfer spec :222 walks right after typing into the path picker, whose listing re-renders the dialog's fields (inference); 19.8 changes neither file
 - 2026-10-04T20:34:37Z status=routed owner=range-end-cleanup by=runner note=first sighting; the fix is fieldNames tolerating a node replaced mid-walk (re-query once) or the spec waiting for the picker's listing before the walk
 - 2026-10-05T18:41:37Z status=routed owner=23-4-the-range-end-cleanup-part-4 by=merge_gate note=owner-approved burn-down scope 2026-10-05 (relayed by the Planner): Story 23.4 batch (a), CI and test-environment health
+- 2026-10-06T01:27:12Z occurrence=19-11-the-agent-gains-guarded-sql-and-a-picker note=run 37395736421 (head 67453d67) browser shard 3/3: the same AC1 walk at :222 failed 'no accessibility node found' for the classes list's two check inputs (a node replaced mid-walk, inference); rerun of the failed jobs
 
 ### DW-2059: Prohibited.DependsOnKey compares a database's EncryptionKeyID with the key file's Id as exact strings; a format or case difference between the two vendor answers would let a protected key's removal through
 - source: spec-18-7-encryption.md (implement review, 8d0a659a) | severity: high | fix-risk: low | footprint: in-footprint
