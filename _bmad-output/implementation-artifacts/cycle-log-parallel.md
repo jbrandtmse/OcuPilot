@@ -1013,3 +1013,4 @@
 2026-10-06T07:04:44Z	Epic 19	epic_retro_skipped	by=owner_standing(skip_retrospectives_2026-10-01)
 2026-10-06T07:04:44Z	Epic 19	worktree_removed	worktree=.worktrees/epic-19
 2026-10-06T07:04:44Z	Epic 19	epic_branches_deleted	branch=OCU-1-epic19(local+origin;fully_merged_at_ad6d9ea1)
+2026-10-06T07:11:00Z	Epic 23	runner_dispatched	story=23.4 runner=a75fadbafb0ac717c slot=a model=opus implement=sonnet prompt=prompts/e23-4-prompt.md worktree=.worktrees/epic-23 from=5767c771 feature=d11bda0a
