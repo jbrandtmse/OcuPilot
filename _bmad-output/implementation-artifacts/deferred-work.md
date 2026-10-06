@@ -10005,3 +10005,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: GovernanceRestore holds the runner's held copy in memory during its tests; a held copy is put back over any policy stored since; ci-runner refuses no container
 - 2026-10-06T10:43:40Z status=wontfix-theoretical owner=23-4-the-range-end-cleanup-part-4 by=cr note=real if ci-runner runs on an instance holding an operator policy and is interrupted, or the policy is edited before the next run
+### DW-2107: The agent panel header cuts the agent picker's label to 'Anth' for a definition named Anthropic at the default panel width on a 1440 px window
+- source: Planner demo check 2026-10-06 (release/1.0.11 876e6dc8 on the demo) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: seen on the demo account at the default panel width, 1440 px window; Story 19.11's picker
+- 2026-10-06T10:41:23Z status=routed owner=range-end-cleanup by=merge_gate note=visible polish, a candidate for the drafted batch (c) or a later polish pass; not part of 23.4
