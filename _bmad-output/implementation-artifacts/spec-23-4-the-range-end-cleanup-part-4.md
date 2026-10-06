@@ -2,7 +2,7 @@
 title: 'Story 23.4: The range-end cleanup, part 4'
 type: 'bugfix'
 created: '2026-10-06'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '3168e2d6df11a79b79edbe0edc4ce34050bb472c'
 baseline_commit: '3168e2d6df11a79b79edbe0edc4ce34050bb472c'
 review_loop_iteration: 0
@@ -698,6 +698,7 @@ Rejected:
 ## Spec Change Log
 
 - 2026-10-06, lead spec gate: DW-1869 closes `resolved-by:23-3-the-range-end-cleanup-part-3` (f2168084; pin `ServiceUpdate.TestAnAddressRoleIsJudgedByEffectInEitherSpelling` seeds `%Manager` and judges by effect in both spellings), because a `wontfix-accepted` or `by-design` would misstate a fixed defect. The lead runs `ServiceUpdate` in batch b's verification. Every other planned disposition and fix shape is accepted as written.
+- 2026-10-06, lead: batch a closed green (run 37452225543 on 6c8bb17c); the spec is re-opened for batch b, whose unchecked items are this pass's scope.
 - 2026-10-06, lead (owner decision relayed by the orchestrator, feature b78bc4b5): DW-2096 joins batch b; the story owns 32 entries. Its item is a lead edit under Tasks & Acceptance; the frozen Intent still says thirty-one.
 
 ## Review Triage Log
